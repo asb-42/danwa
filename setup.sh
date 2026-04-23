@@ -3,7 +3,7 @@ set -e
 
 echo "📦 Installiere uv & dependencies..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.local/bin/env
+export PATH="$HOME/.local/bin:$PATH"
 
 echo "🐍 Erstelle Umgebung..."
 uv venv .venv --python 3.11
