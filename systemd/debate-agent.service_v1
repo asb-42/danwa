@@ -1,0 +1,13 @@
+[Unit]
+Description=Debate Agent UI
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/debate-agent
+Environment="PATH=%h/.local/bin:%h/projects/debate-agent/.venv/bin"
+ExecStart=%h/projects/debate-agent/.venv/bin/uv run chainlit run src/ui/chainlit_app.py --port 7860
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,72 @@
+import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict
+from .llm_router import LLMRouter
+from .trace_logger import TraceLogger
+
+PROMPT_DIR = Path("config/prompts")
+
+@dataclass
+class DebateState:
+    session_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    context: str = ""
+    rounds: list[Dict] = field(default_factory=list)
+    final_consensus: float = 0.0
+    output: str = ""
+
+class DebateEngine:
+    ROLE_TEMPS = {"strategist": 0.4, "critic": 0.8, "optimizer": 0.3, "moderator": 0.2}
+
+    def __init__(self, profile_name: str = "local_lm_studio", max_rounds: int = 3, threshold: float = 0.75):
+        self.router = LLMRouter(profile_name)
+        self.max_rounds = max_rounds
+        self.threshold = threshold
+        self.logger = None
+        self.state = DebateState()
+
+    def _load_prompt(self, role: str) -> str:
+        return (PROMPT_DIR / f"{role}.md").read_text(encoding="utf-8")
+
+    async def run(self, context: str, progress_callback=None) -> DebateState:
+        self.state.context = context
+        self.logger = TraceLogger(self.state.session_id)
+        if progress_callback: await progress_callback("start", "Initialisiere Debatte...")
+
+        current_draft = context
+        consensus = 0.0
+
+        for r in range(1, self.max_rounds + 1):
+            if progress_callback: await progress_callback("round", f"Runde {r}/{self.max_rounds}")
+
+            # 1. Strategie
+            if progress_callback: await progress_callback("agent", "Strategist")
+            strat = await self.router.call(self._load_prompt("strategist"), f"Sachverhalt:\n{self.state.context}\nAktueller Stand:\n{current_draft}", self.ROLE_TEMPS["strategist"])
+            self.logger.log(f"R{r}", "strategist", self._load_prompt("strategist"), strat["content"], {"tokens": strat["tokens_used"]})
+
+            # 2. Kritik
+            if progress_callback: await progress_callback("agent", "Critic")
+            crit = await self.router.call(self._load_prompt("critic"), f"Strategie-Entwurf:\n{strat['content']}", self.ROLE_TEMPS["critic"])
+            self.logger.log(f"R{r}", "critic", self._load_prompt("critic"), crit["content"], {"tokens": crit["tokens_used"]})
+
+            # 3. Optimierung
+            if progress_callback: await progress_callback("agent", "Optimizer")
+            opt = await self.router.call(self._load_prompt("optimizer"), f"Strategie:\n{strat['content']}\nKritik:\n{crit['content']}", self.ROLE_TEMPS["optimizer"])
+            self.logger.log(f"R{r}", "optimizer", self._load_prompt("optimizer"), opt["content"], {"tokens": opt["tokens_used"]})
+            current_draft = opt["content"]
+
+            # 4. Moderator / Konsens
+            if progress_callback: await progress_callback("agent", "Moderator")
+            mod = await self.router.call(self._load_prompt("moderator"), f"Finale Fassung:\n{current_draft}\n\nBewerte Konsens auf 0.0 bis 1.0. Antworte NUR mit einer Zahl.", self.ROLE_TEMPS["moderator"])
+            try: consensus = float(mod["content"].strip().split()[0])
+            except: consensus = 0.5
+
+            self.state.rounds.append({"round": r, "consensus": consensus, "draft_preview": current_draft[:150]})
+            self.logger.log(f"R{r}", "moderator", self._load_prompt("moderator"), mod["content"], {"consensus": consensus})
+
+            if consensus >= self.threshold:
+                break
+
+        self.state.final_consensus = consensus
+        self.state.output = current_draft
+        return self.state

@@ -1,0 +1,17 @@
+default_variant: "A"
+variants:
+  A:
+    strategist: "prompts/strategist.md"
+    critic: "prompts/critic.md"
+    optimizer: "prompts/optimizer.md"
+    moderator: "prompts/moderator.md"
+  B:
+    strategist: "prompts/strategist_v2.md"
+    critic: "prompts/critic_v2.md"
+    optimizer: "prompts/optimizer_v2.md"
+    moderator: "prompts/moderator_v2.md"
+  C:
+    strategist: "prompts/strategist_v3.md"
+    critic: "prompts/critic_v3.md"
+    optimizer: "prompts/optimizer_v3.md"
+    moderator: "prompts/moderator_v3.md"

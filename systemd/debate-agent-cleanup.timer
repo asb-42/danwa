@@ -1,0 +1,7 @@
+[Unit]
+Description=Debate Agent Data Retention Cleanup
+[Timer]
+OnCalendar=daily
+Persistent=true
+[Install]
+WantedBy=timers.target

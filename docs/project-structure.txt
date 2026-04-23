@@ -1,0 +1,21 @@
+debate-agent/
+├── pyproject.toml
+├── setup.sh
+├── config/
+│   ├── llm_profiles.yaml
+│   └── prompts/
+│       ├── strategist.md
+│       ├── critic.md
+│       ├── optimizer.md
+│       └── moderator.md
+├── src/
+│   └── core/
+│       ├── llm_router.py
+│       ├── debate_engine.py
+│       └── trace_logger.py
+├── src/
+│   └── ui/
+│       └── chainlit_app.py
+├── logs/
+└── systemd/
+    └── debate-agent.service

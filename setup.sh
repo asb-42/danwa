@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+
+echo "📦 Installiere uv & dependencies..."
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+
+echo "🐍 Erstelle Umgebung..."
+uv venv .venv --python 3.11
+source .venv/bin/activate
+uv pip install -e .
+
+echo "📁 Verzeichnisse & Config..."
+mkdir -p logs config/prompts systemd
+echo "✅ Setup abgeschlossen. Starte mit: uv run chainlit run src/ui/chainlit_app.py --port 7860"
