@@ -42,26 +42,34 @@ class SessionDB:
                 self.conn.execute(f"ALTER TABLE sessions ADD COLUMN {col}")
         self.conn.commit()
 
-    def save_session(self, state: DebateState, profile: str, 
-                     trace_path: str = "", report_docx: str = "", report_pdf: str = ""):
+    def save_session(self, state: DebateState, profile: str,
+                     trace_path: str = "", report_docx: str = "", report_pdf: str = "",
+                     project_id: str = "", document_ids: str = ""):
         self.conn.execute("""
             INSERT OR REPLACE INTO sessions 
-            (session_id, created_at, profile, max_rounds, consensus, context_preview, trace_path, report_docx, report_pdf, validated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (session_id, created_at, profile, max_rounds, consensus, context_preview, trace_path, report_docx, report_pdf, project_id, document_ids, validated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             state.session_id, state.created_at, profile, len(state.rounds),
             state.final_consensus, state.context[:150].replace("\n", " "),
-            trace_path, report_docx, report_pdf, 1 if state.validation_report else 0
+            trace_path, report_docx, report_pdf, project_id, document_ids, 1 if state.validation_report else 0
         ))
         self.conn.commit()
 
-    def list_sessions(self, limit=10, offset=0, min_consensus: Optional[float] = None) -> List[Dict]:
+    def list_sessions(self, limit=10, offset=0, min_consensus: Optional[float] = None, project_id: str | None = None) -> List[Dict]:
         base = "SELECT * FROM sessions"
-        where = " WHERE consensus >= ?" if min_consensus is not None else ""
+        clauses = []
+        params = []
+        if min_consensus is not None:
+            clauses.append("consensus >= ?")
+            params.append(min_consensus)
+        if project_id is not None:
+            clauses.append("project_id = ?")
+            params.append(project_id)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         order = " ORDER BY created_at DESC"
         lim = " LIMIT ? OFFSET ?"
         
-        params = [min_consensus] if min_consensus is not None else []
         params += [limit, offset]
         
         cursor = self.conn.execute(f"{base}{where}{order}{lim}", params)

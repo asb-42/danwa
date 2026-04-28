@@ -32,6 +32,16 @@ def test_save_and_list_session(db):
     assert sessions[0]["profile"] == "test_profile"
 
 
+def test_save_with_project(db):
+    state = DebateState()
+    db.save_session(state, "test_profile", project_id="project-1", document_ids='["doc-1", "doc-2"]')
+
+    sessions = db.list_sessions()
+    assert len(sessions) == 1
+    assert sessions[0]["project_id"] == "project-1"
+    assert sessions[0]["document_ids"] == '["doc-1", "doc-2"]'
+
+
 def test_list_sessions_with_limit(db):
     for i in range(5):
         state = DebateState()
@@ -62,6 +72,18 @@ def test_list_sessions_filter_consensus(db):
     sessions = db.list_sessions(min_consensus=0.80)
     assert len(sessions) == 1
     assert sessions[0]["consensus"] == 0.95
+
+
+def test_list_by_project(db):
+    state1 = DebateState()
+    db.save_session(state1, "p", project_id="project-1")
+
+    state2 = DebateState()
+    db.save_session(state2, "p", project_id="project-2")
+
+    sessions = db.list_sessions(project_id="project-1")
+    assert len(sessions) == 1
+    assert sessions[0]["project_id"] == "project-1"
 
 
 def test_delete_session(db):
@@ -100,6 +122,6 @@ def test_save_session_with_validation_flag(db):
     
     state2 = DebateState()
     db.save_session(state2, "p", "", "", "")
-    
+
     sessions = db.list_sessions()
-    assert sessions[1]["validated"] == 0
+    assert {session["validated"] for session in sessions} == {0, 1}
