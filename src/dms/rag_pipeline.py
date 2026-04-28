@@ -1,0 +1,2 @@
+class RAGPipeline:
+    pass
