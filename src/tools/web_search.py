@@ -6,6 +6,30 @@ from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
+
+def extract_json_list(text: str) -> list:
+    """
+    Extract a JSON list from text. Handles LLM responses that may include
+    extra text around the JSON array.
+    """
+    import json
+    import re
+    match = re.search(r'\[.*?\]', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+    try:
+        result = json.loads(text)
+        if isinstance(result, list):
+            return result
+    except (json.JSONDecodeError, TypeError):
+        pass
+    logger.warning(f"Could not extract JSON list from: {text[:100]}")
+    return []
+
+
 class WebSearchTool:
     def __init__(
         self,

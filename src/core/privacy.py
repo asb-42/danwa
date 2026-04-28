@@ -16,9 +16,10 @@ PII_PATTERNS = {
 }
 
 class PrivacyGuard:
-    def __init__(self, strict_mode: bool = False, retention_days: int = 90):
+    def __init__(self, strict_mode: bool = False, retention_days: int = 90, redact_traces: bool = False):
         self.strict_mode = strict_mode
         self.retention_days = retention_days
+        self.redact_traces = redact_traces
 
     def redact_text(self, text: str) -> str:
         """Ersetzt PII durch Platzhalter. Idempotent & sicher für Logs/Traces."""

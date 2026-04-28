@@ -171,7 +171,7 @@ async def main(message: cl.Message):
         )
 
     # Privacy enforcement: Apply retention policy before new session
-    await engine.privacy.enforce_retention()
+    engine.privacy.enforce_retention()
 
     # Optional: Privacy-Hinweis im UI
     await cl.Message(

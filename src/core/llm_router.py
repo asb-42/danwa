@@ -17,7 +17,7 @@ class LLMRouter:
         if self.profile.get("api_key_env") and self.profile["api_key_env"] in os.environ:
             self.profile["api_key"] = os.environ[self.profile["api_key_env"]]
 
-    async def call(self, system_prompt: str, user_prompt: str, temp_override: float = None) -> Dict[str, Any]:
+    async def call(self, system_prompt: str, user_prompt: str, temp_override: float | None = None) -> Dict[str, Any]:
         params = self.profile["params"].copy()
         if temp_override is not None:
             params["temperature"] = temp_override

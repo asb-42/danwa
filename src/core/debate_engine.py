@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from .llm_router import LLMRouter
 from .trace_logger import TraceLogger
-from src.tools.web_search import WebSearchTool
+from src.tools.web_search import WebSearchTool, extract_json_list
 from .memory import DebateMemory
 from .privacy import PrivacyGuard
 from .prompt_manager import PromptManager
@@ -74,7 +74,7 @@ class DebateEngine:
 
     async def _extract_claims(self, draft: str) -> List[str]:
         resp = await self.router.call(CLAIM_EXTRACTION_PROMPT, draft, temp_override=0.1)
-        return WebSearchTool.extract_json_list(resp["content"])
+        return extract_json_list(resp["content"])
 
     async def _run_search_validation(self, draft: str) -> List[Dict]:
         claims = await self._extract_claims(draft)
@@ -235,7 +235,7 @@ class DebateEngine:
 
             try:
                 consensus = float(mod["content"].strip().split()[0])
-            except:
+            except Exception:
                 consensus = 0.5
 
             self.state.rounds.append(
