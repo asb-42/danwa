@@ -31,6 +31,16 @@ class SessionDB:
             )
         """)
         self.conn.commit()
+        self._migrate()
+
+    def _migrate(self):
+        cursor = self.conn.execute("PRAGMA table_info(sessions)")
+        existing = {row[1] for row in cursor.fetchall()}
+        for col in ("project_id TEXT", "document_ids TEXT"):
+            name = col.split()[0]
+            if name not in existing:
+                self.conn.execute(f"ALTER TABLE sessions ADD COLUMN {col}")
+        self.conn.commit()
 
     def save_session(self, state: DebateState, profile: str, 
                      trace_path: str = "", report_docx: str = "", report_pdf: str = ""):
