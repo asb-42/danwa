@@ -42,6 +42,7 @@ class DebateEngine:
         threshold: float = 0.75,
         enable_fact_check: bool = True,
         enable_memory: bool = False,
+        rag_context: Optional[str] = None,
     ):
         # Load configuration
         with open("config/settings.yaml") as f:
@@ -68,6 +69,7 @@ class DebateEngine:
         )
         self.prompt_mgr = PromptManager()
         self.state = DebateState()
+        self.rag_context = rag_context
 
     def _load_prompt(self, role: str) -> str:
         return (PROMPT_DIR / f"{role}.md").read_text(encoding="utf-8")
@@ -100,6 +102,9 @@ class DebateEngine:
             self.search_tool = None
 
         self.state.context = context
+
+        if self.rag_context and self.rag_context.strip():
+            self.state.context += f"\n\n## RAG Context\n{self.rag_context}"
 
         # Prompt variant assignment
         assigned_variant = variant_override or self.prompt_mgr.assign_variant(

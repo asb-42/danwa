@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import yaml
 
@@ -12,6 +11,7 @@ DEFAULT_DMS_CONFIG = {
     "ocr_device": "cpu",
     "max_file_size_mb": 50,
     "chroma_collection": "document_chunks",
+    "memory_dir": "memory",
 }
 
 

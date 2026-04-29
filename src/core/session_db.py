@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
@@ -44,7 +45,12 @@ class SessionDB:
 
     def save_session(self, state: DebateState, profile: str,
                      trace_path: str = "", report_docx: str = "", report_pdf: str = "",
-                     project_id: str = "", document_ids: str = ""):
+                     project_id: str = None, document_ids: List[str] = None):
+        proj_id = project_id if project_id is not None else ""
+        if document_ids is not None:
+            doc_ids_str = json.dumps(document_ids)
+        else:
+            doc_ids_str = ""
         self.conn.execute("""
             INSERT OR REPLACE INTO sessions 
             (session_id, created_at, profile, max_rounds, consensus, context_preview, trace_path, report_docx, report_pdf, project_id, document_ids, validated)
@@ -52,9 +58,26 @@ class SessionDB:
         """, (
             state.session_id, state.created_at, profile, len(state.rounds),
             state.final_consensus, state.context[:150].replace("\n", " "),
-            trace_path, report_docx, report_pdf, project_id, document_ids, 1 if state.validation_report else 0
+            trace_path, report_docx, report_pdf, proj_id, doc_ids_str, 1 if state.validation_report else 0
         ))
         self.conn.commit()
+
+    def load_session(self, session_id: str) -> Optional[Dict]:
+        cursor = self.conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        session = dict(row)
+        doc_ids_raw = session.get("document_ids", "")
+        if doc_ids_raw:
+            try:
+                session["document_ids"] = json.loads(doc_ids_raw)
+            except json.JSONDecodeError:
+                session["document_ids"] = []
+        else:
+            session["document_ids"] = []
+        session.setdefault("project_id", None)
+        return session
 
     def list_sessions(self, limit=10, offset=0, min_consensus: Optional[float] = None, project_id: str | None = None) -> List[Dict]:
         base = "SELECT * FROM sessions"

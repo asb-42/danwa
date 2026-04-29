@@ -2,6 +2,7 @@ import chainlit as cl
 import yaml
 import json
 import os
+import logging
 from pathlib import Path
 from src.core.debate_engine import DebateEngine
 from src.tools.doc_parser import DocumentParser
@@ -10,7 +11,10 @@ from src.core.session_db import SessionDB
 from src.ui.dashboard import render_dashboard
 from src.core.prompt_manager import PromptManager
 from src.core.logging_config import setup_logging
+from src.ui import dms_dashboard
+from src.dms.dms import DMS
 
+logger = logging.getLogger(__name__)
 setup_logging("INFO")
 
 CONFIG_PATH = Path("config/llm_profiles.yaml")
@@ -60,6 +64,22 @@ async def start():
     pm = PromptManager()
     variant_opts = list(pm.variants_config.get("variants", {}).keys())
 
+    dms = DMS()
+    cl.user_session.set("dms", dms)
+    cl.user_session.set("selected_project_id", None)
+    cl.user_session.set("selected_document_id", None)
+
+    projects = dms.list_projects()
+    project_items = {proj["name"]: proj["id"] for proj in projects} if projects else {"Keine Projekte": ""}
+    initial_project = None if projects else ""
+
+    selected_project_id = cl.user_session.get("selected_project_id")
+    if selected_project_id:
+        docs = dms.list_documents(selected_project_id)
+        doc_items = {doc["filename"]: doc["id"] for doc in docs} if docs else {}
+    else:
+        doc_items = {"Kein Dokument ausgewählt": ""}
+
     cl.user_session.set("settings", settings)
     cl.user_session.set("prompt_manager", pm)
 
@@ -95,6 +115,18 @@ async def start():
                 values=variant_opts + ["auto"],
                 initial_value="auto",
             ),
+            cl.input_widget.Select(
+                id="selected_project_id",
+                label="📁 Aktives Projekt",
+                items=project_items,
+                initial_value=initial_project,
+            ),
+            cl.input_widget.Select(
+                id="selected_document_id",
+                label="📄 Aktives Dokument",
+                items=doc_items,
+                initial_value="" if not selected_project_id else None,
+            ),
         ]
     ).send()
 
@@ -107,6 +139,13 @@ async def start():
             label="📊 Dashboard öffnen",
             value="init",
             description="Sitzungsverwaltung",
+            payload={},
+        ),
+        cl.Action(
+            name="open_dms",
+            label="📁 DMS Dashboard",
+            value="dms_init",
+            description="Document Management System",
             payload={},
         )
     ]
@@ -149,6 +188,7 @@ async def main(message: cl.Message):
             )
 
     # Kontext zusammenbauen
+    rag_context = cl.user_session.get("rag_context")
     if parsed_docs:
         doc_context = "\n\n".join(
             [
@@ -158,7 +198,15 @@ async def main(message: cl.Message):
                 for d in parsed_docs
             ]
         )
-        context += f"\n\n[Analysierte Dokumente]\n{doc_context}"
+        if rag_context:
+            combined = f"## Parsed Documents\n{doc_context}\n\n## RAG Context\n{rag_context}"
+            context += f"\n\n{combined}"
+        else:
+            context += f"\n\n[Analysierte Dokumente]\n{doc_context}"
+    elif rag_context:
+        context += f"\n\n## RAG Context\n{rag_context}"
+
+
 
     async def progress(step: str, detail: str):
         await cl.Message(
@@ -224,7 +272,18 @@ async def main(message: cl.Message):
     pdf_path = str(report_path_pdf)
 
     db = cl.user_session.get("session_db")
-    db.save_session(state, settings["profile"], trace_path, docx_path, pdf_path)
+    project_id = cl.user_session.get("selected_project_id")
+    selected_doc_id = cl.user_session.get("selected_document_id")
+    document_ids = [selected_doc_id] if selected_doc_id else []
+    db.save_session(
+        state,
+        settings["profile"],
+        trace_path,
+        docx_path,
+        pdf_path,
+        project_id=project_id,
+        document_ids=document_ids
+    )
 
 
 @cl.action_callback
@@ -300,3 +359,35 @@ async def handle_action(action: cl.Action):
             await cl.Message(
                 content=f"⚠️ Kein Report gefunden. Bitte erneut generieren."
             ).send()
+
+    elif action.id == "open_dms":
+        await dms_dashboard.start()
+
+
+@cl.on_settings_update
+async def on_settings_update(settings):
+    dms = cl.user_session.get("dms")
+    selected_project_id = settings.get("selected_project_id")
+    selected_document_id = settings.get("selected_document_id")
+
+    cl.user_session.set("selected_project_id", selected_project_id)
+    cl.user_session.set("selected_document_id", selected_document_id)
+
+    project_name = "Kein Projekt ausgewählt"
+    doc_name = "Kein Dokument ausgewählt"
+
+    if selected_project_id and dms:
+        projects = dms.list_projects()
+        project = next((p for p in projects if p["id"] == selected_project_id), None)
+        if project:
+            project_name = project["name"]
+            if selected_document_id:
+                docs = dms.list_documents(selected_project_id)
+                doc = next((d for d in docs if d["id"] == selected_document_id), None)
+                if doc:
+                    doc_name = doc["filename"]
+
+    await cl.Message(
+        content=f"📁 Aktives Projekt: {project_name} | 📄 Aktives Dokument: {doc_name}",
+        author="System",
+    ).send()

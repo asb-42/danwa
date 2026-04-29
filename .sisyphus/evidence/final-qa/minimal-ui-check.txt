@@ -1,0 +1,62 @@
+=== F3 Minimal UI Verification Evidence ===
+Date: 2026-04-29
+
+1. Chainlit App Start Attempt:
+----------------------------------------
+warning: The `tool.uv.dev-dependencies` field (used in `pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+Traceback (most recent call last):
+  File "/media/data/coding/danwa/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/click/core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/click/core.py", line 1082, in main
+    rv = self.invoke(ctx)
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/click/core.py", line 1697, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/click/core.py", line 1443, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/click/core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/media/data/coding/danwa/.venv/lib/python3.11/site-packages/chainlit/config.py", line 619, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/media/data/coding/danwa/src/ui/chainlit_app.py", line 7, in <module>
+    from src.core.debate_engine import DebateEngine
+ModuleNotFoundError: No module named 'src'
+App either started (timeout) or failed to start
+
+2. UI File Checks:
+----------------------------------------
+=== UI File Checks ===
+chainlit_app.py line count: 393
+dms_dashboard.py line count: 220
+rag_context_ui.py missing
+
+3. UI Test Results:
+----------------------------------------
+tests/test_chainlit_app.py::test_dms_import PASSED                       [  9%]
+tests/test_chainlit_app.py::test_start_actions_include_dms_button PASSED [ 18%]
+tests/test_chainlit_app.py::test_on_settings_update PASSED               [ 27%]
+tests/test_chainlit_app.py::test_rag_context_from_session_included_in_context PASSED [ 36%]
+tests/test_chainlit_app.py::test_context_assembly_with_parsed_docs_no_rag PASSED [ 45%]
+tests/test_chainlit_app.py::test_no_rag_context_when_not_in_session PASSED [ 54%]
+tests/test_chainlit_app.py::test_rag_context_only_no_parsed_docs PASSED  [ 63%]
+tests/test_dms_dashboard.py::test_show_projects_lists_items PASSED       [ 72%]
+tests/test_dms_dashboard.py::test_create_project_success PASSED          [ 81%]
+tests/test_dms_dashboard.py::test_upload_document_success PASSED         [ 90%]
+tests/test_dms_dashboard.py::test_upload_progress_shows_percentages PASSED [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/traceloop/sdk/prompts/model.py:12
+  /media/data/coding/danwa/.venv/lib/python3.11/site-packages/traceloop/sdk/prompts/model.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 3.64s =========================
+
+4. F3 Verdict:
+----------------------------------------
+Scenarios [0/0 pass] | Integration [PARTIAL - backend verified] | Edge Cases [0 tested] | VERDICT: PARTIAL

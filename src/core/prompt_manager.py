@@ -68,3 +68,16 @@ class PromptManager:
             return self.default_variant
         idx = int(hashlib.md5(session_id.encode()).hexdigest(), 16) % len(variants)
         return variants[idx]
+
+    def get_system_prompt(
+        self,
+        role: str,
+        variant: Optional[str] = None,
+        rag_context: Optional[str] = None
+    ) -> str:
+        prompt_data = self.get(role, variant)
+        content = prompt_data["content"]
+        if rag_context and rag_context.strip():
+            rag_section = f"\n\n## Retrieved Document Context\n{rag_context}\n\nUse the provided RAG context to inform your argument."
+            content += rag_section
+        return content

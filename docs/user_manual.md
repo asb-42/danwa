@@ -14,10 +14,11 @@
 10. [Memory & Precedents](#memory--precedents)
 11. [Report Generation](#report-generation)
 12. [Session Management Dashboard](#session-management-dashboard)
-13. [Privacy & Data Protection](#privacy--data-protection)
-14. [Audit & Reproducibility](#audit--reproducibility)
-15. [Advanced Configuration](#advanced-configuration)
-16. [Troubleshooting](#troubleshooting)
+13. [Document Management System (DMS)](#document-management-system-dms)
+14. [Privacy & Data Protection](#privacy--data-protection)
+15. [Audit & Reproducibility](#audit--reproducibility)
+16. [Advanced Configuration](#advanced-configuration)
+17. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -642,6 +643,88 @@ CREATE TABLE sessions (
     validated INTEGER
 )
 ```
+
+---
+
+## Document Management System (DMS)
+
+### What is DMS?
+The Document Management System (DMS) provides project-wise document organization, intelligent chunking, and retrieval-augmented generation (RAG) capabilities. It allows you to create projects, upload documents (including scanned PDFs via OCR), and automatically retrieve relevant document context during debates.
+
+### Creating Projects and Uploading Documents
+1. Access the DMS Dashboard (see below)
+2. Create a new project with name and optional description
+3. Upload documents to the project (supports PDF, DOCX, ODT, ODS, ODP, TXT)
+4. Documents are automatically chunked and indexed for RAG retrieval
+
+Example DMS API usage:
+```python
+from src.dms.dms import DMS
+
+dms = DMS()
+project_id = dms.create_project(name="AI Research", description="Project for AI-related documents")
+doc_id = dms.upload_document(project_id, "research_paper.pdf")
+```
+
+### RAG Context in Debates
+During debates, the system automatically retrieves relevant document chunks from DMS projects to augment context. You can:
+- Auto-retrieve context for debate topics
+- Manually add specific documents to RAG context
+- Retrieve top k relevant chunks for any query
+
+Example RAG retrieval:
+```python
+# Retrieve context for a debate topic
+chunks = dms.auto_retrieve_for_topic("AI in education", project_id=project_id, k=5)
+for chunk in chunks:
+    print(f"Source: {chunk['source']}, Preview: {chunk['text'][:100]}...")
+```
+
+### PaddleOCR Integration
+For scanned documents or image-based PDFs, DMS supports PaddleOCR for text extraction. PaddleOCR is optional:
+- Install CPU version: `bash scripts/setup_dms.sh`
+- Install GPU version: `bash scripts/setup_dms.sh --gpu`
+- Enable OCR in `config/settings.yaml`: `dms.ocr_enabled: true`
+
+OCR is disabled by default to avoid unnecessary dependencies.
+
+### DMS Dashboard
+Access the DMS dashboard via Chainlit:
+1. Start the app: `uv run chainlit run src/ui/chainlit_app.py --port 7860`
+2. Click "📂 DMS Dashboard" in the chat interface
+3. Features:
+   - List/create/delete projects
+   - Upload/list/delete project documents
+   - View document metadata and chunk counts
+   - Toggle OCR processing for uploads
+
+### Configuration
+Configure DMS in `config/settings.yaml` under the `dms:` section:
+```yaml
+dms:
+  enabled: true                # Enable/disable DMS
+  storage_path: "dms_storage"  # DMS data storage path
+  chunk_size: 512              # Max characters per text chunk
+  chunk_overlap: 51            # Chunk overlap for context preservation
+  embedding_model: "intfloat/multilingual-e5-small"  # Embedding model
+  ocr_enabled: false           # Enable PaddleOCR for scanned docs
+  ocr_device: "cpu"            # OCR device (cpu/gpu)
+  max_file_size_mb: 50         # Max upload file size (MB)
+  chroma_collection: "document_chunks"  # ChromaDB collection name
+```
+
+**Config Parameters:**
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `enabled` | Toggle DMS feature | `true` |
+| `storage_path` | Path for DMS database and files | `dms_storage` |
+| `chunk_size` | Max characters per text chunk | `512` |
+| `chunk_overlap` | Overlap between chunks | `51` |
+| `embedding_model` | Sentence-transformers embedding model | `intfloat/multilingual-e5-small` |
+| `ocr_enabled` | Enable PaddleOCR | `false` |
+| `ocr_device` | OCR processing device | `cpu` |
+| `max_file_size_mb` | Maximum document size | `50` |
+| `chroma_collection` | ChromaDB collection for DMS chunks | `document_chunks` |
 
 ---
 

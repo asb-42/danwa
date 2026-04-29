@@ -4,13 +4,14 @@ from pathlib import Path
 import chromadb
 
 logger = logging.getLogger(__name__)
-MEMORY_DIR = Path("memory")
-MEMORY_DIR.mkdir(exist_ok=True)
+
 
 
 class DMSVectorStore:
     def __init__(self, config: dict):
-        self.client = chromadb.PersistentClient(path=str(MEMORY_DIR / "chroma_db"))
+        memory_dir = Path(config.get("memory_dir", "memory"))
+        memory_dir.mkdir(exist_ok=True)
+        self.client = chromadb.PersistentClient(path=str(memory_dir / "chroma_db"))
         collection_name = config.get("chroma_collection", "document_chunks")
         self.collection = self.client.get_or_create_collection(
             name=collection_name, metadata={"hnsw:space": "cosine"}

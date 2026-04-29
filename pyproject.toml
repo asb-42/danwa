@@ -15,7 +15,9 @@ dependencies = [
     "odfpy>=1.4.1",
     "python-docx>=1.1.0",
     "chromadb>=0.5.0",
-    "weasyprint>=61.0"
+    "weasyprint>=61.0",
+    "tiktoken>=0.7.0",
+    "rank_bm25>=0.2.1"
 ]
 
 [tool.uv]
