@@ -10,3 +10,8 @@ variants:
     critic: "prompts/critic.md"
     optimizer: "prompts/optimizer.md"
     moderator: "prompts/moderator_v2.md"
+  dms:
+    strategist: "prompts/dms_context.md"
+    critic: "prompts/dms_context.md"
+    optimizer: "prompts/dms_context.md"
+    moderator: "prompts/dms_context.md"

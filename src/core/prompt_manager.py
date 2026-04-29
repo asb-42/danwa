@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class PromptManager:
     def __init__(self, config_path: Path = Path("config/prompt_variants.yaml")):
         self.config_path = config_path
+        self.config_dir = config_path.parent
         self.cache: Dict[str, Dict] = {}
         self.lock = threading.RLock()
         self.variants_config = {}
@@ -26,7 +27,7 @@ class PromptManager:
         logger.info(f"📜 Prompt-Varianten geladen: {list(self.variants_config.get('variants', {}).keys())}")
 
     def _parse_prompt(self, rel_path: str) -> Dict:
-        path = Path("config") / rel_path
+        path = self.config_dir / rel_path
         if not path.exists():
             raise FileNotFoundError(f"Prompt-Datei fehlt: {path}")
         content = path.read_text(encoding="utf-8")
@@ -48,7 +49,7 @@ class PromptManager:
             raise ValueError(f"Kein Prompt-Mapping für role={role}, variant={variant}")
 
         cache_key = f"{role}_{variant}"
-        target = Path("config") / rel_path
+        target = self.config_dir / rel_path
         current_mtime = target.stat().st_mtime if target.exists() else 0
 
         with self.lock:
@@ -65,7 +66,7 @@ class PromptManager:
         """Deterministische, reproduzierbare Zuweisung via Hash"""
         variants = list(self.variants_config.get("variants", {}).keys())
         if not variants:
-            return self.default_variant
+            return getattr(self, 'default_variant', 'A')
         idx = int(hashlib.md5(session_id.encode()).hexdigest(), 16) % len(variants)
         return variants[idx]
 
@@ -75,6 +76,8 @@ class PromptManager:
         variant: Optional[str] = None,
         rag_context: Optional[str] = None
     ) -> str:
+        if rag_context and rag_context.strip() and "dms" in self.variants_config.get("variants", {}):
+            variant = "dms"
         prompt_data = self.get(role, variant)
         content = prompt_data["content"]
         if rag_context and rag_context.strip():

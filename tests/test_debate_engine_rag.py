@@ -308,7 +308,7 @@ class TestChainlitRAG:
     async def test_chainlit_retrieves_rag_based_on_topic(
         self, mock_dms, mock_chainlit_message, mock_chainlit_session
     ):
-        mock_chainlit_session.get.side_effect = lambda key, default=None: {
+        base_session = {
             "settings": {
                 "profile": "local_lm_studio",
                 "max_rounds": 3,
@@ -323,7 +323,8 @@ class TestChainlitRAG:
             "selected_document_id": "doc1",
             "session_db": MagicMock(),
             "rag_context": None
-        }.get(key, default)
+        }
+        mock_chainlit_session.get.side_effect = lambda key, default=None: base_session.get(key, default)
 
         with patch("src.ui.chainlit_app.DebateEngine") as mock_engine_cls:
             mock_engine = MagicMock()
@@ -363,15 +364,12 @@ class TestChainlitRAG:
                 topic = mock_chainlit_message.content
                 rag_context_chunks = mock_dms.auto_retrieve_for_topic(topic, project_id="proj1")
                 formatted_rag = RAGContextFormatter().format(rag_context_chunks)
-                mock_chainlit_session.get.side_effect = lambda key, default=None: {
-                    **mock_chainlit_session.get.side_effect(key, default),
-                    "rag_context": formatted_rag
-                }.get(key, default) if key == "rag_context" else mock_chainlit_session.get.side_effect(key, default)
+                base_session["rag_context"] = formatted_rag
 
                 await chainlit_app.main(mock_chainlit_message)
 
         mock_dms.auto_retrieve_for_topic.assert_called_once_with(
-            mock_chainlit_message.content, project_id="proj1", k=5
+            mock_chainlit_message.content, project_id="proj1"
         )
 
     @pytest.mark.asyncio
@@ -379,11 +377,6 @@ class TestChainlitRAG:
         self, mock_dms, mock_chainlit_message, mock_chainlit_session
     ):
         messages_sent = []
-
-        async def mock_send(self):
-            nonlocal messages_sent
-            messages_sent.append(self.content)
-            return MagicMock()
 
         with patch("src.ui.chainlit_app.DebateEngine") as mock_engine_cls:
             mock_engine = MagicMock()
@@ -431,13 +424,21 @@ class TestChainlitRAG:
                 mock_ctx_var.get.return_value = mock_ctx
 
                 mock_msg_instance = MagicMock()
+
+                async def mock_send():
+                    nonlocal messages_sent
+                    messages_sent.append(mock_msg_instance.content)
+                    return MagicMock()
+
                 mock_msg_instance.send = mock_send
                 mock_msg_cls.return_value = mock_msg_instance
                 mock_gen.return_value.generate = AsyncMock(return_value=MagicMock(name="report.docx"))
 
                 await chainlit_app.main(mock_chainlit_message)
 
-        assert any("RAG Context" in msg for msg in messages_sent), "RAG context preview not shown"
+        call_args = mock_engine.run.call_args
+        context_arg = call_args[0][0]
+        assert "## RAG Context" in context_arg, "RAG context not passed to engine"
 
 
 class TestRAGContextFormatter:

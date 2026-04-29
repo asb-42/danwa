@@ -1,8 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
 from src.core.prompt_manager import PromptManager
-from pathlib import Path
-import tempfile
 
 
 @pytest.fixture
@@ -32,27 +29,8 @@ variants:
                 "strategist_v2.md", "moderator_v2.md"]:
         (prompts_dir / name).write_text(f"version: v1.0\nDu bist {name}.")
     
-    with patch("src.core.prompt_manager.Path", return_value=config_dir / "prompt_variants.yaml"):
-        pm = PromptManager(config_path=variants_file)
-        pm.config_path = variants_file
-        pm.variants_config = {
-            "default_variant": "A",
-            "variants": {
-                "A": {
-                    "strategist": "prompts/strategist.md",
-                    "critic": "prompts/critic.md",
-                    "optimizer": "prompts/optimizer.md",
-                    "moderator": "prompts/moderator.md"
-                },
-                "B": {
-                    "strategist": "prompts/strategist_v2.md",
-                    "critic": "prompts/critic.md",
-                    "optimizer": "prompts/optimizer.md",
-                    "moderator": "prompts/moderator_v2.md"
-                }
-            }
-        }
-        return pm, prompts_dir
+    pm = PromptManager(config_path=variants_file)
+    return pm, prompts_dir
 
 
 def test_prompt_manager_loads_config(prompt_manager):
@@ -97,9 +75,10 @@ def test_prompt_manager_hot_reload(prompt_manager):
     result1 = pm.get("strategist", "A")
     original_mtime = result1["mtime"]
     
-    import time
-    time.sleep(0.1)
-    prompts_dir.joinpath("strategist.md").write_text("version: v1.1\nNew content.")
+    import os
+    target_file = prompts_dir / "strategist.md"
+    target_file.write_text("version: v1.1\nNew content.")
+    os.utime(target_file, (original_mtime + 1, original_mtime + 1))
     
     result2 = pm.get("strategist", "A")
     
@@ -158,3 +137,28 @@ def test_parse_prompt(prompt_manager):
     assert "version" in result
     assert "hash" in result
     assert len(result["hash"]) == 16
+
+
+def test_get_system_prompt_without_rag(prompt_manager):
+    pm, _ = prompt_manager
+    base_content = pm.get("strategist", "A")["content"]
+    prompt = pm.get_system_prompt("strategist", "A")
+    assert prompt == base_content
+    assert "## Retrieved Document Context" not in prompt
+
+
+def test_get_system_prompt_with_rag(prompt_manager):
+    pm, _ = prompt_manager
+    rag_context = "Test RAG context"
+    prompt = pm.get_system_prompt("strategist", "A", rag_context=rag_context)
+    assert "## Retrieved Document Context" in prompt
+    assert rag_context in prompt
+    assert "Use the provided RAG context to inform your argument" in prompt
+
+
+def test_get_system_prompt_empty_rag(prompt_manager):
+    pm, _ = prompt_manager
+    prompt = pm.get_system_prompt("strategist", "A", rag_context="")
+    assert "## Retrieved Document Context" not in prompt
+    prompt2 = pm.get_system_prompt("strategist", "A", rag_context=None)
+    assert "## Retrieved Document Context" not in prompt2
