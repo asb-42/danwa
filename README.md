@@ -1,12 +1,15 @@
 # Debate-Agent
 
-Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation.
+Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration and **RAG (Retrieval-Augmented Generation)** pipeline.
 
 ## Quick Start
 
 ```bash
 # Quick setup (installs uv, creates venv, installs deps)
 bash setup.sh
+
+# Set up DMS dependencies (optional PaddleOCR)
+bash scripts/setup_dms.sh
 
 # Start the application
 uv run chainlit run src/ui/chainlit_app.py --port 7860
@@ -42,6 +45,22 @@ The debate runs for configurable rounds (1-5) and stops early when consensus thr
 - **Report Generation** - Export results as DOCX or PDF
 - **Privacy Protection** - PII redaction (email, IP, phone) and configurable data retention
 - **Session Management** - SQLite-backed sessions with dashboard UI
+- **Document Management System (DMS)** - Project-wise document organization with SQLite
+- **PaddleOCR Integration** - OCR for scanned PDFs alongside existing parsers
+- **RAG Pipeline** - Automatic and manual document retrieval for debate context
+- **Hybrid Retrieval** - BM25 + Vector search + Re-ranking
+- **DMS Dashboard** - Project and document management UI
+
+## Document Management System (DMS)
+
+The DMS module provides project-wise document management with advanced retrieval capabilities:
+
+- **Project-wise Document Management** - Organize documents into projects with SQLite-backed metadata
+- **PaddleOCR Integration** - Process scanned PDFs and images using PaddleOCR for text extraction
+- **RAG (Retrieval-Augmented Generation) Pipeline** - Enhance debates with relevant document context
+- **Hybrid Retrieval** - Combine BM25 keyword search, vector similarity, and re-ranking for optimal results
+- **Separate ChromaDB Collection** - Isolated vector storage for document embeddings
+- **Integration** - Seamless integration with Chainlit UI and core debate engine
 
 ## Technology Stack
 
@@ -55,6 +74,8 @@ The debate runs for configurable rounds (1-5) and stops early when consensus thr
 | Document Parsing | pdfplumber, pypdf, python-docx, odfpy |
 | Report Generation | python-docx, [WeasyPrint](https://weasyprint.org) |
 | Database | SQLite |
+| DMS Module | Custom (SQLite + ChromaDB + PaddleOCR) |
+| OCR Engine | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) |
 | Package Manager | [uv](https://github.com/astral-sh/uv) |
 
 ## Project Structure
@@ -74,6 +95,20 @@ danwa/
 │   │   ├── doc_parser.py       # Document parsing
 │   │   ├── report_generator.py  # DOCX/PDF generation
 │   │   └── web_search.py       # SearXNG search
+│   ├── dms/                   # Document Management System
+│   │   ├── __init__.py
+│   │   ├── database.py        # SQLite schema
+│   │   ├── config.py          # DMS configuration
+│   │   ├── project_manager.py # Project CRUD
+│   │   ├── document_processor.py # PaddleOCR + parsers
+│   │   ├── chunker.py        # Text chunking (512 tokens)
+│   │   ├── rag_pipeline.py   # RAG pipeline
+│   │   ├── vector_store.py   # ChromaDB interface
+│   │   ├── metadata_index.py # Fast metadata filtering
+│   │   ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
+│   │   ├── rag_context_formatter.py # RAG context formatting
+│   │   ├── dms.py           # High-level DMS API
+│   │   └── dms_memory.py     # Manual RAG context
 │   └── ui/                      # Presentation layer
 │       ├── chainlit_app.py      # Main entry point
 │       └── dashboard.py         # Session management UI

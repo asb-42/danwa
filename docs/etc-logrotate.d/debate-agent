@@ -1,0 +1,13 @@
+/home/*/projects/debate-agent/logs/*.jsonl {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 %i %i
+    sharedscripts
+    postrotate
+        # Optional: Signal an Prozess, falls benötigt (meist nicht nötig bei RotatingFileHandler)
+    endscript
+}
