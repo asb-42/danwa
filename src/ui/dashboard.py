@@ -5,9 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _action(name: str, label: str, value: str = "", description: str = "") -> cl.Action:
+def _action(name: str, label: str, value: str = "", tooltip: str = "") -> cl.Action:
     """Helper to create a Chainlit 2.x compatible Action."""
-    return cl.Action(name=name, label=label, payload={"value": value}, description=description)
+    return cl.Action(name=name, label=label, payload={"value": value}, tooltip=tooltip)
 
 
 async def render_dashboard(db, page: int = 0, filter_high: bool = False):

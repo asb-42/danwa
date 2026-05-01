@@ -7,9 +7,19 @@ from src.dms.dms import DMS
 logger = logging.getLogger(__name__)
 
 
-def _action(name: str, label: str, value: str = "", description: str = "") -> cl.Action:
+def _action(name: str, label: str, value: str = "", tooltip: str = "") -> cl.Action:
     """Helper to create a Chainlit 2.x compatible Action."""
-    return cl.Action(name=name, label=label, payload={"value": value}, description=description)
+    return cl.Action(name=name, label=label, payload={"value": value}, tooltip=tooltip)
+
+
+async def _ask_user(content: str) -> str:
+    """Helper to ask user for input and return the text response."""
+    res = await cl.AskUserMessage(content=content).send()
+    if not res:
+        return ""
+    if isinstance(res, dict):
+        return res.get("output", "").strip()
+    return getattr(res, "content", "").strip()
 
 
 def _get_value(action: cl.Action, default: str = "") -> str:
@@ -201,14 +211,12 @@ async def show_documents(project_id: str):
 
 
 async def create_project_flow():
-    res = await cl.AskUserMessage(content="Enter project name:").send()
-    if not res or not res.content.strip():
+    name = await _ask_user("Enter project name:")
+    if not name:
         await cl.Message(content="Cancelled.").send()
         return
 
-    name = res.content.strip()
-    res = await cl.AskUserMessage(content="Enter description (optional):").send()
-    description = res.content.strip() if res else ""
+    description = await _ask_user("Enter description (optional):")
 
     dms = cl.user_session.get("dms")
     project_id = dms.create_project(name, description)
@@ -224,8 +232,8 @@ async def delete_project_flow(project_id: str):
     projects = dms.list_projects()
     proj_name = next((p["name"] for p in projects if p["id"] == project_id), "Unknown")
 
-    res = await cl.AskUserMessage(content=f"Type 'yes' to delete '{proj_name}':").send()
-    if res and res.content.strip().lower() == "yes":
+    answer = await _ask_user(f"Type 'yes' to delete '{proj_name}':")
+    if answer.lower() == "yes":
         success = dms.delete_project(project_id)
         if success:
             await cl.Message(content="✅ Project deleted.").send()

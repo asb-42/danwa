@@ -23,9 +23,9 @@ PROFILES = config_manager.get_llm_profiles().get("profiles", {})
 parser = DocumentParser()
 
 
-def _action(name: str, label: str, value: str = "", description: str = "") -> cl.Action:
+def _action(name: str, label: str, value: str = "", tooltip: str = "") -> cl.Action:
     """Helper to create a Chainlit 2.x compatible Action."""
-    return cl.Action(name=name, label=label, payload={"value": value}, description=description)
+    return cl.Action(name=name, label=label, payload={"value": value}, tooltip=tooltip)
 
 
 @cl.on_chat_start
@@ -625,15 +625,25 @@ async def render_agent_profiles_editor():
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
+async def _ask_user(content: str) -> str:
+    """Helper to ask user for input and return the text response."""
+    res = await cl.AskUserMessage(content=content).send()
+    if not res:
+        return ""
+    # AskUserMessage.send() returns a StepDict (dict), user response is in 'output'
+    if isinstance(res, dict):
+        return res.get("output", "").strip()
+    # Fallback for older Chainlit versions
+    return getattr(res, "content", "").strip()
+
+
 async def add_agent_profile_flow():
     """Interactive flow to create a new agent profile."""
-    res = await cl.AskUserMessage(content="Enter agent profile name (e.g. dual_agent):").send()
-    if not res or not res.content.strip():
+    name = await _ask_user("Enter agent profile name (e.g. dual_agent):")
+    if not name:
         return
-    name = res.content.strip()
 
-    res = await cl.AskUserMessage(content="Enter description:").send()
-    description = res.content.strip() if res else ""
+    description = await _ask_user("Enter description:")
 
     # Get available LLM profiles for assignment
     llm_profiles = config_manager.get_llm_profiles()
@@ -642,19 +652,19 @@ async def add_agent_profile_flow():
 
     agents = []
     while True:
-        res = await cl.AskUserMessage(
-            content=f"Add an agent role (or 'done' to finish).\nAvailable LLMs: {llm_options}\n\nEnter role name (e.g. strategist, critic, proponent):"
-        ).send()
-        if not res or not res.content.strip() or res.content.strip().lower() == "done":
+        role = await _ask_user(
+            f"Add an agent role (or 'done' to finish).\nAvailable LLMs: {llm_options}\n\nEnter role name (e.g. strategist, critic, proponent):"
+        )
+        if not role or role.lower() == "done":
             break
-        role = res.content.strip()
 
-        res = await cl.AskUserMessage(content=f"LLM profile for '{role}' ({llm_options}):").send()
-        llm_profile = res.content.strip() if res else (available_llms[0] if available_llms else "")
+        llm_profile = await _ask_user(f"LLM profile for '{role}' ({llm_options}):")
+        if not llm_profile:
+            llm_profile = available_llms[0] if available_llms else ""
 
-        res = await cl.AskUserMessage(content=f"Temperature for '{role}' (0.0-1.0, default 0.5):").send()
+        temp_str = await _ask_user(f"Temperature for '{role}' (0.0-1.0, default 0.5):")
         try:
-            temp = float(res.content.strip()) if res and res.content.strip() else 0.5
+            temp = float(temp_str) if temp_str else 0.5
         except ValueError:
             temp = 0.5
 
@@ -701,28 +711,26 @@ async def edit_agent_profile_flow(profile_name):
     agent_labels["new"] = "Add new agent"
     agent_labels["done"] = "Finish editing"
 
-    res = await cl.AskUserMessage(
-        content="Enter the number of the agent to edit, 'new' to add, or 'done' to finish:"
-    ).send()
-    if not res or not res.content.strip() or res.content.strip().lower() == "done":
+    choice = await _ask_user("Enter the number of the agent to edit, 'new' to add, or 'done' to finish:")
+    if not choice or choice.lower() == "done":
         await render_agent_profiles_editor()
         return
 
-    choice = res.content.strip().lower()
+    choice = choice.lower()
 
     if choice == "new":
-        res = await cl.AskUserMessage(content="Enter role name for new agent:").send()
-        if not res or not res.content.strip():
+        role = await _ask_user("Enter role name for new agent:")
+        if not role:
             await render_agent_profiles_editor()
             return
-        role = res.content.strip()
 
-        res = await cl.AskUserMessage(content=f"LLM profile for '{role}':").send()
-        llm_profile = res.content.strip() if res else (available_llms[0] if available_llms else "")
+        llm_profile = await _ask_user(f"LLM profile for '{role}':")
+        if not llm_profile:
+            llm_profile = available_llms[0] if available_llms else ""
 
-        res = await cl.AskUserMessage(content=f"Temperature for '{role}' (0.0-1.0):").send()
+        temp_str = await _ask_user(f"Temperature for '{role}' (0.0-1.0):")
         try:
-            temp = float(res.content.strip()) if res and res.content.strip() else 0.5
+            temp = float(temp_str) if temp_str else 0.5
         except ValueError:
             temp = 0.5
 
@@ -733,14 +741,14 @@ async def edit_agent_profile_flow(profile_name):
         idx = int(choice) - 1
         agent = agents[idx]
 
-        res = await cl.AskUserMessage(content=f"New LLM for '{agent['role']}' (current: {agent['llm_profile']}):").send()
-        if res and res.content.strip():
-            agent["llm_profile"] = res.content.strip()
+        new_llm = await _ask_user(f"New LLM for '{agent['role']}' (current: {agent['llm_profile']}):")
+        if new_llm:
+            agent["llm_profile"] = new_llm
 
-        res = await cl.AskUserMessage(content=f"New temperature (current: {agent.get('temperature', 0.5)}):").send()
-        if res and res.content.strip():
+        new_temp = await _ask_user(f"New temperature (current: {agent.get('temperature', 0.5)}):")
+        if new_temp:
             try:
-                agent["temperature"] = float(res.content.strip())
+                agent["temperature"] = float(new_temp)
             except ValueError:
                 pass
 
@@ -754,23 +762,17 @@ async def edit_agent_profile_flow(profile_name):
 
 
 async def add_llm_profile_flow():
-    res = await cl.AskUserMessage(content="Enter profile name:").send()
-    if not res or not res.content.strip():
+    name = await _ask_user("Enter profile name:")
+    if not name:
         return
-    name = res.content.strip()
 
-    res = await cl.AskUserMessage(content="Model name (e.g. qwen2.5-7b):").send()
-    model = res.content.strip() if res else ""
+    model = await _ask_user("Model name (e.g. qwen2.5-7b):")
+    base_url = await _ask_user("Base URL (e.g. http://localhost:1234/v1):")
+    api_key_env = await _ask_user("API Key Env Var (e.g. LM_STUDIO_KEY):")
 
-    res = await cl.AskUserMessage(content="Base URL (e.g. http://localhost:1234/v1):").send()
-    base_url = res.content.strip() if res else ""
-
-    res = await cl.AskUserMessage(content="API Key Env Var (e.g. LM_STUDIO_KEY):").send()
-    api_key_env = res.content.strip() if res else ""
-
-    res = await cl.AskUserMessage(content="Temperature (e.g. 0.4):").send()
+    temp_str = await _ask_user("Temperature (e.g. 0.4):")
     try:
-        temp = float(res.content.strip()) if res else 0.4
+        temp = float(temp_str) if temp_str else 0.4
     except ValueError:
         temp = 0.4
 
@@ -787,17 +789,16 @@ async def add_llm_profile_flow():
 
 
 async def add_prompt_variant_flow():
-    res = await cl.AskUserMessage(content="Enter variant name (e.g. C):").send()
-    if not res or not res.content.strip():
+    name = await _ask_user("Enter variant name (e.g. C):")
+    if not name:
         return
-    name = res.content.strip()
 
     roles = ["strategist", "critic", "optimizer", "moderator"]
     variant_data = {}
     for role in roles:
-        res = await cl.AskUserMessage(content=f"Prompt file for {role} (e.g. prompts/{role}_v3.md):").send()
-        if res and res.content.strip():
-            variant_data[role] = res.content.strip()
+        path = await _ask_user(f"Prompt file for {role} (e.g. prompts/{role}_v3.md):")
+        if path:
+            variant_data[role] = path
 
     if variant_data:
         config_manager.add_prompt_variant(name, variant_data)
