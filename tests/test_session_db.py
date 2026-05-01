@@ -34,7 +34,7 @@ def test_save_and_list_session(db):
 
 def test_save_with_project(db):
     state = DebateState()
-    db.save_session(state, "test_profile", project_id="project-1", document_ids='["doc-1", "doc-2"]')
+    db.save_session(state, "test_profile", project_id="project-1", document_ids=["doc-1", "doc-2"])
 
     sessions = db.list_sessions()
     assert len(sessions) == 1
@@ -125,3 +125,16 @@ def test_save_session_with_validation_flag(db):
 
     sessions = db.list_sessions()
     assert {session["validated"] for session in sessions} == {0, 1}
+
+def test_load_session(db):
+    state = DebateState()
+    project_id = "proj-123"
+    document_ids = ["doc-1", "doc-2"]
+    db.save_session(state, "test_profile", project_id=project_id, document_ids=document_ids)
+
+    loaded = db.load_session(state.session_id)
+    assert loaded is not None
+    assert loaded["project_id"] == project_id
+    assert loaded["document_ids"] == document_ids
+    assert loaded["session_id"] == state.session_id
+    assert loaded["consensus"] == state.final_consensus

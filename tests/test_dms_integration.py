@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from src.core.debate_engine import DebateEngine
-from src.dms.dms import DMS
 from src.dms.rag_context_formatter import RAGContextFormatter
 
 
