@@ -1,15 +1,26 @@
 import asyncio
 import chainlit as cl
 import logging
-from typing import List, Dict, Optional
+from typing import List
 from src.dms.dms import DMS
 
 logger = logging.getLogger(__name__)
 
 
+def _action(name: str, label: str, value: str = "", description: str = "") -> cl.Action:
+    """Helper to create a Chainlit 2.x compatible Action."""
+    return cl.Action(name=name, label=label, payload={"value": value}, description=description)
+
+
+def _get_value(action: cl.Action, default: str = "") -> str:
+    """Extract value from action.payload (Chainlit 2.x)."""
+    if isinstance(action.payload, dict):
+        return action.payload.get("value", default)
+    return default
+
+
 async def start():
-    """Entry point called from main app action callback.
-    Uses the existing DMS instance from the user session."""
+    """Entry point called from main app action callback."""
     dms = cl.user_session.get("dms")
     if not dms:
         dms = DMS()
@@ -25,20 +36,21 @@ async def handle_action(action: cl.Action):
         await cl.ErrorMessage(content="DMS not initialized.").send()
         return
 
-    action_name = action.name or action.id
+    name = action.name
+    value = _get_value(action)
 
-    if action_name == "create_project":
+    if name == "create_project":
         await create_project_flow()
-    elif action_name == "refresh_projects":
+    elif name == "refresh_projects":
         await show_projects()
-    elif action_name == "view_documents":
-        project_id = action.value
+    elif name == "view_documents":
+        project_id = value
         cl.user_session.set("selected_project_id", project_id)
         await show_documents(project_id)
-    elif action_name == "delete_project":
-        await delete_project_flow(action.value)
-    elif action_name == "upload_document":
-        project_id = action.value
+    elif name == "delete_project":
+        await delete_project_flow(value)
+    elif name == "upload_document":
+        project_id = value
         cl.user_session.set("selected_project_id", project_id)
         await cl.Message(
             content="Upload a document using the file uploader:",
@@ -51,25 +63,25 @@ async def handle_action(action: cl.Action):
                 )
             ],
         ).send()
-    elif action_name == "back_to_projects":
+    elif name == "back_to_projects":
         cl.user_session.set("selected_project_id", None)
         await show_projects()
-    elif action_name == "confirm_delete":
-        success = dms.delete_project(action.value)
+    elif name == "confirm_delete":
+        success = dms.delete_project(value)
         if success:
             await cl.Message(content="✅ Project deleted.").send()
         else:
             await cl.ErrorMessage(content="❌ Delete failed.").send()
         await show_projects()
-    elif action_name == "add_to_rag":
-        doc_id = action.value
+    elif name == "add_to_rag":
+        doc_id = value
         project_id = cl.user_session.get("selected_project_id")
         if project_id:
             dms.add_to_rag(project_id, doc_id)
             await cl.Message(content="✅ Added to RAG.").send()
             await show_documents(project_id)
-    elif action_name == "remove_from_rag":
-        doc_id = action.value
+    elif name == "remove_from_rag":
+        doc_id = value
         dms.remove_from_rag(doc_id)
         await cl.Message(content="✅ Removed from RAG.").send()
         project_id = cl.user_session.get("selected_project_id")
@@ -134,12 +146,12 @@ async def show_projects():
         content += f"- **{proj['name']}** (ID: `{proj['id'][:8]}...`): {proj.get('description', '')}\n"
 
     actions = [
-        cl.Action(name="create_project", label="➕ Create Project", value="create", payload={}),
-        cl.Action(name="refresh_projects", label="🔄 Refresh", value="refresh", payload={}),
+        _action("create_project", "➕ Create Project", "create", "Create a new project"),
+        _action("refresh_projects", "🔄 Refresh", "refresh", "Refresh project list"),
     ]
     for proj in projects:
-        actions.append(cl.Action(name="view_documents", label=f"📄 Docs: {proj['name']}", value=proj["id"], payload={}))
-        actions.append(cl.Action(name="delete_project", label=f"🗑️ Delete: {proj['name']}", value=proj["id"], payload={}))
+        actions.append(_action("view_documents", f"📄 Docs: {proj['name']}", proj["id"], f"View documents in {proj['name']}"))
+        actions.append(_action("delete_project", f"🗑️ Delete: {proj['name']}", proj["id"], f"Delete {proj['name']}"))
 
     await cl.Message(content=content, actions=actions).send()
 
@@ -171,28 +183,18 @@ async def show_documents(project_id: str):
             elements.append(cl.Expandable(title=f"📄 {source} (Chunk {chunk_idx})", content=snippet))
 
     actions = [
-        cl.Action(name="upload_document", label="📤 Upload Document", value=project_id, payload={}),
-        cl.Action(name="back_to_projects", label="🔙 Back", value="back", payload={}),
+        _action("upload_document", "📤 Upload Document", project_id, "Upload a document"),
+        _action("back_to_projects", "🔙 Back", "back", "Back to projects"),
     ]
     for doc in docs:
         doc_id = doc["id"]
         if doc_id in manual_rag_docs:
             actions.append(
-                cl.Action(
-                    name="remove_from_rag",
-                    label=f"➖ Remove {doc['filename']} from RAG",
-                    value=doc_id,
-                    payload={},
-                )
+                _action("remove_from_rag", f"➖ Remove {doc['filename']} from RAG", doc_id, "Remove from RAG")
             )
         else:
             actions.append(
-                cl.Action(
-                    name="add_to_rag",
-                    label=f"➕ Add {doc['filename']} to RAG",
-                    value=doc_id,
-                    payload={},
-                )
+                _action("add_to_rag", f"➕ Add {doc['filename']} to RAG", doc_id, "Add to RAG")
             )
 
     await cl.Message(content=content, actions=actions, elements=elements).send()
