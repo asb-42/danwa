@@ -293,24 +293,70 @@ async def main(message: cl.Message):
     )
 
 
-@cl.action_callback
+# DMS action names that should be routed to dms_dashboard.handle_action
+_DMS_ACTIONS = {
+    "create_project", "refresh_projects", "view_documents", "delete_project",
+    "upload_document", "back_to_projects", "confirm_delete", "add_to_rag", "remove_from_rag",
+}
+
+# Config action names
+_CONFIG_ACTIONS = {
+    "open_config", "config_settings", "config_llm_profiles", "config_prompt_variants",
+    "config_save_settings", "config_add_profile", "config_delete_profile",
+    "config_add_variant", "config_delete_variant",
+}
+
+
+@cl.action_callback("open_dash")
+@cl.action_callback("dash_filter")
+@cl.action_callback("dash_page")
+@cl.action_callback("dash_cleanup")
+@cl.action_callback("sess_trace")
+@cl.action_callback("sess_delete")
+@cl.action_callback("sess_report")
+@cl.action_callback("open_dms")
+@cl.action_callback("open_config")
+@cl.action_callback("config_settings")
+@cl.action_callback("config_llm_profiles")
+@cl.action_callback("config_prompt_variants")
+@cl.action_callback("config_save_settings")
+@cl.action_callback("config_add_profile")
+@cl.action_callback("config_delete_profile")
+@cl.action_callback("config_add_variant")
+@cl.action_callback("config_delete_variant")
+@cl.action_callback("create_project")
+@cl.action_callback("refresh_projects")
+@cl.action_callback("view_documents")
+@cl.action_callback("delete_project")
+@cl.action_callback("upload_document")
+@cl.action_callback("back_to_projects")
+@cl.action_callback("confirm_delete")
+@cl.action_callback("add_to_rag")
+@cl.action_callback("remove_from_rag")
 async def handle_action(action: cl.Action):
     db = cl.user_session.get("session_db")
     page = cl.user_session.get("dash_page", 0)
     filt = cl.user_session.get("dash_filter", False)
 
+    action_name = action.name or action.id
+
+    # Route DMS actions to dms_dashboard
+    if action_name in _DMS_ACTIONS:
+        await dms_dashboard.handle_action(action)
+        return
+
     # Navigation & Filter
-    if action.id == "open_dash":
+    if action_name == "open_dash":
         await render_dashboard(db, page, filt)
-    elif action.id == "dash_filter":
+    elif action_name == "dash_filter":
         filt = not filt
         cl.user_session.set("dash_filter", filt)
         await render_dashboard(db, 0, filt)
-    elif action.id == "dash_page":
+    elif action_name == "dash_page":
         page = int(action.value)
         cl.user_session.set("dash_page", page)
         await render_dashboard(db, page, filt)
-    elif action.id == "dash_cleanup":
+    elif action_name == "dash_cleanup":
         await cl.Message(content="🔄 Bereinigung läuft...", author="System").send()
         from src.core.privacy import PrivacyGuard
 
@@ -323,7 +369,7 @@ async def handle_action(action: cl.Action):
         await render_dashboard(db, 0, filt)
 
     # Session-Aktionen
-    elif action.id == "sess_trace":
+    elif action_name == "sess_trace":
         trace_file = Path("logs") / f"{action.value}.jsonl"
         if trace_file.exists():
             await cl.Message(
@@ -338,7 +384,7 @@ async def handle_action(action: cl.Action):
         else:
             await cl.Message(content=f"⚠️ Trace-Datei nicht gefunden.").send()
 
-    elif action.id == "sess_delete":
+    elif action_name == "sess_delete":
         sid = action.value
         db.delete_session(sid)
         # Dateien löschen
@@ -350,7 +396,7 @@ async def handle_action(action: cl.Action):
         ).send()
         await render_dashboard(db, page, filt)
 
-    elif action.id == "sess_report":
+    elif action_name == "sess_report":
         sid = action.value
         reports = list(Path("reports").glob(f"debate_{sid}*"))
         if reports:
@@ -367,31 +413,29 @@ async def handle_action(action: cl.Action):
                 content=f"⚠️ Kein Report gefunden. Bitte erneut generieren."
             ).send()
 
-    elif action.id == "open_dms":
+    elif action_name == "open_dms":
         await dms_dashboard.start()
 
     # --- Configuration Actions ---
-    elif action.id == "open_config":
+    elif action_name == "open_config":
         await render_config_menu()
 
-    elif action.id == "config_settings":
+    elif action_name == "config_settings":
         await render_settings_editor()
 
-    elif action.id == "config_llm_profiles":
+    elif action_name == "config_llm_profiles":
         await render_llm_profiles_editor()
 
-    elif action.id == "config_prompt_variants":
+    elif action_name == "config_prompt_variants":
         await render_prompt_variants_editor()
 
-    elif action.id == "config_save_settings":
-        # Placeholder for saving settings - complex in Chainlit without Forms
-        # We will use AskUserMessage for specific edits for now or implement a simple text-based approach
+    elif action_name == "config_save_settings":
         await cl.Message(content="⚙️ Settings Update: This feature is under development. Please edit settings.yaml directly for now.", author="System").send()
 
-    elif action.id == "config_add_profile":
+    elif action_name == "config_add_profile":
         await add_llm_profile_flow()
 
-    elif action.id == "config_delete_profile":
+    elif action_name == "config_delete_profile":
         profile_name = action.value
         if config_manager.delete_llm_profile(profile_name):
             await cl.Message(content=f"✅ Profil '{profile_name}' gelöscht.", author="System").send()
@@ -399,10 +443,10 @@ async def handle_action(action: cl.Action):
             await cl.Message(content=f"❌ Profil '{profile_name}' nicht gefunden.", author="System").send()
         await render_llm_profiles_editor()
 
-    elif action.id == "config_add_variant":
+    elif action_name == "config_add_variant":
         await add_prompt_variant_flow()
 
-    elif action.id == "config_delete_variant":
+    elif action_name == "config_delete_variant":
         variant_name = action.value
         if config_manager.delete_prompt_variant(variant_name):
             await cl.Message(content=f"✅ Variante '{variant_name}' gelöscht.", author="System").send()

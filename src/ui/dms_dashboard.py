@@ -7,21 +7,74 @@ from src.dms.dms import DMS
 logger = logging.getLogger(__name__)
 
 
-@cl.on_chat_start
 async def start():
-    dms = DMS()
-    cl.user_session.set("dms", dms)
-    cl.user_session.set("selected_project_id", None)
-    logger.info("DMS Dashboard initialized")
+    """Entry point called from main app action callback.
+    Uses the existing DMS instance from the user session."""
+    dms = cl.user_session.get("dms")
+    if not dms:
+        dms = DMS()
+        cl.user_session.set("dms", dms)
+    logger.info("DMS Dashboard action triggered")
     await show_projects()
 
 
-@cl.on_message
-async def main(message: cl.Message):
-    if message.elements:
-        await handle_file_upload(message.elements)
-    else:
-        await cl.Message(content="Use dashboard actions to manage projects and documents.").send()
+async def handle_action(action: cl.Action):
+    """Handle DMS-specific actions. Called from main app's action handler."""
+    dms = cl.user_session.get("dms")
+    if not dms:
+        await cl.ErrorMessage(content="DMS not initialized.").send()
+        return
+
+    action_name = action.name or action.id
+
+    if action_name == "create_project":
+        await create_project_flow()
+    elif action_name == "refresh_projects":
+        await show_projects()
+    elif action_name == "view_documents":
+        project_id = action.value
+        cl.user_session.set("selected_project_id", project_id)
+        await show_documents(project_id)
+    elif action_name == "delete_project":
+        await delete_project_flow(action.value)
+    elif action_name == "upload_document":
+        project_id = action.value
+        cl.user_session.set("selected_project_id", project_id)
+        await cl.Message(
+            content="Upload a document using the file uploader:",
+            elements=[
+                cl.FileUploader(
+                    name="doc_upload",
+                    label="Choose file",
+                    accept=[".pdf", ".docx", ".txt", ".md"],
+                    max_files=1,
+                )
+            ],
+        ).send()
+    elif action_name == "back_to_projects":
+        cl.user_session.set("selected_project_id", None)
+        await show_projects()
+    elif action_name == "confirm_delete":
+        success = dms.delete_project(action.value)
+        if success:
+            await cl.Message(content="✅ Project deleted.").send()
+        else:
+            await cl.ErrorMessage(content="❌ Delete failed.").send()
+        await show_projects()
+    elif action_name == "add_to_rag":
+        doc_id = action.value
+        project_id = cl.user_session.get("selected_project_id")
+        if project_id:
+            dms.add_to_rag(project_id, doc_id)
+            await cl.Message(content="✅ Added to RAG.").send()
+            await show_documents(project_id)
+    elif action_name == "remove_from_rag":
+        doc_id = action.value
+        dms.remove_from_rag(doc_id)
+        await cl.Message(content="✅ Removed from RAG.").send()
+        project_id = cl.user_session.get("selected_project_id")
+        if project_id:
+            await show_documents(project_id)
 
 
 async def handle_file_upload(elements: List[cl.File]):
@@ -68,49 +121,6 @@ async def handle_file_upload(elements: List[cl.File]):
     await show_documents(project_id)
 
 
-@cl.action_callback
-async def handle_action(action: cl.Action):
-    dms = cl.user_session.get("dms")
-    if not dms:
-        await cl.ErrorMessage(content="DMS not initialized.").send()
-        return
-
-    if action.name == "create_project":
-        await create_project_flow()
-    elif action.name == "refresh_projects":
-        await show_projects()
-    elif action.name == "view_documents":
-        project_id = action.value
-        cl.user_session.set("selected_project_id", project_id)
-        await show_documents(project_id)
-    elif action.name == "delete_project":
-        await delete_project_flow(action.value)
-    elif action.name == "upload_document":
-        project_id = action.value
-        cl.user_session.set("selected_project_id", project_id)
-        await cl.Message(
-            content="Upload a document using the file uploader:",
-            elements=[
-                cl.FileUploader(
-                    name="doc_upload",
-                    label="Choose file",
-                    accept=[".pdf", ".docx", ".txt", ".md"],
-                    max_files=1,
-                )
-            ],
-        ).send()
-    elif action.name == "back_to_projects":
-        cl.user_session.set("selected_project_id", None)
-        await show_projects()
-    elif action.name == "confirm_delete":
-        success = dms.delete_project(action.value)
-        if success:
-            await cl.Message(content="✅ Project deleted.").send()
-        else:
-            await cl.ErrorMessage(content="❌ Delete failed.").send()
-        await show_projects()
-
-
 async def show_projects():
     dms = cl.user_session.get("dms")
     try:
@@ -123,13 +133,13 @@ async def show_projects():
     for proj in projects:
         content += f"- **{proj['name']}** (ID: `{proj['id'][:8]}...`): {proj.get('description', '')}\n"
 
-        actions = [
-            cl.Action(name="create_project", label="➕ Create Project", value="create", payload={}),
-            cl.Action(name="refresh_projects", label="🔄 Refresh", value="refresh", payload={}),
-        ]
-        for proj in projects:
-            actions.append(cl.Action(name="view_documents", label=f"📄 Docs: {proj['name']}", value=proj["id"], payload={}))
-            actions.append(cl.Action(name="delete_project", label=f"🗑️ Delete: {proj['name']}", value=proj["id"], payload={}))
+    actions = [
+        cl.Action(name="create_project", label="➕ Create Project", value="create", payload={}),
+        cl.Action(name="refresh_projects", label="🔄 Refresh", value="refresh", payload={}),
+    ]
+    for proj in projects:
+        actions.append(cl.Action(name="view_documents", label=f"📄 Docs: {proj['name']}", value=proj["id"], payload={}))
+        actions.append(cl.Action(name="delete_project", label=f"🗑️ Delete: {proj['name']}", value=proj["id"], payload={}))
 
     await cl.Message(content=content, actions=actions).send()
 
@@ -214,7 +224,11 @@ async def delete_project_flow(project_id: str):
 
     res = await cl.AskUserMessage(content=f"Type 'yes' to delete '{proj_name}':").send()
     if res and res.content.strip().lower() == "yes":
-        await handle_action(cl.Action(name="confirm_delete", value=project_id))
+        success = dms.delete_project(project_id)
+        if success:
+            await cl.Message(content="✅ Project deleted.").send()
+        else:
+            await cl.ErrorMessage(content="❌ Delete failed.").send()
     else:
         await cl.Message(content="Cancelled.").send()
     await show_projects()
