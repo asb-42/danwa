@@ -87,7 +87,16 @@ async def start():
     cl.user_session.set("settings", settings)
     cl.user_session.set("prompt_manager", pm)
 
-    # Extended settings with variant selection
+    # Build agent profile options
+    agent_profiles_cfg = config_manager.get_agent_profiles()
+    agent_profile_names = list(agent_profiles_cfg.get("profiles", {}).keys())
+    default_agent_profile = config_manager.get_default_agent_profile_name()
+    agent_profile_items = {
+        f"{name} — {cfg.get('description', '')}": name
+        for name, cfg in agent_profiles_cfg.get("profiles", {}).items()
+    } if agent_profiles_cfg.get("profiles") else {"No profiles": ""}
+
+    # Extended settings with variant and agent profile selection
     settings_extended = await cl.ChatSettings(
         [
             cl.input_widget.Select(
@@ -95,6 +104,12 @@ async def start():
                 label="LLM Profile",
                 values=list(PROFILES.keys()),
                 initial_value="local_lm_studio",
+            ),
+            cl.input_widget.Select(
+                id="agent_profile",
+                label="🤖 Agent Profile",
+                items=agent_profile_items,
+                initial_value=default_agent_profile,
             ),
             cl.input_widget.Slider(
                 id="max_rounds", label="Max. Rounds", min=1, max=5, step=1, initial=3
@@ -157,6 +172,7 @@ async def main(message: cl.Message):
     pm = cl.user_session.get("prompt_manager")
 
     variant = settings["variant"] if settings["variant"] != "auto" else None
+    agent_profile = settings.get("agent_profile")
 
     engine = DebateEngine(
         profile_name=settings["profile"],
@@ -164,6 +180,7 @@ async def main(message: cl.Message):
         threshold=float(settings["threshold"]),
         enable_fact_check=settings["enable_fact_check"],
         enable_memory=settings["enable_memory"],
+        agent_profile_name=agent_profile if agent_profile else None,
     )
 
     context = message.content
@@ -223,7 +240,11 @@ async def main(message: cl.Message):
         if state.used_variant or variant
         else "`auto`"
     )
-    final_msg = f"## Result (Variant: {variant_info}, Consensus: {state.final_consensus:.2f})\n\n{state.output}"
+    agent_profile_info = f"`{state.used_agent_profile}`" if state.used_agent_profile else "`default`"
+    final_msg = (
+        f"## Result (Variant: {variant_info}, Agent Profile: {agent_profile_info}, "
+        f"Consensus: {state.final_consensus:.2f})\n\n{state.output}"
+    )
     await cl.Message(content=final_msg, author="Moderator").send()
 
     trace_data = engine.logger.get_session_log()
@@ -308,6 +329,11 @@ def _get_value(action: cl.Action, default: str = "") -> str:
 @cl.action_callback("config_add_variant")
 @cl.action_callback("config_delete_variant")
 @cl.action_callback("config_language")
+@cl.action_callback("config_agent_profiles")
+@cl.action_callback("config_add_agent_profile")
+@cl.action_callback("config_delete_agent_profile")
+@cl.action_callback("config_edit_agent_profile")
+@cl.action_callback("config_set_default_agent_profile")
 @cl.action_callback("create_project")
 @cl.action_callback("refresh_projects")
 @cl.action_callback("view_documents")
@@ -453,6 +479,31 @@ async def handle_action(action: cl.Action):
         else:
             await render_language_settings()
 
+    # --- Agent Profile Actions ---
+    elif name == "config_agent_profiles":
+        await render_agent_profiles_editor()
+
+    elif name == "config_add_agent_profile":
+        await add_agent_profile_flow()
+
+    elif name == "config_delete_agent_profile":
+        profile_name = value
+        if config_manager.delete_agent_profile(profile_name):
+            await cl.Message(content=f"✅ Agent profile '{profile_name}' deleted.", author="System").send()
+        else:
+            await cl.Message(content=f"❌ Agent profile '{profile_name}' not found.", author="System").send()
+        await render_agent_profiles_editor()
+
+    elif name == "config_edit_agent_profile":
+        await edit_agent_profile_flow(value)
+
+    elif name == "config_set_default_agent_profile":
+        if config_manager.set_default_agent_profile(value):
+            await cl.Message(content=f"✅ Default agent profile set to '{value}'.", author="System").send()
+        else:
+            await cl.Message(content=f"❌ Agent profile '{value}' not found.", author="System").send()
+        await render_agent_profiles_editor()
+
 
 # ── Config Menu Renderers ────────────────────────────────────────────────
 
@@ -461,7 +512,8 @@ async def render_config_menu():
         _action("config_settings", "🔧 General Settings", "settings", "Search, Privacy, DMS"),
         _action("config_llm_profiles", "🧠 LLM Profiles", "llm", "LLM Endpoints & Params"),
         _action("config_prompt_variants", "📜 Prompt Variants", "prompts", "Prompt Assignments"),
-        _action("config_language", "🌐 Language / Sprache", "language", "UI Language (i18n/l10n)"),
+        _action("config_agent_profiles", "🤖 Agent Profiles", "agents", "Configure debating agents & LLM assignments"),
+        _action("config_language", "🌐 Language", "language", "UI Language (i18n/l10n)"),
     ]
     await cl.Message(
         content="## ⚙️ Configuration Menu\nSelect a category:",
@@ -542,6 +594,165 @@ async def render_prompt_variants_editor():
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
+# ── Agent Profile Renderers & Flows ──────────────────────────────────────
+
+async def render_agent_profiles_editor():
+    """Show all agent profiles with their agent->LLM assignments."""
+    profiles_cfg = config_manager.get_agent_profiles()
+    profiles = profiles_cfg.get("profiles", {})
+    default_name = profiles_cfg.get("default", "")
+
+    if not profiles:
+        content = "🤖 **Agent Profiles**\n\n📭 No agent profiles configured."
+    else:
+        content = f"🤖 **Agent Profiles** (Default: `{default_name}`)\n\n"
+        for pname, cfg in profiles.items():
+            is_default = " ⭐" if pname == default_name else ""
+            content += f"### {pname}{is_default}\n"
+            content += f"*{cfg.get('description', 'No description')}*\n"
+            for agent in cfg.get("agents", []):
+                content += f"- **{agent['role']}** → LLM: `{agent['llm_profile']}` (temp: {agent.get('temperature', 'default')})\n"
+            content += "\n"
+
+    actions = [
+        _action("config_add_agent_profile", "➕ Add Agent Profile", "add", "Create a new agent profile"),
+    ]
+    for pname in profiles.keys():
+        actions.append(_action("config_edit_agent_profile", f"✏️ Edit: {pname}", pname, f"Edit agent profile {pname}"))
+        actions.append(_action("config_set_default_agent_profile", f"⭐ Set Default: {pname}", pname, f"Set {pname} as default"))
+        actions.append(_action("config_delete_agent_profile", f"🗑️ Delete: {pname}", pname, f"Delete agent profile {pname}"))
+
+    await cl.Message(content=content, actions=actions, author="Config").send()
+
+
+async def add_agent_profile_flow():
+    """Interactive flow to create a new agent profile."""
+    res = await cl.AskUserMessage(content="Enter agent profile name (e.g. dual_agent):").send()
+    if not res or not res.content.strip():
+        return
+    name = res.content.strip()
+
+    res = await cl.AskUserMessage(content="Enter description:").send()
+    description = res.content.strip() if res else ""
+
+    # Get available LLM profiles for assignment
+    llm_profiles = config_manager.get_llm_profiles()
+    available_llms = list(llm_profiles.get("profiles", {}).keys())
+    llm_options = ", ".join(available_llms) if available_llms else "none configured"
+
+    agents = []
+    while True:
+        res = await cl.AskUserMessage(
+            content=f"Add an agent role (or 'done' to finish).\nAvailable LLMs: {llm_options}\n\nEnter role name (e.g. strategist, critic, proponent):"
+        ).send()
+        if not res or not res.content.strip() or res.content.strip().lower() == "done":
+            break
+        role = res.content.strip()
+
+        res = await cl.AskUserMessage(content=f"LLM profile for '{role}' ({llm_options}):").send()
+        llm_profile = res.content.strip() if res else (available_llms[0] if available_llms else "")
+
+        res = await cl.AskUserMessage(content=f"Temperature for '{role}' (0.0-1.0, default 0.5):").send()
+        try:
+            temp = float(res.content.strip()) if res and res.content.strip() else 0.5
+        except ValueError:
+            temp = 0.5
+
+        agents.append({"role": role, "llm_profile": llm_profile, "temperature": temp})
+        await cl.Message(content=f"✅ Added agent: {role} → {llm_profile} (temp: {temp})", author="System").send()
+
+    if agents:
+        profile_data = {"description": description, "agents": agents}
+        config_manager.add_agent_profile(name, profile_data)
+        await cl.Message(content=f"✅ Agent profile '{name}' created with {len(agents)} agent(s).", author="System").send()
+    else:
+        await cl.Message(content="❌ No agents defined. Cancelled.", author="System").send()
+
+    await render_agent_profiles_editor()
+
+
+async def edit_agent_profile_flow(profile_name):
+    """Interactive flow to edit an existing agent profile."""
+    profile = config_manager.get_agent_profile(profile_name)
+    if not profile:
+        await cl.Message(content=f"❌ Agent profile '{profile_name}' not found.", author="System").send()
+        return
+
+    llm_profiles = config_manager.get_llm_profiles()
+    available_llms = list(llm_profiles.get("profiles", {}).keys())
+
+    content = f"✏️ **Edit Agent Profile: {profile_name}**\n\n"
+    content += f"Current description: {profile.get('description', '')}\n\n"
+    content += "**Current agents:**\n"
+    for i, agent in enumerate(profile.get("agents", [])):
+        content += f"{i+1}. **{agent['role']}** → LLM: `{agent['llm_profile']}` (temp: {agent.get('temperature', 'default')})\n"
+
+    content += f"\nAvailable LLMs: {', '.join(available_llms)}"
+
+    await cl.Message(content=content, author="Config").send()
+
+    # Ask which agent to edit
+    agents = profile.get("agents", [])
+    if not agents:
+        await cl.Message(content="No agents to edit. Add a new profile instead.", author="System").send()
+        return
+
+    agent_labels = {str(i+1): a["role"] for i, a in enumerate(agents)}
+    agent_labels["new"] = "Add new agent"
+    agent_labels["done"] = "Finish editing"
+
+    res = await cl.AskUserMessage(
+        content="Enter the number of the agent to edit, 'new' to add, or 'done' to finish:"
+    ).send()
+    if not res or not res.content.strip() or res.content.strip().lower() == "done":
+        await render_agent_profiles_editor()
+        return
+
+    choice = res.content.strip().lower()
+
+    if choice == "new":
+        res = await cl.AskUserMessage(content="Enter role name for new agent:").send()
+        if not res or not res.content.strip():
+            await render_agent_profiles_editor()
+            return
+        role = res.content.strip()
+
+        res = await cl.AskUserMessage(content=f"LLM profile for '{role}':").send()
+        llm_profile = res.content.strip() if res else (available_llms[0] if available_llms else "")
+
+        res = await cl.AskUserMessage(content=f"Temperature for '{role}' (0.0-1.0):").send()
+        try:
+            temp = float(res.content.strip()) if res and res.content.strip() else 0.5
+        except ValueError:
+            temp = 0.5
+
+        agents.append({"role": role, "llm_profile": llm_profile, "temperature": temp})
+        await cl.Message(content=f"✅ Added agent: {role}", author="System").send()
+
+    elif choice in agent_labels:
+        idx = int(choice) - 1
+        agent = agents[idx]
+
+        res = await cl.AskUserMessage(content=f"New LLM for '{agent['role']}' (current: {agent['llm_profile']}):").send()
+        if res and res.content.strip():
+            agent["llm_profile"] = res.content.strip()
+
+        res = await cl.AskUserMessage(content=f"New temperature (current: {agent.get('temperature', 0.5)}):").send()
+        if res and res.content.strip():
+            try:
+                agent["temperature"] = float(res.content.strip())
+            except ValueError:
+                pass
+
+        await cl.Message(content=f"✅ Updated agent: {agent['role']}", author="System").send()
+
+    # Save the updated profile
+    profile_data = {"description": profile.get("description", ""), "agents": agents}
+    config_manager.add_agent_profile(profile_name, profile_data)
+    await cl.Message(content=f"✅ Agent profile '{profile_name}' updated.", author="System").send()
+    await render_agent_profiles_editor()
+
+
 async def add_llm_profile_flow():
     res = await cl.AskUserMessage(content="Enter profile name:").send()
     if not res or not res.content.strip():
@@ -620,7 +831,9 @@ async def on_settings_update(settings):
                 if doc:
                     doc_name = doc["filename"]
 
+    agent_profile = settings.get("agent_profile", "none")
+
     await cl.Message(
-        content=f"📁 Active Project: {project_name} | 📄 Active Document: {doc_name}",
+        content=f"📁 Active Project: {project_name} | 📄 Active Document: {doc_name} | 🤖 Agent Profile: {agent_profile}",
         author="System",
     ).send()

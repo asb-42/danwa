@@ -126,3 +126,54 @@ class ConfigManager:
         self.update_settings(settings)
         logger.info(f"UI language set to {lang_code} ({self.SUPPORTED_LANGUAGES[lang_code]})")
         return True
+
+    # --- Agent Profiles ---
+    def get_agent_profiles(self) -> Dict:
+        """Returns the full agent_profiles config section."""
+        settings = self.get_settings()
+        return settings.get("agent_profiles", {"default": None, "profiles": {}})
+
+    def get_agent_profile(self, profile_name: str) -> Optional[Dict]:
+        """Returns a single agent profile by name."""
+        profiles = self.get_agent_profiles()
+        return profiles.get("profiles", {}).get(profile_name)
+
+    def get_default_agent_profile_name(self) -> str:
+        """Returns the name of the default agent profile."""
+        profiles = self.get_agent_profiles()
+        return profiles.get("default", "")
+
+    def add_agent_profile(self, profile_name: str, profile_data: Dict):
+        """Adds or updates an agent profile."""
+        settings = self.get_settings()
+        if "agent_profiles" not in settings:
+            settings["agent_profiles"] = {"default": profile_name, "profiles": {}}
+        if "profiles" not in settings["agent_profiles"]:
+            settings["agent_profiles"]["profiles"] = {}
+        settings["agent_profiles"]["profiles"][profile_name] = profile_data
+        self.update_settings(settings)
+        logger.info(f"Agent profile '{profile_name}' saved.")
+
+    def delete_agent_profile(self, profile_name: str) -> bool:
+        """Deletes an agent profile. Returns True if successful."""
+        settings = self.get_settings()
+        profiles = settings.get("agent_profiles", {}).get("profiles", {})
+        if profile_name in profiles:
+            del profiles[profile_name]
+            if settings.get("agent_profiles", {}).get("default") == profile_name:
+                remaining = list(profiles.keys())
+                settings["agent_profiles"]["default"] = remaining[0] if remaining else ""
+            self.update_settings(settings)
+            logger.info(f"Agent profile '{profile_name}' deleted.")
+            return True
+        return False
+
+    def set_default_agent_profile(self, profile_name: str) -> bool:
+        """Sets the default agent profile."""
+        settings = self.get_settings()
+        profiles = settings.get("agent_profiles", {}).get("profiles", {})
+        if profile_name in profiles:
+            settings["agent_profiles"]["default"] = profile_name
+            self.update_settings(settings)
+            return True
+        return False
