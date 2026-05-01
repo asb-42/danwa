@@ -307,6 +307,7 @@ def _get_value(action: cl.Action, default: str = "") -> str:
 @cl.action_callback("config_delete_profile")
 @cl.action_callback("config_add_variant")
 @cl.action_callback("config_delete_variant")
+@cl.action_callback("config_language")
 @cl.action_callback("create_project")
 @cl.action_callback("refresh_projects")
 @cl.action_callback("view_documents")
@@ -440,6 +441,18 @@ async def handle_action(action: cl.Action):
             await cl.Message(content=f"❌ Variant '{variant_name}' not found.", author="System").send()
         await render_prompt_variants_editor()
 
+    elif name == "config_language":
+        if value:
+            lang_name = ConfigManager.SUPPORTED_LANGUAGES.get(value, value)
+            await cl.Message(
+                content=f"🌐 **Language Switch**\n\n"
+                        f"Selected: `{value}` ({lang_name})\n\n"
+                        f"⚠️ *This feature is not yet implemented.*",
+                author="Config",
+            ).send()
+        else:
+            await render_language_settings()
+
 
 # ── Config Menu Renderers ────────────────────────────────────────────────
 
@@ -448,12 +461,36 @@ async def render_config_menu():
         _action("config_settings", "🔧 General Settings", "settings", "Search, Privacy, DMS"),
         _action("config_llm_profiles", "🧠 LLM Profiles", "llm", "LLM Endpoints & Params"),
         _action("config_prompt_variants", "📜 Prompt Variants", "prompts", "Prompt Assignments"),
+        _action("config_language", "🌐 Language / Sprache", "language", "UI Language (i18n/l10n)"),
     ]
     await cl.Message(
         content="## ⚙️ Configuration Menu\nSelect a category:",
         actions=actions,
         author="Config",
     ).send()
+
+
+async def render_language_settings():
+    """Show the current UI language and available options."""
+    current_lang = config_manager.get_ui_language()
+    lang_name = ConfigManager.SUPPORTED_LANGUAGES.get(current_lang, current_lang)
+
+    content = "## 🌐 UI Language (i18n/l10n)\n\n"
+    content += f"**Current language:** `{current_lang}` ({lang_name})\n\n"
+    content += "**Available languages:**\n"
+    for code, name in ConfigManager.SUPPORTED_LANGUAGES.items():
+        marker = " ✅" if code == current_lang else ""
+        content += f"- `{code}` — {name}{marker}\n"
+    content += "\n*(Select a language to change the UI)*"
+
+    actions = []
+    for code, name in ConfigManager.SUPPORTED_LANGUAGES.items():
+        if code != current_lang:
+            actions.append(
+                _action("config_language", f"Switch to {name} ({code})", code, f"Change UI language to {name}")
+            )
+
+    await cl.Message(content=content, actions=actions, author="Config").send()
 
 
 async def render_settings_editor():

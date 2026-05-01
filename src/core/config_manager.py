@@ -100,3 +100,29 @@ class ConfigManager:
         """Saves data to any YAML file in the config directory."""
         path = self.config_dir / f"{config_name}.yaml"
         self._save_yaml(path, data)
+
+    # --- UI Language (i18n/l10n) ---
+    SUPPORTED_LANGUAGES = {
+        "en": "English",
+        "de": "Deutsch",
+        "fr": "Français",
+        "es": "Español",
+    }
+
+    def get_ui_language(self) -> str:
+        """Returns the current UI language code (e.g. 'en', 'de')."""
+        settings = self.get_settings()
+        return settings.get("ui", {}).get("language", "en")
+
+    def set_ui_language(self, lang_code: str) -> bool:
+        """Sets the UI language. Returns True if successful."""
+        if lang_code not in self.SUPPORTED_LANGUAGES:
+            logger.warning(f"Unsupported language: {lang_code}")
+            return False
+        settings = self.get_settings()
+        if "ui" not in settings:
+            settings["ui"] = {}
+        settings["ui"]["language"] = lang_code
+        self.update_settings(settings)
+        logger.info(f"UI language set to {lang_code} ({self.SUPPORTED_LANGUAGES[lang_code]})")
+        return True
