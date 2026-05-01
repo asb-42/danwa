@@ -28,6 +28,404 @@ def _action(name: str, label: str, value: str = "", tooltip: str = "") -> cl.Act
     return cl.Action(name=name, label=label, payload={"value": value}, tooltip=tooltip)
 
 
+def _get_value(action: cl.Action, default: str = "") -> str:
+    """Extract value from action.payload (Chainlit 2.x)."""
+    if isinstance(action.payload, dict):
+        return action.payload.get("value", default)
+    return default
+
+
+# ── Config State Machine ─────────────────────────────────────────────────
+# Since cl.AskUserMessage doesn't work reliably from action callbacks,
+# we use a state machine: action buttons set a state, and @cl.on_message
+# routes user input to the appropriate config flow handler.
+
+def _set_config_state(state: dict):
+    """Store config flow state in user session."""
+    cl.user_session.set("config_mode", state)
+
+
+def _get_config_state() -> dict | None:
+    """Get current config flow state, or None if not in config mode."""
+    return cl.user_session.get("config_mode")
+
+
+def _clear_config_state():
+    """Clear config flow state."""
+    cl.user_session.set("config_mode", None)
+
+
+async def _handle_config_input(message: cl.Message) -> bool:
+    """
+    Handle user input during a config flow.
+    Returns True if the message was consumed by a config flow, False otherwise.
+    """
+    state = _get_config_state()
+    if not state:
+        return False
+
+    flow = state.get("flow")
+    text = message.content.strip()
+
+    # ── Cancel ──
+    if text.lower() in ("cancel", "abort", "quit"):
+        _clear_config_state()
+        await cl.Message(content="❌ Cancelled.", author="Config").send()
+        await render_config_menu()
+        return True
+
+    # ── Add LLM Profile Flow ──
+    if flow == "add_llm_profile":
+        step = state.get("step")
+        data = state.get("data", {})
+
+        if step == "name":
+            if not text:
+                await cl.Message(content="⚠️ Name cannot be empty. Try again or type `cancel`.", author="Config").send()
+                return True
+            data["name"] = text
+            state["step"] = "model"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"Profile name: `{text}`\n\n**Step 2/5:** Enter model name (e.g. `qwen2.5-7b`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "model":
+            data["model"] = text
+            state["step"] = "base_url"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"Model: `{text}`\n\n**Step 3/5:** Enter base URL (e.g. `http://localhost:1234/v1`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "base_url":
+            data["base_url"] = text
+            state["step"] = "api_key_env"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"Base URL: `{text}`\n\n**Step 4/5:** Enter API key env var name (e.g. `LM_STUDIO_KEY`, or leave empty):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "api_key_env":
+            data["api_key_env"] = text
+            state["step"] = "temperature"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"API key env: `{text or '(none)'}`\n\n**Step 5/5:** Enter temperature (e.g. `0.4`, default `0.4`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "temperature":
+            try:
+                temp = float(text) if text else 0.4
+            except ValueError:
+                temp = 0.4
+
+            profile_data = {
+                "model": data.get("model", ""),
+                "base_url": data.get("base_url", ""),
+                "api_key_env": data.get("api_key_env", ""),
+                "params": {"temperature": temp, "top_p": 0.9, "seed": 42},
+            }
+            config_manager.add_llm_profile(data["name"], profile_data)
+            _clear_config_state()
+            await cl.Message(
+                content=f"✅ Profile `{data['name']}` added successfully!",
+                author="Config",
+            ).send()
+            await render_llm_profiles_editor()
+            return True
+
+    # ── Add Prompt Variant Flow ──
+    if flow == "add_prompt_variant":
+        step = state.get("step")
+        data = state.get("data", {})
+        roles = ["strategist", "critic", "optimizer", "moderator"]
+
+        if step == "name":
+            if not text:
+                await cl.Message(content="⚠️ Name cannot be empty. Try again or type `cancel`.", author="Config").send()
+                return True
+            data["name"] = text
+            data["variant_data"] = {}
+            state["step"] = "role_0"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"Variant name: `{text}`\n\n**Step 2/5:** Enter prompt file path for **strategist** (e.g. `prompts/strategist_v3.md`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step and step.startswith("role_"):
+            idx = int(step.split("_")[1])
+            if text:
+                data["variant_data"][roles[idx]] = text
+            next_idx = idx + 1
+            if next_idx < len(roles):
+                state["step"] = f"role_{next_idx}"
+                state["data"] = data
+                _set_config_state(state)
+                await cl.Message(
+                    content=f"**Step {next_idx + 2}/5:** Enter prompt file path for **{roles[next_idx]}** (or leave empty to skip):",
+                    author="Config",
+                ).send()
+            else:
+                if data["variant_data"]:
+                    config_manager.add_prompt_variant(data["name"], data["variant_data"])
+                    _clear_config_state()
+                    await cl.Message(
+                        content=f"✅ Variant `{data['name']}` added with {len(data['variant_data'])} role(s)!",
+                        author="Config",
+                    ).send()
+                else:
+                    _clear_config_state()
+                    await cl.Message(content="❌ No roles defined. Cancelled.", author="Config").send()
+                await render_prompt_variants_editor()
+            return True
+
+    # ── Add Agent Profile Flow ──
+    if flow == "add_agent_profile":
+        step = state.get("step")
+        data = state.get("data", {})
+
+        if step == "name":
+            if not text:
+                await cl.Message(content="⚠️ Name cannot be empty. Try again or type `cancel`.", author="Config").send()
+                return True
+            data["name"] = text
+            state["step"] = "description"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"Profile name: `{text}`\n\n**Step 2:** Enter description:",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "description":
+            data["description"] = text
+            data["agents"] = []
+            state["step"] = "role"
+            state["data"] = data
+            _set_config_state(state)
+            llm_profiles = config_manager.get_llm_profiles()
+            available = ", ".join(llm_profiles.get("profiles", {}).keys()) or "none"
+            await cl.Message(
+                content=f"Description: `{text}`\n\n"
+                        f"**Step 3:** Enter agent role name (e.g. `strategist`, `critic`, `proponent`)\n"
+                        f"Available LLMs: `{available}`\n"
+                        f"Type `done` when finished adding agents.",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "role":
+            if text.lower() == "done":
+                if data.get("agents"):
+                    profile_data = {"description": data.get("description", ""), "agents": data["agents"]}
+                    config_manager.add_agent_profile(data["name"], profile_data)
+                    _clear_config_state()
+                    await cl.Message(
+                        content=f"✅ Agent profile `{data['name']}` created with {len(data['agents'])} agent(s)!",
+                        author="Config",
+                    ).send()
+                else:
+                    _clear_config_state()
+                    await cl.Message(content="❌ No agents defined. Cancelled.", author="Config").send()
+                await render_agent_profiles_editor()
+                return True
+
+            data["_current_role"] = text
+            state["step"] = "llm"
+            state["data"] = data
+            _set_config_state(state)
+            llm_profiles = config_manager.get_llm_profiles()
+            available = ", ".join(llm_profiles.get("profiles", {}).keys()) or "none"
+            await cl.Message(
+                content=f"Role: `{text}`\n\nEnter LLM profile name for this role (available: `{available}`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "llm":
+            data["_current_llm"] = text
+            state["step"] = "temperature"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"LLM: `{text}`\n\nEnter temperature for `{data['_current_role']}` (0.0-1.0, default `0.5`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "temperature":
+            try:
+                temp = float(text) if text else 0.5
+            except ValueError:
+                temp = 0.5
+
+            data["agents"].append({
+                "role": data.pop("_current_role"),
+                "llm_profile": data.pop("_current_llm"),
+                "temperature": temp,
+            })
+            state["step"] = "role"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"✅ Agent added! Total: {len(data['agents'])} agent(s).\n\n"
+                        f"Enter next role name, or type `done` to finish:",
+                author="Config",
+            ).send()
+            return True
+
+    # ── Edit Agent Profile Flow ──
+    if flow == "edit_agent_profile":
+        step = state.get("step")
+        data = state.get("data", {})
+
+        if step == "select_agent":
+            agents = data.get("agents", [])
+            if text.lower() == "done":
+                # Save and exit
+                profile_data = {"description": data.get("description", ""), "agents": agents}
+                config_manager.add_agent_profile(data["profile_name"], profile_data)
+                _clear_config_state()
+                await cl.Message(
+                    content=f"✅ Agent profile `{data['profile_name']}` updated.",
+                    author="Config",
+                ).send()
+                await render_agent_profiles_editor()
+                return True
+
+            if text.lower() == "new":
+                state["step"] = "new_role"
+                _set_config_state(state)
+                await cl.Message(
+                    content="Enter role name for new agent:",
+                    author="Config",
+                ).send()
+                return True
+
+            try:
+                idx = int(text) - 1
+                if 0 <= idx < len(agents):
+                    data["_edit_idx"] = idx
+                    state["step"] = "edit_llm"
+                    state["data"] = data
+                    _set_config_state(state)
+                    agent = agents[idx]
+                    await cl.Message(
+                        content=f"Editing **{agent['role']}** (LLM: `{agent['llm_profile']}`, temp: {agent.get('temperature', 0.5)})\n\n"
+                                f"Enter new LLM profile (or press Enter to keep `{agent['llm_profile']}`):",
+                        author="Config",
+                    ).send()
+                    return True
+                else:
+                    await cl.Message(content=f"⚠️ Invalid number. Enter 1-{len(agents)}, `new`, or `done`.", author="Config").send()
+                    return True
+            except ValueError:
+                await cl.Message(content=f"⚠️ Enter a number (1-{len(agents)}), `new`, or `done`.", author="Config").send()
+                return True
+
+        elif step == "edit_llm":
+            idx = data["_edit_idx"]
+            agent = data["agents"][idx]
+            if text:
+                agent["llm_profile"] = text
+            state["step"] = "edit_temp"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"LLM: `{agent['llm_profile']}`\n\nEnter new temperature (current: `{agent.get('temperature', 0.5)}`, or press Enter to keep):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "edit_temp":
+            idx = data["_edit_idx"]
+            agent = data["agents"][idx]
+            if text:
+                try:
+                    agent["temperature"] = float(text)
+                except ValueError:
+                    pass
+            data.pop("_edit_idx", None)
+            state["step"] = "select_agent"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"✅ Updated **{agent['role']}** → LLM: `{agent['llm_profile']}`, temp: `{agent.get('temperature', 0.5)}`\n\n"
+                        f"Enter agent number to edit, `new` to add, or `done` to save and finish:",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "new_role":
+            data["_new_role"] = text
+            state["step"] = "new_llm"
+            state["data"] = data
+            _set_config_state(state)
+            llm_profiles = config_manager.get_llm_profiles()
+            available = ", ".join(llm_profiles.get("profiles", {}).keys()) or "none"
+            await cl.Message(
+                content=f"Role: `{text}`\n\nEnter LLM profile (available: `{available}`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "new_llm":
+            data["_new_llm"] = text
+            state["step"] = "new_temp"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"LLM: `{text}`\n\nEnter temperature (0.0-1.0, default `0.5`):",
+                author="Config",
+            ).send()
+            return True
+
+        elif step == "new_temp":
+            try:
+                temp = float(text) if text else 0.5
+            except ValueError:
+                temp = 0.5
+            data["agents"].append({
+                "role": data.pop("_new_role"),
+                "llm_profile": data.pop("_new_llm"),
+                "temperature": temp,
+            })
+            state["step"] = "select_agent"
+            state["data"] = data
+            _set_config_state(state)
+            await cl.Message(
+                content=f"✅ Agent added! Total: {len(data['agents'])} agent(s).\n\n"
+                        f"Enter agent number to edit, `new` to add, or `done` to save and finish:",
+                author="Config",
+            ).send()
+            return True
+
+    # Fallback: unknown state
+    _clear_config_state()
+    await cl.Message(content="⚠️ Unknown config state. Returning to config menu.", author="Config").send()
+    await render_config_menu()
+    return True
+
+
+# ── Chat Start ───────────────────────────────────────────────────────────
+
 @cl.on_chat_start
 async def start():
     settings = await cl.ChatSettings(
@@ -150,6 +548,8 @@ async def start():
     ).send()
 
     cl.user_session.set("settings", settings_extended)
+    cl.user_session.set("config_mode", None)
+    cl.user_session.set("dms_mode", None)
 
     # Welcome message with action buttons
     start_actions = [
@@ -166,8 +566,17 @@ async def start():
     ).send()
 
 
+# ── Message Handler ──────────────────────────────────────────────────────
+
 @cl.on_message
 async def main(message: cl.Message):
+    # Check if we're in a config flow — route input there
+    if await _handle_config_input(message):
+        return
+    # Check if we're in a DMS flow — route input there
+    if await dms_dashboard.handle_input(message):
+        return
+
     settings = cl.user_session.get("settings")
     pm = cl.user_session.get("prompt_manager")
 
@@ -302,13 +711,6 @@ _DMS_ACTIONS = {
     "create_project", "refresh_projects", "view_documents", "delete_project",
     "upload_document", "back_to_projects", "confirm_delete", "add_to_rag", "remove_from_rag",
 }
-
-
-def _get_value(action: cl.Action, default: str = "") -> str:
-    """Extract value from action.payload (Chainlit 2.x) or fall back to action.id."""
-    if isinstance(action.payload, dict):
-        return action.payload.get("value", default)
-    return default
 
 
 @cl.action_callback("open_dash")
@@ -446,7 +848,11 @@ async def handle_action(action: cl.Action):
         ).send()
 
     elif name == "config_add_profile":
-        await add_llm_profile_flow()
+        _set_config_state({"flow": "add_llm_profile", "step": "name", "data": {}})
+        await cl.Message(
+            content="## ➕ Add LLM Profile\n\n**Step 1/5:** Enter profile name (e.g. `my_profile`):\n\n*(Type `cancel` at any time to abort)*",
+            author="Config",
+        ).send()
 
     elif name == "config_delete_profile":
         profile_name = value
@@ -457,7 +863,11 @@ async def handle_action(action: cl.Action):
         await render_llm_profiles_editor()
 
     elif name == "config_add_variant":
-        await add_prompt_variant_flow()
+        _set_config_state({"flow": "add_prompt_variant", "step": "name", "data": {}})
+        await cl.Message(
+            content="## ➕ Add Prompt Variant\n\n**Step 1/5:** Enter variant name (e.g. `C`):\n\n*(Type `cancel` at any time to abort)*",
+            author="Config",
+        ).send()
 
     elif name == "config_delete_variant":
         variant_name = value
@@ -484,7 +894,11 @@ async def handle_action(action: cl.Action):
         await render_agent_profiles_editor()
 
     elif name == "config_add_agent_profile":
-        await add_agent_profile_flow()
+        _set_config_state({"flow": "add_agent_profile", "step": "name", "data": {}})
+        await cl.Message(
+            content="## ➕ Add Agent Profile\n\n**Step 1:** Enter agent profile name (e.g. `dual_agent`):\n\n*(Type `cancel` at any time to abort)*",
+            author="Config",
+        ).send()
 
     elif name == "config_delete_agent_profile":
         profile_name = value
@@ -495,7 +909,39 @@ async def handle_action(action: cl.Action):
         await render_agent_profiles_editor()
 
     elif name == "config_edit_agent_profile":
-        await edit_agent_profile_flow(value)
+        profile_name = value
+        profile = config_manager.get_agent_profile(profile_name)
+        if not profile:
+            await cl.Message(content=f"❌ Agent profile '{profile_name}' not found.", author="System").send()
+            return
+
+        agents = profile.get("agents", [])
+        if not agents:
+            await cl.Message(content="No agents to edit. Add a new profile instead.", author="System").send()
+            return
+
+        llm_profiles = config_manager.get_llm_profiles()
+        available_llms = list(llm_profiles.get("profiles", {}).keys())
+
+        content = f"✏️ **Edit Agent Profile: {profile_name}**\n\n"
+        content += f"Description: {profile.get('description', '')}\n\n"
+        content += "**Current agents:**\n"
+        for i, agent in enumerate(agents):
+            content += f"{i+1}. **{agent['role']}** → LLM: `{agent['llm_profile']}` (temp: {agent.get('temperature', 'default')})\n"
+        content += f"\nAvailable LLMs: `{', '.join(available_llms)}`\n\n"
+        content += "Enter the **number** of the agent to edit, `new` to add, or `done` to save and finish.\n"
+        content += "*(Type `cancel` to abort)*"
+
+        _set_config_state({
+            "flow": "edit_agent_profile",
+            "step": "select_agent",
+            "data": {
+                "profile_name": profile_name,
+                "description": profile.get("description", ""),
+                "agents": agents,
+            },
+        })
+        await cl.Message(content=content, author="Config").send()
 
     elif name == "config_set_default_agent_profile":
         if config_manager.set_default_agent_profile(value):
@@ -549,7 +995,7 @@ async def render_settings_editor():
     settings_data = config_manager.get_settings()
     content = "## 🔧 General Settings\n"
     content += f"```yaml\n{yaml.dump(settings_data, default_flow_style=False, allow_unicode=True)}\n```\n"
-    content += "\n*(Editing directly in config/settings.yaml possible)*"
+    content += "\n*(Edit directly in `config/settings.yaml`)*"
 
     actions = [
         _action("config_save_settings", "💾 Save (Manual)", "save", "Save changes to YAML"),
@@ -594,7 +1040,7 @@ async def render_prompt_variants_editor():
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
-# ── Agent Profile Renderers & Flows ──────────────────────────────────────
+# ── Agent Profile Renderer ───────────────────────────────────────────────
 
 async def render_agent_profiles_editor():
     """Show all agent profiles with their agent->LLM assignments."""
@@ -625,189 +1071,7 @@ async def render_agent_profiles_editor():
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
-async def _ask_user(content: str) -> str:
-    """Helper to ask user for input and return the text response."""
-    res = await cl.AskUserMessage(content=content).send()
-    if not res:
-        return ""
-    # AskUserMessage.send() returns a StepDict (dict), user response is in 'output'
-    if isinstance(res, dict):
-        return res.get("output", "").strip()
-    # Fallback for older Chainlit versions
-    return getattr(res, "content", "").strip()
-
-
-async def add_agent_profile_flow():
-    """Interactive flow to create a new agent profile."""
-    name = await _ask_user("Enter agent profile name (e.g. dual_agent):")
-    if not name:
-        return
-
-    description = await _ask_user("Enter description:")
-
-    # Get available LLM profiles for assignment
-    llm_profiles = config_manager.get_llm_profiles()
-    available_llms = list(llm_profiles.get("profiles", {}).keys())
-    llm_options = ", ".join(available_llms) if available_llms else "none configured"
-
-    agents = []
-    while True:
-        role = await _ask_user(
-            f"Add an agent role (or 'done' to finish).\nAvailable LLMs: {llm_options}\n\nEnter role name (e.g. strategist, critic, proponent):"
-        )
-        if not role or role.lower() == "done":
-            break
-
-        llm_profile = await _ask_user(f"LLM profile for '{role}' ({llm_options}):")
-        if not llm_profile:
-            llm_profile = available_llms[0] if available_llms else ""
-
-        temp_str = await _ask_user(f"Temperature for '{role}' (0.0-1.0, default 0.5):")
-        try:
-            temp = float(temp_str) if temp_str else 0.5
-        except ValueError:
-            temp = 0.5
-
-        agents.append({"role": role, "llm_profile": llm_profile, "temperature": temp})
-        await cl.Message(content=f"✅ Added agent: {role} → {llm_profile} (temp: {temp})", author="System").send()
-
-    if agents:
-        profile_data = {"description": description, "agents": agents}
-        config_manager.add_agent_profile(name, profile_data)
-        await cl.Message(content=f"✅ Agent profile '{name}' created with {len(agents)} agent(s).", author="System").send()
-    else:
-        await cl.Message(content="❌ No agents defined. Cancelled.", author="System").send()
-
-    await render_agent_profiles_editor()
-
-
-async def edit_agent_profile_flow(profile_name):
-    """Interactive flow to edit an existing agent profile."""
-    profile = config_manager.get_agent_profile(profile_name)
-    if not profile:
-        await cl.Message(content=f"❌ Agent profile '{profile_name}' not found.", author="System").send()
-        return
-
-    llm_profiles = config_manager.get_llm_profiles()
-    available_llms = list(llm_profiles.get("profiles", {}).keys())
-
-    content = f"✏️ **Edit Agent Profile: {profile_name}**\n\n"
-    content += f"Current description: {profile.get('description', '')}\n\n"
-    content += "**Current agents:**\n"
-    for i, agent in enumerate(profile.get("agents", [])):
-        content += f"{i+1}. **{agent['role']}** → LLM: `{agent['llm_profile']}` (temp: {agent.get('temperature', 'default')})\n"
-
-    content += f"\nAvailable LLMs: {', '.join(available_llms)}"
-
-    await cl.Message(content=content, author="Config").send()
-
-    # Ask which agent to edit
-    agents = profile.get("agents", [])
-    if not agents:
-        await cl.Message(content="No agents to edit. Add a new profile instead.", author="System").send()
-        return
-
-    agent_labels = {str(i+1): a["role"] for i, a in enumerate(agents)}
-    agent_labels["new"] = "Add new agent"
-    agent_labels["done"] = "Finish editing"
-
-    choice = await _ask_user("Enter the number of the agent to edit, 'new' to add, or 'done' to finish:")
-    if not choice or choice.lower() == "done":
-        await render_agent_profiles_editor()
-        return
-
-    choice = choice.lower()
-
-    if choice == "new":
-        role = await _ask_user("Enter role name for new agent:")
-        if not role:
-            await render_agent_profiles_editor()
-            return
-
-        llm_profile = await _ask_user(f"LLM profile for '{role}':")
-        if not llm_profile:
-            llm_profile = available_llms[0] if available_llms else ""
-
-        temp_str = await _ask_user(f"Temperature for '{role}' (0.0-1.0):")
-        try:
-            temp = float(temp_str) if temp_str else 0.5
-        except ValueError:
-            temp = 0.5
-
-        agents.append({"role": role, "llm_profile": llm_profile, "temperature": temp})
-        await cl.Message(content=f"✅ Added agent: {role}", author="System").send()
-
-    elif choice in agent_labels:
-        idx = int(choice) - 1
-        agent = agents[idx]
-
-        new_llm = await _ask_user(f"New LLM for '{agent['role']}' (current: {agent['llm_profile']}):")
-        if new_llm:
-            agent["llm_profile"] = new_llm
-
-        new_temp = await _ask_user(f"New temperature (current: {agent.get('temperature', 0.5)}):")
-        if new_temp:
-            try:
-                agent["temperature"] = float(new_temp)
-            except ValueError:
-                pass
-
-        await cl.Message(content=f"✅ Updated agent: {agent['role']}", author="System").send()
-
-    # Save the updated profile
-    profile_data = {"description": profile.get("description", ""), "agents": agents}
-    config_manager.add_agent_profile(profile_name, profile_data)
-    await cl.Message(content=f"✅ Agent profile '{profile_name}' updated.", author="System").send()
-    await render_agent_profiles_editor()
-
-
-async def add_llm_profile_flow():
-    name = await _ask_user("Enter profile name:")
-    if not name:
-        return
-
-    model = await _ask_user("Model name (e.g. qwen2.5-7b):")
-    base_url = await _ask_user("Base URL (e.g. http://localhost:1234/v1):")
-    api_key_env = await _ask_user("API Key Env Var (e.g. LM_STUDIO_KEY):")
-
-    temp_str = await _ask_user("Temperature (e.g. 0.4):")
-    try:
-        temp = float(temp_str) if temp_str else 0.4
-    except ValueError:
-        temp = 0.4
-
-    profile_data = {
-        "model": model,
-        "base_url": base_url,
-        "api_key_env": api_key_env,
-        "params": {"temperature": temp, "top_p": 0.9, "seed": 42},
-    }
-
-    config_manager.add_llm_profile(name, profile_data)
-    await cl.Message(content=f"✅ Profile '{name}' added.", author="System").send()
-    await render_llm_profiles_editor()
-
-
-async def add_prompt_variant_flow():
-    name = await _ask_user("Enter variant name (e.g. C):")
-    if not name:
-        return
-
-    roles = ["strategist", "critic", "optimizer", "moderator"]
-    variant_data = {}
-    for role in roles:
-        path = await _ask_user(f"Prompt file for {role} (e.g. prompts/{role}_v3.md):")
-        if path:
-            variant_data[role] = path
-
-    if variant_data:
-        config_manager.add_prompt_variant(name, variant_data)
-        await cl.Message(content=f"✅ Variant '{name}' added.", author="System").send()
-    else:
-        await cl.Message(content="❌ No roles defined. Cancelled.", author="System").send()
-
-    await render_prompt_variants_editor()
-
+# ── Settings Update Handler ──────────────────────────────────────────────
 
 @cl.on_settings_update
 async def on_settings_update(settings):

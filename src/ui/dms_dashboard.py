@@ -12,22 +12,100 @@ def _action(name: str, label: str, value: str = "", tooltip: str = "") -> cl.Act
     return cl.Action(name=name, label=label, payload={"value": value}, tooltip=tooltip)
 
 
-async def _ask_user(content: str) -> str:
-    """Helper to ask user for input and return the text response."""
-    res = await cl.AskUserMessage(content=content).send()
-    if not res:
-        return ""
-    if isinstance(res, dict):
-        return res.get("output", "").strip()
-    return getattr(res, "content", "").strip()
-
-
 def _get_value(action: cl.Action, default: str = "") -> str:
     """Extract value from action.payload (Chainlit 2.x)."""
     if isinstance(action.payload, dict):
         return action.payload.get("value", default)
     return default
 
+
+# ── DMS State Machine ────────────────────────────────────────────────────
+
+def _set_dms_state(state: dict):
+    cl.user_session.set("dms_mode", state)
+
+
+def _get_dms_state() -> dict | None:
+    return cl.user_session.get("dms_mode")
+
+
+def _clear_dms_state():
+    cl.user_session.set("dms_mode", None)
+
+
+async def handle_input(message: cl.Message) -> bool:
+    """
+    Handle user input during a DMS flow.
+    Returns True if the message was consumed, False otherwise.
+    """
+    state = _get_dms_state()
+    if not state:
+        return False
+
+    flow = state.get("flow")
+    text = message.content.strip()
+
+    # Cancel
+    if text.lower() in ("cancel", "abort", "quit"):
+        _clear_dms_state()
+        await cl.Message(content="❌ Cancelled.").send()
+        await show_projects()
+        return True
+
+    # ── Create Project Flow ──
+    if flow == "create_project":
+        step = state.get("step")
+        data = state.get("data", {})
+
+        if step == "name":
+            if not text:
+                await cl.Message(content="⚠️ Name cannot be empty. Try again or type `cancel`.").send()
+                return True
+            data["name"] = text
+            state["step"] = "description"
+            state["data"] = data
+            _set_dms_state(state)
+            await cl.Message(
+                content=f"Project name: `{text}`\n\nEnter description (or leave empty):",
+            ).send()
+            return True
+
+        elif step == "description":
+            data["description"] = text
+            dms = cl.user_session.get("dms")
+            project_id = dms.create_project(data["name"], data["description"])
+            _clear_dms_state()
+            if project_id:
+                await cl.Message(content=f"✅ Created '{data['name']}' (ID: `{project_id[:8]}...`)").send()
+            else:
+                await cl.ErrorMessage(content=f"❌ Failed to create '{data['name']}'").send()
+            await show_projects()
+            return True
+
+    # ── Delete Project Flow ──
+    if flow == "delete_project":
+        if text.lower() == "yes":
+            dms = cl.user_session.get("dms")
+            success = dms.delete_project(state.get("project_id"))
+            _clear_dms_state()
+            if success:
+                await cl.Message(content="✅ Project deleted.").send()
+            else:
+                await cl.ErrorMessage(content="❌ Delete failed.").send()
+        else:
+            _clear_dms_state()
+            await cl.Message(content="Cancelled.").send()
+        await show_projects()
+        return True
+
+    # Fallback
+    _clear_dms_state()
+    await cl.Message(content="⚠️ Unknown DMS state. Returning to projects.").send()
+    await show_projects()
+    return True
+
+
+# ── Entry Points ─────────────────────────────────────────────────────────
 
 async def start():
     """Entry point called from main app action callback."""
@@ -50,7 +128,10 @@ async def handle_action(action: cl.Action):
     value = _get_value(action)
 
     if name == "create_project":
-        await create_project_flow()
+        _set_dms_state({"flow": "create_project", "step": "name", "data": {}})
+        await cl.Message(
+            content="## ➕ Create Project\n\nEnter project name:\n\n*(Type `cancel` to abort)*",
+        ).send()
     elif name == "refresh_projects":
         await show_projects()
     elif name == "view_documents":
@@ -58,7 +139,12 @@ async def handle_action(action: cl.Action):
         cl.user_session.set("selected_project_id", project_id)
         await show_documents(project_id)
     elif name == "delete_project":
-        await delete_project_flow(value)
+        projects = dms.list_projects()
+        proj_name = next((p["name"] for p in projects if p["id"] == value), "Unknown")
+        _set_dms_state({"flow": "delete_project", "project_id": value})
+        await cl.Message(
+            content=f"⚠️ Type `yes` to delete project **{proj_name}**, or anything else to cancel:",
+        ).send()
     elif name == "upload_document":
         project_id = value
         cl.user_session.set("selected_project_id", project_id)
@@ -143,6 +229,8 @@ async def handle_file_upload(elements: List[cl.File]):
     await show_documents(project_id)
 
 
+# ── View Renderers ───────────────────────────────────────────────────────
+
 async def show_projects():
     dms = cl.user_session.get("dms")
     try:
@@ -208,37 +296,3 @@ async def show_documents(project_id: str):
             )
 
     await cl.Message(content=content, actions=actions, elements=elements).send()
-
-
-async def create_project_flow():
-    name = await _ask_user("Enter project name:")
-    if not name:
-        await cl.Message(content="Cancelled.").send()
-        return
-
-    description = await _ask_user("Enter description (optional):")
-
-    dms = cl.user_session.get("dms")
-    project_id = dms.create_project(name, description)
-    if project_id:
-        await cl.Message(content=f"✅ Created '{name}' (ID: `{project_id[:8]}...`)").send()
-    else:
-        await cl.ErrorMessage(content=f"❌ Failed to create '{name}'").send()
-    await show_projects()
-
-
-async def delete_project_flow(project_id: str):
-    dms = cl.user_session.get("dms")
-    projects = dms.list_projects()
-    proj_name = next((p["name"] for p in projects if p["id"] == project_id), "Unknown")
-
-    answer = await _ask_user(f"Type 'yes' to delete '{proj_name}':")
-    if answer.lower() == "yes":
-        success = dms.delete_project(project_id)
-        if success:
-            await cl.Message(content="✅ Project deleted.").send()
-        else:
-            await cl.ErrorMessage(content="❌ Delete failed.").send()
-    else:
-        await cl.Message(content="Cancelled.").send()
-    await show_projects()
