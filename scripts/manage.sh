@@ -1,21 +1,19 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
 
-SERVICE_NAME="debate-agent@$(whoami)"
-PROJECT_DIR="$HOME/projects/debate-agent"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 case "$1" in
-    install)
-        ln -sf "$PROJECT_DIR/systemd/debate-agent.service" "$HOME/.config/systemd/user/"
-        systemctl --user daemon-reload
-        systemctl --user enable --now "$SERVICE_NAME"
-        echo "✅ Service aktiviert. Status: systemctl --user status $SERVICE_NAME"
+    start)
+        bash "$PROJECT_DIR/scripts/start.sh"
+        ;;
+    stop)
+        bash "$PROJECT_DIR/scripts/stop.sh"
         ;;
     status)
-        systemctl --user status "$SERVICE_NAME"
+        bash "$PROJECT_DIR/scripts/status.sh"
         ;;
     logs)
-        journalctl --user -u "$SERVICE_NAME" -f --no-pager
+        tail -f "$PROJECT_DIR/logs/debate-agent.log"
         ;;
     trace)
         tail -f "$PROJECT_DIR/logs/$(ls -t "$PROJECT_DIR/logs" | head -n 1)"
@@ -29,14 +27,11 @@ case "$1" in
         cp "$PROJECT_DIR/config/llm_profiles.yaml" "$BACKUP_DIR/"
         echo "📦 Backup erstellt: $BACKUP_DIR"
         ;;
-    stop)
-        systemctl --user stop "$SERVICE_NAME"
-        ;;
-    restart)
-        systemctl --user restart "$SERVICE_NAME"
+    cleanup)
+        bash "$PROJECT_DIR/scripts/cleanup.sh"
         ;;
     *)
-        echo "Usage: $0 {install|status|logs|trace|backup|stop|restart}"
+        echo "Usage: $0 {start|stop|status|logs|cleanup|backup}"
         exit 1
         ;;
 esac

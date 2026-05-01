@@ -11,5 +11,5 @@ source .venv/bin/activate
 uv pip install -e .
 
 echo "📁 Verzeichnisse & Config..."
-mkdir -p logs config/prompts systemd
+mkdir -p logs config/prompts
 echo "✅ Setup abgeschlossen. Starte mit: uv run chainlit run src/ui/chainlit_app.py --port 7860"

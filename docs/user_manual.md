@@ -962,8 +962,7 @@ danwa/
 │       └── moderator_v2.md
 ├── tests/                        # Pytest test suite
 ├── docs/                         # Documentation
-├── scripts/                      # Utility scripts
-├── systemd/                      # Systemd service files
+├── scripts/                      # Utility scripts (start.sh, stop.sh, status.sh, cleanup.sh)
 ├── memory/                       # Runtime data
 │   ├── debates.db               # SQLite database
 │   └── chroma_db/              # ChromaDB vector store

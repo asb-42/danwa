@@ -11,11 +11,19 @@ bash setup.sh
 # Set up DMS dependencies (optional PaddleOCR)
 bash scripts/setup_dms.sh
 
-# Start the application
-uv run chainlit run src/ui/chainlit_app.py --port 7860
+# Start the application (on-demand)
+bash scripts/start.sh
+
+# Check status
+bash scripts/status.sh
+
+# Stop when done
+bash scripts/stop.sh
 ```
 
 Open `http://localhost:7860` in your browser.
+
+No systemd required - runs on-demand via simple scripts.
 
 ## How It Works
 
