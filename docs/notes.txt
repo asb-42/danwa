@@ -1,0 +1,451 @@
+# 🚀 Inbetriebnahme
+
+chmod +x setup.sh && ./setup.sh
+source .venv/bin/activate
+uv run chainlit run src/ui/chainlit_app.py --port 7860
+
+1. Öffne http://localhost:7860
+2. Wähle local_lm_studio im Settings-Panel
+3. Starte LM Studio, lade ein Modell (z.B. qwen2.5-7b), aktiviere den Server auf Port 1234
+4. Sende Text oder hänge Dateien an
+
+# 📦 Dependency aktualisieren (pyproject.toml)
+
+uv pip sync pyproject.toml
+
+
+---
+
+# "Multi-Agent-Debate-System" (-> danwa)
+
+## Frage (2026-04-22):
+
+Ich suche nach einem Agenten-Chat, der für konkretes Problemlösen konzipiert ist (also nicht "Moltbook"-Spielereien oder Entertainment, sondern ein ernsthaftes Werkzeug für die produktive Verwendung).
+
+Szenario:
+- Als Input Dokumente/Briefe oder eine ausführliche Sachverhaltsschilderung, bspw. eine rechtliche Thematik;
+- 3 KIs (zufällige Zahl) erörtern den Sachverhalt untereinander, z.B. KI 1 entwirft eine gerichtliche Strategie, KI 2 zerlegt die Argumentation und gib an KI 1 zurück, KI 3 optimiert die Strategie…; oder feste Rollenaufteilung wie bei Grok (Harper, Lucas, Benjamin); Opportunismus- und Echokammer-Problematik müsste gelöst werden können.
+- Als Endresultat kommt im Ideal etwas heraus, was stichhaltiger ist als die Tagesform-Produkte von Durchschnittsanwälten.
+
+Im konkreten Fall wäre bspw. wichtig, dass
+- Reasoning/Diskussion klar nachvollziehbar ist und protokolliert wird;
+- zumindest ein Minimal-Memory-System existiert;
+- PDF- und Libreoffice-Dateien gelesen werden können;
+- grundlegende agentische Tools wie Internet-Suche bereits implementiert sind;
+- Dokumente geschrieben werden können, mindestens als TXT;
+- keine Bindung an LLM-Provider wie OpenAI, also Unterstützung für lokale LLMs via LM Studio, Openrouter etc.
+
+Anscheinend gibt es kein UI für GNU/Linux, oder? Ich muß dann vermutlich etwas selbr basteln mit Chainlit oder Chainlit. Was würdest du empfehlen, und welche Schritte zur Projektplanung empfiehlst du?
+
+## Antwort (Qwen3.6-Plus):
+
+Es gibt aktuell kein fertiges All-in-One-UI, das Ihr Szenario (multi-agenten-Debatte, dokumentenbasiert, provider-agnostisch, transparente Reasoning-Traces, Linux-native) vollständig abdeckt. Der Markt bewegt sich stark in Richtung Frameworks, die Sie selbst orchestrieren müssen. Das ist kein Nachteil: Für ernsthafte, auditierbare Workflows ist eine maßgeschneiderte Architektur ohnehin zwingend.
+Nachfolgend eine praxisorientierte Empfehlung, wie Sie das System aufsetzen, welche Komponenten sich bewähren und wie Sie Echo-Kammer/Opportunismus strukturell unterbinden.
+
+
+### Echo-Kammer & Opportunismus strukturell unterbinden
+
+Multi-Agent-Systeme neigen zu Konsens-Bias. Für juristische/analytische Workflows müssen Sie Diversität + Validierung hart verdrahten:
+
+1. Adversarial Role Design: KI 2 = „Devil’s Advocate / Gegenpartei“, KI 3 = „Prozessuale Plausibilitätsprüfung“. Prompts explizit auf Widerspruch trainieren.
+2. Temperatur-Diversität: Rollen mit unterschiedlichen temperature/top_p befeuern (z.B. Strategie: 0.4, Kritik: 0.7, Optimierung: 0.3).
+3. Consensus/Voting Step: Nach N Runden zwingt ein Moderator-Agent zur strukturierten Abstimmung. Bei Abweichung >X% wird eine 4. KI als „Unparteiischer Gutachter“ eingeschaltet.
+4. External Validation Layer: Vor Finalisierung läuft ein Tool-Call gegen Faktenbank/Gesetzestext-Suche. Widersprüche führen zu revision_loop.
+5. Prompt-Isolation: Keine gemeinsamen System-Prompts. Jede KI erhält kontextbegrenzte Instructions. Cross-Contamination wird so minimiert.
+
+
+### Architektur-Skizze
+
+[User Input: PDF/LO/Text] 
+        ↓
+[Doc Parser: unstructured + odfpy] → Cleaned Context
+        ↓
+[LangGraph State / CrewAI Crew]
+   ├─ Agent 1 (Strategie) → drafts
+   ├─ Agent 2 (Kritik) → reviews & returns gaps
+   ├─ Agent 3 (Optimierung) → refines
+   └─ Moderator (Voting + Validation) → consensus
+        ↓
+[LangFuse Logger] → Full trace, steps, tool calls, tokens
+        ↓
+[Output Generator] → .txt / .md / .docx
+        ↑
+[Chainlit UI] → Live step display, download, chat history
+
+### Projektplanung (5 Phasen)
+
+#### Phase 1: Foundation (Woche 1–2)
+
+- poetry/uv Environment, Python 3.11+
+- Lokalen LLM-Stack aufsetzen (LM Studio oder Ollama + OpenRouter Fallback)
+- unstructured + pdfplumber + odfpy Parsing-Pipeline testen
+- Chainlit Boilerplate mit OpenAI-kompatiblen Endpoint
+
+#### Phase 2: Multi-Agent Core (Woche 3–4)
+
+- CrewAI Crew definieren (3 Agents + Tasks)
+- Memory aktivieren (memory=True, optional Chroma)
+- Tool-Integration: SearXNG, Datei-Writer, Web-Scraper
+- LangFuse SDK einbinden, Traces verifizieren
+
+#### Phase 3: Debate & Validation Loop (Woche 5–6)
+
+- Moderator-Logik implementieren (Abbruchbedingung, Voting, Revision)
+- Echo-Mitigation: Temperatur-Split, adversarial Prompts, Fact-Check-Step
+- Trace-Analyse in LangFuse: Wo divergieren/ähneln sich Agents?
+
+#### Phase 4: UI & UX Hardening (Woche 7)
+
+- Chainlit: Schritt-für-Schritt-Visualisierung, Download-Buttons, Session-Storage
+- Error-Handling, Timeout, LLM-Fallback (z.B. bei Halluzinationen → Retry mit strengerem Prompt)
+- Minimal-Memory: Session-JSON + optional VectorStore für Langzeitkontext
+
+#### Phase 5: Production & Audit (Woche 8+)
+
+- Docker Compose (Chainlit + LangFuse + SearXNG + LLM-Router)
+- Logging-Rotation, Backup, Prompt-Versionierung (Git + LangFuse)
+- Juristische Disclaimer, Output-Watermarking, menschliche Review-Schleife einbauen
+
+###  Ist Docker zwingend notwendig?
+
+Nein. Docker ist ein Werkzeug, keine Voraussetzung. Auf GNU/Linux ist es oft sogar kontraproduktiv, wenn Sie maximale Transparenz, direkte Dateisystem-Zugriffe und volle Kontrolle über Logs/Prozesse benötigen.
+
+Warum Docker oft empfohlen wird:
+
+- Dependency-Isolation: Ja, aber uv/pipx + Python Venvs lösen das sauberer
+- Einheitliche Deployment-Pipeline: Nur relevant, wenn Sie später an mehrere Server ausliefern
+- Einfache Netzwerk-Orchestrierung (UI ↔ LLM ↔ DB ↔ Search): Ja, aber systemd + nginx/caddy + lokale Sockets sind auf Linux ebenso stabil
+- Sandbox/Security: Teilweise, aber Container teilen den Kernel; für sensible Daten ist native Hardening oft transparenter
+
+### Native Linux-Alternative (empfohlen für Ihre Anforderungen):
+
+#### 1. Python-Env & Abhängigkeiten isoliert
+uv venv .venv --python 3.11
+source .venv/bin/activate
+uv pip install chainlit crewai langgraph langfuse unstructured pdfplumber odfpy
+
+#### 2. Services lokal starten (Beispiel)
+- LLM-Router: `lm-studio` oder `ollama serve` (Systemd-Service)
+- SearXNG: `docker` ist hier am einfachsten, alternativ native Installation via `pipx install searxng`
+- LangFuse: `langfuse` CLI oder Docker, aber auch als `npm`-basiertes Self-Hosting möglich
+- Chainlit: `chainlit run app.py --port 7860` (als User-Service unter systemd)
+
+#### 3. Prozess-Management
+systemd --user enable chainlit
+systemd --user start chainlit
+journalctl --user -u chainlit -f  # Live-Logs, direkt durchsuchbar
+
+### Vorteile nativer Aufstellung:
+
+- Keine Abstraktionsebene: Logs, Dateien, Netzwerk-Stacks sind direkt einsehbar
+- Einfache Backup/Restore-Strategie (symlinks auf /srv/agent-data, rsync-Jobs)
+- Vollständige Kontrolle über Prompt-Versionen, Trace-Exports, LLM-Routing
+- Besser kompatibel mit Audit-Anforderungen (kein „black box“-Container-Layer)
+
+### Konkrete Empfehlung für Ihr Projekt
+
+1. Framework: LangGraph (MIT) + manuelle Rollen-Definition. Gibt Ihnen expliziten State, zwingende Validation-Steps, und lückenlose Trace-Exporte. Alternativ smolagents (Apache 2.0), wenn Sie weniger Boilerplate wollen.
+
+2. Setup: Native Linux-Installation mit uv + systemd. Nur SearXNG & LangFuse bei Bedarf in Containern, da deren Dependency-Trees komplex sind.
+
+3. Audit-Design: Jeder Agent-Schritt schreibt JSON-Trace in /var/log/agent-workflow/
+LangFuse als optionales Web-Frontend, aber primär lokale .jsonl-Logs + jq/ripgrep für Analyse
+Prompt-Versionierung via Git (prompts/strategy_v3.md, etc.)
+
+### Leitprinzipien
+
+1. Auditierbarkeit vor Automatisierung: Jeder Agenten-Schritt, Prompt, Tool-Call und Konsens-Score wird strukturiert protokolliert. Keine Black-Box-Loops.
+
+2. Bias-Strukturen statt Bias-Versprechen: KI ist nicht neutral, aber der Workflow kann Neutralität erzwingen (adversarial roles, Temperatur-Diversität, externe Validierung, konsensbasierte Abbruchlogik).
+
+3. Provider-Agnostik & Native Linux: litellm für einheitliches Routing, uv für Dependency-Management, systemd --user für Prozesse, Chainlit für UI. Zero Docker.
+
+4. Domain-Unabhängigkeit: Prompt-Templates sind parametrisierbar. Recht, Philosophie, Wissenschaft → nur andere Rollen-Beschreibungen & Validierungstools.
+
+### Architektur & Tech-Stack
+
+- LLM-Routing: litellm (MIT) - Unified API für 100+ Provider (LM Studio, OpenRouter, OpenAI, Anthropic, Qwen, DeepSeek, etc.). Handelt Fallbacks, Rate Limits, API-Keys transparent.
+
+- Agent-Orchestrierung: CrewAI (MIT Core) + Custom DebateOrchestrator - CrewAI liefert Rollen/Tools, der Orchestrator steuert State, Runden, Voting & Traces explizit.
+
+- UI: Chainlit - Async-Streaming, Step-Visualisierung, File-Upload, Session-Management, Linux-native.
+
+- Doc-Parsing: unstructured + pdfplumber + odfpy - Industriestandard, ODF-Support, fallback-freundlich.
+
+- Search/Tools: duckduckgo-search + optional SearXNG - Datenschutzkonform, keine API-Keys, zitierfähig.
+
+- Memory/Logging: SQLite (Metadata) + .jsonl (Traces) + in-memory context - Minimal, exportierbar, audit-sicher. LangFuse optional später.
+
+- Output: .txt / .md mit strukturierter Gliederung - Menschlich lesbar, maschinell parsebar, versionierbar.
+
+### Projektstruktur
+
+debate-agent/
+├── config/
+│   ├── llm_profiles.yaml          # Provider, base_url, api_key_env, params (temp, top_p, seed)
+│   ├── prompts/                   # role_strategist.md, role_critic.md, role_optimizer.md, role_moderator.md
+│   └── settings.yaml              # Global: max_rounds, consensus_threshold, strict_citations, output_format
+├── src/
+│   ├── core/
+│   │   ├── llm_router.py          # litellm wrapper, profile loader, async dispatch
+│   │   ├── debate_engine.py       # State machine, round loop, voting, abort conditions
+│   │   └── bias_controls.py       # Temp-split, adversarial prompt injection, validation gate
+│   ├── agents/
+│   │   ├── strategist.py          # Task: Entwurf, Struktur, Argumentationslinie
+│   │   ├── critic.py              # Task: Gegenargumente, Lücken, Annahmen prüfen
+│   │   ├── optimizer.py           # Task: Synthese, Präzisierung, gerichtsfeste Form
+│   │   └── moderator.py           # Task: Konsensbewertung, Validierung, Loop-Steuerung
+│   ├── tools/
+│   │   ├── doc_parser.py          # PDF/ODF/TXT → cleaned text + metadata
+│   │   ├── web_search.py          # DuckDuckGo/SearXNG → snippets + URLs
+│   │   └── file_writer.py         # Structured TXT/MD export with trace appendix
+│   └── ui/
+│       └── chainlit_app.py        # Entry point, streaming steps, file upload, profile selector
+├── logs/                          # session_YYYYMMDD_HHMMSS.jsonl (full traces)
+├── memory/                        # debates.db (SQLite: sessions, profiles, outcomes)
+├── pyproject.toml                 # uv-managed dependencies
+├── systemd/
+│   └── debate-agent.service       # User-service template
+└── README.md                      # Setup, usage, audit guide
+
+### Phasen-Fahrplan (6 Sprints)
+
+#### Phase 1: Foundation & LLM-Routing (Woche 1)
+
+- uv Environment, Python 3.11+, litellm, CrewAI, chainlit
+- config/llm_profiles.yaml mit Platzhaltern für API-Keys (LM_STUDIO_KEY, OPENROUTER_KEY, etc.)
+- src/core/llm_router.py: Lädt Profile, injiziert base_url/api_key, setzt temperature, top_p, seed. Fallback-Logik.
+- Deliverable: test_router.py → ruft 3 Provider parallel auf, validiert Antwort + Metadaten.
+- UX: Chainlit-Startseite mit Dropdown für LLM-Profil & Test-Button.
+
+#### Phase 2: Debate Engine & Bias-Mitigation (Woche 2)
+
+- Custom DebateOrchestrator (kein reines crew.kickoff()):
+-- State: {round, agents_outputs, consensus_score, validation_flags, citations}
+-- Loop: Strategy → Critique → Optimization → Moderation → (repeat if consensus < threshold)
+-- Abbruch: Max-Runden, Konsens-Schwellwert, externe Validierung erfolgreich.
+- src/core/bias_controls.py:
+-- Temperatur-Split: strategy: 0.4, critic: 0.8, optimizer: 0.3, moderator: 0.2
+-- Prompt-Isolation: Keine shared context-bleeds, nur explizit übergebene state-Dicts.
+-- Validation Gate: Zitation erforderlich, Halluzinations-Check via Web-Search-Snippet-Match.
+- Deliverable: debate_engine.py mit konfigurierbaren Runden, JSONL-Trace pro Schritt.
+
+#### Phase 3: Document Pipeline & Tools (Woche 3)
+
+- src/tools/doc_parser.py: unstructured für PDF/DOCX, odfpy für ODT/ODP, Fallback plain text. Metadata-Extraktion (Autor, Datum, Seiten).
+- src/tools/web_search.py: duckduckgo-search as Tool, strukturierte Rückgabe: [{url, snippet, relevance_score}]
+- src/tools/file_writer.py: Generiert .txt/.md mit Gliederung: Zusammenfassung, Argumente, Gegenargumente, Konsens, Offene Fragen, Quellen, Full-Trace-Appendix.
+- Deliverable: Parsing-Pipeline + Tool-Integration. Test mit 3 anonymisierten Dokumenten.
+
+#### Phase 4: Chainlit UI & UX (Woche 4)
+
+- Async-Streaming: Jeder Agenten-Schritt erscheint als Chainlit-Step mit Status-Icon.
+- Input-Panel: Datei-Upload + Textfeld, LLM-Profil-Selector, Parameter-Override (Runden, Strict-Mode, Temp).
+- Output-Panel: Kollapsible Sektionen, Download-Button, Trace-Viewer (JSON raw), Session-History.
+- UX-Prinzipien: Keine Magie. Jeder Schritt ist sichtbar, jeder Prompt-Parameter einstellbar, jeder Trace exportierbar.
+- Deliverable: chainlit_app.py mit voller Interaktion, Session-Storage, Error-Handling.
+
+#### Phase 5: Logging, Memory & Auditability (Woche 5)
+
+- logs/*.jsonl: Pro Session: {session_id, timestamp, agent, prompt_hash, response, tokens, tool_calls, consensus}
+- memory/debates.db: SQLite mit Tabellen sessions, profiles, outcomes, traces.
+- Export: python export_trace.py --session <id> --format jsonl/md
+- Audit-Check: Reproduzierbarkeit via seed + prompt_hash + profile_version. Keine impliziten State-Leaks.
+- Deliverable: Vollständige Trace-Pipeline, SQLite-Schema, Export-Skripte.
+
+#### Phase 6: Testing, Hardening & Deployment (Woche 6)
+
+- Unit-Tests: Router, Parser, Engine-Loop, Bias-Controls
+- Integration: Mock-LLM-Antworten, Timeout/Fallback, Consensus-Abbruch
+- Linux-Deploy: systemd --user Service, Log-Rotation, uv run chainlit run ...
+- Deliverable: setup.sh, systemd/, Test-Suite, README mit Audit-Guide.
+
+### Bias-Mitigation (Kernlogik)
+
+- Adversarial Prompting: Kritiker erhält explizit: Du musst mindestens 3 fundamentale Annahmen der Strategie angreifen. Keine Zustimmung. Nur Lücken, Widersprüche, fehlende Präzedenzfälle.
+- Konsens-Metrik: Moderator bewertet Übereinstimmung auf Skala 0–1. Bei < 0.7 → neue Runde. Bei > 0.9 → Finalisierung.
+- Externe Validierung: Vor Finalisierung prüft ein Tool-Call, ob zentrale Behauptungen in aktuellen Quellen/Texten gestützt sind. Fehlt Stütze → revision_flag=True.
+
+### Chainlit Step-Mapping
+
+@cl.step(name="Strategie-Entwurf", type="agent")
+async def run_strategy(ctx: cl.Context, state: dict):
+    ...
+
+Jeder Agent erhält einen eigenen Step-Context. Chainlit rendert live: Status → Output → Trace-Link → Download.
+
+### Audit & Bias-Mitigation (architektonisch verdrahtet)
+
+- Adversarial Roles:
+Explizite Prompt-Isolation (strategist.md vs critic.md) + ROLE_TEMPS (Kritiker: 0.8, Strategist: 0.4)
+
+- Konsens-Gate:
+moderator.md erzwingt numerische Bewertung. Loop bricht bei threshold oder max_rounds ab.
+
+- Trace-Transparenz:
+Jeder Schritt → logs/<session>.jsonl mit prompt_hash, tokens, response_full. Vollständig exportierbar.
+
+- Provider-Agnostik:
+litellm abstrahiert alle OpenAI-kompatiblen Endpoints. Wechsel via llm_profiles.yaml ohne Code-Änderung.
+
+---
+
+## Search/Fact-Check-Tools
+
+### Workflow-INtegration
+
+#### Nach Optimizer:
+- Extrahiert 3 prüfbare Claims aus der aktuellen Fassung
+- Verhindert, dass rein spekulative Argumente in den Konsens einfließen
+
+#### Pro Claim
+- duckduckgo-search holt aktuelle, datumsgefilterte Snippets
+- Erzwingt externe Grounding, bricht Echo-Kammer durch Faktenabgleich
+
+#### Vor Moderator
+- Validierungsreport wird in den Prompt injiziert
+- Moderator bewertet Konsens unter expliziter Berücksichtigung von Evidenzlücken
+
+#### Logging
+- Jeder Claim + Suchergebnis → logs/<session>.jsonl
+- Vollständig auditierbar, reproduzierbar via prompt_hash + claims_checked
+
+### Test & Nutzung
+
+1. Start: uv run chainlit run src/ui/chainlit_app.py --port 7860
+2. Im UI: Settings → enable_fact_check: true (standardmäßig aktiv)
+3. Input: Sende z.B. „Künstliche Intelligenz wird innerhalb von 5 Jahren alle juristischen Standardverträge automatisiert erstellen.“
+4. Beobachte in Chainlit:
+🔄 tool: Web-Validierung
+🔄 agent: Moderator (mit angehängten Suchergebnissen)
+5. Trace prüfen: cat logs/<session_id>.jsonl | jq '.step == "search_validation"'
+
+
+## PDF/ODF-Parser
+
+### 🐧 System-Abhängigkeiten (Linux)
+
+pdfplumber und odfpy sind Python-Pakete, benötigen aber unter Linux teilweise native Bibliotheken:
+
+- Ubuntu/Debian: sudo apt install poppler-utils libxml2-dev
+- Arch Linux: sudo pacman -S poppler libxml2
+- Fedora/RHEL: sudo dnf install poppler-utils libxml2-devel
+
+(Optional, aber empfohlen für stabile PDF-Layout-Extraktion)
+
+### Workflow-Integration
+
+#### Upload
+- Chainlit speichert Files temporär, übergibt Pfade an Parser
+- Keine Cloud-Uploads, alles lokal
+
+#### Parsing
+- pdfplumber/odfpy/pypdf extrahieren Text + Metadaten
+- Fallback zu Plain-Text bei Fehlern
+
+#### Kontext-Injektion
+- Dokumente werden strukturiert in context eingebettet
+- Metadaten (Autor, Seiten, Wortzahl) erhalten Kontext-Boundaries
+
+#### Overflow-Schutz
+- MAX_CONTEXT_CHARS = 25000 verhindert LLM-Absturz
+- Explizite Kennzeichnung, wenn gekürzt wurde
+
+#### Trace
+- Parser-Ergebnisse fließen in debate_engine.run() → JSONL-Log
+- Vollständig nachvollziehbar, welche Textbasis genutzt wurde
+
+### Test-Flow
+
+1. uv run chainlit run src/ui/chainlit_app.py --port 7860
+2. UI öffnen → Settings anpassen
+3. Klicke 📎, lade eine .pdf, .odt oder .docx hoch
+4. Sende Nachricht (z.B. „Analysiere die rechtliche Schlüssigkeit und nenne Gegenargumente.“)
+5. Beobachte: 📄 Verarbeite 1 Dokument(e)... → 🔄 round: Runde 1/3 → 🔄 tool: Web-Validierung → 🔄 agent: Moderator
+6. Prüfe logs/<session>.jsonl → Sieh den exakten parsed content im ersten Trace-Eintrag.
+
+
+## Hardened Systemd Unit
+
+### 🔐 Environment & Secrets Management
+
+API-Keys gehören nie in Git oder Code. Systemd lädt sie aus einer geschützten Datei.
+
+## 1. Verzeichnis & Datei anlegen
+mkdir -p ~/.config/debate-agent
+touch ~/.config/debate-agent/.env
+chmod 600 ~/.config/debate-agent/.env
+
+## 2. Inhalt (.env)
+OPENROUTER_KEY="sk-or-..."
+LM_STUDIO_KEY="sk-dummy"
+SEARXNG_URL=""  # Optional, falls später migriert
+
+Systemd liest diese Datei automatisch via EnvironmentFile=. Keine .env-Bibliotheken nötig.
+
+
+### 🛠️ Deployment & Management Script (scripts/manage.sh)
+
+chmod +x scripts/manage.sh
+./scripts/manage.sh install
+
+### Integrations-Checkliste & Inbetriebnahme
+
+1. Abhängigkeiten
+uv pip sync pyproject.toml
+
+2. System-Abhängigkeiten
+sudo apt install poppler-utils libxml2-dev (Debian/Ubuntu)
+
+3. Secrets
+.env in ~/.config/debate-agent/ anlegen, chmod 600
+
+4. Logging aktiv
+setup_logging() in chainlit_app.py einfügen
+
+5. Service installieren
+./scripts/manage.sh install
+
+6. Status prüfen
+journalctl --user -u debate-agent@$(whoami) -f
+
+7. UI testen
+Browser → http://127.0.0.1:7860
+
+###  Hardening & Audit-Hinweise
+
+1. Network Isolation: --host 127.0.0.1 bindet Chainlit nur lokal. Für Remote-Zugriff nutze caddy/nginx + TLS, niemals 0.0.0.0 ohne Reverse-Proxy.
+
+2. Process Sandbox: ProtectSystem=strict + ReadWritePaths verhindert, dass der Agent außerhalb von logs/ und memory/ schreibt.
+Log-Integrität: logs/app.jsonl + logs/*.jsonl sind zeilenweise JSON. Jede Zeile ist atomar. Bei Absturz bleibt die letzte Zeile intakt.
+
+3. Key-Rotation: Ändere Keys in .env, dann systemctl --user restart debate-agent@$(whoami). Kein Neustart des LLM-Servers nötig.
+
+4. Disk-Usage Monitoring: du -sh logs/ + logrotate hält Storage unter Kontrolle. backup-Skript sichert vor Wartung.
+
+
+## Memory/VectorStore-System: ChromaDB
+
+- ChromaDB: lokal, persistent, MIT-lizenziert,
+- mit einer integrierten ONNX-Embedding-Funktion,
+- keine externen APIs,
+- keine schweren PyTorch-Abhängigkeiten,
+- vollständig auditierbar.
+
+ChromaDB lädt beim ersten Start ein ~90 MB ONNX-Embedding-Modell automatisch in memory/chroma_db/.
+Keine Internetverbindung nach Initialisierung nötig.
+
+
+# 🧪 Test-Suite (tests/)
+
+uv pip install -e ".[test]"
+
+
+# ⚠️ System-Abhängigkeiten (WeasyPrint)
+
+## Debian/Ubuntu
+sudo apt install libcairo2 libpango-1.0-0 libgdk-pixbuf2.0-0 libffi-dev
+## Arch
+sudo pacman -S cairo pango gdk-pixbuf2 libffi
+## Fedora
+sudo dnf install cairo pango gdk-pixbuf2 libffi

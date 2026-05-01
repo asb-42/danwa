@@ -136,13 +136,21 @@ reports/
 *.docx
 *.pdf
 
-# Environment specific
+# Environment specific / User config (never commit real credentials)
 settings.yaml
+config/llm_profiles.yaml
+config/prompt_variants.yaml
+config/settings.yaml
+config/llm_profiles.yaml_backup
+src/config/prompt_variants.yaml
+
+# Notes (user-specific, not for version control)
+notes.txt
+docs/notes.txt
 
 # Misc
 .DS_Store
 Thumbs.db
-notes.txt
 *.tmp
 *.bak
 *.swp

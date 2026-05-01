@@ -1,0 +1,24 @@
+search:
+  engine: "searxng"
+  url: "http://127.0.0.1:8080"
+  max_results: 5
+
+privacy:
+  strict_mode: false          # true = blocks all external calls, only local LLMs
+  redact_traces: true         # PII redaction in JSONL logs
+  retention_days: 90          # Auto-cleanup of old sessions/reports
+
+dms:
+  enabled: true
+  storage_path: "dms_storage"
+  chunk_size: 512
+  chunk_overlap: 51
+  embedding_model: "intfloat/multilingual-e5-small"
+  ocr_enabled: false
+  ocr_device: "cpu"
+  max_file_size_mb: 50
+  chroma_collection: "document_chunks"
+  memory_dir: "memory"
+
+ui:
+  language: "en"
