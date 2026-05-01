@@ -10,16 +10,31 @@ CONFIG_PATH = Path("config/llm_profiles.yaml")
 class LLMRouter:
     """Routes LLM calls to different profiles. Supports a default profile and per-role overrides."""
 
-    def __init__(self, profile_name: str = "local_lm_studio"):
+    def __init__(self, profile_name: str | None = None):
         with open(CONFIG_PATH, "r") as f:
             config = yaml.safe_load(f)
         self._config = config
+        profiles = config.get("profiles", {})
+        if not profiles:
+            raise ValueError(
+                f"No LLM profiles found in {CONFIG_PATH}. "
+                "Please add at least one profile."
+            )
+        if profile_name is None:
+            profile_name = next(iter(profiles))
         self._default_profile_name = profile_name
         self._default_profile = self._load_profile(profile_name)
         self._role_profiles: Dict[str, Dict] = {}
 
     def _load_profile(self, profile_name: str) -> Dict:
-        profile = self._config["profiles"][profile_name].copy()
+        profiles = self._config.get("profiles", {})
+        if profile_name not in profiles:
+            available = list(profiles.keys())
+            raise KeyError(
+                f"LLM profile '{profile_name}' not found. "
+                f"Available profiles: {available}"
+            )
+        profile = profiles[profile_name].copy()
         if profile.get("api_key_env") and profile["api_key_env"] in os.environ:
             profile["api_key"] = os.environ[profile["api_key_env"]]
         return profile

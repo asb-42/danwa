@@ -428,13 +428,16 @@ async def _handle_config_input(message: cl.Message) -> bool:
 
 @cl.on_chat_start
 async def start():
+    profile_names = list(PROFILES.keys())
+    default_profile = profile_names[0] if profile_names else ""
+
     settings = await cl.ChatSettings(
         [
             cl.input_widget.Select(
                 id="profile",
                 label="LLM Profile",
-                values=list(PROFILES.keys()),
-                initial_value="local_lm_studio",
+                values=profile_names,
+                initial_value=default_profile,
             ),
             cl.input_widget.Slider(
                 id="max_rounds", label="Max. Rounds", min=1, max=5, step=1, initial=3
@@ -500,8 +503,8 @@ async def start():
             cl.input_widget.Select(
                 id="profile",
                 label="LLM Profile",
-                values=list(PROFILES.keys()),
-                initial_value="local_lm_studio",
+                values=profile_names,
+                initial_value=default_profile,
             ),
             cl.input_widget.Select(
                 id="agent_profile",
@@ -578,19 +581,43 @@ async def main(message: cl.Message):
         return
 
     settings = cl.user_session.get("settings")
+    if not settings:
+        await cl.Message(
+            content="⚠️ Settings not initialized. Please reload the page.",
+            author="System",
+        ).send()
+        return
+
     pm = cl.user_session.get("prompt_manager")
 
-    variant = settings["variant"] if settings["variant"] != "auto" else None
+    variant = settings["variant"] if settings.get("variant") != "auto" else None
     agent_profile = settings.get("agent_profile")
 
-    engine = DebateEngine(
-        profile_name=settings["profile"],
-        max_rounds=int(settings["max_rounds"]),
-        threshold=float(settings["threshold"]),
-        enable_fact_check=settings["enable_fact_check"],
-        enable_memory=settings["enable_memory"],
-        agent_profile_name=agent_profile if agent_profile else None,
-    )
+    try:
+        engine = DebateEngine(
+            profile_name=settings.get("profile") or None,
+            max_rounds=int(settings.get("max_rounds", 3)),
+            threshold=float(settings.get("threshold", 0.75)),
+            enable_fact_check=settings.get("enable_fact_check", True),
+            enable_memory=settings.get("enable_memory", True),
+            agent_profile_name=agent_profile if agent_profile else None,
+        )
+    except KeyError as e:
+        available = list(PROFILES.keys())
+        await cl.Message(
+            content=f"❌ **LLM Profile Error:** Profile `{e}` not found.\n\n"
+                    f"Available profiles: {', '.join(f'`{p}`' for p in available) if available else 'none'}\n\n"
+                    f"Please select a valid profile in the ⚙️ **Chat Settings** (gear icon) or add one via ⚙️ **Configuration**.",
+            author="System",
+        ).send()
+        return
+    except Exception as e:
+        logger.exception("Failed to initialize DebateEngine")
+        await cl.Message(
+            content=f"❌ **Error initializing debate engine:** {type(e).__name__}: {e}",
+            author="System",
+        ).send()
+        return
 
     context = message.content
     parsed_docs = []
@@ -1075,6 +1102,9 @@ async def render_agent_profiles_editor():
 
 @cl.on_settings_update
 async def on_settings_update(settings):
+    # Persist the full settings dict so profile/variant/agent_profile changes take effect
+    cl.user_session.set("settings", settings)
+
     dms = cl.user_session.get("dms")
     selected_project_id = settings.get("selected_project_id")
     selected_document_id = settings.get("selected_document_id")
@@ -1097,8 +1127,10 @@ async def on_settings_update(settings):
                     doc_name = doc["filename"]
 
     agent_profile = settings.get("agent_profile", "none")
+    profile = settings.get("profile", "default")
 
     await cl.Message(
-        content=f"📁 Active Project: {project_name} | 📄 Active Document: {doc_name} | 🤖 Agent Profile: {agent_profile}",
+        content=f"⚙️ Settings updated: Profile=`{profile}`, Agent=`{agent_profile}`, "
+                f"Project=`{project_name}`, Document=`{doc_name}`",
         author="System",
     ).send()

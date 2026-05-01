@@ -36,7 +36,7 @@ class DebateState:
 class DebateEngine:
     def __init__(
         self,
-        profile_name: str = "local_lm_studio",
+        profile_name: str | None = None,
         max_rounds: int = 3,
         threshold: float = 0.75,
         enable_fact_check: bool = True,
