@@ -13,13 +13,13 @@ from src.core.prompt_manager import PromptManager
 from src.core.logging_config import setup_logging
 from src.ui import dms_dashboard
 from src.dms.dms import DMS
+from src.core.config_manager import ConfigManager
 
 logger = logging.getLogger(__name__)
 setup_logging("INFO")
 
-CONFIG_PATH = Path("config/llm_profiles.yaml")
-with open(CONFIG_PATH) as f:
-    PROFILES = yaml.safe_load(f)["profiles"]
+config_manager = ConfigManager()
+PROFILES = config_manager.get_llm_profiles().get("profiles", {})
 
 parser = DocumentParser()
 
@@ -146,6 +146,13 @@ async def start():
             label="📁 DMS Dashboard",
             value="dms_init",
             description="Document Management System",
+            payload={},
+        ),
+        cl.Action(
+            name="open_config",
+            label="⚙️ Konfiguration",
+            value="config_init",
+            description="App-Konfiguration verwalten",
             payload={},
         )
     ]
@@ -362,6 +369,160 @@ async def handle_action(action: cl.Action):
 
     elif action.id == "open_dms":
         await dms_dashboard.start()
+
+    # --- Configuration Actions ---
+    elif action.id == "open_config":
+        await render_config_menu()
+
+    elif action.id == "config_settings":
+        await render_settings_editor()
+
+    elif action.id == "config_llm_profiles":
+        await render_llm_profiles_editor()
+
+    elif action.id == "config_prompt_variants":
+        await render_prompt_variants_editor()
+
+    elif action.id == "config_save_settings":
+        # Placeholder for saving settings - complex in Chainlit without Forms
+        # We will use AskUserMessage for specific edits for now or implement a simple text-based approach
+        await cl.Message(content="⚙️ Settings Update: This feature is under development. Please edit settings.yaml directly for now.", author="System").send()
+
+    elif action.id == "config_add_profile":
+        await add_llm_profile_flow()
+
+    elif action.id == "config_delete_profile":
+        profile_name = action.value
+        if config_manager.delete_llm_profile(profile_name):
+            await cl.Message(content=f"✅ Profil '{profile_name}' gelöscht.", author="System").send()
+        else:
+            await cl.Message(content=f"❌ Profil '{profile_name}' nicht gefunden.", author="System").send()
+        await render_llm_profiles_editor()
+
+    elif action.id == "config_add_variant":
+        await add_prompt_variant_flow()
+
+    elif action.id == "config_delete_variant":
+        variant_name = action.value
+        if config_manager.delete_prompt_variant(variant_name):
+            await cl.Message(content=f"✅ Variante '{variant_name}' gelöscht.", author="System").send()
+        else:
+            await cl.Message(content=f"❌ Variante '{variant_name}' nicht gefunden.", author="System").send()
+        await render_prompt_variants_editor()
+
+
+async def render_config_menu():
+    actions = [
+        cl.Action(id="config_settings", label="🔧 Allgemeine Einstellungen", value="settings", description="Search, Privacy, DMS"),
+        cl.Action(id="config_llm_profiles", label="🧠 LLM Profile", value="llm", description="LLM Endpoints & Params"),
+        cl.Action(id="config_prompt_variants", label="📜 Prompt Varianten", value="prompts", description="Prompt Zuweisungen"),
+    ]
+    await cl.Message(content="## ⚙️ Konfigurationsmenü\nWähle einen Bereich:", actions=actions, author="Config").send()
+
+
+async def render_settings_editor():
+    settings = config_manager.get_settings()
+    content = "## 🔧 Allgemeine Einstellungen\n"
+    content += f"```yaml\n{yaml.dump(settings, default_flow_style=False, allow_unicode=True)}\n```\n"
+    content += "\n*(Bearbeitung direkt in config/settings.yaml möglich)*"
+    
+    # Simple action to trigger save (manual edit for now)
+    actions = [
+        cl.Action(id="config_save_settings", label="💾 Speichern (Manuell)", value="save", description="Änderungen in YAML speichern")
+    ]
+    await cl.Message(content=content, actions=actions, author="Config").send()
+
+
+async def render_llm_profiles_editor():
+    profiles = config_manager.get_llm_profiles()
+    content = "## 🧠 LLM Profile\n"
+    for name, data in profiles.get("profiles", {}).items():
+        content += f"### {name}\n"
+        content += f"- Modell: `{data.get('model', 'N/A')}`\n"
+        content += f"- URL: `{data.get('base_url', 'N/A')}`\n"
+        content += f"- Params: `{data.get('params', {})}`\n\n"
+    
+    actions = [
+        cl.Action(id="config_add_profile", label="➕ Profil hinzufügen", value="add", description="Neues LLM Profil erstellen")
+    ]
+    for name in profiles.get("profiles", {}).keys():
+        actions.append(cl.Action(id="config_delete_profile", label=f"🗑️ Löschen: {name}", value=name, description=f"Profil {name} löschen"))
+    
+    await cl.Message(content=content, actions=actions, author="Config").send()
+
+
+async def render_prompt_variants_editor():
+    variants = config_manager.get_prompt_variants()
+    content = "## 📜 Prompt Varianten\n"
+    content += f"**Standard:** `{variants.get('default_variant', 'N/A')}`\n\n"
+    for name, data in variants.get("variants", {}).items():
+        content += f"### {name}\n"
+        for role, path in data.items():
+            content += f"- {role}: `{path}`\n"
+        content += "\n"
+    
+    actions = [
+        cl.Action(id="config_add_variant", label="➕ Variante hinzufügen", value="add", description="Neue Prompt Variante erstellen")
+    ]
+    for name in variants.get("variants", {}).keys():
+        actions.append(cl.Action(id="config_delete_variant", label=f"🗑️ Löschen: {name}", value=name, description=f"Variante {name} löschen"))
+    
+    await cl.Message(content=content, actions=actions, author="Config").send()
+
+
+async def add_llm_profile_flow():
+    res = await cl.AskUserMessage(content="Profilname eingeben:").send()
+    if not res or not res.content.strip():
+        return
+    name = res.content.strip()
+    
+    res = await cl.AskUserMessage(content="Modellname (z.B. qwen2.5-7b):").send()
+    model = res.content.strip() if res else ""
+    
+    res = await cl.AskUserMessage(content="Base URL (z.B. http://localhost:1234/v1):").send()
+    base_url = res.content.strip() if res else ""
+    
+    res = await cl.AskUserMessage(content="API Key Env Var (z.B. LM_STUDIO_KEY):").send()
+    api_key_env = res.content.strip() if res else ""
+    
+    res = await cl.AskUserMessage(content="Temperatur (z.B. 0.4):").send()
+    try:
+        temp = float(res.content.strip()) if res else 0.4
+    except:
+        temp = 0.4
+    
+    profile_data = {
+        "model": model,
+        "base_url": base_url,
+        "api_key_env": api_key_env,
+        "params": {"temperature": temp, "top_p": 0.9, "seed": 42}
+    }
+    
+    config_manager.add_llm_profile(name, profile_data)
+    await cl.Message(content=f"✅ Profil '{name}' hinzugefügt.", author="System").send()
+    await render_llm_profiles_editor()
+
+
+async def add_prompt_variant_flow():
+    res = await cl.AskUserMessage(content="Variantenname eingeben (z.B. C):").send()
+    if not res or not res.content.strip():
+        return
+    name = res.content.strip()
+    
+    roles = ["strategist", "critic", "optimizer", "moderator"]
+    variant_data = {}
+    for role in roles:
+        res = await cl.AskUserMessage(content=f"Prompt-Datei für {role} (z.B. prompts/{role}_v3.md):").send()
+        if res and res.content.strip():
+            variant_data[role] = res.content.strip()
+    
+    if variant_data:
+        config_manager.add_prompt_variant(name, variant_data)
+        await cl.Message(content=f"✅ Variante '{name}' hinzugefügt.", author="System").send()
+    else:
+        await cl.Message(content="❌ Keine Rollen definiert. Abbruch.", author="System").send()
+    
+    await render_prompt_variants_editor()
 
 
 @cl.on_settings_update
