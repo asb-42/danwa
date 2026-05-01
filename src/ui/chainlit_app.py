@@ -34,26 +34,26 @@ async def start():
         [
             cl.input_widget.Select(
                 id="profile",
-                label="LLM-Profil",
+                label="LLM Profile",
                 values=list(PROFILES.keys()),
                 initial_value="local_lm_studio",
             ),
             cl.input_widget.Slider(
-                id="max_rounds", label="Max. Runden", min=1, max=5, step=1, initial=3
+                id="max_rounds", label="Max. Rounds", min=1, max=5, step=1, initial=3
             ),
             cl.input_widget.Slider(
                 id="threshold",
-                label="Konsens-Schwelle",
+                label="Consensus Threshold",
                 min=0.5,
                 max=1.0,
                 step=0.05,
                 initial=0.75,
             ),
             cl.input_widget.Checkbox(
-                id="enable_fact_check", label="Web-Validierung aktivieren", value=True
+                id="enable_fact_check", label="Enable Web Validation", value=True
             ),
             cl.input_widget.Checkbox(
-                id="enable_memory", label="Präzedenz-Speicher aktivieren", value=True
+                id="enable_memory", label="Enable Precedent Memory", value=True
             ),
         ]
     ).send()
@@ -74,7 +74,7 @@ async def start():
     cl.user_session.set("selected_document_id", None)
 
     projects = dms.list_projects()
-    project_items = {proj["name"]: proj["id"] for proj in projects} if projects else {"Keine Projekte": ""}
+    project_items = {proj["name"]: proj["id"] for proj in projects} if projects else {"No projects": ""}
     initial_project = None if projects else ""
 
     selected_project_id = cl.user_session.get("selected_project_id")
@@ -82,7 +82,7 @@ async def start():
         docs = dms.list_documents(selected_project_id)
         doc_items = {doc["filename"]: doc["id"] for doc in docs} if docs else {}
     else:
-        doc_items = {"Kein Dokument ausgewählt": ""}
+        doc_items = {"No document selected": ""}
 
     cl.user_session.set("settings", settings)
     cl.user_session.set("prompt_manager", pm)
@@ -92,42 +92,42 @@ async def start():
         [
             cl.input_widget.Select(
                 id="profile",
-                label="LLM-Profil",
+                label="LLM Profile",
                 values=list(PROFILES.keys()),
                 initial_value="local_lm_studio",
             ),
             cl.input_widget.Slider(
-                id="max_rounds", label="Max. Runden", min=1, max=5, step=1, initial=3
+                id="max_rounds", label="Max. Rounds", min=1, max=5, step=1, initial=3
             ),
             cl.input_widget.Slider(
                 id="threshold",
-                label="Konsens-Schwelle",
+                label="Consensus Threshold",
                 min=0.5,
                 max=1.0,
                 step=0.05,
                 initial=0.75,
             ),
             cl.input_widget.Checkbox(
-                id="enable_fact_check", label="Web-Validierung aktivieren", value=True
+                id="enable_fact_check", label="Enable Web Validation", value=True
             ),
             cl.input_widget.Checkbox(
-                id="enable_memory", label="Präzedenz-Speicher aktivieren", value=True
+                id="enable_memory", label="Enable Precedent Memory", value=True
             ),
             cl.input_widget.Select(
                 id="variant",
-                label="Prompt-Variante",
+                label="Prompt Variant",
                 values=variant_opts + ["auto"],
                 initial_value="auto",
             ),
             cl.input_widget.Select(
                 id="selected_project_id",
-                label="📁 Aktives Projekt",
+                label="📁 Active Project",
                 items=project_items,
                 initial_value=initial_project,
             ),
             cl.input_widget.Select(
                 id="selected_document_id",
-                label="📄 Aktives Dokument",
+                label="📄 Active Document",
                 items=doc_items,
                 initial_value="" if not selected_project_id else None,
             ),
@@ -138,14 +138,14 @@ async def start():
 
     # Welcome message with action buttons
     start_actions = [
-        _action("open_dash", "📊 Dashboard öffnen", "init", "Sitzungsverwaltung"),
+        _action("open_dash", "📊 Open Dashboard", "init", "Session Management"),
         _action("open_dms", "📁 DMS Dashboard", "dms_init", "Document Management System"),
-        _action("open_config", "⚙️ Konfiguration", "config_init", "App-Konfiguration verwalten"),
+        _action("open_config", "⚙️ Configuration", "config_init", "Manage App Configuration"),
     ]
     await cl.Message(
-        content="🤝 Multi-Agent Debatten-System bereit.\n\n"
-                "💡 **Tipp:** Gib einfach eine Frage oder ein Thema im Chat ein, um eine Debatte zu starten!\n"
-                "Nutze die Buttons unten für Dashboard, DMS und Konfiguration.",
+        content="🤝 Multi-Agent Debate System ready.\n\n"
+                "💡 **Tip:** Simply enter a question or topic in the chat to start a debate!\n"
+                "Use the buttons below for Dashboard, DMS and Configuration.",
         actions=start_actions,
         author="System",
     ).send()
@@ -171,7 +171,7 @@ async def main(message: cl.Message):
 
     if message.elements:
         await cl.Message(
-            content=f"📄 Verarbeite {len(message.elements)} Dokument(e)...",
+            content=f"📄 Processing {len(message.elements)} document(s)...",
             author="System",
         ).send()
         for elem in message.elements:
@@ -180,14 +180,14 @@ async def main(message: cl.Message):
                 {"name": elem.name, "text": doc["text"], "metadata": doc["metadata"]}
             )
 
-    # Kontext zusammenbauen
+    # Build context
     rag_context = cl.user_session.get("rag_context")
     if parsed_docs:
         doc_context = "\n\n".join(
             [
-                f"### Dokument: {d['name']}\n"
-                f"Metadaten: {json.dumps(d['metadata'], ensure_ascii=False)}\n"
-                f"Inhalt:\n{d['text']}"
+                f"### Document: {d['name']}\n"
+                f"Metadata: {json.dumps(d['metadata'], ensure_ascii=False)}\n"
+                f"Content:\n{d['text']}"
                 for d in parsed_docs
             ]
         )
@@ -195,7 +195,7 @@ async def main(message: cl.Message):
             combined = f"## Parsed Documents\n{doc_context}\n\n## RAG Context\n{rag_context}"
             context += f"\n\n{combined}"
         else:
-            context += f"\n\n[Analysierte Dokumente]\n{doc_context}"
+            context += f"\n\n[Analyzed Documents]\n{doc_context}"
     elif rag_context:
         context += f"\n\n## RAG Context\n{rag_context}"
 
@@ -204,7 +204,7 @@ async def main(message: cl.Message):
             content=f"🔄 {step}: {detail}", author="System", type="info"
         ).send()
 
-    with cl.Step(name="Debatte", type="run") as run_step:
+    with cl.Step(name="Debate", type="run") as run_step:
         state = await engine.run(
             context, progress_callback=progress, variant_override=variant
         )
@@ -213,7 +213,7 @@ async def main(message: cl.Message):
     engine.privacy.enforce_retention()
 
     await cl.Message(
-        content="🛡️ Datenschutz: PII wird in Traces maskiert. Externe Calls nur für SearXNG & konfigurierte LLMs.",
+        content="🛡️ Privacy: PII is masked in traces. External calls only for SearXNG & configured LLMs.",
         author="System",
         type="info",
     ).send()
@@ -223,7 +223,7 @@ async def main(message: cl.Message):
         if state.used_variant or variant
         else "`auto`"
     )
-    final_msg = f"## Ergebnis (Variante: {variant_info}, Konsens: {state.final_consensus:.2f})\n\n{state.output}"
+    final_msg = f"## Result (Variant: {variant_info}, Consensus: {state.final_consensus:.2f})\n\n{state.output}"
     await cl.Message(content=final_msg, author="Moderator").send()
 
     trace_data = engine.logger.get_session_log()
@@ -235,7 +235,7 @@ async def main(message: cl.Message):
         )
     ]
     await cl.Message(
-        content="📄 Vollständiger Audit-Trace:", elements=elements, author="System"
+        content="📄 Full Audit Trace:", elements=elements, author="System"
     ).send()
 
     gen = ReportGenerator()
@@ -243,7 +243,7 @@ async def main(message: cl.Message):
     report_path_pdf = await gen.generate(state, fmt="pdf")
 
     await cl.Message(
-        content="📥 Reports generiert:",
+        content="📥 Reports generated:",
         elements=[
             cl.File(
                 name=report_path_docx.name, path=str(report_path_docx), display="inline"
@@ -255,7 +255,7 @@ async def main(message: cl.Message):
         author="System",
     ).send()
 
-    # Session-Speicherung
+    # Save session
     trace_path = f"logs/{state.session_id}.jsonl"
     docx_path = str(report_path_docx)
     pdf_path = str(report_path_pdf)
@@ -341,18 +341,18 @@ async def handle_action(action: cl.Action):
         cl.user_session.set("dash_page", page)
         await render_dashboard(db, page, filt)
     elif name == "dash_cleanup":
-        await cl.Message(content="🔄 Bereinigung läuft...", author="System").send()
+        await cl.Message(content="🔄 Cleanup running...", author="System").send()
         from src.core.privacy import PrivacyGuard
 
         PrivacyGuard(retention_days=90).enforce_retention()
         deleted_db = db.cleanup_old_entries(days=90)
         await cl.Message(
-            content=f"✅ Bereinigung abgeschlossen. {deleted_db} DB-Einträge entfernt.",
+            content=f"✅ Cleanup complete. {deleted_db} DB entries removed.",
             author="System",
         ).send()
         await render_dashboard(db, 0, filt)
 
-    # Session-Aktionen
+    # Session actions
     elif name == "sess_trace":
         trace_file = Path("logs") / f"{value}.jsonl"
         if trace_file.exists():
@@ -366,7 +366,7 @@ async def handle_action(action: cl.Action):
                 author="Trace",
             ).send()
         else:
-            await cl.Message(content="⚠️ Trace-Datei nicht gefunden.").send()
+            await cl.Message(content="⚠️ Trace file not found.").send()
 
     elif name == "sess_delete":
         sid = value
@@ -375,7 +375,7 @@ async def handle_action(action: cl.Action):
         for f in Path("reports").glob(f"debate_{sid}*"):
             f.unlink(missing_ok=True)
         await cl.Message(
-            content=f"✅ Session `{sid[:8]}...` vollständig gelöscht.", author="System"
+            content=f"✅ Session `{sid[:8]}...` completely deleted.", author="System"
         ).send()
         await render_dashboard(db, page, filt)
 
@@ -393,7 +393,7 @@ async def handle_action(action: cl.Action):
             ).send()
         else:
             await cl.Message(
-                content="⚠️ Kein Report gefunden. Bitte erneut generieren."
+                content="⚠️ No report found. Please generate again."
             ).send()
 
     elif name == "open_dms":
@@ -424,9 +424,9 @@ async def handle_action(action: cl.Action):
     elif name == "config_delete_profile":
         profile_name = value
         if config_manager.delete_llm_profile(profile_name):
-            await cl.Message(content=f"✅ Profil '{profile_name}' gelöscht.", author="System").send()
+            await cl.Message(content=f"✅ Profile '{profile_name}' deleted.", author="System").send()
         else:
-            await cl.Message(content=f"❌ Profil '{profile_name}' nicht gefunden.", author="System").send()
+            await cl.Message(content=f"❌ Profile '{profile_name}' not found.", author="System").send()
         await render_llm_profiles_editor()
 
     elif name == "config_add_variant":
@@ -435,9 +435,9 @@ async def handle_action(action: cl.Action):
     elif name == "config_delete_variant":
         variant_name = value
         if config_manager.delete_prompt_variant(variant_name):
-            await cl.Message(content=f"✅ Variante '{variant_name}' gelöscht.", author="System").send()
+            await cl.Message(content=f"✅ Variant '{variant_name}' deleted.", author="System").send()
         else:
-            await cl.Message(content=f"❌ Variante '{variant_name}' nicht gefunden.", author="System").send()
+            await cl.Message(content=f"❌ Variant '{variant_name}' not found.", author="System").send()
         await render_prompt_variants_editor()
 
 
@@ -445,12 +445,12 @@ async def handle_action(action: cl.Action):
 
 async def render_config_menu():
     actions = [
-        _action("config_settings", "🔧 Allgemeine Einstellungen", "settings", "Search, Privacy, DMS"),
-        _action("config_llm_profiles", "🧠 LLM Profile", "llm", "LLM Endpoints & Params"),
-        _action("config_prompt_variants", "📜 Prompt Varianten", "prompts", "Prompt Zuweisungen"),
+        _action("config_settings", "🔧 General Settings", "settings", "Search, Privacy, DMS"),
+        _action("config_llm_profiles", "🧠 LLM Profiles", "llm", "LLM Endpoints & Params"),
+        _action("config_prompt_variants", "📜 Prompt Variants", "prompts", "Prompt Assignments"),
     ]
     await cl.Message(
-        content="## ⚙️ Konfigurationsmenü\nWähle einen Bereich:",
+        content="## ⚙️ Configuration Menu\nSelect a category:",
         actions=actions,
         author="Config",
     ).send()
@@ -458,38 +458,38 @@ async def render_config_menu():
 
 async def render_settings_editor():
     settings_data = config_manager.get_settings()
-    content = "## 🔧 Allgemeine Einstellungen\n"
+    content = "## 🔧 General Settings\n"
     content += f"```yaml\n{yaml.dump(settings_data, default_flow_style=False, allow_unicode=True)}\n```\n"
-    content += "\n*(Bearbeitung direkt in config/settings.yaml möglich)*"
+    content += "\n*(Editing directly in config/settings.yaml possible)*"
 
     actions = [
-        _action("config_save_settings", "💾 Speichern (Manuell)", "save", "Änderungen in YAML speichern"),
+        _action("config_save_settings", "💾 Save (Manual)", "save", "Save changes to YAML"),
     ]
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
 async def render_llm_profiles_editor():
     profiles = config_manager.get_llm_profiles()
-    content = "## 🧠 LLM Profile\n"
+    content = "## 🧠 LLM Profiles\n"
     for pname, data in profiles.get("profiles", {}).items():
         content += f"### {pname}\n"
-        content += f"- Modell: `{data.get('model', 'N/A')}`\n"
+        content += f"- Model: `{data.get('model', 'N/A')}`\n"
         content += f"- URL: `{data.get('base_url', 'N/A')}`\n"
         content += f"- Params: `{data.get('params', {})}`\n\n"
 
     actions = [
-        _action("config_add_profile", "➕ Profil hinzufügen", "add", "Neues LLM Profil erstellen"),
+        _action("config_add_profile", "➕ Add Profile", "add", "Create new LLM profile"),
     ]
     for pname in profiles.get("profiles", {}).keys():
-        actions.append(_action("config_delete_profile", f"🗑️ Löschen: {pname}", pname, f"Profil {pname} löschen"))
+        actions.append(_action("config_delete_profile", f"🗑️ Delete: {pname}", pname, f"Delete profile {pname}"))
 
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
 async def render_prompt_variants_editor():
     variants = config_manager.get_prompt_variants()
-    content = "## 📜 Prompt Varianten\n"
-    content += f"**Standard:** `{variants.get('default_variant', 'N/A')}`\n\n"
+    content = "## 📜 Prompt Variants\n"
+    content += f"**Default:** `{variants.get('default_variant', 'N/A')}`\n\n"
     for vname, data in variants.get("variants", {}).items():
         content += f"### {vname}\n"
         for role, path in data.items():
@@ -497,30 +497,30 @@ async def render_prompt_variants_editor():
         content += "\n"
 
     actions = [
-        _action("config_add_variant", "➕ Variante hinzufügen", "add", "Neue Prompt Variante erstellen"),
+        _action("config_add_variant", "➕ Add Variant", "add", "Create new prompt variant"),
     ]
     for vname in variants.get("variants", {}).keys():
-        actions.append(_action("config_delete_variant", f"🗑️ Löschen: {vname}", vname, f"Variante {vname} löschen"))
+        actions.append(_action("config_delete_variant", f"🗑️ Delete: {vname}", vname, f"Delete variant {vname}"))
 
     await cl.Message(content=content, actions=actions, author="Config").send()
 
 
 async def add_llm_profile_flow():
-    res = await cl.AskUserMessage(content="Profilname eingeben:").send()
+    res = await cl.AskUserMessage(content="Enter profile name:").send()
     if not res or not res.content.strip():
         return
     name = res.content.strip()
 
-    res = await cl.AskUserMessage(content="Modellname (z.B. qwen2.5-7b):").send()
+    res = await cl.AskUserMessage(content="Model name (e.g. qwen2.5-7b):").send()
     model = res.content.strip() if res else ""
 
-    res = await cl.AskUserMessage(content="Base URL (z.B. http://localhost:1234/v1):").send()
+    res = await cl.AskUserMessage(content="Base URL (e.g. http://localhost:1234/v1):").send()
     base_url = res.content.strip() if res else ""
 
-    res = await cl.AskUserMessage(content="API Key Env Var (z.B. LM_STUDIO_KEY):").send()
+    res = await cl.AskUserMessage(content="API Key Env Var (e.g. LM_STUDIO_KEY):").send()
     api_key_env = res.content.strip() if res else ""
 
-    res = await cl.AskUserMessage(content="Temperatur (z.B. 0.4):").send()
+    res = await cl.AskUserMessage(content="Temperature (e.g. 0.4):").send()
     try:
         temp = float(res.content.strip()) if res else 0.4
     except ValueError:
@@ -534,12 +534,12 @@ async def add_llm_profile_flow():
     }
 
     config_manager.add_llm_profile(name, profile_data)
-    await cl.Message(content=f"✅ Profil '{name}' hinzugefügt.", author="System").send()
+    await cl.Message(content=f"✅ Profile '{name}' added.", author="System").send()
     await render_llm_profiles_editor()
 
 
 async def add_prompt_variant_flow():
-    res = await cl.AskUserMessage(content="Variantenname eingeben (z.B. C):").send()
+    res = await cl.AskUserMessage(content="Enter variant name (e.g. C):").send()
     if not res or not res.content.strip():
         return
     name = res.content.strip()
@@ -547,15 +547,15 @@ async def add_prompt_variant_flow():
     roles = ["strategist", "critic", "optimizer", "moderator"]
     variant_data = {}
     for role in roles:
-        res = await cl.AskUserMessage(content=f"Prompt-Datei für {role} (z.B. prompts/{role}_v3.md):").send()
+        res = await cl.AskUserMessage(content=f"Prompt file for {role} (e.g. prompts/{role}_v3.md):").send()
         if res and res.content.strip():
             variant_data[role] = res.content.strip()
 
     if variant_data:
         config_manager.add_prompt_variant(name, variant_data)
-        await cl.Message(content=f"✅ Variante '{name}' hinzugefügt.", author="System").send()
+        await cl.Message(content=f"✅ Variant '{name}' added.", author="System").send()
     else:
-        await cl.Message(content="❌ Keine Rollen definiert. Abbruch.", author="System").send()
+        await cl.Message(content="❌ No roles defined. Cancelled.", author="System").send()
 
     await render_prompt_variants_editor()
 
@@ -569,8 +569,8 @@ async def on_settings_update(settings):
     cl.user_session.set("selected_project_id", selected_project_id)
     cl.user_session.set("selected_document_id", selected_document_id)
 
-    project_name = "Kein Projekt ausgewählt"
-    doc_name = "Kein Dokument ausgewählt"
+    project_name = "No project selected"
+    doc_name = "No document selected"
 
     if selected_project_id and dms:
         projects = dms.list_projects()
@@ -584,6 +584,6 @@ async def on_settings_update(settings):
                     doc_name = doc["filename"]
 
     await cl.Message(
-        content=f"📁 Aktives Projekt: {project_name} | 📄 Aktives Dokument: {doc_name}",
+        content=f"📁 Active Project: {project_name} | 📄 Active Document: {doc_name}",
         author="System",
     ).send()

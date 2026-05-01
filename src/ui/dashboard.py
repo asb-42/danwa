@@ -15,35 +15,35 @@ async def render_dashboard(db, page: int = 0, filter_high: bool = False):
     min_c = 0.8 if filter_high else None
     sessions = db.list_sessions(limit=10, offset=offset, min_consensus=min_c)
 
-    header = f"## 📊 Sitzungsverwaltung (Seite {page + 1})\n"
-    header += f"**Einträge:** {len(sessions)} | **Filter:** {'Konsens ≥ 0.80' if filter_high else 'Alle'}\n\n"
+    header = f"## 📊 Session Management (Page {page + 1})\n"
+    header += f"**Entries:** {len(sessions)} | **Filter:** {'Consensus ≥ 0.80' if filter_high else 'All'}\n\n"
 
     if not sessions:
         await cl.Message(
-            content=header + "📭 Keine Einträge gefunden.\n\n💡 Starte eine Debatte im Chat, um Einträge zu erstellen.",
+            content=header + "📭 No entries found.\n\n💡 Start a debate in the chat to create entries.",
             author="Dashboard",
         ).send()
         return
 
-    # Navigations-Actions
+    # Navigation actions
     nav_actions = [
-        _action("dash_filter", "🔍 Nur ≥0.8", "toggle", "Filter umschalten"),
-        _action("dash_page", "⬅️ Zurück", str(max(0, page - 1)), "Vorherige Seite"),
-        _action("dash_page", "➡️ Weiter", str(page + 1), "Nächste Seite"),
-        _action("dash_cleanup", "🗑️ Bereinigen", "run", "Löscht alte Sessions (>90T) & Files"),
+        _action("dash_filter", "🔍 Only ≥0.8", "toggle", "Toggle filter"),
+        _action("dash_page", "⬅️ Back", str(max(0, page - 1)), "Previous page"),
+        _action("dash_page", "➡️ Next", str(page + 1), "Next page"),
+        _action("dash_cleanup", "🗑️ Cleanup", "run", "Delete old sessions (>90d) & files"),
     ]
     await cl.Message(content=header, actions=nav_actions, author="Dashboard").send()
 
-    # Session-Karten
+    # Session cards
     for s in sessions:
         card = (
             f"**`{s['session_id'][:8]}...`** | `{s['created_at'][:16]}` | "
-            f"Konsens: **{s['consensus']:.2f}** | `{s['profile']}`\n"
+            f"Consensus: **{s['consensus']:.2f}** | `{s['profile']}`\n"
             f"`{s['context_preview'][:90]}...`\n"
         )
         actions = [
-            _action("sess_trace", "📄 Trace", s["session_id"], "JSON-Trace laden"),
-            _action("sess_delete", "🗑️ Löschen", s["session_id"], "Session & Files entfernen"),
-            _action("sess_report", "📥 Report", s["session_id"], "Bericht anzeigen"),
+            _action("sess_trace", "📄 Trace", s["session_id"], "Load JSON trace"),
+            _action("sess_delete", "🗑️ Delete", s["session_id"], "Remove session & files"),
+            _action("sess_report", "📥 Report", s["session_id"], "Show report"),
         ]
         await cl.Message(content=card, actions=actions, author=f"Session {s['session_id'][:6]}").send()
