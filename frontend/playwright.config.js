@@ -22,13 +22,26 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   projects: [
+    // -----------------------------------------------------------------------
+    // E2E + Contract tests — run on both browsers (exclude visual)
+    // -----------------------------------------------------------------------
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /visual\/.*\.visual\.spec\.js$/,
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      testIgnore: /visual\/.*\.visual\.spec\.js$/,
+    },
+    // -----------------------------------------------------------------------
+    // Visual regression — Chromium only (screenshots are browser-specific)
+    // -----------------------------------------------------------------------
+    {
+      name: 'visual-chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /visual\/.*\.visual\.spec\.js$/,
     },
   ],
   /* Start the backend before running tests (local dev) */
