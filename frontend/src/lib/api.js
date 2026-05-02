@@ -25,8 +25,10 @@ const ERROR_MAP = {
  * Translate a backend error message to the current UI locale.
  */
 export function translateBackendError(backendMessage) {
-  const key = ERROR_MAP[backendMessage] || 'common.error';
-  return i18n.t(key);
+  const key = ERROR_MAP[backendMessage];
+  if (key) return i18n.t(key);
+  // Return the actual backend message if no translation mapping exists
+  return backendMessage || i18n.t('common.error');
 }
 
 /**

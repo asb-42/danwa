@@ -48,6 +48,7 @@
 
   // --- Lifecycle ---
   onMount(async () => {
+    $error = null;  // Clear any stale error from previous views
     isLoading = true;
     try {
       const [llm, agents, variants] = await Promise.all([
