@@ -236,3 +236,5 @@ pnpm-debug.log*
 *.temp
 .DS_Store
 Thumbs.db
+# Allow archived files
+!docs/archive/
