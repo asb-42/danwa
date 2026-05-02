@@ -10,8 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.api.deps import get_settings
-from backend.api.routers import audit, debate, config, dms, sessions
-from backend.models.schemas import HealthResponse
+from backend.api.routers import audit, debate, config, dms, health, sessions
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -52,10 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
 
-    # --- Health check ---
-    @app.get("/health", response_model=HealthResponse, tags=["system"])
-    async def health() -> HealthResponse:
-        return HealthResponse(status="ok", version=settings.app_version)
+    app.include_router(health.router, prefix="/health", tags=["system"])
 
     # --- Static file serving (production mode) ---
     # Mount static assets first (more specific), then SPA fallback last
