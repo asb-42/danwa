@@ -203,6 +203,11 @@ target/
 
 # Node
 node_modules/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
 jspm_packages/
 .npm
 .yarn/

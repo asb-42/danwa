@@ -15,9 +15,9 @@
     const unsubscribe = debates.subscribe((d) => {
       stats = {
         totalDebates: d.length,
-        running: d.filter((deb) => deb.status === 'RUNNING').length,
-        completed: d.filter((deb) => deb.status === 'COMPLETED').length,
-        failed: d.filter((deb) => deb.status === 'FAILED').length,
+        running: d.filter((deb) => deb.status === 'running').length,
+        completed: d.filter((deb) => deb.status === 'completed').length,
+        failed: d.filter((deb) => deb.status === 'failed').length,
       };
     });
     return unsubscribe;
