@@ -51,15 +51,38 @@
     $error = null;  // Clear any stale error from previous views
     isLoading = true;
     try {
-      const [llm, agents, variants] = await Promise.all([
+      // Load each resource independently so one failure doesn't block others
+      const results = await Promise.allSettled([
         getLLMProfiles(),
         getAgentPersonas(),
         getPromptVariants(),
       ]);
-      llmProfiles = llm;
-      agentPersonas = agents;
-      promptVariants = variants;
+
+      const errors = [];
+      if (results[0].status === 'fulfilled') {
+        llmProfiles = results[0].value;
+      } else {
+        console.error('Failed to load LLM profiles:', results[0].reason);
+        errors.push(`LLM Profiles: ${results[0].reason?.message || results[0].reason}`);
+      }
+      if (results[1].status === 'fulfilled') {
+        agentPersonas = results[1].value;
+      } else {
+        console.error('Failed to load agent personas:', results[1].reason);
+        errors.push(`Agent Personas: ${results[1].reason?.message || results[1].reason}`);
+      }
+      if (results[2].status === 'fulfilled') {
+        promptVariants = results[2].value;
+      } else {
+        console.error('Failed to load prompt variants:', results[2].reason);
+        errors.push(`Prompt Variants: ${results[2].reason?.message || results[2].reason}`);
+      }
+
+      if (errors.length > 0) {
+        $error = errors.join('; ');
+      }
     } catch (e) {
+      console.error('ConfigView load error:', e);
       $error = e.message;
     } finally {
       isLoading = false;
