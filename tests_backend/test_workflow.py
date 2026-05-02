@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from debate_engine.workflow.debate_graph import build_graph
-from debate_engine.workflow.nodes import (
+from backend.workflow.debate_graph import build_graph
+from backend.workflow.nodes import (
     initialize_node,
     run_agent_node,
     check_consensus_node,

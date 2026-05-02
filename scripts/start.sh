@@ -20,7 +20,7 @@ PORT="${PORT:-7860}"
 cd "$PROJECT_DIR" || exit 1
 
 export PYTHONPATH="$PROJECT_DIR:$PYTHONPATH"
-nohup uv run uvicorn debate_engine.main:app --host 0.0.0.0 --port "$PORT" > "$LOG_FILE" 2>&1 &
+nohup uv run uvicorn backend.main:app --host 0.0.0.0 --port "$PORT" > "$LOG_FILE" 2>&1 &
 APP_PID=$!
 echo "$APP_PID" > "$PID_FILE"
 

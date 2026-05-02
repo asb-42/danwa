@@ -6,7 +6,7 @@ They will be replaced with real implementations in Sprint 3.
 
 from __future__ import annotations
 
-from debate_engine.workflow.state import (
+from backend.workflow.state import (
     AgentOutputState,
     DebateState,
     RoundDataState,

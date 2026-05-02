@@ -1,14 +1,14 @@
-"""Shared test fixtures for debate_engine tests."""
+"""Shared test fixtures for backend tests."""
 
 from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
 
-from debate_engine.api.deps import get_audit_service, get_settings
-from debate_engine.core.config import Settings
-from debate_engine.main import create_app
-from debate_engine.persistence.audit import AuditService
+from backend.api.deps import get_audit_service, get_settings
+from backend.core.config import Settings
+from backend.main import create_app
+from backend.persistence.audit import AuditService
 
 
 @pytest.fixture()

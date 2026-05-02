@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from debate_engine.api.deps import get_audit_service
-from debate_engine.persistence.audit import AuditService
+from backend.api.deps import get_audit_service
+from backend.persistence.audit import AuditService
 
 router = APIRouter()
 

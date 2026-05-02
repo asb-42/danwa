@@ -5,8 +5,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from debate_engine.core.config import settings
-from debate_engine.models.schemas import AuditEvent
+from backend.core.config import settings
+from backend.models.schemas import AuditEvent
 
 
 class AuditService:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from langgraph.graph import END, StateGraph
 
-from debate_engine.workflow.nodes import (
+from backend.workflow.nodes import (
     check_consensus_node,
     complete_node,
     initialize_node,
@@ -12,7 +12,7 @@ from debate_engine.workflow.nodes import (
     should_continue_agents,
     should_continue_rounds,
 )
-from debate_engine.workflow.state import DebateState
+from backend.workflow.state import DebateState
 
 
 def build_graph() -> StateGraph:

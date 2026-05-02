@@ -9,9 +9,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from debate_engine.api.deps import get_settings
-from debate_engine.api.routers import audit, debate, config, dms, sessions
-from debate_engine.models.schemas import HealthResponse
+from backend.api.deps import get_settings
+from backend.api.routers import audit, debate, config, dms, sessions
+from backend.models.schemas import HealthResponse
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"

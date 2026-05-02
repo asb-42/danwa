@@ -118,7 +118,7 @@ danwa/
 │   │   ├── rag_context_formatter.py # RAG context formatting
 │   │   ├── dms.py           # High-level DMS API
 │   │   └── dms_memory.py     # Manual RAG context
-├── debate_engine/               # FastAPI + LangGraph backend
+├── backend/                     # FastAPI + LangGraph backend
 │   ├── main.py                  # App factory (uvicorn entry point)
 │   ├── api/routers/             # debate, audit, config, dms, sessions
 │   ├── workflow/                # LangGraph state machine

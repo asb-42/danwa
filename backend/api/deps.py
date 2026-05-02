@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from debate_engine.core.config import Settings, settings
-from debate_engine.persistence.audit import AuditService
-from debate_engine.workflow.debate_graph import debate_graph
+from backend.core.config import Settings, settings
+from backend.persistence.audit import AuditService
+from backend.workflow.debate_graph import debate_graph
 
 
 @lru_cache

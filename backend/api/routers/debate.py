@@ -10,8 +10,8 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
-from debate_engine.api.deps import get_audit_service, get_debate_graph
-from debate_engine.models.schemas import (
+from backend.api.deps import get_audit_service, get_debate_graph
+from backend.models.schemas import (
     AuditEvent,
     DebateRequest,
     DebateResponse,
@@ -19,7 +19,7 @@ from debate_engine.models.schemas import (
     DebateStatusResponse,
     RoundData,
 )
-from debate_engine.persistence.audit import AuditService
+from backend.persistence.audit import AuditService
 
 router = APIRouter()
 
