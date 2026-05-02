@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from debate_engine.api.deps import get_settings
-from debate_engine.api.routers import audit, debate
+from debate_engine.api.routers import audit, debate, config, dms, sessions
 from debate_engine.models.schemas import HealthResponse
 
 # Path to built frontend assets (relative to project root)
@@ -48,6 +48,9 @@ def create_app() -> FastAPI:
     # --- Routers ---
     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
     app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
+    app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
+    app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
+    app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
 
     # --- Health check ---
     @app.get("/health", response_model=HealthResponse, tags=["system"])
