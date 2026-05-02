@@ -33,8 +33,8 @@
   aria-label="Document upload area"
 >
   <div class="space-y-2">
-    <p class="text-gray-400 dark:text-gray-500 font-medium">📄 Document Upload</p>
-    <p class="text-xs text-gray-400 dark:text-gray-500">
+    <p class="text-gray-500 dark:text-gray-400 font-medium">📄 Document Upload</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
       Drag & drop files here or click to browse — Sprint 3
     </p>
   </div>

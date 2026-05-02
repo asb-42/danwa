@@ -21,7 +21,7 @@
       {(score * 100).toFixed(0)}%
     </span>
   </div>
-  <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+  <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
     Threshold: {(threshold * 100).toFixed(0)}%
     {#if score >= threshold}
       <span class="text-green-600 dark:text-green-400 ml-1">✓ Reached</span>

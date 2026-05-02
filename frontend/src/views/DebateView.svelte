@@ -182,7 +182,7 @@
         </div>
       </div>
 
-      <div class="space-y-3">
+      <div class="space-y-3" aria-live="polite" aria-atomic="true">
         <div class="flex items-center space-x-3">
           <span class="text-sm text-gray-500 dark:text-gray-400">ID:</span>
           <code class="text-sm font-mono text-gray-800 dark:text-gray-200">{$currentDebate.debate_id}</code>
@@ -248,7 +248,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Debate Timeline</h3>
       <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-        <p class="text-gray-400 dark:text-gray-500">Debate timeline — coming in Sprint 4</p>
+        <p class="text-gray-500 dark:text-gray-400">Debate timeline — coming in Sprint 4</p>
       </div>
     </div>
   {/if}

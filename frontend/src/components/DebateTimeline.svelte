@@ -7,8 +7,8 @@
   {#if rounds.length === 0}
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
       <div class="text-center">
-        <p class="text-gray-400 dark:text-gray-500 font-medium">Debate Timeline</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Round-by-round view — Sprint 4</p>
+        <p class="text-gray-500 dark:text-gray-400 font-medium">Debate Timeline</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Round-by-round view — Sprint 4</p>
       </div>
     </div>
   {:else}

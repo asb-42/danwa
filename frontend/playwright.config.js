@@ -23,17 +23,17 @@ export default defineConfig({
   },
   projects: [
     // -----------------------------------------------------------------------
-    // E2E + Contract tests — run on both browsers (exclude visual)
+    // E2E + Contract tests — run on both browsers (exclude visual & a11y)
     // -----------------------------------------------------------------------
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /visual\/.*\.visual\.spec\.js$/,
+      testIgnore: /(visual|a11y)\/.*\.(visual|a11y)\.spec\.js$/,
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testIgnore: /visual\/.*\.visual\.spec\.js$/,
+      testIgnore: /(visual|a11y)\/.*\.(visual|a11y)\.spec\.js$/,
     },
     // -----------------------------------------------------------------------
     // Visual regression — Chromium only (screenshots are browser-specific)
@@ -42,6 +42,14 @@ export default defineConfig({
       name: 'visual-chromium',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /visual\/.*\.visual\.spec\.js$/,
+    },
+    // -----------------------------------------------------------------------
+    // Accessibility — Chromium only (axe-core is browser-independent)
+    // -----------------------------------------------------------------------
+    {
+      name: 'a11y-chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /a11y\/.*\.a11y\.spec\.js$/,
     },
   ],
   /* Start the backend before running tests (local dev) */

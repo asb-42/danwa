@@ -82,7 +82,7 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
     {#if $auditEvents.length === 0}
       <div class="flex items-center justify-center h-32">
-        <p class="text-gray-400 dark:text-gray-500">
+        <p class="text-gray-500 dark:text-gray-400">
           {$loading ? 'Loading events...' : 'No audit events found. Run a debate first.'}
         </p>
       </div>
@@ -91,13 +91,13 @@
         <table class="w-full text-sm" aria-label="Audit events">
           <thead>
             <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Round</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Agent</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Action</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Timestamp</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Model</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Tokens</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Round</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Agent</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Action</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Timestamp</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Model</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Tokens</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -132,7 +132,7 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Audit Visualization</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-400 dark:text-gray-500">Audit trail visualization — coming in Sprint 4</p>
+      <p class="text-gray-500 dark:text-gray-400">Audit trail visualization — coming in Sprint 4</p>
     </div>
   </div>
 </div>

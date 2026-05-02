@@ -65,7 +65,7 @@
         {$healthStatus.status}
       </p>
       {#if $healthStatus.version}
-        <p class="text-xs text-gray-400 mt-1">v{$healthStatus.version}</p>
+        <p class="text-xs text-gray-500 mt-1">v{$healthStatus.version}</p>
       {/if}
     </div>
 
@@ -89,7 +89,7 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Workflow Overview</h3>
     <div class="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-400 dark:text-gray-500">Workflow graph visualization — coming in Sprint 4</p>
+      <p class="text-gray-500 dark:text-gray-400">Workflow graph visualization — coming in Sprint 4</p>
     </div>
   </div>
 </div>

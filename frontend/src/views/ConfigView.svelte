@@ -116,21 +116,21 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">LLM Profiles</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-400 dark:text-gray-500">LLM profile management — coming in Sprint 3</p>
+      <p class="text-gray-500 dark:text-gray-400">LLM profile management — coming in Sprint 3</p>
     </div>
   </div>
 
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Agent Profiles</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-400 dark:text-gray-500">Agent profile management — coming in Sprint 3</p>
+      <p class="text-gray-500 dark:text-gray-400">Agent profile management — coming in Sprint 3</p>
     </div>
   </div>
 
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Prompt Variants</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-400 dark:text-gray-500">Prompt variant management — coming in Sprint 3</p>
+      <p class="text-gray-500 dark:text-gray-400">Prompt variant management — coming in Sprint 3</p>
     </div>
   </div>
 </div>

@@ -23,7 +23,7 @@
       <span class="text-sm text-gray-600 dark:text-gray-300">
         {$healthStatus.status}
         {#if $healthStatus.version}
-          <span class="text-xs text-gray-400">({$healthStatus.version})</span>
+          <span class="text-xs text-gray-500">({$healthStatus.version})</span>
         {/if}
       </span>
     </div>
