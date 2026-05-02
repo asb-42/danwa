@@ -19,90 +19,30 @@ def _get_value(action: cl.Action, default: str = "") -> str:
     return default
 
 
-# ── DMS State Machine ────────────────────────────────────────────────────
-
-def _set_dms_state(state: dict):
-    cl.user_session.set("dms_mode", state)
-
-
-def _get_dms_state() -> dict | None:
-    return cl.user_session.get("dms_mode")
-
-
-def _clear_dms_state():
-    cl.user_session.set("dms_mode", None)
+def _home_actions() -> list:
+    """Standard navigation buttons."""
+    return [
+        _action("go_home", "🏠 Home", "home", "Back to start"),
+        _action("open_dash", "📊 Dashboard", "init", "Session Management"),
+        _action("open_dms", "📁 DMS", "dms_init", "Document Management"),
+        _action("open_config", "⚙️ Config", "config_init", "Configuration"),
+    ]
 
 
-async def handle_input(message: cl.Message) -> bool:
-    """
-    Handle user input during a DMS flow.
-    Returns True if the message was consumed, False otherwise.
-    """
-    state = _get_dms_state()
-    if not state:
-        return False
-
-    flow = state.get("flow")
-    text = message.content.strip()
-
-    # Cancel
-    if text.lower() in ("cancel", "abort", "quit"):
-        _clear_dms_state()
-        await cl.Message(content="❌ Cancelled.").send()
-        await show_projects()
-        return True
-
-    # ── Create Project Flow ──
-    if flow == "create_project":
-        step = state.get("step")
-        data = state.get("data", {})
-
-        if step == "name":
-            if not text:
-                await cl.Message(content="⚠️ Name cannot be empty. Try again or type `cancel`.").send()
-                return True
-            data["name"] = text
-            state["step"] = "description"
-            state["data"] = data
-            _set_dms_state(state)
-            await cl.Message(
-                content=f"Project name: `{text}`\n\nEnter description (or leave empty):",
-            ).send()
-            return True
-
-        elif step == "description":
-            data["description"] = text
-            dms = cl.user_session.get("dms")
-            project_id = dms.create_project(data["name"], data["description"])
-            _clear_dms_state()
-            if project_id:
-                await cl.Message(content=f"✅ Created '{data['name']}' (ID: `{project_id[:8]}...`)").send()
-            else:
-                await cl.ErrorMessage(content=f"❌ Failed to create '{data['name']}'").send()
-            await show_projects()
-            return True
-
-    # ── Delete Project Flow ──
-    if flow == "delete_project":
-        if text.lower() == "yes":
-            dms = cl.user_session.get("dms")
-            success = dms.delete_project(state.get("project_id"))
-            _clear_dms_state()
-            if success:
-                await cl.Message(content="✅ Project deleted.").send()
-            else:
-                await cl.ErrorMessage(content="❌ Delete failed.").send()
-        else:
-            _clear_dms_state()
-            await cl.Message(content="Cancelled.").send()
-        await show_projects()
-        return True
-
-    # Fallback
-    _clear_dms_state()
-    await cl.Message(content="⚠️ Unknown DMS state. Returning to projects.").send()
-    await show_projects()
-    return True
+async def _ask(content: str, author: str = "DMS", timeout: int = 120) -> str | None:
+    """Ask user a question with inline input field. Returns response text or None on timeout/cancel."""
+    try:
+        res = await cl.AskUserMessage(
+            content=content,
+            author=author,
+            timeout=timeout,
+        ).send()
+        if res and isinstance(res, dict):
+            return res.get("output", "").strip()
+        return None
+    except Exception as e:
+        logger.debug(f"AskUserMessage failed: {e}")
+        return None
 
 
 # ── Entry Points ─────────────────────────────────────────────────────────
@@ -121,112 +61,157 @@ async def handle_action(action: cl.Action):
     """Handle DMS-specific actions. Called from main app's action handler."""
     dms = cl.user_session.get("dms")
     if not dms:
-        await cl.ErrorMessage(content="DMS not initialized.").send()
+        await cl.Message(
+            content="❌ DMS not initialized.",
+            author="DMS",
+            actions=_home_actions(),
+        ).send()
         return
 
     name = action.name
     value = _get_value(action)
 
-    if name == "create_project":
-        _set_dms_state({"flow": "create_project", "step": "name", "data": {}})
+    try:
+        if name == "create_project":
+            await _flow_create_project(dms)
+        elif name == "refresh_projects":
+            await show_projects()
+        elif name == "view_documents":
+            project_id = value
+            cl.user_session.set("selected_project_id", project_id)
+            await show_documents(project_id)
+        elif name == "delete_project":
+            await _flow_delete_project(dms, value)
+        elif name == "upload_document":
+            project_id = value
+            cl.user_session.set("selected_project_id", project_id)
+            await _flow_upload_document(dms, project_id)
+        elif name == "back_to_projects":
+            cl.user_session.set("selected_project_id", None)
+            await show_projects()
+        elif name == "confirm_delete":
+            success = dms.delete_project(value)
+            if success:
+                await cl.Message(content="✅ Project deleted.", author="DMS").send()
+            else:
+                await cl.Message(content="❌ Delete failed.", author="DMS").send()
+            await show_projects()
+        elif name == "add_to_rag":
+            doc_id = value
+            project_id = cl.user_session.get("selected_project_id")
+            if project_id:
+                dms.add_to_rag(project_id, doc_id)
+                await cl.Message(content="✅ Added to RAG.", author="DMS").send()
+                await show_documents(project_id)
+        elif name == "remove_from_rag":
+            doc_id = value
+            dms.remove_from_rag(doc_id)
+            await cl.Message(content="✅ Removed from RAG.", author="DMS").send()
+            project_id = cl.user_session.get("selected_project_id")
+            if project_id:
+                await show_documents(project_id)
+    except Exception as e:
+        logger.exception(f"DMS action error: {name}")
         await cl.Message(
-            content="## ➕ Create Project\n\nEnter project name:\n\n*(Type `cancel` to abort)*",
+            content=f"❌ **DMS Error:** {type(e).__name__}: {e}",
+            author="DMS",
+            actions=_home_actions(),
         ).send()
-    elif name == "refresh_projects":
-        await show_projects()
-    elif name == "view_documents":
-        project_id = value
-        cl.user_session.set("selected_project_id", project_id)
-        await show_documents(project_id)
-    elif name == "delete_project":
-        projects = dms.list_projects()
-        proj_name = next((p["name"] for p in projects if p["id"] == value), "Unknown")
-        _set_dms_state({"flow": "delete_project", "project_id": value})
+
+
+# ── DMS Flows (using AskUserMessage) ────────────────────────────────────
+
+async def _flow_create_project(dms: DMS):
+    """Multi-step flow to create a project using inline input fields."""
+    name = await _ask(
+        "## ➕ Create Project\n\n"
+        "**Step 1/2:** Enter project name:"
+    )
+    if not name:
+        await cl.Message(content="❌ Cancelled.", author="DMS", actions=_home_actions()).send()
+        return
+
+    description = await _ask(
+        f"Project: `{name}`\n\n"
+        "**Step 2/2:** Enter description (or leave empty):"
+    )
+    if description is None:
+        await cl.Message(content="❌ Cancelled.", author="DMS", actions=_home_actions()).send()
+        return
+
+    project_id = dms.create_project(name, description or "")
+    if project_id:
         await cl.Message(
-            content=f"⚠️ Type `yes` to delete project **{proj_name}**, or anything else to cancel:",
+            content=f"✅ Created project **{name}** (ID: `{project_id[:8]}...`)",
+            author="DMS",
         ).send()
-    elif name == "upload_document":
-        project_id = value
-        cl.user_session.set("selected_project_id", project_id)
-        await cl.Message(
-            content="Upload a document using the file uploader:",
-            elements=[
-                cl.FileUploader(
-                    name="doc_upload",
-                    label="Choose file",
-                    accept=[".pdf", ".docx", ".txt", ".md"],
-                    max_files=1,
-                )
-            ],
-        ).send()
-    elif name == "back_to_projects":
-        cl.user_session.set("selected_project_id", None)
-        await show_projects()
-    elif name == "confirm_delete":
-        success = dms.delete_project(value)
+    else:
+        await cl.Message(content=f"❌ Failed to create project **{name}**.", author="DMS").send()
+    await show_projects()
+
+
+async def _flow_delete_project(dms: DMS, project_id: str):
+    """Confirm and delete a project."""
+    projects = dms.list_projects()
+    proj_name = next((p["name"] for p in projects if p["id"] == project_id), "Unknown")
+
+    confirm = await _ask(
+        f"⚠️ **Delete Project: {proj_name}**\n\n"
+        f"Type `yes` to confirm deletion, or anything else to cancel:"
+    )
+    if confirm and confirm.lower() == "yes":
+        success = dms.delete_project(project_id)
         if success:
-            await cl.Message(content="✅ Project deleted.").send()
+            await cl.Message(content=f"✅ Project **{proj_name}** deleted.", author="DMS").send()
         else:
-            await cl.ErrorMessage(content="❌ Delete failed.").send()
-        await show_projects()
-    elif name == "add_to_rag":
-        doc_id = value
-        project_id = cl.user_session.get("selected_project_id")
-        if project_id:
-            dms.add_to_rag(project_id, doc_id)
-            await cl.Message(content="✅ Added to RAG.").send()
-            await show_documents(project_id)
-    elif name == "remove_from_rag":
-        doc_id = value
-        dms.remove_from_rag(doc_id)
-        await cl.Message(content="✅ Removed from RAG.").send()
-        project_id = cl.user_session.get("selected_project_id")
-        if project_id:
-            await show_documents(project_id)
+            await cl.Message(content=f"❌ Failed to delete **{proj_name}**.", author="DMS").send()
+    else:
+        await cl.Message(content="Cancelled.", author="DMS").send()
+    await show_projects()
 
 
-async def handle_file_upload(elements: List[cl.File]):
-    dms = cl.user_session.get("dms")
-    project_id = cl.user_session.get("selected_project_id")
+async def _flow_upload_document(dms: DMS, project_id: str):
+    """Upload a document using AskFileMessage (inline file picker)."""
+    try:
+        files = await cl.AskFileMessage(
+            content="## 📤 Upload Document\n\n"
+                    "Click below to select a file (PDF, DOCX, TXT, MD):",
+            accept=["application/pdf", "text/plain",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+            max_size_mb=50,
+            author="DMS",
+            timeout=300,
+        ).send()
 
-    if not project_id:
-        await cl.ErrorMessage(content="No project selected. Please select a project first.").send()
-        return
-    if not dms:
-        await cl.ErrorMessage(content="DMS not initialized.").send()
-        return
+        if not files:
+            await cl.Message(content="❌ No file selected.", author="DMS", actions=_home_actions()).send()
+            return
 
-    for file in elements:
-        msg = None
-        try:
-            msg = cl.Message(content=f"📤 Uploading {file.name}... (0%)")
+        for file in files:
+            msg = cl.Message(content=f"📤 Processing `{file.name}`...", author="DMS")
             await msg.send()
 
-            await asyncio.sleep(0.3)
-            msg.content = f"📤 Uploading {file.name}... (50%)"
-            await msg.update()
-
-            await asyncio.sleep(0.3)
-            msg.content = f"📤 Uploading {file.name}... (100%)"
-            await msg.update()
-
-            doc_id = dms.upload_document(project_id, file.path)
-
-            if doc_id:
-                msg.content = f"✅ Uploaded '{file.name}' (ID: {doc_id[:8]}...)"
-            else:
-                msg.content = f"❌ Failed to upload '{file.name}'"
-            await msg.update()
-
-        except Exception as e:
-            if msg:
-                msg.content = f"❌ Upload error: {str(e)}"
+            try:
+                doc_id = dms.upload_document(project_id, file.path)
+                if doc_id:
+                    msg.content = f"✅ Uploaded **{file.name}** (ID: `{doc_id[:8]}...`)"
+                else:
+                    msg.content = f"❌ Failed to upload **{file.name}**"
                 await msg.update()
-            else:
-                await cl.ErrorMessage(content=f"❌ Upload error: {str(e)}").send()
-            logger.error("Upload failed: %s", e)
+            except Exception as e:
+                msg.content = f"❌ Upload error for **{file.name}**: {e}"
+                await msg.update()
+                logger.error("Upload failed: %s", e)
 
-    await show_documents(project_id)
+        await show_documents(project_id)
+
+    except Exception as e:
+        logger.exception("File upload flow error")
+        await cl.Message(
+            content=f"❌ **Upload Error:** {type(e).__name__}: {e}",
+            author="DMS",
+            actions=_home_actions(),
+        ).send()
 
 
 # ── View Renderers ───────────────────────────────────────────────────────
@@ -236,10 +221,14 @@ async def show_projects():
     try:
         projects = dms.list_projects()
     except Exception as e:
-        await cl.ErrorMessage(content=f"❌ Failed to list projects: {str(e)}").send()
+        await cl.Message(
+            content=f"❌ Failed to list projects: {e}",
+            author="DMS",
+            actions=_home_actions(),
+        ).send()
         return
 
-    content = "## 📁 Projects\n" if projects else "📭 No projects found."
+    content = "## 📁 Projects\n" if projects else "📭 No projects found.\n\nCreate a project to get started."
     for proj in projects:
         content += f"- **{proj['name']}** (ID: `{proj['id'][:8]}...`): {proj.get('description', '')}\n"
 
@@ -250,8 +239,9 @@ async def show_projects():
     for proj in projects:
         actions.append(_action("view_documents", f"📄 Docs: {proj['name']}", proj["id"], f"View documents in {proj['name']}"))
         actions.append(_action("delete_project", f"🗑️ Delete: {proj['name']}", proj["id"], f"Delete {proj['name']}"))
+    actions.extend(_home_actions())
 
-    await cl.Message(content=content, actions=actions).send()
+    await cl.Message(content=content, actions=actions, author="DMS").send()
 
 
 async def show_documents(project_id: str):
@@ -263,10 +253,14 @@ async def show_documents(project_id: str):
         manual_rag_docs = dms.list_manual_rag_documents()
         rag_chunks = dms.get_manual_rag_context(k=10)
     except Exception as e:
-        await cl.ErrorMessage(content=f"❌ Failed to load documents: {str(e)}").send()
+        await cl.Message(
+            content=f"❌ Failed to load documents: {e}",
+            author="DMS",
+            actions=_home_actions(),
+        ).send()
         return
 
-    content = f"## 📄 Documents in {proj_name}\n" if docs else f"📭 No documents in {proj_name}."
+    content = f"## 📄 Documents in {proj_name}\n" if docs else f"📭 No documents in **{proj_name}**.\n\nUpload a document to get started."
     for doc in docs:
         content += f"- **{doc['filename']}** (ID: `{doc['id'][:8]}...`)\n"
 
@@ -282,7 +276,7 @@ async def show_documents(project_id: str):
 
     actions = [
         _action("upload_document", "📤 Upload Document", project_id, "Upload a document"),
-        _action("back_to_projects", "🔙 Back", "back", "Back to projects"),
+        _action("back_to_projects", "🔙 Back to Projects", "back", "Back to projects"),
     ]
     for doc in docs:
         doc_id = doc["id"]
@@ -294,5 +288,6 @@ async def show_documents(project_id: str):
             actions.append(
                 _action("add_to_rag", f"➕ Add {doc['filename']} to RAG", doc_id, "Add to RAG")
             )
+    actions.extend(_home_actions())
 
-    await cl.Message(content=content, actions=actions, elements=elements).send()
+    await cl.Message(content=content, actions=actions, elements=elements, author="DMS").send()

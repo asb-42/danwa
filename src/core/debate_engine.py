@@ -266,7 +266,10 @@ class DebateEngine:
 
             # Handle moderator consensus
             moderator_agents = [a for a in round_data["agents"] if a["role"] == "moderator"]
-            if moderator_agents:
+            if len(agent_roles) == 1:
+                # Single-agent (chatbot) mode — always consensus after first round
+                consensus = 1.0
+            elif moderator_agents:
                 try:
                     consensus = float(moderator_agents[-1]["content"].strip().split()[0])
                 except Exception:

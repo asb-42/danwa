@@ -35,8 +35,19 @@ class LLMRouter:
                 f"Available profiles: {available}"
             )
         profile = profiles[profile_name].copy()
-        if profile.get("api_key_env") and profile["api_key_env"] in os.environ:
-            profile["api_key"] = os.environ[profile["api_key_env"]]
+        # Resolve api_key from environment variable, with fallback
+        api_key_env = profile.get("api_key_env", "")
+        if api_key_env and api_key_env in os.environ:
+            profile["api_key"] = os.environ[api_key_env]
+        elif "api_key" not in profile:
+            # No env var set and no hardcoded key — use empty string
+            # (works for local LLMs like LM Studio that don't need auth)
+            profile["api_key"] = ""
+        # Auto-prefix model with 'openai/' for LiteLLM if no provider prefix
+        # and a custom base_url is set (e.g. LM Studio, Ollama, vLLM)
+        model = profile.get("model", "")
+        if "/" not in model and profile.get("base_url"):
+            profile["model"] = f"openai/{model}"
         return profile
 
     def set_role_profile(self, role: str, profile_name: str):
