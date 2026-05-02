@@ -36,7 +36,11 @@ export async function startDebateViaAPI(request, debateId) {
  * Wait for the frontend to be fully loaded (Svelte app mounted).
  */
 export async function waitForAppLoad(page) {
-  await page.goto('/');
+  // Navigate with English locale so existing tests match English UI text.
+  // i18n tests use their own fixture with explicit locale control.
+  await page.goto('/?lang=en');
   // Wait for the Svelte app to mount and render the sidebar
   await page.waitForSelector('nav[aria-label="Main navigation"]', { timeout: 10000 });
+  // Wait for i18n to finish loading English translations
+  await page.waitForFunction(() => window.__locale === 'en', { timeout: 5000 });
 }

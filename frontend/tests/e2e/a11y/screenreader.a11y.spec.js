@@ -46,6 +46,9 @@ test.describe('Screen Reader Announcements', () => {
     await page.fill('#case-text', 'Loading state test');
     await page.click('button[type="submit"]:has-text("Create Debate")');
 
+    // Wait for the debate to be created and the status card to render
+    await expect(page.locator('text=Current Debate')).toBeVisible({ timeout: 10000 });
+
     // Either aria-busy or aria-live announcement should exist
     const liveRegion = page.locator('[aria-live]');
     const liveCount = await liveRegion.count();

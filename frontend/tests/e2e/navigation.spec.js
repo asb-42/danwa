@@ -56,14 +56,16 @@ test.describe('Navigation & Hash Router', () => {
   });
 
   test('direct hash URL navigates to correct view', async ({ page }) => {
-    await page.goto('/#/debate');
+    await page.goto('/?lang=en#/debate');
     await page.waitForSelector('nav[aria-label="Main navigation"]', { timeout: 10000 });
+    await page.waitForFunction(() => window.__locale === 'en', { timeout: 5000 });
     await expect(page.locator('h2')).toContainText('Debate');
   });
 
   test('unknown hash falls back to dashboard', async ({ page }) => {
-    await page.goto('/#/nonexistent');
+    await page.goto('/?lang=en#/nonexistent');
     await page.waitForSelector('nav[aria-label="Main navigation"]', { timeout: 10000 });
+    await page.waitForFunction(() => window.__locale === 'en', { timeout: 5000 });
     await expect(page.locator('h2')).toContainText('Dashboard');
   });
 });

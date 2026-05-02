@@ -2,13 +2,22 @@
   import { onMount } from 'svelte';
   import { auditEvents, currentDebate, loading, error } from '../lib/stores.js';
   import { getAuditEvents } from '../lib/api.js';
+  import { i18n, formatDate } from '../lib/i18n/index.js';
+
+  $: t = (key, params = {}) => {
+    let text = $i18n[key] || key;
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    });
+    return text;
+  };
 
   let debateIdInput = '';
 
   async function loadAuditEvents() {
     const id = debateIdInput.trim() || $currentDebate?.debate_id;
     if (!id) {
-      $error = 'Please enter a debate ID or create a debate first';
+      $error = t('audit.enterDebateId');
       return;
     }
 
@@ -36,12 +45,12 @@
 
   function formatTimestamp(ts) {
     if (!ts) return '—';
-    return new Date(ts).toLocaleString();
+    return formatDate(ts, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 </script>
 
 <div class="space-y-6">
-  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Audit Trail</h2>
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('audit.title')}</h2>
 
   {#if $error}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300" role="alert">
@@ -54,7 +63,7 @@
     <form on:submit|preventDefault={loadAuditEvents} class="flex items-end space-x-4">
       <div class="flex-1">
         <label for="debate-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Debate ID
+          {t('audit.debateId')}
         </label>
         <input
           id="debate-id"
@@ -64,7 +73,7 @@
                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                  font-mono text-sm"
-          placeholder="Enter debate ID..."
+          placeholder={t('audit.debateIdPlaceholder')}
         />
       </div>
       <button
@@ -73,7 +82,7 @@
                disabled:opacity-50"
         disabled={$loading}
       >
-        {$loading ? 'Loading...' : 'Load Events'}
+        {$loading ? t('audit.loading') : t('audit.loadEvents')}
       </button>
     </form>
   </div>
@@ -83,21 +92,21 @@
     {#if $auditEvents.length === 0}
       <div class="flex items-center justify-center h-32">
         <p class="text-gray-500 dark:text-gray-400">
-          {$loading ? 'Loading events...' : 'No audit events found. Run a debate first.'}
+          {$loading ? t('audit.loadingEvents') : t('audit.noEvents')}
         </p>
       </div>
     {:else}
       <div class="overflow-x-auto">
-        <table class="w-full text-sm" aria-label="Audit events">
+        <table class="w-full text-sm" aria-label={t('audit.title')}>
           <thead>
             <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
-              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Round</th>
-              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Agent</th>
-              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Action</th>
-              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Timestamp</th>
-              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Model</th>
-              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Tokens</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.round')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.agent')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.action')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.timestamp')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.model')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.tokens')}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -130,9 +139,9 @@
 
   <!-- Placeholder: Audit trail visualization -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Audit Visualization</h3>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('audit.visualizationTitle')}</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">Audit trail visualization — coming in Sprint 4</p>
+      <p class="text-gray-500 dark:text-gray-400">{t('audit.visualizationPlaceholder')}</p>
     </div>
   </div>
 </div>

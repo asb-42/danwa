@@ -1,5 +1,15 @@
 <script>
   import { healthStatus } from '../lib/stores.js';
+  import { i18n } from '../lib/i18n/index.js';
+  import LanguageSwitcher from './LanguageSwitcher.svelte';
+
+  $: t = (key, params = {}) => {
+    let text = $i18n[key] || key;
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    });
+    return text;
+  };
 
   $: statusColor = $healthStatus.status === 'ok'
     ? 'bg-green-500'
@@ -14,6 +24,9 @@
   </h1>
 
   <div class="flex items-center space-x-4">
+    <!-- Language switcher -->
+    <LanguageSwitcher />
+
     <!-- Health indicator -->
     <div class="flex items-center space-x-2" aria-label="Backend status: {$healthStatus.status}">
       <span class="relative flex h-3 w-3">

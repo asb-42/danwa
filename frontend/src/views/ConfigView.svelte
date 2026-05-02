@@ -1,5 +1,14 @@
 <script>
   import { loading, error } from '../lib/stores.js';
+  import { i18n } from '../lib/i18n/index.js';
+
+  $: t = (key, params = {}) => {
+    let text = $i18n[key] || key;
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    });
+    return text;
+  };
 
   // Placeholder config — will be populated from API in Sprint 3
   let config = {
@@ -19,7 +28,7 @@
 </script>
 
 <div class="space-y-6">
-  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Configuration</h2>
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('config.title')}</h2>
 
   {#if $error}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300" role="alert">
@@ -29,19 +38,19 @@
 
   {#if saved}
     <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300" role="status">
-      Configuration saved (placeholder — backend integration in Sprint 3)
+      {t('config.saved')}
     </div>
   {/if}
 
   <!-- Debate defaults -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Debate Defaults</h3>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('config.debateDefaults')}</h3>
 
     <form on:submit|preventDefault={handleSave} class="space-y-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="cfg-rounds" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Default Max Rounds
+            {t('config.defaultMaxRounds')}
           </label>
           <input
             id="cfg-rounds"
@@ -57,7 +66,7 @@
 
         <div>
           <label for="cfg-threshold" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Default Consensus Threshold
+            {t('config.defaultConsensusThreshold')}
           </label>
           <input
             id="cfg-threshold"
@@ -76,7 +85,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="cfg-llm" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            LLM Profile
+            {t('config.llmProfile')}
           </label>
           <input
             id="cfg-llm"
@@ -90,7 +99,7 @@
 
         <div>
           <label for="cfg-agent" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Agent Profile
+            {t('config.agentProfile')}
           </label>
           <input
             id="cfg-agent"
@@ -107,30 +116,30 @@
         type="submit"
         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
       >
-        Save Configuration
+        {t('config.saveButton')}
       </button>
     </form>
   </div>
 
   <!-- Placeholder sections -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">LLM Profiles</h3>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('config.llmProfiles')}</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">LLM profile management — coming in Sprint 3</p>
+      <p class="text-gray-500 dark:text-gray-400">{t('config.llmProfilesPlaceholder')}</p>
     </div>
   </div>
 
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Agent Profiles</h3>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('config.agentProfiles')}</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">Agent profile management — coming in Sprint 3</p>
+      <p class="text-gray-500 dark:text-gray-400">{t('config.agentProfilesPlaceholder')}</p>
     </div>
   </div>
 
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Prompt Variants</h3>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('config.promptVariants')}</h3>
     <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">Prompt variant management — coming in Sprint 3</p>
+      <p class="text-gray-500 dark:text-gray-400">{t('config.promptVariantsPlaceholder')}</p>
     </div>
   </div>
 </div>

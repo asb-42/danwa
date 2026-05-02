@@ -2,6 +2,15 @@
   import { onMount } from 'svelte';
   import { healthStatus, debates, loading, error } from '../lib/stores.js';
   import { getHealth } from '../lib/api.js';
+  import { i18n, formatNumber } from '../lib/i18n/index.js';
+
+  $: t = (key, params = {}) => {
+    let text = $i18n[key] || key;
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    });
+    return text;
+  };
 
   let stats = {
     totalDebates: 0,
@@ -40,13 +49,13 @@
 
 <div class="space-y-6">
   <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.title')}</h2>
     <button
       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
       on:click={refreshHealth}
       disabled={$loading}
     >
-      {$loading ? 'Checking...' : 'Refresh Health'}
+      {$loading ? t('dashboard.checking') : t('dashboard.refreshHealth')}
     </button>
   </div>
 
@@ -59,7 +68,7 @@
   <!-- Stats cards -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Backend Status</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.backendStatus')}</p>
       <p class="mt-1 text-2xl font-semibold
         {$healthStatus.status === 'ok' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
         {$healthStatus.status}
@@ -70,26 +79,26 @@
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Total Debates</p>
-      <p class="mt-1 text-2xl font-semibold text-gray-800 dark:text-white">{stats.totalDebates}</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.totalDebates')}</p>
+      <p class="mt-1 text-2xl font-semibold text-gray-800 dark:text-white">{formatNumber(stats.totalDebates)}</p>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Running</p>
-      <p class="mt-1 text-2xl font-semibold text-blue-600 dark:text-blue-400">{stats.running}</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.running')}</p>
+      <p class="mt-1 text-2xl font-semibold text-blue-600 dark:text-blue-400">{formatNumber(stats.running)}</p>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Completed</p>
-      <p class="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{stats.completed}</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.completed')}</p>
+      <p class="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{formatNumber(stats.completed)}</p>
     </div>
   </div>
 
   <!-- Placeholder for future workflow graph -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Workflow Overview</h3>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.workflowTitle')}</h3>
     <div class="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">Workflow graph visualization — coming in Sprint 4</p>
+      <p class="text-gray-500 dark:text-gray-400">{t('dashboard.workflowPlaceholder')}</p>
     </div>
   </div>
 </div>

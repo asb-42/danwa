@@ -56,9 +56,11 @@ test.describe('Keyboard Navigation', () => {
     // Verify we're on debate view
     await expect(page.locator('h2:has-text("Debate")')).toBeVisible();
 
-    // Tab to case-text textarea
+    // Tab through remaining sidebar items and header language switcher
     await page.keyboard.press('Tab'); // Audit button
     await page.keyboard.press('Tab'); // Config button
+    await page.keyboard.press('Tab'); // DE button (LanguageSwitcher)
+    await page.keyboard.press('Tab'); // EN button (LanguageSwitcher)
     await page.keyboard.press('Tab'); // case-text textarea
 
     const focused = await page.evaluate(() => document.activeElement?.id);

@@ -3,6 +3,7 @@
   import { route } from './lib/stores.js';
   import { getHealth } from './lib/api.js';
   import { healthStatus } from './lib/stores.js';
+  import { i18n } from './lib/i18n/index.js';
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
   import DebateView from './views/DebateView.svelte';
@@ -29,6 +30,13 @@
       $route = parseHash();
     };
     window.addEventListener('hashchange', onHashChange);
+
+    // Initialize i18n from URL param, localStorage, or default
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlLang = urlParams.get('lang');
+    const storedLang = localStorage.getItem('locale');
+    const initialLang = urlLang || storedLang || 'de';
+    i18n.setLocale(initialLang);
 
     // Health check on mount
     getHealth()

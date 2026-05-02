@@ -15,7 +15,10 @@
     "test:visual": "npx playwright test tests/e2e/visual/",
     "test:a11y": "npx playwright test tests/e2e/a11y/",
     "test:a11y:dashboard": "npx playwright test tests/e2e/a11y/dashboard.a11y.spec.js",
-    "test:a11y:keyboard": "npx playwright test tests/e2e/a11y/keyboard.a11y.spec.js"
+    "test:a11y:keyboard": "npx playwright test tests/e2e/a11y/keyboard.a11y.spec.js",
+    "test:i18n": "npx playwright test tests/e2e/i18n/",
+    "test:i18n:de": "npx playwright test tests/e2e/i18n/ --project=i18n-chromium --grep 'German|de'",
+    "test:i18n:en": "npx playwright test tests/e2e/i18n/ --project=i18n-chromium --grep 'English|en'"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",

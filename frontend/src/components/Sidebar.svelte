@@ -1,12 +1,22 @@
 <script>
+  import { i18n } from '../lib/i18n/index.js';
+
   export let navigate;
   export let currentRoute;
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'debate', label: 'Debate', icon: '💬' },
-    { id: 'audit', label: 'Audit Trail', icon: '📋' },
-    { id: 'config', label: 'Config', icon: '⚙️' },
+  $: t = (key, params = {}) => {
+    let text = $i18n[key] || key;
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    });
+    return text;
+  };
+
+  $: navItems = [
+    { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
+    { id: 'debate', label: t('nav.debate'), icon: '💬' },
+    { id: 'audit', label: t('nav.audit'), icon: '📋' },
+    { id: 'config', label: t('nav.config'), icon: '⚙️' },
   ];
 </script>
 

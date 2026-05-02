@@ -23,17 +23,17 @@ export default defineConfig({
   },
   projects: [
     // -----------------------------------------------------------------------
-    // E2E + Contract tests — run on both browsers (exclude visual & a11y)
+    // E2E + Contract tests — run on both browsers (exclude visual, a11y, i18n)
     // -----------------------------------------------------------------------
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /(visual|a11y)\/.*\.(visual|a11y)\.spec\.js$/,
+      testIgnore: /\/(visual|a11y|i18n)\//,
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testIgnore: /(visual|a11y)\/.*\.(visual|a11y)\.spec\.js$/,
+      testIgnore: /\/(visual|a11y|i18n)\//,
     },
     // -----------------------------------------------------------------------
     // Visual regression — Chromium only (screenshots are browser-specific)
@@ -50,6 +50,14 @@ export default defineConfig({
       name: 'a11y-chromium',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /a11y\/.*\.a11y\.spec\.js$/,
+    },
+    // -----------------------------------------------------------------------
+    // i18n — Chromium only (locale formatting is browser-independent)
+    // -----------------------------------------------------------------------
+    {
+      name: 'i18n-chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /i18n\/.*\.spec\.js$/,
     },
   ],
   /* Start the backend before running tests (local dev) */
