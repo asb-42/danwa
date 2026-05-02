@@ -3,8 +3,8 @@ import chainlit as cl
 import logging
 from typing import List
 from src.dms.dms import DMS
-
 logger = logging.getLogger(__name__)
+
 
 
 def _action(name: str, label: str, value: str = "", tooltip: str = "") -> cl.Action:
@@ -32,16 +32,25 @@ def _home_actions() -> list:
 async def _ask(content: str, author: str = "DMS", timeout: int = 120) -> str | None:
     """Ask user a question with inline input field. Returns response text or None on timeout/cancel."""
     try:
+        logger.info(f"DMS AskUserMessage: sending prompt (author={author})")
         res = await cl.AskUserMessage(
             content=content,
             author=author,
             timeout=timeout,
         ).send()
-        if res and isinstance(res, dict):
-            return res.get("output", "").strip()
+        logger.info(f"DMS AskUserMessage: got response type={type(res)}, value={res!r}")
+        if res is None:
+            logger.warning("DMS AskUserMessage returned None (timeout or cancel)")
+            return None
+        if isinstance(res, dict):
+            output = res.get("output", "").strip()
+            return output if output else None
+        output = getattr(res, "output", None)
+        if output:
+            return str(output).strip()
         return None
     except Exception as e:
-        logger.debug(f"AskUserMessage failed: {e}")
+        logger.warning(f"DMS AskUserMessage failed: {type(e).__name__}: {e}", exc_info=True)
         return None
 
 
@@ -73,7 +82,7 @@ async def handle_action(action: cl.Action):
 
     try:
         if name == "create_project":
-            await _flow_create_project(dms)
+            asyncio.create_task(_flow_create_project(dms))
         elif name == "refresh_projects":
             await show_projects()
         elif name == "view_documents":
@@ -81,11 +90,11 @@ async def handle_action(action: cl.Action):
             cl.user_session.set("selected_project_id", project_id)
             await show_documents(project_id)
         elif name == "delete_project":
-            await _flow_delete_project(dms, value)
+            asyncio.create_task(_flow_delete_project(dms, value))
         elif name == "upload_document":
             project_id = value
             cl.user_session.set("selected_project_id", project_id)
-            await _flow_upload_document(dms, project_id)
+            asyncio.create_task(_flow_upload_document(dms, project_id))
         elif name == "back_to_projects":
             cl.user_session.set("selected_project_id", None)
             await show_projects()

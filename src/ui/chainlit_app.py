@@ -1,3 +1,4 @@
+import asyncio
 import chainlit as cl
 import yaml
 import json
@@ -50,16 +51,28 @@ def _home_actions() -> list:
 async def _ask(content: str, author: str = "Config", timeout: int = 120) -> str | None:
     """Ask user a question with inline input field. Returns response text or None on timeout/cancel."""
     try:
+        logger.info(f"AskUserMessage: sending prompt (author={author})")
         res = await cl.AskUserMessage(
             content=content,
             author=author,
             timeout=timeout,
         ).send()
-        if res and isinstance(res, dict):
-            return res.get("output", "").strip()
+        logger.info(f"AskUserMessage: got response type={type(res)}, value={res!r}")
+        if res is None:
+            logger.warning("AskUserMessage returned None (timeout or cancel)")
+            return None
+        if isinstance(res, dict):
+            output = res.get("output", "").strip()
+            logger.info(f"AskUserMessage: output='{output}'")
+            return output if output else None
+        # Handle StepDict-like objects
+        output = getattr(res, "output", None)
+        if output:
+            return str(output).strip()
+        logger.warning(f"AskUserMessage: unexpected response format: {res}")
         return None
     except Exception as e:
-        logger.debug(f"AskUserMessage failed: {e}")
+        logger.warning(f"AskUserMessage failed: {type(e).__name__}: {e}", exc_info=True)
         return None
 
 
@@ -524,7 +537,7 @@ async def handle_action(action: cl.Action):
             ).send()
 
         elif name == "config_add_profile":
-            await _flow_add_llm_profile()
+            asyncio.create_task(_flow_add_llm_profile())
 
         elif name == "config_delete_profile":
             profile_name = value
@@ -535,7 +548,7 @@ async def handle_action(action: cl.Action):
             await render_llm_profiles_editor()
 
         elif name == "config_add_variant":
-            await _flow_add_prompt_variant()
+            asyncio.create_task(_flow_add_prompt_variant())
 
         elif name == "config_delete_variant":
             variant_name = value
@@ -563,7 +576,7 @@ async def handle_action(action: cl.Action):
             await render_agent_profiles_editor()
 
         elif name == "config_add_agent_profile":
-            await _flow_add_agent_profile()
+            asyncio.create_task(_flow_add_agent_profile())
 
         elif name == "config_delete_agent_profile":
             profile_name = value
@@ -574,7 +587,7 @@ async def handle_action(action: cl.Action):
             await render_agent_profiles_editor()
 
         elif name == "config_edit_agent_profile":
-            await _flow_edit_agent_profile(value)
+            asyncio.create_task(_flow_edit_agent_profile(value))
 
         elif name == "config_set_default_agent_profile":
             if config_manager.set_default_agent_profile(value):
