@@ -68,14 +68,15 @@ The DMS module provides project-wise document management with advanced retrieval
 - **RAG (Retrieval-Augmented Generation) Pipeline** - Enhance debates with relevant document context
 - **Hybrid Retrieval** - Combine BM25 keyword search, vector similarity, and re-ranking for optimal results
 - **Separate ChromaDB Collection** - Isolated vector storage for document embeddings
-- **Integration** - Seamless integration with Chainlit UI and core debate engine
+- **Integration** - Seamless integration with FastAPI/Svelte UI and core debate engine
 
 ## Technology Stack
 
 | Component | Technology |
 |-----------|-------------|
 | Language | Python 3.11+ |
-| UI Framework | [Chainlit](https://chainlit.io) |
+| UI Framework | [Svelte 5](https://svelte.dev) + [Tailwind CSS](https://tailwindcss.com) |
+| Backend Framework | [FastAPI](https://fastapi.tiangolo.com) + [LangGraph](https://langchain-ai.github.io/langgraph/) |
 | LLM Integration | [LiteLLM](https://litellm.ai) |
 | Vector Database | [ChromaDB](https://www.trychroma.com) |
 | Web Search | SearXNG / DuckDuckGo |
@@ -117,9 +118,18 @@ danwa/
 │   │   ├── rag_context_formatter.py # RAG context formatting
 │   │   ├── dms.py           # High-level DMS API
 │   │   └── dms_memory.py     # Manual RAG context
-│   └── ui/                      # Presentation layer
-│       ├── chainlit_app.py      # Main entry point
-│       └── dashboard.py         # Session management UI
+│   └── server/                  # FastAPI backend (legacy, being migrated)
+│       ├── main.py              # FastAPI app entry point
+│       └── routers/             # API routers
+├── debate_engine/               # New FastAPI + LangGraph backend
+│   ├── main.py                  # App factory
+│   ├── api/routers/             # debate, audit endpoints
+│   ├── workflow/                # LangGraph state machine
+│   ├── persistence/             # SQLite audit trail
+│   └── models/                  # Pydantic schemas
+├── frontend/                    # Svelte 5 SPA
+│   ├── src/views/               # Dashboard, Debate, Audit, Config
+│   └── src/components/          # Reusable UI components
 ├── config/                       # Configuration files
 │   ├── llm_profiles.yaml       # LLM backend definitions
 │   ├── settings.yaml           # App settings (search, privacy)

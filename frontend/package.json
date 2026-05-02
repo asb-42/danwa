@@ -1,0 +1,36 @@
+{
+  "name": "debate-ui",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:update-snapshots": "npx playwright test --update-snapshots",
+    "test:contracts": "npx playwright test tests/e2e/contracts/",
+    "test:visual": "npx playwright test tests/e2e/visual/",
+    "test:a11y": "npx playwright test tests/e2e/a11y/",
+    "test:a11y:dashboard": "npx playwright test tests/e2e/a11y/dashboard.a11y.spec.js",
+    "test:a11y:keyboard": "npx playwright test tests/e2e/a11y/keyboard.a11y.spec.js",
+    "test:i18n": "npx playwright test tests/e2e/i18n/",
+    "test:i18n:de": "npx playwright test tests/e2e/i18n/ --project=i18n-chromium --grep 'German|de'",
+    "test:i18n:en": "npx playwright test tests/e2e/i18n/ --project=i18n-chromium --grep 'English|en'"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@playwright/test": "^1.59.1",
+    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "svelte": "^4.2.0",
+    "tailwindcss": "^3.4.0",
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "zod": "^4.4.2"
+  }
+}

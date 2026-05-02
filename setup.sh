@@ -12,4 +12,4 @@ uv pip install -e .
 
 echo "📁 Verzeichnisse & Config..."
 mkdir -p logs config/prompts
-echo "✅ Setup abgeschlossen. Starte mit: uv run chainlit run src/ui/chainlit_app.py --port 7860"
+echo "✅ Setup abgeschlossen. Starte mit: bash scripts/start.sh"

@@ -53,25 +53,10 @@ general:
 enable_metrics: false
 EOF
 
-echo "🔧 Erstelle Systemd-Unit..."
-cat > "$HOME/.config/systemd/user/searxng.service" <<EOF
-[Unit]
-Description=SearXNG Privacy Search Engine
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=$SEARX_DIR
-Environment="PATH=$SEARX_DIR/.venv/bin"
-ExecStart=$SEARX_DIR/.venv/bin/gunicorn -b 127.0.0.1:8080 -w 2 --timeout 30 searx.webapp
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=default.target
-EOF
-
-systemctl --user daemon-reload
-systemctl --user enable --now searxng.service
+mkdir -p "$SEARX_DIR/pids" "$SEARX_DIR/logs"
+nohup $SEARX_DIR/.venv/bin/gunicorn -b 127.0.0.1:8080 -w 2 --timeout 30 searx.webapp > "$SEARX_DIR/logs/searxng.log" 2>&1 &
+echo $! > "$SEARX_DIR/pids/searxng.pid"
 echo "✅ SearXNG läuft: http://127.0.0.1:8080"
 echo "🔍 JSON-API-Test: curl 'http://127.0.0.1:8080/search?q=test&format=json'"
+echo "📝 Logs: $SEARX_DIR/logs/searxng.log"
+echo "🛑 Stop: kill \$(cat $SEARX_DIR/pids/searxng.pid)"

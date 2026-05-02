@@ -1,0 +1,70 @@
+search:
+  engine: "searxng"
+  url: "http://127.0.0.1:8080"
+  max_results: 5
+
+privacy:
+  strict_mode: false          # true = blockiert alle externen Calls, nur lokale LLMs
+  redact_traces: true         # PII-Redaction in JSONL-Logs
+  retention_days: 90          # Auto-Cleanup alter Sessions/Reports
+
+dms:
+  enabled: true
+  storage_path: "dms_storage"
+  chunk_size: 512
+  chunk_overlap: 51
+  embedding_model: "intfloat/multilingual-e5-small"
+  ocr_enabled: false
+  ocr_device: "cpu"
+  max_file_size_mb: 50
+  chroma_collection: "document_chunks"
+  memory_dir: "memory"
+
+ui:
+  language: "en"
+
+agent_profiles:
+  default: "chatbot"
+  profiles:
+    chatbot:
+      description: "Single-agent chatbot (no debate, direct response)"
+      agents:
+        - role: "assistant"
+          llm_profile: "local_qwen"
+          temperature: 0.4
+    dual_agent:
+      description: "2-agent debate: Proponent and Opponent"
+      agents:
+        - role: "proponent"
+          llm_profile: "local_qwen"
+          temperature: 0.4
+        - role: "opponent"
+          llm_profile: "cloud_openrouter"
+          temperature: 0.7
+    classic_4_agent:
+      description: "Classic 4-agent debate: Strategist, Critic, Optimizer, Moderator"
+      agents:
+        - role: "strategist"
+          llm_profile: "local_qwen"
+          temperature: 0.4
+        - role: "critic"
+          llm_profile: "local_qwen"
+          temperature: 0.8
+        - role: "optimizer"
+          llm_profile: "local_qwen"
+          temperature: 0.3
+        - role: "moderator"
+          llm_profile: "local_qwen"
+          temperature: 0.2
+    cloud_trio:
+      description: "3-agent cloud debate with diverse models"
+      agents:
+        - role: "strategist"
+          llm_profile: "cloud_openrouter"
+          temperature: 0.5
+        - role: "critic"
+          llm_profile: "cloud_qwen"
+          temperature: 0.8
+        - role: "moderator"
+          llm_profile: "cloud_openrouter"
+          temperature: 0.2

@@ -1,1 +1,1 @@
-from . import dms_dashboard
+# src/ui — UI module (Chainlit removed, migrated to frontend/

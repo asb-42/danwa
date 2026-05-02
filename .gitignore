@@ -131,18 +131,29 @@ logs/
 memory/
 memory/debates.db
 
+# Runtime data (databases, audit logs)
+data/
+
 # Reports
 reports/
 *.docx
 *.pdf
 
-# Environment specific
+# Environment specific / User config (never commit real credentials)
 settings.yaml
+config/llm_profiles.yaml
+config/prompt_variants.yaml
+config/settings.yaml
+config/llm_profiles.yaml_backup
+src/config/prompt_variants.yaml
+
+# Notes (user-specific, not for version control)
+notes.txt
+docs/notes.txt
 
 # Misc
 .DS_Store
 Thumbs.db
-notes.txt
 *.tmp
 *.bak
 *.swp
@@ -195,6 +206,11 @@ target/
 
 # Node
 node_modules/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
 jspm_packages/
 .npm
 .yarn/

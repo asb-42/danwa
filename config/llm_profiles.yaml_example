@@ -1,0 +1,16 @@
+profiles:
+  local_qwen:
+    model: "qwen2.5-7b"
+    base_url: "http://localhost:1234/v1"
+    api_key_env: "YOUR_API_KEY_ENV_VAR"
+    params: { temperature: 0.4, top_p: 0.9, seed: 42 }
+  cloud_openrouter:
+    model: "anthropic/claude-3-5-sonnet"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key_env: "YOUR_API_KEY_ENV_VAR"
+    params: { temperature: 0.6, top_p: 0.95, seed: null }
+  cloud_qwen:
+    model: "qwen/qwen-plus"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key_env: "YOUR_API_KEY_ENV_VAR"
+    params: { temperature: 0.5, top_p: 0.9, seed: 123 }
