@@ -93,7 +93,7 @@ uv pip install -e .
 ### Verify Installation
 
 ```bash
-uv run python -c "import chainlit, litellm, chromadb; print('All dependencies installed')"
+uv run python -c "import fastapi, langgraph, litellm, chromadb; print('All dependencies installed')"
 ```
 
 ---
@@ -182,7 +182,7 @@ Prompts support versioning via a `version:` header in the file.
 
 ```bash
 cd /media/data/coding/danwa
-uv run chainlit run src/ui/chainlit_app.py --port 7860
+bash scripts/start.sh
 ```
 
 The application will be available at `http://localhost:7860`.
@@ -689,10 +689,11 @@ For scanned documents or image-based PDFs, DMS supports PaddleOCR for text extra
 OCR is disabled by default to avoid unnecessary dependencies.
 
 ### DMS Dashboard
-Access the DMS dashboard via Chainlit:
-1. Start the app: `uv run chainlit run src/ui/chainlit_app.py --port 7860`
-2. Click "📂 DMS Dashboard" in the chat interface
-3. Features:
+Access the DMS dashboard via the web UI:
+1. Start the app: `bash scripts/start.sh`
+2. Open `http://localhost:7860` in your browser
+3. Navigate to the DMS section
+4. Features:
    - List/create/delete projects
    - Upload/list/delete project documents
    - View document metadata and chunk counts
@@ -946,9 +947,18 @@ danwa/
 │   │   ├── doc_parser.py       # PDF/Word/ODF parsing
 │   │   ├── report_generator.py  # DOCX/PDF generation
 │   │   └── web_search.py       # SearXNG/DuckDuckGo
-│   └── ui/                      # Presentation layer
-│       ├── chainlit_app.py      # Main Chainlit entry point
-│       └── dashboard.py         # Session management UI
+│   └── server/                  # FastAPI backend (legacy, being migrated)
+│       ├── main.py              # FastAPI app entry point
+│       └── routers/             # API routers
+├── debate_engine/               # New FastAPI + LangGraph backend
+│   ├── main.py                  # App factory
+│   ├── api/routers/             # debate, audit endpoints
+│   ├── workflow/                # LangGraph state machine
+│   ├── persistence/             # SQLite audit trail
+│   └── models/                  # Pydantic schemas
+├── frontend/                    # Svelte 5 SPA
+│   ├── src/views/               # Dashboard, Debate, Audit, Config
+│   └── src/components/          # Reusable UI components
 ├── config/                       # Configuration files
 │   ├── llm_profiles.yaml       # LLM backend definitions
 │   ├── settings.yaml           # App settings

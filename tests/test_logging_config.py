@@ -69,16 +69,15 @@ def test_setup_logging_sets_level():
         assert call_kwargs["level"] == "DEBUG"
 
 
-def test_setup_logging_configures_chainlit_level():
+-------
+
+def test_setup_logging_configures_litellm_level():
     with patch("src.core.loging_config.logging") as mock_logging:
-        mock_chainlit = MagicMock()
         mock_litellm = MagicMock()
         mock_logging.getLogger.side_effect = lambda name: {
-            "chainlit": mock_chainlit,
             "litellm": mock_litellm
         }.get(name, MagicMock())
         
         setup_logging()
         
-        mock_chainlit.setLevel.assert_called_with(logging.WARNING)
         mock_litellm.setLevel.assert_called_with(logging.WARNING)

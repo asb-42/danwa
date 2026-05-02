@@ -131,6 +131,9 @@ logs/
 memory/
 memory/debates.db
 
+# Runtime data (databases, audit logs)
+data/
+
 # Reports
 reports/
 *.docx

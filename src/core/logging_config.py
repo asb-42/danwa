@@ -29,6 +29,5 @@ def setup_logging(level: str = "INFO"):
     
     logging.basicConfig(level=level, handlers=[file_handler, console])
     
-    # Chainlit/uv interne Logs eindämmen
-    logging.getLogger("chainlit").setLevel(logging.WARNING)
+    # Externe Library-Logs eindämmen
     logging.getLogger("litellm").setLevel(logging.WARNING)
