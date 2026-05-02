@@ -40,6 +40,11 @@ class DebateState(TypedDict, total=False):
     enable_memory: bool
     rag_context: str
 
+    # --- Profile configuration (Sprint 3) ---
+    llm_profile_id: str
+    prompt_variant: str
+    agent_persona_ids: dict[str, str]  # role → persona_id mapping
+
     # --- Runtime ---
     session_id: str
     current_round: int

@@ -87,3 +87,82 @@ export function startDebate(debateId) {
 export function getAuditEvents(debateId) {
   return request(`/api/v1/audit/${debateId}`);
 }
+
+// ---------------------------------------------------------------------------
+// Profiles (Sprint 3)
+// ---------------------------------------------------------------------------
+
+export function getLLMProfiles() {
+  return request('/api/v1/profiles/llm');
+}
+
+export function getLLMProfile(profileId) {
+  return request(`/api/v1/profiles/llm/${profileId}`);
+}
+
+export function createLLMProfile(profile) {
+  return request('/api/v1/profiles/llm', {
+    method: 'POST',
+    body: JSON.stringify(profile),
+  });
+}
+
+export function updateLLMProfile(profileId, profile) {
+  return request(`/api/v1/profiles/llm/${profileId}`, {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  });
+}
+
+export function deleteLLMProfile(profileId) {
+  return request(`/api/v1/profiles/llm/${profileId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getAgentPersonas(role = null) {
+  const params = role ? `?role=${encodeURIComponent(role)}` : '';
+  return request(`/api/v1/profiles/agents${params}`);
+}
+
+export function getAgentPersona(personaId) {
+  return request(`/api/v1/profiles/agents/${personaId}`);
+}
+
+export function createAgentPersona(persona) {
+  return request('/api/v1/profiles/agents', {
+    method: 'POST',
+    body: JSON.stringify(persona),
+  });
+}
+
+export function updateAgentPersona(personaId, persona) {
+  return request(`/api/v1/profiles/agents/${personaId}`, {
+    method: 'PUT',
+    body: JSON.stringify(persona),
+  });
+}
+
+export function deleteAgentPersona(personaId) {
+  return request(`/api/v1/profiles/agents/${personaId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getPromptVariants() {
+  return request('/api/v1/profiles/prompts');
+}
+
+export function previewPromptVariant(variantId, agentRole) {
+  return request(`/api/v1/profiles/prompts/${variantId}/preview?agent_role=${encodeURIComponent(agentRole)}`);
+}
+
+export function deletePromptVariant(variantId) {
+  return request(`/api/v1/profiles/prompts/${variantId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function estimateCost(llmProfileId, numAgents = 4, numRounds = 3) {
+  return request(`/api/v1/profiles/cost-estimate?llm_profile_id=${encodeURIComponent(llmProfileId)}&num_agents=${numAgents}&num_rounds=${numRounds}`);
+}

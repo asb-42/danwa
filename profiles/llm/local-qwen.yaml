@@ -1,0 +1,11 @@
+id: local-qwen
+name: Qwen 2.5 7B (Local)
+provider: local
+model: qwen2.5-7b
+api_base: http://localhost:1234/v1
+api_key_env: LM_STUDIO_KEY
+max_tokens: 4096
+temperature: 0.4
+timeout: 120
+cost_per_1k_input: 0.0
+cost_per_1k_output: 0.0

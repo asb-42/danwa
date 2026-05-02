@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.api.deps import get_settings
-from backend.api.routers import audit, debate, config, dms, health, sessions
+from backend.api.routers import audit, debate, config, dms, health, profiles, sessions
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
     app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
+    app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
 
     app.include_router(health.router, prefix="/health", tags=["system"])
 

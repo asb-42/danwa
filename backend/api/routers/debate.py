@@ -106,6 +106,11 @@ async def start_debate(
         "enable_fact_check": req.enable_fact_check,
         "enable_memory": req.enable_memory,
         "rag_context": "",
+        # --- Profile configuration (Sprint 3) ---
+        "llm_profile_id": req.llm_profile_id,
+        "prompt_variant": req.prompt_variant,
+        "agent_persona_ids": req.agent_persona_ids,
+        # --- Runtime ---
         "session_id": debate_id,
         "current_round": 0,
         "current_agent_index": 0,
@@ -118,10 +123,10 @@ async def start_debate(
         "used_variant": "default",
     }
 
-    # Run graph (synchronous — nodes are pure functions)
+    # Run graph — async because nodes may call LLM APIs
     graph = get_debate_graph()
     try:
-        result = graph.invoke(initial_state)
+        result = await graph.ainvoke(initial_state)
     except Exception as exc:
         debate["status"] = DebateStatus.FAILED
         debate["updated_at"] = datetime.now(UTC)
@@ -143,7 +148,7 @@ async def start_debate(
             action="agent_output",
             input_hash=str(hash(agent_output["content"][:100])),
             output_hash=str(hash(agent_output["content"])),
-            llm_model="dummy",
+            llm_model=req.llm_profile_id,
             tokens_used=agent_output.get("tokens_used", 0),
         )
         audit.record(event)
@@ -161,11 +166,11 @@ async def start_debate(
 
 
 # ---------------------------------------------------------------------------
-# SSE endpoint — dummy for Sprint 2, real streaming in Sprint 3
+# SSE endpoint — real streaming
 # ---------------------------------------------------------------------------
 
-async def _dummy_sse_events(debate_id: str):
-    """Yield dummy SSE events for a debate. Replaced with real streaming in Sprint 3."""
+async def _sse_events(debate_id: str):
+    """Yield SSE events for a debate."""
     debate = _debates.get(debate_id)
     if not debate:
         yield {"event": "error", "data": json.dumps({"detail": "Debate not found"})}
@@ -196,4 +201,4 @@ async def _dummy_sse_events(debate_id: str):
 @router.get("/{debate_id}/stream")
 async def stream_debate(debate_id: str):
     """SSE endpoint for real-time debate updates."""
-    return EventSourceResponse(_dummy_sse_events(debate_id))
+    return EventSourceResponse(_sse_events(debate_id))

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from backend.workflow.debate_graph import build_graph
 from backend.workflow.nodes import (
     initialize_node,
@@ -49,9 +51,10 @@ class TestNodes:
         assert result["current_agent_index"] == 0
         assert result["final_consensus"] == 0.0
 
-    def test_run_agent_node(self):
+    @pytest.mark.asyncio
+    async def test_run_agent_node(self):
         state = _make_state(current_round=1, current_agent_index=0)
-        result = run_agent_node(state)
+        result = await run_agent_node(state)
         assert len(result["agent_outputs"]) == 1
         assert result["agent_outputs"][0]["role"] == "strategist"
         assert result["current_agent_index"] == 1
@@ -96,16 +99,18 @@ class TestGraphIntegration:
         graph = build_graph()
         assert graph is not None
 
-    def test_graph_runs_full_cycle(self):
+    @pytest.mark.asyncio
+    async def test_graph_runs_full_cycle(self):
         graph = build_graph()
         state = _make_state(max_rounds=1, threshold=0.5)
-        result = graph.invoke(state)
+        result = await graph.ainvoke(state)
         assert result["output"] != ""
         assert result["final_consensus"] > 0
 
-    def test_graph_respects_max_rounds(self):
+    @pytest.mark.asyncio
+    async def test_graph_respects_max_rounds(self):
         graph = build_graph()
         state = _make_state(max_rounds=2, threshold=0.99)  # high threshold, should hit max
-        result = graph.invoke(state)
+        result = await graph.ainvoke(state)
         # Should complete after max_rounds even without reaching threshold
         assert result["output"] != ""

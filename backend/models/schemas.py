@@ -68,6 +68,14 @@ class DebateRequest(BaseModel):
     enable_fact_check: bool = False
     enable_memory: bool = False
 
+    # --- Profile configuration (Sprint 3) ---
+    llm_profile_id: str = Field(default="openrouter-claude", description="LLM profile to use")
+    prompt_variant: str = Field(default="default", description="Prompt variant ID")
+    agent_persona_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of agent role to persona ID (e.g. {'strategist': 'strategist-default'})",
+    )
+
 
 class DebateResponse(BaseModel):
     """POST /api/v1/debate response."""

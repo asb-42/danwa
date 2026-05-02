@@ -92,7 +92,7 @@ The DMS module provides project-wise document management with advanced retrieval
 ```
 danwa/
 ├── src/
-│   ├── core/                    # Business logic
+│   ├── core/                    # Business logic (legacy, being migrated)
 │   │   ├── debate_engine.py     # Main orchestration
 │   │   ├── llm_router.py        # LLM provider routing
 │   │   ├── memory.py            # ChromaDB vector storage
@@ -104,39 +104,55 @@ danwa/
 │   │   ├── doc_parser.py       # Document parsing
 │   │   ├── report_generator.py  # DOCX/PDF generation
 │   │   └── web_search.py       # SearXNG search
-│   ├── dms/                   # Document Management System
-│   │   ├── __init__.py
-│   │   ├── database.py        # SQLite schema
-│   │   ├── config.py          # DMS configuration
-│   │   ├── project_manager.py # Project CRUD
-│   │   ├── document_processor.py # PaddleOCR + parsers
-│   │   ├── chunker.py        # Text chunking (512 tokens)
-│   │   ├── rag_pipeline.py   # RAG pipeline
-│   │   ├── vector_store.py   # ChromaDB interface
-│   │   ├── metadata_index.py # Fast metadata filtering
-│   │   ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
-│   │   ├── rag_context_formatter.py # RAG context formatting
-│   │   ├── dms.py           # High-level DMS API
-│   │   └── dms_memory.py     # Manual RAG context
+│   └── dms/                   # Document Management System
+│       ├── database.py        # SQLite schema
+│       ├── project_manager.py # Project CRUD
+│       ├── document_processor.py # PaddleOCR + parsers
+│       ├── chunker.py        # Text chunking (512 tokens)
+│       ├── rag_pipeline.py   # RAG pipeline
+│       ├── vector_store.py   # ChromaDB interface
+│       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
+│       └── dms.py           # High-level DMS API
 ├── backend/                     # FastAPI + LangGraph backend
 │   ├── main.py                  # App factory (uvicorn entry point)
-│   ├── api/routers/             # debate, audit, config, dms, sessions
+│   ├── core/
+│   │   ├── config.py            # Pydantic Settings (env vars)
+│   │   └── profiles.py          # Profile schemas (LLM, Agent, Prompt)
+│   ├── services/
+│   │   ├── profile_service.py   # YAML profile CRUD + validation
+│   │   ├── prompt_service.py    # Prompt templates with hot-reload
+│   │   └── llm_service.py       # LiteLLM integration
+│   ├── api/routers/             # debate, audit, config, dms, sessions, profiles
 │   ├── workflow/                # LangGraph state machine
 │   ├── persistence/             # SQLite audit trail
+│   ├── repositories/            # SQLite repos (profile_repo)
 │   └── models/                  # Pydantic schemas
+├── profiles/                    # Profile configuration (YAML + Markdown)
+│   ├── llm/                     # LLM profile definitions
+│   │   ├── openrouter-claude.yaml
+│   │   ├── openrouter-gpt4.yaml
+│   │   └── local-qwen.yaml
+│   ├── agents/                  # Agent persona definitions
+│   │   ├── strategist-default.yaml
+│   │   ├── critic-default.yaml
+│   │   ├── optimizer-default.yaml
+│   │   └── moderator-default.yaml
+│   └── prompts/                 # Prompt templates (Markdown)
+│       ├── default/             # Default prompt variant
+│       │   ├── strategist.md
+│       │   ├── critic.md
+│       │   ├── optimizer.md
+│       │   └── moderator.md
+│       └── variants/            # Named prompt variants
+│           ├── kantian/
+│           └── steiner/
 ├── frontend/                    # Svelte 5 SPA
 │   ├── src/views/               # Dashboard, Debate, Audit, Config
 │   └── src/components/          # Reusable UI components
-├── config/                       # Configuration files
-│   ├── llm_profiles.yaml       # LLM backend definitions
-│   ├── settings.yaml           # App settings (search, privacy)
-│   ├── prompt_variants.yaml    # Prompt variant mappings
-│   └── prompts/                # Agent prompt templates
-│       ├── strategist.md
-│       ├── critic.md
-│       ├── optimizer.md
-│       └── moderator.md
+├── config/                       # Application settings
+│   └── settings.yaml           # App settings (search, privacy, DMS, UI)
 ├── tests/                        # Pytest test suite
+│   └── backend/                 # Backend-specific tests
 ├── docs/                         # Documentation
 ├── scripts/                      # Utility scripts
 ├── memory/                       # Runtime data
@@ -151,18 +167,50 @@ danwa/
 
 ## Configuration
 
-### LLM Profiles (`config/llm_profiles.yaml`)
+### LLM Profiles (`profiles/llm/*.yaml`)
+
+Each LLM profile is a separate YAML file with typed fields:
 
 ```yaml
-profiles:
-  local_qwen:
-    model: "qwen2.5-7b"
-    base_url: "http://localhost:1234/v1"
-    api_key_env: "LM_STUDIO_KEY"
-  cloud_openrouter:
-    model: "anthropic/claude-3-5-sonnet"
-    base_url: "https://openrouter.ai/api/v1"
-    api_key_env: "OPENROUTER_KEY"
+# profiles/llm/openrouter-claude.yaml
+id: openrouter-claude
+name: OpenRouter Claude 3.5 Sonnet
+provider: openrouter
+model: anthropic/claude-3.5-sonnet
+api_key_env: OPENROUTER_API_KEY
+max_tokens: 4096
+cost_per_1k_input: 0.003
+cost_per_1k_output: 0.015
+```
+
+### Agent Personas (`profiles/agents/*.yaml`)
+
+Each agent persona defines role, system prompt, and temperature:
+
+```yaml
+# profiles/agents/strategist-default.yaml
+id: strategist-default
+name: Default Strategist
+role: strategist
+system_prompt: "You are a strategic analyst..."
+temperature: 0.7
+tags: [default]
+```
+
+### Prompt Variants (`profiles/prompts/`)
+
+Prompt templates are Markdown files organized by variant:
+
+```
+profiles/prompts/
+├── default/          # Default variant
+│   ├── strategist.md
+│   ├── critic.md
+│   ├── optimizer.md
+│   └── moderator.md
+└── variants/
+    ├── kantian/      # Kantian ethics variant
+    └── steiner/      # Steiner variant
 ```
 
 ### App Settings (`config/settings.yaml`)
