@@ -1,0 +1,43 @@
+<script>
+  export let navigate;
+  export let currentRoute;
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'debate', label: 'Debate', icon: '💬' },
+    { id: 'audit', label: 'Audit Trail', icon: '📋' },
+    { id: 'config', label: 'Config', icon: '⚙️' },
+  ];
+</script>
+
+<aside class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+  <!-- Logo / Brand -->
+  <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
+    <span class="text-xl font-bold text-gray-800 dark:text-white">Danwa</span>
+    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v2.0</span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="flex-1 px-4 py-4 space-y-1" aria-label="Main navigation">
+    {#each navItems as item}
+      <button
+        class="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors
+          {currentRoute === item.id
+            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}"
+        on:click={() => navigate(item.id)}
+        aria-current={currentRoute === item.id ? 'page' : undefined}
+      >
+        <span class="mr-3 text-lg" aria-hidden="true">{item.icon}</span>
+        {item.label}
+      </button>
+    {/each}
+  </nav>
+
+  <!-- Footer -->
+  <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+    <p class="text-xs text-gray-400 dark:text-gray-500">
+      Debate-Agent v2.0
+    </p>
+  </div>
+</aside>

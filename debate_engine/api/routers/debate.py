@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from sse_starlette.sse import EventSourceResponse
 
 from debate_engine.api.deps import get_audit_service, get_debate_graph
 from debate_engine.models.schemas import (
@@ -155,3 +158,42 @@ async def start_debate(
         created_at=debate["created_at"],
         updated_at=debate["updated_at"],
     )
+
+
+# ---------------------------------------------------------------------------
+# SSE endpoint — dummy for Sprint 2, real streaming in Sprint 3
+# ---------------------------------------------------------------------------
+
+async def _dummy_sse_events(debate_id: str):
+    """Yield dummy SSE events for a debate. Replaced with real streaming in Sprint 3."""
+    debate = _debates.get(debate_id)
+    if not debate:
+        yield {"event": "error", "data": json.dumps({"detail": "Debate not found"})}
+        return
+
+    # Send initial status
+    yield {
+        "event": "status_change",
+        "data": json.dumps({"debate_id": debate_id, "status": debate["status"].value}),
+    }
+
+    # If debate is running or completed, send round updates
+    if debate["status"] in (DebateStatus.RUNNING, DebateStatus.COMPLETED):
+        for i, round_data in enumerate(debate.get("rounds", [])):
+            await asyncio.sleep(0.1)  # Small delay to simulate streaming
+            yield {
+                "event": "round_update",
+                "data": json.dumps({"round": i + 1, "data": round_data}),
+            }
+
+    # Send final status
+    yield {
+        "event": "status_change",
+        "data": json.dumps({"debate_id": debate_id, "status": debate["status"].value}),
+    }
+
+
+@router.get("/{debate_id}/stream")
+async def stream_debate(debate_id: str):
+    """SSE endpoint for real-time debate updates."""
+    return EventSourceResponse(_dummy_sse_events(debate_id))

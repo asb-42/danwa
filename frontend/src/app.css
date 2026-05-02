@@ -1,0 +1,11 @@
+/* Tailwind base imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
