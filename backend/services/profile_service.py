@@ -9,12 +9,10 @@ from __future__ import annotations
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import yaml
 
 from backend.core.profiles import (
-    ActiveConfiguration,
     AgentPersona,
     LLMProfile,
     PromptVariant,
@@ -35,9 +33,9 @@ class ProfileService:
 
     def __init__(self, profile_dir: Path | str = _DEFAULT_PROFILE_DIR):
         self.profile_dir = Path(profile_dir)
-        self._llm_cache: Dict[str, LLMProfile] = {}
-        self._agent_cache: Dict[str, AgentPersona] = {}
-        self._prompt_cache: Dict[str, PromptVariant] = {}
+        self._llm_cache: dict[str, LLMProfile] = {}
+        self._agent_cache: dict[str, AgentPersona] = {}
+        self._prompt_cache: dict[str, PromptVariant] = {}
         self._loaded = False
 
     # ------------------------------------------------------------------
@@ -117,11 +115,11 @@ class ProfileService:
     # LLM Profiles
     # ------------------------------------------------------------------
 
-    def list_llm_profiles(self) -> List[LLMProfile]:
+    def list_llm_profiles(self) -> list[LLMProfile]:
         self.ensure_loaded()
         return list(self._llm_cache.values())
 
-    def get_llm_profile(self, profile_id: str) -> Optional[LLMProfile]:
+    def get_llm_profile(self, profile_id: str) -> LLMProfile | None:
         self.ensure_loaded()
         return self._llm_cache.get(profile_id)
 
@@ -132,7 +130,9 @@ class ProfileService:
         llm_dir.mkdir(parents=True, exist_ok=True)
         yaml_path = llm_dir / f"{profile.id}.yaml"
         yaml_path.write_text(
-            yaml.dump(profile.model_dump(mode="json"), default_flow_style=False, allow_unicode=True),
+            yaml.dump(
+                profile.model_dump(mode="json"), default_flow_style=False, allow_unicode=True
+            ),
             encoding="utf-8",
         )
         self._llm_cache[profile.id] = profile
@@ -154,14 +154,14 @@ class ProfileService:
     # Agent Personas
     # ------------------------------------------------------------------
 
-    def list_agent_personas(self, role: Optional[str] = None) -> List[AgentPersona]:
+    def list_agent_personas(self, role: str | None = None) -> list[AgentPersona]:
         self.ensure_loaded()
         personas = list(self._agent_cache.values())
         if role:
             personas = [p for p in personas if p.role == role]
         return personas
 
-    def get_agent_persona(self, persona_id: str) -> Optional[AgentPersona]:
+    def get_agent_persona(self, persona_id: str) -> AgentPersona | None:
         self.ensure_loaded()
         return self._agent_cache.get(persona_id)
 
@@ -172,7 +172,9 @@ class ProfileService:
         agents_dir.mkdir(parents=True, exist_ok=True)
         yaml_path = agents_dir / f"{persona.id}.yaml"
         yaml_path.write_text(
-            yaml.dump(persona.model_dump(mode="json"), default_flow_style=False, allow_unicode=True),
+            yaml.dump(
+                persona.model_dump(mode="json"), default_flow_style=False, allow_unicode=True
+            ),
             encoding="utf-8",
         )
         self._agent_cache[persona.id] = persona
@@ -194,11 +196,11 @@ class ProfileService:
     # Prompt Variants
     # ------------------------------------------------------------------
 
-    def list_prompt_variants(self) -> List[PromptVariant]:
+    def list_prompt_variants(self) -> list[PromptVariant]:
         self.ensure_loaded()
         return list(self._prompt_cache.values())
 
-    def get_prompt_variant(self, variant_id: str) -> Optional[PromptVariant]:
+    def get_prompt_variant(self, variant_id: str) -> PromptVariant | None:
         self.ensure_loaded()
         return self._prompt_cache.get(variant_id)
 

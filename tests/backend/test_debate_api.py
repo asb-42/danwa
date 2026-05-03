@@ -7,9 +7,9 @@ import time
 
 class TestCreateDebate:
     def test_create_debate_returns_201(self, client):
-        response = client.post("/api/v1/debate", json={
-            "case": {"text": "Test case for debate creation"}
-        })
+        response = client.post(
+            "/api/v1/debate", json={"case": {"text": "Test case for debate creation"}}
+        )
         assert response.status_code == 201
         data = response.json()
         assert "debate_id" in data
@@ -17,28 +17,28 @@ class TestCreateDebate:
 
     def test_create_debate_has_uuid(self, client):
         import uuid
-        response = client.post("/api/v1/debate", json={
-            "case": {"text": "UUID test"}
-        })
+
+        response = client.post("/api/v1/debate", json={"case": {"text": "UUID test"}})
         debate_id = response.json()["debate_id"]
         uuid.UUID(debate_id)  # raises if invalid
 
     def test_create_debate_with_custom_params(self, client):
-        response = client.post("/api/v1/debate", json={
-            "case": {"text": "Custom params test"},
-            "max_rounds": 5,
-            "consensus_threshold": 0.9,
-            "agent_profile": [
-                {"role": "strategist", "temperature": 0.5},
-                {"role": "critic", "temperature": 0.3},
-            ]
-        })
+        response = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Custom params test"},
+                "max_rounds": 5,
+                "consensus_threshold": 0.9,
+                "agent_profile": [
+                    {"role": "strategist", "temperature": 0.5},
+                    {"role": "critic", "temperature": 0.3},
+                ],
+            },
+        )
         assert response.status_code == 201
 
     def test_create_debate_empty_text_rejected(self, client):
-        response = client.post("/api/v1/debate", json={
-            "case": {"text": ""}
-        })
+        response = client.post("/api/v1/debate", json={"case": {"text": ""}})
         assert response.status_code == 422
 
     def test_create_debate_missing_case_rejected(self, client):
@@ -48,9 +48,7 @@ class TestCreateDebate:
 
 class TestGetDebate:
     def test_get_existing_debate(self, client):
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Get test"}
-        })
+        create_resp = client.post("/api/v1/debate", json={"case": {"text": "Get test"}})
         debate_id = create_resp.json()["debate_id"]
 
         response = client.get(f"/api/v1/debate/{debate_id}")
@@ -69,11 +67,14 @@ class TestGetDebate:
 class TestStartDebate:
     def test_start_debate_returns_running(self, client):
         """start_debate now returns immediately with status=running."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Start test"},
-            "max_rounds": 2,
-            "consensus_threshold": 0.5,
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Start test"},
+                "max_rounds": 2,
+                "consensus_threshold": 0.5,
+            },
+        )
         debate_id = create_resp.json()["debate_id"]
 
         response = client.post(f"/api/v1/debate/{debate_id}/start")
@@ -83,11 +84,14 @@ class TestStartDebate:
 
     def test_start_debate_completes_via_background_task(self, client):
         """Background task completes the debate; poll via GET."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Completion test"},
-            "max_rounds": 2,
-            "consensus_threshold": 0.5,
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Completion test"},
+                "max_rounds": 2,
+                "consensus_threshold": 0.5,
+            },
+        )
         debate_id = create_resp.json()["debate_id"]
 
         # Start returns immediately
@@ -112,11 +116,14 @@ class TestStartDebate:
         assert response.status_code == 404
 
     def test_start_already_started_returns_409(self, client):
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Double start test"},
-            "max_rounds": 1,
-            "consensus_threshold": 0.5,
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Double start test"},
+                "max_rounds": 1,
+                "consensus_threshold": 0.5,
+            },
+        )
         debate_id = create_resp.json()["debate_id"]
 
         client.post(f"/api/v1/debate/{debate_id}/start")
@@ -124,11 +131,14 @@ class TestStartDebate:
         assert response.status_code == 409
 
     def test_started_debate_has_rounds(self, client):
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Rounds test"},
-            "max_rounds": 2,
-            "consensus_threshold": 0.5,
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Rounds test"},
+                "max_rounds": 2,
+                "consensus_threshold": 0.5,
+            },
+        )
         debate_id = create_resp.json()["debate_id"]
 
         client.post(f"/api/v1/debate/{debate_id}/start")
@@ -144,11 +154,14 @@ class TestStartDebate:
         assert len(data["rounds"]) > 0
 
     def test_started_debate_creates_audit_events(self, client, audit_service):
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Audit test"},
-            "max_rounds": 1,
-            "consensus_threshold": 0.5,
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Audit test"},
+                "max_rounds": 1,
+                "consensus_threshold": 0.5,
+            },
+        )
         debate_id = create_resp.json()["debate_id"]
 
         client.post(f"/api/v1/debate/{debate_id}/start")

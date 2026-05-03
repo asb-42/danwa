@@ -8,10 +8,9 @@ curl works.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -26,11 +25,11 @@ class LLMService:
 
     def __init__(
         self,
-        profile_id: Optional[str] = None,
-        profile_service: Optional[ProfileService] = None,
+        profile_id: str | None = None,
+        profile_service: ProfileService | None = None,
     ):
         self._profile_service = profile_service or ProfileService()
-        self._profile: Optional[LLMProfile] = None
+        self._profile: LLMProfile | None = None
 
         if profile_id:
             self._profile = self._profile_service.get_llm_profile(profile_id)
@@ -42,15 +41,15 @@ class LLMService:
             self._profile = profiles[0] if profiles else None
 
     @property
-    def profile(self) -> Optional[LLMProfile]:
+    def profile(self) -> LLMProfile | None:
         return self._profile
 
     async def generate(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        system_prompt: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """Generate text using the configured LLM.
 
@@ -75,7 +74,7 @@ class LLMService:
             raise RuntimeError("No LLM profile configured")
 
         # Build messages
-        messages: List[Dict[str, str]] = []
+        messages: list[dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
@@ -93,7 +92,7 @@ class LLMService:
 
     async def _generate_local(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
     ) -> str:
@@ -120,14 +119,14 @@ class LLMService:
         # Get API key (optional for local, but include if set)
         api_key = os.getenv(self._profile.api_key_env, "")
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self._profile.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
 
-        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
@@ -159,7 +158,7 @@ class LLMService:
 
     async def _generate_litellm(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
     ) -> str:
@@ -168,16 +167,14 @@ class LLMService:
             import litellm
         except ImportError:
             raise ImportError(
-                "litellm is required for cloud LLM calls. "
-                "Install it with: uv add litellm"
+                "litellm is required for cloud LLM calls. Install it with: uv add litellm"
             )
 
         # Get API key from environment
         api_key = os.getenv(self._profile.api_key_env)
         if not api_key:
             raise ValueError(
-                f"API key not found. Set the {self._profile.api_key_env} "
-                f"environment variable."
+                f"API key not found. Set the {self._profile.api_key_env} environment variable."
             )
 
         # Auto-prepend provider prefix for litellm routing.
@@ -187,7 +184,7 @@ class LLMService:
         if not model_name.startswith(f"{provider_prefix}/"):
             model_name = f"{provider_prefix}/{model_name}"
 
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "model": model_name,
             "messages": messages,
             "temperature": temperature,

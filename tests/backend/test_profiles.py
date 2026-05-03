@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
 
 from backend.core.profiles import (
     AgentPersona,
@@ -14,7 +15,6 @@ from backend.core.profiles import (
 )
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -60,7 +60,9 @@ def profile_dir(tmp_path) -> Path:
     # Prompt files
     (prompts_dir / "strategist.md").write_text("# Strategist Prompt\nTest content for {context}")
     (prompts_dir / "critic.md").write_text("# Critic Prompt\nTest content")
-    (variants_dir / "strategist.md").write_text("# Variant Strategist\nVariant content for {context}")
+    (variants_dir / "strategist.md").write_text(
+        "# Variant Strategist\nVariant content for {context}"
+    )
 
     return tmp_path
 

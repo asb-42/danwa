@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 from fastapi import APIRouter, HTTPException
@@ -30,15 +30,16 @@ SUPPORTED_LANGUAGES = {
 
 # --- Helpers ---
 
-def _load_settings() -> Dict[str, Any]:
+
+def _load_settings() -> dict[str, Any]:
     """Load settings from YAML file."""
     if not _SETTINGS_PATH.exists():
         return {}
-    with open(_SETTINGS_PATH, "r", encoding="utf-8") as f:
+    with open(_SETTINGS_PATH, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def _save_settings(data: Dict[str, Any]) -> None:
+def _save_settings(data: dict[str, Any]) -> None:
     """Save settings to YAML file."""
     _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(_SETTINGS_PATH, "w", encoding="utf-8") as f:
@@ -48,17 +49,21 @@ def _save_settings(data: Dict[str, Any]) -> None:
 
 # --- Request bodies ---
 
+
 class SettingsBody(BaseModel):
     """Generic settings update body."""
-    settings: Dict[str, Any]
+
+    settings: dict[str, Any]
 
 
 class LanguageBody(BaseModel):
     """Language update body."""
+
     language: str
 
 
 # --- Settings ---
+
 
 @router.get("/settings")
 def get_settings() -> dict:
@@ -67,13 +72,14 @@ def get_settings() -> dict:
 
 
 @router.put("/settings")
-def update_settings(body: Dict[str, Any]) -> dict:
+def update_settings(body: dict[str, Any]) -> dict:
     """Update application settings."""
     _save_settings(body)
     return {"status": "ok"}
 
 
 # --- Language ---
+
 
 @router.get("/language")
 def get_language() -> dict:

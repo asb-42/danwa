@@ -6,13 +6,13 @@ prompt variants, and active debate configurations.
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Dict, List, Literal, Optional
+from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers."""
 
     OPENROUTER = "openrouter"
@@ -32,16 +32,16 @@ class LLMProfile(BaseModel):
     name: str
     provider: LLMProvider
     model: str  # e.g. "anthropic/claude-3.5-sonnet"
-    api_base: Optional[str] = None  # For OpenRouter / local
+    api_base: str | None = None  # For OpenRouter / local
     api_key_env: str = "OPENROUTER_API_KEY"  # Environment variable name
     max_tokens: int = 4096
-    context_window: Optional[int] = None  # Max total tokens (input + output) the model supports
+    context_window: int | None = None  # Max total tokens (input + output) the model supports
     temperature: float = 0.7
     timeout: int = 600
 
     # Cost tracking (USD per 1k tokens)
-    cost_per_1k_input: Optional[float] = None
-    cost_per_1k_output: Optional[float] = None
+    cost_per_1k_input: float | None = None
+    cost_per_1k_output: float | None = None
 
     @field_validator("temperature")
     @classmethod
@@ -72,8 +72,8 @@ class AgentPersona(BaseModel):
     consensus_threshold: float = 0.9
 
     # Metadata
-    description: Optional[str] = None
-    tags: List[str] = []
+    description: str | None = None
+    tags: list[str] = []
 
     @field_validator("consensus_threshold")
     @classmethod
@@ -91,11 +91,11 @@ class PromptVariant(BaseModel):
     base_path: str  # e.g. "profiles/prompts/default/"
 
     # Override for specific agents: agent_role → file path
-    overrides: Dict[str, str] = {}
+    overrides: dict[str, str] = {}
 
     # Metadata
-    description: Optional[str] = None
-    parent_variant: Optional[str] = None  # Inheritance
+    description: str | None = None
+    parent_variant: str | None = None  # Inheritance
 
 
 class ActiveConfiguration(BaseModel):
@@ -103,10 +103,10 @@ class ActiveConfiguration(BaseModel):
 
     debate_id: str
     llm_profile_id: str
-    agent_personas: Dict[str, str]  # role → persona_id
+    agent_personas: dict[str, str]  # role → persona_id
     prompt_variant_id: str
     created_at: str
 
     # Runtime info
-    estimated_cost: Optional[float] = None
-    actual_cost: Optional[float] = None
+    estimated_cost: float | None = None
+    actual_cost: float | None = None

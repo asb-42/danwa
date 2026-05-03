@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from backend.models.schemas import DebateStatus
 
@@ -54,7 +54,7 @@ class DebateStore:
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         # In-memory cache for fast access
-        self._cache: Dict[str, dict] = {}
+        self._cache: dict[str, dict] = {}
         self._load_all()
 
     def _load_all(self) -> None:
@@ -86,7 +86,10 @@ class DebateStore:
                     serializable[key] = value.value
                 else:
                     serializable[key] = value
-            path.write_text(json.dumps(serializable, default=str, ensure_ascii=False, indent=2), encoding="utf-8")
+            path.write_text(
+                json.dumps(serializable, default=str, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
         except Exception as exc:
             logger.error("Failed to save debate %s: %s", debate_id, exc)
 
@@ -96,18 +99,18 @@ class DebateStore:
             self._cache[debate_id] = debate
         self._save_to_disk(debate_id)
 
-    def get(self, debate_id: str) -> Optional[dict]:
+    def get(self, debate_id: str) -> dict | None:
         """Get a debate by ID."""
         return self._cache.get(debate_id)
 
-    def list_all(self, limit: int = 50, offset: int = 0) -> List[dict]:
+    def list_all(self, limit: int = 50, offset: int = 0) -> list[dict]:
         """List all debates, newest first."""
         debates = sorted(
             self._cache.values(),
             key=lambda d: d.get("created_at", ""),
             reverse=True,
         )
-        return debates[offset:offset + limit]
+        return debates[offset : offset + limit]
 
     def count(self) -> int:
         """Total number of debates."""
@@ -132,7 +135,7 @@ class DebateStore:
             logger.error("Failed to delete debate file %s: %s", path, exc)
         return True
 
-    def update(self, debate_id: str, **kwargs: Any) -> Optional[dict]:
+    def update(self, debate_id: str, **kwargs: Any) -> dict | None:
         """Update fields of a debate and persist."""
         with self._lock:
             debate = self._cache.get(debate_id)

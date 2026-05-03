@@ -21,7 +21,9 @@ def subscribe(debate_id: str) -> asyncio.Queue:
     """Create a new subscriber queue for a debate. Returns the queue."""
     q: asyncio.Queue = asyncio.Queue()
     _subscribers.setdefault(debate_id, []).append(q)
-    logger.debug("SSE subscriber added for debate %s (total: %d)", debate_id, len(_subscribers[debate_id]))
+    logger.debug(
+        "SSE subscriber added for debate %s (total: %d)", debate_id, len(_subscribers[debate_id])
+    )
     return q
 
 
@@ -46,7 +48,9 @@ def publish(debate_id: str, event_type: str, data: Any) -> None:
         return
 
     payload = json.dumps(data, default=str)
-    logger.debug("Publishing event '%s' to %d subscribers for debate %s", event_type, len(subs), debate_id)
+    logger.debug(
+        "Publishing event '%s' to %d subscribers for debate %s", event_type, len(subs), debate_id
+    )
 
     loop = asyncio.get_event_loop()
     for q in subs:
@@ -60,7 +64,9 @@ async def publish_async(debate_id: str, event_type: str, data: Any) -> None:
         return
 
     payload = json.dumps(data, default=str)
-    logger.debug("Publishing event '%s' to %d subscribers for debate %s", event_type, len(subs), debate_id)
+    logger.debug(
+        "Publishing event '%s' to %d subscribers for debate %s", event_type, len(subs), debate_id
+    )
 
     for q in subs:
         q.put_nowait((event_type, payload))

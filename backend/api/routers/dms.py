@@ -2,11 +2,9 @@
 
 import logging
 import os
-import shutil
 import tempfile
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.dms.dms import DMS
@@ -16,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Lazy-init DMS singleton (heavy: ChromaDB, SQLite)
-_dms: Optional[DMS] = None
+_dms: DMS | None = None
 
 
 def get_dms() -> DMS:
@@ -32,6 +30,7 @@ class ProjectBody(BaseModel):
 
 
 # --- Projects ---
+
 
 @router.get("/projects")
 def list_projects():
@@ -61,6 +60,7 @@ def delete_project(project_id: str):
 
 
 # --- Documents ---
+
 
 @router.get("/projects/{project_id}/documents")
 def list_documents(project_id: str):
@@ -106,6 +106,7 @@ def delete_document(document_id: str):
 
 # --- RAG Context ---
 
+
 @router.post("/documents/{document_id}/rag")
 def add_to_rag(document_id: str):
     """Add a document to manual RAG context."""
@@ -134,7 +135,7 @@ def list_manual_rag():
 
 
 @router.get("/rag/search")
-def search_rag(query: str, project_id: Optional[str] = None, k: int = 5):
+def search_rag(query: str, project_id: str | None = None, k: int = 5):
     """Search RAG context for relevant chunks."""
     dms = get_dms()
     results = dms.get_rag_context(query, project_id=project_id, k=k)

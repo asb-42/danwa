@@ -7,7 +7,6 @@ Falls back to dummy output if litellm is not available or LLM call fails.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from backend.api.events import publish_async
 from backend.services.llm_service import LLMService
@@ -25,8 +24,8 @@ logger = logging.getLogger(__name__)
 # Module-level service singletons (lazy-initialized)
 # ---------------------------------------------------------------------------
 
-_profile_service: Optional[ProfileService] = None
-_prompt_service: Optional[PromptService] = None
+_profile_service: ProfileService | None = None
+_prompt_service: PromptService | None = None
 
 
 def _get_profile_service() -> ProfileService:
@@ -88,11 +87,15 @@ async def run_agent_node(state: DebateState) -> dict:
     user_prompt = _build_user_prompt(state, role, language)
 
     # --- Publish: agent started ---
-    await publish_async(session_id, "agent_started", {
-        "round": state["current_round"],
-        "role": role,
-        "profile": llm_profile_id,
-    })
+    await publish_async(
+        session_id,
+        "agent_started",
+        {
+            "round": state["current_round"],
+            "role": role,
+            "profile": llm_profile_id,
+        },
+    )
 
     # --- LLM call with graceful fallback ---
     llm_failed = False
@@ -104,7 +107,9 @@ async def run_agent_node(state: DebateState) -> dict:
         )
         logger.info(
             "Agent %s (round %d): calling LLM profile '%s' (model=%s, api_base=%s)",
-            role, state["current_round"], llm_profile_id,
+            role,
+            state["current_round"],
+            llm_profile_id,
             llm_service.profile.model if llm_service.profile else "N/A",
             llm_service.profile.api_base if llm_service.profile else "N/A",
         )
@@ -116,12 +121,17 @@ async def run_agent_node(state: DebateState) -> dict:
         tokens = len(content.split())  # rough estimate
         logger.info(
             "Agent %s (round %d): LLM response (%d tokens)",
-            role, state["current_round"], tokens,
+            role,
+            state["current_round"],
+            tokens,
         )
     except Exception as exc:
         logger.error(
             "LLM call FAILED for agent %s (round %d, profile=%s): %s",
-            role, state["current_round"], llm_profile_id, exc,
+            role,
+            state["current_round"],
+            llm_profile_id,
+            exc,
             exc_info=True,
         )
         llm_failed = True
@@ -140,12 +150,16 @@ async def run_agent_node(state: DebateState) -> dict:
     }
 
     # --- Publish: agent completed ---
-    await publish_async(session_id, "agent_output", {
-        "round": state["current_round"],
-        "role": role,
-        "content": content,
-        "tokens_used": tokens,
-    })
+    await publish_async(
+        session_id,
+        "agent_output",
+        {
+            "round": state["current_round"],
+            "role": role,
+            "content": content,
+            "tokens_used": tokens,
+        },
+    )
 
     result: dict = {
         "agent_outputs": [output],
@@ -156,8 +170,7 @@ async def run_agent_node(state: DebateState) -> dict:
     # Track anomaly if LLM call failed
     if llm_failed:
         result["anomalies"] = [
-            f"LLM call failed for {role} in round {state['current_round']} "
-            f"({anomaly_detail})"
+            f"LLM call failed for {role} in round {state['current_round']} ({anomaly_detail})"
         ]
 
     return result
@@ -189,7 +202,9 @@ def _resolve_system_prompt(
         logger.debug("Using prompt template for %s/%s (lang=%s)", prompt_variant, role, language)
         return rendered
     except FileNotFoundError:
-        logger.debug("No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language)
+        logger.debug(
+            "No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language
+        )
 
     # 2. Try persona-specific system prompt (always in persona's language)
     persona_id = persona_ids.get(role)
@@ -200,10 +215,14 @@ def _resolve_system_prompt(
             return persona.system_prompt
 
     # 3. Generic fallback (language-aware)
-    logger.warning("No prompt found for %s/%s (lang=%s), using generic default", prompt_variant, role, language)
+    logger.warning(
+        "No prompt found for %s/%s (lang=%s), using generic default", prompt_variant, role, language
+    )
     if language == "en":
         return f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
-    return f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
+    return (
+        f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
+    )
 
 
 def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> str:
@@ -236,12 +255,16 @@ def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> s
             "Do not simply agree for the sake of consensus — intellectual honesty is required."
         )
     else:
-        parts.append("Bitte gib deine Analyse basierend auf dem Fall und der bisherigen Diskussion.")
         parts.append(
-            "WICHTIG: Wenn du mit der Mehrheitsposition oder früheren Analysen nicht einverstanden bist, "
-            "musst du deine abweichende Meinung klar darlegen und deine Begründung erklären. "
+            "Bitte gib deine Analyse basierend auf dem Fall und der bisherigen Diskussion."
+        )
+        parts.append(
+            "WICHTIG: Wenn du mit der Mehrheitsposition oder früheren Analysen "
+            "nicht einverstanden bist, musst du deine abweichende Meinung klar "
+            "darlegen und deine Begründung erklären. "
             "Dokumentiere explizit alle Minderheitenstandpunkte. "
-            "Stimme nicht einfach nur der Konsens wegen zu — intellektuelle Ehrlichkeit ist erforderlich."
+            "Stimme nicht einfach nur der Konsens wegen zu — "
+            "intellektuelle Ehrlichkeit ist erforderlich."
         )
 
     return "\n\n".join(parts)
@@ -269,7 +292,8 @@ async def check_consensus_node(state: DebateState) -> dict:
         consensus = 0.0
         logger.warning(
             "Round %d: LLM failures detected (%d anomalies), consensus capped at 0",
-            current_round, len(anomalies),
+            current_round,
+            len(anomalies),
         )
     else:
         # Linear consensus progression
@@ -283,11 +307,15 @@ async def check_consensus_node(state: DebateState) -> dict:
     }
 
     # --- Publish: round completed ---
-    await publish_async(session_id, "round_update", {
-        "round": current_round,
-        "consensus": round(consensus, 3),
-        "agent_count": len(state.get("agent_outputs", [])),
-    })
+    await publish_async(
+        session_id,
+        "round_update",
+        {
+            "round": current_round,
+            "consensus": round(consensus, 3),
+            "agent_count": len(state.get("agent_outputs", [])),
+        },
+    )
 
     return {
         "rounds": [round_data],
@@ -303,11 +331,15 @@ async def complete_node(state: DebateState) -> dict:
     anomalies = state.get("anomalies", [])
 
     # --- Publish: debate completed ---
-    await publish_async(session_id, "status_change", {
-        "status": "completed",
-        "final_consensus": state.get("final_consensus", 0.0),
-        "total_rounds": state.get("current_round", 1) - 1,
-    })
+    await publish_async(
+        session_id,
+        "status_change",
+        {
+            "status": "completed",
+            "final_consensus": state.get("final_consensus", 0.0),
+            "total_rounds": state.get("current_round", 1) - 1,
+        },
+    )
 
     return {
         "output": state.get("current_draft", "No output generated."),

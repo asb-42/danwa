@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class DebateStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
@@ -30,8 +31,10 @@ class AgentRole(StrEnum):
 # Agent configuration
 # ---------------------------------------------------------------------------
 
+
 class AgentConfig(BaseModel):
     """Configuration for a single debate agent."""
+
     role: AgentRole
     llm_profile: str = "default"
     temperature: float = 0.7
@@ -39,6 +42,7 @@ class AgentConfig(BaseModel):
 
 class AgentOutput(BaseModel):
     """Output produced by one agent in one round."""
+
     role: AgentRole
     content: str
     tokens_used: int = 0
@@ -48,21 +52,26 @@ class AgentOutput(BaseModel):
 # Request / Response models
 # ---------------------------------------------------------------------------
 
+
 class CaseInput(BaseModel):
     """The case or topic to debate."""
+
     text: str = Field(..., min_length=1, max_length=10_000, description="Case description")
     project_id: str | None = None
 
 
 class DebateRequest(BaseModel):
     """POST /api/v1/debate request body."""
+
     case: CaseInput
-    agent_profile: list[AgentConfig] = Field(default_factory=lambda: [
-        AgentConfig(role=AgentRole.STRATEGIST),
-        AgentConfig(role=AgentRole.CRITIC),
-        AgentConfig(role=AgentRole.OPTIMIZER),
-        AgentConfig(role=AgentRole.MODERATOR),
-    ])
+    agent_profile: list[AgentConfig] = Field(
+        default_factory=lambda: [
+            AgentConfig(role=AgentRole.STRATEGIST),
+            AgentConfig(role=AgentRole.CRITIC),
+            AgentConfig(role=AgentRole.OPTIMIZER),
+            AgentConfig(role=AgentRole.MODERATOR),
+        ]
+    )
     max_rounds: int = Field(default=3, ge=1, le=20)
     consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
     enable_fact_check: bool = False
@@ -73,7 +82,9 @@ class DebateRequest(BaseModel):
     prompt_variant: str = Field(default="default", description="Prompt variant ID")
     agent_persona_ids: dict[str, str] = Field(
         default_factory=dict,
-        description="Mapping of agent role to persona ID (e.g. {'strategist': 'strategist-default'})",
+        description=(
+            "Mapping of agent role to persona ID (e.g. {'strategist': 'strategist-default'})"
+        ),
     )
 
     # --- Language (Sprint 4) ---
@@ -85,6 +96,7 @@ class DebateRequest(BaseModel):
 
 class DebateResponse(BaseModel):
     """POST /api/v1/debate response."""
+
     debate_id: str
     status: DebateStatus = DebateStatus.PENDING
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -92,6 +104,7 @@ class DebateResponse(BaseModel):
 
 class RoundData(BaseModel):
     """Data for a single debate round."""
+
     round: int
     consensus: float = 0.0
     agent_outputs: list[AgentOutput] = Field(default_factory=list)
@@ -99,6 +112,7 @@ class RoundData(BaseModel):
 
 class DebateStatusResponse(BaseModel):
     """GET /api/v1/debate/{id} response."""
+
     debate_id: str
     status: DebateStatus
     current_round: int = 0
@@ -116,6 +130,7 @@ class DebateStatusResponse(BaseModel):
 
 class DebateListItem(BaseModel):
     """GET /api/v1/debate list item — lightweight summary for history."""
+
     debate_id: str
     status: DebateStatus
     current_round: int = 0
@@ -130,12 +145,14 @@ class DebateListItem(BaseModel):
 
 class HealthResponse(BaseModel):
     """GET /health response."""
+
     status: str = "ok"
     version: str
 
 
 class ErrorResponse(BaseModel):
     """Standard error envelope."""
+
     detail: str
 
 
@@ -143,8 +160,10 @@ class ErrorResponse(BaseModel):
 # Audit event model (for persistence layer)
 # ---------------------------------------------------------------------------
 
+
 class AuditEvent(BaseModel):
     """Immutable audit trail entry."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     debate_id: str
     round: int

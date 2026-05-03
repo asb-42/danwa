@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -54,7 +53,7 @@ def reload_profiles() -> dict:
 @router.get("/logs")
 def get_logs(
     lines: int = Query(default=100, ge=1, le=5000, description="Number of recent log lines"),
-    search: Optional[str] = Query(default=None, description="Filter lines containing this text"),
+    search: str | None = Query(default=None, description="Filter lines containing this text"),
 ) -> dict:
     """Return recent backend log lines.
 
@@ -64,16 +63,16 @@ def get_logs(
         return {"lines": [], "total_lines": 0, "log_file": str(_LOG_FILE)}
 
     try:
-        with open(_LOG_FILE, "r", encoding="utf-8") as f:
+        with open(_LOG_FILE, encoding="utf-8") as f:
             all_lines = f.readlines()
 
         if search:
-            all_lines = [l for l in all_lines if search.lower() in l.lower()]
+            all_lines = [line for line in all_lines if search.lower() in line.lower()]
 
         # Return last N lines
         selected = all_lines[-lines:]
         return {
-            "lines": [l.rstrip("\n") for l in selected],
+            "lines": [line.rstrip("\n") for line in selected],
             "total_lines": len(all_lines),
             "returned_lines": len(selected),
             "log_file": str(_LOG_FILE),

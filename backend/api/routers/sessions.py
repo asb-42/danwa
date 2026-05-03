@@ -1,25 +1,22 @@
 """API router for debate session history (list, delete, export reports, traces)."""
 
-import json
 import logging
-from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
+from src.core.debate_engine import DebateState
 from src.core.session_db import SessionDB
 from src.core.trace_logger import TraceLogger
 from src.tools.report_generator import ReportGenerator
-from src.core.debate_engine import DebateState
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 # Lazy-init singletons
-_db: Optional[SessionDB] = None
-_report_gen: Optional[ReportGenerator] = None
+_db: SessionDB | None = None
+_report_gen: ReportGenerator | None = None
 
 
 def get_db() -> SessionDB:
@@ -37,14 +34,17 @@ def get_report_gen() -> ReportGenerator:
 
 
 @router.get("")
-def list_sessions(limit: int = 20, offset: int = 0,
-                  min_consensus: Optional[float] = None,
-                  project_id: Optional[str] = None):
+def list_sessions(
+    limit: int = 20,
+    offset: int = 0,
+    min_consensus: float | None = None,
+    project_id: str | None = None,
+):
     """List past debate sessions."""
     db = get_db()
-    sessions = db.list_sessions(limit=limit, offset=offset,
-                                min_consensus=min_consensus,
-                                project_id=project_id)
+    sessions = db.list_sessions(
+        limit=limit, offset=offset, min_consensus=min_consensus, project_id=project_id
+    )
     return {"sessions": sessions}
 
 
@@ -108,7 +108,11 @@ async def download_report(session_id: str, fmt: str):
     report_gen = get_report_gen()
     try:
         path = await report_gen.generate(state, fmt=fmt)
-        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if fmt == "docx" else "application/pdf"
+        media_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            if fmt == "docx"
+            else "application/pdf"
+        )
         return FileResponse(
             path=str(path),
             media_type=media_type,

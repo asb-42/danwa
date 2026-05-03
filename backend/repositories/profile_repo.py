@@ -5,9 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
 
 from backend.core.profiles import ActiveConfiguration
 
@@ -99,7 +97,7 @@ class ProfileRepository:
             )
         logger.info("Active config saved for debate %s", config.debate_id)
 
-    def get_active_config(self, debate_id: str) -> Optional[ActiveConfiguration]:
+    def get_active_config(self, debate_id: str) -> ActiveConfiguration | None:
         """Retrieve the active configuration for a debate."""
         with self._connect() as conn:
             row = conn.execute(
@@ -127,7 +125,7 @@ class ProfileRepository:
             )
         return cursor.rowcount > 0
 
-    def list_active_configs(self) -> List[ActiveConfiguration]:
+    def list_active_configs(self) -> list[ActiveConfiguration]:
         """List all active configurations."""
         with self._connect() as conn:
             rows = conn.execute(
@@ -150,7 +148,7 @@ class ProfileRepository:
     # History
     # ------------------------------------------------------------------
 
-    def get_config_history(self, debate_id: str) -> List[ActiveConfiguration]:
+    def get_config_history(self, debate_id: str) -> list[ActiveConfiguration]:
         """Get configuration history for a debate."""
         with self._connect() as conn:
             rows = conn.execute(

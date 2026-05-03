@@ -7,7 +7,6 @@ and prompt variants.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Module-level service instance
-_profile_service: Optional[ProfileService] = None
+_profile_service: ProfileService | None = None
 
 
 def get_profile_service() -> ProfileService:
@@ -35,8 +34,8 @@ def get_profile_service() -> ProfileService:
 # ------------------------------------------------------------------
 
 
-@router.get("/llm", response_model=List[LLMProfile])
-async def list_llm_profiles() -> List[LLMProfile]:
+@router.get("/llm", response_model=list[LLMProfile])
+async def list_llm_profiles() -> list[LLMProfile]:
     """List all available LLM profiles."""
     return get_profile_service().list_llm_profiles()
 
@@ -80,10 +79,10 @@ async def delete_llm_profile(profile_id: str) -> dict:
 # ------------------------------------------------------------------
 
 
-@router.get("/agents", response_model=List[AgentPersona])
+@router.get("/agents", response_model=list[AgentPersona])
 async def list_agent_personas(
-    role: Optional[str] = Query(None, description="Filter by role"),
-) -> List[AgentPersona]:
+    role: str | None = Query(None, description="Filter by role"),
+) -> list[AgentPersona]:
     """List all agent personas, optionally filtered by role."""
     return get_profile_service().list_agent_personas(role=role)
 
@@ -126,8 +125,8 @@ async def delete_agent_persona(persona_id: str) -> dict:
 # ------------------------------------------------------------------
 
 
-@router.get("/prompts", response_model=List[PromptVariant])
-async def list_prompt_variants() -> List[PromptVariant]:
+@router.get("/prompts", response_model=list[PromptVariant])
+async def list_prompt_variants() -> list[PromptVariant]:
     """List all prompt variants."""
     return get_profile_service().list_prompt_variants()
 

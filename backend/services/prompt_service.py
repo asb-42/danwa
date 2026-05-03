@@ -10,7 +10,6 @@ import hashlib
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +21,10 @@ class PromptService:
 
     def __init__(self, prompts_dir: Path | str = _DEFAULT_PROMPTS_DIR):
         self.prompts_dir = Path(prompts_dir)
-        self._cache: Dict[str, Dict] = {}
+        self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
 
-    def get_prompt(self, variant: str, role: str, language: str = "de") -> Dict:
+    def get_prompt(self, variant: str, role: str, language: str = "de") -> dict:
         """Load a prompt template with caching and hot-reload.
 
         For non-default languages (e.g. 'en'), tries ``{role}-{lang}.md``
@@ -61,7 +60,9 @@ class PromptService:
                 if path.exists():
                     logger.warning(
                         "Prompt %s/%s not found, falling back to default/%s",
-                        variant, role, name,
+                        variant,
+                        role,
+                        name,
                     )
                     prompt_path = path
                     break
@@ -96,7 +97,7 @@ class PromptService:
         self,
         variant: str,
         role: str,
-        variables: Optional[Dict[str, str]] = None,
+        variables: dict[str, str] | None = None,
         language: str = "de",
     ) -> str:
         """Load a prompt and optionally substitute variables.

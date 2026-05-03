@@ -10,7 +10,6 @@ from backend.core.profiles import LLMProfile, LLMProvider
 from backend.services.llm_service import LLMService
 from backend.services.profile_service import ProfileService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -125,7 +124,10 @@ class TestLLMServiceGenerate:
 
         with patch.dict("os.environ", {"TEST_API_KEY": "sk-test-key"}):
             import litellm
-            with patch.object(litellm, "acompletion", new_callable=AsyncMock, return_value=mock_response) as mock_ac:
+
+            with patch.object(
+                litellm, "acompletion", new_callable=AsyncMock, return_value=mock_response
+            ) as mock_ac:
                 result = await llm_service.generate(
                     prompt="Test prompt",
                     system_prompt="You are a test agent.",
@@ -147,8 +149,11 @@ class TestLLMServiceGenerate:
 
         with patch.dict("os.environ", {"TEST_API_KEY": "sk-test-key"}):
             import litellm
-            with patch.object(litellm, "acompletion", new_callable=AsyncMock, return_value=mock_response) as mock_ac:
-                result = await llm_service.generate(
+
+            with patch.object(
+                litellm, "acompletion", new_callable=AsyncMock, return_value=mock_response
+            ) as mock_ac:
+                await llm_service.generate(
                     prompt="Test",
                     temperature=0.3,
                     max_tokens=1024,

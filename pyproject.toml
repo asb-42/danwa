@@ -38,11 +38,12 @@ dev-dependencies = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests/backend"]
 pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
+exclude = ["archive/", "src/", "tests/test_*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

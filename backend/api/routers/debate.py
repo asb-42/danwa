@@ -37,6 +37,7 @@ _cancelled_debates: set[str] = set()
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("", response_model=list[DebateListItem])
 async def list_debates(
     limit: int = 50,
@@ -60,7 +61,9 @@ async def list_debates(
             case_text = req.case.text
             language = getattr(req, "language", "de")
         elif isinstance(req, dict):
-            case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
+            case_text = (
+                req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
+            )
             language = req.get("language", "de")
         else:
             case_text = ""
@@ -77,21 +80,23 @@ async def list_debates(
         result = d.get("result")
         consensus = result.get("final_consensus") if isinstance(result, dict) else None
 
-        items.append(DebateListItem(
-            debate_id=d["debate_id"],
-            status=d["status"],
-            current_round=d.get("current_round", 0),
-            max_rounds=d.get("max_rounds", 3),
-            consensus_score=consensus,
-            case_preview=case_text[:120],
-            case_text=case_text,
-            language=language,
-            created_at=d.get("created_at", datetime.now(UTC)),
-            updated_at=d.get("updated_at", datetime.now(UTC)),
-        ))
+        items.append(
+            DebateListItem(
+                debate_id=d["debate_id"],
+                status=d["status"],
+                current_round=d.get("current_round", 0),
+                max_rounds=d.get("max_rounds", 3),
+                consensus_score=consensus,
+                case_preview=case_text[:120],
+                case_text=case_text,
+                language=language,
+                created_at=d.get("created_at", datetime.now(UTC)),
+                updated_at=d.get("updated_at", datetime.now(UTC)),
+            )
+        )
 
     # Apply offset/limit after filtering
-    return items[offset:offset + limit]
+    return items[offset : offset + limit]
 
 
 @router.post("", response_model=DebateResponse, status_code=201)
@@ -144,7 +149,8 @@ async def delete_debate(
 
     logger.info(
         "Deleted debate %s (%d audit events removed)",
-        debate_id, deleted_events,
+        debate_id,
+        deleted_events,
     )
     return {"detail": "Debate deleted", "debate_id": debate_id}
 
@@ -160,7 +166,13 @@ async def get_debate(
         raise HTTPException(status_code=404, detail="Debate not found")
 
     req = debate.get("request", {})
-    max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
+    max_rounds = (
+        getattr(req, "max_rounds", None)
+        if hasattr(req, "max_rounds")
+        else req.get("max_rounds", 3)
+        if isinstance(req, dict)
+        else 3
+    )
 
     # Extract case text and metadata from request
     if hasattr(req, "case"):
@@ -186,9 +198,7 @@ async def get_debate(
         current_round=debate.get("current_round", 0),
         max_rounds=max_rounds,
         consensus_score=consensus,
-        rounds=[
-            RoundData(**r) for r in debate.get("rounds", [])
-        ],
+        rounds=[RoundData(**r) for r in debate.get("rounds", [])],
         created_at=debate.get("created_at", datetime.now(UTC)),
         updated_at=debate.get("updated_at", datetime.now(UTC)),
         case_text=case_text,
@@ -225,7 +235,13 @@ async def start_debate(
     background_tasks.add_task(_run_debate_workflow, debate_id, audit, store)
 
     req = debate.get("request", {})
-    max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
+    max_rounds = (
+        getattr(req, "max_rounds", None)
+        if hasattr(req, "max_rounds")
+        else req.get("max_rounds", 3)
+        if isinstance(req, dict)
+        else 3
+    )
 
     # Extract case text and metadata from request
     if hasattr(req, "case"):
@@ -332,12 +348,15 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         prompt_variant = req.get("prompt_variant", "default")
         agent_persona_ids = req.get("agent_persona_ids", {})
         language = req.get("language", "de")
-        agent_profile_list = req.get("agent_profile", [
-            {"role": "strategist", "llm_profile": "default", "temperature": 0.7},
-            {"role": "critic", "llm_profile": "default", "temperature": 0.7},
-            {"role": "optimizer", "llm_profile": "default", "temperature": 0.7},
-            {"role": "moderator", "llm_profile": "default", "temperature": 0.7},
-        ])
+        agent_profile_list = req.get(
+            "agent_profile",
+            [
+                {"role": "strategist", "llm_profile": "default", "temperature": 0.7},
+                {"role": "critic", "llm_profile": "default", "temperature": 0.7},
+                {"role": "optimizer", "llm_profile": "default", "temperature": 0.7},
+                {"role": "moderator", "llm_profile": "default", "temperature": 0.7},
+            ],
+        )
 
     # Build initial state for LangGraph
     initial_state = {
@@ -388,10 +407,14 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
             updated_at=datetime.now(UTC),
         )
         # Publish SSE event so the frontend sees the status change
-        await publish_async(debate_id, "status_change", {
-            "status": "failed",
-            "cancel_reason": "User cancelled the debate",
-        })
+        await publish_async(
+            debate_id,
+            "status_change",
+            {
+                "status": "failed",
+                "cancel_reason": "User cancelled the debate",
+            },
+        )
         clear_cancel(debate_id)
         logger.info("Debate %s was cancelled by user", debate_id)
         return
@@ -423,13 +446,16 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
     clear_cancel(debate_id)
     logger.info(
         "Debate %s completed: %d rounds, consensus=%.3f",
-        debate_id, result.get("current_round", 0), result.get("final_consensus", 0.0),
+        debate_id,
+        result.get("current_round", 0),
+        result.get("final_consensus", 0.0),
     )
 
 
 # ---------------------------------------------------------------------------
 # SSE endpoint — real-time streaming via event bus
 # ---------------------------------------------------------------------------
+
 
 async def _sse_events(debate_id: str, store: DebateStore):
     """Yield SSE events for a debate using the event bus."""
@@ -441,7 +467,14 @@ async def _sse_events(debate_id: str, store: DebateStore):
     # Send initial status
     yield {
         "event": "status_change",
-        "data": json.dumps({"debate_id": debate_id, "status": debate["status"].value if hasattr(debate["status"], "value") else debate["status"]}),
+        "data": json.dumps(
+            {
+                "debate_id": debate_id,
+                "status": debate["status"].value
+                if hasattr(debate["status"], "value")
+                else debate["status"],
+            }
+        ),
     }
 
     # If debate is already completed, send all rounds at once
@@ -464,7 +497,7 @@ async def _sse_events(debate_id: str, store: DebateStore):
             while True:
                 try:
                     event_type, payload = await asyncio.wait_for(queue.get(), timeout=300.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # No events for 5 minutes — send keepalive
                     yield {"event": "keepalive", "data": "{}"}
                     continue

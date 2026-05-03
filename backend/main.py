@@ -12,12 +12,21 @@ from dotenv import load_dotenv
 # Load .env file into os.environ BEFORE any module reads os.getenv()
 load_dotenv()
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 
-from backend.api.deps import get_settings
-from backend.api.routers import audit, debate, config, dms, health, profiles, sessions, system
+from backend.api.deps import get_settings  # noqa: E402
+from backend.api.routers import (  # noqa: E402
+    audit,
+    config,
+    debate,
+    dms,
+    health,
+    profiles,
+    sessions,
+    system,
+)
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -36,18 +45,22 @@ def _setup_logging() -> None:
     # File handler — detailed, with timestamps
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    ))
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
 
     # Console handler — INFO and above
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%H:%M:%S",
-    ))
+    console_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+    )
 
     # Clear existing handlers (uvicorn adds its own) and add ours
     root_logger.handlers.clear()
