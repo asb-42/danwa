@@ -3,7 +3,7 @@
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
   import { createDebate, getDebate, startDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
-  import { i18n, formatNumber, locale } from '../lib/i18n/index.js';
+  import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
 
   /** @type {string|null} Debate ID from route — triggers archive/read-only mode */
