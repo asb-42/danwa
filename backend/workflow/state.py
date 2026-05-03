@@ -45,6 +45,9 @@ class DebateState(TypedDict, total=False):
     prompt_variant: str
     agent_persona_ids: dict[str, str]  # role → persona_id mapping
 
+    # --- Language (Sprint 4) ---
+    language: str  # 'de' or 'en'
+
     # --- Runtime ---
     session_id: str
     current_round: int

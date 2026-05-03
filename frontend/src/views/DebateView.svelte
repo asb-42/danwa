@@ -3,7 +3,7 @@
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
   import { createDebate, getDebate, startDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
-  import { i18n, formatNumber } from '../lib/i18n/index.js';
+  import { i18n, formatNumber, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
 
   $: t = (key, params = {}) => {
@@ -50,6 +50,7 @@
         llm_profile_id: $selectedLLMProfile,
         prompt_variant: $selectedPromptVariant,
         agent_persona_ids: $selectedPersonas,
+        language: $locale || 'de',
       });
       $currentDebate = response;
       $debates = [...$debates, response];

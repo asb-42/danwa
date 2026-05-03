@@ -62,6 +62,10 @@ export function getHealth() {
 // Debate
 // ---------------------------------------------------------------------------
 
+export function getDebates(limit = 50) {
+  return request(`/api/v1/debate?limit=${limit}`);
+}
+
 export function createDebate(caseText, options = {}) {
   return request('/api/v1/debate', {
     method: 'POST',

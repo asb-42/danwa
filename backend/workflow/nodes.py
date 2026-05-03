@@ -78,12 +78,13 @@ async def run_agent_node(state: DebateState) -> dict:
     llm_profile_id = state.get("llm_profile_id", "openrouter-claude")
     prompt_variant = state.get("prompt_variant", "default")
     persona_ids = state.get("agent_persona_ids", {})
+    language = state.get("language", "de")
 
     # --- Resolve system prompt ---
-    system_prompt = _resolve_system_prompt(role, prompt_variant, persona_ids, state)
+    system_prompt = _resolve_system_prompt(role, prompt_variant, persona_ids, state, language)
 
     # --- Build user prompt ---
-    user_prompt = _build_user_prompt(state, role)
+    user_prompt = _build_user_prompt(state, role, language)
 
     # --- Publish: agent started ---
     await publish_async(session_id, "agent_started", {
@@ -153,6 +154,7 @@ def _resolve_system_prompt(
     prompt_variant: str,
     persona_ids: dict[str, str],
     state: DebateState,
+    language: str = "de",
 ) -> str:
     """Resolve the system prompt for an agent role.
 
@@ -165,21 +167,24 @@ def _resolve_system_prompt(
         if persona:
             return persona.system_prompt
 
-    # 2. Try prompt service template
+    # 2. Try prompt service template (language-aware)
     try:
         return _get_prompt_service().render(
             variant=prompt_variant,
             role=role,
             variables={"context": state["context"]},
+            language=language,
         )
     except FileNotFoundError:
-        logger.warning("No prompt found for %s/%s, using generic default", prompt_variant, role)
+        logger.warning("No prompt found for %s/%s (lang=%s), using generic default", prompt_variant, role, language)
 
-    # 3. Generic fallback
-    return f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
+    # 3. Generic fallback (language-aware)
+    if language == "en":
+        return f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
+    return f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
 
 
-def _build_user_prompt(state: DebateState, role: str) -> str:
+def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> str:
     """Build the user prompt for an agent based on debate context."""
     parts = [f"## Case\n{state['context']}"]
 
@@ -199,7 +204,11 @@ def _build_user_prompt(state: DebateState, role: str) -> str:
             parts.append(f"Round {rd['round']}: Consensus = {rd['consensus']:.2f}")
 
     parts.append(f"## Your Role: {role}")
-    parts.append("Please provide your analysis based on the case and previous discussion.")
+
+    if language == "en":
+        parts.append("Please provide your analysis based on the case and previous discussion.")
+    else:
+        parts.append("Bitte gib deine Analyse basierend auf dem Fall und der bisherigen Diskussion.")
 
     return "\n\n".join(parts)
 

@@ -48,6 +48,9 @@ coverage.xml
 .pytest_cache/
 .ruff_cache/
 
+# Debate persistence data
+data/debates/
+
 # Translations
 *.mo
 *.pot

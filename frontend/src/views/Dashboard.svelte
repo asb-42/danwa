@@ -1,8 +1,8 @@
 <script>
   import { onMount } from 'svelte';
-  import { healthStatus, debates, loading, error } from '../lib/stores.js';
-  import { getHealth } from '../lib/api.js';
-  import { i18n, formatNumber } from '../lib/i18n/index.js';
+  import { healthStatus, loading, error } from '../lib/stores.js';
+  import { getHealth, getDebates } from '../lib/api.js';
+  import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
   $: t = (key, params = {}) => {
     let text = $i18n[key] || key;
@@ -19,18 +19,26 @@
     failed: 0,
   };
 
-  onMount(() => {
-    // Compute stats from debates store
-    const unsubscribe = debates.subscribe((d) => {
-      stats = {
-        totalDebates: d.length,
-        running: d.filter((deb) => deb.status === 'running').length,
-        completed: d.filter((deb) => deb.status === 'completed').length,
-        failed: d.filter((deb) => deb.status === 'failed').length,
-      };
-    });
-    return unsubscribe;
+  let recentDebates = [];
+
+  onMount(async () => {
+    await loadDebateStats();
   });
+
+  async function loadDebateStats() {
+    try {
+      const debates = await getDebates(100);
+      recentDebates = debates.slice(0, 10);
+      stats = {
+        totalDebates: debates.length,
+        running: debates.filter((d) => d.status === 'running').length,
+        completed: debates.filter((d) => d.status === 'completed').length,
+        failed: debates.filter((d) => d.status === 'failed').length,
+      };
+    } catch (err) {
+      console.warn('Could not load debate stats:', err);
+    }
+  }
 
   async function refreshHealth() {
     $loading = true;
@@ -38,11 +46,22 @@
     try {
       const data = await getHealth();
       $healthStatus = { status: data.status, version: data.version };
+      await loadDebateStats();
     } catch (err) {
       $healthStatus = { status: 'unreachable', version: '' };
       $error = err.message;
     } finally {
       $loading = false;
+    }
+  }
+
+  function statusBadgeClass(status) {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'running': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'failed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   }
 </script>
@@ -93,6 +112,44 @@
       <p class="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{formatNumber(stats.completed)}</p>
     </div>
   </div>
+
+  <!-- Recent debates -->
+  {#if recentDebates.length > 0}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{t('dashboard.recentDebates')}</h3>
+      </div>
+      <div class="divide-y divide-gray-200 dark:divide-gray-700">
+        {#each recentDebates as debate}
+          <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-800 dark:text-gray-200 truncate">
+                  {debate.case_preview || debate.debate_id.substring(0, 12)}
+                </p>
+                <div class="flex items-center gap-3 mt-1">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(debate.created_at)}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {debate.language?.toUpperCase() || 'DE'}
+                  </span>
+                  {#if debate.consensus_score !== null && debate.consensus_score !== undefined}
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      {t('debate.consensus')}: {(debate.consensus_score * 100).toFixed(0)}%
+                    </span>
+                  {/if}
+                </div>
+              </div>
+              <span class="px-2 py-1 text-xs font-medium rounded-full {statusBadgeClass(debate.status)}">
+                {t(`status.${debate.status}`)}
+              </span>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <!-- Placeholder for future workflow graph -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">

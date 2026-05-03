@@ -5,10 +5,11 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.deps import get_audit_service, get_settings
+from backend.api.deps import get_audit_service, get_debate_store, get_settings
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.persistence.audit import AuditService
+from backend.persistence.debate_store import DebateStore
 
 
 @pytest.fixture()
@@ -28,11 +29,18 @@ def audit_service(tmp_path) -> AuditService:
 
 
 @pytest.fixture()
-def app(settings, audit_service):
+def debate_store(tmp_path) -> DebateStore:
+    """Isolated DebateStore with temp directory."""
+    return DebateStore(data_dir=tmp_path / "test_debates")
+
+
+@pytest.fixture()
+def app(settings, audit_service, debate_store):
     """FastAPI app with overridden dependencies."""
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
     application.dependency_overrides[get_audit_service] = lambda: audit_service
+    application.dependency_overrides[get_debate_store] = lambda: debate_store
     return application
 
 

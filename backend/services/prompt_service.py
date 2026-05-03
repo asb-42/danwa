@@ -25,32 +25,53 @@ class PromptService:
         self._cache: Dict[str, Dict] = {}
         self._lock = threading.RLock()
 
-    def get_prompt(self, variant: str, role: str) -> Dict:
+    def get_prompt(self, variant: str, role: str, language: str = "de") -> Dict:
         """Load a prompt template with caching and hot-reload.
+
+        For non-default languages (e.g. 'en'), tries ``{role}-{lang}.md``
+        first, then falls back to ``{role}.md``.
 
         Returns a dict with keys: content, hash, mtime, path.
         """
-        cache_key = f"{variant}/{role}"
+        # Build candidate file names: language-specific first, then base
+        candidates = []
+        if language and language != "de":
+            candidates.append(f"{role}-{language}.md")
+        candidates.append(f"{role}.md")
 
-        # Determine file path
+        # Determine base directory
         if variant == "default":
-            prompt_path = self.prompts_dir / "default" / f"{role}.md"
+            base_dir = self.prompts_dir / "default"
         else:
-            prompt_path = self.prompts_dir / "variants" / variant / f"{role}.md"
+            base_dir = self.prompts_dir / "variants" / variant
 
-        # Fallback to default if not found
-        if not prompt_path.exists():
-            fallback = self.prompts_dir / "default" / f"{role}.md"
-            if fallback.exists():
-                logger.warning(
-                    "Prompt %s/%s not found, falling back to default/%s",
-                    variant, role, role,
-                )
-                prompt_path = fallback
-            else:
-                raise FileNotFoundError(
-                    f"Prompt not found: {variant}/{role} (looked at {prompt_path})"
-                )
+        # Try candidates in order
+        prompt_path = None
+        for name in candidates:
+            path = base_dir / name
+            if path.exists():
+                prompt_path = path
+                break
+
+        # Fallback to default variant if variant-specific not found
+        if prompt_path is None:
+            default_dir = self.prompts_dir / "default"
+            for name in candidates:
+                path = default_dir / name
+                if path.exists():
+                    logger.warning(
+                        "Prompt %s/%s not found, falling back to default/%s",
+                        variant, role, name,
+                    )
+                    prompt_path = path
+                    break
+
+        if prompt_path is None:
+            raise FileNotFoundError(
+                f"Prompt not found: {variant}/{role} (language={language}, looked in {base_dir})"
+            )
+
+        cache_key = f"{variant}/{role}/{language}"
 
         current_mtime = prompt_path.stat().st_mtime
 
@@ -76,12 +97,13 @@ class PromptService:
         variant: str,
         role: str,
         variables: Optional[Dict[str, str]] = None,
+        language: str = "de",
     ) -> str:
         """Load a prompt and optionally substitute variables.
 
         Variables are replaced using simple {key} syntax.
         """
-        data = self.get_prompt(variant, role)
+        data = self.get_prompt(variant, role, language=language)
         content = data["content"]
 
         if variables:

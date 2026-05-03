@@ -19,6 +19,7 @@ export default {
   'dashboard.checking': 'Prüfe...',
   'dashboard.workflowTitle': 'Workflow-Übersicht',
   'dashboard.workflowPlaceholder': 'Workflow-Graph-Visualisierung — kommt in Sprint 4',
+  'dashboard.recentDebates': 'Letzte Debatten',
 
   // Debate
   'debate.title': 'Debatte',

@@ -76,6 +76,12 @@ class DebateRequest(BaseModel):
         description="Mapping of agent role to persona ID (e.g. {'strategist': 'strategist-default'})",
     )
 
+    # --- Language (Sprint 4) ---
+    language: str = Field(
+        default="de",
+        description="Language for debate prompts: 'de' (German) or 'en' (English)",
+    )
+
 
 class DebateResponse(BaseModel):
     """POST /api/v1/debate response."""
@@ -99,6 +105,19 @@ class DebateStatusResponse(BaseModel):
     max_rounds: int = 3
     consensus_score: float | None = None
     rounds: list[RoundData] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class DebateListItem(BaseModel):
+    """GET /api/v1/debate list item — lightweight summary for history."""
+    debate_id: str
+    status: DebateStatus
+    current_round: int = 0
+    max_rounds: int = 3
+    consensus_score: float | None = None
+    case_preview: str = ""
+    language: str = "de"
     created_at: datetime
     updated_at: datetime
 
