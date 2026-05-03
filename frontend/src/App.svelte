@@ -9,6 +9,7 @@
   import DebateView from './views/DebateView.svelte';
   import AuditView from './views/AuditView.svelte';
   import ConfigView from './views/ConfigView.svelte';
+  import ArchiveView from './views/ArchiveView.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -67,6 +68,8 @@
     <Dashboard {navigate} />
   {:else if $route === 'debate'}
     <DebateView debateId={$routeParams[0] || null} {navigate} />
+  {:else if $route === 'archive'}
+    <ArchiveView {navigate} />
   {:else if $route === 'audit'}
     <AuditView />
   {:else if $route === 'config'}

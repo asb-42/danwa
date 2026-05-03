@@ -5,6 +5,7 @@ export default {
   // Navigation
   'nav.dashboard': 'Dashboard',
   'nav.debate': 'Debatte',
+  'nav.archive': 'Archiv',
   'nav.audit': 'Prüfpfad',
   'nav.config': 'Konfiguration',
 
@@ -134,4 +135,15 @@ export default {
 
   // Language
   'lang.switch': 'Sprache wechseln',
+
+  // Archive
+  'archive.title': 'Debatten-Archiv',
+  'archive.searchPlaceholder': 'Debatten durchsuchen...',
+  'archive.filterAll': 'Alle Status',
+  'archive.date': 'Datum',
+  'archive.noResults': 'Keine Debatten gefunden.',
+  'archive.showing': 'Zeige {from}–{to}',
+  'archive.page': 'Seite',
+  'archive.prevPage': 'Zurück',
+  'archive.nextPage': 'Weiter',
 };

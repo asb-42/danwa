@@ -38,10 +38,17 @@ router = APIRouter()
 async def list_debates(
     limit: int = 50,
     offset: int = 0,
+    status: str | None = None,
+    search: str | None = None,
     store: DebateStore = Depends(get_debate_store),
 ) -> list[DebateListItem]:
-    """List all debates (newest first) — for history panel."""
-    debates = store.list_all(limit=limit, offset=offset)
+    """List all debates (newest first) — for history panel.
+
+    Query params:
+        status: Filter by debate status (pending, running, completed, failed).
+        search: Full-text search in case_preview (case-insensitive).
+    """
+    debates = store.list_all(limit=limit + offset)  # fetch extra for filtering
     items = []
     for d in debates:
         req = d.get("request", {})
@@ -55,6 +62,14 @@ async def list_debates(
         else:
             case_text = ""
             language = "de"
+
+        # Filter by status
+        if status and d.get("status") != status:
+            continue
+
+        # Filter by search text
+        if search and search.lower() not in case_text.lower():
+            continue
 
         result = d.get("result")
         consensus = result.get("final_consensus") if isinstance(result, dict) else None
@@ -70,7 +85,9 @@ async def list_debates(
             created_at=d.get("created_at", datetime.now(UTC)),
             updated_at=d.get("updated_at", datetime.now(UTC)),
         ))
-    return items
+
+    # Apply offset/limit after filtering
+    return items[offset:offset + limit]
 
 
 @router.post("", response_model=DebateResponse, status_code=201)

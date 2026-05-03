@@ -62,8 +62,11 @@ export function getHealth() {
 // Debate
 // ---------------------------------------------------------------------------
 
-export function getDebates(limit = 50) {
-  return request(`/api/v1/debate?limit=${limit}`);
+export function getDebates(limit = 50, { status = null, search = null, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (status) params.set('status', status);
+  if (search) params.set('search', search);
+  return request(`/api/v1/debate?${params.toString()}`);
 }
 
 export function createDebate(caseText, options = {}) {
