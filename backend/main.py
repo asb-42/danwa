@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,19 +12,61 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.api.deps import get_settings
-from backend.api.routers import audit, debate, config, dms, health, profiles, sessions
+from backend.api.routers import audit, debate, config, dms, health, profiles, sessions, system
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+_LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+
+
+def _setup_logging() -> None:
+    """Configure application logging with file + console handlers."""
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = _LOG_DIR / "debate-agent.log"
+
+    # Root logger configuration
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # File handler — detailed, with timestamps
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+
+    # Console handler — INFO and above
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%H:%M:%S",
+    ))
+
+    # Clear existing handlers (uvicorn adds its own) and add ours
+    root_logger.handlers.clear()
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    # Suppress noisy loggers
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("litellm").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
+    _setup_logging()
+    logger = logging.getLogger(__name__)
+    logger.info("Debate Engine starting up...")
+
     settings = get_settings()
     # Ensure DB directory exists
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
     yield
+    logger.info("Debate Engine shutting down.")
 
 
 def create_app() -> FastAPI:
@@ -52,7 +96,8 @@ def create_app() -> FastAPI:
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
     app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
 
-    app.include_router(health.router, prefix="/health", tags=["system"])
+    app.include_router(health.router, prefix="/health", tags=["health"])
+    app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
 
     # --- Static file serving (production mode) ---
     # Mount static assets first (more specific), then SPA fallback last

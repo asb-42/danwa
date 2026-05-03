@@ -8,6 +8,8 @@
     getPromptVariants,
     estimateCost,
     previewPromptVariant,
+    reloadProfiles,
+    getBackendLogs,
   } from '../lib/api.js';
 
   $: t = (key, params = {}) => {
@@ -33,10 +35,17 @@
   let costNumRounds = 3;
 
   // Active tab
-  let activeTab = 'llm'; // 'llm' | 'agents' | 'prompts' | 'cost'
+  let activeTab = 'llm'; // 'llm' | 'agents' | 'prompts' | 'cost' | 'system'
 
   let isLoading = false;
   let statusMessage = '';
+
+  // System tab state
+  let isReloading = false;
+  let reloadResult = null;
+  let logLines = [];
+  let logSearch = '';
+  let isLoadingLogs = false;
 
   // --- Lifecycle ---
   onMount(async () => {
@@ -99,6 +108,36 @@
     }
   }
 
+  async function handleReloadProfiles() {
+    isReloading = true;
+    statusMessage = '';
+    try {
+      reloadResult = await reloadProfiles();
+      statusMessage = `✓ ${reloadResult.message} — ${reloadResult.llm_profiles} LLM, ${reloadResult.agent_personas} Agenten, ${reloadResult.prompt_variants} Prompts`;
+      // Reload the profile lists in the UI
+      const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants()]);
+      if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
+      if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
+      if (results[2].status === 'fulfilled') promptVariants = results[2].value;
+    } catch (e) {
+      $error = e.message;
+    } finally {
+      isReloading = false;
+    }
+  }
+
+  async function handleLoadLogs() {
+    isLoadingLogs = true;
+    try {
+      const result = await getBackendLogs(200, logSearch || null);
+      logLines = result.lines || [];
+    } catch (e) {
+      $error = e.message;
+    } finally {
+      isLoadingLogs = false;
+    }
+  }
+
   function getPersonasByRole(role) {
     return agentPersonas.filter(p => p.role === role);
   }
@@ -127,7 +166,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'agents', 'prompts', 'cost'] as tab}
+      {#each ['llm', 'agents', 'prompts', 'cost', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -139,6 +178,7 @@
           {:else if tab === 'agents'}{t('config.agentProfiles')}
           {:else if tab === 'prompts'}{t('config.promptVariants')}
           {:else if tab === 'cost'}{t('config.costEstimate')}
+          {:else if tab === 'system'}⚙️ System
           {/if}
         </button>
       {/each}
@@ -386,6 +426,79 @@
           </p>
         </div>
       {/if}
+    </div>
+  <!-- System Tab -->
+  {:else if activeTab === 'system'}
+    <div class="space-y-4">
+      <!-- Reload Profiles -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Profile neu laden</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Liest alle YAML-Profile und Prompt-Templates neu von der Festplatte, ohne das Backend neu starten zu müssen.
+        </p>
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          on:click={handleReloadProfiles}
+          disabled={isReloading}
+        >
+          {isReloading ? 'Lade...' : '🔄 Profile neu laden'}
+        </button>
+        {#if reloadResult}
+          <div class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            <p>LLM-Profile: {reloadResult.llm_profiles} | Agenten: {reloadResult.agent_personas} | Prompts: {reloadResult.prompt_variants}</p>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Frontend Reload -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Frontend neu laden</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Lädt die Seite neu (gleich wie Browser-Refresh / F5).
+        </p>
+        <button
+          class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          on:click={() => location.reload()}
+        >
+          🔄 Seite neu laden
+        </button>
+      </div>
+
+      <!-- Backend Logs -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Backend-Logs</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Zeigt die letzten Log-Einträge des Backends (mit Timestamps).
+        </p>
+        <div class="flex gap-2 mb-4">
+          <input
+            type="text"
+            bind:value={logSearch}
+            placeholder="Filter (z.B. ERROR, agent, LLM)..."
+            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm
+                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            on:keydown={(e) => { if (e.key === 'Enter') handleLoadLogs(); }}
+          />
+          <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+                   disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            on:click={handleLoadLogs}
+            disabled={isLoadingLogs}
+          >
+            {isLoadingLogs ? 'Lade...' : '📋 Logs laden'}
+          </button>
+        </div>
+        {#if logLines.length > 0}
+          <div class="bg-gray-900 rounded-lg p-4 overflow-auto max-h-96">
+            <pre class="text-xs text-green-400 font-mono whitespace-pre-wrap">{logLines.join('\n')}</pre>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{logLines.length} Zeilen</p>
+        {:else if !isLoadingLogs}
+          <p class="text-sm text-gray-500 dark:text-gray-400">Noch keine Logs geladen. Klicke auf "Logs laden".</p>
+        {/if}
+      </div>
     </div>
   {/if}
 

@@ -168,3 +168,17 @@ export function deletePromptVariant(variantId) {
 export function estimateCost(llmProfileId, numAgents = 4, numRounds = 3) {
   return request(`/api/v1/profiles/cost-estimate?llm_profile_id=${encodeURIComponent(llmProfileId)}&num_agents=${numAgents}&num_rounds=${numRounds}`);
 }
+
+// ---------------------------------------------------------------------------
+// System (Sprint 3)
+// ---------------------------------------------------------------------------
+
+export function reloadProfiles() {
+  return request('/api/v1/system/reload-profiles', { method: 'POST' });
+}
+
+export function getBackendLogs(lines = 100, search = null) {
+  let url = `/api/v1/system/logs?lines=${lines}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  return request(url);
+}
