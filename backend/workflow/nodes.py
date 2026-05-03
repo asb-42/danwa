@@ -158,27 +158,35 @@ def _resolve_system_prompt(
 ) -> str:
     """Resolve the system prompt for an agent role.
 
-    Priority: persona system_prompt → prompt service template → generic default.
-    """
-    # 1. Try persona-specific system prompt
-    persona_id = persona_ids.get(role)
-    if persona_id:
-        persona = _get_profile_service().get_agent_persona(persona_id)
-        if persona:
-            return persona.system_prompt
+    Priority: prompt service template (language-aware) → persona system_prompt → generic default.
 
-    # 2. Try prompt service template (language-aware)
+    The prompt service is tried first because it supports language variants
+    (e.g. ``strategist.md`` for German, ``strategist-en.md`` for English).
+    Persona system prompts are used as fallback when no template exists.
+    """
+    # 1. Try prompt service template (language-aware) — highest priority
     try:
-        return _get_prompt_service().render(
+        rendered = _get_prompt_service().render(
             variant=prompt_variant,
             role=role,
             variables={"context": state["context"]},
             language=language,
         )
+        logger.debug("Using prompt template for %s/%s (lang=%s)", prompt_variant, role, language)
+        return rendered
     except FileNotFoundError:
-        logger.warning("No prompt found for %s/%s (lang=%s), using generic default", prompt_variant, role, language)
+        logger.debug("No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language)
+
+    # 2. Try persona-specific system prompt (always in persona's language)
+    persona_id = persona_ids.get(role)
+    if persona_id:
+        persona = _get_profile_service().get_agent_persona(persona_id)
+        if persona:
+            logger.debug("Using persona system_prompt for %s (persona=%s)", role, persona_id)
+            return persona.system_prompt
 
     # 3. Generic fallback (language-aware)
+    logger.warning("No prompt found for %s/%s (lang=%s), using generic default", prompt_variant, role, language)
     if language == "en":
         return f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
     return f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
