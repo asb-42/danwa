@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from backend.api.events import publish_async
 from backend.services.llm_service import LLMService
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
@@ -71,6 +72,7 @@ async def run_agent_node(state: DebateState) -> dict:
     idx = state["current_agent_index"]
     agent = agents[idx]
     role = agent["role"]
+    session_id = state.get("session_id", "")
 
     # Profile configuration from state
     llm_profile_id = state.get("llm_profile_id", "openrouter-claude")
@@ -82,6 +84,13 @@ async def run_agent_node(state: DebateState) -> dict:
 
     # --- Build user prompt ---
     user_prompt = _build_user_prompt(state, role)
+
+    # --- Publish: agent started ---
+    await publish_async(session_id, "agent_started", {
+        "round": state["current_round"],
+        "role": role,
+        "profile": llm_profile_id,
+    })
 
     # --- LLM call with graceful fallback ---
     try:
@@ -123,6 +132,14 @@ async def run_agent_node(state: DebateState) -> dict:
         "content": content,
         "tokens_used": tokens,
     }
+
+    # --- Publish: agent completed ---
+    await publish_async(session_id, "agent_output", {
+        "round": state["current_round"],
+        "role": role,
+        "content": content[:500],  # truncate for SSE
+        "tokens_used": tokens,
+    })
 
     return {
         "agent_outputs": [output],
@@ -187,7 +204,7 @@ def _build_user_prompt(state: DebateState, role: str) -> str:
     return "\n\n".join(parts)
 
 
-def check_consensus_node(state: DebateState) -> dict:
+async def check_consensus_node(state: DebateState) -> dict:
     """Evaluate consensus (linear progression toward threshold).
 
     TODO: Replace with LLM-based consensus evaluation in a future sprint.
@@ -195,15 +212,24 @@ def check_consensus_node(state: DebateState) -> dict:
     current_round = state["current_round"]
     max_rounds = state["max_rounds"]
     threshold = state["threshold"]
+    session_id = state.get("session_id", "")
 
     # Linear consensus progression
     consensus = min(threshold, current_round / max_rounds * threshold * 1.2)
 
+    # Include agent outputs from this round in the round data
     round_data: RoundDataState = {
         "round": current_round,
         "consensus": round(consensus, 3),
-        "agent_outputs": [],  # already in state.agent_outputs via accumulator
+        "agent_outputs": list(state.get("agent_outputs", [])),
     }
+
+    # --- Publish: round completed ---
+    await publish_async(session_id, "round_update", {
+        "round": current_round,
+        "consensus": round(consensus, 3),
+        "agent_count": len(state.get("agent_outputs", [])),
+    })
 
     return {
         "rounds": [round_data],
@@ -213,8 +239,17 @@ def check_consensus_node(state: DebateState) -> dict:
     }
 
 
-def complete_node(state: DebateState) -> dict:
+async def complete_node(state: DebateState) -> dict:
     """Finalize the debate."""
+    session_id = state.get("session_id", "")
+
+    # --- Publish: debate completed ---
+    await publish_async(session_id, "status_change", {
+        "status": "completed",
+        "final_consensus": state.get("final_consensus", 0.0),
+        "total_rounds": state.get("current_round", 1) - 1,
+    })
+
     return {
         "output": state.get("current_draft", "No output generated."),
     }

@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_audit_service, get_debate_graph
+from backend.api.events import subscribe, unsubscribe
 from backend.models.schemas import (
     AuditEvent,
     DebateRequest,
@@ -20,6 +22,8 @@ from backend.models.schemas import (
     RoundData,
 )
 from backend.persistence.audit import AuditService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -80,9 +84,14 @@ async def get_debate(debate_id: str) -> DebateStatusResponse:
 @router.post("/{debate_id}/start", response_model=DebateStatusResponse)
 async def start_debate(
     debate_id: str,
+    background_tasks: BackgroundTasks,
     audit: AuditService = Depends(get_audit_service),
 ) -> DebateStatusResponse:
-    """Start a pending debate — runs the LangGraph workflow."""
+    """Start a pending debate — launches the workflow in a background task.
+
+    Returns immediately with status=running.  Real-time progress is
+    delivered via the SSE stream endpoint.
+    """
     debate = _debates.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -93,8 +102,30 @@ async def start_debate(
     debate["status"] = DebateStatus.RUNNING
     debate["updated_at"] = datetime.now(UTC)
 
-    # Build initial state for LangGraph
+    # Launch workflow in background so the HTTP response returns immediately
+    background_tasks.add_task(_run_debate_workflow, debate_id, audit)
+
+    return DebateStatusResponse(
+        debate_id=debate["debate_id"],
+        status=debate["status"],
+        current_round=debate["current_round"],
+        max_rounds=debate["request"].max_rounds,
+        consensus_score=None,
+        rounds=[],
+        created_at=debate["created_at"],
+        updated_at=debate["updated_at"],
+    )
+
+
+async def _run_debate_workflow(debate_id: str, audit: AuditService) -> None:
+    """Run the LangGraph workflow for a debate (called as background task)."""
+    debate = _debates.get(debate_id)
+    if not debate:
+        return
+
     req = debate["request"]
+
+    # Build initial state for LangGraph
     initial_state = {
         "context": req.case.text,
         "agent_profile": [
@@ -128,9 +159,10 @@ async def start_debate(
     try:
         result = await graph.ainvoke(initial_state)
     except Exception as exc:
+        logger.error("Debate %s failed: %s", debate_id, exc, exc_info=True)
         debate["status"] = DebateStatus.FAILED
         debate["updated_at"] = datetime.now(UTC)
-        raise HTTPException(status_code=500, detail=f"Debate failed: {exc}") from exc
+        return
 
     # Update debate state
     debate["status"] = DebateStatus.COMPLETED
@@ -153,24 +185,18 @@ async def start_debate(
         )
         audit.record(event)
 
-    return DebateStatusResponse(
-        debate_id=debate["debate_id"],
-        status=debate["status"],
-        current_round=debate["current_round"],
-        max_rounds=req.max_rounds,
-        consensus_score=result.get("final_consensus"),
-        rounds=[RoundData(**r) for r in debate["rounds"]],
-        created_at=debate["created_at"],
-        updated_at=debate["updated_at"],
+    logger.info(
+        "Debate %s completed: %d rounds, consensus=%.3f",
+        debate_id, debate["current_round"], result.get("final_consensus", 0.0),
     )
 
 
 # ---------------------------------------------------------------------------
-# SSE endpoint — real streaming
+# SSE endpoint — real-time streaming via event bus
 # ---------------------------------------------------------------------------
 
 async def _sse_events(debate_id: str):
-    """Yield SSE events for a debate."""
+    """Yield SSE events for a debate using the event bus."""
     debate = _debates.get(debate_id)
     if not debate:
         yield {"event": "error", "data": json.dumps({"detail": "Debate not found"})}
@@ -182,20 +208,40 @@ async def _sse_events(debate_id: str):
         "data": json.dumps({"debate_id": debate_id, "status": debate["status"].value}),
     }
 
-    # If debate is running or completed, send round updates
-    if debate["status"] in (DebateStatus.RUNNING, DebateStatus.COMPLETED):
+    # If debate is already completed, send all rounds at once
+    if debate["status"] == DebateStatus.COMPLETED:
         for i, round_data in enumerate(debate.get("rounds", [])):
-            await asyncio.sleep(0.1)  # Small delay to simulate streaming
             yield {
                 "event": "round_update",
                 "data": json.dumps({"round": i + 1, "data": round_data}),
             }
+        yield {
+            "event": "status_change",
+            "data": json.dumps({"debate_id": debate_id, "status": "completed"}),
+        }
+        return
 
-    # Send final status
-    yield {
-        "event": "status_change",
-        "data": json.dumps({"debate_id": debate_id, "status": debate["status"].value}),
-    }
+    # If debate is running, subscribe to the event bus for real-time updates
+    if debate["status"] == DebateStatus.RUNNING:
+        queue = subscribe(debate_id)
+        try:
+            while True:
+                try:
+                    event_type, payload = await asyncio.wait_for(queue.get(), timeout=300.0)
+                except asyncio.TimeoutError:
+                    # No events for 5 minutes — send keepalive
+                    yield {"event": "keepalive", "data": "{}"}
+                    continue
+
+                yield {"event": event_type, "data": payload}
+
+                # If debate completed or failed, stop
+                if event_type == "status_change":
+                    data = json.loads(payload)
+                    if data.get("status") in ("completed", "failed"):
+                        break
+        finally:
+            unsubscribe(debate_id, queue)
 
 
 @router.get("/{debate_id}/stream")

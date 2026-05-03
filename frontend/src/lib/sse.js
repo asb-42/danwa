@@ -1,6 +1,8 @@
 /**
  * Server-Sent Events (SSE) connection manager.
  * Handles connect, reconnect with backoff, and event dispatching.
+ *
+ * Supports both default messages and named SSE events.
  */
 
 import { sseConnected } from './stores.js';
@@ -10,6 +12,9 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 /**
  * Create an SSE connection for a debate.
  * Returns a cleanup function to close the connection.
+ *
+ * Named events (agent_started, agent_output, round_update, status_change)
+ * are dispatched to onEvent with the parsed data.
  *
  * @param {string} debateId
  * @param {Object} handlers - { onEvent, onError, onOpen }
@@ -30,6 +35,7 @@ export function createSSE(debateId, handlers = {}) {
       handlers.onOpen?.();
     };
 
+    // Handle default (unnamed) messages
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -38,6 +44,27 @@ export function createSSE(debateId, handlers = {}) {
         handlers.onEvent?.({ type: 'raw', data: event.data });
       }
     };
+
+    // Handle named events from the backend
+    const namedEvents = [
+      'agent_started',
+      'agent_output',
+      'round_update',
+      'status_change',
+      'error',
+      'keepalive',
+    ];
+
+    for (const eventName of namedEvents) {
+      eventSource.addEventListener(eventName, (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handlers.onEvent?.(data);
+        } catch {
+          handlers.onEvent?.({ type: 'raw', data: event.data });
+        }
+      });
+    }
 
     eventSource.onerror = () => {
       sseConnected.set(false);
@@ -54,9 +81,11 @@ export function createSSE(debateId, handlers = {}) {
 
   connect();
 
-  return () => {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (eventSource) eventSource.close();
-    sseConnected.set(false);
+  return {
+    close: () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (eventSource) eventSource.close();
+      sseConnected.set(false);
+    },
   };
 }

@@ -89,11 +89,12 @@ class LLMService:
             )
 
         # Build completion kwargs
+        # Use `if ... is not None` to avoid treating 0.0 as falsy
         kwargs: Dict = {
             "model": self._profile.model,
             "messages": messages,
-            "temperature": temperature or self._profile.temperature,
-            "max_tokens": max_tokens or self._profile.max_tokens,
+            "temperature": temperature if temperature is not None else self._profile.temperature,
+            "max_tokens": max_tokens if max_tokens is not None else self._profile.max_tokens,
             "timeout": self._profile.timeout,
         }
 

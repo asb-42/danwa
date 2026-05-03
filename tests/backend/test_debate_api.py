@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 
 class TestCreateDebate:
     def test_create_debate_returns_201(self, client):
@@ -65,7 +67,8 @@ class TestGetDebate:
 
 
 class TestStartDebate:
-    def test_start_debate_runs_to_completion(self, client):
+    def test_start_debate_returns_running(self, client):
+        """start_debate now returns immediately with status=running."""
         create_resp = client.post("/api/v1/debate", json={
             "case": {"text": "Start test"},
             "max_rounds": 2,
@@ -76,6 +79,30 @@ class TestStartDebate:
         response = client.post(f"/api/v1/debate/{debate_id}/start")
         assert response.status_code == 200
         data = response.json()
+        assert data["status"] == "running"
+
+    def test_start_debate_completes_via_background_task(self, client):
+        """Background task completes the debate; poll via GET."""
+        create_resp = client.post("/api/v1/debate", json={
+            "case": {"text": "Completion test"},
+            "max_rounds": 2,
+            "consensus_threshold": 0.5,
+        })
+        debate_id = create_resp.json()["debate_id"]
+
+        # Start returns immediately
+        start_resp = client.post(f"/api/v1/debate/{debate_id}/start")
+        assert start_resp.status_code == 200
+        assert start_resp.json()["status"] == "running"
+
+        # Poll for completion (background task runs in TestClient)
+        for _ in range(20):
+            get_resp = client.get(f"/api/v1/debate/{debate_id}")
+            data = get_resp.json()
+            if data["status"] in ("completed", "failed"):
+                break
+            time.sleep(0.1)
+
         assert data["status"] == "completed"
         assert data["current_round"] > 0
         assert data["consensus_score"] is not None
@@ -104,8 +131,16 @@ class TestStartDebate:
         })
         debate_id = create_resp.json()["debate_id"]
 
-        start_resp = client.post(f"/api/v1/debate/{debate_id}/start")
-        data = start_resp.json()
+        client.post(f"/api/v1/debate/{debate_id}/start")
+
+        # Poll for completion
+        for _ in range(20):
+            get_resp = client.get(f"/api/v1/debate/{debate_id}")
+            data = get_resp.json()
+            if data["status"] in ("completed", "failed"):
+                break
+            time.sleep(0.1)
+
         assert len(data["rounds"]) > 0
 
     def test_started_debate_creates_audit_events(self, client, audit_service):
@@ -117,6 +152,14 @@ class TestStartDebate:
         debate_id = create_resp.json()["debate_id"]
 
         client.post(f"/api/v1/debate/{debate_id}/start")
+
+        # Poll for completion
+        for _ in range(20):
+            get_resp = client.get(f"/api/v1/debate/{debate_id}")
+            if get_resp.json()["status"] in ("completed", "failed"):
+                break
+            time.sleep(0.1)
+
         events = audit_service.get_events(debate_id)
         assert len(events) > 0
         assert events[0]["debate_id"] == debate_id

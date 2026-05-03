@@ -59,15 +59,17 @@ class TestNodes:
         assert result["agent_outputs"][0]["role"] == "strategist"
         assert result["current_agent_index"] == 1
 
-    def test_check_consensus_node(self):
+    @pytest.mark.asyncio
+    async def test_check_consensus_node(self):
         state = _make_state(current_round=1, max_rounds=2, threshold=0.8)
-        result = check_consensus_node(state)
+        result = await check_consensus_node(state)
         assert len(result["rounds"]) == 1
         assert 0.0 <= result["final_consensus"] <= 1.0
 
-    def test_complete_node(self):
+    @pytest.mark.asyncio
+    async def test_complete_node(self):
         state = _make_state(current_draft="Some draft")
-        result = complete_node(state)
+        result = await complete_node(state)
         assert result["output"] == "Some draft"
 
 

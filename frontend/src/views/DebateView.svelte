@@ -18,6 +18,10 @@
   let consensusThreshold = 0.8;
   let sseConnection = null;
 
+  // Live activity log
+  let activityLog = [];
+  let currentActivity = null; // { round, role, status }
+
   // Cleanup SSE on destroy
   onDestroy(() => {
     if (sseConnection) {
@@ -33,6 +37,8 @@
 
     $loading = true;
     $error = null;
+    activityLog = [];
+    currentActivity = null;
 
     try {
       const response = await createDebate(caseText, {
@@ -57,27 +63,81 @@
 
     $loading = true;
     $error = null;
+    activityLog = [];
+    currentActivity = null;
+
+    // Connect SSE FIRST so we receive all events from the start
+    sseConnection = createSSE($currentDebate.debate_id, {
+      onEvent: (event) => {
+        handleSSEEvent(event);
+      },
+      onOpen: () => { $sseConnected = true; },
+      onClose: () => { $sseConnected = false; },
+      onError: (err) => { console.error('SSE error:', err); },
+    });
 
     try {
+      // startDebate now returns immediately with status=running
       const result = await startDebate($currentDebate.debate_id);
       $currentDebate = { ...$currentDebate, ...result };
-
-      // Connect SSE for real-time updates
-      sseConnection = createSSE($currentDebate.debate_id, {
-        onEvent: (event) => {
-          console.log('SSE event:', event);
-          if (event.status) {
-            $currentDebate = { ...$currentDebate, status: event.status };
-          }
-        },
-        onOpen: () => { $sseConnected = true; },
-        onClose: () => { $sseConnected = false; },
-        onError: (err) => { console.error('SSE error:', err); },
-      });
     } catch (err) {
       $error = err.message;
     } finally {
       $loading = false;
+    }
+  }
+
+  function handleSSEEvent(event) {
+    console.log('SSE event:', event);
+
+    if (event.status === 'completed' || event.status === 'failed') {
+      $currentDebate = { ...$currentDebate, status: event.status };
+      currentActivity = null;
+      // Refresh full debate data
+      handleRefreshStatus();
+      return;
+    }
+
+    if (event.round !== undefined && event.consensus !== undefined) {
+      // round_update event
+      $currentDebate = {
+        ...$currentDebate,
+        current_round: event.round,
+        consensus_score: event.consensus,
+      };
+      activityLog = [...activityLog, {
+        type: 'round',
+        round: event.round,
+        consensus: event.consensus,
+        timestamp: new Date(),
+      }];
+      currentActivity = null;
+      return;
+    }
+
+    if (event.role && event.round) {
+      if (event.content) {
+        // agent_output event
+        currentActivity = null;
+        activityLog = [...activityLog, {
+          type: 'output',
+          round: event.round,
+          role: event.role,
+          content: event.content,
+          tokens: event.tokens_used,
+          timestamp: new Date(),
+        }];
+      } else if (event.profile) {
+        // agent_started event
+        currentActivity = { round: event.round, role: event.role, profile: event.profile };
+        activityLog = [...activityLog, {
+          type: 'started',
+          round: event.round,
+          role: event.role,
+          profile: event.profile,
+          timestamp: new Date(),
+        }];
+      }
     }
   }
 
@@ -103,6 +163,16 @@
   })();
 
   $: statusLabel = $currentDebate?.status ? t(`status.${$currentDebate.status}`) : '';
+
+  function roleEmoji(role) {
+    switch (role) {
+      case 'strategist': return '🎯';
+      case 'critic': return '🔍';
+      case 'optimizer': return '⚡';
+      case 'moderator': return '⚖️';
+      default: return '🤖';
+    }
+  }
 </script>
 
 <div class="space-y-6">
@@ -217,7 +287,7 @@
           </div>
         {/if}
 
-        {#if $currentDebate.consensus_score !== undefined}
+        {#if $currentDebate.consensus_score !== undefined && $currentDebate.consensus_score !== null}
           <div class="flex items-center space-x-3">
             <span class="text-sm text-gray-500 dark:text-gray-400">{t('debate.consensus')}</span>
             <div class="flex-1 max-w-xs">
@@ -257,12 +327,95 @@
       </div>
     </div>
 
-    <!-- Placeholder: Debate timeline -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('debate.timelineTitle')}</h3>
-      <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-        <p class="text-gray-500 dark:text-gray-400">{t('debate.timelinePlaceholder')}</p>
+    <!-- Live activity during debate -->
+    {#if $currentDebate.status === 'running'}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+          🔄 {t('debate.timelineTitle')}
+        </h3>
+
+        {#if currentActivity}
+          <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div class="flex items-center space-x-2">
+              <span class="animate-pulse w-3 h-3 bg-blue-500 rounded-full"></span>
+              <span class="text-sm font-medium text-blue-800 dark:text-blue-200">
+                {roleEmoji(currentActivity.role)} {currentActivity.role}
+                — Round {currentActivity.round}
+                — LLM: {currentActivity.profile}
+              </span>
+            </div>
+          </div>
+        {/if}
+
+        {#if activityLog.length > 0}
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            {#each activityLog as entry}
+              {#if entry.type === 'started'}
+                <div class="flex items-start space-x-2 text-sm">
+                  <span class="text-blue-500">▶</span>
+                  <span class="text-gray-500 dark:text-gray-400">R{entry.round}</span>
+                  <span class="text-gray-800 dark:text-gray-200">
+                    {roleEmoji(entry.role)} {entry.role} started ({entry.profile})
+                  </span>
+                </div>
+              {:else if entry.type === 'output'}
+                <div class="flex items-start space-x-2 text-sm">
+                  <span class="text-green-500">✓</span>
+                  <span class="text-gray-500 dark:text-gray-400">R{entry.round}</span>
+                  <span class="text-gray-800 dark:text-gray-200">
+                    {roleEmoji(entry.role)} {entry.role} — {entry.tokens} tokens
+                  </span>
+                </div>
+              {:else if entry.type === 'round'}
+                <div class="flex items-start space-x-2 text-sm font-medium">
+                  <span class="text-purple-500">●</span>
+                  <span class="text-gray-800 dark:text-gray-200">
+                    Round {entry.round} complete — Consensus: {(entry.consensus * 100).toFixed(1)}%
+                  </span>
+                </div>
+              {/if}
+            {/each}
+          </div>
+        {:else}
+          <p class="text-gray-500 dark:text-gray-400 text-sm">{t('debate.timelinePlaceholder')}</p>
+        {/if}
       </div>
-    </div>
+    {/if}
+
+    <!-- Completed debate results -->
+    {#if $currentDebate.status === 'completed' && $currentDebate.rounds?.length > 0}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+          📊 {t('debate.timelineTitle')}
+        </h3>
+
+        <div class="space-y-4">
+          {#each $currentDebate.rounds as round}
+            <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-gray-800 dark:text-white">Round {round.round}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  Consensus: {(round.consensus * 100).toFixed(1)}%
+                </span>
+              </div>
+              {#if round.agent_outputs?.length > 0}
+                <div class="space-y-2">
+                  {#each round.agent_outputs as output}
+                    <div class="text-sm">
+                      <span class="font-medium text-gray-700 dark:text-gray-300">
+                        {roleEmoji(output.role)} {output.role}:
+                      </span>
+                      <span class="text-gray-600 dark:text-gray-400 ml-1">
+                        {output.content?.substring(0, 200)}{output.content?.length > 200 ? '...' : ''}
+                      </span>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
   {/if}
 </div>
