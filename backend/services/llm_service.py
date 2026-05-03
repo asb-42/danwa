@@ -81,8 +81,12 @@ class LLMService:
         messages.append({"role": "user", "content": prompt})
 
         # Get API key from environment
+        # For local providers, use a dummy key if none is set — litellm's
+        # openai/ prefix requires an api_key even for local endpoints.
         api_key = os.getenv(self._profile.api_key_env)
-        if not api_key and self._profile.provider.value != "local":
+        if not api_key and self._profile.provider.value == "local":
+            api_key = "lm-studio"
+        if not api_key:
             raise ValueError(
                 f"API key not found. Set the {self._profile.api_key_env} "
                 f"environment variable."
