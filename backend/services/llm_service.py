@@ -179,8 +179,15 @@ class LLMService:
                 f"environment variable."
             )
 
+        # Auto-prepend provider prefix for litellm routing.
+        # e.g. "openrouter" + "tencent/hy3-preview:free" → "openrouter/tencent/hy3-preview:free"
+        model_name = self._profile.model
+        provider_prefix = self._profile.provider.value
+        if not model_name.startswith(f"{provider_prefix}/"):
+            model_name = f"{provider_prefix}/{model_name}"
+
         kwargs: Dict[str, Any] = {
-            "model": self._profile.model,
+            "model": model_name,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -193,7 +200,7 @@ class LLMService:
 
         logger.info(
             "LLM call (litellm): model=%s, temp=%.2f, max_tokens=%d",
-            self._profile.model,
+            model_name,
             temperature,
             max_tokens,
         )
