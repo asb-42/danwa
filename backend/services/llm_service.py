@@ -1,14 +1,19 @@
-"""LLM service — profile-based LLM calls via litellm.
+"""LLM service — profile-based LLM calls.
 
-Provides a unified interface for generating text using any configured
-LLM profile. Reads API keys from environment variables.
+For cloud providers (openrouter, openai, anthropic) uses litellm.
+For local providers (LM Studio, Ollama, etc.) uses direct HTTP via httpx
+to the OpenAI-compatible /v1/chat/completions endpoint — the same way
+curl works.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+import httpx
 
 from backend.core.profiles import LLMProfile
 from backend.services.profile_service import ProfileService
@@ -49,6 +54,10 @@ class LLMService:
     ) -> str:
         """Generate text using the configured LLM.
 
+        For local providers, uses direct HTTP to the OpenAI-compatible
+        /v1/chat/completions endpoint (same as curl).
+        For cloud providers, uses litellm.
+
         Args:
             prompt: The user prompt.
             system_prompt: Optional system prompt for the LLM.
@@ -65,63 +74,128 @@ class LLMService:
         if not self._profile:
             raise RuntimeError("No LLM profile configured")
 
-        # Import litellm lazily to avoid import errors when not installed
-        try:
-            import litellm
-        except ImportError:
-            raise ImportError(
-                "litellm is required for LLM calls. "
-                "Install it with: uv add litellm"
-            )
-
         # Build messages
         messages: List[Dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        # Resolve temperature / max_tokens with proper None handling
+        temp = temperature if temperature is not None else self._profile.temperature
+        tokens = max_tokens if max_tokens is not None else self._profile.max_tokens
+
+        # Route: local providers → direct HTTP, cloud providers → litellm
+        if self._profile.provider.value == "local":
+            return await self._generate_local(messages, temp, tokens)
+        else:
+            return await self._generate_litellm(messages, temp, tokens)
+
+    async def _generate_local(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+    ) -> str:
+        """Call a local OpenAI-compatible endpoint directly via httpx.
+
+        This is the same as:
+            curl http://<api_base>/chat/completions \\
+              -H "Content-Type: application/json" \\
+              -d '{"model": "<model>", "messages": [...]}'
+        """
+        api_base = self._profile.api_base
+        if not api_base:
+            raise ValueError(
+                f"Local profile '{self._profile.id}' requires api_base "
+                f"(e.g. http://192.168.178.200:1234/v1)"
+            )
+
+        # Ensure api_base ends with /v1 and build the chat completions URL
+        api_base = api_base.rstrip("/")
+        if not api_base.endswith("/v1"):
+            api_base = f"{api_base}/v1"
+        url = f"{api_base}/chat/completions"
+
+        # Get API key (optional for local, but include if set)
+        api_key = os.getenv(self._profile.api_key_env, "")
+
+        payload: Dict[str, Any] = {
+            "model": self._profile.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        logger.info(
+            "LLM call (local): POST %s model=%s, temp=%.2f, max_tokens=%d",
+            url,
+            self._profile.model,
+            temperature,
+            max_tokens,
+        )
+
+        async with httpx.AsyncClient(timeout=self._profile.timeout) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+
+        # Log token usage if available
+        usage = data.get("usage")
+        if usage:
+            logger.info(
+                "Tokens used: %d in / %d out",
+                usage.get("prompt_tokens", 0),
+                usage.get("completion_tokens", 0),
+            )
+
+        return content
+
+    async def _generate_litellm(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+    ) -> str:
+        """Call a cloud LLM via litellm (OpenRouter, OpenAI, Anthropic, etc.)."""
+        try:
+            import litellm
+        except ImportError:
+            raise ImportError(
+                "litellm is required for cloud LLM calls. "
+                "Install it with: uv add litellm"
+            )
+
         # Get API key from environment
-        # For local providers, use a dummy key if none is set — litellm's
-        # openai/ prefix requires an api_key even for local endpoints.
         api_key = os.getenv(self._profile.api_key_env)
-        if not api_key and self._profile.provider.value == "local":
-            api_key = "lm-studio"
         if not api_key:
             raise ValueError(
                 f"API key not found. Set the {self._profile.api_key_env} "
                 f"environment variable."
             )
 
-        # Build completion kwargs
-        # Use `if ... is not None` to avoid treating 0.0 as falsy
-        # For local providers, litellm needs the openai/ prefix to route
-        # correctly to OpenAI-compatible endpoints (e.g. LM Studio).
-        model_name = self._profile.model
-        if self._profile.provider.value == "local" and "/" not in model_name:
-            model_name = f"openai/{model_name}"
-        elif self._profile.provider.value == "local" and not model_name.startswith("openai/"):
-            # Model has a slash but not the openai/ prefix (e.g. "google/gemma-4-26b")
-            model_name = f"openai/{model_name}"
-
-        kwargs: Dict = {
-            "model": model_name,
+        kwargs: Dict[str, Any] = {
+            "model": self._profile.model,
             "messages": messages,
-            "temperature": temperature if temperature is not None else self._profile.temperature,
-            "max_tokens": max_tokens if max_tokens is not None else self._profile.max_tokens,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
             "timeout": self._profile.timeout,
+            "api_key": api_key,
         }
 
         if self._profile.api_base:
             kwargs["api_base"] = self._profile.api_base
-        if api_key:
-            kwargs["api_key"] = api_key
 
         logger.info(
-            "LLM call: model=%s (litellm: %s), temp=%.2f, max_tokens=%d",
+            "LLM call (litellm): model=%s, temp=%.2f, max_tokens=%d",
             self._profile.model,
-            model_name,
-            kwargs["temperature"],
-            kwargs["max_tokens"],
+            temperature,
+            max_tokens,
         )
 
         response = await litellm.acompletion(**kwargs)
@@ -149,8 +223,6 @@ class LLMService:
             or not self._profile.cost_per_1k_output
         ):
             return 0.0
-
         input_cost = (input_tokens / 1000) * self._profile.cost_per_1k_input
         output_cost = (output_tokens / 1000) * self._profile.cost_per_1k_output
-
-        return round(input_cost + output_cost, 4)
+        return round(input_cost + output_cost, 6)

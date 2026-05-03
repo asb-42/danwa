@@ -18,7 +18,7 @@ from backend.services.profile_service import ProfileService
 
 @pytest.fixture()
 def mock_profile_service():
-    """ProfileService that returns a test LLM profile."""
+    """ProfileService that returns a test LLM profile (cloud/openrouter)."""
     service = MagicMock(spec=ProfileService)
     test_profile = LLMProfile(
         id="test-llm",
@@ -38,9 +38,37 @@ def mock_profile_service():
 
 
 @pytest.fixture()
+def mock_local_profile_service():
+    """ProfileService that returns a local LLM profile (LM Studio)."""
+    service = MagicMock(spec=ProfileService)
+    local_profile = LLMProfile(
+        id="local-test",
+        name="Local Test LLM",
+        provider=LLMProvider.LOCAL,
+        model="test/model",
+        api_base="http://localhost:1234/v1",
+        api_key_env="LOCAL_TEST_KEY",
+        temperature=0.5,
+        max_tokens=2048,
+        timeout=60,
+        cost_per_1k_input=0.0,
+        cost_per_1k_output=0.0,
+    )
+    service.get_llm_profile.return_value = local_profile
+    service.list_llm_profiles.return_value = [local_profile]
+    return service
+
+
+@pytest.fixture()
 def llm_service(mock_profile_service):
-    """LLMService with mocked profile service."""
+    """LLMService with mocked profile service (cloud)."""
     return LLMService(profile_id="test-llm", profile_service=mock_profile_service)
+
+
+@pytest.fixture()
+def local_llm_service(mock_local_profile_service):
+    """LLMService with mocked local profile service."""
+    return LLMService(profile_id="local-test", profile_service=mock_local_profile_service)
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +157,85 @@ class TestLLMServiceGenerate:
                 call_kwargs = mock_ac.call_args[1]
                 assert call_kwargs["temperature"] == 0.3
                 assert call_kwargs["max_tokens"] == 1024
+
+
+class TestLLMServiceLocal:
+    """Tests for the local provider path (direct HTTP via httpx)."""
+
+    @pytest.mark.asyncio
+    async def test_local_generate_uses_httpx(self, local_llm_service):
+        """Local providers should call httpx.post, not litellm."""
+        mock_http_response = MagicMock()
+        mock_http_response.status_code = 200
+        mock_http_response.raise_for_status = MagicMock()
+        mock_http_response.json.return_value = {
+            "choices": [{"message": {"content": "Local response"}}],
+            "usage": {"prompt_tokens": 15, "completion_tokens": 25},
+        }
+
+        with patch("backend.services.llm_service.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post.return_value = mock_http_response
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            result = await local_llm_service.generate(
+                prompt="Test local prompt",
+                system_prompt="You are local.",
+            )
+
+            assert result == "Local response"
+            mock_client.post.assert_called_once()
+            call_args = mock_client.post.call_args
+            # URL should be the chat completions endpoint
+            assert "/chat/completions" in call_args[0][0]
+            # Payload should contain the model name as-is
+            payload = call_args[1]["json"]
+            assert payload["model"] == "test/model"
+            assert payload["temperature"] == 0.5
+            assert payload["max_tokens"] == 2048
+
+    @pytest.mark.asyncio
+    async def test_local_generate_no_api_key_needed(self, local_llm_service):
+        """Local providers should work without an API key."""
+        mock_http_response = MagicMock()
+        mock_http_response.status_code = 200
+        mock_http_response.raise_for_status = MagicMock()
+        mock_http_response.json.return_value = {
+            "choices": [{"message": {"content": "No key response"}}],
+        }
+
+        with patch.dict("os.environ", {}, clear=True):
+            with patch("backend.services.llm_service.httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client.post.return_value = mock_http_response
+                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+                mock_client.__aexit__ = AsyncMock(return_value=False)
+                mock_client_cls.return_value = mock_client
+
+                result = await local_llm_service.generate("Test")
+                assert result == "No key response"
+
+    @pytest.mark.asyncio
+    async def test_local_generate_raises_without_api_base(self, mock_local_profile_service):
+        """Local profile without api_base should raise ValueError."""
+        profile = LLMProfile(
+            id="local-no-base",
+            name="Local No Base",
+            provider=LLMProvider.LOCAL,
+            model="test/model",
+            api_base=None,
+            api_key_env="X",
+            temperature=0.5,
+            max_tokens=2048,
+            timeout=60,
+        )
+        mock_local_profile_service.get_llm_profile.return_value = profile
+        service = LLMService(profile_id="local-no-base", profile_service=mock_local_profile_service)
+
+        with pytest.raises(ValueError, match="requires api_base"):
+            await service.generate("Test")
 
 
 class TestLLMServiceCostEstimation:
