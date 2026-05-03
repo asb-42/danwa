@@ -1,0 +1,15 @@
+# Example: Local LLM profile (LM Studio, Ollama, vLLM, etc.)
+# Copy this file and rename (remove "-example") to activate.
+# Adjust api_base to match your local server address.
+
+id: local-example
+name: Example Local Model
+provider: local
+model: your-model-name                     # model name as served by your local endpoint
+api_base: http://localhost:1234/v1         # your local OpenAI-compatible endpoint
+api_key_env: LM_STUDIO_KEY                # usually a dummy value is fine for local providers
+max_tokens: 4096
+temperature: 0.4
+timeout: 120
+cost_per_1k_input: 0.0
+cost_per_1k_output: 0.0

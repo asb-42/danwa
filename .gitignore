@@ -138,6 +138,18 @@ memory/debates.db
 # Runtime data (databases, audit logs)
 data/
 
+# Profile configurations (may contain API keys, private IPs, user-specific settings)
+# NOTE: Use file-level patterns (not directory patterns) so that git can still
+#       look inside subdirectories and apply the ! exceptions below.
+profiles/agents/*.yaml
+profiles/llm/*.yaml
+profiles/prompts/**/*.md
+# Allow example files (templates for new users) and documentation
+!profiles/agents/*example*.yaml
+!profiles/llm/*example*.yaml
+!profiles/prompts/**/*example*.md
+!profiles/prompts/README.md
+
 # Reports
 reports/
 *.docx
