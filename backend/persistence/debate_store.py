@@ -21,13 +21,28 @@ _DEFAULT_DATA_DIR = Path("data/debates")
 
 
 def _normalize_debate(data: dict) -> dict:
-    """Ensure status is a DebateStatus enum (may be a plain string after JSON load)."""
+    """Ensure status is a DebateStatus enum and datetime fields are datetime objects.
+
+    After JSON deserialization, status may be a plain string and
+    datetime fields (created_at, updated_at) are ISO-format strings.
+    """
+    # Normalize status enum
     status = data.get("status")
     if isinstance(status, str):
         try:
             data["status"] = DebateStatus(status)
         except ValueError:
             pass
+
+    # Normalize datetime fields
+    for field in ("created_at", "updated_at"):
+        value = data.get(field)
+        if isinstance(value, str):
+            try:
+                data[field] = datetime.fromisoformat(value)
+            except (ValueError, TypeError):
+                pass
+
     return data
 
 
