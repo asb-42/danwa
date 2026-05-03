@@ -54,6 +54,8 @@ export default {
   'debate.roundOverMax': 'Round {current} (exceeded {max} — consensus not reached)',
   'debate.llmFailureWarning': '⚠️ LLM failures occurred — consensus could not be reached',
   'debate.degradedConsensus': 'This debate had LLM failures. The displayed consensus score may not be meaningful.',
+  'debate.cancelButton': 'Cancel Debate',
+  'debate.cancelling': 'Cancelling...',
 
   // Debate status
   'status.pending': 'Pending',

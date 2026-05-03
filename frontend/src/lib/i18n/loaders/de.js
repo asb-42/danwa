@@ -54,6 +54,8 @@ export default {
   'debate.roundOverMax': 'Runde {current} (überschritt {max} — Konsens nicht erreicht)',
   'debate.llmFailureWarning': '⚠️ LLM-Fehler aufgetreten — Konsens konnte nicht erreicht werden',
   'debate.degradedConsensus': 'Die Debatte hatte LLM-Fehler. Der angezeigte Konsenswert ist möglicherweise nicht aussagekräftig.',
+  'debate.cancelButton': 'Debatte abbrechen',
+  'debate.cancelling': 'Wird abgebrochen...',
 
   // Debate status
   'status.pending': 'Ausstehend',

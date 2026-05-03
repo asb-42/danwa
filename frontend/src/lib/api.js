@@ -95,6 +95,12 @@ export function startDebate(debateId) {
   });
 }
 
+export function cancelDebate(debateId) {
+  return request(`/api/v1/debate/${debateId}/cancel`, {
+    method: 'POST',
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Audit
 // ---------------------------------------------------------------------------

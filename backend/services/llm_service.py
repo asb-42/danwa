@@ -84,8 +84,9 @@ class LLMService:
         temp = temperature if temperature is not None else self._profile.temperature
         tokens = max_tokens if max_tokens is not None else self._profile.max_tokens
 
-        # Route: local providers → direct HTTP, cloud providers → litellm
-        if self._profile.provider.value == "local":
+        # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
+        local_providers = {"local", "ollama", "opencode-zen", "opencode-go", "xiaomi"}
+        if self._profile.provider.value in local_providers:
             return await self._generate_local(messages, temp, tokens)
         else:
             return await self._generate_litellm(messages, temp, tokens)
@@ -207,6 +208,15 @@ class LLMService:
 
         response = await litellm.acompletion(**kwargs)
         content = response.choices[0].message.content
+
+        # Some models/providers return None content — treat as empty string
+        if content is None:
+            logger.warning(
+                "LLM returned None content for model=%s. "
+                "This may indicate a content filter or empty response.",
+                model_name,
+            )
+            content = ""
 
         # Log token usage
         if hasattr(response, "usage") and response.usage:

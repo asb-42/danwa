@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
-  import { createDebate, getDebate, startDebate } from '../lib/api.js';
+  import { createDebate, getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
@@ -165,6 +165,20 @@
       $currentDebate = { ...$currentDebate, ...status };
     } catch (err) {
       $error = err.message;
+    }
+  }
+
+  let isCancelling = false;
+  async function handleCancelDebate() {
+    if (!$currentDebate) return;
+    isCancelling = true;
+    try {
+      await cancelDebate($currentDebate.debate_id);
+      // The SSE stream will deliver the failed status_change event
+    } catch (err) {
+      $error = err.message;
+    } finally {
+      isCancelling = false;
     }
   }
 
@@ -448,6 +462,17 @@
             disabled={$loading}
           >
             {$loading ? t('debate.starting') : t('debate.startButton')}
+          </button>
+        {/if}
+
+        {#if $currentDebate.status === 'running'}
+          <button
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+            on:click={handleCancelDebate}
+            disabled={isCancelling}
+          >
+            {isCancelling ? t('debate.cancelling') : t('debate.cancelButton')}
           </button>
         {/if}
 

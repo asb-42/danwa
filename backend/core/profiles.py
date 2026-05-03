@@ -19,6 +19,10 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     LOCAL = "local"
+    OLLAMA = "ollama"
+    OPENCODE_ZEN = "opencode-zen"
+    OPENCODE_GO = "opencode-go"
+    XIAOMI = "xiaomi"
 
 
 class LLMProfile(BaseModel):

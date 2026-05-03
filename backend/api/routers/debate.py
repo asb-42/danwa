@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Set of debate IDs that have been requested to cancel
+_cancelled_debates: set[str] = set()
+
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -253,6 +256,48 @@ async def start_debate(
     )
 
 
+# ---------------------------------------------------------------------------
+# Cancel endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{debate_id}/cancel")
+async def cancel_debate(
+    debate_id: str,
+    store: DebateStore = Depends(get_debate_store),
+) -> dict:
+    """Cancel a running debate.
+
+    Sets a cancellation flag that the workflow checks between rounds.
+    The debate will be marked as failed with a cancellation message.
+    """
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate["status"]
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val != "running":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot cancel debate with status '{status_val}'",
+        )
+
+    _cancelled_debates.add(debate_id)
+    logger.info("Debate %s cancellation requested", debate_id)
+    return {"status": "ok", "message": "Cancellation requested"}
+
+
+def is_cancelled(debate_id: str) -> bool:
+    """Check if a debate has been cancelled."""
+    return debate_id in _cancelled_debates
+
+
+def clear_cancel(debate_id: str) -> None:
+    """Remove cancellation flag after handling."""
+    _cancelled_debates.discard(debate_id)
+
+
 async def _run_debate_workflow(debate_id: str, audit: AuditService, store: DebateStore) -> None:
     """Run the LangGraph workflow for a debate (called as background task)."""
     debate = store.get(debate_id)
@@ -329,6 +374,21 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
     except Exception as exc:
         logger.error("Debate %s failed: %s", debate_id, exc, exc_info=True)
         store.update(debate_id, status=DebateStatus.FAILED, updated_at=datetime.now(UTC))
+        clear_cancel(debate_id)
+        return
+
+    # Check if debate was cancelled during execution
+    if is_cancelled(debate_id):
+        store.update(
+            debate_id,
+            status=DebateStatus.FAILED,
+            current_round=result.get("current_round", 0),
+            rounds=result.get("rounds", []),
+            result={**(result or {}), "cancel_reason": "User cancelled the debate"},
+            updated_at=datetime.now(UTC),
+        )
+        clear_cancel(debate_id)
+        logger.info("Debate %s was cancelled by user", debate_id)
         return
 
     # Update debate state
@@ -355,6 +415,7 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         )
         audit.record(event)
 
+    clear_cancel(debate_id)
     logger.info(
         "Debate %s completed: %d rounds, consensus=%.3f",
         debate_id, result.get("current_round", 0), result.get("final_consensus", 0.0),
