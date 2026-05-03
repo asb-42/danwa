@@ -4,6 +4,8 @@
   import { getHealth, getDebates } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
+  export let navigate = () => {};
+
   $: t = (key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
@@ -121,7 +123,10 @@
       </div>
       <div class="divide-y divide-gray-200 dark:divide-gray-700">
         {#each recentDebates as debate}
-          <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+          <button
+            class="w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+            on:click={() => navigate('debate/' + debate.debate_id)}
+          >
             <div class="flex items-center justify-between">
               <div class="flex-1 min-w-0">
                 <p class="text-sm text-gray-800 dark:text-gray-200 truncate">
@@ -145,7 +150,7 @@
                 {t(`status.${debate.status}`)}
               </span>
             </div>
-          </div>
+          </button>
         {/each}
       </div>
     </div>

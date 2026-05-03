@@ -6,6 +6,11 @@
   import { i18n, formatNumber, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
 
+  /** @type {string|null} Debate ID from route — triggers archive/read-only mode */
+  export let debateId = null;
+  /** @type {function} Navigation helper from App.svelte */
+  export let navigate = () => {};
+
   $: t = (key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
@@ -14,15 +19,35 @@
     return text;
   };
 
+  /** True when viewing a past debate (read-only archive mode) */
+  $: isArchiveMode = !!debateId;
+
   let caseText = '';
   let maxRounds = 3;
   let consensusThreshold = 0.8;
   let sseConnection = null;
+  let archiveLoading = false;
 
   // Live activity log — stores full agent outputs as they arrive
   let liveOutputs = []; // { round, role, content, tokens, timestamp }
   let currentActivity = null; // { round, role, profile }
   let expandedOutputs = new Set(); // track which outputs are expanded
+
+  // Load debate from archive when debateId is provided
+  onMount(async () => {
+    if (debateId) {
+      archiveLoading = true;
+      $error = null;
+      try {
+        const debate = await getDebate(debateId);
+        $currentDebate = debate;
+      } catch (err) {
+        $error = err.message || t('error.debateNotFound');
+      } finally {
+        archiveLoading = false;
+      }
+    }
+  });
 
   // Cleanup SSE on destroy
   onDestroy(() => {
@@ -209,7 +234,21 @@
 </script>
 
 <div class="space-y-6">
-  <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('debate.title')}</h2>
+  <!-- Header with optional back button for archive mode -->
+  <div class="flex items-center gap-3">
+    {#if isArchiveMode}
+      <button
+        class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        on:click={() => navigate('dashboard')}
+      >
+        ← {t('debate.backToOverview')}
+      </button>
+      <span class="text-gray-300 dark:text-gray-600">|</span>
+    {/if}
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+      {isArchiveMode ? t('debate.archiveTitle') : t('debate.title')}
+    </h2>
+  </div>
 
   {#if $error}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300" role="alert">
@@ -217,7 +256,20 @@
     </div>
   {/if}
 
-  <!-- Create debate form -->
+  <!-- Archive loading indicator -->
+  {#if archiveLoading}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700 text-center">
+      <div class="flex justify-center gap-1 mb-3">
+        <span class="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+        <span class="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+        <span class="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+      </div>
+      <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+    </div>
+  {/if}
+
+  <!-- Create debate form (hidden in archive mode) -->
+  {#if !isArchiveMode}
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('debate.newDebate')}</h3>
 
@@ -282,6 +334,7 @@
       </button>
     </form>
   </div>
+  {/if}
 
   <!-- Current debate status -->
   {#if $currentDebate}
@@ -332,6 +385,7 @@
         {/if}
       </div>
 
+      {#if !isArchiveMode}
       <div class="mt-4 flex space-x-3">
         {#if $currentDebate.status === 'pending'}
           <button
@@ -352,6 +406,7 @@
           {t('debate.refreshStatus')}
         </button>
       </div>
+      {/if}
     </div>
 
     <!-- Live debate view (during running) -->
@@ -441,6 +496,14 @@
             </p>
           {/if}
         </div>
+      </div>
+    {/if}
+
+    <!-- Case text display (archive mode only) -->
+    {#if isArchiveMode && $currentDebate.case?.text}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">{t('debate.caseLabel')}</h3>
+        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{$currentDebate.case.text}</p>
       </div>
     {/if}
 
@@ -551,6 +614,13 @@
             </div>
           {/if}
         </div>
+      </div>
+    {/if}
+
+    <!-- No rounds fallback (archive mode) -->
+    {#if isArchiveMode && $currentDebate.status === 'completed' && !displayRounds}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700 text-center">
+        <p class="text-gray-500 dark:text-gray-400">{t('debate.noRounds')}</p>
       </div>
     {/if}
   {/if}

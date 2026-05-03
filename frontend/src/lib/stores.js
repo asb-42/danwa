@@ -7,6 +7,9 @@ import { writable } from 'svelte/store';
 /** Current route (hash-based) */
 export const route = writable('dashboard');
 
+/** Route parameters (e.g. debate ID from #/debate/{id}) */
+export const routeParams = writable([]);
+
 /** Backend health status */
 export const healthStatus = writable({ status: 'unknown', version: '' });
 

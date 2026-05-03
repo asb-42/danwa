@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { route } from './lib/stores.js';
+  import { route, routeParams } from './lib/stores.js';
   import { getHealth } from './lib/api.js';
   import { healthStatus } from './lib/stores.js';
   import { i18n } from './lib/i18n/index.js';
@@ -10,24 +10,33 @@
   import AuditView from './views/AuditView.svelte';
   import ConfigView from './views/ConfigView.svelte';
 
-  // Hash-based routing
+  // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
     const hash = window.location.hash.slice(1) || '/dashboard';
     const parts = hash.split('/').filter(Boolean);
-    return parts[0] || 'dashboard';
+    return {
+      route: parts[0] || 'dashboard',
+      params: parts.slice(1),
+    };
   }
 
   function navigate(path) {
     window.location.hash = `#/${path}`;
   }
 
+  function applyRoute() {
+    const parsed = parseHash();
+    $route = parsed.route;
+    $routeParams = parsed.params;
+  }
+
   onMount(() => {
     // Set initial route from hash
-    $route = parseHash();
+    applyRoute();
 
     // Listen for hash changes
     const onHashChange = () => {
-      $route = parseHash();
+      applyRoute();
     };
     window.addEventListener('hashchange', onHashChange);
 
@@ -55,14 +64,14 @@
 
 <Layout {navigate} currentRoute={$route}>
   {#if $route === 'dashboard'}
-    <Dashboard />
+    <Dashboard {navigate} />
   {:else if $route === 'debate'}
-    <DebateView />
+    <DebateView debateId={$routeParams[0] || null} {navigate} />
   {:else if $route === 'audit'}
     <AuditView />
   {:else if $route === 'config'}
     <ConfigView />
   {:else}
-    <Dashboard />
+    <Dashboard {navigate} />
   {/if}
 </Layout>

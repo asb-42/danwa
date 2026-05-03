@@ -42,6 +42,9 @@ export default {
   'debate.timelineTitle': 'Debate Timeline',
   'debate.timelinePlaceholder': 'Debate timeline — coming in Sprint 4',
   'debate.enterCase': 'Please enter a case description',
+  'debate.backToOverview': 'Back to overview',
+  'debate.archiveTitle': 'Debate (Archive)',
+  'debate.noRounds': 'No rounds recorded for this debate.',
 
   // Debate status
   'status.pending': 'Pending',

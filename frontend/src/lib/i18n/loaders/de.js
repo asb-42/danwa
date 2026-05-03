@@ -42,6 +42,9 @@ export default {
   'debate.timelineTitle': 'Debatten-Zeitachse',
   'debate.timelinePlaceholder': 'Debatten-Zeitachse — kommt in Sprint 4',
   'debate.enterCase': 'Bitte geben Sie eine Fallbeschreibung ein',
+  'debate.backToOverview': 'Zurück zur Übersicht',
+  'debate.archiveTitle': 'Debatte (Archiv)',
+  'debate.noRounds': 'Keine Runden für diese Debatte vorhanden.',
 
   // Debate status
   'status.pending': 'Ausstehend',
