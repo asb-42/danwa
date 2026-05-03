@@ -25,6 +25,7 @@ export function createSSE(debateId, handlers = {}) {
   let eventSource = null;
   let reconnectTimer = null;
   let reconnectDelay = 1000;
+  let settled = false; // true once debate completed/failed — no more reconnects
 
   function connect() {
     eventSource = new EventSource(url);
@@ -59,6 +60,10 @@ export function createSSE(debateId, handlers = {}) {
       eventSource.addEventListener(eventName, (event) => {
         try {
           const data = JSON.parse(event.data);
+          // Mark as settled when debate finishes — server will close connection
+          if (data.status === 'completed' || data.status === 'failed') {
+            settled = true;
+          }
           handlers.onEvent?.(data);
         } catch {
           handlers.onEvent?.({ type: 'raw', data: event.data });
@@ -70,6 +75,9 @@ export function createSSE(debateId, handlers = {}) {
       sseConnected.set(false);
       eventSource.close();
       handlers.onError?.();
+
+      // Don't reconnect if debate already completed/failed
+      if (settled) return;
 
       // Reconnect with exponential backoff
       reconnectTimer = setTimeout(() => {
@@ -83,6 +91,7 @@ export function createSSE(debateId, handlers = {}) {
 
   return {
     close: () => {
+      settled = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (eventSource) eventSource.close();
       sseConnected.set(false);

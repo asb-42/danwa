@@ -167,51 +167,92 @@ danwa/
 
 ## Configuration
 
+The profile system uses typed Pydantic schemas with YAML files. All profiles are managed via the `/api/v1/profiles/` API and the Config UI.
+
 ### LLM Profiles (`profiles/llm/*.yaml`)
 
 Each LLM profile is a separate YAML file with typed fields:
 
 ```yaml
 # profiles/llm/openrouter-claude.yaml
-id: openrouter-claude
-name: OpenRouter Claude 3.5 Sonnet
-provider: openrouter
-model: anthropic/claude-3.5-sonnet
+id: openrouter-claude-3.6-sonnet
+name: Claude 3.6 Sonnet (OpenRouter)
+provider: openrouter          # openrouter | openai | anthropic | local
+model: anthropic/claude-3.6-sonnet
+api_base: https://openrouter.ai/api/v1
 api_key_env: OPENROUTER_API_KEY
 max_tokens: 4096
+context_window: 200000
+temperature: 0.7
+timeout: 600
 cost_per_1k_input: 0.003
 cost_per_1k_output: 0.015
 ```
 
+Available LLM profiles: `openrouter-claude`, `openrouter-gpt4`, `openrouter-grok-4.2`, `xiaomi-mimo-v2.5-pro`, and several local models.
+
 ### Agent Personas (`profiles/agents/*.yaml`)
 
-Each agent persona defines role, system prompt, and temperature:
+Each agent persona defines role, system prompt, and linked LLM profile:
 
 ```yaml
 # profiles/agents/strategist-default.yaml
 id: strategist-default
 name: Default Strategist
-role: strategist
-system_prompt: "You are a strategic analyst..."
-temperature: 0.7
-tags: [default]
+role: strategist              # strategist | critic | optimizer | moderator
+system_prompt: |
+  You are the Strategist agent in a multi-agent debate system.
+  ...
+llm_profile_id: openrouter-claude-3.6-sonnet
+max_rounds: 5
+consensus_threshold: 0.9
+tags: [default, balanced]
 ```
+
+Default personas: `strategist-default`, `critic-default`, `optimizer-default`, `moderator-default`. Example personas with `-example` suffix are also provided.
 
 ### Prompt Variants (`profiles/prompts/`)
 
-Prompt templates are Markdown files organized by variant:
+Prompt templates are Markdown files organized by variant, with optional language-specific overrides (`*-en.md`):
 
 ```
 profiles/prompts/
-├── default/          # Default variant
-│   ├── strategist.md
+├── default/              # Default variant
+│   ├── strategist.md     # German
+│   ├── strategist-en.md  # English
 │   ├── critic.md
+│   ├── critic-en.md
 │   ├── optimizer.md
-│   └── moderator.md
+│   ├── optimizer-en.md
+│   ├── moderator.md
+│   └── moderator-en.md
 └── variants/
-    ├── kantian/      # Kantian ethics variant
-    └── steiner/      # Steiner variant
+    ├── kantian/          # Kantian ethics variant
+    │   ├── strategist.md
+    │   └── critic.md
+    └── steiner/          # Steiner variant
+        ├── strategist.md
+        └── critic.md
 ```
+
+### Profile API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/profiles/llm` | List all LLM profiles |
+| GET | `/api/v1/profiles/llm/{id}` | Get specific LLM profile |
+| POST | `/api/v1/profiles/llm` | Create LLM profile |
+| PUT | `/api/v1/profiles/llm/{id}` | Update LLM profile |
+| DELETE | `/api/v1/profiles/llm/{id}` | Delete LLM profile |
+| GET | `/api/v1/profiles/agents` | List agent personas (`?role=` filter) |
+| GET | `/api/v1/profiles/agents/{id}` | Get specific persona |
+| POST | `/api/v1/profiles/agents` | Create agent persona |
+| PUT | `/api/v1/profiles/agents/{id}` | Update agent persona |
+| DELETE | `/api/v1/profiles/agents/{id}` | Delete agent persona |
+| GET | `/api/v1/profiles/prompts` | List prompt variants |
+| GET | `/api/v1/profiles/prompts/{id}/preview` | Preview prompt for agent role |
+| POST | `/api/v1/profiles/prompts` | Create prompt variant |
+| DELETE | `/api/v1/profiles/prompts/{id}` | Delete prompt variant |
 
 ### App Settings (`config/settings.yaml`)
 
@@ -263,4 +304,4 @@ Full user manual available at `docs/user_manual.md` - covers all features, confi
 
 ---
 
-*Debate-Agent v0.1.0 | Built with Chainlit + LiteLLM + ChromaDB*
+*Debate-Agent v2.0.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte*

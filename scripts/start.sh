@@ -6,11 +6,13 @@ PID_FILE="$LOG_DIR/debate-agent.pid"
 LOG_FILE="$LOG_DIR/debate-agent.log"
 
 if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if ps -p "$PID" > /dev/null 2>&1; then
+    PID=$(cat "$PID_FILE" 2>/dev/null | tr -d '[:space:]')
+    if [ -n "$PID" ] && ps -p "$PID" > /dev/null 2>&1; then
         echo "Error: Debate-Agent already running (PID: $PID)"
         exit 1
     fi
+    # Stale PID file — process is gone, clean up
+    rm -f "$PID_FILE"
 fi
 
 mkdir -p "$LOG_DIR"
