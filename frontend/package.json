@@ -31,6 +31,8 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "marked": "^18.0.3",
     "zod": "^4.4.2"
   }
 }

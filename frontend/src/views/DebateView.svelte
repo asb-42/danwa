@@ -4,6 +4,7 @@
   import { createDebate, getDebate, startDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber } from '../lib/i18n/index.js';
+  import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
 
   $: t = (key, params = {}) => {
     let text = $i18n[key] || key;
@@ -386,9 +387,9 @@
                         {output.tokens} tokens
                       </span>
                     </div>
-                    <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                    <div class="text-sm text-gray-700 dark:text-gray-300">
                       {#if isLong && !isExpanded}
-                        {output.content.substring(0, 400)}…
+                        <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
                         <button
                           class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
                           on:click={() => toggleExpand(key)}
@@ -396,7 +397,7 @@
                           ▼ Show full response ({output.content.length} chars)
                         </button>
                       {:else}
-                        {output.content}
+                        <MarkdownRenderer content={output.content} />
                         {#if isLong}
                           <button
                             class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
@@ -486,9 +487,9 @@
                           {output.tokens_used || 0} tokens
                         </span>
                       </div>
-                      <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                      <div class="text-sm text-gray-700 dark:text-gray-300">
                         {#if isLong && !isExpanded}
-                          {output.content.substring(0, 400)}…
+                          <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
                           <button
                             class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
                             on:click={() => toggleExpand(key)}
@@ -496,7 +497,7 @@
                             ▼ Show full response ({output.content.length} chars)
                           </button>
                         {:else}
-                          {output.content}
+                          <MarkdownRenderer content={output.content} />
                           {#if isLong}
                             <button
                               class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
