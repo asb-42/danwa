@@ -12,7 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_audit_service, get_debate_graph, get_debate_store
-from backend.api.events import subscribe, unsubscribe
+from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.models.schemas import (
     AuditEvent,
     DebateListItem,
@@ -387,6 +387,11 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
             result={**(result or {}), "cancel_reason": "User cancelled the debate"},
             updated_at=datetime.now(UTC),
         )
+        # Publish SSE event so the frontend sees the status change
+        await publish_async(debate_id, "status_change", {
+            "status": "failed",
+            "cancel_reason": "User cancelled the debate",
+        })
         clear_cancel(debate_id)
         logger.info("Debate %s was cancelled by user", debate_id)
         return

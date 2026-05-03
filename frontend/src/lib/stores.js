@@ -31,14 +31,38 @@ export const error = writable(null);
 /** Loading state */
 export const loading = writable(false);
 
+/**
+ * Create a writable store that persists to localStorage.
+ */
+function persisted(key, defaultValue) {
+  let initial = defaultValue;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored !== null) {
+        initial = JSON.parse(stored);
+      }
+    } catch { /* ignore parse errors */ }
+  }
+  const store = writable(initial);
+  if (typeof localStorage !== 'undefined') {
+    store.subscribe((value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch { /* ignore quota errors */ }
+    });
+  }
+  return store;
+}
+
 /** Selected LLM profile ID for debates (set in ConfigView, read in DebateView) */
-export const selectedLLMProfile = writable('openrouter-claude');
+export const selectedLLMProfile = persisted('danwa.selectedLLMProfile', 'openrouter-claude');
 
 /** Selected prompt variant for debates */
-export const selectedPromptVariant = writable('default');
+export const selectedPromptVariant = persisted('danwa.selectedPromptVariant', 'default');
 
 /** Selected agent persona IDs per role */
-export const selectedPersonas = writable({
+export const selectedPersonas = persisted('danwa.selectedPersonas', {
   strategist: 'strategist-default',
   critic: 'critic-default',
   optimizer: 'optimizer-default',
