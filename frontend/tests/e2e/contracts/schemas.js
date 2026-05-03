@@ -52,6 +52,10 @@ export const DebateStatusSchema = z.object({
   rounds: z.array(RoundDataSchema),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
+  case_text: z.string().default(''),
+  language: z.string().default('de'),
+  llm_profile_id: z.string().default(''),
+  anomalies: z.array(z.string()).default([]),
 });
 
 // ---------------------------------------------------------------------------

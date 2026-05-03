@@ -129,8 +129,8 @@
           >
             <div class="flex items-center justify-between">
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-800 dark:text-gray-200 truncate">
-                  {debate.case_preview || debate.debate_id.substring(0, 12)}
+                <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
+                  {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 12)}
                 </p>
                 <div class="flex items-center gap-3 mt-1">
                   <span class="text-xs text-gray-500 dark:text-gray-400">

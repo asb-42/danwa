@@ -58,6 +58,7 @@ def initialize_node(state: DebateState) -> dict:
         "output": "",
         "validation_report": [],
         "used_variant": state.get("prompt_variant", "default"),
+        "anomalies": [],
     }
 
 
@@ -94,6 +95,8 @@ async def run_agent_node(state: DebateState) -> dict:
     })
 
     # --- LLM call with graceful fallback ---
+    llm_failed = False
+    anomaly_detail = ""
     try:
         llm_service = LLMService(
             profile_id=llm_profile_id,
@@ -121,9 +124,11 @@ async def run_agent_node(state: DebateState) -> dict:
             role, state["current_round"], llm_profile_id, exc,
             exc_info=True,
         )
+        llm_failed = True
+        anomaly_detail = f"{type(exc).__name__}: {exc}"
         content = (
             f"[{role}] Round {state['current_round']}: "
-            f"LLM call failed ({type(exc).__name__}: {exc}). "
+            f"LLM call failed ({anomaly_detail}). "
             f"Profile: {llm_profile_id}"
         )
         tokens = len(content.split())
@@ -142,11 +147,20 @@ async def run_agent_node(state: DebateState) -> dict:
         "tokens_used": tokens,
     })
 
-    return {
+    result: dict = {
         "agent_outputs": [output],
         "current_agent_index": idx + 1,
         "current_draft": state.get("current_draft", "") + "\n" + content,
     }
+
+    # Track anomaly if LLM call failed
+    if llm_failed:
+        result["anomalies"] = [
+            f"LLM call failed for {role} in round {state['current_round']} "
+            f"({anomaly_detail})"
+        ]
+
+    return result
 
 
 def _resolve_system_prompt(
@@ -215,8 +229,20 @@ def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> s
 
     if language == "en":
         parts.append("Please provide your analysis based on the case and previous discussion.")
+        parts.append(
+            "IMPORTANT: If you disagree with the majority position or previous analyses, "
+            "you MUST clearly state your dissent and explain your reasoning. "
+            "Document any minority viewpoints explicitly. "
+            "Do not simply agree for the sake of consensus — intellectual honesty is required."
+        )
     else:
         parts.append("Bitte gib deine Analyse basierend auf dem Fall und der bisherigen Diskussion.")
+        parts.append(
+            "WICHTIG: Wenn du mit der Mehrheitsposition oder früheren Analysen nicht einverstanden bist, "
+            "musst du deine abweichende Meinung klar darlegen und deine Begründung erklären. "
+            "Dokumentiere explizit alle Minderheitenstandpunkte. "
+            "Stimme nicht einfach nur der Konsens wegen zu — intellektuelle Ehrlichkeit ist erforderlich."
+        )
 
     return "\n\n".join(parts)
 
@@ -225,14 +251,29 @@ async def check_consensus_node(state: DebateState) -> dict:
     """Evaluate consensus (linear progression toward threshold).
 
     TODO: Replace with LLM-based consensus evaluation in a future sprint.
+
+    If any LLM failures occurred in this round, consensus is capped at 0
+    to prevent false consensus claims.
     """
     current_round = state["current_round"]
     max_rounds = state["max_rounds"]
     threshold = state["threshold"]
     session_id = state.get("session_id", "")
+    anomalies = state.get("anomalies", [])
 
-    # Linear consensus progression
-    consensus = min(threshold, current_round / max_rounds * threshold * 1.2)
+    # Check if any LLM failures occurred in this round
+    has_failures = any("LLM call failed" in a for a in anomalies)
+
+    if has_failures:
+        # Cap consensus at 0 when LLM failures occurred — no false consensus
+        consensus = 0.0
+        logger.warning(
+            "Round %d: LLM failures detected (%d anomalies), consensus capped at 0",
+            current_round, len(anomalies),
+        )
+    else:
+        # Linear consensus progression
+        consensus = min(threshold, current_round / max_rounds * threshold * 1.2)
 
     # Include agent outputs from this round in the round data
     round_data: RoundDataState = {
@@ -259,6 +300,7 @@ async def check_consensus_node(state: DebateState) -> dict:
 async def complete_node(state: DebateState) -> dict:
     """Finalize the debate."""
     session_id = state.get("session_id", "")
+    anomalies = state.get("anomalies", [])
 
     # --- Publish: debate completed ---
     await publish_async(session_id, "status_change", {
@@ -269,6 +311,7 @@ async def complete_node(state: DebateState) -> dict:
 
     return {
         "output": state.get("current_draft", "No output generated."),
+        "anomalies": anomalies,
     }
 
 

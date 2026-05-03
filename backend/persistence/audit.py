@@ -99,3 +99,12 @@ class AuditService:
                 (debate_id,),
             ).fetchone()
         return row[0] if row else 0
+
+    def delete_events(self, debate_id: str) -> int:
+        """Delete all audit events for a debate. Returns number of deleted rows."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM audit_events WHERE debate_id = ?",
+                (debate_id,),
+            )
+            return cursor.rowcount

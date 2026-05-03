@@ -46,6 +46,14 @@ export default {
   'debate.backToOverview': 'Back to overview',
   'debate.archiveTitle': 'Debate (Archive)',
   'debate.noRounds': 'No rounds recorded for this debate.',
+  'debate.date': 'Date',
+  'debate.model': 'Model',
+  'debate.duration': 'Duration',
+  'debate.anomalies': 'Anomalies',
+  'debate.roundInfo': 'Round {current} of {max}',
+  'debate.roundOverMax': 'Round {current} (exceeded {max} — consensus not reached)',
+  'debate.llmFailureWarning': '⚠️ LLM failures occurred — consensus could not be reached',
+  'debate.degradedConsensus': 'This debate had LLM failures. The displayed consensus score may not be meaningful.',
 
   // Debate status
   'status.pending': 'Pending',
@@ -96,6 +104,7 @@ export default {
   'config.model': 'Model',
   'config.temperature': 'Temperature',
   'config.maxTokens': 'Max Tokens',
+  'config.contextWindow': 'Context Window',
   'config.costInput': 'Cost (Input)',
   'config.costOutput': 'Cost (Output)',
   'config.role': 'Role',
@@ -122,6 +131,8 @@ export default {
   'common.delete': 'Delete',
   'common.edit': 'Edit',
   'common.close': 'Close',
+  'common.yes': 'Yes',
+  'common.no': 'No',
 
   // Errors
   'error.backendDisconnected': 'Backend connection lost',
@@ -142,6 +153,7 @@ export default {
   'archive.filterAll': 'All statuses',
   'archive.date': 'Date',
   'archive.noResults': 'No debates found.',
+  'archive.confirmDelete': 'Delete this debate?',
   'archive.showing': 'Showing {from}–{to}',
   'archive.page': 'Page',
   'archive.prevPage': 'Previous',

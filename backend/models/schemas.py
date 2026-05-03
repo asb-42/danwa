@@ -107,6 +107,11 @@ class DebateStatusResponse(BaseModel):
     rounds: list[RoundData] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+    # --- Extended metadata ---
+    case_text: str = ""
+    language: str = "de"
+    llm_profile_id: str = ""
+    anomalies: list[str] = Field(default_factory=list)
 
 
 class DebateListItem(BaseModel):
@@ -117,6 +122,7 @@ class DebateListItem(BaseModel):
     max_rounds: int = 3
     consensus_score: float | None = None
     case_preview: str = ""
+    case_text: str = ""
     language: str = "de"
     created_at: datetime
     updated_at: datetime

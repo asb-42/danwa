@@ -98,6 +98,25 @@ class DebateStore:
         """Total number of debates."""
         return len(self._cache)
 
+    def delete(self, debate_id: str) -> bool:
+        """Delete a debate from memory and disk.
+
+        Returns True if the debate existed and was deleted, False otherwise.
+        """
+        with self._lock:
+            if debate_id not in self._cache:
+                return False
+            del self._cache[debate_id]
+        # Remove JSON file from disk
+        path = self._data_dir / f"{debate_id}.json"
+        try:
+            if path.exists():
+                path.unlink()
+                logger.info("Deleted debate file: %s", path)
+        except Exception as exc:
+            logger.error("Failed to delete debate file %s: %s", path, exc)
+        return True
+
     def update(self, debate_id: str, **kwargs: Any) -> Optional[dict]:
         """Update fields of a debate and persist."""
         with self._lock:

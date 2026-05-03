@@ -81,6 +81,7 @@ async def list_debates(
             max_rounds=d.get("max_rounds", 3),
             consensus_score=consensus,
             case_preview=case_text[:120],
+            case_text=case_text,
             language=language,
             created_at=d.get("created_at", datetime.now(UTC)),
             updated_at=d.get("updated_at", datetime.now(UTC)),
@@ -117,6 +118,34 @@ async def create_debate(
     return DebateResponse(debate_id=debate_id, status=DebateStatus.PENDING, created_at=now)
 
 
+@router.delete("/{debate_id}")
+async def delete_debate(
+    debate_id: str,
+    audit: AuditService = Depends(get_audit_service),
+    store: DebateStore = Depends(get_debate_store),
+) -> dict:
+    """Delete a debate and its associated audit events."""
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    # Prevent deletion of running debates
+    status = debate.get("status")
+    status_value = status.value if hasattr(status, "value") else status
+    if status_value == "running":
+        raise HTTPException(status_code=409, detail="Cannot delete a running debate")
+
+    # Delete audit events first, then the debate itself
+    deleted_events = audit.delete_events(debate_id)
+    store.delete(debate_id)
+
+    logger.info(
+        "Deleted debate %s (%d audit events removed)",
+        debate_id, deleted_events,
+    )
+    return {"detail": "Debate deleted", "debate_id": debate_id}
+
+
 @router.get("/{debate_id}", response_model=DebateStatusResponse)
 async def get_debate(
     debate_id: str,
@@ -130,8 +159,23 @@ async def get_debate(
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
 
+    # Extract case text and metadata from request
+    if hasattr(req, "case"):
+        case_text = req.case.text
+        language = getattr(req, "language", "de")
+        llm_profile_id = req.llm_profile_id
+    elif isinstance(req, dict):
+        case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
+        language = req.get("language", "de")
+        llm_profile_id = req.get("llm_profile_id", "")
+    else:
+        case_text = ""
+        language = "de"
+        llm_profile_id = ""
+
     result = debate.get("result")
     consensus = result.get("final_consensus") if isinstance(result, dict) else None
+    anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
 
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
@@ -144,6 +188,10 @@ async def get_debate(
         ],
         created_at=debate.get("created_at", datetime.now(UTC)),
         updated_at=debate.get("updated_at", datetime.now(UTC)),
+        case_text=case_text,
+        language=language,
+        llm_profile_id=llm_profile_id,
+        anomalies=anomalies,
     )
 
 
@@ -176,6 +224,20 @@ async def start_debate(
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
 
+    # Extract case text and metadata from request
+    if hasattr(req, "case"):
+        case_text = req.case.text
+        language = getattr(req, "language", "de")
+        llm_profile_id = req.llm_profile_id
+    elif isinstance(req, dict):
+        case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
+        language = req.get("language", "de")
+        llm_profile_id = req.get("llm_profile_id", "")
+    else:
+        case_text = ""
+        language = "de"
+        llm_profile_id = ""
+
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
@@ -185,6 +247,9 @@ async def start_debate(
         rounds=[],
         created_at=debate.get("created_at", datetime.now(UTC)),
         updated_at=debate.get("updated_at", datetime.now(UTC)),
+        case_text=case_text,
+        language=language,
+        llm_profile_id=llm_profile_id,
     )
 
 

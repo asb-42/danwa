@@ -24,15 +24,16 @@ class LLMProvider(str, Enum):
 class LLMProfile(BaseModel):
     """Configuration for a specific LLM endpoint."""
 
-    id: str = Field(..., pattern=r"^[a-z0-9-]+$")
+    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
     name: str
     provider: LLMProvider
     model: str  # e.g. "anthropic/claude-3.5-sonnet"
     api_base: Optional[str] = None  # For OpenRouter / local
     api_key_env: str = "OPENROUTER_API_KEY"  # Environment variable name
     max_tokens: int = 4096
+    context_window: Optional[int] = None  # Max total tokens (input + output) the model supports
     temperature: float = 0.7
-    timeout: int = 120
+    timeout: int = 600
 
     # Cost tracking (USD per 1k tokens)
     cost_per_1k_input: Optional[float] = None
@@ -56,7 +57,7 @@ class LLMProfile(BaseModel):
 class AgentPersona(BaseModel):
     """Configuration for a debate agent persona."""
 
-    id: str = Field(..., pattern=r"^[a-z0-9-]+$")
+    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
     name: str
     role: Literal["strategist", "critic", "optimizer", "moderator"]
     system_prompt: str
@@ -81,7 +82,7 @@ class AgentPersona(BaseModel):
 class PromptVariant(BaseModel):
     """A named set of prompt templates for debate agents."""
 
-    id: str = Field(..., pattern=r"^[a-z0-9-]+$")
+    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
     name: str
     base_path: str  # e.g. "profiles/prompts/default/"
 

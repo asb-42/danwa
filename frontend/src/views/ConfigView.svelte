@@ -207,6 +207,7 @@
                 <th class="px-4 py-3">{t('config.model')}</th>
                 <th class="px-4 py-3">{t('config.temperature')}</th>
                 <th class="px-4 py-3">{t('config.maxTokens')}</th>
+                <th class="px-4 py-3">{t('config.contextWindow')}</th>
                 <th class="px-4 py-3">{t('config.costInput')}</th>
                 <th class="px-4 py-3">{t('config.costOutput')}</th>
               </tr>
@@ -230,6 +231,7 @@
                   <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
                   <td class="px-4 py-3">{profile.temperature}</td>
                   <td class="px-4 py-3">{profile.max_tokens}</td>
+                  <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
                   <td class="px-4 py-3">{formatCost(profile.cost_per_1k_input)}</td>
                   <td class="px-4 py-3">{formatCost(profile.cost_per_1k_output)}</td>
                 </tr>

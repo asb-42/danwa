@@ -46,6 +46,14 @@ export default {
   'debate.backToOverview': 'Zurück zur Übersicht',
   'debate.archiveTitle': 'Debatte (Archiv)',
   'debate.noRounds': 'Keine Runden für diese Debatte vorhanden.',
+  'debate.date': 'Datum',
+  'debate.model': 'Modell',
+  'debate.duration': 'Dauer',
+  'debate.anomalies': 'Anomalien',
+  'debate.roundInfo': 'Runde {current} von {max}',
+  'debate.roundOverMax': 'Runde {current} (überschritt {max} — Konsens nicht erreicht)',
+  'debate.llmFailureWarning': '⚠️ LLM-Fehler aufgetreten — Konsens konnte nicht erreicht werden',
+  'debate.degradedConsensus': 'Die Debatte hatte LLM-Fehler. Der angezeigte Konsenswert ist möglicherweise nicht aussagekräftig.',
 
   // Debate status
   'status.pending': 'Ausstehend',
@@ -96,6 +104,7 @@ export default {
   'config.model': 'Modell',
   'config.temperature': 'Temperatur',
   'config.maxTokens': 'Max. Tokens',
+  'config.contextWindow': 'Kontextfenster',
   'config.costInput': 'Kosten (Eingabe)',
   'config.costOutput': 'Kosten (Ausgabe)',
   'config.role': 'Rolle',
@@ -122,6 +131,8 @@ export default {
   'common.delete': 'Löschen',
   'common.edit': 'Bearbeiten',
   'common.close': 'Schließen',
+  'common.yes': 'Ja',
+  'common.no': 'Nein',
 
   // Errors
   'error.backendDisconnected': 'Backend-Verbindung verloren',
@@ -142,6 +153,7 @@ export default {
   'archive.filterAll': 'Alle Status',
   'archive.date': 'Datum',
   'archive.noResults': 'Keine Debatten gefunden.',
+  'archive.confirmDelete': 'Debatte löschen?',
   'archive.showing': 'Zeige {from}–{to}',
   'archive.page': 'Seite',
   'archive.prevPage': 'Zurück',

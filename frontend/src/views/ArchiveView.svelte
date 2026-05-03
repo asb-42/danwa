@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error } from '../lib/stores.js';
-  import { getDebates } from '../lib/api.js';
+  import { getDebates, deleteDebate } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
   export let navigate = () => {};
@@ -22,6 +22,10 @@
   let searchQuery = '';
   let statusFilter = '';
   let searchTimeout = null;
+
+  // Delete confirmation state
+  let deleteConfirmId = null;
+  let isDeleting = false;
 
   const statusOptions = [
     { value: '', label: 'archive.filterAll' },
@@ -84,6 +88,28 @@
       case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'failed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  }
+
+  function confirmDelete(debateId) {
+    deleteConfirmId = debateId;
+  }
+
+  function cancelDelete() {
+    deleteConfirmId = null;
+  }
+
+  async function handleDelete(debateId) {
+    isDeleting = true;
+    try {
+      await deleteDebate(debateId);
+      // Remove from local list
+      debates = debates.filter(d => d.debate_id !== debateId);
+      deleteConfirmId = null;
+    } catch (err) {
+      $error = err.message;
+    } finally {
+      isDeleting = false;
     }
   }
 </script>
@@ -152,43 +178,55 @@
     {:else}
       <!-- Table header -->
       <div class="hidden md:grid md:grid-cols-12 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        <div class="col-span-5">{t('debate.caseLabel')}</div>
+        <div class="col-span-4">{t('debate.caseLabel')}</div>
         <div class="col-span-2">{t('archive.date')}</div>
         <div class="col-span-1">{t('debate.round')}</div>
         <div class="col-span-2">{t('debate.consensus')}</div>
         <div class="col-span-2">{t('debate.status')}</div>
+        <div class="col-span-1"></div>
       </div>
 
       <!-- Table rows -->
       <div class="divide-y divide-gray-200 dark:divide-gray-700">
         {#each debates as debate}
-          <button
-            class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer
+          <div
+            class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                    md:grid md:grid-cols-12 md:gap-4 md:items-center"
-            on:click={() => navigate('debate/' + debate.debate_id)}
           >
-            <!-- Case preview -->
-            <div class="md:col-span-5 mb-2 md:mb-0">
-              <p class="text-sm text-gray-800 dark:text-gray-200 truncate">
-                {debate.case_preview || debate.debate_id.substring(0, 16)}
+            <!-- Case preview (clickable) -->
+            <button
+              class="md:col-span-4 mb-2 md:mb-0 text-left cursor-pointer"
+              on:click={() => navigate('debate/' + debate.debate_id)}
+            >
+              <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
+                {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 16)}
               </p>
               <p class="text-xs text-gray-400 dark:text-gray-500 font-mono md:hidden">
                 {debate.debate_id.substring(0, 8)}…
               </p>
-            </div>
+            </button>
 
-            <!-- Date -->
-            <div class="md:col-span-2 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0">
+            <!-- Date (clickable) -->
+            <button
+              class="md:col-span-2 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0 text-left cursor-pointer"
+              on:click={() => navigate('debate/' + debate.debate_id)}
+            >
               {formatDate(debate.created_at)}
-            </div>
+            </button>
 
-            <!-- Rounds -->
-            <div class="md:col-span-1 text-sm text-gray-700 dark:text-gray-300 mb-1 md:mb-0">
+            <!-- Rounds (clickable) -->
+            <button
+              class="md:col-span-1 text-sm text-gray-700 dark:text-gray-300 mb-1 md:mb-0 text-left cursor-pointer"
+              on:click={() => navigate('debate/' + debate.debate_id)}
+            >
               {debate.current_round}/{debate.max_rounds}
-            </div>
+            </button>
 
-            <!-- Consensus -->
-            <div class="md:col-span-2 mb-1 md:mb-0">
+            <!-- Consensus (clickable) -->
+            <button
+              class="md:col-span-2 mb-1 md:mb-0 text-left cursor-pointer"
+              on:click={() => navigate('debate/' + debate.debate_id)}
+            >
               {#if debate.consensus_score !== null && debate.consensus_score !== undefined}
                 <div class="flex items-center gap-2">
                   <div class="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 hidden md:block">
@@ -204,10 +242,13 @@
               {:else}
                 <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
               {/if}
-            </div>
+            </button>
 
-            <!-- Status -->
-            <div class="md:col-span-2">
+            <!-- Status (clickable) -->
+            <button
+              class="md:col-span-2 text-left cursor-pointer"
+              on:click={() => navigate('debate/' + debate.debate_id)}
+            >
               <div class="flex items-center gap-2">
                 <span class="px-2 py-1 text-xs font-medium rounded-full {statusBadgeClass(debate.status)}">
                   {t(`status.${debate.status}`)}
@@ -216,8 +257,47 @@
                   {debate.language}
                 </span>
               </div>
+            </button>
+
+            <!-- Delete button -->
+            <div class="md:col-span-1 flex justify-end">
+              {#if deleteConfirmId === debate.debate_id}
+                <div class="flex items-center gap-1">
+                  <button
+                    class="px-2 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700
+                           disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    on:click={() => handleDelete(debate.debate_id)}
+                    disabled={isDeleting}
+                    aria-label={t('archive.confirmDelete')}
+                  >
+                    {isDeleting ? '...' : t('common.yes')}
+                  </button>
+                  <button
+                    class="px-2 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-600
+                           text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500
+                           transition-colors"
+                    on:click={cancelDelete}
+                    disabled={isDeleting}
+                    aria-label={t('common.cancel')}
+                  >
+                    {t('common.no')}
+                  </button>
+                </div>
+              {:else}
+                <button
+                  class="p-1.5 rounded text-gray-400 hover:text-red-600 dark:hover:text-red-400
+                         hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  on:click|stopPropagation={() => confirmDelete(debate.debate_id)}
+                  aria-label={t('common.delete')}
+                  title={t('common.delete')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              {/if}
             </div>
-          </button>
+          </div>
         {/each}
       </div>
     {/if}

@@ -83,6 +83,12 @@ export function getDebate(debateId) {
   return request(`/api/v1/debate/${debateId}`);
 }
 
+export function deleteDebate(debateId) {
+  return request(`/api/v1/debate/${debateId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function startDebate(debateId) {
   return request(`/api/v1/debate/${debateId}/start`, {
     method: 'POST',

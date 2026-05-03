@@ -248,6 +248,11 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
       {isArchiveMode ? t('debate.archiveTitle') : t('debate.title')}
     </h2>
+    {#if $currentDebate?.created_at}
+      <span class="text-sm text-gray-500 dark:text-gray-400 ml-auto">
+        {formatDate($currentDebate.created_at)}
+      </span>
+    {/if}
   </div>
 
   {#if $error}
@@ -340,7 +345,9 @@
   {#if $currentDebate}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{t('debate.currentDebate')}</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+          {isArchiveMode ? t('debate.archiveTitle') : t('debate.currentDebate')}
+        </h3>
         <div class="flex items-center space-x-3">
           {#if $sseConnected}
             <span class="flex items-center text-xs text-green-600 dark:text-green-400">
@@ -354,17 +361,46 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-6 text-sm">
+      <!-- Meta information row -->
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm mb-3">
         <div>
           <span class="text-gray-500 dark:text-gray-400">{t('debate.id')}: </span>
           <code class="font-mono text-gray-800 dark:text-gray-200 text-xs">{$currentDebate.debate_id?.substring(0, 8)}…</code>
         </div>
 
+        {#if $currentDebate.created_at}
+          <div>
+            <span class="text-gray-500 dark:text-gray-400">{t('debate.date')}: </span>
+            <span class="text-gray-800 dark:text-gray-200">{formatDate($currentDebate.created_at)}</span>
+          </div>
+        {/if}
+
+        {#if $currentDebate.llm_profile_id}
+          <div>
+            <span class="text-gray-500 dark:text-gray-400">{t('debate.model')}: </span>
+            <span class="text-gray-800 dark:text-gray-200 font-mono text-xs">{$currentDebate.llm_profile_id}</span>
+          </div>
+        {/if}
+
+        {#if $currentDebate.language}
+          <div>
+            <span class="text-gray-500 dark:text-gray-400">{t('config.language') || 'Sprache'}: </span>
+            <span class="text-gray-800 dark:text-gray-200 uppercase">{$currentDebate.language}</span>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Round and consensus row -->
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         {#if $currentDebate.current_round !== undefined}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('debate.round')}: </span>
             <span class="text-gray-800 dark:text-gray-200 font-medium">
-              {formatNumber($currentDebate.current_round)} / {formatNumber($currentDebate.max_rounds || '?')}
+              {#if $currentDebate.current_round > ($currentDebate.max_rounds || 0)}
+                {t('debate.roundOverMax', { current: $currentDebate.current_round, max: $currentDebate.max_rounds })}
+              {:else}
+                {t('debate.roundInfo', { current: $currentDebate.current_round, max: $currentDebate.max_rounds || '?' })}
+              {/if}
             </span>
           </div>
         {/if}
@@ -374,8 +410,8 @@
             <span class="text-gray-500 dark:text-gray-400">{t('debate.consensus')}:</span>
             <div class="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
-                class="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                style="width: {($currentDebate.consensus_score * 100)}%"
+                class="h-2 rounded-full transition-all duration-500 {$currentDebate.consensus_score === 0 ? 'bg-red-500' : 'bg-blue-600'}"
+                style="width: {Math.max(2, $currentDebate.consensus_score * 100)}%"
               ></div>
             </div>
             <span class="text-gray-800 dark:text-gray-200 font-medium">
@@ -384,6 +420,23 @@
           </div>
         {/if}
       </div>
+
+      <!-- LLM failure / anomaly warnings -->
+      {#if $currentDebate.anomalies?.length > 0}
+        <div class="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <p class="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+            {t('debate.llmFailureWarning')}
+          </p>
+          <p class="text-xs text-amber-700 dark:text-amber-300">
+            {t('debate.degradedConsensus')}
+          </p>
+          <ul class="mt-2 space-y-1">
+            {#each $currentDebate.anomalies as anomaly}
+              <li class="text-xs text-amber-600 dark:text-amber-400 font-mono">• {anomaly}</li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
 
       {#if !isArchiveMode}
       <div class="mt-4 flex space-x-3">
@@ -499,11 +552,11 @@
       </div>
     {/if}
 
-    <!-- Case text display (archive mode only) -->
-    {#if isArchiveMode && $currentDebate.case?.text}
+    <!-- Case text display -->
+    {#if $currentDebate.case_text || $currentDebate.case?.text}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">{t('debate.caseLabel')}</h3>
-        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{$currentDebate.case.text}</p>
+        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{$currentDebate.case_text || $currentDebate.case?.text}</p>
       </div>
     {/if}
 
@@ -583,16 +636,24 @@
 
           <!-- Final verdict -->
           {#if $currentDebate.consensus_score !== undefined && $currentDebate.consensus_score !== null}
+            {@const hasAnomalies = $currentDebate.anomalies?.length > 0}
             <div class="border-t-2 border-gray-200 dark:border-gray-600 pt-6">
-              <div class="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+              <div class="border rounded-lg p-6 {hasAnomalies
+                ? 'bg-gradient-to-r from-amber-50 to-red-50 dark:from-amber-900/20 dark:to-red-900/20 border-amber-200 dark:border-amber-800'
+                : 'bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800'}">
                 <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
-                  🏁 Final Consensus
+                  {hasAnomalies ? '⚠️' : '🏁'} Final Consensus
+                  {#if hasAnomalies}
+                    <span class="text-sm font-normal text-amber-600 dark:text-amber-400">(degraded)</span>
+                  {/if}
                 </h4>
                 <div class="flex items-center gap-4 mb-3">
                   <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
                     <div
-                      class="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-1000"
-                      style="width: {($currentDebate.consensus_score * 100)}%"
+                      class="h-4 rounded-full transition-all duration-1000 {hasAnomalies
+                        ? 'bg-gradient-to-r from-amber-500 to-red-500'
+                        : 'bg-gradient-to-r from-blue-500 to-green-500'}"
+                      style="width: {Math.max(2, $currentDebate.consensus_score * 100)}%"
                     ></div>
                   </div>
                   <span class="text-2xl font-bold text-gray-800 dark:text-white">
@@ -600,14 +661,18 @@
                   </span>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                  The debate concluded after {displayRounds.length} round{displayRounds.length !== 1 ? 's' : ''}
-                  with a consensus score of {($currentDebate.consensus_score * 100).toFixed(1)}%.
-                  {#if $currentDebate.consensus_score >= 0.9}
-                    <span class="text-green-600 dark:text-green-400 font-medium">Strong consensus reached.</span>
-                  {:else if $currentDebate.consensus_score >= 0.7}
-                    <span class="text-yellow-600 dark:text-yellow-400 font-medium">Moderate consensus — further rounds may help.</span>
+                  {#if hasAnomalies}
+                    {t('debate.degradedConsensus')}
                   {:else}
-                    <span class="text-red-600 dark:text-red-400 font-medium">Low consensus — agents remain divided.</span>
+                    The debate concluded after {displayRounds.length} round{displayRounds.length !== 1 ? 's' : ''}
+                    with a consensus score of {($currentDebate.consensus_score * 100).toFixed(1)}%.
+                    {#if $currentDebate.consensus_score >= 0.9}
+                      <span class="text-green-600 dark:text-green-400 font-medium">Strong consensus reached.</span>
+                    {:else if $currentDebate.consensus_score >= 0.7}
+                      <span class="text-yellow-600 dark:text-yellow-400 font-medium">Moderate consensus — further rounds may help.</span>
+                    {:else}
+                      <span class="text-red-600 dark:text-red-400 font-medium">Low consensus — agents remain divided.</span>
+                    {/if}
                   {/if}
                 </p>
               </div>

@@ -63,3 +63,4 @@ class DebateState(TypedDict, total=False):
     output: str
     validation_report: list[dict]
     used_variant: str
+    anomalies: Annotated[list[str], operator.add]
