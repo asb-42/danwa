@@ -90,8 +90,17 @@ class LLMService:
 
         # Build completion kwargs
         # Use `if ... is not None` to avoid treating 0.0 as falsy
+        # For local providers, litellm needs the openai/ prefix to route
+        # correctly to OpenAI-compatible endpoints (e.g. LM Studio).
+        model_name = self._profile.model
+        if self._profile.provider.value == "local" and "/" not in model_name:
+            model_name = f"openai/{model_name}"
+        elif self._profile.provider.value == "local" and not model_name.startswith("openai/"):
+            # Model has a slash but not the openai/ prefix (e.g. "google/gemma-4-26b")
+            model_name = f"openai/{model_name}"
+
         kwargs: Dict = {
-            "model": self._profile.model,
+            "model": model_name,
             "messages": messages,
             "temperature": temperature if temperature is not None else self._profile.temperature,
             "max_tokens": max_tokens if max_tokens is not None else self._profile.max_tokens,
@@ -104,8 +113,9 @@ class LLMService:
             kwargs["api_key"] = api_key
 
         logger.info(
-            "LLM call: model=%s, temp=%.2f, max_tokens=%d",
+            "LLM call: model=%s (litellm: %s), temp=%.2f, max_tokens=%d",
             self._profile.model,
+            model_name,
             kwargs["temperature"],
             kwargs["max_tokens"],
         )
