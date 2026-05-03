@@ -204,16 +204,28 @@ class LLMService:
         )
 
         response = await litellm.acompletion(**kwargs)
-        content = response.choices[0].message.content
+        message = response.choices[0].message
+        content = message.content
 
-        # Some models/providers return None content — treat as empty string
+        # Thinking/reasoning models (e.g. tencent/hy3-preview) may return
+        # the actual response in reasoning_content while content is None.
         if content is None:
-            logger.warning(
-                "LLM returned None content for model=%s. "
-                "This may indicate a content filter or empty response.",
-                model_name,
-            )
-            content = ""
+            psf = getattr(message, "provider_specific_fields", None) or {}
+            reasoning = psf.get("reasoning_content")
+            if reasoning:
+                logger.info(
+                    "LLM returned reasoning_content for model=%s "
+                    "(thinking model detected, using reasoning output).",
+                    model_name,
+                )
+                content = reasoning
+            else:
+                logger.warning(
+                    "LLM returned None content for model=%s. "
+                    "This may indicate a content filter or empty response.",
+                    model_name,
+                )
+                content = ""
 
         # Log token usage
         if hasattr(response, "usage") and response.usage:
