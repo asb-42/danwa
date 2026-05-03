@@ -137,7 +137,7 @@ async def run_agent_node(state: DebateState) -> dict:
     await publish_async(session_id, "agent_output", {
         "round": state["current_round"],
         "role": role,
-        "content": content[:500],  # truncate for SSE
+        "content": content,
         "tokens_used": tokens,
     })
 
