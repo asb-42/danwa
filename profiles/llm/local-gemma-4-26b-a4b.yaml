@@ -1,0 +1,11 @@
+id: local-gemma-4-26b-a4b
+name: google/gemma-4-26b-a4b (Local)
+provider: local
+model: google/gemma-4-26b-a4b
+api_base: http://192.168.278.200:1234/v1
+api_key_env: LM_STUDIO_KEY
+max_tokens: 4096
+temperature: 0.4
+timeout: 120
+cost_per_1k_input: 0.0
+cost_per_1k_output: 0.0
