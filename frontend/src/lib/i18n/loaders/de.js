@@ -57,6 +57,28 @@ export default {
   'debate.cancelButton': 'Debatte abbrechen',
   'debate.cancelling': 'Wird abgebrochen...',
 
+  // DebateTimeline 2.0
+  'timeline.title': 'Debatten-Zeitleiste',
+  'timeline.live': 'Live',
+  'timeline.roundOf': 'Runde {current} von {max}',
+  'timeline.roundsCompleted': '{count} Runde abgeschlossen',
+  'timeline.roundsCompleted_plural': '{count} Runden abgeschlossen',
+  'timeline.failedAfterRound': 'Fehlgeschlagen nach Runde {round}',
+  'timeline.waiting': 'Wartend',
+  'timeline.consensus': 'Konsens',
+  'timeline.noOutputs': 'Noch keine Debatten-Beiträge vorhanden.',
+  'timeline.round': 'Runde {num}',
+  'timeline.roundConsensus': 'Konsens {percent}%',
+  'timeline.thinking': 'denkt…',
+  'timeline.collapse': '▲ Einklappen',
+  'timeline.expand': '▼ Vollständige Antwort anzeigen ({count} Zeichen)',
+  'timeline.finalConsensus': 'Endgültiger Konsens',
+  'timeline.degraded': '(eingeschränkt)',
+  'timeline.strongConsensus': 'Starker Konsens erreicht.',
+  'timeline.moderateConsensus': 'Moderater Konsens — weitere Runden könnten helfen.',
+  'timeline.lowConsensus': 'Geringer Konsens — die Agenten bleiben uneinig.',
+  'timeline.concludedAfter': 'Die Debatte endete nach {rounds} Runde{plural} mit einem Konsens von {percent}%.',
+
   // Debate status
   'status.pending': 'Ausstehend',
   'status.running': 'Laufend',

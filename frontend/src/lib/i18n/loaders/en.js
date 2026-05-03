@@ -57,6 +57,28 @@ export default {
   'debate.cancelButton': 'Cancel Debate',
   'debate.cancelling': 'Cancelling...',
 
+  // DebateTimeline 2.0
+  'timeline.title': 'Debate Timeline',
+  'timeline.live': 'Live',
+  'timeline.roundOf': 'Round {current} of {max}',
+  'timeline.roundsCompleted': '{count} round completed',
+  'timeline.roundsCompleted_plural': '{count} rounds completed',
+  'timeline.failedAfterRound': 'Failed after round {round}',
+  'timeline.waiting': 'Waiting',
+  'timeline.consensus': 'Consensus',
+  'timeline.noOutputs': 'No debate contributions yet.',
+  'timeline.round': 'Round {num}',
+  'timeline.roundConsensus': 'Consensus {percent}%',
+  'timeline.thinking': 'thinking…',
+  'timeline.collapse': '▲ Collapse',
+  'timeline.expand': '▼ Show full response ({count} chars)',
+  'timeline.finalConsensus': 'Final Consensus',
+  'timeline.degraded': '(degraded)',
+  'timeline.strongConsensus': 'Strong consensus reached.',
+  'timeline.moderateConsensus': 'Moderate consensus — further rounds may help.',
+  'timeline.lowConsensus': 'Low consensus — agents remain divided.',
+  'timeline.concludedAfter': 'The debate concluded after {rounds} round{plural} with a consensus score of {percent}%.',
+
   // Debate status
   'status.pending': 'Pending',
   'status.running': 'Running',

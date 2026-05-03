@@ -176,6 +176,26 @@ async def run_agent_node(state: DebateState) -> dict:
     return result
 
 
+def _append_language_instruction(prompt: str, language: str) -> str:
+    """Append a language instruction to a system prompt.
+
+    Ensures the LLM responds in the debate language even when the persona
+    template is written in a different language (e.g. English persona with
+    German debate language).
+    """
+    if language == "en":
+        instruction = (
+            "\n\nIMPORTANT: You MUST respond in English. "
+            "Write all your analysis and conclusions in English."
+        )
+    else:
+        instruction = (
+            "\n\nWICHTIG: Du MUSST auf Deutsch antworten. "
+            "Schreibe deine gesamte Analyse und deine Schlussfolgerungen auf Deutsch."
+        )
+    return prompt + instruction
+
+
 def _resolve_system_prompt(
     role: str,
     prompt_variant: str,
@@ -212,7 +232,10 @@ def _resolve_system_prompt(
         persona = _get_profile_service().get_agent_persona(persona_id)
         if persona:
             logger.debug("Using persona system_prompt for %s (persona=%s)", role, persona_id)
-            return persona.system_prompt
+            prompt = persona.system_prompt
+            # Append language instruction so the LLM responds in the debate language
+            prompt = _append_language_instruction(prompt, language)
+            return prompt
 
     # 3. Generic fallback (language-aware)
     logger.warning(
