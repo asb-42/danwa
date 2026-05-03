@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected } from '../lib/stores.js';
+  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
   import { createDebate, getDebate, startDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber } from '../lib/i18n/index.js';
@@ -38,6 +38,9 @@
       const response = await createDebate(caseText, {
         max_rounds: maxRounds,
         consensus_threshold: consensusThreshold,
+        llm_profile_id: $selectedLLMProfile,
+        prompt_variant: $selectedPromptVariant,
+        agent_persona_ids: $selectedPersonas,
       });
       $currentDebate = response;
       $debates = [...$debates, response];

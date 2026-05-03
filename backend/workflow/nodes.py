@@ -89,6 +89,12 @@ async def run_agent_node(state: DebateState) -> dict:
             profile_id=llm_profile_id,
             profile_service=_get_profile_service(),
         )
+        logger.info(
+            "Agent %s (round %d): calling LLM profile '%s' (model=%s, api_base=%s)",
+            role, state["current_round"], llm_profile_id,
+            llm_service.profile.model if llm_service.profile else "N/A",
+            llm_service.profile.api_base if llm_service.profile else "N/A",
+        )
         content = await llm_service.generate(
             prompt=user_prompt,
             system_prompt=system_prompt,
@@ -100,10 +106,15 @@ async def run_agent_node(state: DebateState) -> dict:
             role, state["current_round"], tokens,
         )
     except Exception as exc:
-        logger.warning("LLM call failed for agent %s: %s — using dummy output", role, exc)
+        logger.error(
+            "LLM call FAILED for agent %s (round %d, profile=%s): %s",
+            role, state["current_round"], llm_profile_id, exc,
+            exc_info=True,
+        )
         content = (
             f"[{role}] Round {state['current_round']}: "
-            f"Analysis of '{state['context'][:50]}...'"
+            f"LLM call failed ({type(exc).__name__}: {exc}). "
+            f"Profile: {llm_profile_id}"
         )
         tokens = len(content.split())
 

@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { loading, error } from '../lib/stores.js';
+  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import {
     getLLMProfiles,
@@ -26,15 +26,7 @@
   let previewContent = null;
   let previewRole = 'strategist';
 
-  // Selected profile for debate defaults
-  let selectedLLM = 'openrouter-claude';
-  let selectedVariant = 'default';
-  let selectedPersonas = {
-    strategist: 'strategist-default',
-    critic: 'critic-default',
-    optimizer: 'optimizer-default',
-    moderator: 'moderator-default',
-  };
+  // Selected profile for debate defaults — uses global stores so DebateView can read them
 
   // Cost estimation inputs
   let costNumAgents = 4;
@@ -92,7 +84,7 @@
   // --- Actions ---
   async function handleEstimateCost() {
     try {
-      costEstimate = await estimateCost(selectedLLM, costNumAgents, costNumRounds);
+      costEstimate = await estimateCost($selectedLLMProfile, costNumAgents, costNumRounds);
     } catch (e) {
       $error = e.message;
     }
@@ -182,15 +174,15 @@
             <tbody>
               {#each llmProfiles as profile}
                 <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
-                  {selectedLLM === profile.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
+                  {$selectedLLMProfile === profile.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
                   <td class="px-4 py-3 font-medium">
                     <button
                       class="text-blue-600 dark:text-blue-400 hover:underline"
-                      on:click={() => { selectedLLM = profile.id; }}
+                      on:click={() => { $selectedLLMProfile = profile.id; }}
                     >
                       {profile.id}
                     </button>
-                    {#if selectedLLM === profile.id}
+                    {#if $selectedLLMProfile === profile.id}
                       <span class="ml-2 text-xs text-green-600 dark:text-green-400">✓ {t('config.active')}</span>
                     {/if}
                   </td>
@@ -220,17 +212,17 @@
             {#each getPersonasByRole(role) as persona}
               <div
                 class="p-3 rounded-lg border cursor-pointer transition-colors
-                  {selectedPersonas[role] === persona.id
+                  {$selectedPersonas[role] === persona.id
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : 'border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}"
-                on:click={() => { selectedPersonas = { ...selectedPersonas, [role]: persona.id }; }}
-                on:keydown={(e) => { if (e.key === 'Enter') selectedPersonas = { ...selectedPersonas, [role]: persona.id }; }}
+                on:click={() => { $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
+                on:keydown={(e) => { if (e.key === 'Enter') $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
                 role="button"
                 tabindex="0"
               >
                 <div class="flex items-center justify-between mb-1">
                   <span class="font-medium text-sm text-gray-800 dark:text-white">{persona.name}</span>
-                  {#if selectedPersonas[role] === persona.id}
+                  {#if $selectedPersonas[role] === persona.id}
                     <span class="text-xs text-green-600 dark:text-green-400">✓</span>
                   {/if}
                 </div>
@@ -276,15 +268,15 @@
               <tbody>
                 {#each promptVariants as variant}
                   <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
-                    {selectedVariant === variant.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
+                    {$selectedPromptVariant === variant.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
                     <td class="px-4 py-3 font-medium">
                       <button
                         class="text-blue-600 dark:text-blue-400 hover:underline"
-                        on:click={() => { selectedVariant = variant.id; }}
+                        on:click={() => { $selectedPromptVariant = variant.id; }}
                       >
                         {variant.id}
                       </button>
-                      {#if selectedVariant === variant.id}
+                      {#if $selectedPromptVariant === variant.id}
                         <span class="ml-2 text-xs text-green-600 dark:text-green-400">✓ {t('config.active')}</span>
                       {/if}
                     </td>
@@ -317,7 +309,7 @@
       {#if previewContent}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
           <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-2">
-            {t('config.preview')}: {selectedVariant}/{previewRole}
+            {t('config.preview')}: {$selectedPromptVariant}/{previewRole}
           </h4>
           <pre class="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-3 rounded overflow-x-auto max-h-64 whitespace-pre-wrap">{previewContent}</pre>
         </div>
@@ -336,7 +328,7 @@
           </label>
           <select
             id="cost-llm"
-            bind:value={selectedLLM}
+            bind:value={$selectedLLMProfile}
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
@@ -403,13 +395,13 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
       <div>
         <span class="text-gray-500 dark:text-gray-400">{t('config.llmProfile')}:</span>
-        <span class="ml-1 font-medium text-gray-800 dark:text-white">{selectedLLM}</span>
+        <span class="ml-1 font-medium text-gray-800 dark:text-white">{$selectedLLMProfile}</span>
       </div>
       <div>
         <span class="text-gray-500 dark:text-gray-400">{t('config.promptVariants')}:</span>
-        <span class="ml-1 font-medium text-gray-800 dark:text-white">{selectedVariant}</span>
+        <span class="ml-1 font-medium text-gray-800 dark:text-white">{$selectedPromptVariant}</span>
       </div>
-      {#each Object.entries(selectedPersonas) as [role, personaId]}
+      {#each Object.entries($selectedPersonas) as [role, personaId]}
         <div>
           <span class="text-gray-500 dark:text-gray-400 capitalize">{role}:</span>
           <span class="ml-1 font-medium text-gray-800 dark:text-white">{personaId}</span>
