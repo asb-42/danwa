@@ -27,6 +27,14 @@ class AgentRole(StrEnum):
     MODERATOR = "moderator"
 
 
+class SearchMode(StrEnum):
+    """Web search mode for a debate."""
+
+    OFF = "off"
+    OPTIONAL = "optional"
+    REQUIRED = "required"
+
+
 # ---------------------------------------------------------------------------
 # Agent configuration
 # ---------------------------------------------------------------------------
@@ -76,6 +84,12 @@ class DebateRequest(BaseModel):
     consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
     enable_fact_check: bool = False
     enable_memory: bool = False
+
+    # --- Web search (Sprint 5) ---
+    search_mode: SearchMode = Field(
+        default=SearchMode.OFF,
+        description="Web search mode: 'off', 'optional', or 'required'",
+    )
 
     # --- Profile configuration (Sprint 3) ---
     llm_profile_id: str = Field(default="openrouter-claude", description="LLM profile to use")

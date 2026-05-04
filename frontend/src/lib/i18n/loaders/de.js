@@ -57,6 +57,22 @@ export default {
   'debate.cancelButton': 'Debatte abbrechen',
   'debate.cancelling': 'Wird abgebrochen...',
 
+  // Web search mode
+  'debate.searchMode': 'Web-Suche',
+  'debate.searchOff': 'Deaktiviert',
+  'debate.searchOptional': 'Optional',
+  'debate.searchRequired': 'Obligatorisch',
+  'debate.searchModeHint.off': 'Keine Websuche während der Debatte.',
+  'debate.searchModeHint.optional': 'Agenten können bei Bedarf eine Websuche anfordern.',
+  'debate.searchModeHint.required': 'Agenten erhalten automatisch Websuchergebnisse vor jeder Analyse.',
+
+  // Search results display
+  'search.resultsFor': 'Suchergebnisse für',
+  'search.noResults': 'Keine Ergebnisse gefunden',
+  'search.source': 'Quelle',
+  'search.webResearch': 'Web-Recherche',
+  'search.searching': '🔍 Suche…',
+
   // Activity Strip (enhanced debate feedback)
   'feedback.analysing': '{role} analysiert…',
   'feedback.checking': '{role} prüft…',

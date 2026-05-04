@@ -1,6 +1,7 @@
 """Node functions for LangGraph debate workflow.
 
 Sprint 3: Real LLM calls via litellm with profile-based configuration.
+Sprint 5: Web search integration (required / optional modes).
 Falls back to dummy output if litellm is not available or LLM call fails.
 """
 
@@ -9,9 +10,16 @@ from __future__ import annotations
 import logging
 
 from backend.api.events import publish_async
+from backend.core.config import settings
 from backend.services.llm_service import GenerationResult, LLMService
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
+from backend.services.web_search import (
+    WebSearchTool,
+    extract_search_markers,
+    extract_search_queries,
+    format_search_results,
+)
 from backend.workflow.state import (
     AgentOutputState,
     DebateState,
@@ -26,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 _profile_service: ProfileService | None = None
 _prompt_service: PromptService | None = None
+_search_tool: WebSearchTool | None = None
 
 
 def _get_profile_service() -> ProfileService:
@@ -40,6 +49,17 @@ def _get_prompt_service() -> PromptService:
     if _prompt_service is None:
         _prompt_service = PromptService()
     return _prompt_service
+
+
+def _get_search_tool() -> WebSearchTool:
+    global _search_tool
+    if _search_tool is None:
+        _search_tool = WebSearchTool(
+            url=settings.searxng_url,
+            max_results=settings.searxng_max_results,
+            region=settings.searxng_region,
+        )
+    return _search_tool
 
 
 # ---------------------------------------------------------------------------
@@ -79,12 +99,21 @@ async def run_agent_node(state: DebateState) -> dict:
     prompt_variant = state.get("prompt_variant", "default")
     persona_ids = state.get("agent_persona_ids", {})
     language = state.get("language", "de")
+    search_mode = state.get("search_mode", "off")
 
     # --- Resolve system prompt ---
-    system_prompt = _resolve_system_prompt(role, prompt_variant, persona_ids, state, language)
+    system_prompt = _resolve_system_prompt(
+        role, prompt_variant, persona_ids, state, language, search_mode
+    )
 
     # --- Build user prompt ---
     user_prompt = _build_user_prompt(state, role, language)
+
+    # --- Required mode: auto-search before LLM call ---
+    if search_mode == "required":
+        user_prompt = await _perform_required_search(
+            state, role, language, user_prompt, session_id
+        )
 
     # --- Publish: agent started ---
     agent_total = len(agents)
@@ -142,6 +171,14 @@ async def run_agent_node(state: DebateState) -> dict:
             tokens_out,
             duration_ms,
         )
+
+        # --- Optional mode: check for [SEARCH: ...] markers ---
+        if search_mode == "optional":
+            content = await _perform_optional_search(
+                content, role, language, session_id, state
+            )
+            tokens = len(content.split())
+
     except Exception as exc:
         logger.error(
             "LLM call FAILED for agent %s (round %d, profile=%s): %s",
@@ -201,6 +238,86 @@ async def run_agent_node(state: DebateState) -> dict:
     return result
 
 
+# ---------------------------------------------------------------------------
+# Web search helpers
+# ---------------------------------------------------------------------------
+
+
+async def _perform_required_search(
+    state: DebateState,
+    role: str,
+    language: str,
+    user_prompt: str,
+    session_id: str,
+) -> str:
+    """Required mode: auto-search before LLM call and inject results into prompt."""
+    search_tool = _get_search_tool()
+    queries = extract_search_queries(state["context"], role)
+    if not queries:
+        return user_prompt
+
+    all_results = []
+    for query in queries:
+        try:
+            results = await search_tool.search(query)
+            all_results.extend(results)
+            # Publish SSE event for each search
+            await publish_async(
+                session_id,
+                "web_search",
+                {
+                    "round": state["current_round"],
+                    "role": role,
+                    "query": query,
+                    "result_count": len(results),
+                    "results": results,
+                },
+            )
+        except Exception as exc:
+            logger.warning("Web search failed for '%s': %s", query, exc)
+
+    if all_results:
+        user_prompt += format_search_results(all_results, language)
+    return user_prompt
+
+
+async def _perform_optional_search(
+    content: str,
+    role: str,
+    language: str,
+    session_id: str,
+    state: DebateState,
+) -> str:
+    """Optional mode: check for [SEARCH: ...] markers and fulfill them."""
+    markers = extract_search_markers(content)
+    if not markers:
+        return content
+
+    search_tool = _get_search_tool()
+    all_results = []
+    for query in markers:
+        try:
+            results = await search_tool.search(query)
+            all_results.extend(results)
+            await publish_async(
+                session_id,
+                "web_search",
+                {
+                    "round": state["current_round"],
+                    "role": role,
+                    "query": query,
+                    "result_count": len(results),
+                    "results": results,
+                },
+            )
+        except Exception as exc:
+            logger.warning("Web search failed for '%s': %s", query, exc)
+
+    if all_results:
+        content += format_search_results(all_results, language)
+    return content
+
+
 def _append_language_instruction(prompt: str, language: str) -> str:
     """Append a language instruction to a system prompt.
 
@@ -221,12 +338,63 @@ def _append_language_instruction(prompt: str, language: str) -> str:
     return prompt + instruction
 
 
+def _append_search_instruction(prompt: str, search_mode: str, language: str = "de") -> str:
+    """Append web search instructions to a system prompt based on the search mode."""
+    if search_mode == "off":
+        return prompt
+
+    if search_mode == "required":
+        if language == "en":
+            instruction = (
+                "\n\n## Web Research\n"
+                "You have access to current web search results which are provided "
+                "in the user message under 'Web Research'. You MUST incorporate and "
+                "reference this external information in your analysis. "
+                "Cite sources where possible. If search results contradict your analysis, "
+                "address the discrepancy explicitly."
+            )
+        else:
+            instruction = (
+                "\n\n## Web-Recherche\n"
+                "Du hast Zugriff auf aktuelle Websuchergebnisse, die in der "
+                "Benutzernachricht unter 'Web-Recherche' bereitgestellt werden. "
+                "Du MUSST diese externen Informationen in deine Analyse einbeziehen "
+                "und darauf verweisen. Zitiere Quellen, wo möglich. Wenn Suchergebnisse "
+                "deiner Analyse widersprechen, gehe explizit auf die Diskrepanz ein."
+            )
+    elif search_mode == "optional":
+        if language == "en":
+            instruction = (
+                "\n\n## Web Search Capability\n"
+                "You have access to web search. If you need to verify facts, find current "
+                "information, or research specific claims, include [SEARCH: your search query] "
+                "in your response. Each [SEARCH: ...] marker will be fulfilled and the results "
+                "appended to your output. Use this capability sparingly and only when factual "
+                "verification is needed."
+            )
+        else:
+            instruction = (
+                "\n\n## Web-Suche\n"
+                "Du hast Zugriff auf Websuche. Wenn du Fakten überprüfen, aktuelle "
+                "Informationen finden oder spezifische Aussagen recherchieren musst, "
+                "füge [SEARCH: deine Suchanfrage] in deine Antwort ein. Jeder "
+                "[SEARCH: ...]-Marker wird ausgeführt und die Ergebnisse deiner "
+                "Ausgabe angehängt. Nutze diese Fähigkeit sparsam und nur wenn "
+                "faktische Überprüfung sinnvoll ist."
+            )
+    else:
+        return prompt
+
+    return prompt + instruction
+
+
 def _resolve_system_prompt(
     role: str,
     prompt_variant: str,
     persona_ids: dict[str, str],
     state: DebateState,
     language: str = "de",
+    search_mode: str = "off",
 ) -> str:
     """Resolve the system prompt for an agent role.
 
@@ -245,32 +413,42 @@ def _resolve_system_prompt(
             language=language,
         )
         logger.debug("Using prompt template for %s/%s (lang=%s)", prompt_variant, role, language)
-        return rendered
+        prompt = rendered
     except FileNotFoundError:
         logger.debug(
             "No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language
         )
+        prompt = None
 
     # 2. Try persona-specific system prompt (always in persona's language)
-    persona_id = persona_ids.get(role)
-    if persona_id:
-        persona = _get_profile_service().get_agent_persona(persona_id)
-        if persona:
-            logger.debug("Using persona system_prompt for %s (persona=%s)", role, persona_id)
-            prompt = persona.system_prompt
-            # Append language instruction so the LLM responds in the debate language
-            prompt = _append_language_instruction(prompt, language)
-            return prompt
+    if prompt is None:
+        persona_id = persona_ids.get(role)
+        if persona_id:
+            persona = _get_profile_service().get_agent_persona(persona_id)
+            if persona:
+                logger.debug("Using persona system_prompt for %s (persona=%s)", role, persona_id)
+                prompt = persona.system_prompt
+                # Append language instruction so the LLM responds in the debate language
+                prompt = _append_language_instruction(prompt, language)
 
     # 3. Generic fallback (language-aware)
-    logger.warning(
-        "No prompt found for %s/%s (lang=%s), using generic default", prompt_variant, role, language
-    )
-    if language == "en":
-        return f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
-    return (
-        f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
-    )
+    if prompt is None:
+        logger.warning(
+            "No prompt found for %s/%s (lang=%s), using generic default",
+            prompt_variant, role, language,
+        )
+        if language == "en":
+            prompt = f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
+        else:
+            prompt = (
+                f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. "
+                f"Gib deine Expertenanalyse ab."
+            )
+
+    # 4. Append search instructions based on mode
+    prompt = _append_search_instruction(prompt, search_mode, language)
+
+    return prompt
 
 
 def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> str:

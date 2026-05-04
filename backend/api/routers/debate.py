@@ -333,6 +333,18 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         prompt_variant = req.prompt_variant
         agent_persona_ids = req.agent_persona_ids
         language = getattr(req, "language", "de")
+        # search_mode: use explicit value, or derive from enable_fact_check
+        raw_search_mode = getattr(req, "search_mode", None)
+        if raw_search_mode is not None:
+            search_mode = (
+                raw_search_mode.value
+                if hasattr(raw_search_mode, "value")
+                else str(raw_search_mode)
+            )
+        elif enable_fact_check:
+            search_mode = "required"
+        else:
+            search_mode = "off"
         agent_profile_list = [
             {"role": a.role.value, "llm_profile": a.llm_profile, "temperature": a.temperature}
             for a in req.agent_profile
@@ -348,6 +360,13 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         prompt_variant = req.get("prompt_variant", "default")
         agent_persona_ids = req.get("agent_persona_ids", {})
         language = req.get("language", "de")
+        raw_search_mode = req.get("search_mode")
+        if raw_search_mode:
+            search_mode = raw_search_mode
+        elif enable_fact_check:
+            search_mode = "required"
+        else:
+            search_mode = "off"
         agent_profile_list = req.get(
             "agent_profile",
             [
@@ -373,6 +392,8 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         "agent_persona_ids": agent_persona_ids,
         # --- Language (Sprint 4) ---
         "language": language,
+        # --- Web search (Sprint 5) ---
+        "search_mode": search_mode,
         # --- Runtime ---
         "session_id": debate_id,
         "current_round": 0,

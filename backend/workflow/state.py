@@ -40,6 +40,9 @@ class DebateState(TypedDict, total=False):
     enable_memory: bool
     rag_context: str
 
+    # --- Web search ---
+    search_mode: str  # 'off', 'optional', 'required'
+
     # --- Profile configuration (Sprint 3) ---
     llm_profile_id: str
     prompt_variant: str

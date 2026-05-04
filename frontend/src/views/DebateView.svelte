@@ -25,8 +25,12 @@
   let caseText = '';
   let maxRounds = 3;
   let consensusThreshold = 0.8;
+  let searchMode = 'off';
   let sseConnection = null;
   let archiveLoading = false;
+
+  // Live web search results — stores search events as they arrive
+  let liveSearchResults = []; // { round, role, query, results, timestamp }
 
   // Live activity log — stores full agent outputs as they arrive
   let liveOutputs = []; // { round, role, content, tokens, tokens_in, tokens_out, duration_ms, model, profile, timestamp }
@@ -75,6 +79,7 @@
     $loading = true;
     $error = null;
     liveOutputs = [];
+    liveSearchResults = [];
     currentActivity = null;
     expandedOutputs = new Set();
     cumulativeTokens = 0;
@@ -87,6 +92,7 @@
       const response = await createDebate(caseText, {
         max_rounds: maxRounds,
         consensus_threshold: consensusThreshold,
+        search_mode: searchMode,
         llm_profile_id: $selectedLLMProfile,
         prompt_variant: $selectedPromptVariant,
         agent_persona_ids: $selectedPersonas,
@@ -108,6 +114,7 @@
     $loading = true;
     $error = null;
     liveOutputs = [];
+    liveSearchResults = [];
     currentActivity = null;
     expandedOutputs = new Set();
     cumulativeTokens = 0;
@@ -215,6 +222,19 @@
         profile: profile,
         timestamp: new Date(),
       }];
+    }
+
+    // web_search — search activity feedback
+    if (event.type === 'web_search' || event.event === 'web_search') {
+      liveSearchResults = [...liveSearchResults, {
+        round: event.round || 0,
+        role: event.role || '',
+        query: event.query || '',
+        results: event.results || [],
+        result_count: event.result_count || 0,
+        timestamp: new Date(),
+      }];
+      return;
     }
   }
 
@@ -457,6 +477,26 @@
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+      </div>
+
+      <div>
+        <label for="search-mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t('debate.searchMode')}
+        </label>
+        <select
+          id="search-mode"
+          bind:value={searchMode}
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="off">{t('debate.searchOff')}</option>
+          <option value="optional">{t('debate.searchOptional')}</option>
+          <option value="required">{t('debate.searchRequired')}</option>
+        </select>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {t(`debate.searchModeHint.${searchMode}`)}
+        </p>
       </div>
 
       <button
@@ -754,6 +794,75 @@
               </div>
             </div>
           {/each}
+
+          <!-- Web search results -->
+          {#if liveSearchResults.length > 0}
+            {#each liveSearchResults as search, i}
+              {@const searchKey = `search-${i}`}
+              {@const isSearchExpanded = expandedOutputs.has(searchKey)}
+              <div class="border-l-4 border-teal-400 bg-teal-50 dark:bg-teal-900/20 dark:border-teal-600 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-sm text-teal-700 dark:text-teal-300">
+                      🔍 {t('search.webResearch')}
+                    </span>
+                    {#if search.role}
+                      <span class="text-xs text-teal-500 dark:text-teal-400">
+                        — {search.role} — Round {search.round}
+                      </span>
+                    {/if}
+                  </div>
+                  <span class="text-xs text-gray-400 dark:text-gray-500">
+                    {search.result_count || search.results?.length || 0} {t('search.source')}{(search.result_count || search.results?.length || 0) !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                {#if search.query}
+                  <p class="text-xs text-teal-600 dark:text-teal-400 mb-2 font-mono">
+                    {t('search.resultsFor')}: "{search.query}"
+                  </p>
+                {/if}
+                {#if search.results?.length > 0}
+                  <div class="space-y-1">
+                    {#each (isSearchExpanded ? search.results : search.results.slice(0, 3)) as result}
+                      <div class="flex items-start gap-2 text-xs">
+                        <span class="text-teal-500 mt-0.5">•</span>
+                        <div>
+                          {#if result.url}
+                            <a href={result.url} target="_blank" rel="noopener noreferrer"
+                               class="text-teal-700 dark:text-teal-300 hover:underline font-medium">
+                              {result.title || result.url}
+                            </a>
+                          {:else}
+                            <span class="text-gray-700 dark:text-gray-300 font-medium">{result.title || '—'}</span>
+                          {/if}
+                          {#if result.snippet}
+                            <p class="text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{result.snippet}</p>
+                          {/if}
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                  {#if search.results.length > 3 && !isSearchExpanded}
+                    <button
+                      class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block"
+                      on:click={() => toggleExpand(searchKey)}
+                    >
+                      ▼ {t('timeline.expand', { count: search.results.length })}
+                    </button>
+                  {:else if search.results.length > 3 && isSearchExpanded}
+                    <button
+                      class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block"
+                      on:click={() => toggleExpand(searchKey)}
+                    >
+                      ▲ {t('timeline.collapse')}
+                    </button>
+                  {/if}
+                {:else}
+                  <p class="text-xs text-gray-500 dark:text-gray-400 italic">{t('search.noResults')}</p>
+                {/if}
+              </div>
+            {/each}
+          {/if}
 
           <!-- Current agent being processed -->
           {#if currentActivity}

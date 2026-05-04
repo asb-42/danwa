@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     default_consensus_threshold: float = 0.8
     default_agent_profile: str = "default"
 
+    # --- Web search (SearXNG) ---
+    searxng_url: str = "http://localhost:8080"
+    searxng_max_results: int = 5
+    searxng_region: str = "de-de"
+
     # --- CORS ---
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:8000"]
 
