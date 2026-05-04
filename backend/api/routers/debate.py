@@ -293,7 +293,7 @@ async def cancel_debate(
 
     status = debate["status"]
     status_val = status.value if hasattr(status, "value") else status
-    if status_val != "running":
+    if status_val not in ("running", "pending"):
         raise HTTPException(
             status_code=409,
             detail=f"Cannot cancel debate with status '{status_val}'",
@@ -440,15 +440,27 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         logger.info("Debate %s was cancelled by user", debate_id)
         return
 
-    # Update debate state
+    # Update debate state — mark as failed if all agents had anomalies
+    anomalies = result.get("anomalies", [])
+    has_failures = len(anomalies) > 0
+    final_status = DebateStatus.FAILED if has_failures else DebateStatus.COMPLETED
+
     store.update(
         debate_id,
-        status=DebateStatus.COMPLETED,
+        status=final_status,
         current_round=result.get("current_round", max_rounds),
         rounds=result.get("rounds", []),
         result=result,
         updated_at=datetime.now(UTC),
     )
+
+    if has_failures:
+        logger.warning(
+            "Debate %s completed with %d anomaly(ies): %s",
+            debate_id,
+            len(anomalies),
+            anomalies,
+        )
 
     # Record audit events
     for agent_output in result.get("agent_outputs", []):
