@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 
 from backend.api.events import publish_async
-from backend.services.llm_service import LLMService
+from backend.services.llm_service import GenerationResult, LLMService
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
 from backend.workflow.state import (
@@ -87,6 +87,11 @@ async def run_agent_node(state: DebateState) -> dict:
     user_prompt = _build_user_prompt(state, role, language)
 
     # --- Publish: agent started ---
+    agent_total = len(agents)
+    llm_profile_obj = _get_profile_service().get_llm_profile(llm_profile_id)
+    model_name = llm_profile_obj.model if llm_profile_obj else "N/A"
+    provider_name = llm_profile_obj.provider.value if llm_profile_obj else "N/A"
+
     await publish_async(
         session_id,
         "agent_started",
@@ -94,12 +99,17 @@ async def run_agent_node(state: DebateState) -> dict:
             "round": state["current_round"],
             "role": role,
             "profile": llm_profile_id,
+            "model": model_name,
+            "provider": provider_name,
+            "agent_index": idx,
+            "agent_total": agent_total,
         },
     )
 
     # --- LLM call with graceful fallback ---
     llm_failed = False
     anomaly_detail = ""
+    gen_result: GenerationResult | None = None
     try:
         llm_service = LLMService(
             profile_id=llm_profile_id,
@@ -113,17 +123,24 @@ async def run_agent_node(state: DebateState) -> dict:
             llm_service.profile.model if llm_service.profile else "N/A",
             llm_service.profile.api_base if llm_service.profile else "N/A",
         )
-        content = await llm_service.generate(
+        gen_result = await llm_service.generate(
             prompt=user_prompt,
             system_prompt=system_prompt,
             temperature=agent.get("temperature", 0.7),
         )
-        tokens = len(content.split())  # rough estimate
+        content = gen_result.content
+        tokens_in = gen_result.tokens_in
+        tokens_out = gen_result.tokens_out
+        duration_ms = gen_result.duration_ms
+        model_used = gen_result.model
+        tokens = tokens_out if tokens_out > 0 else len(content.split())
         logger.info(
-            "Agent %s (round %d): LLM response (%d tokens)",
+            "Agent %s (round %d): LLM response (%d tokens in, %d out, %dms)",
             role,
             state["current_round"],
-            tokens,
+            tokens_in,
+            tokens_out,
+            duration_ms,
         )
     except Exception as exc:
         logger.error(
@@ -142,6 +159,10 @@ async def run_agent_node(state: DebateState) -> dict:
             f"Profile: {llm_profile_id}"
         )
         tokens = len(content.split())
+        tokens_in = 0
+        tokens_out = 0
+        duration_ms = 0
+        model_used = model_name
 
     output: AgentOutputState = {
         "role": role,
@@ -158,6 +179,10 @@ async def run_agent_node(state: DebateState) -> dict:
             "role": role,
             "content": content,
             "tokens_used": tokens,
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "duration_ms": duration_ms,
+            "model": model_used,
         },
     )
 
@@ -330,6 +355,9 @@ async def check_consensus_node(state: DebateState) -> dict:
     }
 
     # --- Publish: round completed ---
+    total_tokens = sum(
+        ao.get("tokens_used", 0) for ao in state.get("agent_outputs", [])
+    )
     await publish_async(
         session_id,
         "round_update",
@@ -337,6 +365,7 @@ async def check_consensus_node(state: DebateState) -> dict:
             "round": current_round,
             "consensus": round(consensus, 3),
             "agent_count": len(state.get("agent_outputs", [])),
+            "total_tokens": total_tokens,
         },
     )
 

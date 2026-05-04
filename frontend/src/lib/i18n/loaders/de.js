@@ -57,6 +57,17 @@ export default {
   'debate.cancelButton': 'Debatte abbrechen',
   'debate.cancelling': 'Wird abgebrochen...',
 
+  // Activity Strip (enhanced debate feedback)
+  'feedback.analysing': '{role} analysiert…',
+  'feedback.checking': '{role} prüft…',
+  'feedback.optimizing': '{role} optimiert…',
+  'feedback.evaluating': '{role} bewertet…',
+  'feedback.completed': '{role} abgeschlossen',
+  'feedback.waiting': 'Warte auf ersten Agent…',
+  'feedback.roundDone': 'Runde {round} abgeschlossen — Konsens {percent}%',
+  'feedback.tokens': 'Tokens',
+  'feedback.duration': '{ms}ms',
+
   // DebateTimeline 2.0
   'timeline.title': 'Debatten-Zeitleiste',
   'timeline.live': 'Live',

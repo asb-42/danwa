@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.core.profiles import LLMProfile, LLMProvider
-from backend.services.llm_service import LLMService
+from backend.services.llm_service import GenerationResult, LLMService
 from backend.services.profile_service import ProfileService
 
 # ---------------------------------------------------------------------------
@@ -133,7 +133,12 @@ class TestLLMServiceGenerate:
                     system_prompt="You are a test agent.",
                 )
 
-                assert result == "Test response"
+                assert isinstance(result, GenerationResult)
+                assert result.content == "Test response"
+                assert result.tokens_in == 10
+                assert result.tokens_out == 20
+                assert result.model == "openrouter/test-model"
+                assert result.duration_ms >= 0
                 mock_ac.assert_called_once()
                 call_kwargs = mock_ac.call_args[1]
                 assert call_kwargs["model"] == "openrouter/test-model"
@@ -153,12 +158,16 @@ class TestLLMServiceGenerate:
             with patch.object(
                 litellm, "acompletion", new_callable=AsyncMock, return_value=mock_response
             ) as mock_ac:
-                await llm_service.generate(
+                result = await llm_service.generate(
                     prompt="Test",
                     temperature=0.3,
                     max_tokens=1024,
                 )
 
+                assert isinstance(result, GenerationResult)
+                assert result.content == "Override response"
+                assert result.tokens_in == 0
+                assert result.tokens_out == 0
                 call_kwargs = mock_ac.call_args[1]
                 assert call_kwargs["temperature"] == 0.3
                 assert call_kwargs["max_tokens"] == 1024
@@ -190,7 +199,12 @@ class TestLLMServiceLocal:
                 system_prompt="You are local.",
             )
 
-            assert result == "Local response"
+            assert isinstance(result, GenerationResult)
+            assert result.content == "Local response"
+            assert result.tokens_in == 15
+            assert result.tokens_out == 25
+            assert result.model == "test/model"
+            assert result.duration_ms >= 0
             mock_client.post.assert_called_once()
             call_args = mock_client.post.call_args
             # URL should be the chat completions endpoint
@@ -220,7 +234,10 @@ class TestLLMServiceLocal:
                 mock_client_cls.return_value = mock_client
 
                 result = await local_llm_service.generate("Test")
-                assert result == "No key response"
+                assert isinstance(result, GenerationResult)
+                assert result.content == "No key response"
+                assert result.tokens_in == 0
+                assert result.tokens_out == 0
 
     @pytest.mark.asyncio
     async def test_local_generate_raises_without_api_base(self, mock_local_profile_service):

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import logging
 import os
+import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -18,6 +20,22 @@ from backend.core.profiles import LLMProfile
 from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class GenerationResult:
+    """Result of an LLM generation call.
+
+    Carries the generated content along with metadata about the call:
+    real token counts (from litellm or local endpoint), wall-clock
+    duration, and the model name used.
+    """
+
+    content: str = ""
+    tokens_in: int = 0
+    tokens_out: int = 0
+    duration_ms: int = 0
+    model: str = ""
 
 
 class LLMService:
@@ -50,7 +68,7 @@ class LLMService:
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-    ) -> str:
+    ) -> GenerationResult:
         """Generate text using the configured LLM.
 
         For local providers, uses direct HTTP to the OpenAI-compatible
@@ -64,7 +82,7 @@ class LLMService:
             max_tokens: Override max tokens (uses profile default if None).
 
         Returns:
-            The generated text response.
+            GenerationResult with content, token counts, duration, and model name.
 
         Raises:
             RuntimeError: If no LLM profile is configured.
@@ -95,7 +113,7 @@ class LLMService:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
-    ) -> str:
+    ) -> GenerationResult:
         """Call a local OpenAI-compatible endpoint directly via httpx.
 
         This is the same as:
@@ -138,30 +156,41 @@ class LLMService:
             max_tokens,
         )
 
+        t0 = time.monotonic()
         async with httpx.AsyncClient(timeout=self._profile.timeout) as client:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
+        duration_ms = int((time.monotonic() - t0) * 1000)
 
         data = response.json()
         content = data["choices"][0]["message"]["content"]
 
-        # Log token usage if available
+        # Extract real token usage if available
         usage = data.get("usage")
-        if usage:
+        tokens_in = usage.get("prompt_tokens", 0) if usage else 0
+        tokens_out = usage.get("completion_tokens", 0) if usage else 0
+
+        if tokens_in or tokens_out:
             logger.info(
                 "Tokens used: %d in / %d out",
-                usage.get("prompt_tokens", 0),
-                usage.get("completion_tokens", 0),
+                tokens_in,
+                tokens_out,
             )
 
-        return content
+        return GenerationResult(
+            content=content,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            duration_ms=duration_ms,
+            model=self._profile.model,
+        )
 
     async def _generate_litellm(
         self,
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
-    ) -> str:
+    ) -> GenerationResult:
         """Call a cloud LLM via litellm (OpenRouter, OpenAI, Anthropic, etc.)."""
         try:
             import litellm
@@ -203,7 +232,10 @@ class LLMService:
             max_tokens,
         )
 
+        t0 = time.monotonic()
         response = await litellm.acompletion(**kwargs)
+        duration_ms = int((time.monotonic() - t0) * 1000)
+
         message = response.choices[0].message
         content = message.content
 
@@ -227,15 +259,25 @@ class LLMService:
                 )
                 content = ""
 
-        # Log token usage
+        # Extract real token usage
+        tokens_in = 0
+        tokens_out = 0
         if hasattr(response, "usage") and response.usage:
+            tokens_in = response.usage.prompt_tokens
+            tokens_out = response.usage.completion_tokens
             logger.info(
                 "Tokens used: %d in / %d out",
-                response.usage.prompt_tokens,
-                response.usage.completion_tokens,
+                tokens_in,
+                tokens_out,
             )
 
-        return content
+        return GenerationResult(
+            content=content,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            duration_ms=duration_ms,
+            model=model_name,
+        )
 
     def estimate_cost(
         self,

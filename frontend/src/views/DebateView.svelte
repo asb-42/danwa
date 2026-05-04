@@ -29,9 +29,16 @@
   let archiveLoading = false;
 
   // Live activity log — stores full agent outputs as they arrive
-  let liveOutputs = []; // { round, role, content, tokens, timestamp }
-  let currentActivity = null; // { round, role, profile }
+  let liveOutputs = []; // { round, role, content, tokens, tokens_in, tokens_out, duration_ms, model, profile, timestamp }
+  let currentActivity = null; // { round, role, profile, model, provider, agent_index, agent_total }
   let expandedOutputs = new Set(); // track which outputs are expanded
+
+  // Activity Strip state
+  let cumulativeTokens = 0;
+  let processingStartTime = null;
+  let processingElapsed = 0;
+  let processingTimer = null;
+  let lastRoundTokens = 0;
 
   // Load debate from archive when debateId is provided
   onMount(async () => {
@@ -49,10 +56,13 @@
     }
   });
 
-  // Cleanup SSE on destroy
+  // Cleanup SSE and timers on destroy
   onDestroy(() => {
     if (sseConnection) {
       sseConnection.close();
+    }
+    if (processingTimer) {
+      clearInterval(processingTimer);
     }
   });
 
@@ -67,6 +77,11 @@
     liveOutputs = [];
     currentActivity = null;
     expandedOutputs = new Set();
+    cumulativeTokens = 0;
+    processingStartTime = null;
+    processingElapsed = 0;
+    lastRoundTokens = 0;
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
 
     try {
       const response = await createDebate(caseText, {
@@ -95,6 +110,11 @@
     liveOutputs = [];
     currentActivity = null;
     expandedOutputs = new Set();
+    cumulativeTokens = 0;
+    processingStartTime = null;
+    processingElapsed = 0;
+    lastRoundTokens = 0;
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
 
     // Connect SSE FIRST so we receive all events from the start
     sseConnection = createSSE($currentDebate.debate_id, {
@@ -116,6 +136,22 @@
     }
   }
 
+  function startProcessingTimer() {
+    processingStartTime = Date.now();
+    processingElapsed = 0;
+    if (processingTimer) clearInterval(processingTimer);
+    processingTimer = setInterval(() => {
+      processingElapsed = Date.now() - processingStartTime;
+    }, 100);
+  }
+
+  function stopProcessingTimer() {
+    if (processingTimer) {
+      clearInterval(processingTimer);
+      processingTimer = null;
+    }
+  }
+
   function handleSSEEvent(event) {
     console.log('SSE event:', event);
 
@@ -123,6 +159,7 @@
     if (event.status === 'completed' || event.status === 'failed') {
       $currentDebate = { ...$currentDebate, status: event.status };
       currentActivity = null;
+      stopProcessingTimer();
       handleRefreshStatus();
       return;
     }
@@ -134,25 +171,47 @@
         current_round: event.round,
         consensus_score: event.consensus,
       };
+      if (event.total_tokens) {
+        lastRoundTokens = event.total_tokens;
+      }
       currentActivity = null;
+      stopProcessingTimer();
       return;
     }
 
-    // agent_started
+    // agent_started — enriched with model, provider, agent_index, agent_total
     if (event.role && event.round && event.profile && !event.content) {
-      currentActivity = { round: event.round, role: event.role, profile: event.profile };
+      currentActivity = {
+        round: event.round,
+        role: event.role,
+        profile: event.profile,
+        model: event.model || '',
+        provider: event.provider || '',
+        agent_index: event.agent_index ?? 0,
+        agent_total: event.agent_total ?? 0,
+      };
+      startProcessingTimer();
       return;
     }
 
-    // agent_output — full content arrives here
+    // agent_output — full content arrives here (enriched with real tokens + duration)
     if (event.role && event.round && event.content) {
       const profile = currentActivity?.profile || '';
+      const model = currentActivity?.model || event.model || '';
+      const tokensOut = event.tokens_out || event.tokens_used || 0;
+      const tokensIn = event.tokens_in || 0;
+      cumulativeTokens += tokensOut;
+      stopProcessingTimer();
       currentActivity = null;
       liveOutputs = [...liveOutputs, {
         round: event.round,
         role: event.role,
         content: event.content,
         tokens: event.tokens_used,
+        tokens_in: tokensIn,
+        tokens_out: tokensOut,
+        duration_ms: event.duration_ms || 0,
+        model: model,
         profile: profile,
         timestamp: new Date(),
       }];
@@ -247,6 +306,61 @@
       default: return 'text-gray-700 dark:text-gray-300';
     }
   }
+
+  // Activity Strip helpers
+  function roleDotColor(role) {
+    switch (role) {
+      case 'strategist': return 'bg-blue-500';
+      case 'critic': return 'bg-red-500';
+      case 'optimizer': return 'bg-amber-500';
+      case 'moderator': return 'bg-violet-500';
+      default: return 'bg-zinc-500';
+    }
+  }
+
+  function roleTextColor(role) {
+    switch (role) {
+      case 'strategist': return 'text-blue-400';
+      case 'critic': return 'text-red-400';
+      case 'optimizer': return 'text-amber-400';
+      case 'moderator': return 'text-violet-400';
+      default: return 'text-zinc-400';
+    }
+  }
+
+  function roleVerbKey(role) {
+    switch (role) {
+      case 'strategist': return 'feedback.analysing';
+      case 'critic': return 'feedback.checking';
+      case 'optimizer': return 'feedback.optimizing';
+      case 'moderator': return 'feedback.evaluating';
+      default: return 'feedback.analysing';
+    }
+  }
+
+  function formatElapsed(ms) {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  function formatTokens(n) {
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+    return String(n);
+  }
+
+  // Number of agents in the current round (from agent_started events)
+  $: agentCount = currentActivity?.agent_total || $currentDebate?.agent_profile?.length || 0;
+  // Index of the currently active agent (0-based)
+  $: activeAgentIndex = currentActivity?.agent_index ?? -1;
+  // How many agents have completed so far in the current round
+  $: completedInRound = liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0)).length;
+  // Whether the debate is actively running with an agent processing
+  $: isProcessing = $currentDebate?.status === 'running' && currentActivity !== null;
+  // Whether the debate is running but between agents
+  $: isBetweenAgents = $currentDebate?.status === 'running' && currentActivity === null && liveOutputs.length > 0;
+  // Show the strip only during active debate
+  $: showActivityStrip = $currentDebate?.status === 'running' || (isBetweenAgents && $currentDebate?.status === 'running');
 </script>
 
 <div class="space-y-6">
@@ -489,6 +603,83 @@
       {/if}
     </div>
 
+    <!-- Activity Strip — compact feedback during running debate -->
+    {#if $currentDebate.status === 'running'}
+      <div class="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+        <!-- Row 1: Progress dots + role verb -->
+        <div class="flex items-center gap-3 mb-2">
+          <!-- Progress dots -->
+          <div class="flex items-center gap-1.5">
+            {#each Array(agentCount) as _, i}
+              {#if i < completedInRound}
+                <!-- Completed dot -->
+                <span class="w-2.5 h-2.5 rounded-full {roleDotColor(liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0))[i]?.role || 'default')}"></span>
+              {:else if i === activeAgentIndex && isProcessing}
+                <!-- Active dot with ping -->
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full {roleDotColor(currentActivity?.role || 'default')} opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 {roleDotColor(currentActivity?.role || 'default')}"></span>
+                </span>
+              {:else}
+                <!-- Pending dot -->
+                <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+              {/if}
+            {/each}
+          </div>
+
+          <!-- Status text -->
+          {#if isProcessing && currentActivity}
+            <span class="text-sm font-medium {roleTextColor(currentActivity.role)}">
+              {t(roleVerbKey(currentActivity.role), { role: t(`agent.${currentActivity.role}`) })}
+            </span>
+          {:else if isBetweenAgents}
+            <span class="text-sm font-medium text-zinc-400">
+              {t('feedback.completed', { role: t(`agent.${liveOutputs[liveOutputs.length - 1]?.role || 'strategist'}`) })}
+            </span>
+          {:else}
+            <span class="text-sm font-medium text-zinc-500">
+              {t('feedback.waiting')}
+            </span>
+          {/if}
+        </div>
+
+        <!-- Row 2: Model name + timer + token counter -->
+        {#if isProcessing || (isBetweenAgents && liveOutputs.length > 0)}
+          <div class="flex items-center gap-3">
+            <!-- Model name -->
+            {#if currentActivity?.model || liveOutputs[liveOutputs.length - 1]?.model}
+              <span class="text-xs text-zinc-500 font-mono truncate max-w-[200px]">
+                {currentActivity?.model || liveOutputs[liveOutputs.length - 1]?.model}
+              </span>
+            {/if}
+
+            <div class="flex-1"></div>
+
+            <!-- Timer pill -->
+            {#if isProcessing}
+              <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
+                ⏱ {formatElapsed(processingElapsed)}
+              </span>
+            {:else if liveOutputs.length > 0}
+              {@const lastOutput = liveOutputs[liveOutputs.length - 1]}
+              {#if lastOutput.duration_ms}
+                <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
+                  ⏱ {formatElapsed(lastOutput.duration_ms)}
+                </span>
+              {/if}
+            {/if}
+
+            <!-- Token counter pill -->
+            {#if cumulativeTokens > 0}
+              <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
+                📊 {formatTokens(cumulativeTokens)} {t('feedback.tokens')}
+              </span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Live debate view (during running) -->
     {#if $currentDebate.status === 'running'}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -520,13 +711,22 @@
                         <span class="font-semibold text-sm {roleHeaderColor(output.role)}">
                           {roleEmoji(output.role)} {output.role}
                         </span>
-                        {#if output.profile}
+                        {#if output.model}
+                          <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">{output.model}</span>
+                        {:else if output.profile}
                           <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">{output.profile}</span>
                         {/if}
                       </div>
-                      <span class="text-xs text-gray-400 dark:text-gray-500">
-                        {output.tokens} tokens
-                      </span>
+                      <div class="flex items-center gap-2">
+                        {#if output.duration_ms}
+                          <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                            ⏱ {formatElapsed(output.duration_ms)}
+                          </span>
+                        {/if}
+                        <span class="text-xs text-gray-400 dark:text-gray-500">
+                          {output.tokens_out || output.tokens} tokens
+                        </span>
+                      </div>
                     </div>
                     <div class="text-sm text-gray-700 dark:text-gray-300">
                       {#if isLong && !isExpanded}
