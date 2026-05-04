@@ -101,21 +101,7 @@ async def run_agent_node(state: DebateState) -> dict:
     language = state.get("language", "de")
     search_mode = state.get("search_mode", "off")
 
-    # --- Resolve system prompt ---
-    system_prompt = _resolve_system_prompt(
-        role, prompt_variant, persona_ids, state, language, search_mode
-    )
-
-    # --- Build user prompt ---
-    user_prompt = _build_user_prompt(state, role, language)
-
-    # --- Required mode: auto-search before LLM call ---
-    if search_mode == "required":
-        user_prompt = await _perform_required_search(
-            state, role, language, user_prompt, session_id
-        )
-
-    # --- Publish: agent started ---
+    # --- Publish: agent started (BEFORE search so UI shows activity) ---
     agent_total = len(agents)
     llm_profile_obj = _get_profile_service().get_llm_profile(llm_profile_id)
     model_name = llm_profile_obj.model if llm_profile_obj else "N/A"
@@ -134,6 +120,20 @@ async def run_agent_node(state: DebateState) -> dict:
             "agent_total": agent_total,
         },
     )
+
+    # --- Resolve system prompt ---
+    system_prompt = _resolve_system_prompt(
+        role, prompt_variant, persona_ids, state, language, search_mode
+    )
+
+    # --- Build user prompt ---
+    user_prompt = _build_user_prompt(state, role, language)
+
+    # --- Required mode: auto-search before LLM call ---
+    if search_mode == "required":
+        user_prompt = await _perform_required_search(
+            state, role, language, user_prompt, session_id
+        )
 
     # --- LLM call with graceful fallback ---
     llm_failed = False
@@ -266,6 +266,7 @@ async def _perform_required_search(
                 session_id,
                 "web_search",
                 {
+                    "type": "web_search",
                     "round": state["current_round"],
                     "role": role,
                     "query": query,
@@ -303,6 +304,7 @@ async def _perform_optional_search(
                 session_id,
                 "web_search",
                 {
+                    "type": "web_search",
                     "round": state["current_round"],
                     "role": role,
                     "query": query,
