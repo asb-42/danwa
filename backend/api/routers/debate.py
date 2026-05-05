@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import (
@@ -172,6 +173,32 @@ async def delete_debate(
     return {"detail": "Debate deleted", "debate_id": debate_id}
 
 
+def _extract_rag_info(req: object | dict) -> tuple[list[str], bool]:
+    """Extract RAG fields from a request (DebateRequest object or dict)."""
+    if hasattr(req, "document_ids"):
+        return getattr(req, "document_ids", []), getattr(req, "rag_auto_retrieve", False)
+    elif isinstance(req, dict):
+        return req.get("document_ids", []), req.get("rag_auto_retrieve", False)
+    return [], False
+
+
+def _build_rag_preview(project_id: str, document_ids: list[str]) -> str:
+    """Build a short preview of RAG context for the response."""
+    if not document_ids:
+        return ""
+    try:
+        from backend.services.dms.service import get_dms_for_project
+        dms = get_dms_for_project(project_id)
+        chunks = []
+        for doc_id in document_ids:
+            chunks.extend(dms.metadata_index.get_chunks_by_document(doc_id))
+        if chunks:
+            return dms.format_rag_context(chunks[:3], max_chars=500)
+    except Exception:
+        pass
+    return ""
+
+
 @router.get("/{debate_id}", response_model=DebateStatusResponse)
 async def get_debate(
     debate_id: str,
@@ -215,6 +242,11 @@ async def get_debate(
     project = project_store.get(project_id)
     project_name = project.name if project else project_id
 
+    # RAG info
+    document_ids, rag_auto_retrieve = _extract_rag_info(req)
+    rag_enabled = bool(document_ids) or rag_auto_retrieve
+    rag_preview = _build_rag_preview(project_id, document_ids) if document_ids else ""
+
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
@@ -230,6 +262,9 @@ async def get_debate(
         anomalies=anomalies,
         project_id=project_id,
         project_name=project_name,
+        rag_enabled=rag_enabled,
+        rag_document_count=len(document_ids),
+        rag_context_preview=rag_preview,
     )
 
 
@@ -283,6 +318,10 @@ async def start_debate(
         language = "de"
         llm_profile_id = ""
 
+    # RAG info
+    document_ids, rag_auto_retrieve = _extract_rag_info(req)
+    rag_enabled = bool(document_ids) or rag_auto_retrieve
+
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
@@ -295,6 +334,8 @@ async def start_debate(
         case_text=case_text,
         language=language,
         llm_profile_id=llm_profile_id,
+        rag_enabled=rag_enabled,
+        rag_document_count=len(document_ids),
     )
 
 
@@ -352,6 +393,133 @@ def clear_cancel(debate_id: str) -> None:
     _cancelled_debates.discard(debate_id)
 
 
+# ---------------------------------------------------------------------------
+# RAG context resolution
+# ---------------------------------------------------------------------------
+
+
+def _resolve_rag_context(
+    project_id: str,
+    case_text: str,
+    document_ids: list[str] | None = None,
+    rag_auto_retrieve: bool = False,
+) -> tuple[str, int]:
+    """Resolve RAG context for a debate.
+
+    Returns (rag_context_string, document_count).
+    """
+    from backend.services.dms.service import get_dms_for_project
+
+    try:
+        dms = get_dms_for_project(project_id)
+    except Exception as exc:
+        logger.warning("Could not initialize DMS for project %s: %s", project_id, exc)
+        return "", 0
+
+    all_chunks: list[dict] = []
+
+    # 1. Manual RAG: explicit document_ids from request
+    if document_ids:
+        for doc_id in document_ids:
+            try:
+                chunks = dms.metadata_index.get_chunks_by_document(doc_id)
+                all_chunks.extend(chunks)
+            except Exception as exc:
+                logger.warning("Failed to get chunks for document %s: %s", doc_id, exc)
+
+    # 2. Auto-retrieve: search RAG based on case text
+    if rag_auto_retrieve and case_text:
+        try:
+            auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
+            all_chunks.extend(auto_chunks)
+        except Exception as exc:
+            logger.warning("Auto-retrieve failed for project %s: %s", project_id, exc)
+
+    if not all_chunks:
+        return "", 0
+
+    # Deduplicate by text content
+    seen_texts: set[str] = set()
+    unique_chunks: list[dict] = []
+    for chunk in all_chunks:
+        text = chunk.get("text", "")
+        if text and text not in seen_texts:
+            seen_texts.add(text)
+            unique_chunks.append(chunk)
+
+    rag_context = dms.format_rag_context(unique_chunks)
+    doc_count = len(document_ids) if document_ids else 0
+
+    logger.info(
+        "RAG context resolved for project %s: %d unique chunks from %d documents",
+        project_id,
+        len(unique_chunks),
+        doc_count,
+    )
+    return rag_context, doc_count
+
+
+# ---------------------------------------------------------------------------
+# Documents endpoint (assign documents to a pending debate)
+# ---------------------------------------------------------------------------
+
+
+class DocumentAssignment(BaseModel):
+    """Request body for assigning documents to a debate."""
+
+    document_ids: list[str]
+    rag_auto_retrieve: bool = False
+
+
+@router.put("/{debate_id}/documents")
+async def assign_documents(
+    debate_id: str,
+    body: DocumentAssignment,
+    project_id: str = Depends(get_project_id),
+) -> dict:
+    """Assign or update documents for a pending debate.
+
+    Can be called before or after debate creation, but only while the
+    debate is still pending (not yet started).
+    """
+    store = get_debate_store_for_project(project_id)
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate["status"]
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val != "pending":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot assign documents to a {status_val} debate",
+        )
+
+    # Update the request's document_ids and rag_auto_retrieve
+    req = debate["request"]
+    if hasattr(req, "document_ids"):
+        req.document_ids = body.document_ids
+        req.rag_auto_retrieve = body.rag_auto_retrieve
+    elif isinstance(req, dict):
+        req["document_ids"] = body.document_ids
+        req["rag_auto_retrieve"] = body.rag_auto_retrieve
+
+    debate["request"] = req
+    store.put(debate_id, debate)
+
+    logger.info(
+        "Assigned %d documents to debate %s (auto_retrieve=%s)",
+        len(body.document_ids),
+        debate_id,
+        body.rag_auto_retrieve,
+    )
+    return {
+        "debate_id": debate_id,
+        "document_ids": body.document_ids,
+        "rag_auto_retrieve": body.rag_auto_retrieve,
+    }
+
+
 async def _run_debate_workflow(
     debate_id: str, project_id: str, audit: AuditService, store: DebateStore
 ) -> None:
@@ -384,6 +552,8 @@ async def _run_debate_workflow(
         prompt_variant = req.prompt_variant
         agent_persona_ids = req.agent_persona_ids
         language = getattr(req, "language", "de")
+        document_ids = getattr(req, "document_ids", [])
+        rag_auto_retrieve = getattr(req, "rag_auto_retrieve", False)
         # search_mode: use explicit value, or derive from enable_fact_check
         raw_search_mode = getattr(req, "search_mode", None)
         if raw_search_mode is not None:
@@ -411,6 +581,8 @@ async def _run_debate_workflow(
         prompt_variant = req.get("prompt_variant", "default")
         agent_persona_ids = req.get("agent_persona_ids", {})
         language = req.get("language", "de")
+        document_ids = req.get("document_ids", [])
+        rag_auto_retrieve = req.get("rag_auto_retrieve", False)
         raw_search_mode = req.get("search_mode")
         if raw_search_mode:
             search_mode = raw_search_mode
@@ -428,6 +600,21 @@ async def _run_debate_workflow(
             ],
         )
 
+    # --- RAG context resolution ---
+    rag_context, rag_doc_count = _resolve_rag_context(
+        project_id=project_id,
+        case_text=case_text,
+        document_ids=document_ids,
+        rag_auto_retrieve=rag_auto_retrieve,
+    )
+    if rag_context:
+        logger.info(
+            "RAG context injected for debate %s (%d chars from %d documents)",
+            debate_id,
+            len(rag_context),
+            rag_doc_count,
+        )
+
     # Build initial state for LangGraph
     initial_state = {
         "context": case_text,
@@ -436,7 +623,7 @@ async def _run_debate_workflow(
         "threshold": consensus_threshold,
         "enable_fact_check": enable_fact_check,
         "enable_memory": enable_memory,
-        "rag_context": "",
+        "rag_context": rag_context,
         # --- Profile configuration (Sprint 3) ---
         "llm_profile_id": llm_profile_id,
         "prompt_variant": prompt_variant,

@@ -7,6 +7,7 @@
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
   import DebateView from './views/DebateView.svelte';
+  import DocumentsView from './views/DocumentsView.svelte';
   import AuditView from './views/AuditView.svelte';
   import ConfigView from './views/ConfigView.svelte';
   import ArchiveView from './views/ArchiveView.svelte';
@@ -70,6 +71,8 @@
     <Dashboard {navigate} />
   {:else if $route === 'debate'}
     <DebateView debateId={$routeParams[0] || null} {navigate} />
+  {:else if $route === 'documents'}
+    <DocumentsView {navigate} />
   {:else if $route === 'archive'}
     <ArchiveView {navigate} />
   {:else if $route === 'audit'}

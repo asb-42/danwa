@@ -107,6 +107,16 @@ class DebateRequest(BaseModel):
         description="Language for debate prompts: 'de' (German) or 'en' (English)",
     )
 
+    # --- RAG / DMS (Phase 2) ---
+    document_ids: list[str] = Field(
+        default_factory=list,
+        description="List of DMS document IDs to include as RAG context for this debate",
+    )
+    rag_auto_retrieve: bool = Field(
+        default=False,
+        description="If true, automatically retrieve relevant document chunks based on the case text",
+    )
+
 
 class DebateResponse(BaseModel):
     """POST /api/v1/debate response."""
@@ -143,6 +153,10 @@ class DebateStatusResponse(BaseModel):
     # --- Project context ---
     project_id: str = ""
     project_name: str = ""
+    # --- RAG / DMS ---
+    rag_enabled: bool = False
+    rag_document_count: int = 0
+    rag_context_preview: str = ""
 
 
 class DebateListItem(BaseModel):

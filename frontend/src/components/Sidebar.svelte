@@ -18,6 +18,7 @@
   $: navItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
     { id: 'debate', label: t('nav.debate'), icon: '💬' },
+    { id: 'documents', label: t('nav.documents'), icon: '📄' },
     { id: 'archive', label: t('nav.archive'), icon: '📚' },
     { id: 'audit', label: t('nav.audit'), icon: '📋' },
     { id: 'projects', label: t('nav.projects'), icon: '📁' },

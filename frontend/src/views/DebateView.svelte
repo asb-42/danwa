@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
-  import { createDebate, getDebate, startDebate, cancelDebate } from '../lib/api.js';
+  import { createDebate, getDebate, startDebate, cancelDebate, getDocuments } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
@@ -26,6 +26,11 @@
   let maxRounds = 3;
   let consensusThreshold = 0.8;
   let searchMode = 'off';
+  // RAG document selection
+  let availableDocuments = [];
+  let selectedDocumentIds = [];
+  let ragAutoRetrieve = false;
+  let showRAGContextPreview = false;
   let sseConnection = null;
   let archiveLoading = false;
 
@@ -64,7 +69,27 @@
         archiveLoading = false;
       }
     }
+    // Load available documents for RAG selection
+    loadAvailableDocuments();
   });
+
+  async function loadAvailableDocuments() {
+    try {
+      availableDocuments = await getDocuments();
+    } catch {
+      // Silently fail — documents are optional
+      availableDocuments = [];
+    }
+  }
+
+  function toggleDocumentSelection(docId) {
+    const idx = selectedDocumentIds.indexOf(docId);
+    if (idx >= 0) {
+      selectedDocumentIds = selectedDocumentIds.filter(id => id !== docId);
+    } else {
+      selectedDocumentIds = [...selectedDocumentIds, docId];
+    }
+  }
 
   // Cleanup SSE and timers on destroy
   onDestroy(() => {
@@ -110,10 +135,14 @@
         prompt_variant: $selectedPromptVariant,
         agent_persona_ids: $selectedPersonas,
         language: $locale || 'de',
+        document_ids: selectedDocumentIds,
+        rag_auto_retrieve: ragAutoRetrieve,
       });
       $currentDebate = response;
       $debates = [...$debates, response];
       caseText = '';
+      selectedDocumentIds = [];
+      ragAutoRetrieve = false;
     } catch (err) {
       $error = err.message;
     } finally {
@@ -593,6 +622,52 @@
         </p>
       </div>
 
+      <!-- RAG Document Selection -->
+      {#if availableDocuments.length > 0}
+        <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              📄 {t('documents.ragContext')}
+            </label>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {selectedDocumentIds.length} {t('documents.selectDocuments').toLowerCase()}
+            </span>
+          </div>
+
+          <div class="space-y-2 max-h-40 overflow-y-auto">
+            {#each availableDocuments as doc}
+              <label class="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={selectedDocumentIds.includes(doc.document_id)}
+                  on:change={() => toggleDocumentSelection(doc.document_id)}
+                  class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                />
+                <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">
+                  {doc.filename}
+                </span>
+              </label>
+            {/each}
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                bind:checked={ragAutoRetrieve}
+                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300">
+                🔍 {t('documents.ragAutoRetrieve')}
+              </span>
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
+              {t('documents.ragAutoRetrieveHint')}
+            </p>
+          </div>
+        </div>
+      {/if}
+
       <button
         type="submit"
         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
@@ -652,6 +727,15 @@
             <span class="text-gray-800 dark:text-gray-200 uppercase">{$currentDebate.language}</span>
           </div>
         {/if}
+
+        {#if $currentDebate.rag_enabled}
+          <div>
+            <span class="text-gray-500 dark:text-gray-400">{t('documents.ragContext')}: </span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              📚 {$currentDebate.rag_document_count} {t('documents.ragEnabled')}
+            </span>
+          </div>
+        {/if}
       </div>
 
       <!-- Round and consensus row -->
@@ -699,6 +783,29 @@
               <li class="text-xs text-amber-600 dark:text-amber-400 font-mono">• {anomaly}</li>
             {/each}
           </ul>
+        </div>
+      {/if}
+
+      <!-- RAG Context Preview -->
+      {#if $currentDebate.rag_enabled && $currentDebate.rag_context_preview}
+        <div class="mt-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+          <button
+            class="flex items-center justify-between w-full text-left"
+            on:click={() => showRAGContextPreview = !showRAGContextPreview}
+          >
+            <span class="text-sm font-medium text-purple-800 dark:text-purple-200 flex items-center gap-2">
+              📚 {t('documents.ragPreview')}
+              <span class="text-xs font-normal text-purple-600 dark:text-purple-400">
+                ({$currentDebate.rag_document_count} {t('documents.ragEnabled')})
+              </span>
+            </span>
+            <span class="text-purple-600 dark:text-purple-400 text-xs">
+              {showRAGContextPreview ? '▲' : '▼'}
+            </span>
+          </button>
+          {#if showRAGContextPreview}
+            <pre class="mt-2 text-xs text-purple-700 dark:text-purple-300 whitespace-pre-wrap font-mono bg-purple-100/50 dark:bg-purple-900/30 rounded p-2 max-h-60 overflow-y-auto">{$currentDebate.rag_context_preview}</pre>
+          {/if}
         </div>
       {/if}
 

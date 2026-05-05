@@ -258,6 +258,71 @@ export function updateProjectConfig(projectId, config) {
 }
 
 // ---------------------------------------------------------------------------
+// DMS / Documents
+// ---------------------------------------------------------------------------
+
+export function getDocuments() {
+  return request('/api/v1/dms/documents');
+}
+
+export function getDocument(documentId) {
+  return request(`/api/v1/dms/documents/${documentId}`);
+}
+
+export function uploadDocument(file) {
+  const projectId = get(activeProject)?.id;
+  const formData = new FormData();
+  formData.append('file', file);
+  return fetch(`${API_BASE}/api/v1/dms/documents`, {
+    method: 'POST',
+    headers: {
+      'Accept-Language': 'en',
+      ...(projectId ? { 'X-Project-Id': projectId } : {}),
+    },
+    body: formData,
+  }).then(async (response) => {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+    return response.json();
+  });
+}
+
+export function deleteDocument(documentId) {
+  return request(`/api/v1/dms/documents/${documentId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function addDocumentToRAG(documentId) {
+  return request(`/api/v1/dms/documents/${documentId}/rag`, {
+    method: 'POST',
+  });
+}
+
+export function removeDocumentFromRAG(documentId) {
+  return request(`/api/v1/dms/documents/${documentId}/rag`, {
+    method: 'DELETE',
+  });
+}
+
+export function getManualRAGDocuments() {
+  return request('/api/v1/dms/rag/manual');
+}
+
+export function searchRAG(query, limit = 5) {
+  return request(`/api/v1/dms/rag/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+}
+
+export function assignDocumentsToDebate(debateId, documentIds, ragAutoRetrieve = false) {
+  return request(`/api/v1/debate/${debateId}/documents`, {
+    method: 'PUT',
+    body: JSON.stringify({ document_ids: documentIds, rag_auto_retrieve: ragAutoRetrieve }),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // System (Sprint 3)
 // ---------------------------------------------------------------------------
 

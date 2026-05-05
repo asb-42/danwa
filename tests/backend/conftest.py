@@ -67,6 +67,15 @@ def app(settings, audit_service, debate_store, project_store, default_project):
     return application
 
 
+@pytest.fixture(autouse=True)
+def _clear_dms_cache():
+    """Clear the DMS instance cache between tests."""
+    from backend.services.dms.service import _dms_cache
+    _dms_cache.clear()
+    yield
+    _dms_cache.clear()
+
+
 @pytest.fixture()
 def client(app) -> TestClient:
     """Synchronous test client."""
