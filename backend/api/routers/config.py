@@ -47,6 +47,29 @@ def _save_settings(data: dict[str, Any]) -> None:
     logger.info("Settings saved to %s", _SETTINGS_PATH)
 
 
+def _load_project_config(project_id: str) -> dict[str, Any]:
+    """Load project-specific config, falling back to global settings."""
+    from backend.api.deps import get_project_store
+
+    store = get_project_store()
+    project = store.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Start with global settings
+    global_settings = _load_settings()
+
+    # Overlay project-specific config
+    project_config = project.config.model_dump(mode="json")
+    # Merge: project config overrides global
+    merged = {**global_settings}
+    for key, value in project_config.items():
+        if value is not None:
+            merged[key] = value
+
+    return merged
+
+
 # --- Request bodies ---
 
 
@@ -76,6 +99,12 @@ def update_settings(body: dict[str, Any]) -> dict:
     """Update application settings."""
     _save_settings(body)
     return {"status": "ok"}
+
+
+@router.get("/settings/project/{project_id}")
+def get_project_settings(project_id: str) -> dict:
+    """Get settings for a specific project (merged with global defaults)."""
+    return _load_project_config(project_id)
 
 
 # --- Language ---

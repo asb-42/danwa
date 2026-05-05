@@ -8,9 +8,11 @@ Falls back to dummy output if litellm is not available or LLM call fails.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from backend.api.events import publish_async
 from backend.core.config import settings
+from backend.models.project import ProjectConfig
 from backend.services.llm_service import GenerationResult, LLMService
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
@@ -30,21 +32,57 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Module-level service singletons (lazy-initialized)
+#
+# Project-scoped services are cached per project_id to avoid re-creating
+# ProfileService/PromptService on every node invocation.  The global
+# (no-project) singletons remain for backwards compatibility.
 # ---------------------------------------------------------------------------
 
 _profile_service: ProfileService | None = None
 _prompt_service: PromptService | None = None
 _search_tool: WebSearchTool | None = None
 
+# Per-project caches: project_id → service instance
+_profile_service_cache: dict[str, ProfileService] = {}
+_prompt_service_cache: dict[str, PromptService] = {}
 
-def _get_profile_service() -> ProfileService:
+
+def _get_project_dir(project_id: str | None) -> Path | None:
+    """Return the project directory for a given project_id, or None."""
+    if not project_id:
+        return None
+    from backend.persistence.project_store import ProjectStore
+
+    store = ProjectStore()
+    return store.get_project_dir(project_id)
+
+
+def _get_project_config(project_id: str | None) -> ProjectConfig | None:
+    """Return the ProjectConfig for a given project_id, or None."""
+    if not project_id:
+        return None
+    from backend.persistence.project_store import ProjectStore
+
+    store = ProjectStore()
+    project = store.get(project_id)
+    return project.config if project else None
+
+
+def _get_profile_service(project_id: str | None = None) -> ProfileService:
+    """Return a ProfileService, project-scoped if project_id is given."""
     global _profile_service
+    if project_id:
+        if project_id not in _profile_service_cache:
+            config = _get_project_config(project_id)
+            _profile_service_cache[project_id] = ProfileService(project_config=config)
+        return _profile_service_cache[project_id]
     if _profile_service is None:
         _profile_service = ProfileService()
     return _profile_service
 
 
-def _get_prompt_service() -> PromptService:
+def _get_prompt_service(project_id: str | None = None) -> PromptService:
+    """Return a PromptService (currently shared, project_dir passed at call site)."""
     global _prompt_service
     if _prompt_service is None:
         _prompt_service = PromptService()
@@ -93,6 +131,7 @@ async def run_agent_node(state: DebateState) -> dict:
     agent = agents[idx]
     role = agent["role"]
     session_id = state.get("session_id", "")
+    project_id = state.get("project_id")
 
     # Profile configuration from state
     llm_profile_id = state.get("llm_profile_id", "openrouter-claude")
@@ -100,13 +139,28 @@ async def run_agent_node(state: DebateState) -> dict:
     persona_ids = state.get("agent_persona_ids", {})
     language = state.get("language", "de")
     search_mode = state.get("search_mode", "off")
-
-    # --- Publish: agent started (BEFORE search so UI shows activity) ---
     agent_total = len(agents)
-    llm_profile_obj = _get_profile_service().get_llm_profile(llm_profile_id)
+
+    # --- Publish: agent preparing (immediate feedback before any heavy work) ---
+    await publish_async(
+        session_id,
+        "agent_preparing",
+        {
+            "type": "agent_preparing",
+            "round": state["current_round"],
+            "role": role,
+            "agent_index": idx,
+            "agent_total": agent_total,
+            "phase": "resolving_profile",
+        },
+    )
+
+    # --- Resolve LLM profile info ---
+    llm_profile_obj = _get_profile_service(project_id).get_llm_profile(llm_profile_id)
     model_name = llm_profile_obj.model if llm_profile_obj else "N/A"
     provider_name = llm_profile_obj.provider.value if llm_profile_obj else "N/A"
 
+    # --- Publish: agent started (profile resolved, now resolving prompts) ---
     await publish_async(
         session_id,
         "agent_started",
@@ -121,9 +175,25 @@ async def run_agent_node(state: DebateState) -> dict:
         },
     )
 
+    # --- Publish: resolving prompts ---
+    await publish_async(
+        session_id,
+        "agent_preparing",
+        {
+            "type": "agent_preparing",
+            "round": state["current_round"],
+            "role": role,
+            "agent_index": idx,
+            "agent_total": agent_total,
+            "phase": "resolving_prompts",
+        },
+    )
+
     # --- Resolve system prompt ---
+    project_dir = _get_project_dir(project_id)
     system_prompt = _resolve_system_prompt(
-        role, prompt_variant, persona_ids, state, language, search_mode
+        role, prompt_variant, persona_ids, state, language, search_mode,
+        project_id=project_id, project_dir=project_dir,
     )
 
     # --- Build user prompt ---
@@ -135,6 +205,21 @@ async def run_agent_node(state: DebateState) -> dict:
             state, role, language, user_prompt, session_id
         )
 
+    # --- Publish: LLM call starting ---
+    await publish_async(
+        session_id,
+        "llm_call_started",
+        {
+            "type": "llm_call_started",
+            "round": state["current_round"],
+            "role": role,
+            "model": model_name,
+            "provider": provider_name,
+            "agent_index": idx,
+            "agent_total": agent_total,
+        },
+    )
+
     # --- LLM call with graceful fallback ---
     llm_failed = False
     anomaly_detail = ""
@@ -142,7 +227,7 @@ async def run_agent_node(state: DebateState) -> dict:
     try:
         llm_service = LLMService(
             profile_id=llm_profile_id,
-            profile_service=_get_profile_service(),
+            profile_service=_get_profile_service(project_id),
         )
         logger.info(
             "Agent %s (round %d): calling LLM profile '%s' (model=%s, api_base=%s)",
@@ -397,6 +482,9 @@ def _resolve_system_prompt(
     state: DebateState,
     language: str = "de",
     search_mode: str = "off",
+    *,
+    project_id: str | None = None,
+    project_dir: Path | None = None,
 ) -> str:
     """Resolve the system prompt for an agent role.
 
@@ -405,14 +493,18 @@ def _resolve_system_prompt(
     The prompt service is tried first because it supports language variants
     (e.g. ``strategist.md`` for German, ``strategist-en.md`` for English).
     Persona system prompts are used as fallback when no template exists.
+
+    If ``project_dir`` is provided, project-specific prompt templates are
+    checked first (``{project_dir}/prompts/{variant}/{role}.md``).
     """
     # 1. Try prompt service template (language-aware) — highest priority
     try:
-        rendered = _get_prompt_service().render(
+        rendered = _get_prompt_service(project_id).render(
             variant=prompt_variant,
             role=role,
             variables={"context": state["context"]},
             language=language,
+            project_dir=project_dir,
         )
         logger.debug("Using prompt template for %s/%s (lang=%s)", prompt_variant, role, language)
         prompt = rendered
@@ -426,7 +518,7 @@ def _resolve_system_prompt(
     if prompt is None:
         persona_id = persona_ids.get(role)
         if persona_id:
-            persona = _get_profile_service().get_agent_persona(persona_id)
+            persona = _get_profile_service(project_id).get_agent_persona(persona_id)
             if persona:
                 logger.debug("Using persona system_prompt for %s (persona=%s)", role, persona_id)
                 prompt = persona.system_prompt

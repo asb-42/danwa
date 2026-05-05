@@ -3,7 +3,9 @@
  * All communication in English (Accept-Language: en).
  */
 
+import { get } from 'svelte/store';
 import { i18n } from './i18n/index.js';
+import { activeProject } from './stores.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -33,11 +35,20 @@ export function translateBackendError(backendMessage) {
 
 /**
  * Generic fetch wrapper with error handling.
+ *
+ * Automatically injects the ``X-Project-Id`` header from the
+ * ``activeProject`` store for all project-scoped requests.
  */
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  const projectId = get(activeProject)?.id;
+  const headers = {
+    ...DEFAULT_HEADERS,
+    ...(projectId ? { 'X-Project-Id': projectId } : {}),
+    ...options.headers,
+  };
   const response = await fetch(url, {
-    headers: { ...DEFAULT_HEADERS, ...options.headers },
+    headers,
     ...options,
   });
 
@@ -186,6 +197,64 @@ export function deletePromptVariant(variantId) {
 
 export function estimateCost(llmProfileId, numAgents = 4, numRounds = 3) {
   return request(`/api/v1/profiles/cost-estimate?llm_profile_id=${encodeURIComponent(llmProfileId)}&num_agents=${numAgents}&num_rounds=${numRounds}`);
+}
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+export function getSettings() {
+  return request('/api/v1/config/settings');
+}
+
+export function updateSettings(settings) {
+  return request('/api/v1/config/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+export function getProjects() {
+  return request('/api/v1/projects');
+}
+
+export function getProject(projectId) {
+  return request(`/api/v1/projects/${projectId}`);
+}
+
+export function createProject(name, description = '') {
+  return request('/api/v1/projects', {
+    method: 'POST',
+    body: JSON.stringify({ name, description }),
+  });
+}
+
+export function updateProject(projectId, data) {
+  return request(`/api/v1/projects/${projectId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProject(projectId) {
+  return request(`/api/v1/projects/${projectId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getProjectConfig(projectId) {
+  return request(`/api/v1/projects/${projectId}/config`);
+}
+
+export function updateProjectConfig(projectId, config) {
+  return request(`/api/v1/projects/${projectId}/config`, {
+    method: 'PUT',
+    body: JSON.stringify({ config }),
+  });
 }
 
 // ---------------------------------------------------------------------------

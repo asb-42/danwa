@@ -17,6 +17,7 @@ from backend.core.profiles import (
     LLMProfile,
     PromptVariant,
 )
+from backend.models.project import ProjectConfig
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,19 @@ class ProfileService:
 
     Profiles are loaded from YAML files in the ``profiles/`` directory.
     CRUD operations write back to the same files.
+
+    Supports project-scoped overrides via ``project_config``.  When a
+    ``ProjectConfig`` is provided, its profile dictionaries are merged
+    with the global profiles using the rule: same ID → project wins.
     """
 
-    def __init__(self, profile_dir: Path | str = _DEFAULT_PROFILE_DIR):
+    def __init__(
+        self,
+        profile_dir: Path | str = _DEFAULT_PROFILE_DIR,
+        project_config: ProjectConfig | None = None,
+    ):
         self.profile_dir = Path(profile_dir)
+        self._project_config = project_config
         self._llm_cache: dict[str, LLMProfile] = {}
         self._agent_cache: dict[str, AgentPersona] = {}
         self._prompt_cache: dict[str, PromptVariant] = {}
@@ -115,13 +125,45 @@ class ProfileService:
     # LLM Profiles
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Merge helpers (global + project override)
+    # ------------------------------------------------------------------
+
+    def _merged_llm_profiles(self) -> dict[str, LLMProfile]:
+        """Return global LLM profiles merged with project overrides."""
+        self.ensure_loaded()
+        merged = dict(self._llm_cache)
+        if self._project_config and self._project_config.llm_profiles:
+            merged.update(self._project_config.llm_profiles)
+        return merged
+
+    def _merged_agent_personas(self) -> dict[str, AgentPersona]:
+        """Return global agent personas merged with project overrides."""
+        self.ensure_loaded()
+        merged = dict(self._agent_cache)
+        if self._project_config and self._project_config.agent_personas:
+            merged.update(self._project_config.agent_personas)
+        return merged
+
+    def _merged_prompt_variants(self) -> dict[str, PromptVariant]:
+        """Return global prompt variants merged with project overrides."""
+        self.ensure_loaded()
+        merged = dict(self._prompt_cache)
+        if self._project_config and self._project_config.prompt_variants:
+            merged.update(self._project_config.prompt_variants)
+        return merged
+
+    # ------------------------------------------------------------------
+    # LLM Profiles
+    # ------------------------------------------------------------------
+
     def list_llm_profiles(self) -> list[LLMProfile]:
         self.ensure_loaded()
-        return list(self._llm_cache.values())
+        return list(self._merged_llm_profiles().values())
 
     def get_llm_profile(self, profile_id: str) -> LLMProfile | None:
         self.ensure_loaded()
-        return self._llm_cache.get(profile_id)
+        return self._merged_llm_profiles().get(profile_id)
 
     def save_llm_profile(self, profile: LLMProfile) -> LLMProfile:
         """Save an LLM profile to disk and cache."""
@@ -156,14 +198,14 @@ class ProfileService:
 
     def list_agent_personas(self, role: str | None = None) -> list[AgentPersona]:
         self.ensure_loaded()
-        personas = list(self._agent_cache.values())
+        personas = list(self._merged_agent_personas().values())
         if role:
             personas = [p for p in personas if p.role == role]
         return personas
 
     def get_agent_persona(self, persona_id: str) -> AgentPersona | None:
         self.ensure_loaded()
-        return self._agent_cache.get(persona_id)
+        return self._merged_agent_personas().get(persona_id)
 
     def save_agent_persona(self, persona: AgentPersona) -> AgentPersona:
         """Save an agent persona to disk and cache."""
@@ -198,11 +240,11 @@ class ProfileService:
 
     def list_prompt_variants(self) -> list[PromptVariant]:
         self.ensure_loaded()
-        return list(self._prompt_cache.values())
+        return list(self._merged_prompt_variants().values())
 
     def get_prompt_variant(self, variant_id: str) -> PromptVariant | None:
         self.ensure_loaded()
-        return self._prompt_cache.get(variant_id)
+        return self._merged_prompt_variants().get(variant_id)
 
     def preview_prompt(self, variant_id: str, agent_role: str) -> str:
         """Load and return the prompt text for a given variant and agent role.

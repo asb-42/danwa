@@ -53,6 +53,9 @@ export function createSSE(debateId, handlers = {}) {
       'round_update',
       'status_change',
       'web_search',
+      'workflow_started',
+      'agent_preparing',
+      'llm_call_started',
       'error',
       'keepalive',
     ];

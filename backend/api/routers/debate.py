@@ -11,7 +11,13 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
-from backend.api.deps import get_audit_service, get_debate_graph, get_debate_store
+from backend.api.deps import (
+    get_audit_service,
+    get_debate_graph,
+    get_debate_store_for_project,
+    get_project_id,
+    get_project_store,
+)
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.models.schemas import (
     AuditEvent,
@@ -44,7 +50,7 @@ async def list_debates(
     offset: int = 0,
     status: str | None = None,
     search: str | None = None,
-    store: DebateStore = Depends(get_debate_store),
+    project_id: str = Depends(get_project_id),
 ) -> list[DebateListItem]:
     """List all debates (newest first) — for history panel.
 
@@ -52,6 +58,7 @@ async def list_debates(
         status: Filter by debate status (pending, running, completed, failed).
         search: Full-text search in case_preview (case-insensitive).
     """
+    store = get_debate_store_for_project(project_id)
     debates = store.list_all(limit=limit + offset)  # fetch extra for filtering
     items = []
     for d in debates:
@@ -102,10 +109,11 @@ async def list_debates(
 @router.post("", response_model=DebateResponse, status_code=201)
 async def create_debate(
     request: DebateRequest,
+    project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    store: DebateStore = Depends(get_debate_store),
 ) -> DebateResponse:
     """Create a new debate (status = pending)."""
+    store = get_debate_store_for_project(project_id)
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
@@ -129,10 +137,11 @@ async def create_debate(
 @router.delete("/{debate_id}")
 async def delete_debate(
     debate_id: str,
+    project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    store: DebateStore = Depends(get_debate_store),
 ) -> dict:
     """Delete a debate and its associated audit events."""
+    store = get_debate_store_for_project(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -158,9 +167,10 @@ async def delete_debate(
 @router.get("/{debate_id}", response_model=DebateStatusResponse)
 async def get_debate(
     debate_id: str,
-    store: DebateStore = Depends(get_debate_store),
+    project_id: str = Depends(get_project_id),
 ) -> DebateStatusResponse:
     """Get debate status and progress."""
+    store = get_debate_store_for_project(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -212,14 +222,15 @@ async def get_debate(
 async def start_debate(
     debate_id: str,
     background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    store: DebateStore = Depends(get_debate_store),
 ) -> DebateStatusResponse:
     """Start a pending debate — launches the workflow in a background task.
 
     Returns immediately with status=running.  Real-time progress is
     delivered via the SSE stream endpoint.
     """
+    store = get_debate_store_for_project(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -232,7 +243,7 @@ async def start_debate(
     store.put(debate_id, debate)
 
     # Launch workflow in background so the HTTP response returns immediately
-    background_tasks.add_task(_run_debate_workflow, debate_id, audit, store)
+    background_tasks.add_task(_run_debate_workflow, debate_id, project_id, audit, store)
 
     req = debate.get("request", {})
     max_rounds = (
@@ -280,13 +291,14 @@ async def start_debate(
 @router.post("/{debate_id}/cancel")
 async def cancel_debate(
     debate_id: str,
-    store: DebateStore = Depends(get_debate_store),
+    project_id: str = Depends(get_project_id),
 ) -> dict:
     """Cancel a running debate.
 
     Sets a cancellation flag that the workflow checks between rounds.
     The debate will be marked as failed with a cancellation message.
     """
+    store = get_debate_store_for_project(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -314,11 +326,24 @@ def clear_cancel(debate_id: str) -> None:
     _cancelled_debates.discard(debate_id)
 
 
-async def _run_debate_workflow(debate_id: str, audit: AuditService, store: DebateStore) -> None:
+async def _run_debate_workflow(
+    debate_id: str, project_id: str, audit: AuditService, store: DebateStore
+) -> None:
     """Run the LangGraph workflow for a debate (called as background task)."""
     debate = store.get(debate_id)
     if not debate:
         return
+
+    # --- Publish: workflow started (immediate feedback to user) ---
+    await publish_async(
+        debate_id,
+        "workflow_started",
+        {
+            "type": "workflow_started",
+            "message": "Workflow engine started, preparing debate...",
+            "debate_id": debate_id,
+        },
+    )
 
     req = debate["request"]
 
@@ -394,6 +419,8 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
         "language": language,
         # --- Web search (Sprint 5) ---
         "search_mode": search_mode,
+        # --- Project isolation ---
+        "project_id": project_id,
         # --- Runtime ---
         "session_id": debate_id,
         "current_round": 0,
@@ -474,7 +501,7 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
             llm_model=llm_profile_id,
             tokens_used=agent_output.get("tokens_used", 0),
         )
-        audit.record(event)
+        audit.record(event, project_id=project_id)
 
     clear_cancel(debate_id)
     logger.info(
@@ -490,7 +517,7 @@ async def _run_debate_workflow(debate_id: str, audit: AuditService, store: Debat
 # ---------------------------------------------------------------------------
 
 
-async def _sse_events(debate_id: str, store: DebateStore):
+async def _sse_events(debate_id: str, project_id: str, store: DebateStore):
     """Yield SSE events for a debate using the event bus."""
     debate = store.get(debate_id)
     if not debate:
@@ -549,7 +576,8 @@ async def _sse_events(debate_id: str, store: DebateStore):
 @router.get("/{debate_id}/stream")
 async def stream_debate(
     debate_id: str,
-    store: DebateStore = Depends(get_debate_store),
+    project_id: str = Depends(get_project_id),
 ):
     """SSE endpoint for real-time debate updates."""
-    return EventSourceResponse(_sse_events(debate_id, store))
+    store = get_debate_store_for_project(project_id)
+    return EventSourceResponse(_sse_events(debate_id, project_id, store))

@@ -12,6 +12,7 @@ from backend.core.profiles import ActiveConfiguration
 logger = logging.getLogger(__name__)
 
 _DEFAULT_DB_PATH = Path("data/profiles.db")
+_DEFAULT_PROJECT_ID = "_default"
 
 
 class ProfileRepository:
@@ -27,6 +28,7 @@ class ProfileRepository:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS active_configurations (
                     debate_id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL DEFAULT '_default',
                     llm_profile_id TEXT NOT NULL,
                     agent_personas TEXT NOT NULL,
                     prompt_variant_id TEXT NOT NULL,
@@ -39,6 +41,7 @@ class ProfileRepository:
                 CREATE TABLE IF NOT EXISTS configuration_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     debate_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL DEFAULT '_default',
                     llm_profile_id TEXT NOT NULL,
                     agent_personas TEXT NOT NULL,
                     prompt_variant_id TEXT NOT NULL,
@@ -46,6 +49,14 @@ class ProfileRepository:
                     estimated_cost REAL,
                     actual_cost REAL
                 )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_active_configs_project
+                ON active_configurations (project_id)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_config_history_project
+                ON configuration_history (project_id)
             """)
 
     def _connect(self) -> sqlite3.Connection:
@@ -57,18 +68,21 @@ class ProfileRepository:
     # Active Configurations
     # ------------------------------------------------------------------
 
-    def save_active_config(self, config: ActiveConfiguration) -> None:
+    def save_active_config(
+        self, config: ActiveConfiguration, project_id: str = _DEFAULT_PROJECT_ID
+    ) -> None:
         """Save or update an active configuration."""
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO active_configurations
-                    (debate_id, llm_profile_id, agent_personas, prompt_variant_id,
-                     created_at, estimated_cost, actual_cost)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (debate_id, project_id, llm_profile_id, agent_personas,
+                     prompt_variant_id, created_at, estimated_cost, actual_cost)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     config.debate_id,
+                    project_id,
                     config.llm_profile_id,
                     json.dumps(config.agent_personas),
                     config.prompt_variant_id,
@@ -81,12 +95,13 @@ class ProfileRepository:
             conn.execute(
                 """
                 INSERT INTO configuration_history
-                    (debate_id, llm_profile_id, agent_personas, prompt_variant_id,
-                     created_at, estimated_cost, actual_cost)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (debate_id, project_id, llm_profile_id, agent_personas,
+                     prompt_variant_id, created_at, estimated_cost, actual_cost)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     config.debate_id,
+                    project_id,
                     config.llm_profile_id,
                     json.dumps(config.agent_personas),
                     config.prompt_variant_id,
@@ -95,7 +110,7 @@ class ProfileRepository:
                     config.actual_cost,
                 ),
             )
-        logger.info("Active config saved for debate %s", config.debate_id)
+        logger.info("Active config saved for debate %s (project=%s)", config.debate_id, project_id)
 
     def get_active_config(self, debate_id: str) -> ActiveConfiguration | None:
         """Retrieve the active configuration for a debate."""
@@ -125,12 +140,21 @@ class ProfileRepository:
             )
         return cursor.rowcount > 0
 
-    def list_active_configs(self) -> list[ActiveConfiguration]:
-        """List all active configurations."""
+    def list_active_configs(
+        self, project_id: str | None = None
+    ) -> list[ActiveConfiguration]:
+        """List all active configurations, optionally filtered by project."""
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM active_configurations ORDER BY created_at DESC"
-            ).fetchall()
+            if project_id:
+                rows = conn.execute(
+                    "SELECT * FROM active_configurations "
+                    "WHERE project_id = ? ORDER BY created_at DESC",
+                    (project_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM active_configurations ORDER BY created_at DESC"
+                ).fetchall()
         return [
             ActiveConfiguration(
                 debate_id=row["debate_id"],

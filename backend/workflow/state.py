@@ -51,6 +51,9 @@ class DebateState(TypedDict, total=False):
     # --- Language (Sprint 4) ---
     language: str  # 'de' or 'en'
 
+    # --- Project isolation ---
+    project_id: str  # UUID of the active project
+
     # --- Runtime ---
     session_id: str
     current_round: int

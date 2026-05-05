@@ -10,6 +10,8 @@
   import AuditView from './views/AuditView.svelte';
   import ConfigView from './views/ConfigView.svelte';
   import ArchiveView from './views/ArchiveView.svelte';
+  import ProjectsView from './views/ProjectsView.svelte';
+  import ProjectSettings from './components/ProjectSettings.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -72,6 +74,10 @@
     <ArchiveView {navigate} />
   {:else if $route === 'audit'}
     <AuditView />
+  {:else if $route === 'projects' && $routeParams.length >= 2 && $routeParams[1] === 'settings'}
+    <ProjectSettings projectId={$routeParams[0]} {navigate} />
+  {:else if $route === 'projects'}
+    <ProjectsView {navigate} />
   {:else if $route === 'config'}
     <ConfigView />
   {:else}

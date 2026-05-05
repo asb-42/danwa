@@ -55,6 +55,9 @@ function persisted(key, defaultValue) {
   return store;
 }
 
+/** Active project — persisted to localStorage. Stores { id, name }. */
+export const activeProject = persisted('danwa.activeProject', null);
+
 /** Selected LLM profile ID for debates (set in ConfigView, read in DebateView) */
 export const selectedLLMProfile = persisted('danwa.selectedLLMProfile', 'openrouter-claude');
 

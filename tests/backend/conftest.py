@@ -5,11 +5,18 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.deps import get_audit_service, get_debate_store, get_settings
+from backend.api.deps import (
+    get_audit_service,
+    get_debate_store,
+    get_project_id,
+    get_project_store,
+    get_settings,
+)
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
+from backend.persistence.project_store import ProjectStore
 
 
 @pytest.fixture()
@@ -35,12 +42,28 @@ def debate_store(tmp_path) -> DebateStore:
 
 
 @pytest.fixture()
-def app(settings, audit_service, debate_store):
+def project_store(tmp_path) -> ProjectStore:
+    """Isolated ProjectStore with temp directory."""
+    return ProjectStore(base_dir=tmp_path / "test_projects")
+
+
+@pytest.fixture()
+def default_project(project_store):
+    """Ensure a default project exists and return its ID."""
+    project = project_store.get_or_create_default()
+    return project.id
+
+
+@pytest.fixture()
+def app(settings, audit_service, debate_store, project_store, default_project):
     """FastAPI app with overridden dependencies."""
+    get_project_store.cache_clear()
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
     application.dependency_overrides[get_audit_service] = lambda: audit_service
     application.dependency_overrides[get_debate_store] = lambda: debate_store
+    application.dependency_overrides[get_project_store] = lambda: project_store
+    application.dependency_overrides[get_project_id] = lambda: default_project
     return application
 
 

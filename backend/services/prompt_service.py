@@ -24,11 +24,21 @@ class PromptService:
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
 
-    def get_prompt(self, variant: str, role: str, language: str = "de") -> dict:
+    def get_prompt(
+        self,
+        variant: str,
+        role: str,
+        language: str = "de",
+        project_dir: Path | str | None = None,
+    ) -> dict:
         """Load a prompt template with caching and hot-reload.
 
         For non-default languages (e.g. 'en'), tries ``{role}-{lang}.md``
         first, then falls back to ``{role}.md``.
+
+        If ``project_dir`` is given, project-specific prompts are checked
+        first (``{project_dir}/prompts/{variant}/{role}.md``) before
+        falling back to the global prompts directory.
 
         Returns a dict with keys: content, hash, mtime, path.
         """
@@ -38,38 +48,52 @@ class PromptService:
             candidates.append(f"{role}-{language}.md")
         candidates.append(f"{role}.md")
 
-        # Determine base directory
-        if variant == "default":
-            base_dir = self.prompts_dir / "default"
-        else:
-            base_dir = self.prompts_dir / "variants" / variant
-
-        # Try candidates in order
+        # Try project-specific prompts first
         prompt_path = None
-        for name in candidates:
-            path = base_dir / name
-            if path.exists():
-                prompt_path = path
-                break
-
-        # Fallback to default variant if variant-specific not found
-        if prompt_path is None:
-            default_dir = self.prompts_dir / "default"
+        if project_dir is not None:
+            project_prompts = Path(project_dir) / "prompts"
+            if variant == "default":
+                project_base = project_prompts / "default"
+            else:
+                project_base = project_prompts / "variants" / variant
             for name in candidates:
-                path = default_dir / name
+                path = project_base / name
                 if path.exists():
-                    logger.warning(
-                        "Prompt %s/%s not found, falling back to default/%s",
-                        variant,
-                        role,
-                        name,
-                    )
                     prompt_path = path
                     break
 
+        # Determine global base directory
+        if prompt_path is None:
+            if variant == "default":
+                base_dir = self.prompts_dir / "default"
+            else:
+                base_dir = self.prompts_dir / "variants" / variant
+
+            # Try candidates in order
+            for name in candidates:
+                path = base_dir / name
+                if path.exists():
+                    prompt_path = path
+                    break
+
+            # Fallback to default variant if variant-specific not found
+            if prompt_path is None:
+                default_dir = self.prompts_dir / "default"
+                for name in candidates:
+                    path = default_dir / name
+                    if path.exists():
+                        logger.warning(
+                            "Prompt %s/%s not found, falling back to default/%s",
+                            variant,
+                            role,
+                            name,
+                        )
+                        prompt_path = path
+                        break
+
         if prompt_path is None:
             raise FileNotFoundError(
-                f"Prompt not found: {variant}/{role} (language={language}, looked in {base_dir})"
+                f"Prompt not found: {variant}/{role} (language={language})"
             )
 
         cache_key = f"{variant}/{role}/{language}"
@@ -99,12 +123,13 @@ class PromptService:
         role: str,
         variables: dict[str, str] | None = None,
         language: str = "de",
+        project_dir: Path | str | None = None,
     ) -> str:
         """Load a prompt and optionally substitute variables.
 
         Variables are replaced using simple {key} syntax.
         """
-        data = self.get_prompt(variant, role, language=language)
+        data = self.get_prompt(variant, role, language=language, project_dir=project_dir)
         content = data["content"]
 
         if variables:

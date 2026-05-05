@@ -24,6 +24,7 @@ from backend.api.routers import (  # noqa: E402
     dms,
     health,
     profiles,
+    projects,
     sessions,
     system,
 )
@@ -83,6 +84,12 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     # Ensure DB directory exists
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Run project migration (idempotent)
+    from backend.migrations.migrate_projects import migrate_to_projects
+
+    migrate_to_projects()
+
     yield
     logger.info("Debate Engine shutting down.")
 
@@ -107,6 +114,7 @@ def create_app() -> FastAPI:
     )
 
     # --- Routers ---
+    app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
     app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
     app.include_router(config.router, prefix="/api/v1/config", tags=["config"])

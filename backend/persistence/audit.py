@@ -8,6 +8,8 @@ from pathlib import Path
 from backend.core.config import settings
 from backend.models.schemas import AuditEvent
 
+_DEFAULT_PROJECT_ID = "_default"
+
 
 class AuditService:
     """Immutable audit event store backed by SQLite."""
@@ -27,6 +29,7 @@ class AuditService:
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id          TEXT PRIMARY KEY,
                     debate_id   TEXT NOT NULL,
+                    project_id  TEXT NOT NULL DEFAULT '_default',
                     round       INTEGER NOT NULL,
                     agent       TEXT NOT NULL,
                     action      TEXT NOT NULL,
@@ -41,6 +44,14 @@ class AuditService:
                 CREATE INDEX IF NOT EXISTS idx_audit_debate
                 ON audit_events (debate_id)
             """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_project
+                ON audit_events (project_id)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_project_debate
+                ON audit_events (project_id, debate_id)
+            """)
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(str(self._db_path))
@@ -49,19 +60,20 @@ class AuditService:
     # Write (append-only)
     # ------------------------------------------------------------------
 
-    def record(self, event: AuditEvent) -> None:
+    def record(self, event: AuditEvent, project_id: str = _DEFAULT_PROJECT_ID) -> None:
         """Insert a single audit event. Idempotent on (id)."""
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT OR IGNORE INTO audit_events
-                    (id, debate_id, round, agent, action, timestamp,
+                    (id, debate_id, project_id, round, agent, action, timestamp,
                      input_hash, output_hash, llm_model, tokens_used)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.id,
                     event.debate_id,
+                    project_id,
                     event.round,
                     event.agent.value,
                     event.action,
@@ -91,12 +103,38 @@ class AuditService:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_events_by_project(
+        self, project_id: str, limit: int = 100, offset: int = 0
+    ) -> list[dict]:
+        """Return audit events for a project, ordered by timestamp desc."""
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT * FROM audit_events
+                WHERE project_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ? OFFSET ?
+                """,
+                (project_id, limit, offset),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def count_events(self, debate_id: str) -> int:
         """Count events for a debate."""
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT COUNT(*) FROM audit_events WHERE debate_id = ?",
                 (debate_id,),
+            ).fetchone()
+        return row[0] if row else 0
+
+    def count_events_by_project(self, project_id: str) -> int:
+        """Count events for a project."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM audit_events WHERE project_id = ?",
+                (project_id,),
             ).fetchone()
         return row[0] if row else 0
 
