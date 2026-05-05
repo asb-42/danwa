@@ -210,14 +210,16 @@
     if (event.round !== undefined && event.consensus !== undefined) {
       $currentDebate = {
         ...$currentDebate,
-        current_round: event.round,
+        current_round: event.round + 1,
         consensus_score: event.consensus,
       };
       if (event.total_tokens) {
         lastRoundTokens = event.total_tokens;
       }
       currentActivity = null;
+      workflowPhase = null;
       stopProcessingTimer();
+      stopWorkflowTimer();
       return;
     }
 
@@ -379,8 +381,8 @@
     return acc;
   }, {});
 
-  // Determine which data source to show for completed debates
-  $: displayRounds = $currentDebate?.status === 'completed' && $currentDebate?.rounds?.length > 0
+  // Determine which data source to show for completed/failed debates
+  $: displayRounds = ($currentDebate?.status === 'completed' || $currentDebate?.status === 'failed') && $currentDebate?.rounds?.length > 0
     ? $currentDebate.rounds
     : null;
 
@@ -1050,8 +1052,8 @@
       </div>
     {/if}
 
-    <!-- Completed debate results -->
-    {#if $currentDebate.status === 'completed' && displayRounds}
+    <!-- Completed/Failed debate results -->
+    {#if ($currentDebate.status === 'completed' || $currentDebate.status === 'failed') && displayRounds}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 class="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
@@ -1178,7 +1180,7 @@
     {/if}
 
     <!-- No rounds fallback (archive mode) -->
-    {#if isArchiveMode && $currentDebate.status === 'completed' && !displayRounds}
+    {#if isArchiveMode && ($currentDebate.status === 'completed' || $currentDebate.status === 'failed') && !displayRounds}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700 text-center">
         <p class="text-gray-500 dark:text-gray-400">{t('debate.noRounds')}</p>
       </div>
