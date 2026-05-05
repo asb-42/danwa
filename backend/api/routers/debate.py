@@ -529,27 +529,28 @@ async def _run_debate_workflow(
 
 
 async def _sse_events(debate_id: str, project_id: str, store: DebateStore):
-    """Yield SSE events for a debate using the event bus."""
+    """Yield SSE events for a debate using the event bus.
+
+    Subscribes to the event bus for pending AND running debates so that
+    events published after ``start_debate()`` are not missed (the frontend
+    connects SSE *before* calling start).
+    """
     debate = store.get(debate_id)
     if not debate:
         yield {"event": "error", "data": json.dumps({"detail": "Debate not found"})}
         return
 
+    status = debate["status"]
+    status_val = status.value if hasattr(status, "value") else status
+
     # Send initial status
     yield {
         "event": "status_change",
-        "data": json.dumps(
-            {
-                "debate_id": debate_id,
-                "status": debate["status"].value
-                if hasattr(debate["status"], "value")
-                else debate["status"],
-            }
-        ),
+        "data": json.dumps({"debate_id": debate_id, "status": status_val}),
     }
 
-    # If debate is already completed, send all rounds at once
-    if debate["status"] == DebateStatus.COMPLETED:
+    # If debate is already completed/failed, send all rounds at once and return
+    if status == DebateStatus.COMPLETED:
         for i, round_data in enumerate(debate.get("rounds", [])):
             yield {
                 "event": "round_update",
@@ -561,27 +562,36 @@ async def _sse_events(debate_id: str, project_id: str, store: DebateStore):
         }
         return
 
-    # If debate is running, subscribe to the event bus for real-time updates
-    if debate["status"] == DebateStatus.RUNNING:
-        queue = subscribe(debate_id)
-        try:
-            while True:
-                try:
-                    event_type, payload = await asyncio.wait_for(queue.get(), timeout=300.0)
-                except TimeoutError:
-                    # No events for 5 minutes — send keepalive
-                    yield {"event": "keepalive", "data": "{}"}
-                    continue
+    if status == DebateStatus.FAILED:
+        yield {
+            "event": "status_change",
+            "data": json.dumps({"debate_id": debate_id, "status": "failed"}),
+        }
+        return
 
-                yield {"event": event_type, "data": payload}
+    # For pending or running debates: subscribe to the event bus.
+    # The frontend connects SSE *before* calling start_debate(), so the
+    # debate is still pending at this point.  We must subscribe now so
+    # that events published once the background task starts are received.
+    queue = subscribe(debate_id)
+    try:
+        while True:
+            try:
+                event_type, payload = await asyncio.wait_for(queue.get(), timeout=300.0)
+            except TimeoutError:
+                # No events for 5 minutes — send keepalive
+                yield {"event": "keepalive", "data": "{}"}
+                continue
 
-                # If debate completed or failed, stop
-                if event_type == "status_change":
-                    data = json.loads(payload)
-                    if data.get("status") in ("completed", "failed"):
-                        break
-        finally:
-            unsubscribe(debate_id, queue)
+            yield {"event": event_type, "data": payload}
+
+            # If debate completed or failed, stop
+            if event_type == "status_change":
+                data = json.loads(payload)
+                if data.get("status") in ("completed", "failed"):
+                    break
+    finally:
+        unsubscribe(debate_id, queue)
 
 
 @router.get("/{debate_id}/stream")
