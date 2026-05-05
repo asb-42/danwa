@@ -234,6 +234,7 @@ export default {
 
   // Archive
   'archive.title': 'Debatten-Archiv',
+  'archive.project': 'Projekt',
   'archive.searchPlaceholder': 'Debatten durchsuchen...',
   'archive.filterAll': 'Alle Status',
   'archive.date': 'Datum',

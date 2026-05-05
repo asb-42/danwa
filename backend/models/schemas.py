@@ -140,6 +140,9 @@ class DebateStatusResponse(BaseModel):
     language: str = "de"
     llm_profile_id: str = ""
     anomalies: list[str] = Field(default_factory=list)
+    # --- Project context ---
+    project_id: str = ""
+    project_name: str = ""
 
 
 class DebateListItem(BaseModel):
@@ -155,6 +158,8 @@ class DebateListItem(BaseModel):
     language: str = "de"
     created_at: datetime
     updated_at: datetime
+    project_id: str = ""
+    project_name: str = ""
 
 
 class HealthResponse(BaseModel):

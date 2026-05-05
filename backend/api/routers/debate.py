@@ -60,6 +60,12 @@ async def list_debates(
     """
     store = get_debate_store_for_project(project_id)
     debates = store.list_all(limit=limit + offset)  # fetch extra for filtering
+
+    # Resolve project name once
+    project_store = get_project_store()
+    project = project_store.get(project_id)
+    project_name = project.name if project else project_id
+
     items = []
     for d in debates:
         req = d.get("request", {})
@@ -99,6 +105,8 @@ async def list_debates(
                 language=language,
                 created_at=d.get("created_at", datetime.now(UTC)),
                 updated_at=d.get("updated_at", datetime.now(UTC)),
+                project_id=project_id,
+                project_name=project_name,
             )
         )
 
@@ -202,6 +210,11 @@ async def get_debate(
     consensus = result.get("final_consensus") if isinstance(result, dict) else None
     anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
 
+    # Resolve project name
+    project_store = get_project_store()
+    project = project_store.get(project_id)
+    project_name = project.name if project else project_id
+
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
@@ -215,6 +228,8 @@ async def get_debate(
         language=language,
         llm_profile_id=llm_profile_id,
         anomalies=anomalies,
+        project_id=project_id,
+        project_name=project_name,
     )
 
 

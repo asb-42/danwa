@@ -485,6 +485,11 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
       {isArchiveMode ? t('debate.archiveTitle') : t('debate.title')}
     </h2>
+    {#if $currentDebate?.project_name}
+      <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+        📁 {$currentDebate.project_name}
+      </span>
+    {/if}
     {#if $currentDebate?.created_at}
       <span class="text-sm text-gray-500 dark:text-gray-400 ml-auto">
         {formatDate($currentDebate.created_at)}

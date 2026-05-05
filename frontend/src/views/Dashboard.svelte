@@ -133,6 +133,11 @@
                   {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 12)}
                 </p>
                 <div class="flex items-center gap-3 mt-1">
+                  {#if debate.project_name}
+                    <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      📁 {debate.project_name}
+                    </span>
+                  {/if}
                   <span class="text-xs text-gray-500 dark:text-gray-400">
                     {formatDate(debate.created_at)}
                   </span>

@@ -2,6 +2,7 @@
   import { healthStatus } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
+  import ProjectSelector from './ProjectSelector.svelte';
 
   $: t = (key, params = {}) => {
     let text = $i18n[key] || key;
@@ -24,6 +25,9 @@
   </h1>
 
   <div class="flex items-center space-x-4">
+    <!-- Project selector -->
+    <ProjectSelector compact={true} />
+
     <!-- Language switcher -->
     <LanguageSwitcher />
 

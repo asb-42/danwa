@@ -177,13 +177,14 @@
       </div>
     {:else}
       <!-- Table header -->
-      <div class="hidden md:grid md:grid-cols-12 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        <div class="col-span-4">{t('debate.caseLabel')}</div>
+      <div class="hidden md:grid md:grid-cols-14 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        <div class="col-span-3">{t('debate.caseLabel')}</div>
+        <div class="col-span-2">{t('archive.project')}</div>
         <div class="col-span-2">{t('archive.date')}</div>
         <div class="col-span-1">{t('debate.round')}</div>
         <div class="col-span-2">{t('debate.consensus')}</div>
         <div class="col-span-2">{t('debate.status')}</div>
-        <div class="col-span-1"></div>
+        <div class="col-span-2"></div>
       </div>
 
       <!-- Table rows -->
@@ -191,11 +192,11 @@
         {#each debates as debate}
           <div
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-                   md:grid md:grid-cols-12 md:gap-4 md:items-center"
+                   md:grid md:grid-cols-14 md:gap-4 md:items-center"
           >
             <!-- Case preview (clickable) -->
             <button
-              class="md:col-span-4 mb-2 md:mb-0 text-left cursor-pointer"
+              class="md:col-span-3 mb-2 md:mb-0 text-left cursor-pointer"
               on:click={() => navigate('debate/' + debate.debate_id)}
             >
               <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
@@ -204,6 +205,18 @@
               <p class="text-xs text-gray-400 dark:text-gray-500 font-mono md:hidden">
                 {debate.debate_id.substring(0, 8)}…
               </p>
+            </button>
+
+            <!-- Project (clickable) -->
+            <button
+              class="md:col-span-2 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 md:mb-0 text-left cursor-pointer"
+              on:click={() => navigate('debate/' + debate.debate_id)}
+            >
+              {#if debate.project_name}
+                📁 {debate.project_name}
+              {:else}
+                <span class="text-gray-400 dark:text-gray-500">—</span>
+              {/if}
             </button>
 
             <!-- Date (clickable) -->
@@ -260,7 +273,7 @@
             </button>
 
             <!-- Delete button -->
-            <div class="md:col-span-1 flex justify-end">
+            <div class="md:col-span-2 flex justify-end">
               {#if deleteConfirmId === debate.debate_id}
                 <div class="flex items-center gap-1">
                   <button
