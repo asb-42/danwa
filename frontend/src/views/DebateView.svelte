@@ -332,8 +332,17 @@
     if (!$currentDebate) return;
     isCancelling = true;
     try {
-      await cancelDebate($currentDebate.debate_id);
-      // The SSE stream will deliver the failed status_change event
+      const result = await cancelDebate($currentDebate.debate_id);
+      // If debate already completed/failed (race condition), update UI immediately
+      if (result.status === 'completed' || result.status === 'failed') {
+        $currentDebate = { ...$currentDebate, status: result.status };
+        currentActivity = null;
+        workflowPhase = null;
+        stopProcessingTimer();
+        stopWorkflowTimer();
+        handleRefreshStatus();
+      }
+      // Otherwise the SSE stream will deliver the failed status_change event
     } catch (err) {
       $error = err.message;
     } finally {

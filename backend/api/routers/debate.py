@@ -297,6 +297,9 @@ async def cancel_debate(
 
     Sets a cancellation flag that the workflow checks between rounds.
     The debate will be marked as failed with a cancellation message.
+
+    Idempotent: if the debate already completed or failed, returns the
+    current status instead of raising an error (race condition fix).
     """
     store = get_debate_store_for_project(project_id)
     debate = store.get(debate_id)
@@ -305,12 +308,20 @@ async def cancel_debate(
 
     status = debate["status"]
     status_val = status.value if hasattr(status, "value") else status
-    if status_val not in ("running", "pending"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot cancel debate with status '{status_val}'",
-        )
 
+    # Already finished — return current status (idempotent)
+    if status_val in ("completed", "failed"):
+        logger.info(
+            "Debate %s cancel requested but already '%s' — returning current status",
+            debate_id,
+            status_val,
+        )
+        return {
+            "status": status_val,
+            "message": f"Debate already {status_val}",
+        }
+
+    # Pending or running — set cancellation flag
     _cancelled_debates.add(debate_id)
     logger.info("Debate %s cancellation requested", debate_id)
     return {"status": "ok", "message": "Cancellation requested"}
