@@ -5,7 +5,8 @@
  * Supports both default messages and named SSE events.
  */
 
-import { sseConnected } from './stores.js';
+import { sseConnected, activeProject } from './stores.js';
+import { get } from 'svelte/store';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -21,7 +22,12 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
  * @returns {Function} cleanup
  */
 export function createSSE(debateId, handlers = {}) {
-  const url = `${API_BASE}/api/v1/debate/${debateId}/stream`;
+  // EventSource cannot send custom headers, so we pass project_id as a query param
+  const projectId = get(activeProject)?.id;
+  const params = new URLSearchParams();
+  if (projectId) params.set('project_id', projectId);
+  const qs = params.toString();
+  const url = `${API_BASE}/api/v1/debate/${debateId}/stream${qs ? '?' + qs : ''}`;
   let eventSource = null;
   let reconnectTimer = null;
   let reconnectDelay = 1000;

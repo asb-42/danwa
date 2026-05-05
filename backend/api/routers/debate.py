@@ -8,7 +8,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import (
@@ -597,8 +597,15 @@ async def _sse_events(debate_id: str, project_id: str, store: DebateStore):
 @router.get("/{debate_id}/stream")
 async def stream_debate(
     debate_id: str,
-    project_id: str = Depends(get_project_id),
+    project_id: str = Query(
+        ...,
+        description="Project UUID (query param, since EventSource cannot send headers)",
+    ),
 ):
-    """SSE endpoint for real-time debate updates."""
+    """SSE endpoint for real-time debate updates.
+
+    Accepts ``project_id`` as a **query parameter** because the browser's
+    ``EventSource`` API cannot send custom HTTP headers.
+    """
     store = get_debate_store_for_project(project_id)
     return EventSourceResponse(_sse_events(debate_id, project_id, store))
