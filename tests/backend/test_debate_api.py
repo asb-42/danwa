@@ -177,3 +177,37 @@ class TestStartDebate:
         events = audit_service.get_events(debate_id)
         assert len(events) > 0
         assert events[0]["debate_id"] == debate_id
+
+
+class TestSSEStreamEndpoint:
+    """Regression tests for the SSE stream endpoint.
+
+    The SSE endpoint must accept ``project_id`` as a **query parameter**
+    because the browser's ``EventSource`` API cannot send custom HTTP
+    headers.  See commit 82ca09e.
+
+    Note: tests that connect to a pending/running debate are intentionally
+    omitted because the SSE endpoint subscribes to the event bus and streams
+    indefinitely, which would hang the TestClient.
+    """
+
+    def test_sse_requires_project_id_query_param(self, client):
+        """Without ?project_id= the endpoint must return 422."""
+        response = client.get("/api/v1/debate/nonexistent/stream")
+        assert response.status_code == 422
+
+    def test_sse_accepts_project_id_query_param(self, client):
+        """With ?project_id=_default the endpoint must return 200."""
+        response = client.get(
+            "/api/v1/debate/nonexistent/stream?project_id=_default"
+        )
+        # nonexistent debate → 200 with SSE error event (not 422)
+        assert response.status_code == 200
+        assert "error" in response.text
+
+    def test_sse_rejects_invalid_project_id(self, client):
+        """With an invalid project_id the endpoint must return 404."""
+        response = client.get(
+            "/api/v1/debate/nonexistent/stream?project_id=invalid-project"
+        )
+        assert response.status_code == 404
