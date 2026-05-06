@@ -128,6 +128,8 @@ function getNodeClassName(status) {
     draft: 'node-draft',
     final: 'node-final',
     resolved: 'node-resolved',
+    passed: 'node-passed',
+    below: 'node-below',
   };
   return map[status] || 'node-idle';
 }

@@ -43,6 +43,22 @@ export function handleWorkflowSSE(sseEvent) {
       });
       break;
 
+    case 'agent_started':
+      // Agent profile resolved — update node with profile info
+      dispatchEvent({
+        type: 'AGENT_STARTED',
+        payload: {
+          agentId: `${sseEvent.role}_r${sseEvent.round}`,
+          role: sseEvent.role,
+          round: sseEvent.round,
+          inputArtifactIds: getInputArtifacts(sseEvent.role, sseEvent.round),
+          timestamp: Date.now(),
+          profile: sseEvent.profile,
+          model: sseEvent.model,
+        },
+      });
+      break;
+
     case 'agent_output':
       // Agent completed — produce artifact
       {
@@ -72,12 +88,80 @@ export function handleWorkflowSSE(sseEvent) {
       break;
 
     case 'round_update':
+      {
+        // Extract consensus data from round_update (backend includes it here)
+        const consensus = sseEvent.consensus ?? null;
+        const threshold = sseEvent.threshold ?? 0.8;
+        const passed = consensus != null && consensus >= threshold;
+
+        // First dispatch CONSENSUS_CHECK to create/update the decision node
+        if (consensus != null) {
+          dispatchEvent({
+            type: 'CONSENSUS_CHECK',
+            payload: {
+              decisionId: `decision_r${sseEvent.round}`,
+              round: sseEvent.round,
+              consensus,
+              threshold,
+              passed,
+            },
+          });
+        }
+
+        // Then dispatch ROUND_COMPLETED
+        dispatchEvent({
+          type: 'ROUND_COMPLETED',
+          payload: {
+            round: sseEvent.round,
+            finalArtifactId: `moderator_output_r${sseEvent.round}`,
+            pathTaken: [],
+            consensus,
+            threshold,
+          },
+        });
+      }
+      break;
+
+    case 'oob_consumed':
       dispatchEvent({
-        type: 'ROUND_COMPLETED',
+        type: 'OOB_CONSUMED',
         payload: {
-          round: sseEvent.round,
-          finalArtifactId: `moderator_output_r${sseEvent.round}`,
-          pathTaken: [], // Will be filled from executionPath
+          oobIds: sseEvent.oob_ids || [],
+          byAgentId: sseEvent.by_agent || '',
+        },
+      });
+      break;
+
+    case 'web_search':
+      dispatchEvent({
+        type: 'AGENT_ACTIVITY',
+        payload: {
+          agentId: `${sseEvent.role}_r${sseEvent.round}`,
+          activity: 'searching',
+          detail: sseEvent.query || '',
+        },
+      });
+      break;
+
+    case 'llm_call_started':
+      dispatchEvent({
+        type: 'AGENT_ACTIVITY',
+        payload: {
+          agentId: `${sseEvent.role}_r${sseEvent.round}`,
+          activity: 'thinking',
+          detail: '',
+        },
+      });
+      break;
+
+    case 'hitl_inject_consumed':
+      dispatchEvent({
+        type: 'USER_OUT_OF_BAND_INPUT',
+        payload: {
+          inputId: sseEvent.interaction_id || `inject_${Date.now()}`,
+          targetAgentId: `${sseEvent.target_agent}_r${sseEvent.target_round || 1}`,
+          content: sseEvent.content || 'HITL context injected',
+          round: sseEvent.target_round || 1,
         },
       });
       break;

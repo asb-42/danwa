@@ -12,6 +12,32 @@
 import { get } from 'svelte/store';
 import { graphNodes, graphEdges } from './store.js';
 
+// ── Initial position calculation ──────────────────────────────────
+// Gives each node a reasonable starting position so the graph is
+// readable even before ELK layout runs. ELK will refine these.
+const ROLE_ORDER = ['strategist', 'critic', 'optimizer', 'moderator'];
+const NODE_SPACING_X = 220;
+const ROUND_SPACING_Y = 200;
+const ARTIFACT_ROLE_MAP = {
+  strategy: 'strategist',
+  critique: 'critic',
+  synthesis: 'optimizer',
+  consensus: 'moderator',
+};
+
+function getInitialPosition(nodeType, role, round) {
+  if (role === 'input') return { x: -200, y: 0 };
+  const r = role in ARTIFACT_ROLE_MAP ? ARTIFACT_ROLE_MAP[role] : role;
+  const col = ROLE_ORDER.indexOf(r);
+  const c = col >= 0 ? col : 0;
+  const baseX = c * 2 * NODE_SPACING_X;
+  const baseY = ((round || 1) - 1) * ROUND_SPACING_Y;
+  if (nodeType === 'artifact') return { x: baseX + NODE_SPACING_X, y: baseY + 30 };
+  if (nodeType === 'decision') return { x: ROLE_ORDER.length * 2 * NODE_SPACING_X + 80, y: baseY };
+  if (nodeType === 'user_action') return { x: baseX + NODE_SPACING_X / 2, y: baseY - 90 };
+  return { x: baseX, y: baseY };
+}
+
 /**
  * Apply a workflow event to the graph state.
  * @param {import('./events.js').WorkflowEvent} event
@@ -23,14 +49,15 @@ export function applyEventToGraph(event) {
     // AGENT_STARTED
     // ═══════════════════════════════════════════
     case 'AGENT_STARTED': {
-      const { agentId, role, round, inputArtifactIds } = event.payload;
+      const { agentId, role, round, inputArtifactIds, profile, model } = event.payload;
 
       graphNodes.update(nodes => {
         const copy = new Map(nodes);
         if (!copy.has(agentId)) {
+          const nodeType = role === 'input' ? 'input' : 'agent';
           copy.set(agentId, {
             id: agentId,
-            type: role === 'input' ? 'input' : 'agent',
+            type: nodeType,
             data: {
               role,
               label: role === 'input' ? 'Input' : `${role} (Round ${round})`,
@@ -38,12 +65,22 @@ export function applyEventToGraph(event) {
               round,
               isActive: true,
               hasFeedbackLoop: false,
+              profile: profile || undefined,
+              model: model || undefined,
             },
+            position: getInitialPosition(nodeType, role, round),
           });
         } else {
-          // Node already exists (Retry/Loop) → set status to active
+          // Node already exists (Retry/Loop) → set status to active, update profile
           const node = { ...copy.get(agentId) };
-          node.data = { ...node.data, status: 'active', isActive: true, round };
+          node.data = {
+            ...node.data,
+            status: 'active',
+            isActive: true,
+            round,
+            ...(profile ? { profile } : {}),
+            ...(model ? { model } : {}),
+          };
           copy.set(agentId, node);
         }
         return copy;
@@ -110,6 +147,7 @@ export function applyEventToGraph(event) {
           id: artifactId,
           type: 'artifact',
           data: { artifactType: type, summary, tokenCount, status: 'draft', round },
+          position: getInitialPosition('artifact', type, round),
         });
         return copy;
       });
@@ -148,6 +186,7 @@ export function applyEventToGraph(event) {
             requestedBy: requestingAgentRole,
             isBlocking: true,
           },
+          position: getInitialPosition('user_action', requestingAgentRole, event.payload.round || 1),
         });
         return copy;
       });
@@ -262,6 +301,8 @@ export function applyEventToGraph(event) {
       graphNodes.update(nodes => {
         const copy = new Map(nodes);
         // Side-Input-Node (small, on the edge)
+        const targetRole = targetAgentId.split('_')[0];
+        const targetRound = parseInt(targetAgentId.split('_r')[1]) || 1;
         copy.set(sideNodeId, {
           id: sideNodeId,
           type: 'user_action',
@@ -274,6 +315,7 @@ export function applyEventToGraph(event) {
             isBlocking: false,
             isOOB: true,
           },
+          position: getInitialPosition('user_action', targetRole, targetRound),
         });
 
         // If target agent doesn't exist yet → placeholder
@@ -330,13 +372,93 @@ export function applyEventToGraph(event) {
     // ═══════════════════════════════════════════
     case 'ROUND_COMPLETED': {
       const { round } = event.payload;
+      const decisionId = `decision_r${round}`;
 
+      // Mark round artifacts as final
       graphNodes.update(nodes => {
         const copy = new Map(nodes);
         for (const [id, node] of copy) {
           if (node.data?.round === round && node.type === 'artifact') {
             copy.set(id, { ...node, data: { ...node.data, status: 'final' } });
           }
+        }
+        // Create decision node for this round
+        if (!copy.has(decisionId)) {
+          copy.set(decisionId, {
+            id: decisionId,
+            type: 'decision',
+            data: {
+              round,
+              consensus: event.payload.consensus ?? null,
+              threshold: event.payload.threshold ?? 0.8,
+              status: 'completed',
+            },
+            position: getInitialPosition('decision', 'moderator', round),
+          });
+        }
+        return copy;
+      });
+
+      // Create edge from moderator artifact to decision node
+      graphEdges.update(edges => {
+        const copy = new Map(edges);
+        const modArtifactId = `moderator_output_r${round}`;
+        const edgeId = `${modArtifactId}->${decisionId}`;
+        if (!copy.has(edgeId)) {
+          copy.set(edgeId, {
+            id: edgeId,
+            source: modArtifactId,
+            target: decisionId,
+            type: 'flow',
+            data: { type: 'flow', isActive: false },
+          });
+        }
+        return copy;
+      });
+      break;
+    }
+
+    // ═══════════════════════════════════════════
+    // CONSENSUS_CHECK  ←── Intermediate evaluation
+    // ═══════════════════════════════════════════
+    case 'CONSENSUS_CHECK': {
+      const { decisionId, round, consensus, threshold, passed } = event.payload;
+
+      graphNodes.update(nodes => {
+        const copy = new Map(nodes);
+        if (copy.has(decisionId)) {
+          const node = copy.get(decisionId);
+          copy.set(decisionId, {
+            ...node,
+            data: { ...node.data, consensus, threshold, status: passed ? 'passed' : 'below' },
+          });
+        } else {
+          copy.set(decisionId, {
+            id: decisionId,
+            type: 'decision',
+            data: { round, consensus, threshold, status: passed ? 'passed' : 'below' },
+            position: getInitialPosition('decision', 'moderator', round),
+          });
+        }
+        return copy;
+      });
+      break;
+    }
+
+    // ═══════════════════════════════════════════
+    // AGENT_ACTIVITY  ←── Visual indicator
+    // ═══════════════════════════════════════════
+    case 'AGENT_ACTIVITY': {
+      const { agentId, activity, detail } = event.payload;
+
+      graphNodes.update(nodes => {
+        const copy = new Map(nodes);
+        const node = copy.get(agentId);
+        if (node) {
+          copy.set(agentId, {
+            ...node,
+            data: { ...node.data, activity, activityDetail: detail },
+          });
         }
         return copy;
       });

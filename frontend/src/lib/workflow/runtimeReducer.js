@@ -68,6 +68,14 @@ export function applyEventToRuntime(event) {
       }));
       break;
 
+    case 'CONSENSUS_CHECK':
+      // No runtime state change needed — decision node is visual only
+      break;
+
+    case 'AGENT_ACTIVITY':
+      // No runtime state change needed — activity is shown on the node
+      break;
+
     case 'WORKFLOW_COMPLETED':
       runtime.update(r => ({
         ...r,

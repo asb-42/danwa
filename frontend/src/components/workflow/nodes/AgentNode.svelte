@@ -40,6 +40,14 @@
     {#if data.profile}
       <span class="node-profile">{data.profile}</span>
     {/if}
+    {#if data.activity}
+      <span class="node-activity">
+        {#if data.activity === 'searching'}🔍 {data.activityDetail || 'Searching...'}
+        {:else if data.activity === 'thinking'}🧠 Thinking...
+        {:else}{data.activity}
+        {/if}
+      </span>
+    {/if}
   </div>
   {#if data.isActive}
     <div class="pulse-ring"></div>
@@ -102,6 +110,17 @@
     font-size: 10px;
     color: #9ca3af;
     font-family: monospace;
+  }
+  .node-activity {
+    font-size: 10px;
+    color: #3b82f6;
+    font-style: italic;
+    margin-top: 2px;
+    animation: activity-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes activity-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
   .pulse-ring {
     position: absolute;

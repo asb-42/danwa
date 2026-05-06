@@ -63,7 +63,7 @@ export async function applyLayout(nodes, edges) {
     } catch (err) {
       console.warn('[workflow/layout] ELK layout failed:', err);
     }
-  }, 150);
+  }, 30);
 }
 
 /**
@@ -85,7 +85,7 @@ async function calculateLayout(nodes, edges) {
     const round = node.data?.round;
     // Group agent, artifact, and input nodes with a valid round into containers
     // Skip user_action, placeholder, decision — they stay at top level
-    if (round != null && round > 0 && (node.type === 'agent' || node.type === 'artifact' || node.type === 'input')) {
+    if (round != null && round > 0 && (node.type === 'agent' || node.type === 'artifact' || node.type === 'input' || node.type === 'decision')) {
       if (!roundContainers.has(round)) {
         roundContainers.set(round, []);
       }
@@ -189,6 +189,7 @@ function getNodeWidth(node) {
     case 'artifact': return 180;
     case 'user_action': return 160;
     case 'placeholder': return 140;
+    case 'decision': return 180;
     default: return 160;
   }
 }
@@ -205,6 +206,7 @@ function getNodeHeight(node) {
     case 'artifact': return 60;
     case 'user_action': return 70;
     case 'placeholder': return 50;
+    case 'decision': return 80;
     default: return 60;
   }
 }
