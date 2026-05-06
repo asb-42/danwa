@@ -24,6 +24,39 @@ class RoundDataState(TypedDict):
     agent_outputs: list[AgentOutputState]
 
 
+class InteractionState(TypedDict, total=False):
+    """A single HITL interaction event between user and agent."""
+
+    interaction_id: str
+    type: str  # 'inject' | 'query' | 'response'
+    direction: str  # 'user_to_agent' | 'agent_to_user'
+    source: str  # 'user' | agent role
+    target: str  # agent role | 'user'
+    content: str
+    round: int
+    agent_index: int
+    timestamp: str
+    status: str  # 'pending' | 'delivered' | 'consumed' | 'expired'
+    metadata: dict
+
+
+class InterruptContextState(TypedDict, total=False):
+    """Active interrupt — agent query waiting for user response."""
+
+    interrupt_id: str
+    debate_id: str
+    agent_role: str
+    agent_index: int
+    round: int
+    question: str
+    context: str
+    created_at: str
+    timeout_seconds: int
+    status: str  # 'waiting' | 'answered' | 'timeout' | 'cancelled'
+    response: str | None
+    responded_at: str | None
+
+
 class DebateState(TypedDict, total=False):
     """Shared state passed through every LangGraph node.
 
@@ -70,3 +103,15 @@ class DebateState(TypedDict, total=False):
     validation_report: list[dict]
     used_variant: str
     anomalies: Annotated[list[str], operator.add]
+
+    # --- HITL (Human-in-the-Loop) ---
+    interactions: Annotated[list[InteractionState], operator.add]
+    active_interrupt: InterruptContextState | None
+    hitl_enabled: bool
+    hitl_mode: str  # 'full' | 'inject_only' | 'query_only' | 'off'
+    auto_query_threshold: float  # Confidence below this triggers agent query
+    max_interrupts_per_round: int
+    interrupt_timeout_seconds: int
+    pending_injects: list[dict]
+    round_interrupt_count: int
+    is_paused: bool

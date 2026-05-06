@@ -236,6 +236,19 @@ async def run_agent_node(state: DebateState) -> dict:
     except Exception as exc:
         logger.warning("OOB injection failed (non-fatal): %s", exc)
 
+    # --- HITL: Inject user context before LLM call ---
+    try:
+        from backend.workflow.hitl.nodes import build_inject_context
+        hitl_context = build_inject_context(state, role)
+        if hitl_context:
+            user_prompt += hitl_context
+            logger.info(
+                "HITL inject context added for %s (round %d)",
+                role, state["current_round"],
+            )
+    except Exception as exc:
+        logger.warning("HITL inject failed (non-fatal): %s", exc)
+
     # --- Required mode: auto-search before LLM call ---
     if search_mode == "required":
         user_prompt = await _perform_required_search(

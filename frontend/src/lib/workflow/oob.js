@@ -45,16 +45,15 @@ export function submitOOBInput(input) {
   };
 
   oobQueue.update(q => {
-    q.items.push(newOOB);
+    const newItems = [...q.items, newOOB];
 
-    // Update index for fast lookup
+    // Update index for fast lookup (create new Map for reactivity)
+    const newIndex = new Map(q.indexByTarget);
     const key = getOOBIndexKey(newOOB.target);
-    if (!q.indexByTarget.has(key)) {
-      q.indexByTarget.set(key, []);
-    }
-    q.indexByTarget.get(key).push(newOOB);
+    const existing = newIndex.get(key) || [];
+    newIndex.set(key, [...existing, newOOB]);
 
-    return q;
+    return { items: newItems, indexByTarget: newIndex };
   });
 
   // Immediately emit event for visualization
@@ -117,13 +116,12 @@ export function consumeOOBForAgent(agentRole, round) {
  */
 export function markOOBConsumed(oobId, agentId) {
   oobQueue.update(q => {
-    const oob = q.items.find(o => o.id === oobId);
-    if (oob) {
-      oob.status = 'consumed';
-      oob.consumedBy = agentId;
-      oob.consumedAt = Date.now();
-    }
-    return q;
+    const newItems = q.items.map(o =>
+      o.id === oobId
+        ? { ...o, status: 'consumed', consumedBy: agentId, consumedAt: Date.now() }
+        : o
+    );
+    return { ...q, items: newItems };
   });
 }
 
@@ -142,12 +140,12 @@ export function getPendingOOBCount() {
 export function clearStaleOOB(olderThanMs) {
   const cutoff = Date.now() - olderThanMs;
   oobQueue.update(q => {
-    q.items.forEach(o => {
-      if (o.status === 'pending' && o.timestamp < cutoff) {
-        o.status = 'stale';
-      }
-    });
-    return q;
+    const newItems = q.items.map(o =>
+      o.status === 'pending' && o.timestamp < cutoff
+        ? { ...o, status: 'stale' }
+        : o
+    );
+    return { ...q, items: newItems };
   });
 }
 

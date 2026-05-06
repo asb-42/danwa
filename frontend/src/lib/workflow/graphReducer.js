@@ -3,6 +3,10 @@
  *
  * The heart of the workflow visualization. Each event type knows exactly
  * how it changes the graph (nodes and edges).
+ *
+ * IMPORTANT: Svelte writable stores only notify subscribers when the value
+ * reference changes. We MUST create new Map copies in every update callback
+ * (same pattern as $state(new Set()) reactivity in Svelte 5).
  */
 
 import { get } from 'svelte/store';
@@ -22,13 +26,14 @@ export function applyEventToGraph(event) {
       const { agentId, role, round, inputArtifactIds } = event.payload;
 
       graphNodes.update(nodes => {
-        if (!nodes.has(agentId)) {
-          nodes.set(agentId, {
+        const copy = new Map(nodes);
+        if (!copy.has(agentId)) {
+          copy.set(agentId, {
             id: agentId,
-            type: 'agent',
+            type: role === 'input' ? 'input' : 'agent',
             data: {
               role,
-              label: `${role} (Round ${round})`,
+              label: role === 'input' ? 'Input' : `${role} (Round ${round})`,
               status: 'active',
               round,
               isActive: true,
@@ -37,19 +42,19 @@ export function applyEventToGraph(event) {
           });
         } else {
           // Node already exists (Retry/Loop) → set status to active
-          const node = nodes.get(agentId);
-          node.data.status = 'active';
-          node.data.isActive = true;
-          node.data.round = round;
+          const node = { ...copy.get(agentId) };
+          node.data = { ...node.data, status: 'active', isActive: true, round };
+          copy.set(agentId, node);
         }
-        return nodes;
+        return copy;
       });
 
       // Create edges from input artifacts to this agent
       graphEdges.update(edges => {
+        const copy = new Map(edges);
         inputArtifactIds.forEach((artifactId, idx) => {
           const edgeId = `${artifactId}->${agentId}_${idx}`;
-          edges.set(edgeId, {
+          copy.set(edgeId, {
             id: edgeId,
             source: artifactId,
             target: agentId,
@@ -57,7 +62,7 @@ export function applyEventToGraph(event) {
             data: { type: 'flow', isActive: true },
           });
         });
-        return edges;
+        return copy;
       });
       break;
     }
@@ -69,22 +74,26 @@ export function applyEventToGraph(event) {
       const { agentId } = event.payload;
 
       graphNodes.update(nodes => {
-        const node = nodes.get(agentId);
+        const copy = new Map(nodes);
+        const node = copy.get(agentId);
         if (node) {
-          node.data.status = 'completed';
-          node.data.isActive = false;
+          copy.set(agentId, {
+            ...node,
+            data: { ...node.data, status: 'completed', isActive: false },
+          });
         }
-        return nodes;
+        return copy;
       });
 
       // Deactivate incoming edges
       graphEdges.update(edges => {
-        edges.forEach((edge) => {
+        const copy = new Map(edges);
+        for (const [id, edge] of copy) {
           if (edge.target === agentId && edge.data?.isActive) {
-            edge.data.isActive = false;
+            copy.set(id, { ...edge, data: { ...edge.data, isActive: false } });
           }
-        });
-        return edges;
+        }
+        return copy;
       });
       break;
     }
@@ -96,24 +105,26 @@ export function applyEventToGraph(event) {
       const { artifactId, type, producerAgentId, round, summary, tokenCount } = event.payload;
 
       graphNodes.update(nodes => {
-        nodes.set(artifactId, {
+        const copy = new Map(nodes);
+        copy.set(artifactId, {
           id: artifactId,
           type: 'artifact',
           data: { artifactType: type, summary, tokenCount, status: 'draft', round },
         });
-        return nodes;
+        return copy;
       });
 
       graphEdges.update(edges => {
+        const copy = new Map(edges);
         const edgeId = `${producerAgentId}->${artifactId}`;
-        edges.set(edgeId, {
+        copy.set(edgeId, {
           id: edgeId,
           source: producerAgentId,
           target: artifactId,
           type: 'flow',
           data: { type: 'flow', isActive: false },
         });
-        return edges;
+        return copy;
       });
       break;
     }
@@ -126,7 +137,8 @@ export function applyEventToGraph(event) {
       const userNodeId = `user_action_${requestId}`;
 
       graphNodes.update(nodes => {
-        nodes.set(userNodeId, {
+        const copy = new Map(nodes);
+        copy.set(userNodeId, {
           id: userNodeId,
           type: 'user_action',
           data: {
@@ -137,13 +149,14 @@ export function applyEventToGraph(event) {
             isBlocking: true,
           },
         });
-        return nodes;
+        return copy;
       });
 
       graphEdges.update(edges => {
+        const copy = new Map(edges);
         // Edge: Agent → User (dashed, orange)
         const requestEdgeId = `${requestingAgentId}->${userNodeId}`;
-        edges.set(requestEdgeId, {
+        copy.set(requestEdgeId, {
           id: requestEdgeId,
           source: requestingAgentId,
           target: userNodeId,
@@ -153,14 +166,14 @@ export function applyEventToGraph(event) {
 
         // Edge: User → Agent (prepared, still inactive)
         const responseEdgeId = `${userNodeId}->${requestingAgentId}`;
-        edges.set(responseEdgeId, {
+        copy.set(responseEdgeId, {
           id: responseEdgeId,
           source: userNodeId,
           target: requestingAgentId,
           type: 'user_response',
           data: { type: 'user_response', isActive: false, label: 'Response' },
         });
-        return edges;
+        return copy;
       });
       break;
     }
@@ -173,25 +186,38 @@ export function applyEventToGraph(event) {
       const userNodeId = `user_action_${requestId}`;
 
       graphNodes.update(nodes => {
-        const userNode = nodes.get(userNodeId);
-        if (userNode) userNode.data.status = 'resolved';
-        return nodes;
+        const copy = new Map(nodes);
+        const userNode = copy.get(userNodeId);
+        if (userNode) {
+          copy.set(userNodeId, { ...userNode, data: { ...userNode.data, status: 'resolved' } });
+        }
+        return copy;
       });
 
       graphEdges.update(edges => {
+        const copy = new Map(edges);
         // Deactivate request edge
         const requestEdgeId = `${respondingToAgentId}->${userNodeId}`;
-        const requestEdge = edges.get(requestEdgeId);
-        if (requestEdge) requestEdge.data.isActive = false;
+        const requestEdge = copy.get(requestEdgeId);
+        if (requestEdge) {
+          copy.set(requestEdgeId, { ...requestEdge, data: { ...requestEdge.data, isActive: false } });
+        }
 
         // Activate response edge (briefly, for animation)
         const responseEdgeId = `${userNodeId}->${respondingToAgentId}`;
-        const responseEdge = edges.get(responseEdgeId);
+        const responseEdge = copy.get(responseEdgeId);
         if (responseEdge) {
-          responseEdge.data.isActive = true;
-          setTimeout(() => { responseEdge.data.isActive = false; }, 2000);
+          copy.set(responseEdgeId, { ...responseEdge, data: { ...responseEdge.data, isActive: true } });
+          setTimeout(() => {
+            graphEdges.update(e => {
+              const c = new Map(e);
+              const re = c.get(responseEdgeId);
+              if (re) c.set(responseEdgeId, { ...re, data: { ...re.data, isActive: false } });
+              return c;
+            });
+          }, 2000);
         }
-        return edges;
+        return copy;
       });
       break;
     }
@@ -203,23 +229,25 @@ export function applyEventToGraph(event) {
       const { loopId, fromAgentId, toAgentId, reason, iteration } = event.payload;
 
       graphEdges.update(edges => {
+        const copy = new Map(edges);
         const edgeId = `feedback_${loopId}_${iteration}`;
-        edges.set(edgeId, {
+        copy.set(edgeId, {
           id: edgeId,
           source: fromAgentId,
           target: toAgentId,
           type: 'feedback',
           data: { type: 'feedback', isActive: true, label: `${reason} (Retry ${iteration})` },
         });
-        return edges;
+        return copy;
       });
 
       graphNodes.update(nodes => {
-        const targetNode = nodes.get(toAgentId);
+        const copy = new Map(nodes);
+        const targetNode = copy.get(toAgentId);
         if (targetNode && targetNode.type === 'agent') {
-          targetNode.data.hasFeedbackLoop = true;
+          copy.set(toAgentId, { ...targetNode, data: { ...targetNode.data, hasFeedbackLoop: true } });
         }
-        return nodes;
+        return copy;
       });
       break;
     }
@@ -232,8 +260,9 @@ export function applyEventToGraph(event) {
       const sideNodeId = `side_input_${inputId}`;
 
       graphNodes.update(nodes => {
+        const copy = new Map(nodes);
         // Side-Input-Node (small, on the edge)
-        nodes.set(sideNodeId, {
+        copy.set(sideNodeId, {
           id: sideNodeId,
           type: 'user_action',
           data: {
@@ -248,31 +277,32 @@ export function applyEventToGraph(event) {
         });
 
         // If target agent doesn't exist yet → placeholder
-        if (!nodes.has(targetAgentId)) {
-          nodes.set(`pending_target_${targetAgentId}`, {
+        if (!copy.has(targetAgentId)) {
+          copy.set(`pending_target_${targetAgentId}`, {
             id: `pending_target_${targetAgentId}`,
             type: 'placeholder',
             data: { label: 'Waiting for agent...', role: targetAgentId.split('_')[0] },
           });
         }
-        return nodes;
+        return copy;
       });
 
       graphEdges.update(edges => {
+        const copy = new Map(edges);
         const nodes = get(graphNodes);
         const actualTargetId = nodes.has(targetAgentId)
           ? targetAgentId
           : `pending_target_${targetAgentId}`;
 
         const edgeId = `${sideNodeId}->${actualTargetId}`;
-        edges.set(edgeId, {
+        copy.set(edgeId, {
           id: edgeId,
           source: sideNodeId,
           target: actualTargetId,
           type: 'user_response',
           data: { type: 'user_response', isActive: true, label: 'Extra info', isOOB: true },
         });
-        return edges;
+        return copy;
       });
       break;
     }
@@ -284,13 +314,13 @@ export function applyEventToGraph(event) {
       const { oobIds } = event.payload;
 
       graphEdges.update(edges => {
-        edges.forEach((edge) => {
-          if (edge.data?.isOOB && oobIds.some(id => edge.source.includes(id))) {
-            edge.data.isActive = false;
-            edge.data.isConsumed = true;
+        const copy = new Map(edges);
+        for (const [id, edge] of copy) {
+          if (edge.data?.isOOB && oobIds.some(oid => edge.source.includes(oid))) {
+            copy.set(id, { ...edge, data: { ...edge.data, isActive: false, isConsumed: true } });
           }
-        });
-        return edges;
+        }
+        return copy;
       });
       break;
     }
@@ -302,12 +332,40 @@ export function applyEventToGraph(event) {
       const { round } = event.payload;
 
       graphNodes.update(nodes => {
-        nodes.forEach((node) => {
+        const copy = new Map(nodes);
+        for (const [id, node] of copy) {
           if (node.data?.round === round && node.type === 'artifact') {
-            node.data.status = 'final';
+            copy.set(id, { ...node, data: { ...node.data, status: 'final' } });
           }
-        });
-        return nodes;
+        }
+        return copy;
+      });
+      break;
+    }
+
+    // ═══════════════════════════════════════════
+    // WORKFLOW_COMPLETED
+    // ═══════════════════════════════════════════
+    case 'WORKFLOW_COMPLETED': {
+      // Mark all remaining active nodes as completed
+      graphNodes.update(nodes => {
+        const copy = new Map(nodes);
+        for (const [id, node] of copy) {
+          if (node.data?.status === 'active') {
+            copy.set(id, { ...node, data: { ...node.data, status: 'completed', isActive: false } });
+          }
+        }
+        return copy;
+      });
+
+      graphEdges.update(edges => {
+        const copy = new Map(edges);
+        for (const [id, edge] of copy) {
+          if (edge.data?.isActive) {
+            copy.set(id, { ...edge, data: { ...edge.data, isActive: false } });
+          }
+        }
+        return copy;
       });
       break;
     }

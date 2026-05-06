@@ -4,11 +4,16 @@
    *
    * Registers custom node/edge types, subscribes to workflow store,
    * and triggers ELK layout on topology changes.
+   *
+   * IMPORTANT: Layout is triggered via $effect (not inside a derived store)
+   * because applyLayout is async and mutates the graphNodes store — a side
+   * effect that must NOT live inside a derived() callback.
    */
   import { SvelteFlow, Background, Controls, MiniMap } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import { flowNodes, flowEdges, runtime, viewMode } from '../../lib/workflow/store.js';
   import { workflowGraph } from '../../lib/workflow/useWorkflowGraph.js';
+  import { applyLayout } from '../../lib/workflow/layout.js';
   import { i18n } from '../../lib/i18n/index.js';
 
   // Custom nodes
@@ -64,6 +69,22 @@
   let nodes = $derived($flowNodes);
   let edges = $derived($flowEdges);
   let status = $derived($runtime.status);
+
+  // Subscribe to workflowGraph to keep the derived store alive
+  // (ensures the store stays active while the canvas is mounted)
+  let _wg = $workflowGraph;
+
+  // Trigger ELK layout when topology changes (node/edge count).
+  // This is a side effect, so it lives in $effect, NOT in a derived store.
+  $effect(() => {
+    // Reading nodes.length and edges.length makes this effect re-run
+    // whenever the graph topology changes (new node/edge added).
+    const n = nodes.length;
+    const e = edges.length;
+    if (n > 0) {
+      applyLayout(nodes, edges);
+    }
+  });
 
   function handleNodeClick(event) {
     selectedNode = event?.node || null;

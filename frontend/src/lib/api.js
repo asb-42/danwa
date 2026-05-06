@@ -39,7 +39,7 @@ export function translateBackendError(backendMessage) {
  * Automatically injects the ``X-Project-Id`` header from the
  * ``activeProject`` store for all project-scoped requests.
  */
-async function request(endpoint, options = {}) {
+export async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   const projectId = get(activeProject)?.id;
   const headers = {

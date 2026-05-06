@@ -1,8 +1,10 @@
 /**
  * Runtime Reducer — Event → Runtime Status Update
  *
- * Tracks who is currently active, the current round,
- * and whether the workflow is waiting for user input.
+ * Updates the runtime state (active node, current round, status)
+ * based on incoming workflow events.
+ *
+ * IMPORTANT: Must return new object references for Svelte reactivity.
  */
 
 import { runtime } from './store.js';
@@ -14,26 +16,32 @@ import { runtime } from './store.js';
 export function applyEventToRuntime(event) {
   switch (event.type) {
 
-    case 'AGENT_STARTED': {
+    case 'AGENT_STARTED':
       runtime.update(r => ({
         ...r,
-        status: 'running',
         activeNodeId: event.payload.agentId,
-        activeEdgeId: null,
+        status: 'running',
+        currentRound: event.payload.round,
         executionPath: [...r.executionPath, event.payload.agentId],
       }));
       break;
-    }
 
-    case 'AGENT_COMPLETED': {
+    case 'AGENT_COMPLETED':
       runtime.update(r => ({
         ...r,
         activeNodeId: null,
+        activeEdgeId: null,
       }));
       break;
-    }
 
-    case 'USER_CLARIFICATION_REQUESTED': {
+    case 'ARTIFACT_PRODUCED':
+      runtime.update(r => ({
+        ...r,
+        activeEdgeId: `${event.payload.producerAgentId}->${event.payload.artifactId}`,
+      }));
+      break;
+
+    case 'USER_CLARIFICATION_REQUESTED':
       runtime.update(r => ({
         ...r,
         status: 'waiting_for_user',
@@ -41,19 +49,17 @@ export function applyEventToRuntime(event) {
         activeNodeId: `user_action_${event.payload.requestId}`,
       }));
       break;
-    }
 
-    case 'USER_CLARIFICATION_RECEIVED': {
+    case 'USER_CLARIFICATION_RECEIVED':
       runtime.update(r => ({
         ...r,
         status: 'running',
         blockingUserRequestId: null,
-        activeNodeId: null,
+        activeNodeId: event.payload.respondingToAgentId,
       }));
       break;
-    }
 
-    case 'ROUND_COMPLETED': {
+    case 'ROUND_COMPLETED':
       runtime.update(r => ({
         ...r,
         currentRound: event.payload.round + 1,
@@ -61,9 +67,8 @@ export function applyEventToRuntime(event) {
         activeEdgeId: null,
       }));
       break;
-    }
 
-    case 'WORKFLOW_COMPLETED': {
+    case 'WORKFLOW_COMPLETED':
       runtime.update(r => ({
         ...r,
         status: 'completed',
@@ -71,6 +76,8 @@ export function applyEventToRuntime(event) {
         activeEdgeId: null,
       }));
       break;
-    }
+
+    default:
+      break;
   }
 }
