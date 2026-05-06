@@ -501,6 +501,44 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 - **User Manual**: `docs/user_manual.md` - Covers all features, configuration options, privacy settings, and troubleshooting
 - **Technical Documentation**: `docs/technical_documentation.md` - Comprehensive in-depth technical documentation for developers
 
+---
+
+## Missing Links (Features Not Yet in UI)
+
+> **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client (`frontend/src/lib/api.js`), but **not yet accessible through the user interface**.
+
+### Report Download (Backend Ready, No Frontend)
+- **Backend**: `GET /api/v1/sessions/{id}/report/{fmt}` (DOCX/PDF) in `backend/api/routers/sessions.py`
+- **Missing**: No `downloadReport()` in `api.js`, no "Download Report" button in DebateView or ArchiveView
+- **Impact**: Users cannot download reports even though the backend supports it
+
+### Application Settings (Backend + API Ready, No UI Tab)
+- **Backend**: `GET/PUT /api/v1/config/settings` in `backend/api/routers/config.py`
+- **API Client**: `getSettings()` and `updateSettings()` exist in `api.js`
+- **Missing**: No "Settings" tab in ConfigView (tabs: llm, agents, prompts, cost, system)
+- **Impact**: Users cannot view/update application settings (privacy, UI language default, search engine)
+
+### Manual RAG Search (Backend + API Ready, No UI)
+- **Backend**: `POST /api/v1/dms/retrieve` in `backend/api/routers/dms.py`
+- **API Client**: `getManualRAGDocuments()` and `searchRAG()` exist in `api.js`
+- **Missing**: No RAG search UI in DocumentsView
+- **Impact**: Users can only toggle `in_rag` flag on documents, but cannot run custom RAG queries
+
+### Summary Table
+
+| Feature | Backend | API Client | UI | Status |
+|---------|---------|------------|-----|--------|
+| Report Download (DOCX/PDF) | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Application Settings | ✅ | ✅ Exists | ❌ No tab | **Partially exposed** |
+| Manual RAG Search | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Session History Export | ✅ (legacy) | ❌ Missing | ❌ Missing | **Not exposed** |
+| RAG Document Toggle | ✅ | ✅ | ✅ | Exposed |
+| Debate Workflow | ✅ | ✅ | ✅ | Exposed |
+
+*For full details, see the "Missing Links" sections in `docs/technical_documentation.md` and `docs/user_manual.md`.*
+
+---
+
 ## License
 
 [Add your license here]

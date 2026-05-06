@@ -972,6 +972,117 @@ make check
 
 ---
 
+## Missing Links (Features Not Yet in UI)
+
+> **Note**: These features are fully implemented in the backend and/or frontend API client, but **not yet accessible through the user interface**. Users currently cannot use these features without direct API calls.
+
+### Report Download (Backend Ready, No UI)
+
+The backend has a fully functional report generation system in `backend/api/routers/sessions.py`:
+
+| Format | Endpoint | Description |
+|--------|----------|-------------|
+| DOCX | `GET /api/v1/sessions/{id}/report/docx` | Generate and download DOCX report |
+| PDF | `GET /api/v1/sessions/{id}/report/pdf` | Generate and download PDF report |
+
+**What's implemented**:
+- `ReportGenerator` from `src/tools/report_generator.py`
+- Includes metadata table, final argumentation, fact-check results, audit references
+- Supports DOCX (python-docx) and PDF (WeasyPrint) output
+
+**What's missing**:
+- No `downloadReport()` function in `frontend/src/lib/api.js`
+- No "Download Report" button in DebateView or ArchiveView
+- No UI for selecting report format (DOCX vs PDF)
+
+**How to enable**: Add a report download button to the debate views when `status === 'completed'`.
+
+---
+
+### Application Settings (Backend + API Ready, No UI Tab)
+
+The backend provides application settings management via `backend/api/routers/config.py`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/config/settings` | GET | Get current application settings |
+| `/api/v1/config/settings` | PUT | Update application settings |
+
+**Settings managed** (see `config/settings.yaml`):
+- `ui.language` - Default UI language
+- `search.engine` - Search engine (searxng / duckduckgo)
+- `search.max_results` - Max search results
+- `privacy.strict_mode` - Block all external calls
+- `privacy.redact_traces` - PII redaction in logs
+- `privacy.retention_days` - Auto-cleanup old data
+
+**What's implemented**:
+- `getSettings()` and `updateSettings()` functions exist in `frontend/src/lib/api.js`
+
+**What's missing**:
+- ConfigView tabs: `llm`, `agents`, `prompts`, `cost`, `system`
+- **No "Settings" tab** for application settings
+
+**How to enable**: Add a "Settings" tab to ConfigView that uses the existing API functions.
+
+---
+
+### Manual RAG Search (Backend + API Ready, No UI)
+
+The backend provides RAG (Retrieval-Augmented Generation) search via `backend/api/routers/dms.py`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/dms/retrieve` | POST | Retrieve relevant chunks for RAG |
+
+**What's implemented**:
+- `getManualRAGDocuments()` and `searchRAG(query, limit)` functions exist in `frontend/src/lib/api.js`
+
+**What's missing**:
+- DocumentsView has RAG toggle (add/remove from RAG) but **no manual search UI**
+- Users cannot:
+  - Manually select which documents to search in RAG
+  - Run a custom search query against RAG
+  - View RAG search results with relevance scores
+
+**How to enable**: Add a "RAG Search" section to DocumentsView using the existing API functions.
+
+---
+
+### Session History & Export (Backend Exists, Frontend Missing)
+
+The `backend/api/routers/sessions.py` router provides:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/sessions/` | GET | List debate sessions |
+| `/api/v1/sessions/{id}` | DELETE | Delete a session |
+| `/api/v1/sessions/{id}/report/{fmt}` | GET | Download report (DOCX/PDF) |
+| `/api/v1/sessions/{id}/trace` | GET | Get trace file |
+
+**What's missing**:
+- No `sessions`-related functions in `frontend/src/lib/api.js`
+- No session history view in the UI
+- No trace file download option in AuditView
+
+**Note**: The current system uses `/api/v1/debate/` instead of `/api/v1/sessions/`. The report endpoint may need to be migrated to the debates router.
+
+---
+
+### Summary
+
+| Feature | Backend | API Client | UI | Status |
+|---------|---------|------------|-----|--------|
+| Report Download (DOCX/PDF) | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Application Settings | ✅ | ✅ Exists | ❌ No tab | **Partially exposed** |
+| Manual RAG Search | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Session History Export | ✅ (legacy) | ❌ Missing | ❌ Missing | **Not exposed** |
+| RAG Document Toggle | ✅ | ✅ | ✅ | Exposed |
+| Debate Workflow | ✅ | ✅ | ✅ | Exposed |
+| Config (LLM/Agents) | ✅ | ✅ | ✅ | Exposed |
+
+---
+
 ## Troubleshooting
 
 ### Common Issues

@@ -1845,6 +1845,131 @@ uv pip install ".[dms]"
 
 ---
 
+## 15. Missing Links (Features Implemented but not UI-Exposed)
+
+> **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client (`api.js`), but **not yet accessible through the user interface**. Users cannot use these features without direct API calls or code changes.
+
+### 15.1 Report Download (Backend Ready, Frontend Missing)
+
+**Status**: Backend implemented, no frontend API function or UI
+
+The backend has a fully functional report generation system in `backend/api/routers/sessions.py`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/sessions/{session_id}/report/docx` | GET | Generate and download DOCX report |
+| `/api/v1/sessions/{session_id}/report/pdf` | GET | Generate and download PDF report |
+
+**Backend implementation**:
+- Uses `ReportGenerator` from `src/tools/report_generator.py`
+- Supports DOCX (python-docx) and PDF (WeasyPrint) output
+- Includes metadata table, final argumentation, fact-check results, and audit references
+
+**What's missing**:
+- No `downloadReport()` function in `frontend/src/lib/api.js`
+- No "Download Report" button in `DebateView.svelte` or `ArchiveView.svelte`
+- No UI for selecting report format (DOCX vs PDF)
+
+**How to expose**: Add `downloadReport(debateId, format)` to `api.js` and add download buttons to the debate views when `status === 'completed'`.
+
+---
+
+### 15.2 Application Settings (Backend + API Ready, No UI Tab)
+
+**Status**: Backend and API client ready, no UI tab
+
+The backend provides application settings management via `backend/api/routers/config.py`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/config/settings` | GET | Get current application settings |
+| `/api/v1/config/settings` | PUT | Update application settings |
+
+**Settings managed** (see `config/settings.yaml`):
+- `ui.language` - Default UI language
+- `search.engine` - Search engine (searxng / duckduckgo)
+- `search.max_results` - Max search results
+- `privacy.strict_mode` - Block all external calls
+- `privacy.redact_traces` - PII redaction in logs
+- `privacy.retention_days` - Auto-cleanup old data
+
+**What's missing**:
+- `frontend/src/lib/api.js` has `getSettings()` and `updateSettings()` functions
+- But `ConfigView.svelte` tabs are: `llm`, `agents`, `prompts`, `cost`, `system`
+- **No "Settings" tab** for application settings
+
+**How to expose**: Add a "settings" tab to `ConfigView.svelte` that uses the existing `getSettings()` and `updateSettings()` functions.
+
+---
+
+### 15.3 Manual RAG Search (Backend + API Ready, No UI)
+
+**Status**: Backend and API client ready, no search UI
+
+The backend provides RAG (Retrieval-Augmented Generation) search via `backend/api/routers/dms.py`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/dms/retrieve` | POST | Retrieve relevant chunks for RAG |
+
+**Frontend API functions** (in `api.js`, but never called):
+```javascript
+export function getManualRAGDocuments() {
+  return request('/api/v1/dms/rag/manual');
+}
+
+export function searchRAG(query, limit = 5) {
+  return request(`/api/v1/dms/rag/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+}
+```
+
+**What's missing**:
+- `DocumentsView.svelte` has RAG toggle (add/remove from RAG) but NO manual search UI
+- Users cannot:
+  - Manually select which documents to search in RAG
+  - Run a custom search query against RAG
+  - View RAG search results with relevance scores
+
+**How to expose**: Add a "RAG Search" section to `DocumentsView.svelte` that uses `getManualRAGDocuments()` and `searchRAG()`.
+
+---
+
+### 15.4 Session History & Export (Backend Exists, Frontend Missing)
+
+**Status**: Backend router exists, no frontend integration
+
+The `backend/api/routers/sessions.py` router (legacy, but functional) provides:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/sessions/` | GET | List debate sessions |
+| `/api/v1/sessions/{id}` | DELETE | Delete a session |
+| `/api/v1/sessions/{id}/report/{fmt}` | GET | Download report (DOCX/PDF) |
+| `/api/v1/sessions/{id}/trace` | GET | Get trace file |
+
+**What's missing**:
+- No `sessions`-related functions in `frontend/src/lib/api.js`
+- No session history view in the UI
+- No trace file download option in `AuditView.svelte`
+
+**Note**: The current system uses `/api/v1/debate/` instead of `/api/v1/sessions/`. The sessions router may need to be migrated or the report endpoint integrated into the debates router.
+
+---
+
+### 15.5 Summary Table
+
+| Feature | Backend | API Client | UI | Status |
+|---------|---------|------------|-----|--------|
+| Report Download (DOCX/PDF) | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Application Settings | ✅ | ✅ Exists | ❌ No tab | **Partially exposed** |
+| Manual RAG Search | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Session History | ✅ (legacy) | ❌ Missing | ❌ Missing | **Not exposed** |
+| RAG Document Toggle | ✅ | ✅ | ✅ | Exposed |
+| Debate Workflow | ✅ | ✅ | ✅ | Exposed |
+| Config (LLM/Agents) | ✅ | ✅ | ✅ | Exposed |
+
+---
+
 ## Appendix A: Troubleshooting
 
 ### Common Issues
