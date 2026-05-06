@@ -199,6 +199,43 @@ async def run_agent_node(state: DebateState) -> dict:
     # --- Build user prompt ---
     user_prompt = _build_user_prompt(state, role, language)
 
+    # --- OOB: Inject out-of-band user context before LLM call ---
+    try:
+        from backend.api.routers.debate import get_oob_for_debate, consume_oob
+        debate_id = state.get("debate_id", "")
+        if debate_id:
+            oob_inputs = get_oob_for_debate(debate_id)
+            # Filter for this agent role and round
+            relevant_oob = [
+                oob for oob in oob_inputs
+                if _is_oob_relevant(oob, role, state["current_round"])
+            ]
+            if relevant_oob:
+                oob_context = "\n\n--- ADDITIONAL CONTEXT (User) ---\n"
+                oob_context += "\n".join(
+                    f"- {oob['content']}" for oob in relevant_oob
+                )
+                user_prompt += oob_context
+                # Mark as consumed
+                consume_oob(debate_id, [oob["oob_id"] for oob in relevant_oob])
+                # Emit SSE event for visualization
+                await publish_async(
+                    session_id,
+                    "oob_consumed",
+                    {
+                        "type": "oob_consumed",
+                        "oob_ids": [oob["oob_id"] for oob in relevant_oob],
+                        "by_agent": role,
+                        "round": state["current_round"],
+                    },
+                )
+                logger.info(
+                    "Injected %d OOB inputs for %s (round %d)",
+                    len(relevant_oob), role, state["current_round"],
+                )
+    except Exception as exc:
+        logger.warning("OOB injection failed (non-fatal): %s", exc)
+
     # --- Required mode: auto-search before LLM call ---
     if search_mode == "required":
         user_prompt = await _perform_required_search(
@@ -695,3 +732,37 @@ def should_continue_rounds(state: DebateState) -> str:
     if state["current_round"] > state["max_rounds"]:
         return "complete"
     return "next_round"
+
+
+# ---------------------------------------------------------------------------
+# OOB helper
+# ---------------------------------------------------------------------------
+
+_AGENT_ORDER = ["strategist", "critic", "optimizer", "moderator"]
+
+
+def _is_oob_relevant(oob: dict, role: str, current_round: int) -> bool:
+    """Check if an OOB input is relevant for the given agent role and round."""
+    target = oob.get("target", {})
+    target_type = target.get("type", "")
+
+    if target_type == "specific_agent":
+        return (
+            target.get("agent_role") == role
+            and (target.get("round") is None or target.get("round") == current_round)
+        )
+
+    if target_type == "next_agent":
+        prev_role = target.get("current_agent_role", "")
+        idx = _AGENT_ORDER.index(prev_role) if prev_role in _AGENT_ORDER else -1
+        next_role = _AGENT_ORDER[idx + 1] if 0 <= idx < len(_AGENT_ORDER) - 1 else ""
+        return role == next_role
+
+    if target_type == "all_future":
+        from_round = target.get("from_round", 0)
+        return current_round >= from_round
+
+    if target_type == "current_active":
+        return True
+
+    return False

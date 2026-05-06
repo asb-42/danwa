@@ -4,29 +4,29 @@
   import { activeProject } from '../lib/stores.js';
   import { getDocuments, getDocument, uploadDocument, deleteDocument, addDocumentToRAG, removeDocumentFromRAG } from '../lib/api.js';
 
-  export let navigate;
+  let { navigate } = $props();
 
-  let documents = [];
-  let loading = true;
-  let uploading = false;
-  let error = '';
-  let dragOver = false;
+  let documents = $state([]);
+  let loading = $state(true);
+  let uploading = $state(false);
+  let error = $state('');
+  let dragOver = $state(false);
   let fileInput;
 
   // Document viewer state
-  let viewingDoc = null;
-  let viewingDocContent = null;
-  let viewingLoading = false;
+  let viewingDoc = $state(null);
+  let viewingDocContent = $state(null);
+  let viewingLoading = $state(false);
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  $: projectId = $activeProject?.id;
+  let projectId = $derived($activeProject?.id);
 
   async function loadDocuments() {
     if (!projectId) {
@@ -51,9 +51,11 @@
   });
 
   // Reload when project changes
-  $: if (projectId) {
-    loadDocuments();
-  }
+  $effect(() => {
+    if (projectId) {
+      loadDocuments();
+    }
+  });
 
   async function handleUpload(files) {
     if (!files || files.length === 0) return;
@@ -184,14 +186,14 @@
       {dragOver
         ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
         : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600'}"
-    on:drop={handleDrop}
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-    on:click={() => fileInput?.click()}
-    role="region"
+    ondrop={handleDrop}
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    onclick={() => fileInput?.click()}
+    role="button"
     aria-label={t('documents.upload')}
     tabindex="0"
-    on:keydown={(e) => e.key === 'Enter' && fileInput?.click()}
+    onkeydown={(e) => e.key === 'Enter' && fileInput?.click()}
   >
     <input
       bind:this={fileInput}
@@ -199,7 +201,7 @@
       multiple
       accept=".pdf,.docx,.odt,.txt,.md,.png,.jpg,.jpeg,.gif,.bmp,.tiff"
       class="hidden"
-      on:change={handleFileSelect}
+      onchange={handleFileSelect}
     />
     <div class="space-y-2">
       <p class="text-4xl">📄</p>
@@ -278,7 +280,7 @@
                     {doc.in_rag
                       ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
                       : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}"
-                  on:click={() => toggleRAG(doc)}
+                  onclick={() => toggleRAG(doc)}
                   title={doc.in_rag ? t('documents.removeFromRAG') : t('documents.addToRAG')}
                 >
                   {doc.in_rag ? `✓ ${t('documents.inRAG')}` : t('documents.notInRAG')}
@@ -287,14 +289,14 @@
               <td class="px-4 py-3 whitespace-nowrap text-right text-sm space-x-2">
                 <button
                   class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                  on:click={() => viewDocument(doc)}
+                  onclick={() => viewDocument(doc)}
                   title={t('documents.view')}
                 >
                   👁️
                 </button>
                 <button
                   class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                  on:click={() => handleDelete(doc)}
+                  onclick={() => handleDelete(doc)}
                   title={t('documents.delete')}
                 >
                   🗑️
@@ -310,7 +312,8 @@
 
 <!-- Document Viewer Modal -->
 {#if viewingDoc}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" on:click|self={closeViewer} role="dialog" aria-modal="true">
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_interactive_supports_focus -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeViewer(); }} role="dialog" aria-modal="true" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -327,7 +330,7 @@
         </div>
         <button
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
-          on:click={closeViewer}
+          onclick={closeViewer}
           title={t('common.close')}
         >
           ✕
@@ -348,7 +351,7 @@
                 {viewingDocContent.in_rag
                   ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200'
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200'}"
-              on:click={() => {
+              onclick={() => {
                 toggleRAG(viewingDoc);
                 viewingDocContent = { ...viewingDocContent, in_rag: !viewingDocContent.in_rag };
               }}

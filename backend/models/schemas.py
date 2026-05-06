@@ -207,3 +207,39 @@ class AuditEvent(BaseModel):
     output_hash: str = ""
     llm_model: str = "dummy"
     tokens_used: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Out-of-Band (OOB) Input
+# ---------------------------------------------------------------------------
+
+
+class OOBTargetType(StrEnum):
+    """Target type for OOB input routing."""
+    SPECIFIC_AGENT = "specific_agent"
+    NEXT_AGENT = "next_agent"
+    ALL_FUTURE = "all_future"
+    CURRENT_ACTIVE = "current_active"
+
+
+class OOBTarget(BaseModel):
+    """Routing target for an OOB input."""
+    type: OOBTargetType
+    agent_role: str | None = None
+    round: int | None = None
+    current_agent_role: str | None = None
+    from_round: int | None = None
+
+
+class OOBInputBody(BaseModel):
+    """POST /api/v1/debate/{id}/oob request body."""
+    content: str = Field(..., min_length=1, max_length=5000, description="Additional context")
+    target: OOBTarget
+    urgency: str = "append"  # 'append' | 'inject_now' | 'override_context'
+
+
+class OOBInputResponse(BaseModel):
+    """Response after submitting an OOB input."""
+    oob_id: str
+    status: str = "pending"
+    target_resolved: str = ""

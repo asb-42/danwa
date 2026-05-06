@@ -4,15 +4,15 @@
   import { getAuditEvents } from '../lib/api.js';
   import { i18n, formatDate } from '../lib/i18n/index.js';
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  let debateIdInput = '';
+  let debateIdInput = $state('');
 
   async function loadAuditEvents() {
     const id = debateIdInput.trim() || $currentDebate?.debate_id;
@@ -60,7 +60,7 @@
 
   <!-- Search form -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <form on:submit|preventDefault={loadAuditEvents} class="flex items-end space-x-4">
+    <form onsubmit={(e) => { e.preventDefault(); loadAuditEvents(); }} class="flex items-end space-x-4">
       <div class="flex-1">
         <label for="debate-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {t('audit.debateId')}

@@ -1,6 +1,6 @@
 <script>
   // Placeholder — will render detailed audit trail in Sprint 4
-  export let events = [];
+  let { events = [] } = $props();
 </script>
 
 <div class="space-y-2">

@@ -4,31 +4,28 @@
   import { getProject, getProjectConfig, updateProjectConfig, getSettings } from '../lib/api.js';
   import { i18n } from '../lib/i18n/index.js';
 
-  /** @type {string} */
-  export let projectId = '';
-  /** @type {function} */
-  export let navigate = () => {};
+  let { projectId = '', navigate = () => {} } = $props();
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  let project = null;
-  let config = {
+  let project = $state(null);
+  let config = $state({
     language: null,
     default_max_rounds: null,
     default_consensus_threshold: null,
     search_mode: null,
     searxng_url: null,
-  };
-  let globalSettings = {};
-  let isLoading = false;
-  let isSaving = false;
-  let statusMessage = '';
+  });
+  let globalSettings = $state({});
+  let isLoading = $state(false);
+  let isSaving = $state(false);
+  let statusMessage = $state('');
 
   // Search mode options
   const searchModes = ['off', 'optional', 'required'];
@@ -109,7 +106,7 @@
   <div class="flex items-center gap-3">
     <button
       class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-      on:click={() => navigate('projects')}
+      onclick={() => navigate('projects')}
       title={t('common.back')}
     >
       ←
@@ -168,7 +165,7 @@
             {#if config.language !== null}
               <button
                 class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
-                on:click={() => clearField('language')}
+                onclick={() => clearField('language')}
                 title={t('projects.globalDefault')}
               >
                 ✕
@@ -198,7 +195,7 @@
             {#if config.default_max_rounds !== null && config.default_max_rounds !== ''}
               <button
                 class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
-                on:click={() => clearField('default_max_rounds')}
+                onclick={() => clearField('default_max_rounds')}
                 title={t('projects.globalDefault')}
               >
                 ✕
@@ -229,7 +226,7 @@
             {#if config.default_consensus_threshold !== null && config.default_consensus_threshold !== ''}
               <button
                 class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
-                on:click={() => clearField('default_consensus_threshold')}
+                onclick={() => clearField('default_consensus_threshold')}
                 title={t('projects.globalDefault')}
               >
                 ✕
@@ -259,7 +256,7 @@
             {#if config.search_mode !== null}
               <button
                 class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
-                on:click={() => clearField('search_mode')}
+                onclick={() => clearField('search_mode')}
                 title={t('projects.globalDefault')}
               >
                 ✕
@@ -287,7 +284,7 @@
             {#if config.searxng_url !== null && config.searxng_url !== ''}
               <button
                 class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
-                on:click={() => clearField('searxng_url')}
+                onclick={() => clearField('searxng_url')}
                 title={t('projects.globalDefault')}
               >
                 ✕
@@ -302,14 +299,14 @@
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          on:click={() => navigate('projects')}
+          onclick={() => navigate('projects')}
         >
           {t('common.cancel')}
         </button>
         <button
           class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
-          on:click={handleSave}
+          onclick={handleSave}
           disabled={isSaving}
         >
           {isSaving ? '...' : t('common.save')}

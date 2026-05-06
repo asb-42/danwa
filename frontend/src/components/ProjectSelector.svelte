@@ -4,19 +4,19 @@
   import { getProjects } from '../lib/api.js';
   import { i18n } from '../lib/i18n/index.js';
 
-  export let compact = false;
+  let { compact = false, navigate = undefined } = $props();
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  let projects = [];
-  let isOpen = false;
-  let isLoading = false;
+  let projects = $state([]);
+  let isOpen = $state(false);
+  let isLoading = $state(false);
 
   onMount(async () => {
     await loadProjects();
@@ -56,10 +56,12 @@
   }
 
   // Re-export loadProjects so parent can trigger refresh
-  export { loadProjects as refresh };
+  export function refresh() {
+    return loadProjects();
+  }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 <div class="project-selector relative" class:w-full={!compact}>
   <button
@@ -69,7 +71,7 @@
            hover:border-blue-400 dark:hover:border-blue-500
            focus:ring-2 focus:ring-blue-500 focus:border-blue-500
            transition-colors"
-    on:click|stopPropagation={() => { isOpen = !isOpen; if (isOpen) loadProjects(); }}
+    onclick={(e) => { e.stopPropagation(); isOpen = !isOpen; if (isOpen) loadProjects(); }}
     aria-haspopup="listbox"
     aria-expanded={isOpen}
   >
@@ -106,7 +108,7 @@
             class="w-full text-left px-3 py-2 text-sm flex items-center justify-between
                    hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                    {$activeProject?.id === project.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}"
-            on:click={() => selectProject(project)}
+            onclick={() => selectProject(project)}
             role="option"
             aria-selected={$activeProject?.id === project.id}
           >

@@ -2,8 +2,7 @@
   import Sidebar from './Sidebar.svelte';
   import Header from './Header.svelte';
 
-  export let navigate;
-  export let currentRoute;
+  let { navigate, currentRoute, children } = $props();
 </script>
 
 <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -21,7 +20,7 @@
 
     <!-- Page content -->
     <main id="main-content" class="flex-1 overflow-y-auto p-6">
-      <slot />
+      {@render children()}
     </main>
   </div>
 </div>

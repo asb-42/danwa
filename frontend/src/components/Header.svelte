@@ -4,19 +4,19 @@
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  $: statusColor = $healthStatus.status === 'ok'
+  let statusColor = $derived($healthStatus.status === 'ok'
     ? 'bg-green-500'
     : $healthStatus.status === 'unknown'
       ? 'bg-yellow-500'
-      : 'bg-red-500';
+      : 'bg-red-500');
 </script>
 
 <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">

@@ -1,59 +1,62 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
+  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject } from '../lib/stores.js';
   import { createDebate, getDebate, startDebate, cancelDebate, getDocuments } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
+  import WorkflowGraph from '../components/WorkflowGraph.svelte';
+  import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
+  import { resetWorkflow } from '../lib/workflow/store.js';
 
-  /** @type {string|null} Debate ID from route — triggers archive/read-only mode */
-  export let debateId = null;
   /** @type {function} Navigation helper from App.svelte */
-  export let navigate = () => {};
+  let { debateId = null, navigate = () => {} } = $props();
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
   /** True when viewing a past debate (read-only archive mode) */
-  $: isArchiveMode = !!debateId;
+  let isArchiveMode = $derived(!!debateId);
 
-  let caseText = '';
-  let maxRounds = 3;
-  let consensusThreshold = 0.8;
-  let searchMode = 'off';
+  let caseText = $state('');
+  let maxRounds = $state(3);
+  let consensusThreshold = $state(0.8);
+  let searchMode = $state('off');
   // RAG document selection
-  let availableDocuments = [];
-  let selectedDocumentIds = [];
-  let ragAutoRetrieve = false;
-  let showRAGContextPreview = false;
-  let sseConnection = null;
-  let archiveLoading = false;
+  let availableDocuments = $state([]);
+  let selectedDocumentIds = $state([]);
+  let ragAutoRetrieve = $state(false);
+  let showRAGContextPreview = $state(false);
+  let sseConnection = $state(null);
+  let archiveLoading = $state(false);
+
+  let projectId = $derived($activeProject?.id);
 
   // Live web search results — stores search events as they arrive
-  let liveSearchResults = []; // { round, role, query, results, timestamp }
+  let liveSearchResults = $state([]); // { round, role, query, results, timestamp }
 
   // Live activity log — stores full agent outputs as they arrive
-  let liveOutputs = []; // { round, role, content, tokens, tokens_in, tokens_out, duration_ms, model, profile, timestamp }
-  let currentActivity = null; // { round, role, profile, model, provider, agent_index, agent_total }
-  let expandedOutputs = new Set(); // track which outputs are expanded
+  let liveOutputs = $state([]); // { round, role, content, tokens, tokens_in, tokens_out, duration_ms, model, profile, timestamp }
+  let currentActivity = $state(null); // { round, role, profile, model, provider, agent_index, agent_total }
+  let expandedOutputs = $state(new Set()); // track which outputs are expanded
 
   // Activity Strip state
-  let cumulativeTokens = 0;
-  let processingStartTime = null;
-  let processingElapsed = 0;
-  let processingTimer = null;
-  let lastRoundTokens = 0;
+  let cumulativeTokens = $state(0);
+  let processingStartTime = $state(null);
+  let processingElapsed = $state(0);
+  let processingTimer = $state(null);
+  let lastRoundTokens = $state(0);
 
   // Workflow phase tracking — shows what's happening between debate start and first agent
-  let workflowPhase = null; // { type, message, phase, role, model, provider, elapsed }
-  let workflowStartTime = null;
-  let workflowElapsed = 0;
-  let workflowTimer = null;
+  let workflowPhase = $state(null); // { type, message, phase, role, model, provider, elapsed }
+  let workflowStartTime = $state(null);
+  let workflowElapsed = $state(0);
+  let workflowTimer = $state(null);
 
   // Load debate from archive when debateId is provided
   onMount(async () => {
@@ -71,6 +74,24 @@
     }
     // Load available documents for RAG selection
     loadAvailableDocuments();
+  });
+
+  // Reload documents and clear stale debate when project changes
+  let lastProjectId = $state(null);
+  $effect(() => {
+    if (projectId && projectId !== lastProjectId) {
+      if (lastProjectId !== null) {
+        // Project actually changed (not initial mount) — clear stale debate context
+        $currentDebate = null;
+        liveOutputs = [];
+        liveSearchResults = [];
+        currentActivity = null;
+        expandedOutputs = new Set();
+        selectedDocumentIds = [];
+      }
+      lastProjectId = projectId;
+      loadAvailableDocuments();
+    }
   });
 
   async function loadAvailableDocuments() {
@@ -91,7 +112,7 @@
     }
   }
 
-  // Cleanup SSE and timers on destroy
+  // Cleanup SSE, timers, and workflow state on destroy
   onDestroy(() => {
     if (sseConnection) {
       sseConnection.close();
@@ -102,6 +123,7 @@
     if (workflowTimer) {
       clearInterval(workflowTimer);
     }
+    resetWorkflow();
   });
 
   async function handleCreateDebate() {
@@ -125,6 +147,7 @@
     workflowElapsed = 0;
     if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
+    resetWorkflow();
 
     try {
       const response = await createDebate(caseText, {
@@ -168,6 +191,7 @@
     workflowElapsed = 0;
     if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
+    resetWorkflow();
 
     // Connect SSE FIRST so we receive all events from the start
     sseConnection = createSSE($currentDebate.debate_id, {
@@ -223,6 +247,13 @@
 
   function handleSSEEvent(event) {
     console.log('SSE event:', event);
+
+    // Forward to workflow visualization store
+    try {
+      handleWorkflowSSE(event);
+    } catch (e) {
+      console.warn('Workflow SSE mapping error:', e);
+    }
 
     // status_change: completed or failed
     if (event.status === 'completed' || event.status === 'failed') {
@@ -358,7 +389,7 @@
     }
   }
 
-  let isCancelling = false;
+  let isCancelling = $state(false);
   async function handleCancelDebate() {
     if (!$currentDebate) return;
     isCancelling = true;
@@ -382,16 +413,16 @@
   }
 
   function toggleExpand(key) {
-    if (expandedOutputs.has(key)) {
-      expandedOutputs.delete(key);
-      expandedOutputs = expandedOutputs; // trigger reactivity
+    const next = new Set(expandedOutputs);
+    if (next.has(key)) {
+      next.delete(key);
     } else {
-      expandedOutputs.add(key);
-      expandedOutputs = expandedOutputs;
+      next.add(key);
     }
+    expandedOutputs = next;
   }
 
-  $: statusBadgeClass = (() => {
+  let statusBadgeClass = $derived((() => {
     switch ($currentDebate?.status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       case 'running': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
@@ -399,21 +430,21 @@
       case 'failed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
-  })();
+  })());
 
-  $: statusLabel = $currentDebate?.status ? t(`status.${$currentDebate.status}`) : '';
+  let statusLabel = $derived($currentDebate?.status ? t(`status.${$currentDebate.status}`) : '');
 
   // Group live outputs by round
-  $: liveOutputsByRound = liveOutputs.reduce((acc, output) => {
+  let liveOutputsByRound = $derived(liveOutputs.reduce((acc, output) => {
     if (!acc[output.round]) acc[output.round] = [];
     acc[output.round].push(output);
     return acc;
-  }, {});
+  }, {}));
 
   // Determine which data source to show for completed/failed debates
-  $: displayRounds = ($currentDebate?.status === 'completed' || $currentDebate?.status === 'failed') && $currentDebate?.rounds?.length > 0
+  let displayRounds = $derived(($currentDebate?.status === 'completed' || $currentDebate?.status === 'failed') && $currentDebate?.rounds?.length > 0
     ? $currentDebate.rounds
-    : null;
+    : null);
 
   function roleEmoji(role) {
     switch (role) {
@@ -488,17 +519,17 @@
   }
 
   // Number of agents in the current round (from agent_started events)
-  $: agentCount = currentActivity?.agent_total || $currentDebate?.agent_profile?.length || 0;
+  let agentCount = $derived(currentActivity?.agent_total || $currentDebate?.agent_profile?.length || 0);
   // Index of the currently active agent (0-based)
-  $: activeAgentIndex = currentActivity?.agent_index ?? -1;
+  let activeAgentIndex = $derived(currentActivity?.agent_index ?? -1);
   // How many agents have completed so far in the current round
-  $: completedInRound = liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0)).length;
+  let completedInRound = $derived(liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0)).length);
   // Whether the debate is actively running with an agent processing
-  $: isProcessing = $currentDebate?.status === 'running' && currentActivity !== null;
+  let isProcessing = $derived($currentDebate?.status === 'running' && currentActivity !== null);
   // Whether the debate is running but between agents
-  $: isBetweenAgents = $currentDebate?.status === 'running' && currentActivity === null && liveOutputs.length > 0;
+  let isBetweenAgents = $derived($currentDebate?.status === 'running' && currentActivity === null && liveOutputs.length > 0);
   // Show the strip only during active debate
-  $: showActivityStrip = $currentDebate?.status === 'running' || (isBetweenAgents && $currentDebate?.status === 'running');
+  let showActivityStrip = $derived($currentDebate?.status === 'running' || (isBetweenAgents && $currentDebate?.status === 'running'));
 </script>
 
 <div class="space-y-6">
@@ -507,7 +538,7 @@
     {#if isArchiveMode}
       <button
         class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-        on:click={() => navigate('dashboard')}
+        onclick={() => navigate('dashboard')}
       >
         ← {t('debate.backToOverview')}
       </button>
@@ -551,7 +582,7 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('debate.newDebate')}</h3>
 
-    <form on:submit|preventDefault={handleCreateDebate} class="space-y-4">
+    <form onsubmit={(e) => { e.preventDefault(); handleCreateDebate(); }} class="space-y-4">
       <div>
         <label for="case-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {t('debate.caseLabel')}
@@ -626,9 +657,9 @@
       {#if availableDocuments.length > 0}
         <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               📄 {t('documents.ragContext')}
-            </label>
+            </span>
             <span class="text-xs text-gray-500 dark:text-gray-400">
               {selectedDocumentIds.length} {t('documents.selectDocuments').toLowerCase()}
             </span>
@@ -640,7 +671,7 @@
                 <input
                   type="checkbox"
                   checked={selectedDocumentIds.includes(doc.document_id)}
-                  on:change={() => toggleDocumentSelection(doc.document_id)}
+                  onchange={() => toggleDocumentSelection(doc.document_id)}
                   class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
                 <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">
@@ -791,7 +822,7 @@
         <div class="mt-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
           <button
             class="flex items-center justify-between w-full text-left"
-            on:click={() => showRAGContextPreview = !showRAGContextPreview}
+            onclick={() => showRAGContextPreview = !showRAGContextPreview}
           >
             <span class="text-sm font-medium text-purple-800 dark:text-purple-200 flex items-center gap-2">
               📚 {t('documents.ragPreview')}
@@ -815,7 +846,7 @@
           <button
             class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors
                    disabled:opacity-50"
-            on:click={handleStartDebate}
+            onclick={handleStartDebate}
             disabled={$loading}
           >
             {$loading ? t('debate.starting') : t('debate.startButton')}
@@ -826,7 +857,7 @@
           <button
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
-            on:click={handleCancelDebate}
+            onclick={handleCancelDebate}
             disabled={isCancelling}
           >
             {isCancelling ? t('debate.cancelling') : t('debate.cancelButton')}
@@ -836,7 +867,7 @@
         <button
           class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200
                  rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-          on:click={handleRefreshStatus}
+          onclick={handleRefreshStatus}
         >
           {t('debate.refreshStatus')}
         </button>
@@ -978,6 +1009,14 @@
       </div>
     {/if}
 
+    <!-- Workflow Visualization Graph -->
+    {#if $currentDebate.status === 'running' || $currentDebate.status === 'completed' || $currentDebate.status === 'failed'}
+      <WorkflowGraph
+        debateId={$currentDebate.debate_id}
+        isRunning={$currentDebate.status === 'running'}
+      />
+    {/if}
+
     <!-- Live debate view (during running) -->
     {#if $currentDebate.status === 'running'}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -1031,7 +1070,7 @@
                         <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
                         <button
                           class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                          on:click={() => toggleExpand(key)}
+                          onclick={() => toggleExpand(key)}
                         >
                           ▼ Show full response ({output.content.length} chars)
                         </button>
@@ -1040,7 +1079,7 @@
                         {#if isLong}
                           <button
                             class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                            on:click={() => toggleExpand(key)}
+                            onclick={() => toggleExpand(key)}
                           >
                             ▲ Collapse
                           </button>
@@ -1103,14 +1142,14 @@
                   {#if search.results.length > 3 && !isSearchExpanded}
                     <button
                       class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block"
-                      on:click={() => toggleExpand(searchKey)}
+                      onclick={() => toggleExpand(searchKey)}
                     >
                       ▼ {t('timeline.expand', { count: search.results.length })}
                     </button>
                   {:else if search.results.length > 3 && isSearchExpanded}
                     <button
                       class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block"
-                      on:click={() => toggleExpand(searchKey)}
+                      onclick={() => toggleExpand(searchKey)}
                     >
                       ▲ {t('timeline.collapse')}
                     </button>
@@ -1213,7 +1252,7 @@
                           <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
                           <button
                             class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                            on:click={() => toggleExpand(key)}
+                            onclick={() => toggleExpand(key)}
                           >
                             ▼ Show full response ({output.content.length} chars)
                           </button>
@@ -1222,7 +1261,7 @@
                           {#if isLong}
                             <button
                               class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                              on:click={() => toggleExpand(key)}
+                              onclick={() => toggleExpand(key)}
                             >
                               ▲ Collapse
                             </button>
