@@ -3,9 +3,16 @@
  *
  * Wraps ELK.js to calculate automatic node positioning for non-linear workflows.
  * Uses the layered algorithm with round containers as ELK parent nodes.
+ *
+ * Key design decisions:
+ * - hierarchyHandling: INCLUDE_CHILDREN ensures ELK respects the round subgraph
+ *   hierarchy and lays out the ENTIRE graph, not just top-level nodes.
+ * - Both agent AND artifact nodes are grouped into round containers.
+ * - applyPositions uses a direct import (not dynamic) to avoid race conditions.
  */
 
 import ELK from 'elkjs/lib/elk.bundled.js';
+import { graphNodes } from './store.js';
 
 const elk = new ELK();
 
@@ -17,6 +24,7 @@ const elkOptions = {
   'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
   'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
   'elk.partitioning.activate': 'true',
+  'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
 };
 
 // Debounce layout calculations
@@ -69,13 +77,15 @@ async function calculateLayout(nodes, edges) {
   if (nodes.length === 0) return null;
 
   // Build ELK graph structure
-  // Group nodes by round into containers
+  // Group nodes by round into containers (agents AND artifacts)
   const roundContainers = new Map();
   const topLevelNodes = [];
 
   for (const node of nodes) {
     const round = node.data?.round;
-    if (round != null && node.type === 'agent') {
+    // Group agent, artifact, and input nodes with a valid round into containers
+    // Skip user_action, placeholder, decision — they stay at top level
+    if (round != null && round > 0 && (node.type === 'agent' || node.type === 'artifact' || node.type === 'input')) {
       if (!roundContainers.has(round)) {
         roundContainers.set(round, []);
       }
@@ -88,12 +98,15 @@ async function calculateLayout(nodes, edges) {
   // Build ELK children
   const elkChildren = [];
 
-  // Add round containers
+  // Add round containers as hierarchical parent nodes
   for (const [round, roundNodes] of roundContainers) {
     elkChildren.push({
       id: `round_container_${round}`,
       layoutOptions: {
         'elk.partitioning.partition': String(round),
+        'elk.algorithm': 'layered',
+        'elk.direction': 'RIGHT',
+        'elk.spacing.nodeNode': '30',
       },
       children: roundNodes.map(n => ({
         id: n.id,
@@ -103,7 +116,7 @@ async function calculateLayout(nodes, edges) {
     });
   }
 
-  // Add top-level nodes (input, artifacts, user actions, placeholders)
+  // Add top-level nodes (input, artifacts without round, user actions, placeholders)
   for (const node of topLevelNodes) {
     elkChildren.push({
       id: node.id,
@@ -128,7 +141,7 @@ async function calculateLayout(nodes, edges) {
 
   const result = await elk.layout(elkGraph);
 
-  // Extract positions from result
+  // Extract positions from result (recursively for nested children)
   const positions = new Map();
 
   function extractPositions(node) {
@@ -148,22 +161,18 @@ async function calculateLayout(nodes, edges) {
 
 /**
  * Apply calculated positions back to the graphNodes store.
+ * Uses a direct import (not dynamic) to avoid race conditions.
  * @param {Map<string, {x: number, y: number}>} positions
  */
 function applyPositions(positions) {
-  // We need to import dynamically to avoid circular deps at module level
-  // But since this is called from useWorkflowGraph which already imports store,
-  // we can import here
-  import('./store.js').then(({ graphNodes }) => {
-    graphNodes.update(nodes => {
-      for (const [id, pos] of positions) {
-        const node = nodes.get(id);
-        if (node) {
-          node.position = pos;
-        }
+  graphNodes.update(nodes => {
+    for (const [id, pos] of positions) {
+      const node = nodes.get(id);
+      if (node) {
+        node.position = pos;
       }
-      return nodes;
-    });
+    }
+    return nodes;
   });
 }
 
@@ -175,6 +184,7 @@ function applyPositions(positions) {
 function getNodeWidth(node) {
   switch (node.type) {
     case 'agent': return 200;
+    case 'input': return 160;
     case 'artifact': return 180;
     case 'user_action': return 160;
     case 'placeholder': return 140;
@@ -190,6 +200,7 @@ function getNodeWidth(node) {
 function getNodeHeight(node) {
   switch (node.type) {
     case 'agent': return 80;
+    case 'input': return 60;
     case 'artifact': return 60;
     case 'user_action': return 70;
     case 'placeholder': return 50;
