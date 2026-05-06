@@ -54,7 +54,21 @@ async function request(endpoint, options = {}) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    const detail = error.detail || `HTTP ${response.status}`;
+    let detail = error.detail || `HTTP ${response.status}`;
+    // FastAPI validation errors return detail as an array of objects
+    if (Array.isArray(detail)) {
+      detail = detail
+        .map((e) => {
+          if (typeof e === 'string') return e;
+          if (e && typeof e === 'object') {
+            const loc = Array.isArray(e.loc) ? e.loc.join('.') : '';
+            const msg = e.msg || JSON.stringify(e);
+            return loc ? `${loc}: ${msg}` : msg;
+          }
+          return String(e);
+        })
+        .join('; ');
+    }
     throw new Error(translateBackendError(detail));
   }
 

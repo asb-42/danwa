@@ -593,7 +593,7 @@
           rows="4"
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
           placeholder={t('debate.casePlaceholder')}
         ></textarea>
       </div>
@@ -666,12 +666,12 @@
           </div>
 
           <div class="space-y-2 max-h-40 overflow-y-auto">
-            {#each availableDocuments as doc}
+            {#each availableDocuments as doc (doc.id)}
               <label class="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
-                  checked={selectedDocumentIds.includes(doc.document_id)}
-                  onchange={() => toggleDocumentSelection(doc.document_id)}
+                  checked={selectedDocumentIds.includes(doc.id)}
+                  onchange={() => toggleDocumentSelection(doc.id)}
                   class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
                 <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">

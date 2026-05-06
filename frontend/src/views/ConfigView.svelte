@@ -1119,7 +1119,7 @@
               </label>
               <textarea id="form-agent-prompt" bind:value={formData.system_prompt}
                 rows="6"
-                class="w-full px-3 py-2 border rounded-lg text-sm font-mono
+                class="w-full px-3 py-2 border rounded-lg text-sm font-mono resize-y
                   {formErrors.system_prompt ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="You are a strategic analyst..."

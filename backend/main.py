@@ -35,16 +35,34 @@ _LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 
 
 def _setup_logging() -> None:
-    """Configure application logging with file + console handlers."""
+    """Configure application logging with file + console handlers.
+
+    The log file is truncated on each application restart to prevent
+    unbounded growth.  A ``RotatingFileHandler`` provides an additional
+    safety net (10 MB max, 3 backups).
+    """
+    from logging.handlers import RotatingFileHandler
+
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_file = _LOG_DIR / "debate-agent.log"
+
+    # Truncate log file on restart
+    try:
+        log_file.write_text("", encoding="utf-8")
+    except OSError:
+        pass  # ignore if file doesn't exist yet
 
     # Root logger configuration
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
-    # File handler — detailed, with timestamps
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    # File handler — detailed, with timestamps, rotating at 10 MB
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=3,
+        encoding="utf-8",
+    )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(
         logging.Formatter(
@@ -72,6 +90,9 @@ def _setup_logging() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("litellm").setLevel(logging.WARNING)
+    logging.getLogger("python_multipart").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("chromadb.utils.embedding_functions").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
