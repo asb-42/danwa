@@ -166,13 +166,14 @@ async function calculateLayout(nodes, edges) {
  */
 function applyPositions(positions) {
   graphNodes.update(nodes => {
+    const copy = new Map(nodes);
     for (const [id, pos] of positions) {
-      const node = nodes.get(id);
+      const node = copy.get(id);
       if (node) {
-        node.position = pos;
+        copy.set(id, { ...node, position: pos });
       }
     }
-    return nodes;
+    return copy;
   });
 }
 

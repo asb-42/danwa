@@ -2,24 +2,20 @@
  * Bridge: Store → Svelte Flow
  *
  * Derived store that provides everything needed by WorkflowCanvas.
- * Automatically triggers ELK layout when topology changes.
+ * Layout is triggered externally by WorkflowCanvas via $effect,
+ * NOT inside this derived store (side effects in derived() are unreliable).
  */
 
 import { derived } from 'svelte/store';
 import { flowNodes, flowEdges, runtime, dispatchEvent } from './store.js';
-import { applyLayout } from './layout.js';
 
 /**
  * Derived store that provides everything needed by WorkflowCanvas.
- * Automatically triggers ELK layout when topology changes.
+ * Pure — no side effects. Layout is triggered separately.
  */
 export const workflowGraph = derived(
   [flowNodes, flowEdges, runtime],
   ([$nodes, $edges, $runtime]) => {
-    // Trigger layout recalculation when node/edge count changes
-    // (debounced inside applyLayout)
-    applyLayout($nodes, $edges);
-
     return {
       nodes: $nodes,
       edges: $edges,
