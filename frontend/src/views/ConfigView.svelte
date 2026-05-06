@@ -19,50 +19,50 @@
     getBackendLogs,
   } from '../lib/api.js';
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
   // --- State ---
-  let llmProfiles = [];
-  let agentPersonas = [];
-  let promptVariants = [];
-  let costEstimate = null;
-  let previewContent = null;
-  let previewRole = 'strategist';
+  let llmProfiles = $state([]);
+  let agentPersonas = $state([]);
+  let promptVariants = $state([]);
+  let costEstimate = $state(null);
+  let previewContent = $state(null);
+  let previewRole = $state('strategist');
 
   // Cost estimation inputs
-  let costNumAgents = 4;
-  let costNumRounds = 3;
+  let costNumAgents = $state(4);
+  let costNumRounds = $state(3);
 
   // Active tab
-  let activeTab = 'llm';
+  let activeTab = $state('llm');
 
-  let isLoading = false;
-  let statusMessage = '';
+  let isLoading = $state(false);
+  let statusMessage = $state('');
 
   // System tab state
-  let isReloading = false;
-  let reloadResult = null;
-  let logLines = [];
-  let logSearch = '';
-  let isLoadingLogs = false;
+  let isReloading = $state(false);
+  let reloadResult = $state(null);
+  let logLines = $state([]);
+  let logSearch = $state('');
+  let isLoadingLogs = $state(false);
 
   // --- Modal state ---
-  let showModal = false;
-  let modalMode = 'create'; // 'create' | 'edit'
-  let modalType = 'llm';    // 'llm' | 'agent'
-  let formData = {};
-  let formErrors = {};
-  let isSaving = false;
+  let showModal = $state(false);
+  let modalMode = $state('create'); // 'create' | 'edit'
+  let modalType = $state('llm');    // 'llm' | 'agent'
+  let formData = $state({});
+  let formErrors = $state({});
+  let isSaving = $state(false);
 
   // Delete confirmation
-  let showDeleteConfirm = false;
-  let deleteTarget = null; // { type: 'llm'|'agent'|'prompt', id, name }
+  let showDeleteConfirm = $state(false);
+  let deleteTarget = $state(null); // { type: 'llm'|'agent'|'prompt', id, name }
 
   // --- Lifecycle ---
   onMount(async () => {
@@ -321,7 +321,7 @@
   }
 
   // Tags helper
-  let tagInput = '';
+  let tagInput = $state('');
   function addTag() {
     const tag = tagInput.trim().toLowerCase();
     if (tag && !formData.tags.includes(tag)) {
@@ -358,7 +358,7 @@
             {activeTab === tab
               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
-          on:click={() => { activeTab = tab; previewContent = null; }}
+          onclick={() => { activeTab = tab; previewContent = null; }}
         >
           {#if tab === 'llm'}{t('config.llmProfiles')}
           {:else if tab === 'agents'}{t('config.agentProfiles')}
@@ -382,7 +382,7 @@
       <div class="flex justify-end">
         <button
           class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-          on:click={openCreateLLM}
+          onclick={openCreateLLM}
         >
           + {t('config.createLLM')}
         </button>
@@ -416,7 +416,7 @@
                     <td class="px-4 py-3 font-medium">
                       <button
                         class="text-blue-600 dark:text-blue-400 hover:underline"
-                        on:click={() => { $selectedLLMProfile = profile.id; }}
+                        onclick={() => { $selectedLLMProfile = profile.id; }}
                       >
                         {profile.id}
                       </button>
@@ -434,13 +434,13 @@
                     <td class="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         class="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                        on:click={() => openEditLLM(profile)}
+                        onclick={() => openEditLLM(profile)}
                       >
                         {t('common.edit')}
                       </button>
                       <button
                         class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors ml-1"
-                        on:click={() => confirmDelete('llm', profile.id, profile.name)}
+                        onclick={() => confirmDelete('llm', profile.id, profile.name)}
                       >
                         {t('common.delete')}
                       </button>
@@ -465,7 +465,7 @@
             </h4>
             <button
               class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              on:click={() => openCreateAgent(role)}
+              onclick={() => openCreateAgent(role)}
             >
               + {t('config.createPersona')}
             </button>
@@ -481,8 +481,8 @@
                 <!-- Select area -->
                 <div
                   class="cursor-pointer"
-                  on:click={() => { $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
-                  on:keydown={(e) => { if (e.key === 'Enter') $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
+                  onclick={() => { $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
+                  onkeydown={(e) => { if (e.key === 'Enter') $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
                   role="button"
                   tabindex="0"
                 >
@@ -508,13 +508,13 @@
                 <div class="flex gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                   <button
                     class="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                    on:click={() => openEditAgent(persona)}
+                    onclick={() => openEditAgent(persona)}
                   >
                     {t('common.edit')}
                   </button>
                   <button
                     class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                    on:click={() => confirmDelete('agent', persona.id, persona.name)}
+                    onclick={() => confirmDelete('agent', persona.id, persona.name)}
                   >
                     {t('common.delete')}
                   </button>
@@ -556,7 +556,7 @@
                     <td class="px-4 py-3 font-medium">
                       <button
                         class="text-blue-600 dark:text-blue-400 hover:underline"
-                        on:click={() => { $selectedPromptVariant = variant.id; }}
+                        onclick={() => { $selectedPromptVariant = variant.id; }}
                       >
                         {variant.id}
                       </button>
@@ -577,7 +577,7 @@
                       </select>
                       <button
                         class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                        on:click={() => handlePreview(variant.id)}
+                        onclick={() => handlePreview(variant.id)}
                       >
                         {t('config.preview')}
                       </button>
@@ -586,7 +586,7 @@
                       {#if variant.id !== 'default'}
                         <button
                           class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                          on:click={() => confirmDelete('prompt', variant.id, variant.id)}
+                          onclick={() => confirmDelete('prompt', variant.id, variant.id)}
                         >
                           {t('common.delete')}
                         </button>
@@ -667,7 +667,7 @@
 
       <button
         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        on:click={handleEstimateCost}
+        onclick={handleEstimateCost}
       >
         {t('config.estimateCost')}
       </button>
@@ -696,7 +696,7 @@
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
-          on:click={handleReloadProfiles}
+          onclick={handleReloadProfiles}
           disabled={isReloading}
         >
           {isReloading ? 'Lade...' : '🔄 Profile neu laden'}
@@ -716,7 +716,7 @@
         </p>
         <button
           class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          on:click={() => location.reload()}
+          onclick={() => location.reload()}
         >
           🔄 Seite neu laden
         </button>
@@ -736,12 +736,12 @@
             class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            on:keydown={(e) => { if (e.key === 'Enter') handleLoadLogs(); }}
+            onkeydown={(e) => { if (e.key === 'Enter') handleLoadLogs(); }}
           />
           <button
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            on:click={handleLoadLogs}
+            onclick={handleLoadLogs}
             disabled={isLoadingLogs}
           >
             {isLoadingLogs ? 'Lade...' : '📋 Logs laden'}
@@ -785,12 +785,12 @@
 <!-- MODAL: Create / Edit LLM Profile or Agent Persona            -->
 <!-- ============================================================ -->
 {#if showModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" on:click={closeModal} role="dialog" aria-modal="true">
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeModal} role="dialog" aria-modal="true" tabindex="-1">
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4"
-      on:click|stopPropagation
+      role="presentation"
+      onclick={(e) => e.stopPropagation()}
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -803,7 +803,7 @@
         </h3>
         <button
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
-          on:click={closeModal}
+          onclick={closeModal}
         >
           ✕
         </button>
@@ -1092,7 +1092,7 @@
                 {#each formData.tags as tag}
                   <span class="inline-flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">
                     {tag}
-                    <button class="text-gray-400 hover:text-red-500" on:click={() => removeTag(tag)}>✕</button>
+                    <button class="text-gray-400 hover:text-red-500" onclick={() => removeTag(tag)}>✕</button>
                   </span>
                 {/each}
               </div>
@@ -1101,11 +1101,11 @@
                   class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Add tag and press Enter"
-                  on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                  onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
                 />
                 <button
                   class="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
-                  on:click={addTag}
+                  onclick={addTag}
                 >
                   +
                 </button>
@@ -1134,14 +1134,14 @@
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          on:click={closeModal}
+          onclick={closeModal}
         >
           {t('common.cancel')}
         </button>
         <button
           class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
-          on:click={handleSave}
+          onclick={handleSave}
           disabled={isSaving}
         >
           {isSaving ? '...' : t('common.save')}
@@ -1155,12 +1155,12 @@
 <!-- DELETE CONFIRMATION DIALOG                                    -->
 <!-- ============================================================ -->
 {#if showDeleteConfirm && deleteTarget}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" on:click={closeDeleteConfirm} role="dialog" aria-modal="true">
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeDeleteConfirm} role="dialog" aria-modal="true" tabindex="-1">
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6"
-      on:click|stopPropagation
+      role="presentation"
+      onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
         {t('config.deleteProfile')}
@@ -1171,13 +1171,13 @@
       <div class="flex items-center justify-end gap-3">
         <button
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          on:click={closeDeleteConfirm}
+          onclick={closeDeleteConfirm}
         >
           {t('common.cancel')}
         </button>
         <button
           class="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-          on:click={handleDelete}
+          onclick={handleDelete}
         >
           {t('common.delete')}
         </button>

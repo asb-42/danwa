@@ -335,3 +335,16 @@ export function getBackendLogs(lines = 100, search = null) {
   if (search) url += `&search=${encodeURIComponent(search)}`;
   return request(url);
 }
+
+/**
+ * Submit an Out-of-Band (OOB) input to a running debate.
+ * @param {string} debateId
+ * @param {{ content: string, target: { type: string, agent_role?: string, round?: number, current_agent_role?: string, from_round?: number }, urgency?: string }} body
+ * @returns {Promise<{ oob_id: string, status: string, target_resolved: string }>}
+ */
+export function submitOOBInput(debateId, body) {
+  return request(`/api/v1/debate/${debateId}/oob`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}

@@ -1,11 +1,28 @@
 <script>
-  // Placeholder — will render LangGraph workflow visualization in Sprint 4
-  export let state = null;
+  /**
+   * WorkflowGraph — Wrapper around WorkflowCanvas.
+   * This file exists for backward compatibility; the actual implementation
+   * lives in workflow/WorkflowCanvas.svelte.
+   */
+  import WorkflowCanvas from './workflow/WorkflowCanvas.svelte';
+  import OOBInputPanel from './workflow/OOBInputPanel.svelte';
+
+  /** @type {{ debateId?: string, isRunning?: boolean }} */
+  let { debateId = null, isRunning = false } = $props();
 </script>
 
-<div class="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-  <div class="text-center">
-    <p class="text-gray-500 dark:text-gray-400 font-medium">Workflow Graph</p>
-    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">LangGraph visualization — Sprint 4</p>
-  </div>
+<div class="workflow-graph-container">
+  <WorkflowCanvas />
+
+  {#if isRunning && debateId}
+    <OOBInputPanel {debateId} />
+  {/if}
 </div>
+
+<style>
+  .workflow-graph-container {
+    position: relative;
+    width: 100%;
+    min-height: 500px;
+  }
+</style>

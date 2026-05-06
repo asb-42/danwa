@@ -1,7 +1,6 @@
 <script>
   // Placeholder — will render consensus score gauge in Sprint 4
-  export let score = 0;
-  export let threshold = 0.8;
+  let { score = 0, threshold = 0.8 } = $props();
 </script>
 
 <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">

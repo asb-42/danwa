@@ -1,6 +1,6 @@
 <script>
   /** @type {string} */
-  export let content = '';
+  let { content = '' } = $props();
 
   import { marked } from 'marked';
 
@@ -10,7 +10,7 @@
     gfm: true,
   });
 
-  $: html = content ? marked.parse(content) : '';
+  let html = $derived(content ? marked.parse(content) : '');
 </script>
 
 {#if html}

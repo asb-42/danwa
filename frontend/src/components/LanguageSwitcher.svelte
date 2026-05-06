@@ -11,7 +11,7 @@
 <div class="flex gap-2" role="group" aria-label="Language selection">
   {#each SUPPORTED_LOCALES as lang}
     <button
-      on:click={() => switchLanguage(lang)}
+      onclick={() => switchLanguage(lang)}
       class="px-3 py-1 text-sm rounded transition-colors
              {$locale === lang
                ? 'bg-blue-600 text-white'

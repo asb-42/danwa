@@ -4,31 +4,31 @@
   import { getProjects, createProject, updateProject, deleteProject } from '../lib/api.js';
   import { i18n, formatDate } from '../lib/i18n/index.js';
 
-  export let navigate = () => {};
+  let { navigate = () => {} } = $props();
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  let projects = [];
-  let isLoading = false;
-  let statusMessage = '';
+  let projects = $state([]);
+  let isLoading = $state(false);
+  let statusMessage = $state('');
 
   // Modal state
-  let showModal = false;
-  let modalMode = 'create'; // 'create' | 'edit'
-  let formData = { name: '', description: '' };
-  let formErrors = {};
-  let isSaving = false;
+  let showModal = $state(false);
+  let modalMode = $state('create'); // 'create' | 'edit'
+  let formData = $state({ name: '', description: '' });
+  let formErrors = $state({});
+  let isSaving = $state(false);
 
   // Delete confirmation
-  let showDeleteConfirm = false;
-  let deleteTarget = null;
-  let isDeleting = false;
+  let showDeleteConfirm = $state(false);
+  let deleteTarget = $state(null);
+  let isDeleting = $state(false);
 
   onMount(async () => {
     await loadProjects();
@@ -144,7 +144,7 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('projects.title')}</h2>
     <button
       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-      on:click={openCreate}
+      onclick={openCreate}
     >
       + {t('projects.create')}
     </button>
@@ -173,7 +173,7 @@
       <p class="text-gray-500 dark:text-gray-400 mb-6">{t('projects.onboardingMessage')}</p>
       <button
         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        on:click={openCreate}
+        onclick={openCreate}
       >
         + {t('projects.create')}
       </button>
@@ -222,7 +222,7 @@
                   class="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg
                          bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300
                          hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-                  on:click={() => selectProject(project)}
+                  onclick={() => selectProject(project)}
                 >
                   {t('projects.selectProject')}
                 </button>
@@ -231,7 +231,7 @@
                   class="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg
                          bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300
                          hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  on:click={() => navigate('projects/' + project.id + '/settings')}
+                  onclick={() => navigate('projects/' + project.id + '/settings')}
                 >
                   ⚙️ {t('projects.settings')}
                 </button>
@@ -240,7 +240,7 @@
               <button
                 class="px-3 py-1.5 text-xs font-medium rounded-lg
                        text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                on:click={() => openEdit(project)}
+                onclick={() => openEdit(project)}
               >
                 {t('common.edit')}
               </button>
@@ -249,7 +249,7 @@
                 <button
                   class="px-3 py-1.5 text-xs font-medium rounded-lg
                          text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  on:click={() => confirmDelete(project)}
+                  onclick={() => confirmDelete(project)}
                 >
                   {t('common.delete')}
                 </button>
@@ -266,12 +266,12 @@
 <!-- MODAL: Create / Edit Project                                  -->
 <!-- ============================================================ -->
 {#if showModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" on:click={closeModal} role="dialog" aria-modal="true">
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeModal} role="dialog" aria-modal="true" tabindex="-1">
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg mx-4"
-      on:click|stopPropagation
+      role="presentation"
+      onclick={(e) => e.stopPropagation()}
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -280,7 +280,7 @@
         </h3>
         <button
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
-          on:click={closeModal}
+          onclick={closeModal}
         >
           ✕
         </button>
@@ -325,14 +325,14 @@
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          on:click={closeModal}
+          onclick={closeModal}
         >
           {t('common.cancel')}
         </button>
         <button
           class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
-          on:click={handleSave}
+          onclick={handleSave}
           disabled={isSaving}
         >
           {isSaving ? '...' : t('common.save')}
@@ -346,12 +346,12 @@
 <!-- DELETE CONFIRMATION DIALOG                                    -->
 <!-- ============================================================ -->
 {#if showDeleteConfirm && deleteTarget}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" on:click={closeDeleteConfirm} role="dialog" aria-modal="true">
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeDeleteConfirm} role="dialog" aria-modal="true" tabindex="-1">
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6"
-      on:click|stopPropagation
+      role="presentation"
+      onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
         {t('projects.editTitle')}
@@ -362,7 +362,7 @@
       <div class="flex items-center justify-end gap-3">
         <button
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          on:click={closeDeleteConfirm}
+          onclick={closeDeleteConfirm}
           disabled={isDeleting}
         >
           {t('common.cancel')}
@@ -370,7 +370,7 @@
         <button
           class="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
-          on:click={handleDelete}
+          onclick={handleDelete}
           disabled={isDeleting}
         >
           {isDeleting ? '...' : t('common.delete')}

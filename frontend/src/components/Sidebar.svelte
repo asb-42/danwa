@@ -2,20 +2,19 @@
   import { i18n } from '../lib/i18n/index.js';
   import ProjectSelector from './ProjectSelector.svelte';
 
-  export let navigate;
-  export let currentRoute;
+  let { navigate, currentRoute } = $props();
 
   let projectSelector;
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  $: navItems = [
+  let navItems = $derived([
     { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
     { id: 'debate', label: t('nav.debate'), icon: '💬' },
     { id: 'documents', label: t('nav.documents'), icon: '📄' },
@@ -23,7 +22,7 @@
     { id: 'audit', label: t('nav.audit'), icon: '📋' },
     { id: 'projects', label: t('nav.projects'), icon: '📁' },
     { id: 'config', label: t('nav.config'), icon: '⚙️' },
-  ];
+  ]);
 
   function isActive(item) {
     if (item.id === 'projects') {
@@ -53,7 +52,7 @@
           {isActive(item)
             ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
             : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}"
-        on:click={() => navigate(item.id)}
+        onclick={() => navigate(item.id)}
         aria-current={isActive(item) ? 'page' : undefined}
       >
         <span class="mr-3 text-lg" aria-hidden="true">{item.icon}</span>

@@ -1,6 +1,6 @@
 <script>
   // Placeholder — will render debate round timeline in Sprint 4
-  export let rounds = [];
+  let { rounds = [] } = $props();
 </script>
 
 <div class="space-y-3">

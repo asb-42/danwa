@@ -1,30 +1,39 @@
 <script>
   import { onMount } from 'svelte';
-  import { healthStatus, loading, error } from '../lib/stores.js';
+  import { healthStatus, loading, error, activeProject } from '../lib/stores.js';
   import { getHealth, getDebates } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
-  export let navigate = () => {};
+  let { navigate = () => {} } = $props();
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
-  let stats = {
+  let stats = $state({
     totalDebates: 0,
     running: 0,
     completed: 0,
     failed: 0,
-  };
+  });
 
-  let recentDebates = [];
+  let recentDebates = $state([]);
+
+  let projectId = $derived($activeProject?.id);
 
   onMount(async () => {
     await loadDebateStats();
+  });
+
+  // Reload when project changes
+  $effect(() => {
+    if (projectId) {
+      loadDebateStats();
+    }
   });
 
   async function loadDebateStats() {
@@ -73,7 +82,7 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.title')}</h2>
     <button
       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
-      on:click={refreshHealth}
+      onclick={refreshHealth}
       disabled={$loading}
     >
       {$loading ? t('dashboard.checking') : t('dashboard.refreshHealth')}
@@ -125,7 +134,7 @@
         {#each recentDebates as debate}
           <button
             class="w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-            on:click={() => navigate('debate/' + debate.debate_id)}
+            onclick={() => navigate('debate/' + debate.debate_id)}
           >
             <div class="flex items-center justify-between">
               <div class="flex-1 min-w-0">

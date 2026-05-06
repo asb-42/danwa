@@ -27,6 +27,8 @@ from backend.models.schemas import (
     DebateResponse,
     DebateStatus,
     DebateStatusResponse,
+    OOBInputBody,
+    OOBInputResponse,
     RoundData,
 )
 from backend.persistence.audit import AuditService
@@ -38,6 +40,9 @@ router = APIRouter()
 
 # Set of debate IDs that have been requested to cancel
 _cancelled_debates: set[str] = set()
+
+# OOB input queues per debate: debate_id → list of OOB inputs
+_oob_queues: dict[str, list[dict]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +396,91 @@ def is_cancelled(debate_id: str) -> bool:
 def clear_cancel(debate_id: str) -> None:
     """Remove cancellation flag after handling."""
     _cancelled_debates.discard(debate_id)
+
+
+# ---------------------------------------------------------------------------
+# Out-of-Band (OOB) Input endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{debate_id}/oob", response_model=OOBInputResponse)
+async def submit_oob_input(
+    debate_id: str,
+    body: OOBInputBody,
+    project_id: str = Depends(get_project_id),
+) -> OOBInputResponse:
+    """Submit an out-of-band input for a running debate.
+
+    The input is queued and will be consumed by the next agent that matches
+    the routing target.  Emits an SSE event for visualization.
+    """
+    store = get_debate_store_for_project(project_id)
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate.get("status")
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val != "running":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Debate is not running (current status: {status_val})",
+        )
+
+    oob_id = str(uuid.uuid4())
+    oob_entry = {
+        "oob_id": oob_id,
+        "content": body.content,
+        "target": body.target.model_dump(),
+        "urgency": body.urgency,
+        "status": "pending",
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+
+    if debate_id not in _oob_queues:
+        _oob_queues[debate_id] = []
+    _oob_queues[debate_id].append(oob_entry)
+
+    # Emit SSE event for frontend visualization
+    session_id = debate.get("session_id", debate_id)
+    await publish_async(
+        session_id,
+        "oob_input",
+        {
+            "type": "oob_input",
+            "oob_id": oob_id,
+            "content": body.content,
+            "target": body.target.model_dump(),
+            "urgency": body.urgency,
+        },
+    )
+
+    logger.info("OOB input %s queued for debate %s", oob_id, debate_id)
+    return OOBInputResponse(
+        oob_id=oob_id,
+        status="pending",
+        target_resolved=body.target.type.value,
+    )
+
+
+def get_oob_for_debate(debate_id: str) -> list[dict]:
+    """Get all pending OOB inputs for a debate (used by workflow nodes)."""
+    return [
+        oob for oob in _oob_queues.get(debate_id, [])
+        if oob["status"] == "pending"
+    ]
+
+
+def consume_oob(debate_id: str, oob_ids: list[str]) -> None:
+    """Mark OOB inputs as consumed."""
+    for oob in _oob_queues.get(debate_id, []):
+        if oob["oob_id"] in oob_ids:
+            oob["status"] = "consumed"
+
+
+def clear_oob_queue(debate_id: str) -> None:
+    """Clean up OOB queue after debate completes."""
+    _oob_queues.pop(debate_id, None)
 
 
 # ---------------------------------------------------------------------------

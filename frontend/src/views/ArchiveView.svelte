@@ -1,31 +1,33 @@
 <script>
   import { onMount } from 'svelte';
-  import { loading, error } from '../lib/stores.js';
+  import { loading, error, activeProject } from '../lib/stores.js';
   import { getDebates, deleteDebate } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
-  export let navigate = () => {};
+  let { navigate = () => {} } = $props();
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
   const PAGE_SIZE = 20;
 
-  let debates = [];
-  let totalCount = 0;
-  let currentPage = 0;
-  let searchQuery = '';
-  let statusFilter = '';
+  let debates = $state([]);
+  let totalCount = $state(0);
+  let currentPage = $state(0);
+  let searchQuery = $state('');
+  let statusFilter = $state('');
   let searchTimeout = null;
 
   // Delete confirmation state
-  let deleteConfirmId = null;
-  let isDeleting = false;
+  let deleteConfirmId = $state(null);
+  let isDeleting = $state(false);
+
+  let projectId = $derived($activeProject?.id);
 
   const statusOptions = [
     { value: '', label: 'archive.filterAll' },
@@ -37,6 +39,13 @@
 
   onMount(() => {
     loadDebates();
+  });
+
+  // Reload when project changes
+  $effect(() => {
+    if (projectId) {
+      loadDebates();
+    }
   });
 
   async function loadDebates() {
@@ -133,7 +142,7 @@
           <input
             type="text"
             bind:value={searchQuery}
-            on:input={handleSearch}
+            oninput={handleSearch}
             placeholder={t('archive.searchPlaceholder')}
             class="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -146,7 +155,7 @@
       <div class="sm:w-48">
         <select
           bind:value={statusFilter}
-          on:change={handleFilterChange}
+          onchange={handleFilterChange}
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -197,7 +206,7 @@
             <!-- Case preview (clickable) -->
             <button
               class="md:col-span-3 mb-2 md:mb-0 text-left cursor-pointer"
-              on:click={() => navigate('debate/' + debate.debate_id)}
+              onclick={() => navigate('debate/' + debate.debate_id)}
             >
               <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
                 {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 16)}
@@ -210,7 +219,7 @@
             <!-- Project (clickable) -->
             <button
               class="md:col-span-2 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 md:mb-0 text-left cursor-pointer"
-              on:click={() => navigate('debate/' + debate.debate_id)}
+              onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {#if debate.project_name}
                 📁 {debate.project_name}
@@ -222,7 +231,7 @@
             <!-- Date (clickable) -->
             <button
               class="md:col-span-2 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0 text-left cursor-pointer"
-              on:click={() => navigate('debate/' + debate.debate_id)}
+              onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {formatDate(debate.created_at)}
             </button>
@@ -230,7 +239,7 @@
             <!-- Rounds (clickable) -->
             <button
               class="md:col-span-1 text-sm text-gray-700 dark:text-gray-300 mb-1 md:mb-0 text-left cursor-pointer"
-              on:click={() => navigate('debate/' + debate.debate_id)}
+              onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {debate.current_round}/{debate.max_rounds}
             </button>
@@ -238,7 +247,7 @@
             <!-- Consensus (clickable) -->
             <button
               class="md:col-span-2 mb-1 md:mb-0 text-left cursor-pointer"
-              on:click={() => navigate('debate/' + debate.debate_id)}
+              onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {#if debate.consensus_score !== null && debate.consensus_score !== undefined}
                 <div class="flex items-center gap-2">
@@ -260,7 +269,7 @@
             <!-- Status (clickable) -->
             <button
               class="md:col-span-2 text-left cursor-pointer"
-              on:click={() => navigate('debate/' + debate.debate_id)}
+              onclick={() => navigate('debate/' + debate.debate_id)}
             >
               <div class="flex items-center gap-2">
                 <span class="px-2 py-1 text-xs font-medium rounded-full {statusBadgeClass(debate.status)}">
@@ -279,7 +288,7 @@
                   <button
                     class="px-2 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700
                            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    on:click={() => handleDelete(debate.debate_id)}
+                    onclick={() => handleDelete(debate.debate_id)}
                     disabled={isDeleting}
                     aria-label={t('archive.confirmDelete')}
                   >
@@ -289,7 +298,7 @@
                     class="px-2 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-600
                            text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500
                            transition-colors"
-                    on:click={cancelDelete}
+                    onclick={cancelDelete}
                     disabled={isDeleting}
                     aria-label={t('common.cancel')}
                   >
@@ -300,7 +309,7 @@
                 <button
                   class="p-1.5 rounded text-gray-400 hover:text-red-600 dark:hover:text-red-400
                          hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  on:click|stopPropagation={() => confirmDelete(debate.debate_id)}
+                  onclick={(e) => { e.stopPropagation(); confirmDelete(debate.debate_id); }}
                   aria-label={t('common.delete')}
                   title={t('common.delete')}
                 >
@@ -327,7 +336,7 @@
           class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
                  text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          on:click={() => goToPage(currentPage - 1)}
+          onclick={() => goToPage(currentPage - 1)}
           disabled={currentPage === 0 || $loading}
         >
           ← {t('archive.prevPage')}
@@ -339,7 +348,7 @@
           class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
                  text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          on:click={() => goToPage(currentPage + 1)}
+          onclick={() => goToPage(currentPage + 1)}
           disabled={debates.length < PAGE_SIZE || $loading}
         >
           {t('archive.nextPage')} →

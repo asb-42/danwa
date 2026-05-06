@@ -2,20 +2,19 @@
   import { i18n } from '../lib/i18n/index.js';
   import { uploadDocument } from '../lib/api.js';
 
-  export let onUpload = null;
-  export let compact = false;
+  let { onUpload = null, compact = false } = $props();
 
-  let dragOver = false;
-  let uploading = false;
-  let fileInput;
+  let dragOver = $state(false);
+  let uploading = $state(false);
+  let fileInput = $state(null);
 
-  $: t = (key, params = {}) => {
+  let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
-  };
+  });
 
   async function handleUpload(files) {
     if (!files || files.length === 0) return;
@@ -61,14 +60,14 @@
     {dragOver
       ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
       : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600'}"
-  on:drop={handleDrop}
-  on:dragover={handleDragOver}
-  on:dragleave={handleDragLeave}
-  on:click={() => fileInput?.click()}
+  ondrop={handleDrop}
+  ondragover={handleDragOver}
+  ondragleave={handleDragLeave}
+  onclick={() => fileInput?.click()}
   role="region"
   aria-label={t('documents.upload')}
   tabindex="0"
-  on:keydown={(e) => e.key === 'Enter' && fileInput?.click()}
+  onkeydown={(e) => e.key === 'Enter' && fileInput?.click()}
 >
   <input
     bind:this={fileInput}
@@ -76,7 +75,7 @@
     multiple
     accept=".pdf,.docx,.odt,.txt,.md,.png,.jpg,.jpeg,.gif,.bmp,.tiff"
     class="hidden"
-    on:change={handleFileSelect}
+    onchange={handleFileSelect}
   />
   <div class="space-y-1">
     <p class="text-{compact ? '2xl' : '4xl'}">📄</p>
