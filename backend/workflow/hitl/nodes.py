@@ -118,6 +118,19 @@ async def hitl_check_node(state: DebateState) -> dict:
             debate_id,
         )
 
+        # Publish SSE event so the frontend knows injects were consumed
+        await publish_async(
+            session_id,
+            "hitl_inject_consumed",
+            {
+                "type": "hitl_inject_consumed",
+                "count": len(pending),
+                "interaction_ids": [i["interaction_id"] for i in pending],
+                "round": state.get("current_round", 0),
+                "agent_index": state.get("current_agent_index", 0),
+            },
+        )
+
         return {"interactions": interactions}
 
     return {}
@@ -320,10 +333,16 @@ async def hitl_agent_query_node(state: DebateState) -> dict:
 
 
 def build_inject_context(state: DebateState, agent_role: str) -> str:
-    """Build context string from pending injects for a specific agent.
+    """Build context string from consumed injects for a specific agent.
 
-    This is called by the modified run_agent_node to merge user injections
-    into the agent's prompt.
+    This is called by run_agent_node to merge user injections into the
+    agent's prompt.  It reads from ``state["interactions"]`` which is
+    populated by ``hitl_check_node`` *before* the agent runs.
+
+    Note: ``hitl_check_node`` already consumes pending injects (sets
+    status to "consumed") and stores them in the state's ``interactions``
+    accumulator.  We must NOT call ``get_pending_injects()`` here because
+    those injects are no longer pending at this point.
 
     Args:
         state: Current debate state.
@@ -332,16 +351,21 @@ def build_inject_context(state: DebateState, agent_role: str) -> str:
     Returns:
         Formatted context string to append to the agent's prompt.
     """
-    debate_id = state.get("session_id", "")
     current_round = state.get("current_round", 0)
 
-    pending = get_pending_injects(debate_id)
-    if not pending:
+    # Read from state["interactions"] — populated by hitl_check_node
+    interactions = state.get("interactions", [])
+    inject_interactions = [
+        i for i in interactions
+        if i.get("type") == "inject" and i.get("status") == "consumed"
+    ]
+
+    if not inject_interactions:
         return ""
 
     # Filter injects relevant to this agent
     relevant = []
-    for inject in pending:
+    for inject in inject_interactions:
         target = inject.get("target", "all_future")
         metadata = inject.get("metadata", {})
         target_agent = metadata.get("target_agent")

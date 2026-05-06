@@ -420,6 +420,13 @@
       return;
     }
 
+    // hitl_inject_consumed — injects were consumed by an agent
+    if (event.type === 'hitl_inject_consumed') {
+      refreshHITLStatus();
+      refreshHITLInteractions();
+      return;
+    }
+
     // hitl_pause — debate paused/resumed
     if (event.type === 'hitl_pause') {
       refreshHITLStatus();
@@ -470,12 +477,16 @@
     }
   }
 
-  // Poll HITL status while debate is running
+  // Poll HITL status and interactions while debate is running
   $effect(() => {
     if ($currentDebate?.status === 'running' && $currentDebate?.hitl_enabled) {
       if (hitlPollTimer) clearInterval(hitlPollTimer);
       refreshHITLStatus();
-      hitlPollTimer = setInterval(refreshHITLStatus, 5000);
+      refreshHITLInteractions();
+      hitlPollTimer = setInterval(() => {
+        refreshHITLStatus();
+        refreshHITLInteractions();
+      }, 5000);
     } else {
       if (hitlPollTimer) {
         clearInterval(hitlPollTimer);
@@ -1312,8 +1323,8 @@
       </div>
     {/if}
 
-    <!-- HITL Interaction Timeline (when interactions exist) -->
-    {#if $hitlInteractions?.length > 0}
+    <!-- HITL Interaction Timeline (always visible when HITL enabled) -->
+    {#if $currentDebate?.hitl_enabled}
       <InteractionTimeline />
     {/if}
 

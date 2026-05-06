@@ -52,7 +52,7 @@
   }
 </script>
 
-{#if status.hitl_enabled && totalCount > 0}
+{#if status.hitl_enabled}
   <div class="interaction-timeline" class:expanded={isExpanded}>
     <button class="timeline-header" onclick={toggleExpanded} aria-expanded={isExpanded}>
       <span class="header-icon">📋</span>

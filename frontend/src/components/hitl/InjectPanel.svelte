@@ -2,10 +2,11 @@
   /**
    * InjectPanel — Allows users to inject context into a running debate.
    * Non-blocking: the debate continues while the injection is queued.
+   * Shows persistent feedback with injection history.
    */
 
   import { injectContext } from '../../lib/hitl.js';
-  import { hitlStatus } from '../../lib/stores/hitl.svelte.js';
+  import { hitlStatus, hitlInteractions } from '../../lib/stores/hitl.svelte.js';
 
   let { debateId = '', agentRoles = [] } = $props();
 
@@ -19,6 +20,14 @@
 
   let status = $derived($hitlStatus);
   let isRunning = $derived(status.hitl_enabled && !status.is_paused);
+
+  // Track recent inject interactions from the store
+  let recentInjections = $derived(
+    ($hitlInteractions || [])
+      .filter(i => i.type === 'inject')
+      .slice(-5)
+      .reverse()
+  );
 
   const priorities = [
     { value: 'low', label: 'Low', icon: '⬇️' },
@@ -58,6 +67,20 @@
 
   function toggleExpanded() {
     isExpanded = !isExpanded;
+  }
+
+  function truncate(text, maxLen = 80) {
+    if (!text || text.length <= maxLen) return text;
+    return text.slice(0, maxLen) + '…';
+  }
+
+  function formatTime(timestamp) {
+    if (!timestamp) return '';
+    try {
+      return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch {
+      return timestamp;
+    }
   }
 </script>
 
@@ -124,6 +147,21 @@
 
         {#if submitSuccess}
           <div class="inject-success" role="status">✓ Context injected successfully</div>
+        {/if}
+
+        {#if recentInjections.length > 0}
+          <div class="recent-injections">
+            <div class="recent-header">Recent injections</div>
+            {#each recentInjections as inj (inj.interaction_id)}
+              <div class="recent-item" class:consumed={inj.status === 'consumed'}>
+                <span class="recent-status" class:status-pending={inj.status === 'pending'} class:status-consumed={inj.status === 'consumed'}>
+                  {inj.status === 'consumed' ? '✅' : '⏳'}
+                </span>
+                <span class="recent-text">{truncate(inj.content)}</span>
+                <span class="recent-time">{formatTime(inj.timestamp)}</span>
+              </div>
+            {/each}
+          </div>
         {/if}
       </div>
     {/if}
@@ -302,5 +340,50 @@
     border-radius: 4px;
     color: #a6e3a1;
     font-size: 0.8rem;
+  }
+
+  .recent-injections {
+    margin-top: 8px;
+    border-top: 1px solid var(--color-border, #313244);
+    padding-top: 8px;
+  }
+
+  .recent-header {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #a6adc8);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: 0.78rem;
+    color: var(--color-text-muted, #a6adc8);
+  }
+
+  .recent-item.consumed {
+    opacity: 0.7;
+  }
+
+  .recent-status {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+  }
+
+  .recent-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .recent-time {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--color-text-muted, #a6adc8);
+    opacity: 0.7;
   }
 </style>
