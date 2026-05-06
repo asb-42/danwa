@@ -1,6 +1,6 @@
-# Debate-Agent
+# Danwa (Debate-Agent)
 
-Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration and **RAG (Retrieval-Augmented Generation)** pipeline.
+Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration, **RAG (Retrieval-Augmented Generation)** pipeline, **project isolation**, and **real-time SSE updates**.
 
 ## Quick Start
 
@@ -21,13 +21,13 @@ bash scripts/status.sh
 bash scripts/stop.sh
 ```
 
-Open `http://localhost:7860` in your browser.
+Open `http://localhost:8000` in your browser.
 
 No systemd required - runs on-demand via simple scripts.
 
 ## How It Works
 
-Four specialized AI agents collaborate in a structured debate:
+Four specialized AI agents collaborate in a structured debate, orchestrated by a **LangGraph state machine**:
 
 ```
 Input → [Strategist] → [Critic] → [Optimizer] → [Moderator]
@@ -40,127 +40,187 @@ Input → [Strategist] → [Critic] → [Optimizer] → [Moderator]
 3. **Optimizer** - Synthesizes strategy and criticism into refined output
 4. **Moderator** - Evaluates consensus and scores the result
 
-The debate runs for configurable rounds (1-5) and stops early when consensus threshold is met.
+The debate runs for configurable rounds (1-20) and stops early when consensus threshold is met.
 
-## Features
+## Key Features
 
 - **Multi-Agent Deliberation** - Four specialized agents produce well-reasoned analysis
-- **Flexible LLM Backend** - Local (LM Studio) or cloud (OpenRouter) via LiteLLM
-- **Document Analysis** - Upload PDF, DOCX, ODT, ODS, ODP files
-- **Web Fact-Checking** - Optional validation via SearXNG integration
+- **Flexible LLM Backend** - Local (LM Studio, Ollama) or cloud (OpenRouter, OpenAI, Anthropic) via LiteLLM
+- **Document Analysis** - Upload PDF, DOCX, ODT, ODS, ODP files with OCR support
+- **Web Fact-Checking** - Optional validation via SearXNG or DuckDuckGo integration (off/optional/required modes)
 - **Semantic Memory** - ChromaDB-powered precedent retrieval from past debates
 - **Audit Trail** - Complete JSONL trace logs for reproducibility
 - **Report Generation** - Export results as DOCX or PDF
 - **Privacy Protection** - PII redaction (email, IP, phone) and configurable data retention
-- **Session Management** - SQLite-backed sessions with dashboard UI
-- **Document Management System (DMS)** - Project-wise document organization with SQLite
-- **PaddleOCR Integration** - OCR for scanned PDFs alongside existing parsers
+- **Project Isolation** - SQLite-backed project system with isolated data storage per project
+- **Document Management System (DMS)** - Project-wise document organization with SQLite + ChromaDB
+- **PaddleOCR Integration** - OCR for scanned PDFs and images
 - **RAG Pipeline** - Automatic and manual document retrieval for debate context
-- **Hybrid Retrieval** - BM25 + Vector search + Re-ranking
-- **DMS Dashboard** - Project and document management UI
-
-## Document Management System (DMS)
-
-The DMS module provides project-wise document management with advanced retrieval capabilities:
-
-- **Project-wise Document Management** - Organize documents into projects with SQLite-backed metadata
-- **PaddleOCR Integration** - Process scanned PDFs and images using PaddleOCR for text extraction
-- **RAG (Retrieval-Augmented Generation) Pipeline** - Enhance debates with relevant document context
-- **Hybrid Retrieval** - Combine BM25 keyword search, vector similarity, and re-ranking for optimal results
-- **Separate ChromaDB Collection** - Isolated vector storage for document embeddings
-- **Integration** - Seamless integration with FastAPI/Svelte UI and core debate engine
+- **Hybrid Retrieval** - BM25 + Vector search + Re-ranking for optimal results
+- **Real-Time Updates** - Server-Sent Events (SSE) for live debate progress visualization
+- **Modern Web UI** - Svelte 5 + Tailwind CSS + @xyflow/svelte workflow graph
+- **Internationalization** - Full i18n support (German/English)
+- **Out-of-Band Inputs** - Inject additional context during running debates
 
 ## Technology Stack
 
 | Component | Technology |
 |-----------|-------------|
 | Language | Python 3.11+ |
-| UI Framework | [Svelte 5](https://svelte.dev) + [Tailwind CSS](https://tailwindcss.com) |
 | Backend Framework | [FastAPI](https://fastapi.tiangolo.com) + [LangGraph](https://langchain-ai.github.io/langgraph/) |
 | LLM Integration | [LiteLLM](https://litellm.ai) |
+| UI Framework | [Svelte 5](https://svelte.dev) + [Tailwind CSS](https://tailwindcss.com) |
+| Workflow Visualization | [@xyflow/svelte](https://svelteflow.dev) + [ELK.js](https://github.com/kieler/elkjs) |
+| Frontend Build | [Vite](https://vitejs.dev) 5 |
 | Vector Database | [ChromaDB](https://www.trychroma.com) |
 | Web Search | SearXNG / DuckDuckGo |
 | Document Parsing | pdfplumber, pypdf, python-docx, odfpy |
 | Report Generation | python-docx, [WeasyPrint](https://weasyprint.org) |
-| Database | SQLite |
+| Database | SQLite (debates, sessions, projects) |
 | DMS Module | Custom (SQLite + ChromaDB + PaddleOCR) |
-| OCR Engine | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) |
-| Package Manager | [uv](https://github.com/astral-sh/uv) |
+| OCR Engine | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) (optional) |
+| Package Manager (Python) | [uv](https://github.com/astral-sh/uv) |
+| Package Manager (Node) | npm |
+| Testing (Backend) | pytest 8+ |
+| Testing (Frontend) | [Playwright](https://playwright.dev) 1.59+ (e2e, visual, a11y, i18n) |
+| Linting | [ruff](https://github.com/astral-sh/ruff) 0.4+ |
+| Validation | [Pydantic](https://docs.pydantic.dev) 2.7+ |
+| SSE Support | [sse-starlette](https://github.com/syroegkin/sse-starlette) |
+| i18n (Frontend) | Custom loaders (German/English) |
 
 ## Project Structure
 
 ```
 danwa/
-├── src/
-│   ├── core/                    # Business logic (legacy, being migrated)
-│   │   ├── debate_engine.py     # Main orchestration
-│   │   ├── llm_router.py        # LLM provider routing
-│   │   ├── memory.py            # ChromaDB vector storage
-│   │   ├── session_db.py        # SQLite persistence
-│   │   ├── prompt_manager.py    # Prompt variant management
-│   │   ├── privacy.py           # PII redaction & retention
-│   │   └── trace_logger.py      # JSONL audit logs
-│   ├── tools/                   # External integrations
-│   │   ├── doc_parser.py       # Document parsing
-│   │   ├── report_generator.py  # DOCX/PDF generation
-│   │   └── web_search.py       # SearXNG search
-│   └── dms/                   # Document Management System
-│       ├── database.py        # SQLite schema
-│       ├── project_manager.py # Project CRUD
-│       ├── document_processor.py # PaddleOCR + parsers
-│       ├── chunker.py        # Text chunking (512 tokens)
-│       ├── rag_pipeline.py   # RAG pipeline
-│       ├── vector_store.py   # ChromaDB interface
-│       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
-│       └── dms.py           # High-level DMS API
 ├── backend/                     # FastAPI + LangGraph backend
 │   ├── main.py                  # App factory (uvicorn entry point)
+│   ├── api/
+│   │   ├── deps.py            # Dependency injection (get_project_id, stores)
+│   │   ├── events.py          # SSE event bus (publish/subscribe)
+│   │   └── routers/           # API route handlers
+│   │       ├── debate.py      # Debate CRUD + SSE stream
+│   │       ├── profiles.py    # LLM, agent, prompt management
+│   │       ├── dms.py        # Document Management System
+│   │       ├── projects.py   # Project isolation
+│   │       ├── audit.py      # Audit trail access
+│   │       ├── config.py     # Application settings
+│   │       ├── sessions.py   # Session management
+│   │       ├── health.py     # Health check endpoint
+│   │       └── system.py     # System operations (reload, logs)
 │   ├── core/
-│   │   ├── config.py            # Pydantic Settings (env vars)
-│   │   └── profiles.py          # Profile schemas (LLM, Agent, Prompt)
+│   │   ├── config.py        # Pydantic Settings (env vars)
+│   │   └── profiles.py      # LLMProfile, AgentPersona, PromptVariant schemas
+│   ├── models/
+│   │   └── schemas.py       # API request/response Pydantic models
+│   ├── workflow/
+│   │   ├── debate_graph.py  # LangGraph state machine builder
+│   │   ├── nodes.py         # Node functions (initialize, run_agent, etc.)
+│   │   └── state.py        # DebateState TypedDict definition
 │   ├── services/
-│   │   ├── profile_service.py   # YAML profile CRUD + validation
-│   │   ├── prompt_service.py    # Prompt templates with hot-reload
-│   │   └── llm_service.py       # LiteLLM integration
-│   ├── api/routers/             # debate, audit, config, dms, sessions, profiles
-│   ├── workflow/                # LangGraph state machine
-│   ├── persistence/             # SQLite audit trail
-│   ├── repositories/            # SQLite repos (profile_repo)
-│   └── models/                  # Pydantic schemas
+│   │   ├── llm_service.py  # LLM calls (LiteLLM + local HTTP)
+│   │   ├── profile_service.py # YAML profile CRUD + validation
+│   │   ├── prompt_service.py # Markdown template rendering
+│   │   ├── web_search.py   # SearXNG / DuckDuckGo integration
+│   │   └── dms/           # Document Management System services
+│   │       ├── service.py   # DMS facade (orchestrator)
+│   │       ├── database.py  # SQLite schema for DMS
+│   │       ├── document_processor.py # File parsing + OCR
+│   │       ├── chunker.py   # Text chunking (512 tokens)
+│   │       ├── vector_store.py # ChromaDB interface
+│   │       ├── metadata_index.py # Chunk metadata indexing
+│   │       ├── rag_pipeline.py # RAG pipeline
+│   │       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
+│   │       ├── rag_context_formatter.py # RAG context formatting
+│   │       └── config.py    # DMS configuration
+│   ├── persistence/
+│   │   ├── project_store.py # JSON file-based project storage
+│   │   ├── debate_store.py  # SQLite debate storage
+│   │   └── audit.py        # Audit event recording
+│   └── migrations/
+│       └── migrate_projects.py # Project isolation migration
+├── frontend/                    # Svelte 5 SPA
+│   ├── src/
+│   │   ├── main.js           # Entry point
+│   │   ├── App.svelte       # Root component with hash routing
+│   │   ├── views/           # Page-level components
+│   │   │   ├── Dashboard.svelte
+│   │   │   ├── DebateView.svelte
+│   │   │   ├── AuditView.svelte
+│   │   │   ├── ConfigView.svelte
+│   │   │   ├── ProjectsView.svelte
+│   │   │   ├── DocumentsView.svelte
+│   │   │   └── ArchiveView.svelte
+│   │   ├── components/       # Reusable UI components
+│   │   │   ├── Layout.svelte
+│   │   │   ├── Sidebar.svelte
+│   │   │   ├── WorkflowGraph.svelte
+│   │   │   ├── DebateTimeline.svelte
+│   │   │   ├── ConsensusPanel.svelte
+│   │   │   └── workflow/      # Workflow visualization
+│   │   │       ├── WorkflowCanvas.svelte
+│   │   │       ├── nodes/     # AgentNode, InputNode, etc.
+│   │   │       ├── edges/     # FlowEdge, FeedbackEdge, etc.
+│   │   │       └── panels/   # TimelinePanel, NodeDetailPanel
+│   │   ├── lib/              # Utilities and state management
+│   │   │   ├── api.js        # API client (fetch wrapper)
+│   │   │   ├── stores.js     # Svelte writable stores
+│   │   │   ├── sse.js        # SSE client for real-time updates
+│   │   │   ├── i18n/        # Internationalization
+│   │   │   └── workflow/     # Workflow state management
+│   │   └── tests/           # Playwright E2E tests
+│   ├── package.json          # Node dependencies
+│   ├── vite.config.js        # Vite configuration
+│   ├── tailwind.config.js    # Tailwind CSS config
+│   └── postcss.config.js     # PostCSS config
 ├── profiles/                    # Profile configuration (YAML + Markdown)
 │   ├── llm/                     # LLM profile definitions
 │   │   ├── openrouter-claude.yaml
 │   │   ├── openrouter-gpt4.yaml
+│   │   ├── openrouter-grok.yaml
+│   │   ├── xiaomi-mimo.yaml
 │   │   └── local-qwen.yaml
 │   ├── agents/                  # Agent persona definitions
 │   │   ├── strategist-default.yaml
 │   │   ├── critic-default.yaml
 │   │   ├── optimizer-default.yaml
-│   │   └── moderator-default.yaml
+│   │   ├── moderator-default.yaml
+│   │   ├── critic-stoic.yaml
+│   │   └── strategist-german-law.yaml
 │   └── prompts/                 # Prompt templates (Markdown)
-│       ├── default/             # Default prompt variant
+│       ├── default/             # Default variant
 │       │   ├── strategist.md
+│       │   ├── strategist-en.md
 │       │   ├── critic.md
+│       │   ├── critic-en.md
 │       │   ├── optimizer.md
-│       │   └── moderator.md
+│       │   ├── optimizer-en.md
+│       │   ├── moderator.md
+│       │   └── moderator-en.md
 │       └── variants/            # Named prompt variants
-│           ├── kantian/
-│           └── steiner/
-├── frontend/                    # Svelte 5 SPA
-│   ├── src/views/               # Dashboard, Debate, Audit, Config
-│   └── src/components/          # Reusable UI components
+│           ├── kantian/          # Kantian ethics variant
+│           └── steiner/          # Steiner variant
 ├── config/                       # Application settings
 │   └── settings.yaml           # App settings (search, privacy, DMS, UI)
-├── tests/                        # Pytest test suite
-│   └── backend/                 # Backend-specific tests
-├── docs/                         # Documentation
-├── scripts/                      # Utility scripts
-├── memory/                       # Runtime data
-│   ├── debates.db              # SQLite database
-│   └── chroma_db/              # ChromaDB vector store
+├── data/                        # Runtime data (created at runtime)
+│   ├── audit.db                # SQLite database for audit events
+│   └── projects/              # Per-project data
+│       ├── _default/           # System default project
+│       └── {project_id}/
 ├── logs/                         # Debate trace logs (JSONL)
-├── reports/                      # Generated reports
-├── pyproject.toml               # Project metadata & dependencies
+│   └── debate-agent.log         # Application log file
+├── tests/                        # Pytest test suite
+│   ├── backend/                 # Backend-specific tests
+│   └── ...
+├── docs/                         # Documentation
+│   ├── user_manual.md          # User-facing manual
+│   └── technical_documentation.md # Technical documentation
+├── scripts/                      # Utility scripts
+│   ├── setup.sh                # Quick setup (uv, venv, deps)
+│   ├── start.sh                # Start application
+│   ├── stop.sh                # Stop application
+│   └── status.sh              # Check application status
+├── plans/                       # Development plans and sprint docs
+├── pyproject.toml               # Python project metadata & dependencies
 ├── Makefile                     # Dev workflow (install, test, lint, format)
 └── setup.sh                     # Quick setup script
 ```
@@ -177,7 +237,7 @@ Each LLM profile is a separate YAML file with typed fields:
 # profiles/llm/openrouter-claude.yaml
 id: openrouter-claude-3.6-sonnet
 name: Claude 3.6 Sonnet (OpenRouter)
-provider: openrouter          # openrouter | openai | anthropic | local
+provider: openrouter          # openrouter | openai | anthropic | local | ollama
 model: anthropic/claude-3.6-sonnet
 api_base: https://openrouter.ai/api/v1
 api_key_env: OPENROUTER_API_KEY
@@ -209,7 +269,7 @@ consensus_threshold: 0.9
 tags: [default, balanced]
 ```
 
-Default personas: `strategist-default`, `critic-default`, `optimizer-default`, `moderator-default`. Example personas with `-example` suffix are also provided.
+Default personas: `strategist-default`, `critic-default`, `optimizer-default`, `moderator-default`. Additional personas with `-example` suffix are also provided.
 
 ### Prompt Variants (`profiles/prompts/`)
 
@@ -257,46 +317,189 @@ profiles/prompts/
 ### App Settings (`config/settings.yaml`)
 
 ```yaml
+ui:
+  language: en                   # Default UI language (en | de)
+
 search:
-  engine: "searxng"
-  url: "http://127.0.0.1:8080"
+  engine: duckduckgo             # searxng | duckduckgo (default: duckduckgo)
   max_results: 5
 
 privacy:
-  strict_mode: false          # Block external calls
-  redact_traces: true         # PII redaction in logs
-  retention_days: 90          # Auto-cleanup old data
+  strict_mode: false             # Block all external calls
+  redact_traces: true            # PII redaction in logs
+  retention_days: 90             # Auto-cleanup old data
 ```
 
 ## Development
 
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) package manager
+- Node.js 18+ and npm (for frontend development)
+- (Optional) [LM Studio](https://lmstudio.ai) for local LLM hosting
+- (Optional) [SearXNG](https://searxng.org) for web search
+
+### Quick Setup
+
 ```bash
-# Run tests
+# Clone/download the project
+cd /media/data/coding/danwa
+
+# Run the setup script (installs uv, creates venv, installs deps)
+bash setup.sh
+
+# Set up DMS dependencies (optional, for PaddleOCR)
+bash scripts/setup_dms.sh
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start Vite dev server (http://localhost:5173)
+npm run dev
+
+# Build for production (outputs to frontend/dist/)
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+### Running the Application
+
+#### Development Mode
+
+```bash
+# Terminal 1: Start backend
+cd /media/data/coding/danwa
+bash scripts/start.sh
+
+# Terminal 2: Start frontend (optional, for development)
+cd /media/data/coding/danwa/frontend
+npm run dev
+```
+
+- Backend: `http://localhost:8000` (FastAPI with interactive docs at `/docs`)
+- Frontend development server: `http://localhost:5173`
+
+#### Production Mode
+
+```bash
+# Build frontend
+cd /media/data/coding/danwa/frontend
+npm run build
+
+# Start backend (serves frontend static files)
+cd ..
+bash scripts/start.sh
+```
+
+Access the application at `http://localhost:8000`.
+
+### Testing
+
+#### Backend Tests (pytest)
+
+```bash
+# Run all tests
 make test
 # or
 uv run pytest tests/ -v
 
-# Lint and format
+# Run specific test file
+uv run pytest tests/backend/test_debate_api.py -v
+
+# Run with asyncio mode
+uv run pytest tests/backend/ -v --asyncio-mode=auto
+```
+
+#### Frontend Tests (Playwright)
+
+```bash
+cd frontend
+
+# Run all E2E tests
+npm run test:e2e
+
+# Run with UI mode
+npm run test:e2e:ui
+
+# Run with headed browser
+npm run test:e2e:headed
+
+# Run specific test suites
+npm run test:contracts    # API contract tests
+npm run test:visual       # Visual regression tests
+npm run test:a11y          # Accessibility tests
+npm run test:i18n          # Internationalization tests
+```
+
+### Linting and Formatting
+
+#### Backend (ruff)
+
+```bash
+# Lint
 make lint
-make format
 # or
 uv run ruff check .
+
+# Format
+make format
+# or
 uv run ruff format .
 
 # Run CI checks (lint + test)
 make check
 ```
 
-## Requirements
+## Project Dependencies (`pyproject.toml`)
 
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) package manager
-- (Optional) [LM Studio](https://lmstudio.ai) for local LLMs
-- (Optional) [SearXNG](https://searxng.org) for web search
+```toml
+[project]
+name = "debate-agent"
+version = "2.0.0"
+requires-python = ">=3.11"
+
+[dependencies]
+litellm>=1.40.0
+pydantic>=2.7.0
+pydantic-settings>=2.0.0
+pyyaml>=6.0.0
+httpx>=0.27.0
+duckduckgo-search>=6.0.0
+pdfplumber>=0.10.0
+pypdf>=4.0.0
+python-docx>=1.1.0
+odfpy>=1.4.1
+chromadb>=0.5.0
+weasyprint>=61.0
+tiktoken>=0.7.0
+rank-bm25>=0.2.1
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+langgraph>=0.2.0
+langchain-core>=0.3.0
+jinja2>=3.1.0
+sse-starlette>=2.0.0
+python-dotenv>=1.0.0
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4"]
+dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
+```
 
 ## Documentation
 
-Full user manual available at `docs/user_manual.md` - covers all features, configuration options, privacy settings, and troubleshooting.
+- **User Manual**: `docs/user_manual.md` - Covers all features, configuration options, privacy settings, and troubleshooting
+- **Technical Documentation**: `docs/technical_documentation.md` - Comprehensive in-depth technical documentation for developers
 
 ## License
 
@@ -304,4 +507,4 @@ Full user manual available at `docs/user_manual.md` - covers all features, confi
 
 ---
 
-*Debate-Agent v2.0.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte*
+*Danwa v2.0.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte*

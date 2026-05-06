@@ -1,4 +1,4 @@
-# Debate-Agent User Manual
+# Danwa User Manual
 
 ## Table of Contents
 
@@ -13,34 +13,40 @@
 9. [Web Search & Fact Checking](#web-search--fact-checking)
 10. [Memory & Precedents](#memory--precedents)
 11. [Report Generation](#report-generation)
-12. [Session Management](#session-management)
+12. [Project Management](#project-management)
 13. [Document Management System (DMS)](#document-management-system-dms)
-14. [Privacy & Data Protection](#privacy--data-protection)
-15. [Audit & Reproducibility](#audit--reproducibility)
-16. [Advanced Configuration](#advanced-configuration)
-17. [Development](#development)
-18. [Troubleshooting](#troubleshooting)
+14. [Real-Time Updates (SSE)](#real-time-updates-sse)
+15. [Out-of-Band Inputs](#out-of-band-inputs)
+16. [Workflow Visualization](#workflow-visualization)
+17. [Internationalization (i18n)](#internationalization-i18n)
+18. [Privacy & Data Protection](#privacy--data-protection)
+19. [Audit & Reproducibility](#audit--reproducibility)
+20. [Advanced Configuration](#advanced-configuration)
+21. [Development](#development)
+22. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-Debate-Agent is an auditable multi-agent debate workflow system that uses multiple AI agents to analyze, critique, and optimize arguments around a given topic or problem. The system employs a structured debate process (Strategist → Critic → Optimizer → Moderator) to arrive at well-reasoned conclusions with measurable consensus scores.
+Danwa (formerly Debate-Agent) is an auditable multi-agent debate workflow system that uses multiple AI agents to analyze, critique, and optimize arguments around a given topic or problem. The system employs a structured debate process (Strategist → Critic → Optimizer → Moderator) orchestrated by a LangGraph state machine to arrive at well-reasoned conclusions with measurable consensus scores.
 
 ### Key Capabilities
 
 - **Multi-Agent Deliberation**: Four specialized AI agents collaborate to produce high-quality analysis
-- **LLM Flexibility**: Supports local models (via LM Studio) and cloud providers (via LiteLLM)
+- **LLM Flexibility**: Supports local models (via LM Studio, Ollama) and cloud providers (via LiteLLM)
 - **Document Analysis**: Upload and analyze PDF, DOCX, ODT, ODS, and ODP files
-- **Web Validation**: Optional fact-checking via SearXNG or DuckDuckGo integration
+- **Web Validation**: Optional fact-checking via SearXNG or DuckDuckGo integration (off/optional/required modes)
 - **Semantic Memory**: ChromaDB-powered precedent retrieval from past debates
 - **Audit Trail**: Complete JSONL trace logs for reproducibility
 - **Report Generation**: Export results as DOCX or PDF
 - **Privacy Protection**: Built-in PII redaction and data retention policies
-- **Session Management**: SQLite-backed session storage with dashboard interface
-- **Modern Web UI**: Svelte 5 + Tailwind CSS frontend with real-time updates
+- **Project Isolation**: SQLite-backed project system with isolated data storage
+- **Modern Web UI**: Svelte 5 + Tailwind CSS + @xyflow/svelte with real-time updates
 - **RESTful API**: FastAPI backend with comprehensive API endpoints
 - **LangGraph Orchestration**: State machine workflow for debate management
+- **Real-Time SSE**: Server-Sent Events for live debate progress visualization
+- **Out-of-Band Inputs**: Inject additional context during running debates
 
 ### Technology Stack
 
@@ -49,17 +55,24 @@ Debate-Agent is an auditable multi-agent debate workflow system that uses multip
 | **Language** | Python 3.11+ |
 | **Backend Framework** | FastAPI + LangGraph |
 | **UI Framework** | Svelte 5 + Tailwind CSS |
+| **Workflow Visualization** | @xyflow/svelte + ELK.js |
+| **Frontend Build** | Vite 5 |
 | **LLM Integration** | LiteLLM (multi-provider routing) |
 | **Vector Database** | ChromaDB |
 | **Web Search** | SearXNG / DuckDuckGo |
 | **Document Parsing** | pdfplumber, pypdf, python-docx, odfpy |
 | **Report Generation** | python-docx, WeasyPrint |
-| **Database** | SQLite |
+| **Database** | SQLite (debates, sessions, projects) |
 | **DMS Module** | Custom (SQLite + ChromaDB + PaddleOCR) |
 | **OCR Engine** | PaddleOCR (optional) |
-| **Package Manager** | uv |
-| **Frontend Build** | Vite |
-| **Testing** | Pytest (backend), Playwright (frontend e2e) |
+| **Package Manager (Python)** | uv |
+| **Package Manager (Node)** | npm |
+| **Testing (Backend)** | pytest 8+ |
+| **Testing (Frontend)** | Playwright 1.59+ (e2e, visual, a11y, i18n) |
+| **Linting** | ruff 0.4+ |
+| **Validation** | Pydantic 2.7+ |
+| **SSE Support** | sse-starlette |
+| **i18n** | Custom loaders (German/English) |
 
 ---
 
@@ -138,14 +151,16 @@ Each LLM profile is a separate YAML file with typed fields:
 
 ```yaml
 # profiles/llm/openrouter-claude.yaml
-id: openrouter-claude
-name: OpenRouter Claude 3.5 Sonnet
-provider: openrouter
-model: anthropic/claude-3.5-sonnet
+id: openrouter-claude-3.6-sonnet
+name: Claude 3.6 Sonnet (OpenRouter)
+provider: openrouter          # openrouter | openai | anthropic | local | ollama
+model: anthropic/claude-3.6-sonnet
 api_base: "https://openrouter.ai/api/v1"
 api_key_env: OPENROUTER_API_KEY
 max_tokens: 4096
+context_window: 200000
 temperature: 0.7
+timeout: 600
 cost_per_1k_input: 0.003
 cost_per_1k_output: 0.015
 ```
@@ -153,77 +168,74 @@ cost_per_1k_output: 0.015
 Available profiles:
 - `profiles/llm/openrouter-claude.yaml`
 - `profiles/llm/openrouter-gpt4.yaml`
+- `profiles/llm/openrouter-grok.yaml`
+- `profiles/llm/xiaomi-mimo.yaml`
 - `profiles/llm/local-qwen.yaml`
 
 ### Agent Personas (`profiles/agents/*.yaml`)
 
-Each agent persona defines role, system prompt, and temperature:
+Each agent persona defines role, system prompt, and linked LLM profile:
 
 ```yaml
 # profiles/agents/strategist-default.yaml
 id: strategist-default
 name: Default Strategist
-role: strategist
-system_prompt: "You are a strategic analyst..."
-temperature: 0.7
-tags: [default]
+role: strategist              # strategist | critic | optimizer | moderator
+system_prompt: |
+  You are the Strategist agent in a multi-agent debate system.
+  Your task is to analyze the input factually and develop a logical argumentation structure.
+llm_profile_id: openrouter-claude-3.6-sonnet
+max_rounds: 5
+consensus_threshold: 0.9
+tags: [default, balanced]
 ```
 
-Available personas:
+Default personas:
 - `strategist-default.yaml`
 - `critic-default.yaml`
 - `optimizer-default.yaml`
 - `moderator-default.yaml`
-- `critic-stoic.yaml`
-- `strategist-german-law.yaml`
+- `critic-stoic.yaml` (example)
+- `strategist-german-law.yaml` (example)
 
 ### Prompt Variants (`profiles/prompts/`)
 
-Prompt templates are Markdown files organized by variant:
+Prompt templates are Markdown files organized by variant, with optional language-specific overrides (`*-en.md`):
 
 ```
 profiles/prompts/
-├── default/          # Default variant
-│   ├── strategist.md
+├── default/              # Default variant
+│   ├── strategist.md     # German
+│   ├── strategist-en.md  # English
 │   ├── critic.md
+│   ├── critic-en.md
 │   ├── optimizer.md
-│   └── moderator.md
-├── variants/
-│   ├── kantian/      # Kantian ethics variant
-│   │   ├── strategist.md
-│   │   └── critic.md
-│   └── steiner/      # Steiner variant
-│       ├── strategist.md
-│       └── critic.md
+│   ├── optimizer-en.md
+│   ├── moderator.md
+│   └── moderator-en.md
+└── variants/            # Named prompt variants
+    ├── kantian/          # Kantian ethics variant
+    │   ├── strategist.md
+    │   └── critic.md
+    └── steiner/          # Steiner variant
+        ├── strategist.md
+        └── critic.md
 ```
 
 ### Application Settings (`config/settings.yaml`)
 
 ```yaml
+ui:
+  language: en                   # Default UI language (en | de)
+
 search:
-  engine: "searxng"
-  url: "http://127.0.0.1:8080"
+  engine: duckduckgo             # searxng | duckduckgo (default: duckduckgo)
   max_results: 5
 
 privacy:
-  strict_mode: false
-  redact_traces: true
-  retention_days: 90
-
-dms:
-  enabled: true
-  storage_path: "dms_storage"
-  chunk_size: 512
-  chunk_overlap: 51
-  embedding_model: "intfloat/multilingual-e5-small"
-  ocr_enabled: false
-  ocr_device: "cpu"
-  max_file_size_mb: 50
-  chroma_collection: "document_chunks"
-  memory_dir: "memory"
-
-ui:
-  language: "en"
+  strict_mode: false             # Block all external calls
+  redact_traces: true            # PII redaction in logs
+  retention_days: 90             # Auto-cleanup old data
 ```
 
 ---
@@ -244,8 +256,8 @@ cd /media/data/coding/danwa/frontend
 npm run dev
 ```
 
-The backend will be available at `http://localhost:8000` (FastAPI with interactive docs at `/docs`).
-The frontend development server will be available at `http://localhost:5173`.
+- Backend: `http://localhost:8000` (FastAPI with interactive docs at `/docs`)
+- Frontend development server: `http://localhost:5173`
 
 #### Production Mode
 
@@ -265,11 +277,12 @@ Access the application at `http://localhost:8000`.
 ### First Run
 
 1. Open your browser to `http://localhost:8000`
-2. Configure your settings via the Config view
-3. Navigate to the Debate view
-4. Type your topic or upload documents
-5. Review the multi-agent analysis results
-6. Download reports or view the audit trace
+2. Select or create a project via the Project Selector
+3. Configure your settings via the Config view
+4. Navigate to the Debate view
+5. Type your topic or upload documents
+6. Review the multi-agent analysis results
+7. Download reports or view the audit trace
 
 ---
 
@@ -277,15 +290,15 @@ Access the application at `http://localhost:8000`.
 
 ### Dashboard View
 
-The main dashboard displays session history and quick actions:
+The main dashboard displays project list, recent debates, and quick actions:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  📊 Debate-Agent Dashboard                        │
+│  📊 Danwa Dashboard                                 │
 ├─────────────────────────────────────────────────────┤
-│  [New Debate]  [View Audit]  [Configure]          │
+│  Project: [My Project ▼]  [New Debate]           │
 ├─────────────────────────────────────────────────────┤
-│  Recent Sessions:                                  │
+│  Recent Debates:                                   │
 │  ─────────────────────────────────────────────      │
 │  Session abc123... | 2024-01-15 | Consensus: 0.85 │
 │  [View] [Trace] [Delete]                           │
@@ -325,12 +338,13 @@ Access via the Config navigation item:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| **LLM Profile** | Select LLM backend | `local-qwen` |
-| **Max Rounds** | Number of debate rounds (1-5) | 3 |
-| **Consensus Threshold** | Target consensus threshold (0.5-1.0) | 0.75 |
-| **Web Validation** | Enable fact-checking | true |
+| **LLM Profile** | Select LLM backend | `openrouter-claude` |
+| **Max Rounds** | Number of debate rounds (1-20) | 3 |
+| **Consensus Threshold** | Target consensus threshold (0.0-1.0) | 0.8 |
+| **Web Validation** | Enable fact-checking | off / optional / required |
 | **Precedent Memory** | Enable semantic memory | true |
 | **Prompt Variant** | Prompt strategy | `default` |
+| **Language** | UI & debate language | English / German |
 
 ### Audit View
 
@@ -356,6 +370,26 @@ View complete audit trails for past sessions:
 └─────────────────────────────────────────────────────┘
 ```
 
+### Projects View
+
+Manage projects with isolated data storage:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  📁 Projects                                       │
+├─────────────────────────────────────────────────────┤
+│  [+ New Project]                                   │
+│  ─────────────────────────────────────────────      │
+│  ● My Project (active)                           │
+│    3 debates, 12 documents                        │
+│    [Settings] [Open] [Delete]                      │
+│  ─────────────────────────────────────────────      │
+│  ○ Research Project                             │
+│    1 debate, 5 documents                         │
+│    [Settings] [Open] [Delete]                      │
+└─────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Core Features
@@ -366,8 +400,8 @@ The system orchestrates four specialized agents in a structured debate using Lan
 
 ```
 Input → [Initialize] → [Strategist] → [Critic] → [Optimizer] → [Moderator]
-                     ↓              ↓             ↓              ↓
-                  Strategy      Critique      Synthesis      Consensus
+                      ↓              ↓             ↓              ↓
+                   Strategy      Critique      Synthesis      Consensus
 ```
 
 Each round produces:
@@ -378,10 +412,10 @@ Each round produces:
 
 ### Configurable Rounds
 
-Set `max_rounds` (1-5) to control debate depth:
+Set `max_rounds` (1-20) to control debate depth:
 - **1 round**: Quick analysis
 - **3 rounds**: Balanced (default)
-- **5 rounds**: Thorough deliberation
+- **5+ rounds**: Thorough deliberation
 
 Debate stops early if consensus threshold is reached.
 
@@ -462,6 +496,7 @@ The moderator scores each round's output (0.0-1.0). If the score meets or exceed
 | OpenDocument Text | `.odt` | odfpy |
 | OpenDocument Spreadsheet | `.ods` | odfpy |
 | OpenDocument Presentation | `.odp` | odfpy |
+| Images (OCR) | `.png`, `.jpg` | PaddleOCR (optional) |
 | Plain Text | `.txt`, `.md`, etc. | Native read |
 
 ### Upload Process
@@ -496,6 +531,14 @@ When enabled, the system performs automated fact-checking by:
 2. Searching the web for each claim
 3. Returning evidence snippets for validation
 
+### Search Modes
+
+| Mode | Behavior |
+|------|-----------|
+| `off` | No web search |
+| `required` | Auto-search before LLM call, inject results into prompt |
+| `optional` | Agents can request searches using `[SEARCH: query]` markers in their output |
+
 ### Search Engine Configuration
 
 **Primary**: SearXNG (self-hosted, privacy-friendly)
@@ -503,7 +546,7 @@ When enabled, the system performs automated fact-checking by:
 
 ```yaml
 search:
-  engine: "searxng"
+  engine: "duckduckgo"
   url: "http://127.0.0.1:8080"
   max_results: 5
 ```
@@ -533,8 +576,8 @@ The system maintains a semantic memory of past debates using ChromaDB vector sto
 
 ### ChromaDB Integration
 
-- **Storage Location**: `memory/chroma_db/`
-- **Collection**: `debate_precedents`
+- **Storage Location**: `data/projects/{project_id}/dms/chroma/`
+- **Collection**: Separate per project
 - **Similarity Metric**: Cosine distance
 - **Embedding Model**: Default sentence-transformers (via chromadb)
 
@@ -561,37 +604,52 @@ Both formats include:
 
 ---
 
-## Session Management
+## Project Management
 
-### API Endpoints
+### What is Project Isolation?
 
-Sessions are managed via RESTful API:
+Danwa uses a **project isolation** system where each project has:
+- Its own SQLite database for debates and audit events
+- Its own ChromaDB collection for vector embeddings
+- Its own DMS storage for documents
+- Isolated configuration and settings
 
-```
-GET    /api/v1/sessions        # List sessions
-GET    /api/v1/sessions/{id}   # Get session details
-DELETE /api/v1/sessions/{id}   # Delete session
-POST   /api/v1/debate          # Start new debate
-GET    /api/v1/debate/{id}     # Get debate status
-```
+### Managing Projects
 
-### Database Schema
+#### Create a Project
 
-Sessions stored in `memory/debates.db`:
+1. Click **Projects** in the navigation
+2. Click **+ New Project**
+3. Enter project name and description
+4. Click **Create**
 
-```sql
-CREATE TABLE sessions (
-    session_id TEXT PRIMARY KEY,
-    created_at TEXT,
-    profile TEXT,
-    max_rounds INTEGER,
-    consensus REAL,
-    context_preview TEXT,
-    trace_path TEXT,
-    report_docx TEXT,
-    report_pdf TEXT,
-    validated INTEGER
-)
+#### Switch Projects
+
+Use the **Project Selector** in the header to switch between projects. This changes the active context for:
+- Debate listing
+- Document management
+- Audit trails
+- API requests (via `X-Project-Id` header)
+
+#### Project Settings
+
+Each project can have its own:
+- LLM profile defaults
+- Prompt variant preferences
+- DMS configuration
+
+### API Project Isolation
+
+All API endpoints support project isolation via:
+- **Header**: `X-Project-Id: {project_id}` (for most requests)
+- **Query Param**: `project_id={project_id}` (for SSE, which can't send headers)
+
+```bash
+# List debates in a specific project
+curl -H "X-Project-Id: proj_abc123" http://localhost:8000/api/v1/debate
+
+# SSE stream (project_id as query param)
+curl http://localhost:8000/api/v1/debate/abc123/stream?project_id=proj_abc123
 ```
 
 ---
@@ -608,10 +666,160 @@ The Document Management System (DMS) provides project-wise document organization
 POST   /api/v1/dms/projects           # Create project
 GET    /api/v1/dms/projects           # List projects
 DELETE /api/v1/dms/projects/{id}      # Delete project
-POST   /api/v1/dms/projects/{id}/documents  # Upload document
-GET    /api/v1/dms/projects/{id}/documents  # List documents
+POST   /api/v1/dms/documents         # Upload document
+GET    /api/v1/dms/documents         # List documents
 DELETE /api/v1/dms/documents/{id}     # Delete document
-POST   /api/v1/dms/retrieve           # Retrieve relevant chunks
+POST   /api/v1/dms/retrieve          # Retrieve relevant chunks (RAG)
+POST   /api/v1/dms/documents/{id}/rag  # Add/remove from RAG
+```
+
+### RAG Pipeline
+
+Retrieval-Augmented Generation flow:
+1. **Document Processing**: Parse file → extract text
+2. **OCR (if enabled)**: PaddleOCR for scanned PDFs/images
+3. **Chunking**: Split text into 512-token chunks with overlap
+4. **Embedding**: Generate vector embeddings for each chunk
+5. **Indexing**: Store in ChromaDB + metadata index
+6. **Retrieval**: Hybrid search (BM25 + Vector + Re-ranking)
+7. **Formatting**: Build context string for LLM injection
+
+### Hybrid Retrieval
+
+Combines three retrieval methods:
+- **BM25**: Keyword-based search
+- **Vector Search**: Semantic similarity search
+- **Re-ranking**: RRF (Reciprocal Rank Fusion) to merge results
+
+---
+
+## Real-Time Updates (SSE)
+
+### What is SSE?
+
+Server-Sent Events (SSE) push real-time debate progress to the frontend. The debate view updates live as agents work.
+
+### SSE Event Types
+
+| Event Type | Description | Data |
+|-----------|-------------|------|
+| `workflow_started` | Debate engine started | `{ type, message, debate_id }` |
+| `agent_preparing` | Agent resolving profile/prompts | `{ round, role, phase }` |
+| `agent_started` | LLM call about to start | `{ round, role, profile, model }` |
+| `llm_call_started` | LLM generation in progress | `{ round, role, model, provider }` |
+| `agent_output` | Agent response received | `{ round, role, content, tokens_used }` |
+| `round_update` | Round completed | `{ round, consensus, agent_count }` |
+| `status_change` | Debate completed/failed | `{ status, final_consensus }` |
+| `oob_input` | Out-of-band input submitted | `{ type, oob_id, content, target }` |
+| `oob_consumed` | OOB input consumed by agent | `{ type, oob_ids, by_agent, round }` |
+| `web_search` | Search performed | `{ type, round, role, query, result_count }` |
+
+### SSE Endpoint
+
+```
+GET /api/v1/debate/{debate_id}/stream?project_id={project_id}
+```
+
+The frontend automatically connects to this endpoint when starting a debate.
+
+---
+
+## Out-of-Band Inputs
+
+### What are OOB Inputs?
+
+Users can inject additional context during a running debate without stopping it. This is useful for:
+- Correcting factual errors mid-debate
+- Adding new information that becomes available
+- Guiding specific agents with targeted input
+
+### Submitting OOB Inputs
+
+1. During a running debate, click **Add Input**
+2. Enter your additional context
+3. Select the target:
+   - **Specific Agent**: Route to a specific agent role (strategist, critic, etc.)
+   - **Next Agent**: Route to the agent after the current one
+   - **All Future**: Route to all agents from a given round
+   - **Current Active**: Route to the currently executing agent
+4. Set urgency (high/medium/low)
+5. Click **Submit**
+
+### OOB Target Types
+
+| Target Type | Description |
+|------------|-------------|
+| `specific_agent` | Routed to a specific agent role |
+| `next_agent` | Routed to the agent after `current_agent_role` |
+| `all_future` | Routed to all agents from `from_round` |
+| `current_active` | Routed to the currently executing agent |
+
+---
+
+## Workflow Visualization
+
+### Debate Graph
+
+The debate process is visualized as an interactive graph using @xyflow/svelte and ELK.js layout:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  📊 Workflow Graph                                  │
+├─────────────────────────────────────────────────────┤
+│  [Input] ──→ [Strategist] ──→ [Critic]       │
+│                    ↓              ↓                 │
+│              [Optimizer] ──→ [Moderator]         │
+│                    ↓                              │
+│              [Complete] → END                    │
+└─────────────────────────────────────────────────────┘
+```
+
+### Graph Features
+
+- **Interactive Nodes**: Click to view agent details
+- **Animated Edges**: Show data flow in real-time
+- **Active Highlighting**: Current agent is highlighted
+- **Timeline Panel**: View round-by-round history
+- **Node Detail Panel**: View prompt, response, tokens used
+
+### Node Types
+
+| Node Type | Description |
+|-----------|-------------|
+| InputNode | Debate input and context |
+| AgentNode | Strategist, Critic, Optimizer, Moderator |
+| DecisionNode | Consensus check, round continuation |
+| HistoryNode | Past round summaries |
+| ArtifactNode | Final output, reports |
+| UserActionNode | OOB input points |
+
+---
+
+## Internationalization (i18n)
+
+### Supported Languages
+
+- **English** (`en`) - Default for UI and debates
+- **German** (`de`) - Full translation available
+
+### Switching Languages
+
+#### UI Language
+
+Use the **Language Switcher** in the header to toggle between English and German UI.
+
+#### Debate Language
+
+Set the debate language in the **Debate View** or **Config View**:
+- Affects prompt templates used (e.g., `strategist.md` vs `strategist-en.md`)
+- Affects LLM response language (instructed via prompt)
+
+### Translation Files
+
+```
+frontend/src/lib/i18n/loaders/
+├── en.js           # English translations
+└── de.js           # German translations
 ```
 
 ---
@@ -685,12 +893,24 @@ DELETE /api/v1/profiles/llm/{id}         # Delete LLM profile
 
 ### Environment Variables
 
-Set API keys as environment variables:
+Set API keys as environment variables in `.env` file:
 
 ```bash
-export OPENROUTER_API_KEY="your_openrouter_key"
-export LM_STUDIO_KEY="your_lm_studio_key"
+# .env file
+OPENROUTER_API_KEY="your_openrouter_key"
+ANTHROPIC_API_KEY="your_anthropic_key"
+OPENAI_API_KEY="your_openai_key"
 ```
+
+Environment variables use `DANWA_` prefix for application settings:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DANWA_APP_NAME` | `Debate-Agent` | Application name |
+| `DANWA_HOST` | `0.0.0.0` | Server host |
+| `DANWA_PORT` | `8000` | Server port |
+| `DANWA_DEBUG` | `False` | Debug mode |
+| `DANWA_CORS_ORIGINS` | `http://localhost:5173,http://localhost:8000` | CORS allowed origins |
 
 ---
 
@@ -698,17 +918,33 @@ export LM_STUDIO_KEY="your_lm_studio_key"
 
 ### Running Tests
 
+#### Backend tests (pytest)
+
 ```bash
-# Backend tests (pytest)
+# Run all tests
 make test
 # or
 uv run pytest tests/ -v
 
-# Frontend e2e tests (Playwright)
+# Run specific test file
+uv run pytest tests/backend/test_debate_api.py -v
+```
+
+#### Frontend tests (Playwright)
+
+```bash
 cd frontend
+
+# Run all E2E tests
 npm run test:e2e
 
-# Specific test suites
+# Run with UI mode
+npm run test:e2e:ui
+
+# Run with headed browser
+npm run test:e2e:headed
+
+# Run specific test suites
 npm run test:contracts    # API contract tests
 npm run test:visual       # Visual regression tests
 npm run test:a11y          # Accessibility tests
@@ -717,59 +953,21 @@ npm run test:i18n          # Internationalization tests
 
 ### Linting and Formatting
 
+#### Backend (ruff)
+
 ```bash
-# Backend linting (ruff)
+# Lint
 make lint
-make format
 # or
 uv run ruff check .
+
+# Format
+make format
+# or
 uv run ruff format .
-```
 
-### CI Checks
-
-```bash
-make check  # Runs lint + test
-```
-
-### Project Structure
-
-```
-danwa/
-├── backend/                     # FastAPI + LangGraph backend
-│   ├── main.py                  # App factory (uvicorn entry point)
-│   ├── api/routers/             # API routers
-│   ├── workflow/                # LangGraph state machine
-│   ├── services/                # Business logic services
-│   ├── core/                    # Core schemas and config
-│   ├── repositories/            # Data access layer
-│   ├── models/                  # Pydantic schemas
-│   └── persistence/             # Audit trail storage
-├── frontend/                    # Svelte 5 SPA
-│   ├── src/
-│   │   ├── views/               # Dashboard, Debate, Audit, Config
-│   │   ├── components/          # Reusable UI components
-│   │   └── main.js              # Entry point
-│   ├── tests/e2e/              # Playwright e2e tests
-│   └── package.json             # Node dependencies
-├── src/                         # Legacy core (being migrated)
-│   ├── core/                    # Business logic
-│   ├── tools/                   # External integrations
-│   └── dms/                     # Document Management System
-├── profiles/                    # Profile configuration
-│   ├── llm/                     # LLM profile definitions
-│   ├── agents/                  # Agent persona definitions
-│   └── prompts/                 # Prompt templates
-├── config/                       # Application settings
-├── tests/                        # Pytest test suite
-├── docs/                         # Documentation
-├── scripts/                      # Utility scripts
-├── memory/                       # Runtime data
-├── logs/                         # Debate trace logs (JSONL)
-├── reports/                      # Generated reports
-├── pyproject.toml               # Project metadata & dependencies
-├── Makefile                     # Dev workflow
-└── setup.sh                     # Quick setup script
+# Run CI checks (lint + test)
+make check
 ```
 
 ---
@@ -805,9 +1003,9 @@ danwa/
 
 ### Logs
 
-- **Application logs**: Check terminal output when running `uvicorn`
+- **Application logs**: `logs/debate-agent.log` (configured in `backend/main.py`)
 - **Debate traces**: `logs/{session_id}.jsonl`
-- **Frontend dev server**: Check browser console
+- **Frontend dev server**: Browser console
 
 ### Getting Help
 
@@ -818,4 +1016,38 @@ danwa/
 
 ---
 
-*Documentation generated for Debate-Agent v2.0.0*
+## Project Structure
+
+```
+danwa/
+├── backend/                     # FastAPI + LangGraph backend
+│   ├── main.py                  # App factory (uvicorn entry point)
+│   ├── api/routers/             # API route handlers
+│   ├── workflow/                # LangGraph state machine
+│   ├── services/                # Business logic services
+│   ├── core/                    # Core schemas and config
+│   ├── models/                  # Pydantic schemas
+│   ├── persistence/             # SQLite audit trail
+│   └── migrations/              # Database migrations
+├── frontend/                    # Svelte 5 SPA
+│   ├── src/
+│   │   ├── views/               # Dashboard, Debate, Audit, Config
+│   │   ├── components/          # Reusable UI components
+│   │   └── lib/                # Utilities and state management
+│   └── package.json             # Node dependencies
+├── profiles/                    # Profile configuration
+│   ├── llm/                     # LLM profile definitions
+│   ├── agents/                  # Agent persona definitions
+│   └── prompts/                 # Prompt templates
+├── config/                       # Application settings
+├── data/                        # Runtime data (projects)
+├── tests/                        # Pytest test suite
+├── docs/                         # Documentation
+├── scripts/                      # Utility scripts
+├── pyproject.toml               # Python project metadata
+└── Makefile                     # Dev workflow
+```
+
+---
+
+*Documentation generated for Danwa v2.0.0*
