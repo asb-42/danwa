@@ -8,6 +8,13 @@
   import WorkflowGraph from '../components/WorkflowGraph.svelte';
   import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
   import { resetWorkflow } from '../lib/workflow/store.js';
+  // HITL components
+  import InjectPanel from '../components/hitl/InjectPanel.svelte';
+  import PauseControls from '../components/hitl/PauseControls.svelte';
+  import AgentQueryModal from '../components/hitl/AgentQueryModal.svelte';
+  import InteractionTimeline from '../components/hitl/InteractionTimeline.svelte';
+  import { getHITLStatus, getInteractions } from '../lib/hitl.js';
+  import { hitlStatus, hitlInteractions, showAgentQueryModal, currentAgentQuery } from '../lib/stores/hitl.svelte.js';
 
   /** @type {function} Navigation helper from App.svelte */
   let { debateId = null, navigate = () => {} } = $props();
@@ -122,6 +129,9 @@
     }
     if (workflowTimer) {
       clearInterval(workflowTimer);
+    }
+    if (hitlPollTimer) {
+      clearInterval(hitlPollTimer);
     }
     resetWorkflow();
   });
@@ -376,7 +386,103 @@
       }];
       return;
     }
+
+    // --- HITL events ---
+    // hitl_query — agent asks user a question
+    if (event.type === 'hitl_query') {
+      currentAgentQuery.set({
+        interrupt_id: event.interrupt_id,
+        agent_role: event.agent_role,
+        question: event.question,
+        confidence: event.confidence,
+        reason: event.reason,
+        round: event.round,
+      });
+      showAgentQueryModal.set(true);
+      // Refresh HITL status
+      refreshHITLStatus();
+      return;
+    }
+
+    // hitl_response — user responded to agent query
+    if (event.type === 'hitl_response') {
+      showAgentQueryModal.set(false);
+      currentAgentQuery.set(null);
+      refreshHITLStatus();
+      refreshHITLInteractions();
+      return;
+    }
+
+    // hitl_inject — user injected context
+    if (event.type === 'hitl_inject') {
+      refreshHITLStatus();
+      refreshHITLInteractions();
+      return;
+    }
+
+    // hitl_pause — debate paused/resumed
+    if (event.type === 'hitl_pause') {
+      refreshHITLStatus();
+      return;
+    }
+
+    // hitl_paused — workflow is waiting (paused state)
+    if (event.type === 'hitl_paused') {
+      refreshHITLStatus();
+      return;
+    }
+
+    // hitl_resumed — workflow resumed
+    if (event.type === 'hitl_resumed') {
+      refreshHITLStatus();
+      return;
+    }
+
+    // hitl_timeout — agent query timed out
+    if (event.type === 'hitl_timeout') {
+      showAgentQueryModal.set(false);
+      currentAgentQuery.set(null);
+      refreshHITLStatus();
+      return;
+    }
   }
+
+  // HITL status refresh
+  let hitlPollTimer = $state(null);
+
+  async function refreshHITLStatus() {
+    if (!$currentDebate) return;
+    try {
+      const status = await getHITLStatus($currentDebate.debate_id);
+      hitlStatus.set(status);
+    } catch {
+      // Silently fail — HITL status is optional
+    }
+  }
+
+  async function refreshHITLInteractions() {
+    if (!$currentDebate) return;
+    try {
+      const result = await getInteractions($currentDebate.debate_id, { limit: 100 });
+      hitlInteractions.set(result.interactions || []);
+    } catch {
+      // Silently fail
+    }
+  }
+
+  // Poll HITL status while debate is running
+  $effect(() => {
+    if ($currentDebate?.status === 'running' && $currentDebate?.hitl_enabled) {
+      if (hitlPollTimer) clearInterval(hitlPollTimer);
+      refreshHITLStatus();
+      hitlPollTimer = setInterval(refreshHITLStatus, 5000);
+    } else {
+      if (hitlPollTimer) {
+        clearInterval(hitlPollTimer);
+        hitlPollTimer = null;
+      }
+    }
+  });
 
   async function handleRefreshStatus() {
     if (!$currentDebate) return;
@@ -533,6 +639,8 @@
 </script>
 
 <div class="space-y-6">
+  <!-- Agent Query Modal (overlay) -->
+  <AgentQueryModal debateId={$currentDebate?.debate_id} />
   <!-- Header with optional back button for archive mode -->
   <div class="flex items-center gap-3">
     {#if isArchiveMode}
@@ -854,6 +962,7 @@
         {/if}
 
         {#if $currentDebate.status === 'running'}
+          <PauseControls debateId={$currentDebate.debate_id} />
           <button
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1015,6 +1124,11 @@
         debateId={$currentDebate.debate_id}
         isRunning={$currentDebate.status === 'running'}
       />
+    {/if}
+
+    <!-- HITL Inject Panel (during running, when HITL is enabled) -->
+    {#if $currentDebate.status === 'running' && $currentDebate.hitl_enabled}
+      <InjectPanel debateId={$currentDebate.debate_id} />
     {/if}
 
     <!-- Live debate view (during running) -->
@@ -1196,6 +1310,11 @@
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">{t('debate.caseLabel')}</h3>
         <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{$currentDebate.case_text || $currentDebate.case?.text}</p>
       </div>
+    {/if}
+
+    <!-- HITL Interaction Timeline (when interactions exist) -->
+    {#if $hitlInteractions?.length > 0}
+      <InteractionTimeline />
     {/if}
 
     <!-- Completed/Failed debate results -->

@@ -1,0 +1,384 @@
+"""HITL-aware LangGraph node implementations.
+
+These nodes wrap the existing debate workflow nodes with HITL capabilities:
+- Pause checking before each agent
+- Inject consumption (merging user context into agent prompts)
+- Agent query detection after agent output
+- Interrupt creation when agents need clarification
+
+The HITL nodes are designed to be inserted into the existing graph without
+modifying the original node functions.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import uuid
+from datetime import UTC, datetime
+
+from backend.api.events import publish_async
+from backend.workflow.hitl.agent_query import analyze_for_query
+from backend.workflow.hitl.api import (
+    consume_all_pending_injects,
+    consume_inject,
+    get_active_interrupt,
+    get_hitl_config,
+    get_pending_injects,
+    is_paused,
+    register_agent_query,
+    resolve_interrupt,
+)
+from backend.workflow.state import DebateState
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# HITL check node — runs before each agent
+# ---------------------------------------------------------------------------
+
+
+async def hitl_check_node(state: DebateState) -> dict:
+    """Pre-agent HITL check: handle pause state and pending injects.
+
+    This node runs before each agent and:
+    1. Checks if the debate is paused (waits if so)
+    2. Consumes pending user injections
+    3. Updates the interaction log in state
+
+    Returns state updates (no blocking — pause is handled via polling).
+    """
+    session_id = state.get("session_id", "")
+    debate_id = state.get("session_id", "")  # session_id == debate_id
+    hitl_enabled = state.get("hitl_enabled", False)
+
+    if not hitl_enabled:
+        return {}
+
+    # --- Check pause state ---
+    if is_paused(debate_id):
+        await publish_async(
+            session_id,
+            "hitl_paused",
+            {
+                "type": "hitl_paused",
+                "message": "Workflow paused, waiting for resume...",
+                "round": state.get("current_round", 0),
+                "agent_index": state.get("current_agent_index", 0),
+            },
+        )
+
+        # Poll until resumed (with timeout)
+        max_wait = 600  # 10 minutes max pause
+        waited = 0
+        poll_interval = 2  # seconds
+
+        while is_paused(debate_id) and waited < max_wait:
+            await asyncio.sleep(poll_interval)
+            waited += poll_interval
+
+        if is_paused(debate_id):
+            logger.warning("Debate %s pause timeout after %ds", debate_id, max_wait)
+            await publish_async(
+                session_id,
+                "hitl_pause_timeout",
+                {"type": "hitl_pause_timeout", "waited_seconds": waited},
+            )
+        else:
+            await publish_async(
+                session_id,
+                "hitl_resumed",
+                {"type": "hitl_resumed", "message": "Workflow resumed"},
+            )
+
+    # --- Consume pending injects ---
+    pending = get_pending_injects(debate_id)
+    if pending:
+        interactions = []
+        for inject in pending:
+            interactions.append({
+                "interaction_id": inject["interaction_id"],
+                "type": "inject",
+                "direction": "user_to_agent",
+                "source": "user",
+                "target": inject.get("target", "all_future"),
+                "content": inject["content"],
+                "round": state.get("current_round", 0),
+                "agent_index": state.get("current_agent_index", 0),
+                "timestamp": datetime.now(UTC).isoformat(),
+                "status": "consumed",
+                "metadata": inject.get("metadata", {}),
+            })
+            consume_inject(debate_id, inject["interaction_id"])
+
+        logger.info(
+            "Consumed %d pending injects for debate %s",
+            len(pending),
+            debate_id,
+        )
+
+        return {"interactions": interactions}
+
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# HITL agent query check — runs after each agent
+# ---------------------------------------------------------------------------
+
+
+async def hitl_agent_query_node(state: DebateState) -> dict:
+    """Post-agent HITL check: analyze agent output for query potential.
+
+    If the agent's output indicates a need for clarification, this node:
+    1. Creates an interrupt (agent query to user)
+    2. Publishes SSE event for the frontend
+    3. Waits for the user's response
+    4. Returns the response as additional context
+
+    If no query is needed, returns empty dict (workflow continues).
+    """
+    hitl_enabled = state.get("hitl_enabled", False)
+    hitl_mode = state.get("hitl_mode", "off")
+
+    if not hitl_enabled or hitl_mode not in ("full", "query_only"):
+        return {}
+
+    debate_id = state.get("session_id", "")
+    session_id = state.get("session_id", "")
+    current_round = state.get("current_round", 0)
+    max_interrupts = state.get("max_interrupts_per_round", 3)
+    round_interrupt_count = state.get("round_interrupt_count", 0)
+    auto_query_threshold = state.get("auto_query_threshold", 0.4)
+
+    # Check interrupt limit
+    if round_interrupt_count >= max_interrupts:
+        logger.debug(
+            "HITL: Max interrupts per round reached (%d/%d) for debate %s",
+            round_interrupt_count,
+            max_interrupts,
+            debate_id,
+        )
+        return {}
+
+    # Get the latest agent output
+    agent_outputs = state.get("agent_outputs", [])
+    if not agent_outputs:
+        return {}
+
+    latest_output = agent_outputs[-1]
+    agent_role = latest_output.get("role", "unknown")
+    agent_content = latest_output.get("content", "")
+    agent_index = state.get("current_agent_index", 1) - 1  # Already incremented
+
+    # Get previous outputs for loop detection
+    previous_outputs = [
+        ao["content"] for ao in agent_outputs[:-1]
+        if ao.get("role") == agent_role
+    ]
+
+    # Analyze for query potential
+    analysis = analyze_for_query(
+        agent_output=agent_content,
+        agent_role=agent_role,
+        current_round=current_round,
+        max_rounds=state.get("max_rounds", 3),
+        auto_query_threshold=auto_query_threshold,
+        previous_outputs=previous_outputs,
+    )
+
+    if not analysis.should_query:
+        return {}
+
+    # --- Create interrupt ---
+    # Build context snippet from current draft
+    current_draft = state.get("current_draft", "")
+    context_snippet = current_draft[-500:] if len(current_draft) > 500 else current_draft
+
+    interrupt_id = register_agent_query(
+        debate_id,
+        {
+            "agent_role": agent_role,
+            "agent_index": agent_index,
+            "round": current_round,
+            "question": analysis.suggested_question,
+            "context": context_snippet,
+        },
+    )
+
+    # Publish SSE event
+    await publish_async(
+        session_id,
+        "hitl_query",
+        {
+            "type": "hitl_query",
+            "interrupt_id": interrupt_id,
+            "agent_role": agent_role,
+            "question": analysis.suggested_question,
+            "confidence": analysis.confidence,
+            "reason": analysis.reason,
+            "round": current_round,
+        },
+    )
+
+    # --- Wait for user response ---
+    timeout = state.get("interrupt_timeout_seconds", 300)
+    waited = 0
+    poll_interval = 2  # seconds
+
+    logger.info(
+        "HITL: Agent %s waiting for user response (interrupt=%s, timeout=%ds)",
+        agent_role,
+        interrupt_id,
+        timeout,
+    )
+
+    while waited < timeout:
+        await asyncio.sleep(poll_interval)
+        waited += poll_interval
+
+        # Check if interrupt was resolved
+        interrupt = get_active_interrupt(debate_id)
+        if interrupt is None:
+            # Interrupt was resolved (user responded)
+            break
+
+        # Check if interrupt timed out or was cancelled
+        if interrupt.get("status") in ("timeout", "cancelled"):
+            break
+
+    # Check if we got a response
+    # The interrupt is removed from _active_interrupts when resolved
+    # We need to check the interaction log for the response
+    from backend.workflow.hitl.api import _interaction_log
+
+    response_content = None
+    for interaction in _interaction_log.get(debate_id, []):
+        if (
+            interaction.get("type") == "response"
+            and interaction.get("metadata", {}).get("interrupt_id") == interrupt_id
+        ):
+            response_content = interaction["content"]
+            break
+
+    if response_content:
+        # Inject the user's response as additional context
+        interaction_record = {
+            "interaction_id": str(uuid.uuid4()),
+            "type": "response",
+            "direction": "user_to_agent",
+            "source": "user",
+            "target": agent_role,
+            "content": response_content,
+            "round": current_round,
+            "agent_index": agent_index,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "status": "consumed",
+            "metadata": {"interrupt_id": interrupt_id},
+        }
+
+        logger.info(
+            "HITL: User response received for agent %s (round %d), length=%d",
+            agent_role,
+            current_round,
+            len(response_content),
+        )
+
+        return {
+            "interactions": [interaction_record],
+            "round_interrupt_count": round_interrupt_count + 1,
+        }
+    else:
+        # Timeout or no response
+        logger.info(
+            "HITL: Agent %s query timed out after %ds (interrupt=%s)",
+            agent_role,
+            timeout,
+            interrupt_id,
+        )
+
+        await publish_async(
+            session_id,
+            "hitl_timeout",
+            {
+                "type": "hitl_timeout",
+                "interrupt_id": interrupt_id,
+                "agent_role": agent_role,
+                "waited_seconds": waited,
+            },
+        )
+
+        return {
+            "round_interrupt_count": round_interrupt_count + 1,
+        }
+
+
+# ---------------------------------------------------------------------------
+# HITL inject context builder
+# ---------------------------------------------------------------------------
+
+
+def build_inject_context(state: DebateState, agent_role: str) -> str:
+    """Build context string from pending injects for a specific agent.
+
+    This is called by the modified run_agent_node to merge user injections
+    into the agent's prompt.
+
+    Args:
+        state: Current debate state.
+        agent_role: The agent about to run.
+
+    Returns:
+        Formatted context string to append to the agent's prompt.
+    """
+    debate_id = state.get("session_id", "")
+    current_round = state.get("current_round", 0)
+
+    pending = get_pending_injects(debate_id)
+    if not pending:
+        return ""
+
+    # Filter injects relevant to this agent
+    relevant = []
+    for inject in pending:
+        target = inject.get("target", "all_future")
+        metadata = inject.get("metadata", {})
+        target_agent = metadata.get("target_agent")
+        target_round = metadata.get("target_round")
+
+        # Check agent targeting
+        if target_agent and target_agent != agent_role and target != "all_future":
+            continue
+
+        # Check round targeting
+        if target_round is not None and target_round != current_round:
+            continue
+
+        relevant.append(inject)
+
+    if not relevant:
+        return ""
+
+    # Build context block
+    context = "\n\n--- USER CONTEXT INJECTION ---\n"
+    for inject in relevant:
+        priority = inject.get("metadata", {}).get("priority", "normal")
+        prefix = f"[{priority.upper()}] " if priority != "normal" else ""
+        context += f"{prefix}{inject['content']}\n"
+    context += "--- END USER CONTEXT ---\n"
+
+    return context
+
+
+# ---------------------------------------------------------------------------
+# HITL round reset
+# ---------------------------------------------------------------------------
+
+
+def reset_round_interrupt_count(state: DebateState) -> dict:
+    """Reset the interrupt counter at the start of a new round.
+
+    Called by check_consensus_node when advancing to the next round.
+    """
+    return {"round_interrupt_count": 0}

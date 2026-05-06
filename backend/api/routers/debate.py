@@ -170,6 +170,10 @@ async def delete_debate(
     deleted_events = audit.delete_events(debate_id)
     store.delete(debate_id)
 
+    # Clean up HITL state
+    from backend.workflow.hitl.api import cleanup_hitl_state
+    cleanup_hitl_state(debate_id)
+
     logger.info(
         "Deleted debate %s (%d audit events removed)",
         debate_id,
@@ -252,6 +256,23 @@ async def get_debate(
     rag_enabled = bool(document_ids) or rag_auto_retrieve
     rag_preview = _build_rag_preview(project_id, document_ids) if document_ids else ""
 
+    # HITL info
+    from backend.workflow.hitl.api import (
+        get_active_interrupt,
+        get_hitl_config,
+        is_paused as hitl_is_paused,
+    )
+    hitl_config = get_hitl_config(debate_id)
+    hitl_enabled = hitl_config.get("hitl_enabled", False)
+    hitl_mode = hitl_config.get("hitl_mode", "off")
+    paused = hitl_is_paused(debate_id)
+    active_interrupt = get_active_interrupt(debate_id)
+
+    # Count interactions from result
+    result_interactions = []
+    if isinstance(result, dict):
+        result_interactions = result.get("interactions", [])
+
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
@@ -270,6 +291,11 @@ async def get_debate(
         rag_enabled=rag_enabled,
         rag_document_count=len(document_ids),
         rag_context_preview=rag_preview,
+        hitl_enabled=hitl_enabled,
+        hitl_mode=hitl_mode,
+        is_paused=paused,
+        has_active_interrupt=active_interrupt is not None,
+        total_interactions=len(result_interactions),
     )
 
 
@@ -735,10 +761,28 @@ async def _run_debate_workflow(
         "output": "",
         "validation_report": [],
         "used_variant": "default",
+        # --- HITL (Human-in-the-Loop) ---
+        "interactions": [],
+        "active_interrupt": None,
+        "hitl_enabled": True,
+        "hitl_mode": "full",
+        "auto_query_threshold": 0.4,
+        "max_interrupts_per_round": 3,
+        "interrupt_timeout_seconds": 300,
+        "pending_injects": [],
+        "round_interrupt_count": 0,
+        "is_paused": False,
     }
 
     # Run graph — async because nodes may call LLM APIs
-    graph = get_debate_graph()
+    # Use HITL-aware graph when HITL is enabled
+    hitl_enabled = initial_state.get("hitl_enabled", False)
+    if hitl_enabled:
+        from backend.workflow.hitl.graph import hitl_debate_graph
+        graph = hitl_debate_graph
+        logger.info("Using HITL-aware graph for debate %s", debate_id)
+    else:
+        graph = get_debate_graph()
     try:
         result = await graph.ainvoke(initial_state)
     except Exception as exc:
@@ -807,6 +851,11 @@ async def _run_debate_workflow(
         audit.record(event, project_id=project_id)
 
     clear_cancel(debate_id)
+
+    # Clean up HITL state
+    from backend.workflow.hitl.api import cleanup_hitl_state
+    cleanup_hitl_state(debate_id)
+
     logger.info(
         "Debate %s completed: %d rounds, consensus=%.3f",
         debate_id,

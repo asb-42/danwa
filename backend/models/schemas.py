@@ -157,6 +157,12 @@ class DebateStatusResponse(BaseModel):
     rag_enabled: bool = False
     rag_document_count: int = 0
     rag_context_preview: str = ""
+    # --- HITL (Human-in-the-Loop) ---
+    hitl_enabled: bool = False
+    hitl_mode: str = "off"
+    is_paused: bool = False
+    has_active_interrupt: bool = False
+    total_interactions: int = 0
 
 
 class DebateListItem(BaseModel):
