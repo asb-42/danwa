@@ -23,6 +23,7 @@
   import ArtifactNode from './nodes/ArtifactNode.svelte';
   import UserActionNode from './nodes/UserActionNode.svelte';
   import HistoryNode from './nodes/HistoryNode.svelte';
+  import A2ANode from './nodes/A2ANode.svelte';
 
   // Custom edges
   import FlowEdge from './edges/FlowEdge.svelte';
@@ -55,6 +56,7 @@
     user_action: UserActionNode,
     history: HistoryNode,
     placeholder: AgentNode, // Reuse agent node for placeholders
+    a2a_agent: A2ANode,
   };
 
   const edgeTypes = {
@@ -122,6 +124,7 @@
               case 'artifact': return '#8b5cf6';
               case 'user_action': return '#f59e0b';
               case 'decision': return '#10b981';
+              case 'a2a_agent': return '#8b5cf6';
               default: return '#6b7280';
             }
           }}

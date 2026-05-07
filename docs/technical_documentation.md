@@ -20,8 +20,9 @@
 10. [Data Models & Schemas](#10-data-models--schemas)
 11. [API Reference](#11-api-reference)
 12. [Configuration](#12-configuration)
-13. [Development Guide](#13-development-guide)
-14. [Deployment](#14-deployment)
+13. [A2A Protocol Integration](#13-a2a-protocol-integration)
+14. [Development Guide](#14-development-guide)
+15. [Deployment](#15-deployment)
 
 ---
 
@@ -45,6 +46,7 @@
 - **Hybrid Retrieval**: BM25 + Vector search + Re-ranking for optimal document retrieval
 - **Real-time Updates**: Server-Sent Events (SSE) for live debate progress
 - **Internationalization**: Full i18n support (German/English)
+- **A2A Protocol**: Agent-to-Agent communication via JSON-RPC 2.0 for multi-agent workflows
 
 ---
 
@@ -189,6 +191,16 @@ danwa/
 │   │       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
 │   │       ├── rag_context_formatter.py # RAG context formatting
 │   │       └── config.py    # DMS configuration
+│   ├── a2a/                   # A2A Protocol integration
+│   │   ├── __init__.py
+│   │   ├── schemas.py       # A2A data models (Task, Message, Part)
+│   │   ├── config.py        # A2A configuration loader
+│   │   ├── agent_card.py    # Agent Card for discovery
+│   │   ├── task_manager.py  # SQLite-backed task persistence
+│   │   ├── server.py        # A2A server (incoming tasks)
+│   │   ├── client.py        # A2A client (outgoing calls)
+│   │   ├── node.py          # LangGraph node for A2A agents
+│   │   └── router.py        # FastAPI router (JSON-RPC + Agent Card)
 │   ├── persistence/
 │   │   ├── project_store.py # JSON file-based project storage
 │   │   ├── debate_store.py  # SQLite debate storage
@@ -1245,6 +1257,42 @@ class DebateRequest(BaseModel):
     language: str = "de"
     document_ids: list[str] = Field(default_factory=list)
     rag_auto_retrieve: bool = False
+    a2a_agents: list[A2AAgentConfig] = Field(default_factory=list)
+```
+
+#### 10.1.2a A2A Schemas (`backend/a2a/schemas.py`)
+
+```python
+class TaskStatus(StrEnum):
+    SUBMITTED = "submitted"
+    WORKING = "working"
+    INPUT_REQUIRED = "input-required"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELED = "canceled"
+
+class A2APart(BaseModel):
+    type: str = "text"
+    text: str = ""
+
+class A2AMessage(BaseModel):
+    role: str
+    parts: list[A2APart]
+
+class A2ATask(BaseModel):
+    id: str
+    status: TaskStatus = TaskStatus.SUBMITTED
+    message: A2AMessage | None = None
+    result: str | None = None
+    error: str | None = None
+    debate_id: str | None = None
+    created_at: str = ""
+    updated_at: str = ""
+
+class A2AAgentConfig(BaseModel):
+    url: str
+    role: str = "external_reviewer"
+    position: str = "after:moderator"
 ```
 
 #### 10.1.3 Response Models
@@ -1467,6 +1515,70 @@ Update application settings.
 
 ---
 
+### 11.5 A2A Endpoints
+
+#### GET /.well-known/agent.json
+Agent Card discovery endpoint (A2A spec).
+
+**Response** (200):
+```json
+{
+    "name": "Danwa Debate Agent",
+    "description": "Multi-agent debate system with A2A protocol support",
+    "url": "http://localhost:8000",
+    "version": "2.0.0",
+    "capabilities": { "streaming": false },
+    "skills": [
+        {
+            "id": "debate",
+            "name": "Debate",
+            "description": "Run a multi-agent debate on a given topic"
+        }
+    ]
+}
+```
+
+#### POST /a2a
+JSON-RPC 2.0 endpoint for A2A protocol methods.
+
+**Methods**:
+
+| Method | Description |
+|--------|-------------|
+| `tasks/send` | Create a new A2A task (starts a debate) |
+| `tasks/get` | Get task status and result |
+| `tasks/cancel` | Cancel a running task |
+
+**Request** (`tasks/send`):
+```json
+{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "method": "tasks/send",
+    "params": {
+        "id": "task-abc",
+        "message": {
+            "role": "user",
+            "parts": [{ "type": "text", "text": "Should we adopt microservices?" }]
+        }
+    }
+}
+```
+
+**Response**:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "result": {
+        "id": "task-abc",
+        "status": { "state": "submitted" }
+    }
+}
+```
+
+---
+
 ## 12. Configuration
 
 ### 12.1 Environment Variables
@@ -1557,9 +1669,119 @@ tags: [default, balanced]
 
 ---
 
-## 13. Development Guide
+## 13. A2A Protocol Integration
 
-### 13.1 Prerequisites
+### 13.1 Overview
+
+Danwa implements the [A2A (Agent-to-Agent) protocol](https://github.com/google/A2A) for interoperability with external AI agents. The integration supports two modes:
+
+1. **Danwa as A2A Server** (incoming): External agents can create debates via JSON-RPC `tasks/send`
+2. **Danwa as A2A Client** (outgoing): Danwa can invoke external agents as additional debate participants
+
+### 13.2 Module Architecture (`backend/a2a/`)
+
+```
+backend/a2a/
+├── __init__.py          # Module exports
+├── schemas.py           # A2A data models (Task, Message, Part, TaskStatus)
+├── config.py            # Loads config/a2a.json
+├── agent_card.py        # Generates /.well-known/agent.json
+├── task_manager.py      # SQLite-backed task persistence
+├── server.py            # Handles incoming A2A tasks → creates Danwa debates
+├── client.py            # Calls external A2A agents via httpx
+├── node.py              # LangGraph node for A2A agent participation
+└── router.py            # FastAPI router (Agent Card + JSON-RPC endpoint)
+```
+
+### 13.3 Configuration (`config/a2a.json`)
+
+```json
+{
+    "enabled": false,
+    "server": {
+        "enabled": true,
+        "path": "/a2a"
+    },
+    "external_agents": []
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | `bool` | Enable/disable A2A integration globally |
+| `server.enabled` | `bool` | Enable the A2A server (accepts incoming tasks) |
+| `server.path` | `string` | JSON-RPC endpoint path (default: `/a2a`) |
+| `external_agents` | `string[]` | List of external agent URLs for outgoing calls |
+
+### 13.4 Task Lifecycle
+
+A2A tasks follow this state machine:
+
+```
+submitted → working → completed
+                   → failed
+                   → canceled
+```
+
+Tasks are persisted in SQLite (`data/a2a_tasks.db`) and survive server restarts.
+
+### 13.5 Using A2A in Debates
+
+Include `a2a_agents` in the debate creation request:
+
+```json
+{
+    "case": { "text": "Should we adopt microservices?" },
+    "a2a_agents": [
+        {
+            "url": "https://external-agent.example.com/a2a",
+            "role": "external_reviewer",
+            "position": "after:moderator"
+        }
+    ]
+}
+```
+
+The external agent is invoked after the standard agents (strategist, critic, optimizer, moderator) complete their rounds. The `position` field controls when the agent participates:
+- `after:moderator` — after all standard agents (default)
+- `after:strategist` — after the strategist
+- `before:critic` — before the critic
+
+### 13.6 Architecture
+
+```
+Danwa as Server (incoming):          Danwa as Client (outgoing):
+┌─────────────┐                      ┌─────────────┐
+│ External A2A │──tasks/send──▶      │   Danwa     │
+│   Client     │◀──result────        │  Workflow   │
+└─────────────┘                      │   Engine    │
+       │                             └──────┬──────┘
+       ▼                                    │
+┌─────────────┐                      ┌──────▼──────┐
+│  Danwa A2A  │                      │  A2A Client │
+│   Server    │──creates──▶         │  (httpx)    │──tasks/send──▶
+│  (FastAPI)  │  debate              └─────────────┘  External Agent
+└─────────────┘
+```
+
+### 13.7 Testing
+
+A2A integration has comprehensive test coverage:
+
+| Test Suite | File | Tests |
+|-----------|------|-------|
+| TaskManager | `tests/backend/test_a2a_task_manager.py` | 20 |
+| A2A Client | `tests/backend/test_a2a_client.py` | 16 |
+| A2A Workflow | `tests/backend/test_a2a_workflow.py` | 16 |
+| A2A E2E | `tests/backend/test_a2a_e2e.py` | 30 |
+
+**Total**: 82 A2A-specific tests covering task lifecycle, JSON-RPC compliance, client discovery, workflow integration, and E2E protocol compliance.
+
+---
+
+## 14. Development Guide
+
+### 14.1 Prerequisites
 
 - **Python 3.11+**
 - **uv** (Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
@@ -1752,9 +1974,9 @@ testpaths = ["tests/backend"]
 
 ---
 
-## 14. Deployment
+## 15. Deployment
 
-### 14.1 Production Build
+### 15.1 Production Build
 
 ```bash
 # Build frontend
@@ -1770,7 +1992,7 @@ The FastAPI app automatically detects `frontend/dist/` and serves static files.
 
 ---
 
-### 14.2 Docker Deployment (Optional)
+### 15.2 Docker Deployment (Optional)
 
 While Danwa doesn't include Dockerfiles by default, you can create them:
 
@@ -1818,7 +2040,7 @@ services:
 
 ---
 
-### 14.3 Scripts
+### 15.3 Scripts
 
 #### `scripts/setup.sh`
 Initial setup: install uv, create venv, install dependencies.
@@ -1845,11 +2067,11 @@ uv pip install ".[dms]"
 
 ---
 
-## 15. Missing Links (Features Implemented but not UI-Exposed)
+## 16. Missing Links (Features Implemented but not UI-Exposed)
 
 > **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client (`api.js`), but **not yet accessible through the user interface**. Users cannot use these features without direct API calls or code changes.
 
-### 15.1 Report Download (Backend Ready, Frontend Missing)
+### 16.1 Report Download (Backend Ready, Frontend Missing)
 
 **Status**: Backend implemented, no frontend API function or UI
 
@@ -1874,7 +2096,7 @@ The backend has a fully functional report generation system in `backend/api/rout
 
 ---
 
-### 15.2 Application Settings (Backend + API Ready, No UI Tab)
+### 16.2 Application Settings (Backend + API Ready, No UI Tab)
 
 **Status**: Backend and API client ready, no UI tab
 
@@ -1902,7 +2124,7 @@ The backend provides application settings management via `backend/api/routers/co
 
 ---
 
-### 15.3 Manual RAG Search (Backend + API Ready, No UI)
+### 16.3 Manual RAG Search (Backend + API Ready, No UI)
 
 **Status**: Backend and API client ready, no search UI
 
@@ -1934,7 +2156,7 @@ export function searchRAG(query, limit = 5) {
 
 ---
 
-### 15.4 Session History & Export (Backend Exists, Frontend Missing)
+### 16.4 Session History & Export (Backend Exists, Frontend Missing)
 
 **Status**: Backend router exists, no frontend integration
 
@@ -1956,7 +2178,7 @@ The `backend/api/routers/sessions.py` router (legacy, but functional) provides:
 
 ---
 
-### 15.5 Summary Table
+### 16.5 Summary Table
 
 | Feature | Backend | API Client | UI | Status |
 |---------|---------|------------|-----|--------|

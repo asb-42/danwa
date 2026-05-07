@@ -510,6 +510,49 @@ def clear_oob_queue(debate_id: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# A2A configuration
+# ---------------------------------------------------------------------------
+
+
+def _build_a2a_config(a2a_agents_raw: list) -> dict:
+    """Build A2A configuration dict from the request's a2a_agents list.
+
+    Returns a dict with ``enabled``, ``agent_url``, ``role``, etc.
+    If no A2A agents are configured, returns ``{"enabled": False}``.
+    """
+    if not a2a_agents_raw:
+        return {"enabled": False}
+
+    # Use the first configured A2A agent
+    first = a2a_agents_raw[0]
+    if hasattr(first, "url"):
+        # Pydantic model
+        agent_url = first.url
+        role = first.role
+    elif isinstance(first, dict):
+        agent_url = first.get("url", "")
+        role = first.get("role", "a2a_agent")
+    else:
+        return {"enabled": False}
+
+    if not agent_url:
+        return {"enabled": False}
+
+    return {
+        "enabled": True,
+        "agent_url": agent_url,
+        "role": role,
+        "external_agents": [
+            {
+                "url": a.url if hasattr(a, "url") else a.get("url", ""),
+                "role": a.role if hasattr(a, "role") else a.get("role", "a2a_agent"),
+            }
+            for a in a2a_agents_raw
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
 # RAG context resolution
 # ---------------------------------------------------------------------------
 
@@ -670,6 +713,7 @@ async def _run_debate_workflow(
         language = getattr(req, "language", "de")
         document_ids = getattr(req, "document_ids", [])
         rag_auto_retrieve = getattr(req, "rag_auto_retrieve", False)
+        a2a_agents_raw = getattr(req, "a2a_agents", [])
         # search_mode: use explicit value, or derive from enable_fact_check
         raw_search_mode = getattr(req, "search_mode", None)
         if raw_search_mode is not None:
@@ -699,6 +743,7 @@ async def _run_debate_workflow(
         language = req.get("language", "de")
         document_ids = req.get("document_ids", [])
         rag_auto_retrieve = req.get("rag_auto_retrieve", False)
+        a2a_agents_raw = req.get("a2a_agents", [])
         raw_search_mode = req.get("search_mode")
         if raw_search_mode:
             search_mode = raw_search_mode
@@ -774,10 +819,19 @@ async def _run_debate_workflow(
         "is_paused": False,
     }
 
+    # --- A2A configuration ---
+    a2a_config = _build_a2a_config(a2a_agents_raw)
+    initial_state["a2a_config"] = a2a_config
+
     # Run graph — async because nodes may call LLM APIs
-    # Use HITL-aware graph when HITL is enabled
+    # Priority: A2A-aware graph > HITL-aware graph > standard graph
+    a2a_enabled = a2a_config.get("enabled", False)
     hitl_enabled = initial_state.get("hitl_enabled", False)
-    if hitl_enabled:
+    if a2a_enabled:
+        from backend.workflow.debate_graph import a2a_debate_graph
+        graph = a2a_debate_graph
+        logger.info("Using A2A-aware graph for debate %s", debate_id)
+    elif hitl_enabled:
         from backend.workflow.hitl.graph import hitl_debate_graph
         graph = hitl_debate_graph
         logger.info("Using HITL-aware graph for debate %s", debate_id)

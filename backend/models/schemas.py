@@ -117,6 +117,29 @@ class DebateRequest(BaseModel):
         description="If true, automatically retrieve relevant document chunks based on the case text",
     )
 
+    # --- A2A Integration ---
+    a2a_agents: list[A2AAgentConfig] = Field(
+        default_factory=list,
+        description="External A2A agents to include as debate participants",
+    )
+
+
+class A2AAgentConfig(BaseModel):
+    """Configuration for an external A2A agent participating in the debate."""
+
+    url: str = Field(description="A2A agent URL")
+    role: str = Field(
+        default="a2a_agent",
+        description="Role name for the A2A agent in the debate",
+    )
+    position: str = Field(
+        default="after_all",
+        description=(
+            "Where to insert the A2A agent: 'after_all', 'after:critic', "
+            "'before:moderator', etc."
+        ),
+    )
+
 
 class DebateResponse(BaseModel):
     """POST /api/v1/debate response."""

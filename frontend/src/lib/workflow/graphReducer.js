@@ -35,6 +35,8 @@ function getInitialPosition(nodeType, role, round) {
   if (nodeType === 'artifact') return { x: baseX + NODE_SPACING_X, y: baseY + 30 };
   if (nodeType === 'decision') return { x: ROLE_ORDER.length * 2 * NODE_SPACING_X + 80, y: baseY };
   if (nodeType === 'user_action') return { x: baseX + NODE_SPACING_X / 2, y: baseY - 90 };
+  // A2A agents are positioned after the moderator column
+  if (nodeType === 'a2a_agent') return { x: (ROLE_ORDER.length) * 2 * NODE_SPACING_X, y: baseY };
   return { x: baseX, y: baseY };
 }
 
@@ -49,24 +51,25 @@ export function applyEventToGraph(event) {
     // AGENT_STARTED
     // ═══════════════════════════════════════════
     case 'AGENT_STARTED': {
-      const { agentId, role, round, inputArtifactIds, profile, model } = event.payload;
+      const { agentId, role, round, inputArtifactIds, profile, model, isA2A, agentUrl } = event.payload;
 
       graphNodes.update(nodes => {
         const copy = new Map(nodes);
         if (!copy.has(agentId)) {
-          const nodeType = role === 'input' ? 'input' : 'agent';
+          const nodeType = role === 'input' ? 'input' : isA2A ? 'a2a_agent' : 'agent';
           copy.set(agentId, {
             id: agentId,
             type: nodeType,
             data: {
               role,
-              label: role === 'input' ? 'Input' : `${role} (Round ${round})`,
+              label: role === 'input' ? 'Input' : isA2A ? `${role} (A2A · Round ${round})` : `${role} (Round ${round})`,
               status: 'active',
               round,
               isActive: true,
               hasFeedbackLoop: false,
               profile: profile || undefined,
               model: model || undefined,
+              agentUrl: agentUrl || undefined,
             },
             position: getInitialPosition(nodeType, role, round),
           });
@@ -80,6 +83,7 @@ export function applyEventToGraph(event) {
             round,
             ...(profile ? { profile } : {}),
             ...(model ? { model } : {}),
+            ...(agentUrl ? { agentUrl } : {}),
           };
           copy.set(agentId, node);
         }

@@ -39,6 +39,10 @@
   let selectedDocumentIds = $state([]);
   let ragAutoRetrieve = $state(false);
   let showRAGContextPreview = $state(false);
+
+  // A2A external agent configuration
+  let a2aAgents = $state([]); // [{url: '', role: '', position: ''}]
+  let showA2ASection = $state(false);
   let sseConnection = $state(null);
   let archiveLoading = $state(false);
 
@@ -119,6 +123,25 @@
     }
   }
 
+  // A2A agent management
+  function addA2AAgent() {
+    a2aAgents = [...a2aAgents, { url: '', role: '', position: '' }];
+  }
+
+  function removeA2AAgent(index) {
+    a2aAgents = a2aAgents.filter((_, i) => i !== index);
+  }
+
+  function updateA2AAgent(index, field, value) {
+    a2aAgents = a2aAgents.map((agent, i) =>
+      i === index ? { ...agent, [field]: value } : agent
+    );
+  }
+
+  let validA2AAgents = $derived(
+    a2aAgents.filter(a => a.url.trim() !== '')
+  );
+
   // Cleanup SSE, timers, and workflow state on destroy
   onDestroy(() => {
     if (sseConnection) {
@@ -170,12 +193,14 @@
         language: $locale || 'de',
         document_ids: selectedDocumentIds,
         rag_auto_retrieve: ragAutoRetrieve,
+        a2a_agents: validA2AAgents,
       });
       $currentDebate = response;
       $debates = [...$debates, response];
       caseText = '';
       selectedDocumentIds = [];
       ragAutoRetrieve = false;
+      a2aAgents = [];
     } catch (err) {
       $error = err.message;
     } finally {
@@ -817,6 +842,106 @@
           </div>
         </div>
       {/if}
+
+      <!-- A2A External Agent Configuration -->
+      <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+            onclick={() => showA2ASection = !showA2ASection}
+          >
+            <span class="transition-transform" class:rotate-90={showA2ASection}>▶</span>
+            🌐 {t('a2a.title')}
+          </button>
+          {#if validA2AAgents.length > 0}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              {validA2AAgents.length}
+            </span>
+          {/if}
+        </div>
+
+        {#if showA2ASection}
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            {t('a2a.description')}
+          </p>
+
+          {#if a2aAgents.length === 0}
+            <p class="text-sm text-gray-400 dark:text-gray-500 italic mb-3">
+              {t('a2a.noAgents')}
+            </p>
+          {:else}
+            <div class="space-y-3 mb-3">
+              {#each a2aAgents as agent, i (i)}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      {t('a2a.agentUrl')} <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={agent.url}
+                      oninput={(e) => updateA2AAgent(i, 'url', e.target.value)}
+                      placeholder={t('a2a.agentUrlPlaceholder')}
+                      class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded
+                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                             focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      {t('a2a.role')}
+                    </label>
+                    <input
+                      type="text"
+                      value={agent.role}
+                      oninput={(e) => updateA2AAgent(i, 'role', e.target.value)}
+                      placeholder={t('a2a.rolePlaceholder')}
+                      class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded
+                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                             focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+                  <div class="flex items-end gap-2">
+                    <div class="flex-1">
+                      <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        {t('a2a.position')}
+                      </label>
+                      <input
+                        type="text"
+                        value={agent.position}
+                        oninput={(e) => updateA2AAgent(i, 'position', e.target.value)}
+                        placeholder={t('a2a.positionPlaceholder')}
+                        class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded
+                               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onclick={() => removeA2AAgent(i)}
+                      class="px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      title={t('a2a.remove')}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <button
+            type="button"
+            onclick={addA2AAgent}
+            class="flex items-center gap-1 px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400
+                   border border-purple-300 dark:border-purple-600 rounded-lg
+                   hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+          >
+            + {t('a2a.addAgent')}
+          </button>
+        {/if}
+      </div>
 
       <button
         type="submit"

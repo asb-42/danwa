@@ -17,13 +17,14 @@
 13. [Document Management System (DMS)](#document-management-system-dms)
 14. [Real-Time Updates (SSE)](#real-time-updates-sse)
 15. [Out-of-Band Inputs](#out-of-band-inputs)
-16. [Workflow Visualization](#workflow-visualization)
-17. [Internationalization (i18n)](#internationalization-i18n)
-18. [Privacy & Data Protection](#privacy--data-protection)
-19. [Audit & Reproducibility](#audit--reproducibility)
-20. [Advanced Configuration](#advanced-configuration)
-21. [Development](#development)
-22. [Troubleshooting](#troubleshooting)
+16. [A2A Protocol Integration](#a2a-protocol-integration)
+17. [Workflow Visualization](#workflow-visualization)
+18. [Internationalization (i18n)](#internationalization-i18n)
+19. [Privacy & Data Protection](#privacy--data-protection)
+20. [Audit & Reproducibility](#audit--reproducibility)
+21. [Advanced Configuration](#advanced-configuration)
+22. [Development](#development)
+23. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -47,6 +48,7 @@ Danwa (formerly Debate-Agent) is an auditable multi-agent debate workflow system
 - **LangGraph Orchestration**: State machine workflow for debate management
 - **Real-Time SSE**: Server-Sent Events for live debate progress visualization
 - **Out-of-Band Inputs**: Inject additional context during running debates
+- **A2A Protocol**: Agent-to-Agent communication for multi-agent workflows with external AI agents
 
 ### Technology Stack
 
@@ -221,6 +223,28 @@ profiles/prompts/
         ├── strategist.md
         └── critic.md
 ```
+
+### A2A Configuration (`config/a2a.json`)
+
+The A2A (Agent-to-Agent) protocol enables Danwa to participate in multi-agent workflows with external AI agents.
+
+```json
+{
+    "enabled": false,
+    "server": {
+        "enabled": true,
+        "path": "/a2a"
+    },
+    "external_agents": []
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `enabled` | Enable/disable A2A integration globally |
+| `server.enabled` | Enable the A2A server (accepts incoming tasks from external agents) |
+| `server.path` | JSON-RPC endpoint path (default: `/a2a`) |
+| `external_agents` | List of external agent URLs for outgoing calls |
 
 ### Application Settings (`config/settings.yaml`)
 
@@ -756,6 +780,52 @@ Users can inject additional context during a running debate without stopping it.
 
 ---
 
+## A2A Protocol Integration
+
+### What is A2A?
+
+The A2A (Agent-to-Agent) protocol allows Danwa to communicate with external AI agents. This enables:
+
+- **External agents as debate participants**: Add external AI agents to your debates alongside the built-in strategist, critic, optimizer, and moderator
+- **Danwa as a service**: External agents can create and run debates on Danwa via the A2A protocol
+
+### Using A2A Agents in Debates
+
+When creating a debate, you can add external A2A agents in the **A2A Agents** section of the debate form:
+
+1. Click **+ Add A2A Agent** in the debate configuration
+2. Enter the **Agent URL** (e.g., `https://external-agent.example.com/a2a`)
+3. Optionally set a **Role** (default: `external_reviewer`)
+4. Optionally set a **Position** (default: `after:moderator`)
+
+The position controls when the external agent participates:
+- `after:moderator` — after all standard agents complete their rounds
+- `after:strategist` — after the strategist agent
+- `before:critic` — before the critic agent
+
+### A2A in the Workflow Graph
+
+When A2A agents are configured, the workflow graph shows a purple **A2A** node after the standard agent nodes. This node indicates when the external agent is being invoked and displays its status.
+
+### A2A Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /.well-known/agent.json` | Agent Card discovery (A2A spec) |
+| `POST /a2a` | JSON-RPC endpoint for task management |
+
+### Connecting External Agents
+
+To connect an external A2A agent:
+
+1. Ensure the external agent supports the A2A protocol
+2. Get the agent's A2A endpoint URL
+3. Add it to your debate configuration or to `config/a2a.json`
+
+For testing, you can use Danwa itself as an external agent by pointing to its `/.well-known/agent.json` endpoint.
+
+---
+
 ## Workflow Visualization
 
 ### Debate Graph
@@ -788,6 +858,7 @@ The debate process is visualized as an interactive graph using @xyflow/svelte an
 |-----------|-------------|
 | InputNode | Debate input and context |
 | AgentNode | Strategist, Critic, Optimizer, Moderator |
+| A2ANode | External A2A agent participation (purple-themed) |
 | DecisionNode | Consensus check, round continuation |
 | HistoryNode | Past round summaries |
 | ArtifactNode | Final output, reports |

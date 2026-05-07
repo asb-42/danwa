@@ -1,6 +1,6 @@
 # Danwa (Debate-Agent)
 
-Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration, **RAG (Retrieval-Augmented Generation)** pipeline, **project isolation**, and **real-time SSE updates**.
+Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration, **RAG (Retrieval-Augmented Generation)** pipeline, **project isolation**, **A2A (Agent-to-Agent) Protocol** integration, and **real-time SSE updates**.
 
 ## Quick Start
 
@@ -61,6 +61,9 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 - **Modern Web UI** - Svelte 5 + Tailwind CSS + @xyflow/svelte workflow graph
 - **Internationalization** - Full i18n support (German/English)
 - **Out-of-Band Inputs** - Inject additional context during running debates
+- **A2A Protocol** - Agent-to-Agent communication via JSON-RPC 2.0 (server + client)
+- **External Agent Integration** - Include external AI agents as debate participants
+- **Agent Card Discovery** - Standard `/.well-known/agent.json` endpoint for A2A clients
 
 ## Technology Stack
 
@@ -87,6 +90,8 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 | Validation | [Pydantic](https://docs.pydantic.dev) 2.7+ |
 | SSE Support | [sse-starlette](https://github.com/syroegkin/sse-starlette) |
 | i18n (Frontend) | Custom loaders (German/English) |
+| A2A Protocol | [Google A2A](https://github.com/google/A2A) (JSON-RPC 2.0 over HTTP) |
+| A2A HTTP Client | [httpx](https://www.python-httpx.org) |
 
 ## Project Structure
 
@@ -132,6 +137,15 @@ danwa/
 │   │       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
 │   │       ├── rag_context_formatter.py # RAG context formatting
 │   │       └── config.py    # DMS configuration
+│   ├── a2a/                    # A2A Protocol (Agent-to-Agent)
+│   │   ├── schemas.py        # A2A JSON-RPC schemas (Task, Message, Part)
+│   │   ├── config.py         # A2A configuration loader
+│   │   ├── agent_card.py     # Agent Card for discovery
+│   │   ├── task_manager.py   # SQLite-backed task persistence
+│   │   ├── server.py         # A2A Server (incoming tasks)
+│   │   ├── router.py         # FastAPI router (JSON-RPC + Agent Card)
+│   │   ├── client.py         # A2A Client (outgoing calls)
+│   │   └── node.py           # LangGraph node for A2A agents
 │   ├── persistence/
 │   │   ├── project_store.py # JSON file-based project storage
 │   │   ├── debate_store.py  # SQLite debate storage
@@ -328,6 +342,71 @@ privacy:
   strict_mode: false             # Block all external calls
   redact_traces: true            # PII redaction in logs
   retention_days: 90             # Auto-cleanup old data
+```
+
+### A2A Configuration (`config/a2a.json`)
+
+The A2A (Agent-to-Agent) protocol enables Danwa to participate in multi-agent workflows with external AI agents.
+
+```json
+{
+  "enabled": false,
+  "server": {
+    "enabled": true,
+    "path": "/a2a"
+  },
+  "external_agents": []
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `enabled` | Enable/disable A2A integration globally |
+| `server.enabled` | Enable the A2A server (accepts incoming tasks) |
+| `server.path` | JSON-RPC endpoint path (default: `/a2a`) |
+| `external_agents` | List of external agent URLs for outgoing calls |
+
+#### A2A Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/.well-known/agent.json` | Agent Card discovery (A2A spec) |
+| POST | `/a2a` | JSON-RPC endpoint (`tasks/send`, `tasks/get`, `tasks/cancel`) |
+
+#### Using A2A in Debates
+
+When creating a debate, include `a2a_agents` in the request body:
+
+```json
+{
+  "case": { "text": "Should we adopt microservices?" },
+  "a2a_agents": [
+    {
+      "url": "https://external-agent.example.com/a2a",
+      "role": "external_reviewer",
+      "position": "after:moderator"
+    }
+  ]
+}
+```
+
+The external agent will be invoked as an additional debate participant after the standard agents (strategist, critic, optimizer, moderator) complete their rounds.
+
+#### A2A Architecture
+
+```
+Danwa as Server (incoming):          Danwa as Client (outgoing):
+┌─────────────┐                      ┌─────────────┐
+│ External A2A │──tasks/send──▶      │   Danwa     │
+│   Client     │◀──result────        │  Workflow   │
+└─────────────┘                      │   Engine    │
+       │                             └──────┬──────┘
+       ▼                                    │
+┌─────────────┐                      ┌──────▼──────┐
+│  Danwa A2A  │                      │  A2A Client │
+│   Server    │──creates──▶         │  (httpx)    │──tasks/send──▶
+│  (FastAPI)  │  debate              └─────────────┘  External Agent
+└─────────────┘
 ```
 
 ## Development

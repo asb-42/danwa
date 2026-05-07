@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "server": {
+    "enabled": true,
+    "path": "/a2a"
+  },
+  "external_agents": []
+}

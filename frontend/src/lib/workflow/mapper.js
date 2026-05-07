@@ -31,16 +31,32 @@ export function handleWorkflowSSE(sseEvent) {
 
     case 'agent_preparing':
       // Agent is resolving profile/prompts — show as active
-      dispatchEvent({
-        type: 'AGENT_STARTED',
-        payload: {
-          agentId: `${sseEvent.role}_r${sseEvent.round}`,
-          role: sseEvent.role,
-          round: sseEvent.round,
-          inputArtifactIds: getInputArtifacts(sseEvent.role, sseEvent.round),
-          timestamp: Date.now(),
-        },
-      });
+      // Detect A2A agents by phase === 'a2a_invocation'
+      if (sseEvent.phase === 'a2a_invocation') {
+        dispatchEvent({
+          type: 'AGENT_STARTED',
+          payload: {
+            agentId: `${sseEvent.role}_r${sseEvent.round}`,
+            role: sseEvent.role,
+            round: sseEvent.round,
+            inputArtifactIds: getInputArtifacts(sseEvent.role, sseEvent.round),
+            timestamp: Date.now(),
+            isA2A: true,
+            agentUrl: sseEvent.agent_url || '',
+          },
+        });
+      } else {
+        dispatchEvent({
+          type: 'AGENT_STARTED',
+          payload: {
+            agentId: `${sseEvent.role}_r${sseEvent.round}`,
+            role: sseEvent.role,
+            round: sseEvent.round,
+            inputArtifactIds: getInputArtifacts(sseEvent.role, sseEvent.round),
+            timestamp: Date.now(),
+          },
+        });
+      }
       break;
 
     case 'agent_started':
@@ -193,6 +209,9 @@ function getInputArtifacts(role, round) {
   const roles = ['strategist', 'critic', 'optimizer', 'moderator'];
   const idx = roles.indexOf(role);
   if (idx > 0) return [`${roles[idx - 1]}_output_r${round}`];
+  // A2A agents (custom roles) receive moderator output as input
+  // since they run after all standard agents
+  if (!roles.includes(role)) return [`moderator_output_r${round}`];
   // For first agent of new round, use previous round's moderator output
   return [`moderator_output_r${round - 1}`];
 }
@@ -209,5 +228,6 @@ function mapRoleToArtifactType(role) {
     optimizer: 'synthesis',
     moderator: 'consensus',
   };
+  // A2A agents produce 'synthesis' type artifacts
   return map[role] || 'synthesis';
 }

@@ -115,3 +115,6 @@ class DebateState(TypedDict, total=False):
     pending_injects: list[dict]
     round_interrupt_count: int
     is_paused: bool
+
+    # --- A2A (Agent-to-Agent) ---
+    a2a_config: dict  # A2A agent configuration (url, role, enabled, etc.)

@@ -28,7 +28,8 @@ from backend.api.routers import (  # noqa: E402
     sessions,
     system,
 )
-from backend.workflow.hitl.api import router as hitl_router
+from backend.a2a.router import router as a2a_router  # noqa: E402
+from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -147,6 +148,10 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+
+    # --- A2A Protocol (Agent-to-Agent) ---
+    # Mounted at root so /.well-known/agent.json discovery works per A2A spec
+    app.include_router(a2a_router, tags=["a2a"])
 
     # --- Static file serving (production mode) ---
     # Mount static assets first (more specific), then SPA fallback last

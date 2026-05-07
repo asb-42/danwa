@@ -352,4 +352,23 @@ export default {
   'oob.submit': 'Insert into workflow',
   'oob.shortcut': 'Ctrl+Enter to send',
   'oob.waitingWarning': 'Workflow is waiting for your response. Context will be processed after you respond.',
+
+  // A2A (Agent-to-Agent) Configuration
+  'a2a.title': 'External A2A Agents',
+  'a2a.description': 'Add external A2A agents as debate participants. They will join the debate after all local agents have spoken.',
+  'a2a.addAgent': 'Add A2A Agent',
+  'a2a.agentUrl': 'Agent URL',
+  'a2a.agentUrlPlaceholder': 'https://external-agent.example.com/a2a',
+  'a2a.role': 'Role',
+  'a2a.rolePlaceholder': 'e.g. analyst, expert, reviewer',
+  'a2a.position': 'Position',
+  'a2a.positionPlaceholder': 'e.g. after_optimizer, after_moderator',
+  'a2a.remove': 'Remove',
+  'a2a.noAgents': 'No external agents configured.',
+  'a2a.urlRequired': 'Agent URL is required',
+
+  // A2A Workflow Visualization
+  'workflow.a2aAgent': 'A2A Agent',
+  'workflow.a2aInvoking': 'Invoking external agent…',
+  'workflow.a2aCompleted': 'External agent completed',
 };
