@@ -56,6 +56,9 @@ export default {
   'debate.degradedConsensus': 'This debate had LLM failures. The displayed consensus score may not be meaningful.',
   'debate.cancelButton': 'Cancel Debate',
   'debate.cancelling': 'Cancelling...',
+  'debate.titleGenerating': 'Generating title…',
+  'debate.titlePlaceholder': 'Processing case description…',
+  'debate.titleLabel': 'Title',
 
   // Web search mode
   'debate.searchMode': 'Web Search',
@@ -127,8 +130,8 @@ export default {
 
   // Audit
   'audit.title': 'Audit Trail',
-  'audit.debateId': 'Debate ID',
-  'audit.debateIdPlaceholder': 'Enter debate ID...',
+  'audit.debateId': 'Debate ID or Title',
+  'audit.debateIdPlaceholder': 'Enter debate ID or title...',
   'audit.loadEvents': 'Load Events',
   'audit.loading': 'Loading...',
   'audit.noEvents': 'No audit events found. Run a debate first.',

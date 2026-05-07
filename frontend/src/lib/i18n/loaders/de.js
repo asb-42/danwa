@@ -56,6 +56,9 @@ export default {
   'debate.degradedConsensus': 'Die Debatte hatte LLM-Fehler. Der angezeigte Konsenswert ist möglicherweise nicht aussagekräftig.',
   'debate.cancelButton': 'Debatte abbrechen',
   'debate.cancelling': 'Wird abgebrochen...',
+  'debate.titleGenerating': 'Titel wird generiert…',
+  'debate.titlePlaceholder': 'Fallbeschreibung wird verarbeitet…',
+  'debate.titleLabel': 'Titel',
 
   // Web search mode
   'debate.searchMode': 'Web-Suche',
@@ -127,8 +130,8 @@ export default {
 
   // Audit
   'audit.title': 'Prüfpfad',
-  'audit.debateId': 'Debatten-ID',
-  'audit.debateIdPlaceholder': 'Debatten-ID eingeben...',
+  'audit.debateId': 'Debatten-ID oder Titel',
+  'audit.debateIdPlaceholder': 'Debatten-ID oder Titel eingeben...',
   'audit.loadEvents': 'Ereignisse laden',
   'audit.loading': 'Wird geladen...',
   'audit.noEvents': 'Keine Prüfereignisse gefunden. Starten Sie zuerst eine Debatte.',

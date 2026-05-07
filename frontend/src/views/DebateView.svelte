@@ -46,6 +46,11 @@
   let sseConnection = $state(null);
   let archiveLoading = $state(false);
 
+  // Debate title state
+  let debateTitle = $state('');
+  let titleGenerating = $state(false);
+  let titleFadedIn = $state(false);
+
   let projectId = $derived($activeProject?.id);
 
   // Live web search results — stores search events as they arrive
@@ -77,6 +82,11 @@
       try {
         const debate = await getDebate(debateId);
         $currentDebate = debate;
+        // Sync title from loaded debate
+        if (debate.title) {
+          debateTitle = debate.title;
+          titleFadedIn = true;
+        }
       } catch (err) {
         $error = err.message || t('error.debateNotFound');
       } finally {
@@ -178,6 +188,9 @@
     workflowPhase = null;
     workflowStartTime = null;
     workflowElapsed = 0;
+    debateTitle = '';
+    titleGenerating = false;
+    titleFadedIn = false;
     if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
     resetWorkflow();
@@ -224,6 +237,9 @@
     workflowPhase = null;
     workflowStartTime = null;
     workflowElapsed = 0;
+    debateTitle = '';
+    titleGenerating = false;
+    titleFadedIn = false;
     if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
     resetWorkflow();
@@ -288,6 +304,26 @@
       handleWorkflowSSE(event);
     } catch (e) {
       console.warn('Workflow SSE mapping error:', e);
+    }
+
+    // title_generating — LLM is generating the debate title
+    if (event.type === 'title_generating') {
+      titleGenerating = true;
+      titleFadedIn = false;
+      return;
+    }
+
+    // title_ready — debate title has been generated
+    if (event.type === 'title_ready' && event.title) {
+      debateTitle = event.title;
+      titleGenerating = false;
+      // Trigger fade-in animation after a brief delay
+      setTimeout(() => { titleFadedIn = true; }, 50);
+      // Also update the current debate store
+      if ($currentDebate) {
+        $currentDebate = { ...$currentDebate, title: event.title };
+      }
+      return;
     }
 
     // status_change: completed or failed
@@ -526,6 +562,12 @@
     try {
       const status = await getDebate($currentDebate.debate_id);
       $currentDebate = { ...$currentDebate, ...status };
+      // Sync title from refreshed data
+      if (status.title && !debateTitle) {
+        debateTitle = status.title;
+        titleGenerating = false;
+        titleFadedIn = true;
+      }
     } catch (err) {
       $error = err.message;
     }
@@ -958,6 +1000,24 @@
   <!-- Current debate status -->
   {#if $currentDebate}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+      <!-- Debate title — prominent display -->
+      {#if titleGenerating}
+        <div class="mb-4 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+          <span class="text-base text-gray-400 dark:text-gray-500 animate-pulse">
+            {t('debate.titlePlaceholder')}
+          </span>
+        </div>
+      {:else if debateTitle}
+        <div class="mb-4 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700
+                    transition-opacity duration-700 ease-out"
+             class:opacity-0={!titleFadedIn}
+             class:opacity-100={titleFadedIn}>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white leading-snug">
+            {debateTitle}
+          </h3>
+        </div>
+      {/if}
+
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
           {isArchiveMode ? t('debate.archiveTitle') : t('debate.currentDebate')}

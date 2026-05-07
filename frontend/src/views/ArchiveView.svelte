@@ -187,7 +187,7 @@
     {:else}
       <!-- Table header -->
       <div class="hidden md:grid md:grid-cols-14 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        <div class="col-span-3">{t('debate.caseLabel')}</div>
+        <div class="col-span-3">{t('debate.titleLabel')}</div>
         <div class="col-span-2">{t('archive.project')}</div>
         <div class="col-span-2">{t('archive.date')}</div>
         <div class="col-span-1">{t('debate.round')}</div>
@@ -203,14 +203,23 @@
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                    md:grid md:grid-cols-14 md:gap-4 md:items-center"
           >
-            <!-- Case preview (clickable) -->
+            <!-- Title / Case preview (clickable) -->
             <button
               class="md:col-span-3 mb-2 md:mb-0 text-left cursor-pointer"
               onclick={() => navigate('debate/' + debate.debate_id)}
             >
-              <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
-                {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 16)}
-              </p>
+              {#if debate.title}
+                <p class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                  {debate.title}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                  {debate.case_preview || debate.debate_id.substring(0, 16)}
+                </p>
+              {:else}
+                <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
+                  {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 16)}
+                </p>
+              {/if}
               <p class="text-xs text-gray-400 dark:text-gray-500 font-mono md:hidden">
                 {debate.debate_id.substring(0, 8)}…
               </p>

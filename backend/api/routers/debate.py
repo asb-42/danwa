@@ -92,9 +92,14 @@ async def list_debates(
         if status and d.get("status") != status:
             continue
 
-        # Filter by search text
-        if search and search.lower() not in case_text.lower():
-            continue
+        # Filter by search text (match against title, case_text, or debate_id)
+        debate_title = d.get("title", "")
+        if search:
+            search_lower = search.lower()
+            if (search_lower not in case_text.lower()
+                    and search_lower not in debate_title.lower()
+                    and search_lower not in d.get("debate_id", "").lower()):
+                continue
 
         result = d.get("result")
         consensus = result.get("final_consensus") if isinstance(result, dict) else None
@@ -103,6 +108,7 @@ async def list_debates(
             DebateListItem(
                 debate_id=d["debate_id"],
                 status=d["status"],
+                title=d.get("title", ""),
                 current_round=d.get("current_round", 0),
                 max_rounds=d.get("max_rounds", 3),
                 consensus_score=consensus,
@@ -134,6 +140,7 @@ async def create_debate(
     debate = {
         "debate_id": debate_id,
         "status": DebateStatus.PENDING,
+        "title": "",
         "request": request,
         "max_rounds": request.max_rounds,
         "current_round": 0,
@@ -145,7 +152,7 @@ async def create_debate(
 
     store.put(debate_id, debate)
 
-    return DebateResponse(debate_id=debate_id, status=DebateStatus.PENDING, created_at=now)
+    return DebateResponse(debate_id=debate_id, status=DebateStatus.PENDING, title="", created_at=now)
 
 
 @router.delete("/{debate_id}")
@@ -276,6 +283,7 @@ async def get_debate(
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
+        title=debate.get("title", ""),
         current_round=debate.get("current_round", 0),
         max_rounds=max_rounds,
         consensus_score=consensus,
@@ -356,6 +364,7 @@ async def start_debate(
     return DebateStatusResponse(
         debate_id=debate["debate_id"],
         status=debate["status"],
+        title=debate.get("title", ""),
         current_round=debate.get("current_round", 0),
         max_rounds=max_rounds,
         consensus_score=None,
@@ -679,6 +688,64 @@ async def assign_documents(
     }
 
 
+async def _generate_debate_title(
+    case_text: str, llm_profile_id: str, language: str, project_id: str | None = None
+) -> str:
+    """Generate a concise debate title (60-150 chars) from the case description using LLM."""
+    from backend.services.llm_service import LLMService
+    from backend.services.profile_service import ProfileService
+
+    try:
+        profile_service = ProfileService()
+        llm_service = LLMService(
+            profile_id=llm_profile_id,
+            profile_service=profile_service,
+        )
+
+        if language == "en":
+            system_prompt = (
+                "You are a title generator. Generate a concise, descriptive title "
+                "for a legal/policy debate based on the case description. "
+                "The title MUST be between 60 and 150 characters. "
+                "Return ONLY the title text, nothing else. No quotes, no punctuation at the end."
+            )
+        else:
+            system_prompt = (
+                "Du bist ein Titel-Generator. Erstelle einen prägnanten, beschreibenden Titel "
+                "für eine rechtliche/politische Debatte basierend auf der Fallbeschreibung. "
+                "Der Titel MUSS zwischen 60 und 150 Zeichen lang sein. "
+                "Gib NUR den Titeltext zurück, nichts anderes. Keine Anführungszeichen, kein Satzzeichen am Ende."
+            )
+
+        user_prompt = f"Fallbeschreibung / Case description:\n\n{case_text[:2000]}"
+
+        result = await llm_service.generate(
+            prompt=user_prompt,
+            system_prompt=system_prompt,
+            temperature=0.7,
+            max_tokens=100,
+        )
+
+        title = result.content.strip().strip('"').strip("'").strip()
+        # Enforce length constraints
+        if len(title) < 60:
+            # Pad with context if too short
+            title = title[:150]
+        elif len(title) > 150:
+            title = title[:147] + "..."
+
+        logger.info("Generated debate title (%d chars): %s", len(title), title)
+        return title
+
+    except Exception as exc:
+        logger.warning("Title generation failed (non-fatal): %s", exc)
+        # Fallback: truncate case text
+        fallback = case_text[:120].strip()
+        if len(fallback) > 150:
+            fallback = fallback[:147] + "..."
+        return fallback
+
+
 async def _run_debate_workflow(
     debate_id: str, project_id: str, audit: AuditService, store: DebateStore
 ) -> None:
@@ -695,6 +762,48 @@ async def _run_debate_workflow(
             "type": "workflow_started",
             "message": "Workflow engine started, preparing debate...",
             "debate_id": debate_id,
+        },
+    )
+
+    # --- Generate debate title via LLM ---
+    req = debate.get("request", {})
+    if hasattr(req, "case"):
+        _case_text = req.case.text
+        _language = getattr(req, "language", "de")
+        _llm_profile_id = req.llm_profile_id
+    elif isinstance(req, dict):
+        _case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
+        _language = req.get("language", "de")
+        _llm_profile_id = req.get("llm_profile_id", "openrouter-claude")
+    else:
+        _case_text = ""
+        _language = "de"
+        _llm_profile_id = "openrouter-claude"
+
+    # Publish: title generation started
+    await publish_async(
+        debate_id,
+        "title_generating",
+        {
+            "type": "title_generating",
+            "message": "Generating debate title...",
+        },
+    )
+
+    generated_title = await _generate_debate_title(
+        _case_text, _llm_profile_id, _language, project_id
+    )
+
+    # Persist title in debate store
+    store.update(debate_id, title=generated_title)
+
+    # Publish: title ready (SSE event for frontend)
+    await publish_async(
+        debate_id,
+        "title_ready",
+        {
+            "type": "title_ready",
+            "title": generated_title,
         },
     )
 

@@ -146,6 +146,7 @@ class DebateResponse(BaseModel):
 
     debate_id: str
     status: DebateStatus = DebateStatus.PENDING
+    title: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -162,6 +163,7 @@ class DebateStatusResponse(BaseModel):
 
     debate_id: str
     status: DebateStatus
+    title: str = ""
     current_round: int = 0
     max_rounds: int = 3
     consensus_score: float | None = None
@@ -193,6 +195,7 @@ class DebateListItem(BaseModel):
 
     debate_id: str
     status: DebateStatus
+    title: str = ""
     current_round: int = 0
     max_rounds: int = 3
     consensus_score: float | None = None

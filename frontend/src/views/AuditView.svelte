@@ -13,6 +13,7 @@
   });
 
   let debateIdInput = $state('');
+  let resolvedTitle = $state('');
 
   async function loadAuditEvents() {
     const id = debateIdInput.trim() || $currentDebate?.debate_id;
@@ -23,10 +24,26 @@
 
     $loading = true;
     $error = null;
+    resolvedTitle = '';
 
     try {
       const events = await getAuditEvents(id);
       $auditEvents = events;
+      // Try to resolve the debate title for display
+      try {
+        const { getDebates } = await import('../lib/api.js');
+        const debates = await getDebates(500);
+        const match = debates.find(d =>
+          d.debate_id === id ||
+          d.title === id ||
+          (d.title && d.title.toLowerCase().includes(id.toLowerCase()))
+        );
+        if (match?.title) {
+          resolvedTitle = match.title;
+        }
+      } catch {
+        // Title resolution is best-effort
+      }
     } catch (err) {
       $error = err.message;
       $auditEvents = [];
@@ -72,7 +89,7 @@
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                 font-mono text-sm"
+                 text-sm"
           placeholder={t('audit.debateIdPlaceholder')}
         />
       </div>
@@ -86,6 +103,15 @@
       </button>
     </form>
   </div>
+
+  <!-- Resolved title display -->
+  {#if resolvedTitle}
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-3">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+        {resolvedTitle}
+      </p>
+    </div>
+  {/if}
 
   <!-- Audit events table -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
