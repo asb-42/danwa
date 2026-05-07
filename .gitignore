@@ -250,3 +250,4 @@ pnpm-debug.log*
 Thumbs.db
 # Allow archived files
 !docs/archive/
+.roo/
