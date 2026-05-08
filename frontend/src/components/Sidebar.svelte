@@ -17,6 +17,7 @@
   let navItems = $derived([
     { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
     { id: 'debate', label: t('nav.debate'), icon: '💬' },
+    { id: 'blueprint', label: t('nav.blueprint'), icon: '🧩' },
     { id: 'documents', label: t('nav.documents'), icon: '📄' },
     { id: 'archive', label: t('nav.archive'), icon: '📚' },
     { id: 'audit', label: t('nav.audit'), icon: '📋' },

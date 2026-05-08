@@ -1,0 +1,243 @@
+"""Blueprint Canvas — SQLite schema creation and migrations.
+
+Uses the same pattern as ``backend.services.dms.database.DMSDB`` and
+``backend.repositories.profile_repo.ProfileRepository`` — SQLite with
+``CREATE TABLE IF NOT EXISTS`` and a ``schema_version`` table for
+tracking applied migrations.
+"""
+
+from __future__ import annotations
+
+import logging
+import sqlite3
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+_DEFAULT_DB_PATH = Path("data/blueprints.db")
+
+# Current schema version — bump when adding new migrations.
+SCHEMA_VERSION = 3
+
+
+def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
+    """Create the schema_version tracking table if it doesn't exist."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER PRIMARY KEY,
+            description TEXT NOT NULL DEFAULT '',
+            applied_at TEXT NOT NULL
+        )
+    """)
+
+
+def _get_current_version(conn: sqlite3.Connection) -> int:
+    """Return the highest applied schema version, or 0 if none."""
+    row = conn.execute(
+        "SELECT MAX(version) FROM schema_version"
+    ).fetchone()
+    return row[0] if row and row[0] is not None else 0
+
+
+def _record_version(conn: sqlite3.Connection, version: int, description: str = "") -> None:
+    """Record that a schema version has been applied."""
+    from datetime import UTC, datetime
+
+    conn.execute(
+        "INSERT OR IGNORE INTO schema_version (version, description, applied_at) VALUES (?, ?, ?)",
+        (version, description, datetime.now(UTC).isoformat()),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Migration SQL statements
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V1_TABLES = [
+    # --- blueprint_llm_profiles ---
+    """
+    CREATE TABLE IF NOT EXISTS blueprint_llm_profiles (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        model TEXT NOT NULL,
+        api_base TEXT,
+        api_key_env TEXT DEFAULT 'OPENROUTER_API_KEY',
+        max_tokens INTEGER DEFAULT 4096,
+        context_window INTEGER,
+        temperature REAL DEFAULT 0.7,
+        timeout INTEGER DEFAULT 600,
+        cost_per_1k_input REAL,
+        cost_per_1k_output REAL,
+        description TEXT DEFAULT '',
+        tags_json TEXT DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    # --- prompt_templates ---
+    """
+    CREATE TABLE IF NOT EXISTS prompt_templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        language TEXT DEFAULT 'de',
+        variant TEXT DEFAULT 'default',
+        description TEXT DEFAULT '',
+        tags_json TEXT DEFAULT '[]',
+        source_path TEXT,
+        content_hash TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_prompt_templates_role ON prompt_templates (role)",
+    "CREATE INDEX IF NOT EXISTS idx_prompt_templates_variant ON prompt_templates (variant)",
+    # --- role_definitions ---
+    """
+    CREATE TABLE IF NOT EXISTS role_definitions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        prompt_template_id TEXT,
+        max_rounds INTEGER DEFAULT 5,
+        consensus_threshold REAL DEFAULT 0.9,
+        tags_json TEXT DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (prompt_template_id) REFERENCES prompt_templates(id) ON DELETE SET NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_role_definitions_role ON role_definitions (role)",
+    # --- agent_blueprints ---
+    """
+    CREATE TABLE IF NOT EXISTS agent_blueprints (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        llm_profile_id TEXT NOT NULL,
+        role_definition_id TEXT NOT NULL,
+        prompt_template_id TEXT,
+        tags_json TEXT DEFAULT '[]',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (llm_profile_id) REFERENCES blueprint_llm_profiles(id) ON DELETE CASCADE,
+        FOREIGN KEY (role_definition_id) REFERENCES role_definitions(id) ON DELETE CASCADE,
+        FOREIGN KEY (prompt_template_id) REFERENCES prompt_templates(id) ON DELETE SET NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_agent_blueprints_llm ON agent_blueprints (llm_profile_id)",
+    "CREATE INDEX IF NOT EXISTS idx_agent_blueprints_role ON agent_blueprints (role_definition_id)",
+    # --- canvas_layouts ---
+    """
+    CREATE TABLE IF NOT EXISTS canvas_layouts (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        project_id TEXT,
+        layout_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_canvas_layouts_project ON canvas_layouts (project_id)",
+]
+
+
+# ---------------------------------------------------------------------------
+# Migration v2: workflow_definitions table
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V2_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS workflow_definitions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        canvas_layout_id TEXT,
+        execution_order_json TEXT DEFAULT '[]',
+        conditional_edges_json TEXT DEFAULT '[]',
+        interjection_points_json TEXT DEFAULT '[]',
+        node_blueprint_map_json TEXT DEFAULT '{}',
+        tags_json TEXT DEFAULT '[]',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (canvas_layout_id) REFERENCES canvas_layouts(id) ON DELETE SET NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_workflow_def_layout ON workflow_definitions (canvas_layout_id)",
+]
+
+
+# ---------------------------------------------------------------------------
+# Migration v3: role_types table
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V3_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS role_types (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        icon TEXT DEFAULT '👤',
+        color TEXT DEFAULT '#8b5cf6',
+        default_max_rounds INTEGER DEFAULT 5,
+        default_consensus_threshold REAL DEFAULT 0.9,
+        tags_json TEXT DEFAULT '[]',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+]
+
+
+def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
+    """Apply all pending schema migrations.
+
+    Safe to call multiple times — only unapplied migrations are executed.
+    """
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+
+        _ensure_schema_version_table(conn)
+        current = _get_current_version(conn)
+
+        if current < 1:
+            logger.info("Applying migration v1: blueprint tables")
+            for stmt in _MIGRATION_V1_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 1, "Initial blueprint schema")
+            conn.commit()
+            logger.info("Migration v1 applied successfully")
+
+        if current < 2:
+            logger.info("Applying migration v2: workflow_definitions table")
+            for stmt in _MIGRATION_V2_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 2, "Add workflow_definitions table")
+            conn.commit()
+            logger.info("Migration v2 applied successfully")
+
+        if current < 3:
+            logger.info("Applying migration v3: role_types table")
+            for stmt in _MIGRATION_V3_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 3, "Add role_types table")
+            conn.commit()
+            logger.info("Migration v3 applied successfully")
+
+        if current >= SCHEMA_VERSION:
+            logger.debug("Schema already at version %d — no migrations needed", current)
+
+    finally:
+        conn.close()

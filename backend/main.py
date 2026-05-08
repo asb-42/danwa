@@ -16,9 +16,13 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
+from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.api.deps import get_settings  # noqa: E402
 from backend.api.routers import (  # noqa: E402
     audit,
+    blueprint_events,
+    blueprints,
+    canvas,
     config,
     debate,
     dms,
@@ -28,7 +32,6 @@ from backend.api.routers import (  # noqa: E402
     sessions,
     system,
 )
-from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
 # Path to built frontend assets (relative to project root)
@@ -148,6 +151,24 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+
+    # --- Blueprint Canvas ---
+    app.include_router(
+        blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"]
+    )
+    app.include_router(
+        canvas.router, prefix="/api/v1/canvas", tags=["canvas"]
+    )
+    app.include_router(
+        blueprint_events.router,
+        prefix="/api/v1/blueprint-events",
+        tags=["blueprint-events"],
+    )
+
+    # --- Error handlers (Blueprint Canvas) ---
+    from backend.api.errors import register_error_handlers
+
+    register_error_handlers(app)
 
     # --- A2A Protocol (Agent-to-Agent) ---
     # Mounted at root so /.well-known/agent.json discovery works per A2A spec

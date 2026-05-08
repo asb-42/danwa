@@ -13,6 +13,7 @@
   import ArchiveView from './views/ArchiveView.svelte';
   import ProjectsView from './views/ProjectsView.svelte';
   import ProjectSettings from './components/ProjectSettings.svelte';
+  import BlueprintCanvasView from './views/BlueprintCanvasView.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -83,6 +84,8 @@
     <ProjectsView {navigate} />
   {:else if $route === 'config'}
     <ConfigView />
+  {:else if $route === 'blueprint'}
+    <BlueprintCanvasView />
   {:else}
     <Dashboard {navigate} />
   {/if}

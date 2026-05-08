@@ -1,0 +1,637 @@
+"""Blueprint Canvas — SQLite repository for blueprints and canvas layouts.
+
+Follows the pattern of ``backend.repositories.profile_repo.ProfileRepository``
+— SQLite connection per operation, ``row_factory = sqlite3.Row``.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+
+from backend.blueprints.migrations import run_migrations
+from backend.blueprints.models import (
+    AgentBlueprint,
+    BlueprintLLMProfile,
+    CanvasLayout,
+    CanvasLayoutData,
+    PromptTemplate,
+    RoleDefinition,
+    RoleType,
+)
+from backend.blueprints.workflow_models import (
+    ConditionalEdge,
+    InterjectionPoint,
+    WorkflowDefinition,
+)
+
+logger = logging.getLogger(__name__)
+
+_DEFAULT_DB_PATH = Path("data/blueprints.db")
+
+
+class BlueprintRepository:
+    """SQLite-backed storage for Agent Blueprints and Canvas Layouts."""
+
+    def __init__(self, db_path: Path | str = _DEFAULT_DB_PATH):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        run_migrations(self.db_path)
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(str(self.db_path))
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+    # ------------------------------------------------------------------
+    # LLM Profiles
+    # ------------------------------------------------------------------
+
+    def save_llm_profile(self, profile: BlueprintLLMProfile) -> None:
+        """Insert or replace an LLM profile."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO blueprint_llm_profiles
+                    (id, name, provider, model, api_base, api_key_env,
+                     max_tokens, context_window, temperature, timeout,
+                     cost_per_1k_input, cost_per_1k_output,
+                     description, tags_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    profile.id,
+                    profile.name,
+                    profile.provider,
+                    profile.model,
+                    profile.api_base,
+                    profile.api_key_env,
+                    profile.max_tokens,
+                    profile.context_window,
+                    profile.temperature,
+                    profile.timeout,
+                    profile.cost_per_1k_input,
+                    profile.cost_per_1k_output,
+                    profile.description,
+                    json.dumps(profile.tags),
+                    profile.created_at.isoformat(),
+                    profile.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved LLM profile %s", profile.id)
+
+    def get_llm_profile(self, profile_id: str) -> BlueprintLLMProfile | None:
+        """Retrieve an LLM profile by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM blueprint_llm_profiles WHERE id = ?",
+                (profile_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_llm_profile(row)
+
+    def list_llm_profiles(
+        self, limit: int = 50, offset: int = 0
+    ) -> list[BlueprintLLMProfile]:
+        """List all LLM profiles with pagination."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM blueprint_llm_profiles ORDER BY name LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        return [self._row_to_llm_profile(r) for r in rows]
+
+    def delete_llm_profile(self, profile_id: str) -> bool:
+        """Delete an LLM profile. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM blueprint_llm_profiles WHERE id = ?",
+                (profile_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_llm_profile(row: sqlite3.Row) -> BlueprintLLMProfile:
+        return BlueprintLLMProfile(
+            id=row["id"],
+            name=row["name"],
+            provider=row["provider"],
+            model=row["model"],
+            api_base=row["api_base"],
+            api_key_env=row["api_key_env"],
+            max_tokens=row["max_tokens"],
+            context_window=row["context_window"],
+            temperature=row["temperature"],
+            timeout=row["timeout"],
+            cost_per_1k_input=row["cost_per_1k_input"],
+            cost_per_1k_output=row["cost_per_1k_output"],
+            description=row["description"],
+            tags=json.loads(row["tags_json"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Prompt Templates
+    # ------------------------------------------------------------------
+
+    def save_prompt_template(self, template: PromptTemplate) -> None:
+        """Insert or replace a prompt template."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO prompt_templates
+                    (id, name, role, content, language, variant,
+                     description, tags_json, source_path, content_hash,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    template.id,
+                    template.name,
+                    template.role,
+                    template.content,
+                    template.language,
+                    template.variant,
+                    template.description,
+                    json.dumps(template.tags),
+                    template.source_path,
+                    template.content_hash,
+                    template.created_at.isoformat(),
+                    template.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved prompt template %s", template.id)
+
+    def get_prompt_template(self, template_id: str) -> PromptTemplate | None:
+        """Retrieve a prompt template by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM prompt_templates WHERE id = ?",
+                (template_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_prompt_template(row)
+
+    def list_prompt_templates(
+        self,
+        role: str | None = None,
+        variant: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PromptTemplate]:
+        """List prompt templates, optionally filtered by role and/or variant."""
+        clauses: list[str] = []
+        params: list[str] = []
+        if role:
+            clauses.append("role = ?")
+            params.append(role)
+        if variant:
+            clauses.append("variant = ?")
+            params.append(variant)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM prompt_templates{where} ORDER BY role, name LIMIT ? OFFSET ?",
+                params + [limit, offset],
+            ).fetchall()
+        return [self._row_to_prompt_template(r) for r in rows]
+
+    def delete_prompt_template(self, template_id: str) -> bool:
+        """Delete a prompt template. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM prompt_templates WHERE id = ?",
+                (template_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_prompt_template(row: sqlite3.Row) -> PromptTemplate:
+        return PromptTemplate(
+            id=row["id"],
+            name=row["name"],
+            role=row["role"],
+            content=row["content"],
+            language=row["language"],
+            variant=row["variant"],
+            description=row["description"],
+            tags=json.loads(row["tags_json"]),
+            source_path=row["source_path"],
+            content_hash=row["content_hash"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Role Definitions
+    # ------------------------------------------------------------------
+
+    def save_role_definition(self, role_def: RoleDefinition) -> None:
+        """Insert or replace a role definition."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO role_definitions
+                    (id, name, role, description, prompt_template_id,
+                     max_rounds, consensus_threshold, tags_json,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    role_def.id,
+                    role_def.name,
+                    role_def.role,
+                    role_def.description,
+                    role_def.prompt_template_id,
+                    role_def.max_rounds,
+                    role_def.consensus_threshold,
+                    json.dumps(role_def.tags),
+                    role_def.created_at.isoformat(),
+                    role_def.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved role definition %s", role_def.id)
+
+    def get_role_definition(self, role_id: str) -> RoleDefinition | None:
+        """Retrieve a role definition by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM role_definitions WHERE id = ?",
+                (role_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_role_definition(row)
+
+    def list_role_definitions(
+        self,
+        role: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[RoleDefinition]:
+        """List role definitions, optionally filtered by role type."""
+        clauses: list[str] = []
+        params: list[str] = []
+        if role:
+            clauses.append("role = ?")
+            params.append(role)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM role_definitions{where} ORDER BY role, name LIMIT ? OFFSET ?",
+                params + [limit, offset],
+            ).fetchall()
+        return [self._row_to_role_definition(r) for r in rows]
+
+    def delete_role_definition(self, role_id: str) -> bool:
+        """Delete a role definition. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM role_definitions WHERE id = ?",
+                (role_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_role_definition(row: sqlite3.Row) -> RoleDefinition:
+        return RoleDefinition(
+            id=row["id"],
+            name=row["name"],
+            role=row["role"],
+            description=row["description"],
+            prompt_template_id=row["prompt_template_id"],
+            max_rounds=row["max_rounds"],
+            consensus_threshold=row["consensus_threshold"],
+            tags=json.loads(row["tags_json"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Role Types
+    # ------------------------------------------------------------------
+
+    def save_role_type(self, role_type: RoleType) -> None:
+        """Insert or replace a role type."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO role_types
+                    (id, name, description, icon, color,
+                     default_max_rounds, default_consensus_threshold,
+                     tags_json, is_active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    role_type.id,
+                    role_type.name,
+                    role_type.description,
+                    role_type.icon,
+                    role_type.color,
+                    role_type.default_max_rounds,
+                    role_type.default_consensus_threshold,
+                    json.dumps(role_type.tags),
+                    int(role_type.is_active),
+                    role_type.created_at.isoformat(),
+                    role_type.updated_at.isoformat(),
+                ),
+            )
+
+    def get_role_type(self, role_type_id: str) -> RoleType | None:
+        """Retrieve a role type by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM role_types WHERE id = ?", (role_type_id,)
+            ).fetchone()
+        return self._row_to_role_type(row) if row else None
+
+    def list_role_types(
+        self, limit: int = 100, offset: int = 0, active_only: bool = False
+    ) -> list[RoleType]:
+        """List role types with pagination."""
+        with self._connect() as conn:
+            if active_only:
+                rows = conn.execute(
+                    "SELECT * FROM role_types WHERE is_active = 1 ORDER BY name LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM role_types ORDER BY name LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+        return [self._row_to_role_type(r) for r in rows]
+
+    def delete_role_type(self, role_type_id: str) -> bool:
+        """Delete a role type. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM role_types WHERE id = ?", (role_type_id,)
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_role_type(row: sqlite3.Row) -> RoleType:
+        """Convert a SQLite row to a RoleType model."""
+        return RoleType(
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            icon=row["icon"],
+            color=row["color"],
+            default_max_rounds=row["default_max_rounds"],
+            default_consensus_threshold=row["default_consensus_threshold"],
+            tags=json.loads(row["tags_json"]),
+            is_active=bool(row["is_active"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Agent Blueprints
+    # ------------------------------------------------------------------
+
+    def save_blueprint(self, blueprint: AgentBlueprint) -> None:
+        """Insert or replace an agent blueprint."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO agent_blueprints
+                    (id, name, description, llm_profile_id,
+                     role_definition_id, prompt_template_id,
+                     tags_json, is_active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    blueprint.id,
+                    blueprint.name,
+                    blueprint.description,
+                    blueprint.llm_profile_id,
+                    blueprint.role_definition_id,
+                    blueprint.prompt_template_id,
+                    json.dumps(blueprint.tags),
+                    int(blueprint.is_active),
+                    blueprint.created_at.isoformat(),
+                    blueprint.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved agent blueprint %s", blueprint.id)
+
+    def get_blueprint(self, blueprint_id: str) -> AgentBlueprint | None:
+        """Retrieve an agent blueprint by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM agent_blueprints WHERE id = ?",
+                (blueprint_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_blueprint(row)
+
+    def list_blueprints(
+        self,
+        active_only: bool = True,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[AgentBlueprint]:
+        """List agent blueprints, optionally filtering to active only."""
+        where = " WHERE is_active = 1" if active_only else ""
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM agent_blueprints{where} ORDER BY name LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        return [self._row_to_blueprint(r) for r in rows]
+
+    def delete_blueprint(self, blueprint_id: str) -> bool:
+        """Delete an agent blueprint. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM agent_blueprints WHERE id = ?",
+                (blueprint_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_blueprint(row: sqlite3.Row) -> AgentBlueprint:
+        return AgentBlueprint(
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            llm_profile_id=row["llm_profile_id"],
+            role_definition_id=row["role_definition_id"],
+            prompt_template_id=row["prompt_template_id"],
+            tags=json.loads(row["tags_json"]),
+            is_active=bool(row["is_active"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Canvas Layouts
+    # ------------------------------------------------------------------
+
+    def save_layout(self, layout: CanvasLayout) -> None:
+        """Insert or replace a canvas layout."""
+        layout_json = layout.layout_data.model_dump_json()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO canvas_layouts
+                    (id, name, description, project_id, layout_json,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    layout.id,
+                    layout.name,
+                    layout.description,
+                    layout.project_id,
+                    layout_json,
+                    layout.created_at.isoformat(),
+                    layout.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved canvas layout %s", layout.id)
+
+    def get_layout(self, layout_id: str) -> CanvasLayout | None:
+        """Retrieve a canvas layout by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM canvas_layouts WHERE id = ?",
+                (layout_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_layout(row)
+
+    def list_layouts(
+        self,
+        project_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[CanvasLayout]:
+        """List canvas layouts, optionally filtered by project."""
+        clauses: list[str] = []
+        params: list[str] = []
+        if project_id:
+            clauses.append("project_id = ?")
+            params.append(project_id)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM canvas_layouts{where} ORDER BY name LIMIT ? OFFSET ?",
+                params + [limit, offset],
+            ).fetchall()
+        return [self._row_to_layout(r) for r in rows]
+
+    def delete_layout(self, layout_id: str) -> bool:
+        """Delete a canvas layout. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM canvas_layouts WHERE id = ?",
+                (layout_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_layout(row: sqlite3.Row) -> CanvasLayout:
+        layout_data = CanvasLayoutData.model_validate_json(row["layout_json"])
+        return CanvasLayout(
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            project_id=row["project_id"],
+            layout_data=layout_data,
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Workflow Definitions
+    # ------------------------------------------------------------------
+
+    def save_workflow_definition(self, wf: WorkflowDefinition) -> None:
+        """Insert or replace a workflow definition."""
+        with self._connect() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO workflow_definitions
+                (id, name, description, canvas_layout_id, execution_order_json,
+                 conditional_edges_json, interjection_points_json, node_blueprint_map_json,
+                 tags_json, is_active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    wf.id,
+                    wf.name,
+                    wf.description,
+                    wf.canvas_layout_id,
+                    json.dumps(wf.execution_order),
+                    json.dumps([e.model_dump() for e in wf.conditional_edges]),
+                    json.dumps([p.model_dump() for p in wf.interjection_points]),
+                    json.dumps(wf.node_blueprint_map),
+                    json.dumps(wf.tags),
+                    int(wf.is_active),
+                    wf.created_at.isoformat(),
+                    wf.updated_at.isoformat(),
+                ),
+            )
+
+    def get_workflow_definition(self, wf_id: str) -> WorkflowDefinition | None:
+        """Retrieve a workflow definition by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM workflow_definitions WHERE id = ?",
+                (wf_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return self._row_to_workflow_definition(row)
+
+    def list_workflow_definitions(
+        self, limit: int = 50, offset: int = 0
+    ) -> list[WorkflowDefinition]:
+        """List all workflow definitions with pagination."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM workflow_definitions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        return [self._row_to_workflow_definition(r) for r in rows]
+
+    def delete_workflow_definition(self, wf_id: str) -> bool:
+        """Delete a workflow definition. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM workflow_definitions WHERE id = ?",
+                (wf_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_workflow_definition(row: sqlite3.Row) -> WorkflowDefinition:
+        """Convert a SQLite row to a WorkflowDefinition model."""
+        return WorkflowDefinition(
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            canvas_layout_id=row["canvas_layout_id"],
+            execution_order=json.loads(row["execution_order_json"]),
+            conditional_edges=[
+                ConditionalEdge(**e) for e in json.loads(row["conditional_edges_json"])
+            ],
+            interjection_points=[
+                InterjectionPoint(**p) for p in json.loads(row["interjection_points_json"])
+            ],
+            node_blueprint_map=json.loads(row["node_blueprint_map_json"]),
+            tags=json.loads(row["tags_json"]),
+            is_active=bool(row["is_active"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )

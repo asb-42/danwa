@@ -9,6 +9,7 @@ from functools import lru_cache
 
 from fastapi import Header, HTTPException
 
+from backend.blueprints.repository import BlueprintRepository
 from backend.core.config import Settings, settings
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
@@ -66,6 +67,12 @@ def get_prompt_service():
 
 def get_debate_graph():
     return debate_graph
+
+
+@lru_cache
+def get_blueprint_repository() -> BlueprintRepository:
+    """Singleton BlueprintRepository instance."""
+    return BlueprintRepository()
 
 
 async def get_project_id(
