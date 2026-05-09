@@ -63,6 +63,7 @@
 
   // Settings tab state
   let settingsData = $state({});
+  let settingsLoaded = $state(false);
   let isLoadingSettings = $state(false);
   let isSavingSettings = $state(false);
   let settingsMessage = $state('');
@@ -182,7 +183,8 @@
   async function loadSettings() {
     isLoadingSettings = true;
     try {
-      settingsData = await getSettings();
+      settingsData = await getSettings() || {};
+      settingsLoaded = true;
     } catch (e) {
       $error = e.message;
     } finally {
@@ -205,7 +207,7 @@
 
   // Load settings when settings tab is activated
   $effect(() => {
-    if (activeTab === 'settings' && Object.keys(settingsData).length === 0) {
+    if (activeTab === 'settings' && !settingsLoaded) {
       loadSettings();
     }
   });
@@ -877,7 +879,7 @@
         <div class="flex items-center justify-center h-32">
           <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
         </div>
-      {:else}
+      {:else if settingsLoaded}
         {#if settingsMessage}
           <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300" role="status">
             {settingsMessage}
@@ -949,6 +951,11 @@
               {isSavingSettings ? '...' : t('common.save')}
             </button>
           </div>
+        </div>
+      {/if}
+      {#if !settingsLoaded && !isLoadingSettings}
+        <div class="flex items-center justify-center h-32">
+          <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
         </div>
       {/if}
     </div>
