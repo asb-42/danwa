@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.core.profiles import AgentPersona, LLMProfile, PromptVariant
 from backend.services.profile_service import ProfileService
@@ -129,6 +130,31 @@ async def delete_agent_persona(persona_id: str) -> dict:
 async def list_prompt_variants() -> list[PromptVariant]:
     """List all prompt variants."""
     return get_profile_service().list_prompt_variants()
+
+
+class CreatePromptVariantRequest(BaseModel):
+    """Request body for creating a prompt variant."""
+    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$", min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = ""
+    prompts: dict[str, str] = Field(
+        default_factory=dict,
+        description="Role → prompt content mapping (e.g. {\"strategist\": \"...\", \"critic\": \"...\"})",
+    )
+
+
+@router.post("/prompts", response_model=PromptVariant, status_code=201)
+async def create_prompt_variant(body: CreatePromptVariantRequest) -> PromptVariant:
+    """Create a new prompt variant with per-role prompt content."""
+    try:
+        return get_profile_service().create_prompt_variant(
+            variant_id=body.id,
+            name=body.name,
+            description=body.description,
+            prompts=body.prompts,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/prompts/{variant_id}/preview")

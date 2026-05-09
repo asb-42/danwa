@@ -12,6 +12,7 @@
     updateAgentPersona,
     deleteAgentPersona,
     getPromptVariants,
+    createPromptVariant,
     deletePromptVariant,
     estimateCost,
     previewPromptVariant,
@@ -35,6 +36,14 @@
     return text;
   });
 
+  // --- Constants ---
+  const PROMPT_ROLES = [
+    { value: 'strategist', label: 'Strategist', emoji: '🧠' },
+    { value: 'critic', label: 'Critic', emoji: '🔍' },
+    { value: 'optimizer', label: 'Optimizer', emoji: '⚡' },
+    { value: 'moderator', label: 'Moderator', emoji: '🎯' },
+  ];
+
   // --- State ---
   let llmProfiles = $state([]);
   let agentPersonas = $state([]);
@@ -43,6 +52,7 @@
   let costEstimate = $state(null);
   let previewContent = $state(null);
   let previewRole = $state('strategist');
+  let previewVariantId = $state(null);
 
   // Cost estimation inputs
   let costNumAgents = $state(4);
@@ -144,12 +154,50 @@
     }
   }
 
-  async function handlePreview(variantId) {
+  async function handlePreview(variantId, role) {
     try {
-      const result = await previewPromptVariant(variantId, previewRole);
+      const r = role || previewRole;
+      const result = await previewPromptVariant(variantId, r);
       previewContent = result.content;
+      previewVariantId = variantId;
+      previewRole = r;
     } catch (e) {
       $error = e.message;
+    }
+  }
+
+  // --- Prompt Variant Create ---
+  let promptCreateData = $state({ id: '', name: '', description: '', prompts: {} });
+  let promptCreateErrors = $state({});
+  let isSavingPrompt = $state(false);
+  let showPromptCreateModal = $state(false);
+
+  function openCreatePrompt() {
+    promptCreateData = { id: '', name: '', description: '', prompts: {} };
+    promptCreateErrors = {};
+    showPromptCreateModal = true;
+  }
+
+  function closePromptCreate() {
+    showPromptCreateModal = false;
+  }
+
+  async function handleSavePromptVariant() {
+    promptCreateErrors = {};
+    if (!promptCreateData.id) promptCreateErrors.id = 'Required';
+    if (!promptCreateData.name) promptCreateErrors.name = 'Required';
+    if (Object.keys(promptCreateErrors).length > 0) return;
+
+    isSavingPrompt = true;
+    try {
+      await createPromptVariant(promptCreateData);
+      showPromptCreateModal = false;
+      statusMessage = `✓ ${t('config.promptVariantSaved') || 'Prompt variant created'}`;
+      await refreshLists();
+    } catch (e) {
+      $error = e.message;
+    } finally {
+      isSavingPrompt = false;
     }
   }
 
@@ -721,83 +769,75 @@
   <!-- Prompt Variants Tab -->
   {:else if activeTab === 'prompts'}
     <div class="space-y-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        {#if promptVariants.length === 0}
+      <div class="flex justify-end">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+          onclick={openCreatePrompt}
+        >
+          + {t('config.createPromptVariant') || 'Create Prompt Variant'}
+        </button>
+      </div>
+
+      <!-- Each variant as a section with role-based tiles -->
+      {#each promptVariants as variant}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <h4 class="text-md font-semibold text-gray-800 dark:text-white">
+                {variant.name || variant.id}
+              </h4>
+              {#if $selectedPromptVariant === variant.id}
+                <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">✓ {t('config.active')}</span>
+              {/if}
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors"
+                onclick={() => { $selectedPromptVariant = variant.id; }}
+              >
+                {$selectedPromptVariant === variant.id ? t('config.active') : t('config.select') || 'Select'}
+              </button>
+              {#if variant.id !== 'default'}
+                <button
+                  class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                  onclick={() => confirmDelete('prompt', variant.id, variant.id)}
+                >
+                  {t('common.delete')}
+                </button>
+              {/if}
+            </div>
+          </div>
+          {#if variant.description}
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">{variant.description}</p>
+          {/if}
+
+          <!-- Role-based prompt tiles -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {#each PROMPT_ROLES as role}
+              <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-gray-800 dark:text-white capitalize">{role.emoji} {role.label}</span>
+                  <button
+                    class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    onclick={() => handlePreview(variant.id, role.value)}
+                  >
+                    {t('config.preview')}
+                  </button>
+                </div>
+                {#if previewContent && previewVariantId === variant.id && previewRole === role.value}
+                  <pre class="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto max-h-32 whitespace-pre-wrap">{previewContent}</pre>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {:else}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-center h-32">
             <p class="text-gray-500 dark:text-gray-400">{t('config.promptVariantsPlaceholder')}</p>
           </div>
-        {:else}
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-              <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th class="px-4 py-3">ID</th>
-                  <th class="px-4 py-3">{t('config.description')}</th>
-                  <th class="px-4 py-3">{t('config.preview')}</th>
-                  <th class="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each promptVariants as variant}
-                  <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
-                    {$selectedPromptVariant === variant.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
-                    <td class="px-4 py-3 font-medium">
-                      <button
-                        class="text-blue-600 dark:text-blue-400 hover:underline"
-                        onclick={() => { $selectedPromptVariant = variant.id; }}
-                      >
-                        {variant.id}
-                      </button>
-                      {#if $selectedPromptVariant === variant.id}
-                        <span class="ml-2 text-xs text-green-600 dark:text-green-400">✓ {t('config.active')}</span>
-                      {/if}
-                    </td>
-                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{variant.description || '—'}</td>
-                    <td class="px-4 py-3">
-                      <select
-                        bind:value={previewRole}
-                        class="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white mr-2"
-                      >
-                        <option value="strategist">Strategist</option>
-                        <option value="critic">Critic</option>
-                        <option value="optimizer">Optimizer</option>
-                        <option value="moderator">Moderator</option>
-                      </select>
-                      <button
-                        class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                        onclick={() => handlePreview(variant.id)}
-                      >
-                        {t('config.preview')}
-                      </button>
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                      {#if variant.id !== 'default'}
-                        <button
-                          class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                          onclick={() => confirmDelete('prompt', variant.id, variant.id)}
-                        >
-                          {t('common.delete')}
-                        </button>
-                      {:else}
-                        <span class="text-xs text-gray-400 dark:text-gray-500">default</span>
-                      {/if}
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </div>
-
-      {#if previewContent}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-          <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-2">
-            {t('config.preview')}: {$selectedPromptVariant}/{previewRole}
-          </h4>
-          <pre class="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-3 rounded overflow-x-auto max-h-64 whitespace-pre-wrap">{previewContent}</pre>
         </div>
-      {/if}
+      {/each}
     </div>
 
   <!-- Cost Estimation Tab -->
@@ -1570,6 +1610,115 @@
           disabled={isSavingRoleType}
         >
           {isSavingRoleType ? '...' : t('common.save')}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- ============================================================ -->
+<!-- Create Prompt Variant Modal -->
+<!-- ============================================================ -->
+{#if showPromptCreateModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick={closePromptCreate}>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onclick={(e) => e.stopPropagation()}>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+          {t('config.createPromptVariant') || 'Create Prompt Variant'}
+        </h3>
+        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={closePromptCreate}>✕</button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+        <!-- ID -->
+        <div>
+          <label for="pv-form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            ID *
+          </label>
+          <input id="pv-form-id" type="text" bind:value={promptCreateData.id}
+            class="w-full px-3 py-2 border rounded-lg text-sm
+              {promptCreateErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+              bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="my-custom-variant"
+          />
+          {#if promptCreateErrors.id}<p class="text-xs text-red-500 mt-1">{promptCreateErrors.id}</p>{/if}
+        </div>
+
+        <!-- Name -->
+        <div>
+          <label for="pv-form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('config.name')} *
+          </label>
+          <input id="pv-form-name" type="text" bind:value={promptCreateData.name}
+            class="w-full px-3 py-2 border rounded-lg text-sm
+              {promptCreateErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+              bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="My Custom Variant"
+          />
+          {#if promptCreateErrors.name}<p class="text-xs text-red-500 mt-1">{promptCreateErrors.name}</p>{/if}
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label for="pv-form-desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('config.description')}
+          </label>
+          <input id="pv-form-desc" type="text" bind:value={promptCreateData.description}
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Description of this prompt variant"
+          />
+        </div>
+
+        <!-- Per-role prompts -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Prompts per Role
+          </p>
+          <div class="space-y-3">
+            {#each PROMPT_ROLES as role}
+              <div>
+                <label for="pv-prompt-{role.value}" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {role.emoji} {role.label}
+                </label>
+                <textarea
+                  id="pv-prompt-{role.value}"
+                  value={promptCreateData.prompts[role.value] || ''}
+                  oninput={(e) => {
+                    promptCreateData = {
+                      ...promptCreateData,
+                      prompts: { ...promptCreateData.prompts, [role.value]: e.target.value }
+                    };
+                  }}
+                  rows="4"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                  placeholder="System prompt for {role.label}..."
+                ></textarea>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          onclick={closePromptCreate}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick={handleSavePromptVariant}
+          disabled={isSavingPrompt}
+        >
+          {isSavingPrompt ? '...' : t('common.save')}
         </button>
       </div>
     </div>

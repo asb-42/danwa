@@ -203,6 +203,13 @@ export function previewPromptVariant(variantId, agentRole) {
   return request(`/api/v1/profiles/prompts/${variantId}/preview?agent_role=${encodeURIComponent(agentRole)}`);
 }
 
+export function createPromptVariant(variant) {
+  return request('/api/v1/profiles/prompts', {
+    method: 'POST',
+    body: JSON.stringify(variant),
+  });
+}
+
 export function deletePromptVariant(variantId) {
   return request(`/api/v1/profiles/prompts/${variantId}`, {
     method: 'DELETE',

@@ -291,6 +291,53 @@ class ProfileService:
         logger.info("Prompt variant deleted: %s", variant_id)
         return True
 
+    def create_prompt_variant(
+        self,
+        variant_id: str,
+        name: str,
+        description: str = "",
+        prompts: dict[str, str] | None = None,
+    ) -> PromptVariant:
+        """Create a new prompt variant with per-role prompt content.
+
+        Args:
+            variant_id: Unique identifier (lowercase, alphanumeric + hyphens).
+            name: Display name.
+            description: Optional description.
+            prompts: Dict of role → prompt content (e.g. {"strategist": "...", "critic": "..."}).
+
+        Returns:
+            The created PromptVariant.
+
+        Raises:
+            ValueError: If variant_id already exists.
+        """
+        self.ensure_loaded()
+        if variant_id in self._prompt_cache:
+            raise ValueError(f"Prompt variant '{variant_id}' already exists")
+
+        # Create the variant directory
+        variants_dir = self.profile_dir / "prompts" / "variants"
+        variants_dir.mkdir(parents=True, exist_ok=True)
+        variant_dir = variants_dir / variant_id
+        variant_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write prompt files for each role
+        if prompts:
+            for role, content in prompts.items():
+                prompt_file = variant_dir / f"{role}.md"
+                prompt_file.write_text(content, encoding="utf-8")
+
+        variant = PromptVariant(
+            id=variant_id,
+            name=name,
+            base_path=str(variant_dir),
+            description=description,
+        )
+        self._prompt_cache[variant_id] = variant
+        logger.info("Prompt variant created: %s at %s", variant_id, variant_dir)
+        return variant
+
     # ------------------------------------------------------------------
     # Cost Estimation
     # ------------------------------------------------------------------
