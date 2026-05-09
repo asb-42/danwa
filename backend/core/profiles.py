@@ -43,6 +43,12 @@ class LLMProfile(BaseModel):
     cost_per_1k_input: float | None = None
     cost_per_1k_output: float | None = None
 
+    # --- A2A Protocol (Phase 8) ---
+    protocol: Literal["litellm", "a2a"] = "litellm"
+    a2a_endpoint: str | None = None  # URL for A2A agent (e.g. "http://agent.example.com")
+    a2a_timeout: int = 120  # Timeout for A2A calls in seconds
+    fallback_llm_profile_id: str | None = None  # Fallback profile for A2A failures
+
     @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:

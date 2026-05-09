@@ -917,10 +917,11 @@
               {#each a2aAgents as agent, i (i)}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    <label for={`a2a-url-${i}`} class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       {t('a2a.agentUrl')} <span class="text-red-500">*</span>
                     </label>
                     <input
+                      id={`a2a-url-${i}`}
                       type="url"
                       value={agent.url}
                       oninput={(e) => updateA2AAgent(i, 'url', e.target.value)}
@@ -931,10 +932,11 @@
                     />
                   </div>
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    <label for={`a2a-role-${i}`} class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       {t('a2a.role')}
                     </label>
                     <input
+                      id={`a2a-role-${i}`}
                       type="text"
                       value={agent.role}
                       oninput={(e) => updateA2AAgent(i, 'role', e.target.value)}
@@ -946,10 +948,11 @@
                   </div>
                   <div class="flex items-end gap-2">
                     <div class="flex-1">
-                      <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      <label for={`a2a-pos-${i}`} class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         {t('a2a.position')}
                       </label>
                       <input
+                        id={`a2a-pos-${i}`}
                         type="text"
                         value={agent.position}
                         oninput={(e) => updateA2AAgent(i, 'position', e.target.value)}

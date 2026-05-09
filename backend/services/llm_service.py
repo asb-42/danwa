@@ -101,12 +101,53 @@ class LLMService:
         temp = temperature if temperature is not None else self._profile.temperature
         tokens = max_tokens if max_tokens is not None else self._profile.max_tokens
 
+        # Route by protocol (Phase 8)
+        protocol = getattr(self._profile, "protocol", "litellm")
+        if protocol == "a2a":
+            return await self._generate_a2a(messages, temp, tokens)
         # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
         local_providers = {"local", "ollama", "opencode-zen", "opencode-go", "xiaomi"}
         if self._profile.provider.value in local_providers:
             return await self._generate_local(messages, temp, tokens)
         else:
             return await self._generate_litellm(messages, temp, tokens)
+
+    async def generate_with_fallback(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> "GenerationResult":
+        """Generate with automatic fallback on A2A failure."""
+        from backend.a2a.exceptions import A2AError
+
+        try:
+            return await self.generate(prompt, system_prompt, temperature, max_tokens)
+        except A2AError:
+            fallback_id = getattr(self._profile, "fallback_llm_profile_id", None)
+            if not fallback_id:
+                raise
+            logger.warning("A2A failed for profile %s, falling back to %s", self._profile.id, fallback_id)
+            fallback_service = LLMService(profile_id=fallback_id, profile_service=self._profile_service)
+            return await fallback_service.generate(prompt, system_prompt, temperature, max_tokens)
+
+    async def _generate_a2a(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+    ) -> "GenerationResult":
+        """Generate via A2A protocol using A2AAdapter."""
+        from backend.a2a.adapter import A2AAdapter
+        from backend.core.config import settings
+
+        endpoint = getattr(self._profile, "a2a_endpoint", None)
+        if not endpoint:
+            raise RuntimeError(f"LLM profile '{self._profile.id}' has protocol='a2a' but no a2a_endpoint")
+        timeout = getattr(self._profile, "a2a_timeout", 120)
+        adapter = A2AAdapter(endpoint, timeout=timeout, allow_private_ips=settings.a2a_allow_private_ips)
+        return await adapter.invoke(messages=messages, config={})
 
     async def _generate_local(
         self,

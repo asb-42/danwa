@@ -109,7 +109,7 @@ def _sample_prompt_template(template_id: str = "test-prompt") -> dict:
     return {
         "id": template_id,
         "name": "Test Prompt",
-        "role": "strategist",
+        "role_type_id": "strategist",
         "content": "You are a test strategist. Analyze the case.",
     }
 
@@ -118,7 +118,7 @@ def _sample_role_definition(role_id: str = "test-role") -> dict:
     return {
         "id": role_id,
         "name": "Test Role",
-        "role": "strategist",
+        "role_type_id": "strategist",
         "description": "A test role definition",
         "consensus_threshold": 0.8,
     }
@@ -347,7 +347,7 @@ class TestRoleDefinitionAPI:
         assert response.status_code == 201
         data = response.json()
         assert data["id"] == "test-role"
-        assert data["role"] == "strategist"
+        assert data["role_type_id"] == "strategist"
         assert data["consensus_threshold"] == 0.8
 
     def test_get_by_id(self, client: TestClient) -> None:
@@ -374,13 +374,13 @@ class TestRoleDefinitionAPI:
     def test_filter_by_role(self, client: TestClient) -> None:
         client.post("/api/v1/blueprints/role-definitions", json=_sample_role_definition("r1"))
         critic = _sample_role_definition("r2")
-        critic["role"] = "critic"
+        critic["role_type_id"] = "critic"
         client.post("/api/v1/blueprints/role-definitions", json=critic)
         response = client.get("/api/v1/blueprints/role-definitions?role=critic")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
-        assert data[0]["role"] == "critic"
+        assert data[0]["role_type_id"] == "critic"
 
     def test_create_conflict(self, client: TestClient) -> None:
         url = "/api/v1/blueprints/role-definitions"

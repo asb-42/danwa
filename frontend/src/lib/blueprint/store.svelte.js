@@ -166,6 +166,15 @@ class BlueprintCanvasStore {
       'llm-profile': 'llm-profile',
       'role-definition': 'role-definition',
       'prompt-template': 'prompt-template',
+      'role-type': 'role-type',
+      'wf-input': 'wf-input',
+      'wf-initialize': 'wf-initialize',
+      'wf-strategist': 'wf-strategist',
+      'wf-critic': 'wf-critic',
+      'wf-optimizer': 'wf-optimizer',
+      'wf-moderator': 'wf-moderator',
+      'wf-user-injection': 'wf-user-injection',
+      'wf-gate': 'wf-gate',
     };
 
     this.nodes = (layoutJson.nodes || []).map((n) => ({

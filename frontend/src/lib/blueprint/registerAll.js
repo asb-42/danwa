@@ -16,8 +16,15 @@ import RoleDefinitionNode from '../../components/blueprint/nodes/RoleDefinitionN
 import PromptTemplateNode from '../../components/blueprint/nodes/PromptTemplateNode.svelte';
 import RoleTypeNode from '../../components/blueprint/nodes/RoleTypeNode.svelte';
 
-// Workflow node component (Phase 4)
-import WorkflowNode from '../../components/blueprint/nodes/WorkflowNode.svelte';
+// Workflow node components (Phase 1 — specialized per type)
+import InputNode from '../../components/blueprint/nodes/InputNode.svelte';
+import InitializeNode from '../../components/blueprint/nodes/InitializeNode.svelte';
+import StrategistNode from '../../components/blueprint/nodes/StrategistNode.svelte';
+import CriticNode from '../../components/blueprint/nodes/CriticNode.svelte';
+import OptimizerNode from '../../components/blueprint/nodes/OptimizerNode.svelte';
+import ModeratorNode from '../../components/blueprint/nodes/ModeratorNode.svelte';
+import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNode.svelte';
+import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
 
 // Semantic edge components (Phase 3)
 import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
@@ -29,6 +36,7 @@ import OverridesPromptEdge from '../../components/blueprint/edges/OverridesPromp
 import SequentialEdge from '../../components/blueprint/edges/SequentialEdge.svelte';
 import ConditionalEdge from '../../components/blueprint/edges/ConditionalEdge.svelte';
 import InterjectionEdge from '../../components/blueprint/edges/InterjectionEdge.svelte';
+import FeedbackEdge from '../../components/blueprint/edges/FeedbackEdge.svelte';
 
 // RoleType edge component
 import DefinesRoleEdge from '../../components/blueprint/edges/DefinesRoleEdge.svelte';
@@ -122,81 +130,124 @@ export function registerAllNodeTypes() {
     active: true,
   });
 
-  // ── Workflow nodes (Phase 4 — placeholders) ────────────────────────
+  // ── Workflow nodes (Phase 1 — specialized components) ──────────────
+
+  registerNode({
+    type: 'wf-input',
+    component: InputNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '📥',
+    labelKey: 'blueprint.palette.wfInput',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Case Input',
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-initialize',
+    component: InitializeNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🚀',
+    labelKey: 'blueprint.palette.wfInitialize',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Initialize',
+    }),
+    active: true,
+  });
 
   registerNode({
     type: 'wf-strategist',
-    component: WorkflowNode,
+    component: StrategistNode,
     category: 'workflow',
     schemaRef: 'WorkflowDefinition',
     icon: '🧠',
     labelKey: 'blueprint.palette.wfStrategist',
     defaultData: () => ({
       isDraft: true,
-      role: 'strategist',
       label: 'Strategist',
+      agent_blueprint_id: null,
     }),
-    active: false, // Placeholder — grayed out in palette
+    active: true,
   });
 
   registerNode({
     type: 'wf-critic',
-    component: WorkflowNode,
+    component: CriticNode,
     category: 'workflow',
     schemaRef: 'WorkflowDefinition',
     icon: '🔍',
     labelKey: 'blueprint.palette.wfCritic',
     defaultData: () => ({
       isDraft: true,
-      role: 'critic',
       label: 'Critic',
+      agent_blueprint_id: null,
     }),
-    active: false,
+    active: true,
   });
 
   registerNode({
     type: 'wf-optimizer',
-    component: WorkflowNode,
+    component: OptimizerNode,
     category: 'workflow',
     schemaRef: 'WorkflowDefinition',
     icon: '⚡',
     labelKey: 'blueprint.palette.wfOptimizer',
     defaultData: () => ({
       isDraft: true,
-      role: 'optimizer',
       label: 'Optimizer',
+      agent_blueprint_id: null,
     }),
-    active: false,
+    active: true,
   });
 
   registerNode({
     type: 'wf-moderator',
-    component: WorkflowNode,
+    component: ModeratorNode,
     category: 'workflow',
     schemaRef: 'WorkflowDefinition',
     icon: '🎯',
     labelKey: 'blueprint.palette.wfModerator',
     defaultData: () => ({
       isDraft: true,
-      role: 'moderator',
       label: 'Moderator',
+      agent_blueprint_id: null,
     }),
-    active: false,
+    active: true,
   });
 
   registerNode({
-    type: 'wf-user-input',
-    component: WorkflowNode,
+    type: 'wf-user-injection',
+    component: UserInjectionNode,
     category: 'workflow',
     schemaRef: 'WorkflowDefinition',
     icon: '👤',
-    labelKey: 'blueprint.palette.wfUserInput',
+    labelKey: 'blueprint.palette.wfUserInjection',
     defaultData: () => ({
       isDraft: true,
-      role: 'user_input',
       label: 'User Input',
+      config: { input_type: 'user_query' },
     }),
-    active: false,
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-gate',
+    component: GateNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🔀',
+    labelKey: 'blueprint.palette.wfGate',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Gate',
+      config: { condition: '' },
+    }),
+    active: true,
   });
 
   // ── Semantic edges (Phase 3) ───────────────────────────────────────
@@ -248,6 +299,12 @@ export function registerAllNodeTypes() {
   registerEdge({
     type: 'interjection',
     component: InterjectionEdge,
+    category: 'control_flow',
+  });
+
+  registerEdge({
+    type: 'feedback',
+    component: FeedbackEdge,
     category: 'control_flow',
   });
 }

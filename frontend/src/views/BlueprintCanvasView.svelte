@@ -169,8 +169,8 @@
 
 <!-- Save dialog for new layouts -->
 {#if showSaveDialog}
-  <div class="dialog-overlay" onclick={() => { showSaveDialog = false; }}>
-    <div class="dialog" onclick={(e) => e.stopPropagation()}>
+  <div class="dialog-overlay" role="button" tabindex="-1" onclick={() => { showSaveDialog = false; }} onkeydown={(e) => { if (e.key === 'Escape') showSaveDialog = false; }}>
+    <div class="dialog" role="dialog" aria-modal="true">
       <h3 class="dialog-title">{t('blueprint.canvas.saveLayout')}</h3>
       {#if saveError}
         <p class="dialog-error">{saveError}</p>

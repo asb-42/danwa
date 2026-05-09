@@ -46,6 +46,37 @@ const DEFAULT_NODE_DATA = {
     content: '',
     variables: [],
   },
+  // Workflow node types (Phase 1)
+  'wf-input': {
+    label: 'Input',
+  },
+  'wf-initialize': {
+    label: 'Initialize',
+  },
+  'wf-strategist': {
+    label: 'Strategist',
+    agent_blueprint_id: null,
+  },
+  'wf-critic': {
+    label: 'Critic',
+    agent_blueprint_id: null,
+  },
+  'wf-optimizer': {
+    label: 'Optimizer',
+    agent_blueprint_id: null,
+  },
+  'wf-moderator': {
+    label: 'Moderator',
+    agent_blueprint_id: null,
+  },
+  'wf-user-injection': {
+    label: 'User Input',
+    config: { input_type: 'user_query' },
+  },
+  'wf-gate': {
+    label: 'Gate',
+    config: { condition: '' },
+  },
 };
 
 /**

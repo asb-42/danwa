@@ -462,3 +462,14 @@ export function compileWorkflow(wfId) {
     method: 'POST',
   });
 }
+
+/**
+ * Clone a workflow definition — creates a deep copy with a new ID.
+ * @param {string} wfId
+ * @returns {Promise<Object>}
+ */
+export function cloneWorkflow(wfId) {
+  return request(`/api/v1/blueprints/workflows/${wfId}/clone`, {
+    method: 'POST',
+  });
+}

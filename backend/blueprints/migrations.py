@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 8
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -196,6 +196,120 @@ _MIGRATION_V3_TABLES = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Migration v4: workflow_definitions graph columns
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V4_TABLES = [
+    # New columns for structured graph representation
+    "ALTER TABLE workflow_definitions ADD COLUMN nodes_json TEXT DEFAULT '[]'",
+    "ALTER TABLE workflow_definitions ADD COLUMN edges_json TEXT DEFAULT '[]'",
+    "ALTER TABLE workflow_definitions ADD COLUMN entry_point TEXT",
+    "ALTER TABLE workflow_definitions ADD COLUMN termination_conditions_json TEXT DEFAULT '[]'",
+    "ALTER TABLE workflow_definitions ADD COLUMN version INTEGER DEFAULT 1",
+    "ALTER TABLE workflow_definitions ADD COLUMN is_locked INTEGER DEFAULT 0",
+]
+
+
+# ---------------------------------------------------------------------------
+# Migration v5: workflow_sessions table
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V5_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS workflow_sessions (
+        id TEXT PRIMARY KEY,
+        workflow_id TEXT NOT NULL,
+        project_id TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        current_node_id TEXT,
+        current_round INTEGER DEFAULT 0,
+        initial_state_json TEXT,
+        result_json TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (workflow_id) REFERENCES workflow_definitions(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_wf_sessions_workflow ON workflow_sessions (workflow_id)",
+]
+
+
+# ---------------------------------------------------------------------------
+# Migration v6: audit_log, report_jobs, is_locked/is_archived columns
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V6_TABLES = [
+    # --- audit_log ---
+    """
+    CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        workflow_id TEXT NOT NULL,
+        workflow_version INTEGER NOT NULL DEFAULT 1,
+        timestamp TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        node_id TEXT,
+        actor TEXT NOT NULL DEFAULT 'system',
+        input_hash TEXT NOT NULL DEFAULT '',
+        output_hash TEXT NOT NULL DEFAULT '',
+        llm_profile_id TEXT NOT NULL DEFAULT '',
+        latency_ms INTEGER NOT NULL DEFAULT 0,
+        prompt_tokens INTEGER NOT NULL DEFAULT 0,
+        completion_tokens INTEGER NOT NULL DEFAULT 0
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_audit_log_session ON audit_log (session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_audit_log_workflow ON audit_log (workflow_id)",
+    "CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log (event_type)",
+    "CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log (timestamp)",
+    # --- report_jobs ---
+    """
+    CREATE TABLE IF NOT EXISTS report_jobs (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        format TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        file_path TEXT,
+        error TEXT,
+        created_at TEXT NOT NULL,
+        completed_at TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_report_jobs_session ON report_jobs (session_id)",
+    # --- is_locked / is_archived columns on workflow_sessions ---
+    "ALTER TABLE workflow_sessions ADD COLUMN is_locked INTEGER DEFAULT 0",
+    "ALTER TABLE workflow_sessions ADD COLUMN is_archived INTEGER DEFAULT 0",
+    # NOTE: is_locked on state_snapshots is handled in StateSnapshotStore._init_table()
+    # because that table is created lazily, not via migrations.
+]
+
+# ---------------------------------------------------------------------------
+# V7 — A2A Protocol columns on blueprint_llm_profiles (Phase 8)
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V7_TABLES = [
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN protocol TEXT DEFAULT 'litellm'",
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN a2a_endpoint TEXT",
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN a2a_timeout INTEGER DEFAULT 120",
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN fallback_llm_profile_id TEXT",
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN a2a_config_json TEXT DEFAULT '{}'",
+]
+
+# ---------------------------------------------------------------------------
+# V8 — role_type_id on role_definitions (dynamic RoleType reference)
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V8_TABLES = [
+    # Add role_type_id column (defaults to 'strategist' for backward compat)
+    "ALTER TABLE role_definitions ADD COLUMN role_type_id TEXT DEFAULT 'strategist'",
+    # Migrate existing 'role' values to role_type_id
+    "UPDATE role_definitions SET role_type_id = role WHERE role IS NOT NULL AND role != ''",
+    # Set default for role column so NOT NULL constraint is satisfied
+    "UPDATE role_definitions SET role = 'strategist' WHERE role IS NULL OR role = ''",
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 
@@ -235,6 +349,46 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 3, "Add role_types table")
             conn.commit()
             logger.info("Migration v3 applied successfully")
+
+        if current < 4:
+            logger.info("Applying migration v4: workflow graph columns")
+            for stmt in _MIGRATION_V4_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 4, "Add workflow graph columns (nodes, edges, entry_point, termination, version, is_locked)")
+            conn.commit()
+            logger.info("Migration v4 applied successfully")
+
+        if current < 5:
+            logger.info("Applying migration v5: workflow_sessions table")
+            for stmt in _MIGRATION_V5_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 5, "Add workflow_sessions table")
+            conn.commit()
+            logger.info("Migration v5 applied successfully")
+
+        if current < 6:
+            logger.info("Applying migration v6: audit_log, report_jobs, immutability columns")
+            for stmt in _MIGRATION_V6_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 6, "Add audit_log, report_jobs tables; is_locked/is_archived columns")
+            conn.commit()
+            logger.info("Migration v6 applied successfully")
+
+        if current < 7:
+            logger.info("Applying migration v7: A2A protocol columns on blueprint_llm_profiles")
+            for stmt in _MIGRATION_V7_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 7, "Add A2A protocol columns to blueprint_llm_profiles")
+            conn.commit()
+            logger.info("Migration v7 applied successfully")
+
+        if current < 8:
+            logger.info("Applying migration v8: role_type_id on role_definitions")
+            for stmt in _MIGRATION_V8_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 8, "Add role_type_id to role_definitions")
+            conn.commit()
+            logger.info("Migration v8 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

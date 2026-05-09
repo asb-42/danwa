@@ -362,3 +362,58 @@ export function submitOOBInput(debateId, body) {
     body: JSON.stringify(body),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Audit Log (Phase 7)
+// ---------------------------------------------------------------------------
+
+export function getAuditLog(sessionId, filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.event_type) params.set('event_type', filters.event_type);
+  if (filters.date_from) params.set('date_from', filters.date_from);
+  if (filters.date_to) params.set('date_to', filters.date_to);
+  if (filters.limit) params.set('limit', String(filters.limit));
+  if (filters.offset) params.set('offset', String(filters.offset));
+  const qs = params.toString();
+  return request(`/api/v1/workflow-exec/${sessionId}/audit-log${qs ? '?' + qs : ''}`);
+}
+
+// ---------------------------------------------------------------------------
+// Reports (Phase 7)
+// ---------------------------------------------------------------------------
+
+export function generateReport(sessionId, format) {
+  return request(`/api/v1/sessions/${sessionId}/report`, {
+    method: 'POST',
+    body: JSON.stringify({ format }),
+  });
+}
+
+export function getReportStatus(jobId) {
+  return request(`/api/v1/reports/${jobId}/status`);
+}
+
+export function downloadReport(jobId) {
+  return request(`/api/v1/reports/${jobId}/download`);
+}
+
+// ---------------------------------------------------------------------------
+// Session soft-delete / restore (Phase 7)
+// ---------------------------------------------------------------------------
+
+export function softDeleteSession(sessionId) {
+  return request(`/api/v1/workflow-exec/${sessionId}`, { method: 'DELETE' });
+}
+
+export function restoreSession(sessionId) {
+  return request(`/api/v1/workflow-exec/${sessionId}/restore`, { method: 'POST' });
+}
+
+export function getSessionsForReplay(workflowId) {
+  const qs = workflowId ? `?workflow_id=${workflowId}&status=completed` : '?status=completed';
+  return request(`/api/v1/workflow-exec/sessions${qs}`);
+}
+
+export function getSessionsForDiff(workflowId) {
+  return request(`/api/v1/workflow-exec/sessions?workflow_id=${workflowId}&status=completed`);
+}

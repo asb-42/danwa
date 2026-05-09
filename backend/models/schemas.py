@@ -275,3 +275,80 @@ class OOBInputResponse(BaseModel):
     oob_id: str
     status: str = "pending"
     target_resolved: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Workflow Audit Log (Phase 7)
+# ---------------------------------------------------------------------------
+
+
+class AuditEventType(StrEnum):
+    """Event types recorded in the workflow audit log."""
+
+    WORKFLOW_STARTED = "workflow_started"
+    WORKFLOW_COMPLETED = "workflow_completed"
+    WORKFLOW_FAILED = "workflow_failed"
+    WORKFLOW_PAUSED = "workflow_paused"
+    WORKFLOW_RESUMED = "workflow_resumed"
+    WORKFLOW_CANCELLED = "workflow_cancelled"
+    NODE_STARTED = "node_started"
+    NODE_COMPLETED = "node_completed"
+    NODE_FAILED = "node_failed"
+    INTERJECTION_SUBMITTED = "interjection_submitted"
+    INTERJECTION_CONSUMED = "interjection_consumed"
+    SESSION_LOCKED = "session_locked"
+    SESSION_ARCHIVED = "session_archived"
+
+
+class AuditLogEntry(BaseModel):
+    """A single entry in the workflow audit log.
+
+    Maps to the ``audit_log`` table created in migration v6.
+    """
+
+    id: int | None = None
+    session_id: str
+    workflow_id: str
+    workflow_version: int = 1
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    event_type: str
+    node_id: str | None = None
+    actor: str = "system"
+    input_hash: str = ""
+    output_hash: str = ""
+    llm_profile_id: str = ""
+    latency_ms: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+
+class AuditLogQuery(BaseModel):
+    """Query parameters for filtering audit log entries."""
+
+    session_id: str | None = None
+    workflow_id: str | None = None
+    event_type: str | None = None
+    date_from: str | None = Field(
+        None, description="ISO-8601 lower bound (inclusive)"
+    )
+    date_to: str | None = Field(
+        None, description="ISO-8601 upper bound (inclusive)"
+    )
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
+
+
+class ReportJobStatus(BaseModel):
+    """Status of an asynchronous report generation job.
+
+    Maps to the ``report_jobs`` table created in migration v6.
+    """
+
+    job_id: str
+    session_id: str
+    format: str
+    status: str = "pending"
+    file_path: str | None = None
+    error: str | None = None
+    created_at: str
+    completed_at: str | None = None

@@ -14,6 +14,7 @@
   import RoleDefinitionForm from './forms/RoleDefinitionForm.svelte';
   import PromptTemplateForm from './forms/PromptTemplateForm.svelte';
   import RoleTypeForm from './forms/RoleTypeForm.svelte';
+  import WorkflowNodeForm from './forms/WorkflowNodeForm.svelte';
 
   let t = $derived((key) => $i18n[key] || key);
 
@@ -51,6 +52,8 @@
         <PromptTemplateForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'role-type'}
         <RoleTypeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
+      {:else if ['wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate'].includes(nodeType)}
+        <WorkflowNodeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else}
         <div class="inspector-empty">
           <p>Unknown node type: {nodeType}</p>

@@ -246,7 +246,7 @@ class TestPromptTemplate:
         template = PromptTemplate(
             id="prompt-strategist",
             name="Strategist",
-            role="strategist",
+            role_type_id="strategist",
             content="You are the strategist.",
         )
         assert template.role == "strategist"
@@ -258,7 +258,7 @@ class TestPromptTemplate:
             PromptTemplate(
                 id="empty",
                 name="Empty",
-                role="critic",
+                role_type_id="critic",
                 content="   ",
             )
 
@@ -291,7 +291,7 @@ class TestRoleDefinition:
         role = RoleDefinition(
             id="strategist",
             name="Strategist",
-            role="strategist",
+            role_type_id="strategist",
         )
         assert role.consensus_threshold == 0.9
         assert role.max_rounds == 5
@@ -301,7 +301,7 @@ class TestRoleDefinition:
             RoleDefinition(
                 id="bad-threshold",
                 name="Bad",
-                role="critic",
+                role_type_id="critic",
                 consensus_threshold=1.5,
             )
 
@@ -309,7 +309,7 @@ class TestRoleDefinition:
         role = RoleDefinition(
             id="zero-threshold",
             name="Zero",
-            role="critic",
+            role_type_id="critic",
             consensus_threshold=0.0,
         )
         assert role.consensus_threshold == 0.0
@@ -318,7 +318,7 @@ class TestRoleDefinition:
         role = RoleDefinition(
             id="with-prompt",
             name="With Prompt",
-            role="strategist",
+            role_type_id="strategist",
             prompt_template_id="prompt-strategist",
         )
         assert role.prompt_template_id == "prompt-strategist"
@@ -518,7 +518,7 @@ class TestLegacyConversion:
         rd = RoleDefinition.from_legacy(legacy, prompt_template_id="prompt-strategist")
         assert rd.id == "strategist-legacy"
         assert rd.name == "Legacy Strategist"
-        assert rd.role == "strategist"
+        assert rd.role_type_id == "strategist"
         assert rd.prompt_template_id == "prompt-strategist"
         assert rd.max_rounds == 7
         assert rd.consensus_threshold == 0.85
@@ -631,7 +631,7 @@ class TestBlueprintRepositoryPromptTemplates:
         template = PromptTemplate(
             id="prompt-test",
             name="Test Prompt",
-            role="strategist",
+            role_type_id="strategist",
             content="Test content.",
         )
         blueprint_repo.save_prompt_template(template)
@@ -658,7 +658,7 @@ class TestBlueprintRepositoryPromptTemplates:
             PromptTemplate(
                 id="prompt-default",
                 name="Default",
-                role="strategist",
+                role_type_id="strategist",
                 content="Default content.",
                 variant="default",
             )
@@ -667,7 +667,7 @@ class TestBlueprintRepositoryPromptTemplates:
             PromptTemplate(
                 id="prompt-kantian",
                 name="Kantian",
-                role="strategist",
+                role_type_id="strategist",
                 content="Kantian content.",
                 variant="kantian",
             )
@@ -681,7 +681,7 @@ class TestBlueprintRepositoryPromptTemplates:
             PromptTemplate(
                 id="to-delete",
                 name="Delete",
-                role="critic",
+                role_type_id="critic",
                 content="Delete me.",
             )
         )
@@ -698,14 +698,14 @@ class TestBlueprintRepositoryRoleDefinitions:
             PromptTemplate(
                 id="prompt-strategist",
                 name="Strategist",
-                role="strategist",
+                role_type_id="strategist",
                 content="Test content.",
             )
         )
         role = RoleDefinition(
             id="role-test",
             name="Test Role",
-            role="strategist",
+            role_type_id="strategist",
             prompt_template_id="prompt-strategist",
         )
         blueprint_repo.save_role_definition(role)
@@ -716,15 +716,15 @@ class TestBlueprintRepositoryRoleDefinitions:
     def test_list_filtered_by_role(self, blueprint_repo: BlueprintRepository) -> None:
         for role in ("strategist", "critic", "optimizer"):
             blueprint_repo.save_role_definition(
-                RoleDefinition(id=f"role-{role}", name=role.title(), role=role)
+                RoleDefinition(id=f"role-{role}", name=role.title(), role_type_id=role)
             )
         critics = blueprint_repo.list_role_definitions(role="critic")
         assert len(critics) == 1
-        assert critics[0].role == "critic"
+        assert critics[0].role_type_id == "critic"
 
     def test_delete(self, blueprint_repo: BlueprintRepository) -> None:
         blueprint_repo.save_role_definition(
-            RoleDefinition(id="to-delete", name="Delete", role="moderator")
+            RoleDefinition(id="to-delete", name="Delete", role_type_id="moderator")
         )
         assert blueprint_repo.delete_role_definition("to-delete") is True
 
@@ -782,7 +782,7 @@ class TestBlueprintRepositoryAgentBlueprints:
             )
         )
         blueprint_repo.save_role_definition(
-            RoleDefinition(id="test-role", name="Test Role", role="strategist")
+            RoleDefinition(id="test-role", name="Test Role", role_type_id="strategist")
         )
         bp = AgentBlueprint(
             id="bp-test",
@@ -803,7 +803,7 @@ class TestBlueprintRepositoryAgentBlueprints:
             )
         )
         blueprint_repo.save_role_definition(
-            RoleDefinition(id="role", name="Role", role="strategist")
+            RoleDefinition(id="role", name="Role", role_type_id="strategist")
         )
         blueprint_repo.save_blueprint(
             AgentBlueprint(
@@ -838,7 +838,7 @@ class TestBlueprintRepositoryAgentBlueprints:
             )
         )
         blueprint_repo.save_role_definition(
-            RoleDefinition(id="role", name="Role", role="strategist")
+            RoleDefinition(id="role", name="Role", role_type_id="strategist")
         )
         blueprint_repo.save_blueprint(
             AgentBlueprint(
@@ -963,7 +963,7 @@ class TestBlueprintImporter:
 
         strategist = blueprint_repo.get_role_definition("strategist")
         assert strategist is not None
-        assert strategist.role == "strategist"
+        assert strategist.role_type_id == "strategist"
         assert strategist.max_rounds == 5
         # system_prompt is intentionally dropped
         assert strategist.prompt_template_id is None
@@ -1386,7 +1386,7 @@ class TestCompilerService:
             model="test/model", max_tokens=2048, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="Strategist", role="strategist",
+            id="role-1", name="Strategist", role_type_id="strategist",
             description="Test", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(
@@ -1439,7 +1439,7 @@ class TestCompilerService:
             model="m", max_tokens=1024, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role="strategist",
+            id="role-1", name="R", role_type_id="strategist",
             description="T", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(
@@ -1478,7 +1478,7 @@ class TestCompilerService:
             model="m", max_tokens=1024, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role="strategist",
+            id="role-1", name="R", role_type_id="strategist",
             description="T", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(
@@ -1514,7 +1514,7 @@ class TestCompilerService:
             model="m", max_tokens=1024, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role="strategist",
+            id="role-1", name="R", role_type_id="strategist",
             description="T", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(
@@ -1549,7 +1549,7 @@ class TestCompilerService:
             model="m", max_tokens=1024, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role="strategist",
+            id="role-1", name="R", role_type_id="strategist",
             description="T", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(
@@ -1590,7 +1590,7 @@ class TestCompilerService:
             model="m", max_tokens=1024, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role="strategist",
+            id="role-1", name="R", role_type_id="strategist",
             description="T", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(
@@ -1624,7 +1624,7 @@ class TestCompilerService:
             model="m", max_tokens=1024, temperature=0.5,
         ))
         repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role="strategist",
+            id="role-1", name="R", role_type_id="strategist",
             description="T", consensus_threshold=0.8,
         ))
         repo.save_blueprint(AgentBlueprint(

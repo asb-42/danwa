@@ -14,6 +14,8 @@
   import ProjectsView from './views/ProjectsView.svelte';
   import ProjectSettings from './components/ProjectSettings.svelte';
   import BlueprintCanvasView from './views/BlueprintCanvasView.svelte';
+  import ReplayView from './views/ReplayView.svelte';
+  import DiffView from './views/DiffView.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -86,6 +88,10 @@
     <ConfigView />
   {:else if $route === 'blueprint'}
     <BlueprintCanvasView />
+  {:else if $route === 'replay'}
+    <ReplayView />
+  {:else if $route === 'diff'}
+    <DiffView />
   {:else}
     <Dashboard {navigate} />
   {/if}

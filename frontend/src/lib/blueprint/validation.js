@@ -46,6 +46,23 @@ export const EDGE_STYLES = {
   sequential: { color: '#6366f1', style: 'solid', label: 'Sequential' },
   conditional: { color: '#f59e0b', style: 'dashed', label: 'Conditional' },
   interjection: { color: '#f43f5e', style: 'dotted', label: 'Interjection' },
+  feedback: { color: '#10b981', style: 'dash-dot', label: 'Feedback' },
+};
+
+/**
+ * Allowed outgoing connections per workflow node type.
+ * Keys are source node types, values are arrays of allowed target types.
+ * @type {Record<string, string[]>}
+ */
+export const WORKFLOW_CONNECTION_RULES = {
+  'wf-input': ['wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate'],
+  'wf-initialize': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate'],
+  'wf-strategist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection'],
+  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection'],
+  'wf-optimizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection'],
+  'wf-moderator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-gate'],
+  'wf-user-injection': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate'],
+  'wf-gate': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate'],
 };
 
 /**
@@ -112,11 +129,38 @@ function validateControlFlowConnection(sourceType, targetType) {
   const sourceReg = getNodeRegistration(sourceType);
   const targetReg = getNodeRegistration(targetType);
 
-  if (sourceReg?.category === 'workflow' && targetReg?.category === 'workflow') {
-    return { valid: true, edgeType: 'sequential' };
+  if (sourceReg?.category !== 'workflow' || targetReg?.category !== 'workflow') {
+    return { valid: false, reason: 'invalid_control_flow' };
   }
 
-  return { valid: false, reason: 'invalid_control_flow' };
+  const allowedTargets = WORKFLOW_CONNECTION_RULES[sourceType];
+  if (allowedTargets && allowedTargets.includes(targetType)) {
+    return { valid: true, edgeType: getWorkflowEdgeType(sourceType, targetType) };
+  }
+
+  return { valid: false, reason: `Cannot connect "${sourceType}" to "${targetType}"` };
+}
+
+/**
+ * Determine the workflow edge type based on source and target node types.
+ * @param {string} sourceType
+ * @param {string} targetType
+ * @returns {string}
+ */
+export function getWorkflowEdgeType(sourceType, targetType) {
+  // Moderator → agent = feedback loop
+  if (sourceType === 'wf-moderator' && targetType !== 'wf-gate') {
+    return 'feedback';
+  }
+  // Gate → any = conditional
+  if (sourceType === 'wf-gate') {
+    return 'conditional';
+  }
+  // User injection → any = interjection
+  if (sourceType === 'wf-user-injection') {
+    return 'interjection';
+  }
+  return 'sequential';
 }
 
 /**

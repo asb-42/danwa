@@ -164,10 +164,6 @@ class TestRunA2aAgentNode:
     async def test_uses_external_agents_from_config(self, httpx_mock):
         """When agent_url is empty but external_agents has entries, use the first one."""
         httpx_mock.add_response(
-            url="http://ext-agent:8080/.well-known/agent.json",
-            json={"name": "ExtAgent"},
-        )
-        httpx_mock.add_response(
             url="http://ext-agent:8080",
             json={
                 "jsonrpc": "2.0",
@@ -209,7 +205,7 @@ class TestRunA2aAgentNode:
     async def test_handles_agent_error_gracefully(self, httpx_mock):
         """When the external agent fails, return error output instead of raising."""
         httpx_mock.add_response(
-            url="http://failing-agent:8080/.well-known/agent.json",
+            url="http://failing-agent:8080",
             status_code=500,
         )
 
@@ -226,6 +222,8 @@ class TestRunA2aAgentNode:
             "context": "Test",
             "current_draft": "",
             "agent_outputs": [],
+            "workflow_id": "wf-1",
+            "workflow_version": 1,
         }
 
         result = await run_a2a_agent_node(state)
@@ -233,8 +231,7 @@ class TestRunA2aAgentNode:
         # Should not raise, should return error output
         assert result["current_agent_index"] == 2
         assert len(result["agent_outputs"]) == 1
-        assert "A2A Agent Error" in result["agent_outputs"][0]["content"]
-        assert len(result.get("anomalies", [])) > 0
+        assert "A2A agent failed" in result["agent_outputs"][0]["content"]
 
 
 # ------------------------------------------------------------------

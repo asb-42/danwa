@@ -158,6 +158,7 @@ reports/
 # Environment specific / User config (never commit real credentials)
 settings.yaml
 config/settings.yaml
+config/a2a.json
 
 # Notes (user-specific, not for version control)
 notes.txt
@@ -251,3 +252,4 @@ Thumbs.db
 # Allow archived files
 !docs/archive/
 .roo/
+.gitnexus

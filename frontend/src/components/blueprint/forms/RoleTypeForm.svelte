@@ -171,9 +171,6 @@
   .form-error { font-size: 12px; color: #ef4444; background: #fef2f2; padding: 6px 8px; border-radius: 6px; }
   .form-field { display: flex; flex-direction: column; gap: 4px; }
   .field-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
-  .field-input, .field-select, .field-textarea { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; color: #1f2937; }
-  :global(.dark) .field-input, :global(.dark) .field-select, :global(.dark) .field-textarea { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
-  .field-textarea { resize: vertical; }
   .icon-grid { display: flex; flex-wrap: wrap; gap: 4px; }
   .icon-btn {
     width: 32px; height: 32px; border: 2px solid transparent; border-radius: 6px;
