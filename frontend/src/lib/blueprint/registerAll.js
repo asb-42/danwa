@@ -25,6 +25,7 @@ import OptimizerNode from '../../components/blueprint/nodes/OptimizerNode.svelte
 import ModeratorNode from '../../components/blueprint/nodes/ModeratorNode.svelte';
 import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNode.svelte';
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
+import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
 
 // Semantic edge components (Phase 3)
 import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
@@ -37,6 +38,7 @@ import SequentialEdge from '../../components/blueprint/edges/SequentialEdge.svel
 import ConditionalEdge from '../../components/blueprint/edges/ConditionalEdge.svelte';
 import InterjectionEdge from '../../components/blueprint/edges/InterjectionEdge.svelte';
 import FeedbackEdge from '../../components/blueprint/edges/FeedbackEdge.svelte';
+import InjectsConfigEdge from '../../components/blueprint/edges/InjectsConfigEdge.svelte';
 
 // RoleType edge component
 import DefinesRoleEdge from '../../components/blueprint/edges/DefinesRoleEdge.svelte';
@@ -250,6 +252,22 @@ export function registerAllNodeTypes() {
     active: true,
   });
 
+  registerNode({
+    type: 'wf-tone-profile',
+    component: ToneProfileNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🎵',
+    labelKey: 'blueprint.palette.wfToneProfile',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Tone Profile',
+      tone_profile_id: null,
+      inline_profile: null,
+    }),
+    active: true,
+  });
+
   // ── Semantic edges (Phase 3) ───────────────────────────────────────
 
   registerEdge({
@@ -305,6 +323,12 @@ export function registerAllNodeTypes() {
   registerEdge({
     type: 'feedback',
     component: FeedbackEdge,
+    category: 'control_flow',
+  });
+
+  registerEdge({
+    type: 'injects_config',
+    component: InjectsConfigEdge,
     category: 'control_flow',
   });
 }

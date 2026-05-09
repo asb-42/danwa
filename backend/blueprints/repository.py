@@ -21,6 +21,7 @@ from backend.blueprints.models import (
     PromptTemplate,
     RoleDefinition,
     RoleType,
+    ToneProfile,
 )
 from backend.blueprints.workflow_models import (
     ConditionalEdge,
@@ -775,3 +776,74 @@ class BlueprintRepository:
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
+
+    # ------------------------------------------------------------------
+    # Tone Profiles
+    # ------------------------------------------------------------------
+
+    def save_tone_profile(self, profile: ToneProfile) -> None:
+        """Insert or replace a tone profile."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO tone_profiles
+                    (id, name, description, profile_json, is_system,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    profile.id,
+                    profile.name,
+                    profile.description,
+                    profile.model_dump_json(),
+                    int(profile.is_system),
+                    profile.created_at.isoformat(),
+                    profile.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved tone profile %s", profile.id)
+
+    def get_tone_profile(self, profile_id: str) -> ToneProfile | None:
+        """Retrieve a tone profile by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM tone_profiles WHERE id = ?",
+                (profile_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_tone_profile(row)
+
+    def list_tone_profiles(
+        self,
+        include_system: bool = True,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ToneProfile]:
+        """List tone profiles, optionally filtering system profiles."""
+        with self._connect() as conn:
+            if include_system:
+                rows = conn.execute(
+                    "SELECT * FROM tone_profiles ORDER BY is_system DESC, name LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM tone_profiles WHERE is_system = 0 ORDER BY name LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+        return [self._row_to_tone_profile(r) for r in rows]
+
+    def delete_tone_profile(self, profile_id: str) -> bool:
+        """Delete a tone profile. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM tone_profiles WHERE id = ?",
+                (profile_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_tone_profile(row: sqlite3.Row) -> ToneProfile:
+        """Convert a SQLite row to a ToneProfile model."""
+        return ToneProfile.model_validate_json(row["profile_json"])

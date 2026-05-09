@@ -17,6 +17,7 @@ from backend.blueprints.models import AgentBlueprint
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
     AGENT_NODE_TYPES,
+    INJECTABLE_AGENT_NODE_TYPES,
     WorkflowDefinition,
     WorkflowEdge,
     WorkflowNode,
@@ -29,6 +30,7 @@ from backend.workflow.node_functions import (
     input_node,
     interjection_node,
     moderator_node_factory,
+    tone_profile_node_factory,
 )
 from backend.workflow.workflow_routers import (
     route_conditional,
@@ -190,15 +192,16 @@ class WorkflowCompiler:
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:
         """Topological sort of workflow nodes respecting non-feedback edges.
 
-        Feedback edges are excluded from the sort to avoid cycles.
+        Feedback and injects_config edges are excluded from the sort to
+        avoid cycles and to treat config injection as a non-sequential relationship.
         """
         node_ids = {n.id for n in workflow.nodes}
-        # Build adjacency (non-feedback only)
+        # Build adjacency (non-feedback, non-injects_config only)
         adj: dict[str, list[str]] = defaultdict(list)
         in_degree: dict[str, int] = {nid: 0 for nid in node_ids}
 
         for edge in workflow.edges:
-            if edge.type != "feedback":
+            if edge.type not in ("feedback", "injects_config"):
                 adj[edge.source].append(edge.target)
                 in_degree[edge.target] = in_degree.get(edge.target, 0) + 1
 
@@ -236,8 +239,21 @@ class WorkflowCompiler:
         """Build and compile the LangGraph StateGraph."""
         graph = StateGraph(WorkflowState)
 
+        # --- Resolve injects_config edges ---
+        # For each agent node, find if a tone_profile node injects config into it
+        tone_injection_map: dict[str, str] = {}  # agent_node_id → tone_profile_node_id
+        for edge in workflow.edges:
+            if edge.type == "injects_config":
+                source_node = node_map.get(edge.source)
+                if source_node and source_node.type == "wf-tone-profile":
+                    tone_injection_map[edge.target] = edge.source
+
+        # Propagate tone_profile_source_node_id into agent node configs
+        for agent_node_id, tone_node_id in tone_injection_map.items():
+            if agent_node_id in resolved_configs:
+                resolved_configs[agent_node_id]["tone_profile_source_node_id"] = tone_node_id
+
         # --- Add nodes ---
-        # Add a special "__start__" node that sets current_node_id for the entry point
         entry_point = workflow.entry_point
 
         for node in workflow.nodes:
@@ -265,8 +281,8 @@ class WorkflowCompiler:
                 graph.add_edge(node.id, END)
                 continue
 
-            # Separate feedback edges from non-feedback
-            non_feedback = [e for e in outgoing if e.type != "feedback"]
+            # Separate feedback, injects_config edges from non-feedback
+            non_feedback = [e for e in outgoing if e.type not in ("feedback", "injects_config")]
             feedback_edges = [e for e in outgoing if e.type == "feedback"]
 
             # Handle gate nodes (conditional routing)
@@ -391,6 +407,8 @@ class WorkflowCompiler:
             return gate_node_factory(node.id, condition)
         elif node.type == "wf-user-injection":
             return interjection_node
+        elif node.type == "wf-tone-profile":
+            return tone_profile_node_factory(node.id, node.config)
         else:
             logger.warning("Unknown node type '%s' for node '%s', using passthrough", node.type, node.id)
             return input_node

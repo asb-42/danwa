@@ -224,6 +224,9 @@ def agent_node_factory(
     llm_profile_id = resolved_config.get("llm_profile_id", "")
     blueprint_name = resolved_config.get("blueprint_name", role)
 
+    # Extract tone_profile_source_node_id from resolved config
+    tone_profile_source_node_id = resolved_config.get("tone_profile_source_node_id")
+
     async def _agent_node(state: WorkflowState) -> dict:
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
@@ -239,6 +242,28 @@ def agent_node_factory(
 
         # --- Build system prompt ---
         system_prompt = _resolve_system_prompt(resolved_config, state)
+
+        # --- Inject tone profile if configured ---
+        tone_profile_name = None
+        if tone_profile_source_node_id:
+            tone_profiles = state.get("tone_profiles", {})
+            profile_data = tone_profiles.get(tone_profile_source_node_id)
+            if profile_data:
+                try:
+                    from backend.blueprints.models import ToneProfile
+                    from backend.services.tone_prompt_injector import inject_tone_profile
+                    profile = ToneProfile.model_validate(profile_data)
+                    system_prompt = inject_tone_profile(system_prompt, profile)
+                    tone_profile_name = profile.name
+                    logger.info(
+                        "Injected tone profile '%s' into agent %s (node %s)",
+                        profile.name, role, node_id,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to inject tone profile for agent %s (node %s): %s",
+                        role, node_id, exc,
+                    )
 
         # --- Build user prompt ---
         context = state.get("context", "")
@@ -319,6 +344,10 @@ def agent_node_factory(
         # --- Audit log ---
         try:
             al = get_audit_logger()
+            audit_metadata = {}
+            if tone_profile_name:
+                audit_metadata["tone_profile_name"] = tone_profile_name
+
             if status == "failed":
                 al.log_node_failed(
                     session_id=session_id,
@@ -335,7 +364,7 @@ def agent_node_factory(
                     workflow_version=state.get("workflow_version", 1),
                     node_id=node_id,
                     actor=role,
-                    input_data={"system_prompt": system_prompt, "user_prompt": user_prompt},
+                    input_data={"system_prompt": system_prompt, "user_prompt": user_prompt, **audit_metadata},
                     output_data={"content": content, "tokens_used": tokens_used},
                     llm_profile_id=llm_profile_id,
                     latency_ms=duration_ms,
@@ -466,6 +495,108 @@ def gate_node_factory(
         return {"node_outputs": [output]}
 
     return _gate_node
+
+
+# ---------------------------------------------------------------------------
+# Tone profile node
+# ---------------------------------------------------------------------------
+
+
+def tone_profile_node_factory(
+    node_id: str,
+    node_config: dict,
+) -> Callable[[WorkflowState], dict]:
+    """Create a tone profile node function.
+
+    Loads the ToneProfile (from catalog or inline) and writes it into
+    ``state["tone_profiles"][node_id]``.  No LLM call, no output.
+
+    Args:
+        node_id: The workflow node ID.
+        node_config: The node config dict with keys ``tone_profile_id``
+            or ``inline_profile``.
+    """
+    from backend.blueprints.models import ToneProfile
+    from backend.blueprints.repository import BlueprintRepository
+
+    tone_profile_id = node_config.get("tone_profile_id")
+    inline_profile_data = node_config.get("inline_profile")
+
+    async def _tone_profile_node(state: WorkflowState) -> dict:
+        session_id = state.get("session_id", "")
+
+        await publish_async(session_id, "node.start", {
+            "node_id": node_id,
+            "node_type": "wf-tone-profile",
+            "role": "tone-profile",
+        })
+
+        profile: ToneProfile | None = None
+
+        if tone_profile_id:
+            # Load from catalog
+            try:
+                repo = BlueprintRepository()
+                profile = repo.get_tone_profile(tone_profile_id)
+                if profile is None:
+                    logger.warning("ToneProfile '%s' not found in catalog", tone_profile_id)
+            except Exception as exc:
+                logger.error("Failed to load ToneProfile '%s': %s", tone_profile_id, exc)
+
+        elif inline_profile_data:
+            # Use inline profile
+            try:
+                if isinstance(inline_profile_data, dict):
+                    profile = ToneProfile.model_validate(inline_profile_data)
+                else:
+                    profile = inline_profile_data
+            except Exception as exc:
+                logger.error("Failed to parse inline ToneProfile: %s", exc)
+
+        # Update tone_profiles in state
+        tone_profiles = dict(state.get("tone_profiles", {}))
+        if profile is not None:
+            tone_profiles[node_id] = profile.model_dump()
+
+        output = {
+            "node_id": node_id,
+            "node_type": "wf-tone-profile",
+            "role": "tone-profile",
+            "content": f"Tone profile loaded: {profile.name if profile else 'none'}",
+            "tokens_used": 0,
+            "duration_ms": 0,
+            "status": "completed" if profile else "failed",
+        }
+
+        await publish_async(session_id, "node.complete", {
+            "node_id": node_id,
+            "node_type": "wf-tone-profile",
+            "role": "tone-profile",
+            "content": output["content"],
+            "tokens_used": 0,
+            "duration_ms": 0,
+        })
+
+        # --- Audit log ---
+        try:
+            get_audit_logger().log_node_execution(
+                session_id=session_id,
+                workflow_id=state.get("workflow_id", ""),
+                workflow_version=state.get("workflow_version", 1),
+                node_id=node_id,
+                actor="tone-profile",
+                input_data={"tone_profile_id": tone_profile_id},
+                output_data={"profile_name": profile.name if profile else None},
+            )
+        except Exception:
+            logger.debug("Audit logging failed for tone_profile_node %s", node_id, exc_info=True)
+
+        return {
+            "tone_profiles": tone_profiles,
+            "node_outputs": [output],
+        }
+
+    return _tone_profile_node
 
 
 # ---------------------------------------------------------------------------

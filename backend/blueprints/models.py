@@ -6,6 +6,7 @@ Defines typed, validated models for the Blueprint system:
 - RoleDefinition: Agent role with behavior constraints
 - AgentBlueprint: Composite model tying LLM + role + prompt together
 - CanvasLayout: Simplified canvas arrangement for the visual editor
+- ToneProfile: Debate tone/style configuration
 
 These models are additive — they do NOT replace the existing
 ``backend.core.profiles`` models.  Legacy conversion is provided via
@@ -19,7 +20,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from backend.core.profiles import AgentPersona, LLMProfile
 
@@ -362,5 +363,33 @@ class CanvasLayout(BaseModel):
     description: str = ""
     project_id: str | None = None
     layout_data: CanvasLayoutData = Field(default_factory=CanvasLayoutData)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# ToneProfile
+# ---------------------------------------------------------------------------
+
+
+class ToneProfile(BaseModel):
+    """Debate tone/style configuration for agent nodes.
+
+    Defines how an agent should communicate: formal vs. casual,
+    heated vs. neutral, verbose vs. concise, etc.
+    """
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = ""
+
+    style: Literal["heated", "academic", "conversational", "socratic", "neutral"] = "neutral"
+    formality: float = Field(default=0.5, ge=0.0, le=1.0)
+    verbosity: Literal["concise", "normal", "verbose"] = "normal"
+    emotional_valence: float = Field(default=0.5, ge=0.0, le=1.0)
+    rhetorical_mode: Literal["none", "questioning", "assertive", "dialectic"] = "none"
+    custom_instructions: str | None = None
+
+    is_system: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

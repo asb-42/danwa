@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import operator
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 
 
 class AgentConfigState(TypedDict):
@@ -118,3 +118,6 @@ class DebateState(TypedDict, total=False):
 
     # --- A2A (Agent-to-Agent) ---
     a2a_config: dict  # A2A agent configuration (url, role, enabled, etc.)
+
+    # --- Tone Profiles (Phase: ToneProfileNode) ---
+    tone_profiles: dict[str, Any]  # node_id → ToneProfile dict

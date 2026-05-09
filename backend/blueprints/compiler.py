@@ -160,6 +160,7 @@ class CompilerService:
 
         if workflow.nodes:
             self._validate_graph(workflow, errors, warnings)
+            self._validate_tone_profile_edges(workflow, errors, warnings)
 
         return CompilationResult(
             is_valid=len(errors) == 0,
@@ -259,6 +260,93 @@ class CompilerService:
                     f"Cycle detected in non-feedback edges: {' → '.join(cycle)}. "
                     "This may be intentional if feedback edges are used."
                 )
+
+
+    @staticmethod
+    def _validate_tone_profile_edges(
+        workflow: WorkflowDefinition,
+        errors: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Validate injects_config edges for tone profile nodes.
+
+        Rules:
+        1. injects_config source must be a wf-tone-profile node.
+        2. injects_config target must be an agent node type (not input, gate, etc.).
+        3. An agent node may have at most one incoming injects_config edge.
+        4. A tone_profile node may have at most one injects_config edge to a given agent.
+        5. Tone profile nodes must not be isolated (must have at least one injects_config or sequential edge).
+        """
+        node_type_map = {n.id: n.type for n in workflow.nodes}
+        injectable_types = {
+            "wf-strategist", "wf-critic", "wf-optimizer", "wf-moderator",
+        }
+
+        # Track: agent_node_id → list of source tone_profile node IDs
+        agent_incoming_config: dict[str, list[str]] = {}
+        # Track: tone_profile_node_id → list of target agent node IDs
+        tone_outgoing_config: dict[str, list[str]] = {}
+        # Track all edges for isolation check
+        all_edge_sources: set[str] = set()
+        all_edge_targets: set[str] = set()
+
+        for edge in workflow.edges:
+            all_edge_sources.add(edge.source)
+            all_edge_targets.add(edge.target)
+
+            if edge.type != "injects_config":
+                continue
+
+            source_type = node_type_map.get(edge.source, "")
+            target_type = node_type_map.get(edge.target, "")
+
+            # Rule 1: source must be wf-tone-profile
+            if source_type != "wf-tone-profile":
+                errors.append(
+                    f"injects_config edge '{edge.id}': source '{edge.source}' "
+                    f"is type '{source_type}', expected 'wf-tone-profile'"
+                )
+
+            # Rule 2: target must be an agent node type
+            if target_type not in injectable_types:
+                errors.append(
+                    f"injects_config edge '{edge.id}': target '{edge.target}' "
+                    f"is type '{target_type}', must be an agent node "
+                    f"({', '.join(sorted(injectable_types))})"
+                )
+
+            # Collect for Rule 3 and 4
+            agent_incoming_config.setdefault(edge.target, []).append(edge.source)
+            tone_outgoing_config.setdefault(edge.source, []).append(edge.target)
+
+        # Rule 3: Agent node may have at most one incoming injects_config
+        for agent_id, sources in agent_incoming_config.items():
+            if len(sources) > 1:
+                errors.append(
+                    f"Agent node '{agent_id}' has {len(sources)} incoming "
+                    f"injects_config edges (max 1 allowed): {sources}"
+                )
+
+        # Rule 4: Tone profile node may have at most one injects_config per agent
+        for tone_id, targets in tone_outgoing_config.items():
+            if len(targets) != len(set(targets)):
+                errors.append(
+                    f"Tone profile node '{tone_id}' has duplicate injects_config "
+                    f"edges to the same agent node"
+                )
+
+        # Rule 5: Tone profile nodes must not be isolated
+        for node in workflow.nodes:
+            if node.type == "wf-tone-profile":
+                has_edge = (
+                    node.id in all_edge_sources or node.id in all_edge_targets
+                )
+                if not has_edge:
+                    errors.append(
+                        f"Tone profile node '{node.id}' is isolated — "
+                        f"it must have at least one injects_config or "
+                        f"sequential edge connecting it to the workflow"
+                    )
 
 
 def _detect_cycle(

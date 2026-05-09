@@ -559,3 +559,64 @@ export function saveWorkflowAsTemplate(wfId, body) {
     body: JSON.stringify(body),
   });
 }
+
+// ─── Tone Profiles ───────────────────────────────────────────────
+
+/**
+ * List all tone profiles.
+ * @param {{ include_system?: boolean, limit?: number, offset?: number }} [opts]
+ * @returns {Promise<Array>}
+ */
+export function listToneProfiles({ includeSystem = true, limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams({
+    include_system: String(includeSystem),
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return request(`/api/v1/tone-profiles?${params.toString()}`);
+}
+
+/**
+ * Get a single tone profile by ID.
+ * @param {string} profileId
+ * @returns {Promise<Object>}
+ */
+export function getToneProfile(profileId) {
+  return request(`/api/v1/tone-profiles/${profileId}`);
+}
+
+/**
+ * Create a new tone profile.
+ * @param {Object} profile
+ * @returns {Promise<Object>}
+ */
+export function createToneProfile(profile) {
+  return request('/api/v1/tone-profiles', {
+    method: 'POST',
+    body: JSON.stringify(profile),
+  });
+}
+
+/**
+ * Update an existing tone profile.
+ * @param {string} profileId
+ * @param {Object} profile
+ * @returns {Promise<Object>}
+ */
+export function updateToneProfile(profileId, profile) {
+  return request(`/api/v1/tone-profiles/${profileId}`, {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  });
+}
+
+/**
+ * Delete a tone profile.
+ * @param {string} profileId
+ * @returns {Promise<void>}
+ */
+export function deleteToneProfile(profileId) {
+  return request(`/api/v1/tone-profiles/${profileId}`, {
+    method: 'DELETE',
+  });
+}

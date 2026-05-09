@@ -175,6 +175,7 @@ class BlueprintCanvasStore {
       'wf-moderator': 'wf-moderator',
       'wf-user-injection': 'wf-user-injection',
       'wf-gate': 'wf-gate',
+      'wf-tone-profile': 'wf-tone-profile',
     };
 
     this.nodes = (layoutJson.nodes || []).map((n) => ({

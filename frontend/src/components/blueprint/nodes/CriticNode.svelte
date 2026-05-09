@@ -4,6 +4,7 @@
    *
    * Red (#ef4444) themed, 🔍 icon.
    * LEFT target + RIGHT source handles.
+   * TOP config input port (for injects_config edges).
    * Shows label, AgentBlueprint name if linked, linked status.
    */
   import { Handle, Position } from '@xyflow/svelte';
@@ -21,6 +22,7 @@
   style="border-color: #ef4444; --node-bg: #fef2f2; --node-dark-bg: #450a0a; --node-border: #ef4444;"
   data-testid="node-wf-critic"
 >
+  <Handle type="target" position={Position.TOP} id="config-in" class="config-input-port" title="Tone" />
   <Handle type="target" position={Position.LEFT} id="in" />
 
   <div class="node-header">
@@ -108,5 +110,22 @@
   .status-unlinked {
     font-size: 10px;
     color: #9ca3af;
+  }
+
+  /* Config input port (top) — orange/yellow hollow circle */
+  :global(.config-input-port) {
+    width: 10px !important;
+    height: 10px !important;
+    background: white !important;
+    border: 2px solid #f59e0b !important;
+    border-radius: 50% !important;
+    top: -5px !important;
+    transition: all 0.2s ease;
+  }
+  :global(.dark) :global(.config-input-port) {
+    background: #450a0a !important;
+  }
+  :global(.config-input-port):hover {
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
   }
 </style>

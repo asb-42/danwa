@@ -62,6 +62,9 @@ class WorkflowState(TypedDict, total=False):
     output: str
     status: str  # 'running' | 'paused' | 'completed' | 'failed'
 
+    # --- Tone Profiles ---
+    tone_profiles: dict[str, Any]  # node_id → ToneProfile dict
+
     # --- Control ---
     is_paused: bool
     pause_event: Any  # asyncio.Event for pause/resume

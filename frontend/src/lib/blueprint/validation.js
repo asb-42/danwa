@@ -47,6 +47,7 @@ export const EDGE_STYLES = {
   conditional: { color: '#f59e0b', style: 'dashed', label: 'Conditional' },
   interjection: { color: '#f43f5e', style: 'dotted', label: 'Interjection' },
   feedback: { color: '#10b981', style: 'dash-dot', label: 'Feedback' },
+  injects_config: { color: '#f59e0b', style: 'dashed', label: 'Injects Config' },
 };
 
 /**
@@ -55,15 +56,35 @@ export const EDGE_STYLES = {
  * @type {Record<string, string[]>}
  */
 export const WORKFLOW_CONNECTION_RULES = {
-  'wf-input': ['wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate'],
-  'wf-initialize': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate'],
-  'wf-strategist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection'],
-  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection'],
-  'wf-optimizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection'],
-  'wf-moderator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-gate'],
-  'wf-user-injection': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate'],
-  'wf-gate': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate'],
+  'wf-input': ['wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
+  'wf-initialize': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
+  'wf-strategist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-optimizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-moderator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-gate', 'wf-tone-profile'],
+  'wf-user-injection': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
+  'wf-gate': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate', 'wf-tone-profile'],
+  'wf-tone-profile': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-initialize', 'wf-gate', 'wf-user-injection'],
 };
+
+/**
+ * Agent node types that can receive injects_config edges from tone_profile nodes.
+ * @type {string[]}
+ */
+export const INJECTABLE_AGENT_TYPES = [
+  'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator',
+];
+
+/**
+ * Check if a source→target connection should use injects_config edge type.
+ * @param {string} sourceType
+ * @param {string} targetType
+ * @param {string} sourceHandleId - The handle ID from the source port
+ * @returns {boolean}
+ */
+export function isInjectsConfigConnection(sourceType, targetType, sourceHandleId) {
+  return sourceType === 'wf-tone-profile' && INJECTABLE_AGENT_TYPES.includes(targetType);
+}
 
 /**
  * Validate whether a connection between two node types is allowed.
@@ -148,6 +169,10 @@ function validateControlFlowConnection(sourceType, targetType) {
  * @returns {string}
  */
 export function getWorkflowEdgeType(sourceType, targetType) {
+  // Tone profile → agent = injects_config
+  if (sourceType === 'wf-tone-profile' && INJECTABLE_AGENT_TYPES.includes(targetType)) {
+    return 'injects_config';
+  }
   // Moderator → agent = feedback loop
   if (sourceType === 'wf-moderator' && targetType !== 'wf-gate') {
     return 'feedback';

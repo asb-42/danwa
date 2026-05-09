@@ -32,6 +32,7 @@ from backend.api.routers import (  # noqa: E402
     projects,
     sessions,
     system,
+    tone_profiles,
     workflow_exec,
     workflow_reports,
     workflow_templates,
@@ -125,6 +126,11 @@ async def lifespan(app: FastAPI):
 
     seed_system_templates()
 
+    # Seed system tone profiles (idempotent)
+    from scripts.seed_tone_profiles import seed_system_tone_profiles
+
+    seed_system_tone_profiles()
+
     yield
     logger.info("Debate Engine shutting down.")
 
@@ -193,6 +199,13 @@ def create_app() -> FastAPI:
         workflow_templates.router,
         prefix="/api/v1/workflow-templates",
         tags=["workflow-templates"],
+    )
+
+    # --- Tone Profiles ---
+    app.include_router(
+        tone_profiles.router,
+        prefix="/api/v1/tone-profiles",
+        tags=["tone-profiles"],
     )
 
     # --- A2A Discovery ---

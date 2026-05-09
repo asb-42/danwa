@@ -18,6 +18,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from backend.blueprints.models import ToneProfile
+
 
 # ---------------------------------------------------------------------------
 # Workflow Node Types
@@ -33,6 +35,7 @@ WORKFLOW_NODE_TYPES: list[str] = [
     "wf-moderator",
     "wf-user-injection",
     "wf-gate",
+    "wf-tone-profile",
 ]
 
 #: Node types that require an agent_blueprint_id reference.
@@ -50,6 +53,8 @@ class WorkflowNode(BaseModel):
     Each node has a type that determines its behavior during execution.
     Agent-type nodes (strategist, critic, optimizer, moderator) must
     reference an AgentBlueprint via ``agent_blueprint_id``.
+    Tone-profile nodes reference a ToneProfile from the catalog or
+    define an inline profile.
     """
 
     id: str = Field(..., min_length=1, max_length=100)
@@ -62,6 +67,7 @@ class WorkflowNode(BaseModel):
         "wf-moderator",
         "wf-user-injection",
         "wf-gate",
+        "wf-tone-profile",
     ]
     label: str = ""
     agent_blueprint_id: str | None = None  # Required for agent node types
@@ -77,6 +83,22 @@ class WorkflowNode(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_tone_profile_config(self) -> "WorkflowNode":
+        """Tone-profile nodes must have exactly one of tone_profile_id or inline_profile."""
+        if self.type == "wf-tone-profile":
+            has_catalog = bool(self.config.get("tone_profile_id"))
+            has_inline = "inline_profile" in self.config and self.config["inline_profile"] is not None
+            if not has_catalog and not has_inline:
+                raise ValueError(
+                    "Tone-profile node requires either 'tone_profile_id' or 'inline_profile' in config"
+                )
+            if has_catalog and has_inline:
+                raise ValueError(
+                    "Tone-profile node must have exactly one of 'tone_profile_id' or 'inline_profile', not both"
+                )
+        return self
+
 
 # ---------------------------------------------------------------------------
 # Workflow Edge Types
@@ -88,6 +110,16 @@ WORKFLOW_EDGE_TYPES: list[str] = [
     "conditional",
     "interjection",
     "feedback",
+    "injects_config",
+]
+
+#: Agent node types that can receive injects_config edges.
+INJECTABLE_AGENT_NODE_TYPES: list[str] = [
+    "wf-strategist",
+    "wf-critic",
+    "wf-optimizer",
+    "wf-moderator",
+    # Note: wf-input, wf-gate, wf-user-injection, wf-tone-profile cannot receive injects_config
 ]
 
 
@@ -99,12 +131,13 @@ class WorkflowEdge(BaseModel):
     - ``conditional``: branching based on a condition expression
     - ``interjection``: connects to an interjection point
     - ``feedback``: loop-back edge (e.g. moderator → strategist for another round)
+    - ``injects_config``: config injection from tone_profile node to agent node
     """
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
     source: str  # source node ID
     target: str  # target node ID
-    type: Literal["sequential", "conditional", "interjection", "feedback"] = "sequential"
+    type: Literal["sequential", "conditional", "interjection", "feedback", "injects_config"] = "sequential"
     condition: str | None = None  # Required for conditional edges
     label: str = ""
 

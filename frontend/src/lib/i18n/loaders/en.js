@@ -458,6 +458,7 @@ export default {
   'blueprint.palette.wfUserInput': 'User Input',
   'blueprint.palette.wfUserInjection': 'User Injection',
   'blueprint.palette.wfGate': 'Gate',
+  'blueprint.palette.wfToneProfile': 'Tone Profile',
   'blueprint.node.linked': 'Linked',
   'blueprint.node.notLinked': 'Not linked',
   'blueprint.edge.sequential': 'Sequential',
