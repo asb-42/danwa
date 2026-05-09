@@ -6,6 +6,8 @@ Agent Blueprints, Workflow Definitions, and the bulk import trigger.
 
 from __future__ import annotations
 
+import json
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
@@ -22,7 +24,7 @@ from backend.blueprints.models import (
     RoleType,
 )
 from backend.blueprints.repository import BlueprintRepository
-from backend.blueprints.workflow_models import WorkflowDefinition
+from backend.blueprints.workflow_models import WorkflowDefinition, WorkflowTemplate
 
 router = APIRouter()
 
@@ -377,6 +379,17 @@ def delete_role_type(
 # ==================================================================
 
 
+class SaveAsTemplateRequest:
+    """Request body for saving a workflow as a template."""
+
+    def __init__(self, name: str, description: str = "", extracted_placeholders: list[str] | None = None) -> None:
+        self.name = name
+        self.description = description
+        self.extracted_placeholders = extracted_placeholders or []
+
+
+
+
 @router.get("/workflows", response_model=list[WorkflowDefinition])
 def list_workflow_definitions(
     limit: int = 50,
@@ -477,6 +490,106 @@ def clone_workflow(
 
     repo.save_workflow_definition(cloned)
     return cloned
+
+
+@router.post(
+    "/workflows/{wf_id}/save-as-template",
+    response_model=WorkflowTemplate,
+    status_code=201,
+)
+def save_workflow_as_template(
+    wf_id: str,
+    body: dict | None = None,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> WorkflowTemplate:
+    """Create a custom template from an existing WorkflowDefinition.
+
+    Request body: ``{"name": "...", "description": "...", "extracted_placeholders": ["key1"]}``
+
+    Fields listed in ``extracted_placeholders`` are replaced with
+    ``{{key}}`` placeholders in the template data.
+    """
+    from backend.blueprints.workflow_models import WorkflowTemplate
+
+    wf = repo.get_workflow_definition(wf_id)
+    _require_found("WorkflowDefinition", wf, wf_id)
+
+    name = (body or {}).get("name", f"Template from {wf.name}")
+    description = (body or {}).get("description", "")
+    extracted_keys = (body or {}).get("extracted_placeholders", [])
+
+    # Serialize workflow to dict
+    wf_data = json.loads(wf.model_dump_json())
+
+    # Remove metadata fields that don't belong in template_data
+    for key in [
+        "id", "name", "description", "canvas_layout_id", "tags",
+        "is_active", "created_at", "updated_at", "template_id",
+        "version", "is_locked",
+    ]:
+        wf_data.pop(key, None)
+
+    # Extract placeholders: replace concrete values with {{key}}
+    from backend.blueprints.workflow_models import WorkflowTemplate as _WT
+
+    placeholders: list[dict] = []
+    for pkey in extracted_keys:
+        value = _find_value_in_dict(wf_data, pkey)
+        if value is not None:
+            raw = json.dumps(wf_data, default=str)
+            raw = raw.replace(json.dumps(value, default=str), '"{{' + pkey + '}}"')
+            wf_data = json.loads(raw)
+
+            ph_type = "string"
+            if isinstance(value, int):
+                ph_type = "integer"
+            elif isinstance(value, float):
+                ph_type = "float"
+            if "blueprint" in pkey.lower():
+                ph_type = "blueprint_ref"
+
+            placeholders.append({
+                "key": pkey,
+                "type": ph_type,
+                "description": f"Extracted from workflow field: {pkey}",
+            })
+
+    import uuid as _uuid
+    from datetime import UTC, datetime
+    now = datetime.now(UTC)
+
+    template = WorkflowTemplate(
+        id=f"tpl-{str(_uuid.uuid4())[:8]}",
+        name=name,
+        description=description,
+        category="custom",
+        template_data=wf_data,
+        placeholders=placeholders,
+        is_system=False,
+        source_workflow_id=wf_id,
+        created_at=now,
+        updated_at=now,
+    )
+
+    repo.save_workflow_template(template)
+    return template
+
+
+def _find_value_in_dict(data: object, key: str) -> str | int | float | None:
+    """Recursively search for a key in nested dict/list and return its value."""
+    if isinstance(data, dict):
+        if key in data:
+            return data[key]  # type: ignore[return-value]
+        for v in data.values():
+            result = _find_value_in_dict(v, key)
+            if result is not None:
+                return result
+    elif isinstance(data, list):
+        for item in data:
+            result = _find_value_in_dict(item, key)
+            if result is not None:
+                return result
+    return None
 
 
 # ==================================================================

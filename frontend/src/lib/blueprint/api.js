@@ -473,3 +473,89 @@ export function cloneWorkflow(wfId) {
     method: 'POST',
   });
 }
+
+// ─── Workflow Templates ────────────────────────────────────────────
+
+/**
+ * List all workflow templates with optional filtering.
+ * @param {{ category?: string, limit?: number, offset?: number }} [opts]
+ * @returns {Promise<Array>}
+ */
+export function listWorkflowTemplates({ category, limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+  return request(`/api/v1/workflow-templates?${params.toString()}`);
+}
+
+/**
+ * Get a single workflow template by ID.
+ * @param {string} templateId
+ * @returns {Promise<Object>}
+ */
+export function getWorkflowTemplate(templateId) {
+  return request(`/api/v1/workflow-templates/${templateId}`);
+}
+
+/**
+ * Create a new custom workflow template.
+ * @param {Object} template
+ * @returns {Promise<Object>}
+ */
+export function createWorkflowTemplate(template) {
+  return request('/api/v1/workflow-templates', {
+    method: 'POST',
+    body: JSON.stringify(template),
+  });
+}
+
+/**
+ * Update an existing workflow template.
+ * @param {string} templateId
+ * @param {Object} template
+ * @returns {Promise<Object>}
+ */
+export function updateWorkflowTemplate(templateId, template) {
+  return request(`/api/v1/workflow-templates/${templateId}`, {
+    method: 'PUT',
+    body: JSON.stringify(template),
+  });
+}
+
+/**
+ * Delete a workflow template.
+ * @param {string} templateId
+ * @returns {Promise<void>}
+ */
+export function deleteWorkflowTemplate(templateId) {
+  return request(`/api/v1/workflow-templates/${templateId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Instantiate a workflow template into a concrete WorkflowDefinition.
+ * @param {string} templateId
+ * @param {{ name?: string, placeholder_values: Object }} body
+ * @returns {Promise<Object>}
+ */
+export function instantiateWorkflowTemplate(templateId, body) {
+  return request(`/api/v1/workflow-templates/${templateId}/instantiate`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Save an existing workflow as a custom template.
+ * @param {string} wfId
+ * @param {{ name: string, description?: string, extracted_placeholders?: string[] }} body
+ * @returns {Promise<Object>}
+ */
+export function saveWorkflowAsTemplate(wfId, body) {
+  return request(`/api/v1/blueprints/workflows/${wfId}/save-as-template`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}

@@ -1,8 +1,8 @@
 """Blueprint Canvas — Workflow definition models.
 
 Defines ``WorkflowDefinition``, ``WorkflowNode``, ``WorkflowEdge``,
-``TerminationCondition``, ``ConditionalEdge``, and ``InterjectionPoint``
-for the workflow builder mode of the Blueprint Canvas.
+``TerminationCondition``, ``ConditionalEdge``, ``InterjectionPoint``,
+and ``WorkflowTemplate`` for the workflow builder mode of the Blueprint Canvas.
 
 These models reference AgentBlueprints from the catalog by ID — they do NOT
 duplicate blueprint data.
@@ -10,6 +10,8 @@ duplicate blueprint data.
 
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -194,6 +196,9 @@ class WorkflowDefinition(BaseModel):
     interjection_points: list[InterjectionPoint] = Field(default_factory=list)
     node_blueprint_map: dict[str, str] = Field(default_factory=dict)
 
+    # Template reference (set when instantiated from a WorkflowTemplate)
+    template_id: str | None = None
+
     # Metadata
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True
@@ -220,3 +225,130 @@ class WorkflowDefinition(BaseModel):
                     f"entry_point '{v}' does not reference any node in the workflow"
                 )
         return v
+
+
+# ---------------------------------------------------------------------------
+# Workflow Templates
+# ---------------------------------------------------------------------------
+
+
+class PlaceholderType:
+    """Allowed placeholder value types."""
+
+    STRING = "string"
+    BLUEPRINT_REF = "blueprint_ref"
+    INTEGER = "integer"
+    FLOAT = "float"
+
+
+PLACEHOLDER_TYPES: list[str] = [
+    PlaceholderType.STRING,
+    PlaceholderType.BLUEPRINT_REF,
+    PlaceholderType.INTEGER,
+    PlaceholderType.FLOAT,
+]
+
+
+class TemplatePlaceholder(BaseModel):
+    """Defines a single placeholder within a WorkflowTemplate.
+
+    Placeholders are replaced with concrete values during instantiation.
+    """
+
+    key: str = Field(..., min_length=1, max_length=100, pattern=r"^[a-z0-9_]+$")
+    type: Literal["string", "blueprint_ref", "integer", "float"] = "string"
+    default: str | int | float | None = None
+    description: str = ""
+
+
+class TemplateCategory:
+    """Workflow template categories."""
+
+    SYSTEM = "system"
+    CUSTOM = "custom"
+
+
+TEMPLATE_CATEGORIES: list[str] = [TemplateCategory.SYSTEM, TemplateCategory.CUSTOM]
+
+#: Regex matching {{placeholder_key}} in template data strings.
+_PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
+
+
+class WorkflowTemplate(BaseModel):
+    """A reusable workflow template with placeholder substitution.
+
+    Templates contain a ``template_data`` dictionary that mirrors the
+    structure of a ``WorkflowDefinition`` (nodes, edges, entry_point,
+    termination_conditions) but may contain ``{{key}}`` placeholders in
+    string fields.
+
+    During instantiation, all placeholders are replaced with concrete
+    values provided by the user, and the result is validated as a
+    ``WorkflowDefinition``.
+    """
+
+    id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = ""
+    category: Literal["system", "custom"] = TemplateCategory.CUSTOM
+    tags: list[str] = Field(default_factory=list)
+
+    # The workflow structure with {{placeholder}} strings
+    template_data: dict[str, Any] = Field(default_factory=dict)
+
+    # Placeholder definitions
+    placeholders: list[TemplatePlaceholder] = Field(default_factory=list)
+
+    # System templates cannot be edited or deleted via API
+    is_system: bool = False
+
+    # If created from an existing workflow, reference its ID
+    source_workflow_id: str | None = None
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("template_data")
+    @classmethod
+    def validate_template_data_has_keys(cls, v: dict[str, Any]) -> dict[str, Any]:
+        """template_data must contain at least 'nodes' and 'edges'."""
+        if v and "nodes" not in v:
+            raise ValueError("template_data must contain a 'nodes' key")
+        return v
+
+    def extract_placeholder_keys(self) -> set[str]:
+        """Extract all {{key}} placeholder keys found in template_data."""
+        raw = _PLACEHOLDER_RE.findall(json.dumps(self.template_data, default=str))
+        return set(raw)
+
+    def instantiate(self, values: dict[str, Any]) -> dict[str, Any]:
+        """Replace all {{key}} placeholders in template_data with values.
+
+        Returns a new dict with all placeholders resolved.
+        Raises ValueError if required placeholders are missing.
+        """
+        # Check for missing required placeholders
+        defined_keys = {p.key for p in self.placeholders}
+        used_keys = self.extract_placeholder_keys()
+        required_keys = {
+            p.key for p in self.placeholders if p.default is None
+        }
+        missing = required_keys - set(values.keys())
+        if missing:
+            raise ValueError(f"Missing placeholder values: {sorted(missing)}")
+
+        # Merge defaults with provided values
+        merged: dict[str, Any] = {}
+        for p in self.placeholders:
+            if p.key in values:
+                merged[p.key] = values[p.key]
+            elif p.default is not None:
+                merged[p.key] = p.default
+
+        # Deep-replace placeholders in the serialized template data
+        raw = json.dumps(self.template_data, default=str)
+        for key, val in merged.items():
+            raw = raw.replace("{{" + key + "}}", str(val))
+        return json.loads(raw)
+
+

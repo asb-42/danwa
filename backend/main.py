@@ -34,6 +34,7 @@ from backend.api.routers import (  # noqa: E402
     system,
     workflow_exec,
     workflow_reports,
+    workflow_templates,
 )
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
@@ -119,6 +120,11 @@ async def lifespan(app: FastAPI):
 
     migrate_to_projects()
 
+    # Seed system workflow templates (idempotent)
+    from scripts.seed_templates import seed_system_templates
+
+    seed_system_templates()
+
     yield
     logger.info("Debate Engine shutting down.")
 
@@ -180,6 +186,13 @@ def create_app() -> FastAPI:
         workflow_reports.router,
         prefix="/api/v1",
         tags=["reports"],
+    )
+
+    # --- Workflow Templates ---
+    app.include_router(
+        workflow_templates.router,
+        prefix="/api/v1/workflow-templates",
+        tags=["workflow-templates"],
     )
 
     # --- A2A Discovery ---

@@ -20,6 +20,9 @@
   import Palette from '../components/blueprint/Palette.svelte';
   import BlueprintCanvas from '../components/blueprint/BlueprintCanvas.svelte';
   import Inspector from '../components/blueprint/Inspector.svelte';
+  import TemplateGallery from '../components/blueprint/TemplateGallery.svelte';
+  import TemplateInstantiateModal from '../components/blueprint/TemplateInstantiateModal.svelte';
+  import SaveAsTemplateDialog from '../components/blueprint/SaveAsTemplateDialog.svelte';
 
   /** @type {{ layoutId?: string|null, navigate?: function }} */
   let { layoutId = null, navigate = () => {} } = $props();
@@ -36,6 +39,12 @@
   let showSaveDialog = $state(false);
   let layoutName = $state('');
   let saveError = $state(null);
+
+  // Template state
+  let showTemplateGallery = $state(false);
+  let showInstantiateModal = $state(false);
+  let showSaveAsTemplate = $state(false);
+  let selectedTemplate = $state(null);
 
   // Load layout if layoutId provided
   $effect(() => {
@@ -146,6 +155,39 @@
       console.error('[BlueprintCanvasView] Import failed:', err);
     }
   }
+
+  // --- Template handlers ---
+  function handleNewWorkflow() {
+    showTemplateGallery = true;
+  }
+
+  function handleTemplateSelected(template) {
+    showTemplateGallery = false;
+    if (template === null) {
+      // Blank canvas — do nothing special
+      return;
+    }
+    selectedTemplate = template;
+    showInstantiateModal = true;
+  }
+
+  function handleInstantiated(wf) {
+    showInstantiateModal = false;
+    selectedTemplate = null;
+    // Navigate to the new workflow
+    if (wf && wf.id) {
+      navigate(`blueprint/workflow/${wf.id}`);
+    }
+  }
+
+  function handleSaveAsTemplate() {
+    showSaveAsTemplate = true;
+  }
+
+  function handleTemplateSaved(template) {
+    showSaveAsTemplate = false;
+    console.log('[BlueprintCanvasView] Template saved:', template);
+  }
 </script>
 
 <div class="blueprint-canvas-view" data-testid="blueprint-canvas-view">
@@ -156,7 +198,11 @@
 
   <!-- Center: Canvas -->
   <main class="canvas-column">
-    <BlueprintCanvas onsave={handleSaveLayout} />
+    <BlueprintCanvas
+      onsave={handleSaveLayout}
+      onnewworkflow={handleNewWorkflow}
+      onsaveastemplate={handleSaveAsTemplate}
+    />
   </main>
 
   <!-- Right: Inspector (conditional) -->
@@ -166,6 +212,30 @@
     </aside>
   {/if}
 </div>
+
+<!-- Template Gallery Modal -->
+<TemplateGallery
+  visible={showTemplateGallery}
+  onSelect={handleTemplateSelected}
+  onClose={() => { showTemplateGallery = false; }}
+/>
+
+<!-- Template Instantiate Modal -->
+<TemplateInstantiateModal
+  template={selectedTemplate}
+  visible={showInstantiateModal}
+  onSuccess={handleInstantiated}
+  onClose={() => { showInstantiateModal = false; selectedTemplate = null; }}
+/>
+
+<!-- Save as Template Dialog -->
+<SaveAsTemplateDialog
+  workflowId={canvasStore.currentLayoutId}
+  workflowData={canvasStore.toLayoutJson ? canvasStore.toLayoutJson() : null}
+  visible={showSaveAsTemplate}
+  onSuccess={handleTemplateSaved}
+  onClose={() => { showSaveAsTemplate = false; }}
+/>
 
 <!-- Save dialog for new layouts -->
 {#if showSaveDialog}
