@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error, activeProject } from '../lib/stores.js';
-  import { getDebates, deleteDebate, softDeleteSession, restoreSession } from '../lib/api.js';
+  import { getDebates, deleteDebate, softDeleteSession, restoreSession, getTrace } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
@@ -31,6 +31,12 @@
   let archiveConfirmId = $state(null);
   let isArchiving = $state(false);
   let restoringId = $state(null);
+
+  // Trace state
+  let traceData = $state(null);
+  let traceSessionId = $state(null);
+  let isLoadingTrace = $state(false);
+  let showTraceModal = $state(false);
 
   let projectId = $derived($activeProject?.id);
 
@@ -150,6 +156,25 @@
     } finally {
       restoringId = null;
     }
+  }
+
+  async function handleViewTrace(debateId) {
+    isLoadingTrace = true;
+    showTraceModal = true;
+    traceSessionId = debateId;
+    try {
+      traceData = await getTrace(debateId);
+    } catch (err) {
+      traceData = { error: err.message };
+    } finally {
+      isLoadingTrace = false;
+    }
+  }
+
+  function closeTraceModal() {
+    showTraceModal = false;
+    traceData = null;
+    traceSessionId = null;
   }
 
   async function handleDelete(debateId) {
@@ -394,6 +419,19 @@
                 {/if}
               {/if}
 
+              <!-- Trace button -->
+              <button
+                class="p-1.5 rounded text-purple-400 hover:text-purple-600 dark:hover:text-purple-400
+                       hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                onclick={(e) => { e.stopPropagation(); handleViewTrace(debate.debate_id); }}
+                aria-label={t('archive.viewTrace')}
+                title={t('archive.viewTrace')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </button>
+
               <!-- Delete button -->
               {#if deleteConfirmId === debate.debate_id}
                 <div class="flex items-center gap-1">
@@ -469,3 +507,40 @@
     </div>
   {/if}
 </div>
+
+<!-- Trace Modal -->
+{#if showTraceModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeTraceModal} role="dialog" aria-modal="true" tabindex="-1">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto mx-4"
+      role="presentation"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+          {t('archive.traceTitle')} — {traceSessionId?.substring(0, 12)}…
+        </h3>
+        <button
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+          onclick={closeTraceModal}
+        >
+          ✕
+        </button>
+      </div>
+      <div class="px-6 py-4">
+        {#if isLoadingTrace}
+          <div class="flex items-center justify-center h-24">
+            <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+          </div>
+        {:else if traceData?.error}
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
+            {traceData.error}
+          </div>
+        {:else if traceData}
+          <pre class="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto max-h-[60vh] whitespace-pre-wrap font-mono">{JSON.stringify(traceData, null, 2)}</pre>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}

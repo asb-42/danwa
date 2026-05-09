@@ -21,7 +21,7 @@
   // Initialize registry (idempotent — safe to call multiple times)
   registerAllNodeTypes();
 
-  let { onsave = () => {} } = $props();
+  let { onsave = () => {}, onsaveas = () => {} } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -159,6 +159,14 @@
       data-testid="canvas-save-layout"
     >
       💾 {t('blueprint.canvas.saveLayout')}
+    </button>
+    <button
+      class="toolbar-btn"
+      onclick={() => onsaveas()}
+      title={t('blueprint.canvas.saveAs')}
+      data-testid="canvas-save-as"
+    >
+      📄 {t('blueprint.canvas.saveAs')}
     </button>
     <button
       class="toolbar-btn"

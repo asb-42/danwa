@@ -682,4 +682,18 @@ export default {
 
   'template.toast.instantiated': 'Workflow aus Vorlage erstellt',
   'template.toast.saved': 'Vorlage erfolgreich gespeichert',
+
+  // Missing Links — UI additions
+  'workflow.execution.viewState': 'Status anzeigen',
+  'workflow.execution.currentState': 'Aktueller Workflow-Status',
+  'blueprint.canvas.saveAs': 'Speichern unter',
+  'config.roleTypes': 'Rollen-Typen',
+  'config.noRoleTypes': 'Keine Rollen-Typen definiert',
+  'config.createRoleType': 'Rollen-Typ erstellen',
+  'config.editRoleType': 'Rollen-Typ bearbeiten',
+  'config.roleTypeSaved': 'Rollen-Typ erfolgreich gespeichert',
+  'config.roleTypeColor': 'Farbe',
+  'config.roleTypeIcon': 'Symbol',
+  'archive.viewTrace': 'Trace anzeigen',
+  'archive.traceTitle': 'Ausführungs-Trace',
 };

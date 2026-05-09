@@ -128,6 +128,12 @@
     }
   }
 
+  function handleSaveAs() {
+    layoutName = '';
+    saveError = null;
+    showSaveDialog = true;
+  }
+
   async function handleSaveNewLayout() {
     saveError = null;
     if (!layoutName.trim()) {
@@ -315,6 +321,7 @@
 
     <BlueprintCanvas
       onsave={handleSaveLayout}
+      onsaveas={handleSaveAs}
       onnewworkflow={handleNewWorkflow}
       onsaveastemplate={handleSaveAsTemplate}
     />

@@ -443,3 +443,30 @@ export function getSessionsForReplay(workflowId) {
 export function getSessionsForDiff(workflowId) {
   return request(`/api/v1/workflow-exec/sessions?workflow_id=${workflowId}&status=completed`);
 }
+
+// ---------------------------------------------------------------------------
+// Report SSE Progress Stream
+// ---------------------------------------------------------------------------
+
+/**
+ * Create an SSE connection for report generation progress.
+ * @param {string} sessionId
+ * @returns {EventSource}
+ */
+export function createReportSSE(sessionId) {
+  const base = import.meta.env.VITE_API_URL || '';
+  return new EventSource(`${base}/api/v1/sessions/${sessionId}/report/stream`);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Session Trace
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the execution trace for a session.
+ * @param {string} sessionId
+ * @returns {Promise<Object>}
+ */
+export function getTrace(sessionId) {
+  return request(`/api/v1/sessions/${sessionId}/trace`);
+}

@@ -14,6 +14,7 @@
     resumeWorkflow,
     cancelWorkflow,
     submitInterjection,
+    getWorkflowState,
   } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
 
@@ -40,6 +41,11 @@
   let interjectionText = $state('');
   let error = $state('');
   let cleanupSSE = $state(null);
+
+  // Workflow state viewer
+  let showState = $state(false);
+  let stateData = $state(null);
+  let isLoadingState = $state(false);
 
   // Elapsed time timer
   let startTime = $state(null);
@@ -179,6 +185,20 @@
     }
   }
 
+  // View workflow state
+  async function handleViewState() {
+    if (!sessionId) return;
+    isLoadingState = true;
+    try {
+      stateData = await getWorkflowState(sessionId);
+      showState = true;
+    } catch (err) {
+      error = err.message || 'Failed to load state';
+    } finally {
+      isLoadingState = false;
+    }
+  }
+
   // Cleanup on unmount
   $effect(() => {
     return () => {
@@ -286,6 +306,25 @@
             </div>
           {/each}
         </div>
+      </div>
+    {/if}
+
+    <!-- View State button -->
+    {#if sessionId && (status === 'running' || status === 'paused' || status === 'completed' || status === 'failed')}
+      <div class="state-section">
+        <button
+          class="btn btn-small btn-state"
+          onclick={handleViewState}
+          disabled={isLoadingState}
+        >
+          {isLoadingState ? '...' : t('workflow.execution.viewState')}
+        </button>
+        {#if showState && stateData}
+          <details open class="state-details">
+            <summary class="state-summary">{t('workflow.execution.currentState')}</summary>
+            <pre class="state-json">{JSON.stringify(stateData, null, 2)}</pre>
+          </details>
+        {/if}
       </div>
     {/if}
   </div>
@@ -522,4 +561,49 @@
     overflow-y: auto;
   }
   :global(.dark) .output-content { color: #d1d5db; }
+
+  .state-section {
+    padding: 8px 16px;
+    border-top: 1px solid #f3f4f6;
+  }
+  .btn-state {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+    color: white;
+    width: 100%;
+  }
+  .btn-state:hover:not(:disabled) {
+    background: #7c3aed;
+  }
+  .state-details {
+    margin-top: 8px;
+  }
+  .state-summary {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+  .state-json {
+    margin-top: 6px;
+    padding: 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: monospace;
+    color: #374151;
+    overflow-x: auto;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  :global(.dark) .state-json {
+    background: #111827;
+    border-color: #1f2937;
+    color: #d1d5db;
+  }
 </style>

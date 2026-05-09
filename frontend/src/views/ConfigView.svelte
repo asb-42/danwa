@@ -20,6 +20,12 @@
     getSettings,
     updateSettings,
   } from '../lib/api.js';
+  import {
+    listRoleTypes,
+    createRoleType,
+    updateRoleType,
+    deleteRoleType,
+  } from '../lib/blueprint/api.js';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -33,6 +39,7 @@
   let llmProfiles = $state([]);
   let agentPersonas = $state([]);
   let promptVariants = $state([]);
+  let roleTypes = $state([]);
   let costEstimate = $state(null);
   let previewContent = $state(null);
   let previewRole = $state('strategist');
@@ -70,7 +77,14 @@
 
   // Delete confirmation
   let showDeleteConfirm = $state(false);
-  let deleteTarget = $state(null); // { type: 'llm'|'agent'|'prompt', id, name }
+  let deleteTarget = $state(null); // { type: 'llm'|'agent'|'prompt'|'roleType', id, name }
+
+  // Role Type form state
+  let showRoleTypeModal = $state(false);
+  let roleTypeModalMode = $state('create');
+  let roleTypeFormData = $state({});
+  let roleTypeFormErrors = $state({});
+  let isSavingRoleType = $state(false);
 
   // --- Lifecycle ---
   onMount(async () => {
@@ -81,6 +95,7 @@
         getLLMProfiles(),
         getAgentPersonas(),
         getPromptVariants(),
+        listRoleTypes(),
       ]);
 
       const errors = [];
@@ -101,6 +116,11 @@
       } else {
         console.error('Failed to load prompt variants:', results[2].reason);
         errors.push(`Prompt Variants: ${results[2].reason?.message || results[2].reason}`);
+      }
+      if (results[3].status === 'fulfilled') {
+        roleTypes = results[3].value;
+      } else {
+        console.error('Failed to load role types:', results[3].reason);
       }
 
       if (errors.length > 0) {
@@ -191,10 +211,11 @@
   });
 
   async function refreshLists() {
-    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants()]);
+    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes()]);
     if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
     if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
     if (results[2].status === 'fulfilled') promptVariants = results[2].value;
+    if (results[3].status === 'fulfilled') roleTypes = results[3].value;
   }
 
   function getPersonasByRole(role) {
@@ -340,6 +361,8 @@
         await deleteAgentPersona(deleteTarget.id);
       } else if (deleteTarget.type === 'prompt') {
         await deletePromptVariant(deleteTarget.id);
+      } else if (deleteTarget.type === 'roleType') {
+        await deleteRoleType(deleteTarget.id);
       }
       showDeleteConfirm = false;
       deleteTarget = null;
@@ -372,6 +395,66 @@
   function removeTag(tag) {
     formData.tags = formData.tags.filter(t => t !== tag);
   }
+
+  // --- Role Type CRUD ---
+  function openCreateRoleType() {
+    roleTypeModalMode = 'create';
+    roleTypeFormData = {
+      id: '',
+      name: '',
+      description: '',
+      color: '#6b7280',
+      icon: '',
+      active: true,
+    };
+    roleTypeFormErrors = {};
+    showRoleTypeModal = true;
+  }
+
+  function openEditRoleType(roleType) {
+    roleTypeModalMode = 'edit';
+    roleTypeFormData = { ...roleType };
+    roleTypeFormErrors = {};
+    showRoleTypeModal = true;
+  }
+
+  function validateRoleTypeForm() {
+    const errors = {};
+    if (!roleTypeFormData.id || !/^[a-z0-9][a-z0-9._-]*$/.test(roleTypeFormData.id)) {
+      errors.id = 'ID: lowercase alphanumeric, dots, hyphens';
+    }
+    if (!roleTypeFormData.name?.trim()) errors.name = t('config.required');
+    roleTypeFormErrors = errors;
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSaveRoleType() {
+    if (!validateRoleTypeForm()) return;
+    isSavingRoleType = true;
+    try {
+      const payload = { ...roleTypeFormData };
+      if (!payload.description) payload.description = null;
+      if (!payload.icon) payload.icon = null;
+
+      if (roleTypeModalMode === 'create') {
+        await createRoleType(payload);
+      } else {
+        await updateRoleType(roleTypeFormData.id, payload);
+      }
+      showRoleTypeModal = false;
+      statusMessage = `✓ ${t('config.roleTypeSaved')}`;
+      roleTypes = await listRoleTypes();
+    } catch (e) {
+      $error = e.message;
+    } finally {
+      isSavingRoleType = false;
+    }
+  }
+
+  function closeRoleTypeModal() {
+    showRoleTypeModal = false;
+    roleTypeFormErrors = {};
+  }
 </script>
 
 <div class="space-y-6">
@@ -392,7 +475,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'agents', 'prompts', 'cost', 'settings', 'system'] as tab}
+      {#each ['llm', 'agents', 'roleTypes', 'prompts', 'cost', 'settings', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -402,6 +485,7 @@
         >
           {#if tab === 'llm'}{t('config.llmProfiles')}
           {:else if tab === 'agents'}{t('config.agentProfiles')}
+          {:else if tab === 'roleTypes'}🎭 {t('config.roleTypes')}
           {:else if tab === 'prompts'}{t('config.promptVariants')}
           {:else if tab === 'cost'}{t('config.costEstimate')}
           {:else if tab === 'settings'}⚙️ {t('settings.title')}
@@ -569,6 +653,67 @@
           </div>
         </div>
       {/each}
+    </div>
+
+  <!-- Role Types Tab -->
+  {:else if activeTab === 'roleTypes'}
+    <div class="space-y-4">
+      <div class="flex justify-end">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+          onclick={openCreateRoleType}
+        >
+          + {t('config.createRoleType')}
+        </button>
+      </div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+        {#if roleTypes.length === 0}
+          <div class="flex items-center justify-center h-32">
+            <p class="text-gray-500 dark:text-gray-400">{t('config.noRoleTypes')}</p>
+          </div>
+        {:else}
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-4 py-3">ID</th>
+                  <th class="px-4 py-3">{t('config.name')}</th>
+                  <th class="px-4 py-3">{t('config.description')}</th>
+                  <th class="px-4 py-3">{t('config.roleTypeColor')}</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each roleTypes as rt}
+                  <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td class="px-4 py-3 font-mono text-xs">{rt.id}</td>
+                    <td class="px-4 py-3 font-medium">{rt.name}</td>
+                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{rt.description || '—'}</td>
+                    <td class="px-4 py-3">
+                      <span class="inline-block w-4 h-4 rounded-full" style="background: {rt.color || '#6b7280'}"></span>
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        class="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                        onclick={() => openEditRoleType(rt)}
+                      >
+                        {t('common.edit')}
+                      </button>
+                      <button
+                        class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors ml-1"
+                        onclick={() => confirmDelete('roleType', rt.id, rt.name)}
+                      >
+                        {t('common.delete')}
+                      </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
     </div>
 
   <!-- Prompt Variants Tab -->
@@ -1304,6 +1449,120 @@
           onclick={handleDelete}
         >
           {t('common.delete')}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- ============================================================ -->
+<!-- ROLE TYPE MODAL                                                -->
+<!-- ============================================================ -->
+{#if showRoleTypeModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeRoleTypeModal} role="dialog" aria-modal="true" tabindex="-1">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4"
+      role="presentation"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+          {roleTypeModalMode === 'create' ? t('config.createRoleType') : t('config.editRoleType')}
+        </h3>
+        <button
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+          onclick={closeRoleTypeModal}
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Form -->
+      <div class="px-6 py-4 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- ID -->
+          <div>
+            <label for="rt-form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('config.id')} *
+            </label>
+            <input id="rt-form-id" type="text" bind:value={roleTypeFormData.id}
+              disabled={roleTypeModalMode === 'edit'}
+              class="w-full px-3 py-2 border rounded-lg text-sm
+                {roleTypeFormErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+              placeholder="custom-role"
+            />
+            {#if roleTypeFormErrors.id}<p class="text-xs text-red-500 mt-1">{roleTypeFormErrors.id}</p>{/if}
+          </div>
+
+          <!-- Name -->
+          <div>
+            <label for="rt-form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('config.name')} *
+            </label>
+            <input id="rt-form-name" type="text" bind:value={roleTypeFormData.name}
+              class="w-full px-3 py-2 border rounded-lg text-sm
+                {roleTypeFormErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Custom Role"
+            />
+            {#if roleTypeFormErrors.name}<p class="text-xs text-red-500 mt-1">{roleTypeFormErrors.name}</p>{/if}
+          </div>
+
+          <!-- Color -->
+          <div>
+            <label for="rt-form-color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('config.roleTypeColor')}
+            </label>
+            <input id="rt-form-color" type="color" bind:value={roleTypeFormData.color}
+              class="w-full h-10 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded-lg"
+            />
+          </div>
+
+          <!-- Icon -->
+          <div>
+            <label for="rt-form-icon" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('config.roleTypeIcon')}
+            </label>
+            <input id="rt-form-icon" type="text" bind:value={roleTypeFormData.icon}
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="🔍"
+            />
+          </div>
+
+          <!-- Description -->
+          <div class="md:col-span-2">
+            <label for="rt-form-desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('config.description')}
+            </label>
+            <input id="rt-form-desc" type="text" bind:value={roleTypeFormData.description}
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Description of this role type"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          onclick={closeRoleTypeModal}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick={handleSaveRoleType}
+          disabled={isSavingRoleType}
+        >
+          {isSavingRoleType ? '...' : t('common.save')}
         </button>
       </div>
     </div>
