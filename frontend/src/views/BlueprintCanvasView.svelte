@@ -15,6 +15,8 @@
     getRoleDefinition,
     getPromptTemplate,
     runBlueprintImport,
+    compileWorkflow,
+    cloneWorkflow,
   } from '../lib/blueprint/api.js';
 
   import Palette from '../components/blueprint/Palette.svelte';
@@ -45,6 +47,12 @@
   let showInstantiateModal = $state(false);
   let showSaveAsTemplate = $state(false);
   let selectedTemplate = $state(null);
+
+  // Compile/Clone state
+  let isCompiling = $state(false);
+  let compileResult = $state(null);
+  let compileError = $state('');
+  let isCloning = $state(false);
 
   // Load layout if layoutId provided
   $effect(() => {
@@ -188,6 +196,35 @@
     showSaveAsTemplate = false;
     console.log('[BlueprintCanvasView] Template saved:', template);
   }
+
+  async function handleCompile() {
+    if (!canvasStore.currentLayoutId) return;
+    isCompiling = true;
+    compileResult = null;
+    compileError = '';
+    try {
+      compileResult = await compileWorkflow(canvasStore.currentLayoutId);
+    } catch (err) {
+      compileError = err.message;
+    } finally {
+      isCompiling = false;
+    }
+  }
+
+  async function handleClone() {
+    if (!canvasStore.currentLayoutId) return;
+    isCloning = true;
+    try {
+      const cloned = await cloneWorkflow(canvasStore.currentLayoutId);
+      if (cloned && cloned.id) {
+        navigate(`blueprint/${cloned.id}`);
+      }
+    } catch (err) {
+      compileError = err.message;
+    } finally {
+      isCloning = false;
+    }
+  }
 </script>
 
 <div class="blueprint-canvas-view" data-testid="blueprint-canvas-view">
@@ -198,6 +235,84 @@
 
   <!-- Center: Canvas -->
   <main class="canvas-column">
+    <!-- Compile/Clone toolbar -->
+    {#if canvasStore.currentLayoutId}
+      <div class="absolute top-2 right-2 z-10 flex items-center gap-2">
+        <button
+          class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick={handleCompile}
+          disabled={isCompiling}
+          title={t('blueprint.workflow.compile')}
+        >
+          {#if isCompiling}
+            <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          {:else}
+            🔧
+          {/if}
+          {t('blueprint.workflow.compile')}
+        </button>
+        <button
+          class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick={handleClone}
+          disabled={isCloning}
+          title={t('blueprint.workflow.clone')}
+        >
+          {#if isCloning}
+            <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          {:else}
+            📋
+          {/if}
+          {t('blueprint.workflow.clone')}
+        </button>
+      </div>
+    {/if}
+
+    <!-- Compile result display -->
+    {#if compileResult}
+      <div class="absolute top-12 right-2 z-10 w-80 p-3 rounded-lg shadow-lg border text-xs
+                  {compileResult.valid
+                    ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                    : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'}">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-semibold">
+            {compileResult.valid ? '✓' : '✗'} {t('blueprint.workflow.compileResult')}
+          </span>
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={() => compileResult = null}>✕</button>
+        </div>
+        {#if compileResult.errors?.length > 0}
+          <p class="font-semibold mt-1">{t('blueprint.workflow.errors')}:</p>
+          <ul class="list-disc ml-4 mt-0.5">
+            {#each compileResult.errors as err}
+              <li>{err}</li>
+            {/each}
+          </ul>
+        {/if}
+        {#if compileResult.warnings?.length > 0}
+          <p class="font-semibold mt-1">{t('blueprint.workflow.warnings')}:</p>
+          <ul class="list-disc ml-4 mt-0.5">
+            {#each compileResult.warnings as warn}
+              <li>{warn}</li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
+
+    {#if compileError}
+      <div class="absolute top-12 right-2 z-10 w-80 p-3 rounded-lg shadow-lg
+                  bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800
+                  text-xs text-red-800 dark:text-red-200">
+        <div class="flex items-center justify-between">
+          <span>{compileError}</span>
+          <button class="text-gray-400 hover:text-gray-600" onclick={() => compileError = ''}>✕</button>
+        </div>
+      </div>
+    {/if}
+
     <BlueprintCanvas
       onsave={handleSaveLayout}
       onnewworkflow={handleNewWorkflow}

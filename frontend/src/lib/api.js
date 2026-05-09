@@ -393,8 +393,34 @@ export function getReportStatus(jobId) {
   return request(`/api/v1/reports/${jobId}/status`);
 }
 
-export function downloadReport(jobId) {
-  return request(`/api/v1/reports/${jobId}/download`);
+export async function downloadReport(jobId) {
+  const url = `${API_BASE}/api/v1/reports/${jobId}/download`;
+  const projectId = get(activeProject)?.id;
+  const headers = {
+    ...DEFAULT_HEADERS,
+    ...(projectId ? { 'X-Project-Id': projectId } : {}),
+  };
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Download failed' }));
+    throw new Error(error.detail || `HTTP ${response.status}`);
+  }
+  return response.blob();
+}
+
+// ---------------------------------------------------------------------------
+// Language (Phase 8)
+// ---------------------------------------------------------------------------
+
+export function getLanguage() {
+  return request('/api/v1/config/language');
+}
+
+export function setLanguage(language) {
+  return request('/api/v1/config/language', {
+    method: 'PUT',
+    body: JSON.stringify({ language }),
+  });
 }
 
 // ---------------------------------------------------------------------------

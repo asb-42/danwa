@@ -584,15 +584,35 @@ export default {
   'report.title': 'Berichte',
   'report.generate': 'Bericht erstellen',
   'report.format': 'Format',
-  'report.status.pending': 'Ausstehend',
+  'report.status.pending': 'Wird generiert...',
   'report.status.completed': 'Abgeschlossen',
   'report.status.failed': 'Fehlgeschlagen',
-  'report.download': 'Herunterladen',
+  'report.download': 'Bericht herunterladen',
 
   // Session
   'session.softDelete': 'Archivieren',
   'session.restore': 'Wiederherstellen',
   'session.archived': 'Archiviert',
+
+  // Application Settings
+  'settings.title': 'Anwendungseinstellungen',
+  'settings.searchMode': 'Suchmodus',
+  'settings.searchModeHint': 'Standard-Websuchmodus für neue Debatten',
+  'settings.privacy': 'Datenschutz',
+  'settings.privacyHint': 'Datenschutzmodus aktivieren, um sensible Informationen zu verschleiern',
+  'settings.retention': 'Datenaufbewahrung (Tage)',
+  'settings.retentionHint': 'Anzahl der Tage zur Aufbewahrung von Debattendaten (0 = unbegrenzt)',
+  'settings.saved': 'Einstellungen erfolgreich gespeichert',
+
+  // RAG Search
+  'rag.search': 'Dokumente durchsuchen',
+  'rag.searchPlaceholder': 'Durchsuche indexierte Dokumente...',
+  'rag.searchButton': 'Suchen',
+  'rag.searching': 'Suche läuft...',
+  'rag.noResults': 'Keine Ergebnisse gefunden.',
+  'rag.relevance': 'Relevanz',
+  'rag.source': 'Quelle',
+  'rag.chunk': 'Abschnitt',
 
   // A2A-Protokoll (Phase 8)
   'a2a.protocol.label': 'Protokoll',

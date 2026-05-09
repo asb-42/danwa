@@ -17,6 +17,8 @@
     previewPromptVariant,
     reloadProfiles,
     getBackendLogs,
+    getSettings,
+    updateSettings,
   } from '../lib/api.js';
 
   let t = $derived((key, params = {}) => {
@@ -51,6 +53,12 @@
   let logLines = $state([]);
   let logSearch = $state('');
   let isLoadingLogs = $state(false);
+
+  // Settings tab state
+  let settingsData = $state({});
+  let isLoadingSettings = $state(false);
+  let isSavingSettings = $state(false);
+  let settingsMessage = $state('');
 
   // --- Modal state ---
   let showModal = $state(false);
@@ -149,6 +157,38 @@
       isLoadingLogs = false;
     }
   }
+
+  // --- Settings ---
+  async function loadSettings() {
+    isLoadingSettings = true;
+    try {
+      settingsData = await getSettings();
+    } catch (e) {
+      $error = e.message;
+    } finally {
+      isLoadingSettings = false;
+    }
+  }
+
+  async function handleSaveSettings() {
+    isSavingSettings = true;
+    settingsMessage = '';
+    try {
+      await updateSettings(settingsData);
+      settingsMessage = `✓ ${t('settings.saved')}`;
+    } catch (e) {
+      $error = e.message;
+    } finally {
+      isSavingSettings = false;
+    }
+  }
+
+  // Load settings when settings tab is activated
+  $effect(() => {
+    if (activeTab === 'settings' && Object.keys(settingsData).length === 0) {
+      loadSettings();
+    }
+  });
 
   async function refreshLists() {
     const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants()]);
@@ -352,7 +392,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'agents', 'prompts', 'cost', 'system'] as tab}
+      {#each ['llm', 'agents', 'prompts', 'cost', 'settings', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -364,7 +404,8 @@
           {:else if tab === 'agents'}{t('config.agentProfiles')}
           {:else if tab === 'prompts'}{t('config.promptVariants')}
           {:else if tab === 'cost'}{t('config.costEstimate')}
-          {:else if tab === 'system'}⚙️ System
+          {:else if tab === 'settings'}⚙️ {t('settings.title')}
+          {:else if tab === 'system'}🖥️ System
           {/if}
         </button>
       {/each}
@@ -680,6 +721,89 @@
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {costEstimate.num_agents} agents × {costEstimate.num_rounds} rounds
           </p>
+        </div>
+      {/if}
+    </div>
+
+  <!-- Settings Tab -->
+  {:else if activeTab === 'settings'}
+    <div class="space-y-4">
+      {#if isLoadingSettings}
+        <div class="flex items-center justify-center h-32">
+          <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+        </div>
+      {:else}
+        {#if settingsMessage}
+          <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300" role="status">
+            {settingsMessage}
+          </div>
+        {/if}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 space-y-6">
+          <!-- Search Mode -->
+          <div>
+            <label for="settings-search-mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('settings.searchMode')}
+            </label>
+            <select
+              id="settings-search-mode"
+              value={settingsData.search_mode || 'off'}
+              onchange={(e) => settingsData = { ...settingsData, search_mode: e.target.value }}
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="off">{t('debate.searchOff')}</option>
+              <option value="optional">{t('debate.searchOptional')}</option>
+              <option value="required">{t('debate.searchRequired')}</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('settings.searchModeHint')}</p>
+          </div>
+
+          <!-- Privacy -->
+          <div>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settingsData.privacy_mode || false}
+                onchange={(e) => settingsData = { ...settingsData, privacy_mode: e.target.checked }}
+                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.privacy')}</span>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{t('settings.privacyHint')}</p>
+              </div>
+            </label>
+          </div>
+
+          <!-- Data Retention -->
+          <div>
+            <label for="settings-retention" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('settings.retention')}
+            </label>
+            <input
+              id="settings-retention"
+              type="number"
+              value={settingsData.retention_days ?? 0}
+              oninput={(e) => settingsData = { ...settingsData, retention_days: parseInt(e.target.value) || 0 }}
+              min="0"
+              max="3650"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('settings.retentionHint')}</p>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button
+              class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700
+                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onclick={handleSaveSettings}
+              disabled={isSavingSettings}
+            >
+              {isSavingSettings ? '...' : t('common.save')}
+            </button>
+          </div>
         </div>
       {/if}
     </div>

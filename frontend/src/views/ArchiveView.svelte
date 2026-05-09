@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error, activeProject } from '../lib/stores.js';
-  import { getDebates, deleteDebate } from '../lib/api.js';
+  import { getDebates, deleteDebate, softDeleteSession, restoreSession } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
@@ -26,6 +26,11 @@
   // Delete confirmation state
   let deleteConfirmId = $state(null);
   let isDeleting = $state(false);
+
+  // Archive/Restore state
+  let archiveConfirmId = $state(null);
+  let isArchiving = $state(false);
+  let restoringId = $state(null);
 
   let projectId = $derived($activeProject?.id);
 
@@ -106,6 +111,45 @@
 
   function cancelDelete() {
     deleteConfirmId = null;
+  }
+
+  function confirmArchive(debateId) {
+    archiveConfirmId = debateId;
+  }
+
+  function cancelArchive() {
+    archiveConfirmId = null;
+  }
+
+  async function handleArchive(debateId) {
+    isArchiving = true;
+    try {
+      await softDeleteSession(debateId);
+      // Update local state — mark as archived
+      debates = debates.map(d =>
+        d.debate_id === debateId ? { ...d, archived: true } : d
+      );
+      archiveConfirmId = null;
+    } catch (err) {
+      $error = err.message;
+    } finally {
+      isArchiving = false;
+    }
+  }
+
+  async function handleRestore(debateId) {
+    restoringId = debateId;
+    try {
+      await restoreSession(debateId);
+      // Update local state — unmark archived
+      debates = debates.map(d =>
+        d.debate_id === debateId ? { ...d, archived: false } : d
+      );
+    } catch (err) {
+      $error = err.message;
+    } finally {
+      restoringId = null;
+    }
   }
 
   async function handleDelete(debateId) {
@@ -284,14 +328,73 @@
                 <span class="px-2 py-1 text-xs font-medium rounded-full {statusBadgeClass(debate.status)}">
                   {t(`status.${debate.status}`)}
                 </span>
+                {#if debate.archived}
+                  <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                    📦 {t('session.archived')}
+                  </span>
+                {/if}
                 <span class="text-xs text-gray-400 dark:text-gray-500 uppercase hidden md:inline">
                   {debate.language}
                 </span>
               </div>
             </button>
 
-            <!-- Delete button -->
-            <div class="md:col-span-2 flex justify-end">
+            <!-- Actions -->
+            <div class="md:col-span-2 flex justify-end gap-1">
+              <!-- Archive / Restore button -->
+              {#if debate.archived}
+                {#if restoringId === debate.debate_id}
+                  <span class="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                {:else}
+                  <button
+                    class="p-1.5 rounded text-green-500 hover:text-green-600 dark:hover:text-green-400
+                           hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    onclick={(e) => { e.stopPropagation(); handleRestore(debate.debate_id); }}
+                    aria-label={t('session.restore')}
+                    title={t('session.restore')}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                  </button>
+                {/if}
+              {:else}
+                {#if archiveConfirmId === debate.debate_id}
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="px-2 py-1 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700
+                             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onclick={() => handleArchive(debate.debate_id)}
+                      disabled={isArchiving}
+                    >
+                      {isArchiving ? '...' : t('common.yes')}
+                    </button>
+                    <button
+                      class="px-2 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-600
+                             text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500
+                             transition-colors"
+                      onclick={cancelArchive}
+                      disabled={isArchiving}
+                    >
+                      {t('common.no')}
+                    </button>
+                  </div>
+                {:else}
+                  <button
+                    class="p-1.5 rounded text-amber-400 hover:text-amber-600 dark:hover:text-amber-400
+                           hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                    onclick={(e) => { e.stopPropagation(); confirmArchive(debate.debate_id); }}
+                    aria-label={t('session.softDelete')}
+                    title={t('session.softDelete')}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                  </button>
+                {/if}
+              {/if}
+
+              <!-- Delete button -->
               {#if deleteConfirmId === debate.debate_id}
                 <div class="flex items-center gap-1">
                   <button

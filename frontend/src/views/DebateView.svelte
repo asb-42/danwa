@@ -1,7 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject } from '../lib/stores.js';
-  import { createDebate, getDebate, startDebate, cancelDebate, getDocuments } from '../lib/api.js';
+  import { createDebate, getDebate, startDebate, cancelDebate, getDocuments, generateReport, getReportStatus, downloadReport } from '../lib/api.js';
+  import { discoverA2A } from '../lib/a2aApi.js';
+  import A2ACapabilities from '../components/blueprint/A2ACapabilities.svelte';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
@@ -43,8 +45,18 @@
   // A2A external agent configuration
   let a2aAgents = $state([]); // [{url: '', role: '', position: ''}]
   let showA2ASection = $state(false);
+  let a2aDiscovering = $state(false);
+  let a2aDiscoverError = $state('');
+  let a2aCapabilities = $state({}); // { url: capabilities }
   let sseConnection = $state(null);
   let archiveLoading = $state(false);
+
+  // Report generation state
+  let reportFormat = $state('docx');
+  let reportGenerating = $state(false);
+  let reportJobId = $state(null);
+  let reportError = $state(null);
+  let reportPollTimer = $state(null);
 
   // Debate title state
   let debateTitle = $state('');
@@ -152,6 +164,28 @@
     a2aAgents.filter(a => a.url.trim() !== '')
   );
 
+  async function handleDiscoverA2A() {
+    a2aDiscovering = true;
+    a2aDiscoverError = '';
+    a2aCapabilities = {};
+    try {
+      const urls = a2aAgents.filter(a => a.url.trim()).map(a => a.url.trim());
+      const results = {};
+      for (const url of urls) {
+        try {
+          results[url] = await discoverA2A(url);
+        } catch (e) {
+          results[url] = { error: e.message };
+        }
+      }
+      a2aCapabilities = results;
+    } catch (e) {
+      a2aDiscoverError = e.message;
+    } finally {
+      a2aDiscovering = false;
+    }
+  }
+
   // Cleanup SSE, timers, and workflow state on destroy
   onDestroy(() => {
     if (sseConnection) {
@@ -166,8 +200,60 @@
     if (hitlPollTimer) {
       clearInterval(hitlPollTimer);
     }
+    if (reportPollTimer) {
+      clearInterval(reportPollTimer);
+    }
     resetWorkflow();
   });
+
+  // --- Report Generation ---
+  async function handleGenerateReport() {
+    if (!$currentDebate) return;
+    reportGenerating = true;
+    reportError = null;
+    reportJobId = null;
+    try {
+      const result = await generateReport($currentDebate.debate_id, reportFormat);
+      reportJobId = result.job_id;
+      // Start polling for status
+      reportPollTimer = setInterval(async () => {
+        try {
+          const status = await getReportStatus(reportJobId);
+          if (status.status === 'completed') {
+            clearInterval(reportPollTimer);
+            reportPollTimer = null;
+            reportGenerating = false;
+            // Trigger download
+            try {
+              const blob = await downloadReport(reportJobId);
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `report-${$currentDebate.debate_id.substring(0, 8)}.${reportFormat}`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch (dlErr) {
+              // If download returns JSON (error), handle gracefully
+              reportError = dlErr.message || t('report.status.failed');
+            }
+          } else if (status.status === 'failed') {
+            clearInterval(reportPollTimer);
+            reportPollTimer = null;
+            reportGenerating = false;
+            reportError = status.error || t('report.status.failed');
+          }
+        } catch (pollErr) {
+          // Continue polling — transient errors are OK
+          console.warn('[Report] Poll error:', pollErr);
+        }
+      }, 2000);
+    } catch (err) {
+      reportError = err.message;
+      reportGenerating = false;
+    }
+  }
 
   async function handleCreateDebate() {
     if (!caseText.trim()) {
@@ -985,7 +1071,34 @@
           >
             + {t('a2a.addAgent')}
           </button>
+          <button
+            type="button"
+            onclick={handleDiscoverA2A}
+            disabled={a2aDiscovering || a2aAgents.filter(a => a.url.trim()).length === 0}
+            class="flex items-center gap-1 px-3 py-1.5 text-sm text-cyan-600 dark:text-cyan-400
+                   border border-cyan-300 dark:border-cyan-600 rounded-lg
+                   hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {#if a2aDiscovering}
+              <span class="w-3 h-3 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin"></span>
+              {t('a2a.discover.loading')}
+            {:else}
+              🔎 {t('a2a.discover.button')}
+            {/if}
+          </button>
         {/if}
+
+        {#if a2aDiscoverError}
+          <p class="mt-2 text-sm text-red-600 dark:text-red-400">{a2aDiscoverError}</p>
+        {/if}
+
+        {#each Object.entries(a2aCapabilities) as [url, caps]}
+          <div class="mt-3">
+            <p class="text-xs font-mono text-gray-500 dark:text-gray-400 mb-1">{url}</p>
+            <A2ACapabilities capabilities={caps} />
+          </div>
+        {/each}
       </div>
 
       <button
@@ -1636,6 +1749,42 @@
                     {/if}
                   {/if}
                 </p>
+
+                <!-- Report Generation UI -->
+                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <label for="report-format" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      📄 {t('report.generate')}:
+                    </label>
+                    <select
+                      id="report-format"
+                      bind:value={reportFormat}
+                      class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                             focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="docx">DOCX</option>
+                      <option value="pdf">PDF</option>
+                      <option value="odf">ODF</option>
+                    </select>
+                    <button
+                      class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700
+                             transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onclick={handleGenerateReport}
+                      disabled={reportGenerating}
+                    >
+                      {#if reportGenerating}
+                        <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        {t('report.status.pending')}
+                      {:else}
+                        ⬇ {t('report.download')}
+                      {/if}
+                    </button>
+                  </div>
+                  {#if reportError}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{reportError}</p>
+                  {/if}
+                </div>
               </div>
             </div>
           {/if}

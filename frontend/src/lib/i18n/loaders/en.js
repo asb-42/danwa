@@ -584,15 +584,35 @@ export default {
   'report.title': 'Reports',
   'report.generate': 'Generate Report',
   'report.format': 'Format',
-  'report.status.pending': 'Pending',
+  'report.status.pending': 'Generating...',
   'report.status.completed': 'Completed',
   'report.status.failed': 'Failed',
-  'report.download': 'Download',
+  'report.download': 'Download Report',
 
   // Session
   'session.softDelete': 'Archive',
   'session.restore': 'Restore',
   'session.archived': 'Archived',
+
+  // Application Settings
+  'settings.title': 'Application Settings',
+  'settings.searchMode': 'Search Mode',
+  'settings.searchModeHint': 'Default web search mode for new debates',
+  'settings.privacy': 'Privacy',
+  'settings.privacyHint': 'Enable privacy mode to redact sensitive information',
+  'settings.retention': 'Data Retention (days)',
+  'settings.retentionHint': 'Number of days to retain debate data (0 = forever)',
+  'settings.saved': 'Settings saved successfully',
+
+  // RAG Search
+  'rag.search': 'Search Documents',
+  'rag.searchPlaceholder': 'Search through indexed documents...',
+  'rag.searchButton': 'Search',
+  'rag.searching': 'Searching...',
+  'rag.noResults': 'No results found.',
+  'rag.relevance': 'Relevance',
+  'rag.source': 'Source',
+  'rag.chunk': 'Chunk',
 
   // A2A Protocol (Phase 8)
   'a2a.protocol.label': 'Protocol',

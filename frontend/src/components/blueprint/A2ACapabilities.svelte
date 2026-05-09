@@ -13,42 +13,47 @@
     skills.length > 0 || inputModes.length > 0 || outputModes.length > 0
       || capabilities.name || capabilities.description
   );
+  let isError = $derived(!!capabilities.error);
 </script>
 
-{#if hasCapabilities}
-  <div class="a2a-capabilities">
-    <h4>{t('a2a.capabilities.title')}</h4>
+{#if isError}
+  <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+    <p class="text-sm text-red-700 dark:text-red-300">{capabilities.error}</p>
+  </div>
+{:else if hasCapabilities}
+  <div class="p-3 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+    <h4 class="text-sm font-semibold text-cyan-800 dark:text-cyan-200 mb-2">{t('a2a.capabilities.title')}</h4>
 
     {#if capabilities.name}
-      <div class="field">
-        <span class="label">Name:</span>
-        <span class="value">{capabilities.name}</span>
+      <div class="mb-1">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Name:</span>
+        <span class="text-sm text-gray-800 dark:text-gray-200">{capabilities.name}</span>
       </div>
     {/if}
 
     {#if capabilities.description}
-      <div class="field">
-        <span class="label">Description:</span>
-        <span class="value">{capabilities.description}</span>
+      <div class="mb-1">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Description:</span>
+        <span class="text-sm text-gray-800 dark:text-gray-200">{capabilities.description}</span>
       </div>
     {/if}
 
     {#if capabilities.version}
-      <div class="field">
-        <span class="label">{t('a2a.capabilities.version')}:</span>
-        <span class="value">{capabilities.version}</span>
+      <div class="mb-1">
+        <span class="text-xs text-gray-500 dark:text-gray-400">{t('a2a.capabilities.version')}:</span>
+        <span class="text-sm text-gray-800 dark:text-gray-200">{capabilities.version}</span>
       </div>
     {/if}
 
     {#if skills.length > 0}
-      <div class="field">
-        <span class="label">{t('a2a.capabilities.skills')}:</span>
-        <ul class="skill-list">
+      <div class="mb-1">
+        <span class="text-xs text-gray-500 dark:text-gray-400">{t('a2a.capabilities.skills')}:</span>
+        <ul class="mt-1 space-y-1">
           {#each skills as skill}
-            <li>
+            <li class="text-sm text-gray-700 dark:text-gray-300">
               <strong>{skill.name || skill.id || '—'}</strong>
               {#if skill.description}
-                <span class="skill-desc">{skill.description}</span>
+                <span class="block text-xs text-gray-500 dark:text-gray-400">{skill.description}</span>
               {/if}
             </li>
           {/each}
@@ -57,56 +62,17 @@
     {/if}
 
     {#if inputModes.length > 0}
-      <div class="field">
-        <span class="label">{t('a2a.capabilities.inputModes')}:</span>
-        <span class="value">{inputModes.join(', ')}</span>
+      <div class="mb-1">
+        <span class="text-xs text-gray-500 dark:text-gray-400">{t('a2a.capabilities.inputModes')}:</span>
+        <span class="text-sm text-gray-700 dark:text-gray-300">{inputModes.join(', ')}</span>
       </div>
     {/if}
 
     {#if outputModes.length > 0}
-      <div class="field">
-        <span class="label">{t('a2a.capabilities.outputModes')}:</span>
-        <span class="value">{outputModes.join(', ')}</span>
+      <div class="mb-1">
+        <span class="text-xs text-gray-500 dark:text-gray-400">{t('a2a.capabilities.outputModes')}:</span>
+        <span class="text-sm text-gray-700 dark:text-gray-300">{outputModes.join(', ')}</span>
       </div>
     {/if}
   </div>
 {/if}
-
-<style>
-  .a2a-capabilities {
-    padding: 0.75rem;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 6px;
-    margin-top: 0.5rem;
-  }
-  h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.85rem;
-    color: #0369a1;
-  }
-  .field {
-    margin-bottom: 0.4rem;
-    font-size: 0.8rem;
-  }
-  .label {
-    color: #666;
-    margin-right: 0.25rem;
-  }
-  .value {
-    color: #333;
-  }
-  .skill-list {
-    list-style: none;
-    padding: 0;
-    margin: 0.25rem 0 0 0;
-  }
-  .skill-list li {
-    padding: 0.2rem 0;
-  }
-  .skill-desc {
-    display: block;
-    color: #666;
-    font-size: 0.75rem;
-  }
-</style>

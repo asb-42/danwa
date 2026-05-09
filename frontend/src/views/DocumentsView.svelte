@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { activeProject } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, addDocumentToRAG, removeDocumentFromRAG } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG } from '../lib/api.js';
 
   let { navigate } = $props();
 
@@ -17,6 +17,27 @@
   let viewingDoc = $state(null);
   let viewingDocContent = $state(null);
   let viewingLoading = $state(false);
+
+  // RAG search state
+  let searchQuery = $state('');
+  let searchLimit = $state(5);
+  let searchResults = $state(null);
+  let isSearching = $state(false);
+  let searchError = $state('');
+
+  async function handleRAGSearch() {
+    if (!searchQuery.trim()) return;
+    isSearching = true;
+    searchError = '';
+    searchResults = null;
+    try {
+      searchResults = await searchRAG(searchQuery.trim(), searchLimit);
+    } catch (e) {
+      searchError = e.message;
+    } finally {
+      isSearching = false;
+    }
+  }
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -212,6 +233,75 @@
         {t('documents.supportedFormats')}
       </p>
     </div>
+  </div>
+
+  <!-- RAG Search Panel -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+      🔍 {t('rag.search')}
+    </h3>
+    <form onsubmit={(e) => { e.preventDefault(); handleRAGSearch(); }} class="flex gap-2">
+      <input
+        type="text"
+        bind:value={searchQuery}
+        placeholder={t('rag.searchPlaceholder')}
+        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+               focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+      />
+      <select
+        bind:value={searchLimit}
+        class="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+               bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+      >
+        <option value={3}>3</option>
+        <option value={5}>5</option>
+        <option value={10}>10</option>
+        <option value={20}>20</option>
+      </select>
+      <button
+        type="submit"
+        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700
+               transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        disabled={isSearching || !searchQuery.trim()}
+      >
+        {#if isSearching}
+          <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        {/if}
+        {t('rag.searchButton')}
+      </button>
+    </form>
+
+    {#if searchError}
+      <p class="mt-2 text-sm text-red-600 dark:text-red-400">{searchError}</p>
+    {/if}
+
+    {#if searchResults}
+      {#if searchResults.results?.length > 0}
+        <div class="mt-3 space-y-2">
+          {#each searchResults.results as result, i}
+            <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {t('rag.source')}: <span class="font-mono">{result.document_id || result.filename || '—'}</span>
+                </span>
+                {#if result.score !== undefined}
+                  <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {t('rag.relevance')}: {(result.score * 100).toFixed(1)}%
+                  </span>
+                {/if}
+              </div>
+              {#if result.chunk_index !== undefined}
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('rag.chunk')} #{result.chunk_index}</p>
+              {/if}
+              <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{result.text || result.content || '—'}</p>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="mt-3 text-sm text-gray-500 dark:text-gray-400 text-center">{t('rag.noResults')}</p>
+      {/if}
+    {/if}
   </div>
 
   <!-- Documents table -->

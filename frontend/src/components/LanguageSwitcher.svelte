@@ -1,10 +1,22 @@
 <script>
   import { locale, i18n } from '../lib/i18n/index.js';
   import { SUPPORTED_LOCALES, LOCALE_NAMES } from '../lib/i18n/config.js';
+  import { setLanguage } from '../lib/api.js';
+
+  let persisting = $state(false);
 
   async function switchLanguage(lang) {
     await i18n.setLocale(lang);
     localStorage.setItem('locale', lang);
+    // Persist to backend
+    persisting = true;
+    try {
+      await setLanguage(lang);
+    } catch {
+      // Non-critical — language is already set locally
+    } finally {
+      persisting = false;
+    }
   }
 </script>
 
