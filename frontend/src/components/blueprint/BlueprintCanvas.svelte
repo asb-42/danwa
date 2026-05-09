@@ -16,6 +16,7 @@
   import { getNodeTypes, getEdgeTypes } from '../../lib/blueprint/registry.js';
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
   import ModeSwitcher from './ModeSwitcher.svelte';
+  import ExecutionPanel from './ExecutionPanel.svelte';
 
   // Initialize registry (idempotent — safe to call multiple times)
   registerAllNodeTypes();
@@ -97,6 +98,33 @@
     canvasStore.selectNode(draftNode.id);
   }
 
+  // ─── Execution state ──────────────────────────────────────────────
+  let showExecutionPanel = $state(false);
+  let activeWorkflowId = $state(null);
+  let nodeExecutionStatus = $state({}); // nodeId → 'idle' | 'running' | 'completed' | 'failed' | 'paused'
+
+  function handleToggleExecution() {
+    showExecutionPanel = !showExecutionPanel;
+    if (showExecutionPanel) {
+      // Find the current workflow ID from the store
+      activeWorkflowId = canvasStore.currentWorkflowId || null;
+    }
+  }
+
+  function handleCloseExecution() {
+    showExecutionPanel = false;
+    nodeExecutionStatus = {};
+  }
+
+  function handleNodeStatusUpdate(nodeId, execStatus) {
+    nodeExecutionStatus = { ...nodeExecutionStatus, [nodeId]: execStatus };
+    // Update the node's data.executionStatus in the store
+    canvasStore.updateNodeData(nodeId, { executionStatus: execStatus });
+  }
+
+  let isWorkflowMode = $derived(canvasStore.mode === 'workflow');
+  let hasNodes = $derived(nodes.length > 0);
+
   async function handleAutoLayout() {
     await applyBlueprintLayout(canvasStore);
   }
@@ -116,6 +144,7 @@
 <div
   class="blueprint-canvas-wrapper"
   bind:this={flowContainer}
+  role="application"
   ondragover={handleDragOver}
   ondrop={handleDrop}
   data-testid="blueprint-canvas"
@@ -139,6 +168,17 @@
     >
       📐 {t('blueprint.canvas.autoLayout')}
     </button>
+    {#if isWorkflowMode && hasNodes}
+      <button
+        class="toolbar-btn toolbar-btn-execute"
+        class:active={showExecutionPanel}
+        onclick={handleToggleExecution}
+        title={t('workflow.execution.title')}
+        data-testid="canvas-execute"
+      >
+        🚀 {t('workflow.execution.title')}
+      </button>
+    {/if}
     <span class="toolbar-info">
       {nodes.length} nodes · {edges.length} edges
       {#if canvasStore.isDirty}
@@ -181,6 +221,14 @@
       />
     </SvelteFlow>
   {/if}
+
+  <!-- Execution Panel -->
+  <ExecutionPanel
+    workflowId={activeWorkflowId}
+    visible={showExecutionPanel}
+    onclose={handleCloseExecution}
+    onNodeStatusUpdate={handleNodeStatusUpdate}
+  />
 </div>
 
 <style>
@@ -222,6 +270,20 @@
   .toolbar-btn:hover {
     border-color: #3b82f6;
     box-shadow: 0 2px 8px rgba(59,130,246,0.15);
+  }
+  .toolbar-btn-execute {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+  .toolbar-btn-execute:hover {
+    background: #dbeafe;
+    border-color: #3b82f6;
+  }
+  .toolbar-btn-execute.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
   }
   .toolbar-info {
     pointer-events: auto;

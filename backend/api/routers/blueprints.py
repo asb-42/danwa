@@ -446,6 +446,39 @@ def compile_workflow(
     return compiler.compile(wf)  # type: ignore[arg-type]
 
 
+@router.post("/workflows/{wf_id}/clone", response_model=WorkflowDefinition, status_code=201)
+def clone_workflow(
+    wf_id: str,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> WorkflowDefinition:
+    """Clone a workflow definition.
+
+    Creates a deep copy with a new ID, incremented version, and
+    ``is_locked=False``.
+    """
+    import copy
+    import uuid
+
+    original = repo.get_workflow_definition(wf_id)
+    _require_found("WorkflowDefinition", original, wf_id)
+
+    # Deep copy and assign new identity
+    cloned = original.model_copy(deep=True)
+    cloned.id = str(uuid.uuid4())[:8]
+    cloned.name = f"{original.name} (Copy)"
+    cloned.version = original.version + 1
+    cloned.is_locked = False
+    cloned.is_active = True
+
+    from datetime import UTC, datetime
+
+    cloned.created_at = datetime.now(UTC)
+    cloned.updated_at = datetime.now(UTC)
+
+    repo.save_workflow_definition(cloned)
+    return cloned
+
+
 # ==================================================================
 # Import
 # ==================================================================

@@ -473,7 +473,7 @@ def _role_definitions_equal(a: RoleDefinition, b: RoleDefinition) -> bool:
     """Compare two role definitions ignoring timestamps."""
     return (
         a.name == b.name
-        and a.role == b.role
+        and a.role_type_id == b.role_type_id
         and a.description == b.description
         and a.prompt_template_id == b.prompt_template_id
         and a.max_rounds == b.max_rounds

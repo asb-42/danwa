@@ -11,6 +11,7 @@
     updateRoleDefinition,
     deleteRoleDefinition,
     listPromptTemplates,
+    listRoleTypes,
   } from '../../../lib/blueprint/api.js';
 
   /** @type {{ node: any, onsave?: (data: any) => void, ondelete?: () => void }} */
@@ -23,14 +24,14 @@
   let error = $state(null);
   let promptTemplates = $state([]);
 
-  const roles = ['strategist', 'critic', 'optimizer', 'moderator'];
+  let roleTypes = $state([]);
 
   $effect(() => {
     if (node?.data) {
       draft = {
         id: node.data.blueprint_id || node.id,
         name: node.data.name || '',
-        role: node.data.role || 'strategist',
+        role_type_id: node.data.role_type_id || node.data.role || 'strategist',
         description: node.data.description || '',
         prompt_template_id: node.data.prompt_template_id || null,
         max_rounds: node.data.max_rounds ?? 3,
@@ -42,6 +43,7 @@
 
   $effect(() => {
     listPromptTemplates().then((t) => { promptTemplates = t; }).catch(() => {});
+    listRoleTypes().then((rt) => { roleTypes = rt; }).catch(() => {});
   });
 
   async function handleSave() {

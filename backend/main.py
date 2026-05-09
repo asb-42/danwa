@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.api.deps import get_settings  # noqa: E402
 from backend.api.routers import (  # noqa: E402
+    a2a_discovery,
     audit,
     blueprint_events,
     blueprints,
@@ -31,6 +32,8 @@ from backend.api.routers import (  # noqa: E402
     projects,
     sessions,
     system,
+    workflow_exec,
+    workflow_reports,
 )
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
@@ -163,6 +166,27 @@ def create_app() -> FastAPI:
         blueprint_events.router,
         prefix="/api/v1/blueprint-events",
         tags=["blueprint-events"],
+    )
+
+    # --- Workflow Execution ---
+    app.include_router(
+        workflow_exec.router,
+        prefix="/api/v1/workflow-exec",
+        tags=["workflow-exec"],
+    )
+
+    # --- Workflow Reports ---
+    app.include_router(
+        workflow_reports.router,
+        prefix="/api/v1",
+        tags=["reports"],
+    )
+
+    # --- A2A Discovery ---
+    app.include_router(
+        a2a_discovery.router,
+        prefix="/api/v1/a2a",
+        tags=["a2a-discovery"],
     )
 
     # --- Error handlers (Blueprint Canvas) ---

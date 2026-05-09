@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # --- CORS ---
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:8000"]
 
+    # --- A2A Protocol (Phase 8) ---
+    a2a_allow_private_ips: bool = False
+
 
 # Module-level singleton — importable as `settings`
 settings = Settings()

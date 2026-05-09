@@ -21,7 +21,11 @@
   let saving = $state(false);
   let error = $state(null);
 
+  const protocols = ['litellm', 'a2a'];
   const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'google', 'azure'];
+  let discovering = $state(false);
+  let discoverError = $state(null);
+  let discoveredCapabilities = $state(null);
 
   $effect(() => {
     if (node?.data) {
@@ -35,6 +39,9 @@
         api_base: node.data.api_base || null,
         api_key_env: node.data.api_key_env || null,
         a2a_endpoint: node.data.a2a_endpoint || null,
+        protocol: node.data.protocol || 'litellm',
+        a2a_timeout: node.data.a2a_timeout ?? 120,
+        fallback_llm_profile_id: node.data.fallback_llm_profile_id || null,
       };
     }
   });

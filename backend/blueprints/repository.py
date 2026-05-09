@@ -25,7 +25,10 @@ from backend.blueprints.models import (
 from backend.blueprints.workflow_models import (
     ConditionalEdge,
     InterjectionPoint,
+    TerminationCondition,
     WorkflowDefinition,
+    WorkflowEdge,
+    WorkflowNode,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,8 +63,10 @@ class BlueprintRepository:
                     (id, name, provider, model, api_base, api_key_env,
                      max_tokens, context_window, temperature, timeout,
                      cost_per_1k_input, cost_per_1k_output,
-                     description, tags_json, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     description, tags_json, created_at, updated_at,
+                     protocol, a2a_endpoint, a2a_timeout,
+                     fallback_llm_profile_id, a2a_config_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     profile.id,
@@ -80,6 +85,11 @@ class BlueprintRepository:
                     json.dumps(profile.tags),
                     profile.created_at.isoformat(),
                     profile.updated_at.isoformat(),
+                    profile.protocol,
+                    profile.a2a_endpoint,
+                    profile.a2a_timeout,
+                    profile.fallback_llm_profile_id,
+                    json.dumps(profile.a2a_config),
                 ),
             )
         logger.debug("Saved LLM profile %s", profile.id)
@@ -134,6 +144,11 @@ class BlueprintRepository:
             tags=json.loads(row["tags_json"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
+            protocol=row["protocol"] if "protocol" in row.keys() else "litellm",
+            a2a_endpoint=row["a2a_endpoint"] if "a2a_endpoint" in row.keys() else None,
+            a2a_timeout=row["a2a_timeout"] if "a2a_timeout" in row.keys() else 120,
+            fallback_llm_profile_id=row["fallback_llm_profile_id"] if "fallback_llm_profile_id" in row.keys() else None,
+            a2a_config=json.loads(row["a2a_config_json"]) if "a2a_config_json" in row.keys() and row["a2a_config_json"] else {},
         )
 
     # ------------------------------------------------------------------
@@ -239,15 +254,16 @@ class BlueprintRepository:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO role_definitions
-                    (id, name, role, description, prompt_template_id,
+                    (id, name, role, role_type_id, description, prompt_template_id,
                      max_rounds, consensus_threshold, tags_json,
                      created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     role_def.id,
                     role_def.name,
-                    role_def.role,
+                    role_def.role_type_id,
+                    role_def.role_type_id,
                     role_def.description,
                     role_def.prompt_template_id,
                     role_def.max_rounds,
@@ -280,12 +296,12 @@ class BlueprintRepository:
         clauses: list[str] = []
         params: list[str] = []
         if role:
-            clauses.append("role = ?")
+            clauses.append("role_type_id = ?")
             params.append(role)
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._connect() as conn:
             rows = conn.execute(
-                f"SELECT * FROM role_definitions{where} ORDER BY role, name LIMIT ? OFFSET ?",
+                f"SELECT * FROM role_definitions{where} ORDER BY role_type_id, name LIMIT ? OFFSET ?",
                 params + [limit, offset],
             ).fetchall()
         return [self._row_to_role_definition(r) for r in rows]
@@ -304,7 +320,7 @@ class BlueprintRepository:
         return RoleDefinition(
             id=row["id"],
             name=row["name"],
-            role=row["role"],
+            role_type_id=row["role_type_id"] if "role_type_id" in row.keys() else row["role"],
             description=row["description"],
             prompt_template_id=row["prompt_template_id"],
             max_rounds=row["max_rounds"],
@@ -565,8 +581,10 @@ class BlueprintRepository:
                 """INSERT OR REPLACE INTO workflow_definitions
                 (id, name, description, canvas_layout_id, execution_order_json,
                  conditional_edges_json, interjection_points_json, node_blueprint_map_json,
-                 tags_json, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 tags_json, is_active, created_at, updated_at,
+                 nodes_json, edges_json, entry_point,
+                 termination_conditions_json, version, is_locked)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     wf.id,
                     wf.name,
@@ -580,6 +598,12 @@ class BlueprintRepository:
                     int(wf.is_active),
                     wf.created_at.isoformat(),
                     wf.updated_at.isoformat(),
+                    json.dumps([n.model_dump() for n in wf.nodes]),
+                    json.dumps([e.model_dump() for e in wf.edges]),
+                    wf.entry_point,
+                    json.dumps([t.model_dump() for t in wf.termination_conditions]),
+                    wf.version,
+                    int(wf.is_locked),
                 ),
             )
 
@@ -617,6 +641,18 @@ class BlueprintRepository:
     @staticmethod
     def _row_to_workflow_definition(row: sqlite3.Row) -> WorkflowDefinition:
         """Convert a SQLite row to a WorkflowDefinition model."""
+        # New graph columns may be absent if the DB hasn't been migrated yet.
+        nodes_json = row["nodes_json"] if "nodes_json" in row.keys() else "[]"
+        edges_json = row["edges_json"] if "edges_json" in row.keys() else "[]"
+        entry_point = row["entry_point"] if "entry_point" in row.keys() else None
+        term_json = (
+            row["termination_conditions_json"]
+            if "termination_conditions_json" in row.keys()
+            else "[]"
+        )
+        version = row["version"] if "version" in row.keys() else 1
+        is_locked = row["is_locked"] if "is_locked" in row.keys() else 0
+
         return WorkflowDefinition(
             id=row["id"],
             name=row["name"],
@@ -634,4 +670,12 @@ class BlueprintRepository:
             is_active=bool(row["is_active"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
+            nodes=[WorkflowNode(**n) for n in json.loads(nodes_json)],
+            edges=[WorkflowEdge(**e) for e in json.loads(edges_json)],
+            entry_point=entry_point,
+            termination_conditions=[
+                TerminationCondition(**t) for t in json.loads(term_json)
+            ],
+            version=version,
+            is_locked=bool(is_locked),
         )

@@ -1,24 +1,154 @@
 <script>
-  // Placeholder — will render detailed audit trail in Sprint 4
-  let { events = [] } = $props();
+  import { i18n } from '../lib/i18n/index.js';
+
+  export let events = [];
+  export let sortColumn = 'timestamp';
+  export let sortDirection = 'asc';
+  export let expandedRow = null;
+  export let onSort = (col) => {};
+  export let onRowClick = (idx) => {};
+
+  $: _ = $i18n;
+
+  function handleSort(col) {
+    onSort(col);
+  }
+
+  function handleRowClick(idx) {
+    onRowClick(idx);
+  }
 </script>
 
-<div class="space-y-2">
+<div class="audit-trail">
   {#if events.length === 0}
-    <div class="flex items-center justify-center h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400 text-sm">No audit events yet</p>
+    <div class="empty">
+      <p>{_.audit?.noEvents || 'No audit events yet'}</p>
     </div>
   {:else}
-    {#each events as event}
-      <div class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-        <span class="text-xs text-gray-500 font-mono whitespace-nowrap">
-          {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : '—'}
-        </span>
-        <span class="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-          {event.agent || 'system'}
-        </span>
-        <span class="text-sm text-gray-700 dark:text-gray-300">{event.action || '—'}</span>
-      </div>
-    {/each}
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th on:click={() => handleSort('timestamp')} class:sort-asc={sortColumn === 'timestamp' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'timestamp' && sortDirection === 'desc'}>
+            {_.audit?.columns?.timestamp || 'Timestamp'}
+          </th>
+          <th on:click={() => handleSort('event_type')} class:sort-asc={sortColumn === 'event_type' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'event_type' && sortDirection === 'desc'}>
+            {_.audit?.columns?.eventType || 'Event Type'}
+          </th>
+          <th on:click={() => handleSort('node_id')} class:sort-asc={sortColumn === 'node_id' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'node_id' && sortDirection === 'desc'}>
+            {_.audit?.columns?.nodeId || 'Node ID'}
+          </th>
+          <th on:click={() => handleSort('actor')} class:sort-asc={sortColumn === 'actor' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'actor' && sortDirection === 'desc'}>
+            {_.audit?.columns?.actor || 'Actor'}
+          </th>
+          <th on:click={() => handleSort('latency_ms')} class:sort-asc={sortColumn === 'latency_ms' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'latency_ms' && sortDirection === 'desc'}>
+            {_.audit?.columns?.latency || 'Latency'}
+          </th>
+          <th on:click={() => handleSort('prompt_tokens')} class:sort-asc={sortColumn === 'prompt_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'prompt_tokens' && sortDirection === 'desc'}>
+            {_.audit?.columns?.promptTokens || 'Prompt Tok'}
+          </th>
+          <th on:click={() => handleSort('completion_tokens')} class:sort-asc={sortColumn === 'completion_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'completion_tokens' && sortDirection === 'desc'}>
+            {_.audit?.columns?.completionTokens || 'Completion Tok'}
+          </th>
+          <th>{_.audit?.columns?.inputHash || 'Input Hash'}</th>
+          <th>{_.audit?.columns?.outputHash || 'Output Hash'}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each events as event, idx}
+          <tr class:expanded={expandedRow === idx} on:click={() => handleRowClick(idx)}>
+            <td>{event.timestamp ? new Date(event.timestamp).toLocaleString() : '—'}</td>
+            <td><span class="badge event-type">{event.event_type || '—'}</span></td>
+            <td>{event.node_id || '—'}</td>
+            <td>{event.actor || '—'}</td>
+            <td>{event.latency_ms || 0} ms</td>
+            <td>{event.prompt_tokens || 0}</td>
+            <td>{event.completion_tokens || 0}</td>
+            <td class="hash" title={event.input_hash || ''}>{(event.input_hash || '—').slice(0, 12)}...</td>
+            <td class="hash" title={event.output_hash || ''}>{(event.output_hash || '—').slice(0, 12)}...</td>
+          </tr>
+          {#if expandedRow === idx}
+            <tr class="detail-row">
+              <td colspan="9">
+                <div class="detail-content">
+                  <div><strong>Full Input Hash:</strong> <span class="hash">{event.input_hash || '—'}</span></div>
+                  <div><strong>Full Output Hash:</strong> <span class="hash">{event.output_hash || '—'}</span></div>
+                  {#if event.llm_profile_id}
+                    <div><strong>LLM Profile:</strong> {event.llm_profile_id}</div>
+                  {/if}
+                </div>
+              </td>
+            </tr>
+          {/if}
+        {/each}
+      </tbody>
+    </table>
   {/if}
 </div>
+
+<style>
+  .audit-trail {
+    overflow-x: auto;
+  }
+  .empty {
+    padding: 2rem;
+    text-align: center;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    color: #999;
+  }
+  .audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .audit-table th {
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    background: #f0f0f0;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .audit-table th:hover {
+    background: #e0e0e0;
+  }
+  .audit-table th.sort-asc::after {
+    content: ' ↑';
+  }
+  .audit-table th.sort-desc::after {
+    content: ' ↓';
+  }
+  .audit-table td {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid #eee;
+  }
+  .audit-table tr:hover {
+    background: #f8f9fa;
+  }
+  .audit-table tr.expanded {
+    background: #e8f4fd;
+  }
+  .detail-row td {
+    padding: 0.5rem;
+    background: #f8f9fa;
+  }
+  .detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+  }
+  .hash {
+    font-family: monospace;
+    font-size: 0.7rem;
+  }
+  .badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+  }
+  .event-type {
+    background: #e8eaf6;
+    color: #3f51b5;
+  }
+</style>

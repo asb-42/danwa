@@ -113,7 +113,7 @@
             class="response-textarea resize-y"
             rows="4"
             disabled={isSubmitting}
-            autofocus
+            
           ></textarea>
           <div class="response-hint">Ctrl+Enter to send</div>
         </div>

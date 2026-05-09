@@ -16,6 +16,7 @@ const elkOptions = {
   'elk.spacing.nodeNode': '60',
   'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
   'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+  'elk.layered.feedbackEdges': 'true',
 };
 
 /**
@@ -27,6 +28,15 @@ const NODE_DIMENSIONS = {
   'llm-profile': { width: 200, height: 100 },
   'role-definition': { width: 200, height: 100 },
   'prompt-template': { width: 200, height: 110 },
+  'role-type': { width: 200, height: 100 },
+  'wf-input': { width: 180, height: 80 },
+  'wf-initialize': { width: 180, height: 80 },
+  'wf-strategist': { width: 200, height: 90 },
+  'wf-critic': { width: 200, height: 90 },
+  'wf-optimizer': { width: 200, height: 90 },
+  'wf-moderator': { width: 200, height: 90 },
+  'wf-user-injection': { width: 200, height: 90 },
+  'wf-gate': { width: 180, height: 80 },
 };
 
 /**

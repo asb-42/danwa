@@ -133,36 +133,8 @@
     color: #9ca3af;
     border-color: #374151;
   }
-  .palette-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-    background: white;
-    cursor: grab;
-    transition: all 0.15s ease;
-    font-size: 13px;
-  }
-  :global(.dark) .palette-item {
-    background: #1f2937;
-    border-color: #374151;
-  }
-  .palette-item:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 2px 8px rgba(59,130,246,0.15);
-  }
-  .palette-item:active {
-    cursor: grabbing;
-    opacity: 0.7;
-  }
-  .palette-item-icon { font-size: 16px; }
-  .palette-item-label {
-    font-weight: 500;
-    color: #374151;
-  }
-  :global(.dark) .palette-item-label { color: #e5e7eb; }
+  :global(.dark)
+  :global(.dark)
   .palette-empty {
     font-size: 12px;
     color: #9ca3af;

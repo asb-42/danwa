@@ -21,7 +21,9 @@
   };
 
   let icon = $derived(providerIcons[data?.provider] || '🧠');
-  let hasA2A = $derived(!!data?.a2a_endpoint);
+  let hasA2A = $derived(data?.protocol === 'a2a' || !!data?.a2a_endpoint);
+  let isA2A = $derived(data?.protocol === 'a2a');
+  let agentName = $derived(data?.a2a_config?.name || '');
   let isDraft = $derived(!!data?.isDraft);
 </script>
 

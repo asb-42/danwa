@@ -62,6 +62,13 @@ class BlueprintLLMProfile(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    # --- A2A Protocol (Phase 8) ---
+    protocol: Literal["litellm", "a2a"] = "litellm"
+    a2a_endpoint: str | None = None
+    a2a_timeout: int = 120
+    fallback_llm_profile_id: str | None = None
+    a2a_config: dict = Field(default_factory=dict)
+
     @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
@@ -99,6 +106,10 @@ class BlueprintLLMProfile(BaseModel):
             tags=[],
             created_at=now,
             updated_at=now,
+            protocol=getattr(legacy, "protocol", "litellm"),
+            a2a_endpoint=getattr(legacy, "a2a_endpoint", None),
+            a2a_timeout=getattr(legacy, "a2a_timeout", 120),
+            fallback_llm_profile_id=getattr(legacy, "fallback_llm_profile_id", None),
         )
 
     def to_legacy(self) -> LLMProfile:
@@ -116,6 +127,10 @@ class BlueprintLLMProfile(BaseModel):
             timeout=self.timeout,
             cost_per_1k_input=self.cost_per_1k_input,
             cost_per_1k_output=self.cost_per_1k_output,
+            protocol=self.protocol,
+            a2a_endpoint=self.a2a_endpoint,
+            a2a_timeout=self.a2a_timeout,
+            fallback_llm_profile_id=self.fallback_llm_profile_id,
         )
 
 
@@ -139,7 +154,7 @@ class PromptTemplate(BaseModel):
 
     id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9._-]*$")
     name: str
-    role: Literal["strategist", "critic", "optimizer", "moderator"]
+    role: str = "strategist"  # References RoleType.id (dynamic)
     content: str  # The actual prompt text (stored inline)
     language: str = "de"
     variant: str = "default"  # e.g. "default", "kantian", "steiner"
@@ -173,11 +188,14 @@ class RoleDefinition(BaseModel):
 
     Extends ``backend.core.profiles.AgentPersona`` with richer metadata
     and a decoupled prompt reference (by ID, not inline text).
+
+    The ``role_type_id`` field references a ``RoleType.id``, allowing
+    dynamic role types beyond the hardcoded strategist/critic/optimizer/moderator.
     """
 
     id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9._-]*$")
     name: str
-    role: Literal["strategist", "critic", "optimizer", "moderator"]
+    role_type_id: str = "strategist"  # References RoleType.id (dynamic, not hardcoded enum)
     description: str = ""
     # Prompt reference (by ID, not inline text)
     prompt_template_id: str | None = None  # References PromptTemplate.id
@@ -213,7 +231,7 @@ class RoleDefinition(BaseModel):
         return cls(
             id=legacy.id,
             name=legacy.name,
-            role=legacy.role,
+            role_type_id=legacy.role,
             description=legacy.description or "",
             prompt_template_id=prompt_template_id,
             max_rounds=legacy.max_rounds,
