@@ -128,6 +128,7 @@
   // Cleanup SSE, timers, and workflow state on destroy
   onDestroy(() => {
     if (sseConnection) sseConnection.close();
+    sseConnection = null;
     if (processingTimer) clearInterval(processingTimer);
     if (workflowTimer) clearInterval(workflowTimer);
     if (hitlPollTimer) clearInterval(hitlPollTimer);
@@ -587,7 +588,7 @@
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm mb-3">
         <div>
           <span class="text-gray-500 dark:text-gray-400">{t('debate.id')}: </span>
-          <code class="font-mono text-gray-800 dark:text-gray-200 text-xs">{$currentDebate.debate_id?.substring(0, 8)}…</code>
+          <code class="font-mono text-gray-800 dark:text-gray-200 text-xs">{$currentDebate.debate_id}</code>
         </div>
         {#if $currentDebate.created_at}
           <div>
@@ -603,7 +604,7 @@
         {/if}
         {#if $currentDebate.language}
           <div>
-            <span class="text-gray-500 dark:text-gray-400">{t('config.language') || 'Sprache'}: </span>
+            <span class="text-gray-500 dark:text-gray-400">{t('debate.language')}: </span>
             <span class="text-gray-800 dark:text-gray-200 uppercase">{$currentDebate.language}</span>
           </div>
         {/if}
@@ -754,7 +755,7 @@
             <div>
               <div class="flex items-center gap-2 mb-3">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                  Round {round}
+                  {t('timeline.round', { num: round })}
                 </span>
               </div>
               <div class="space-y-3">
@@ -812,7 +813,7 @@
                   <div class="flex items-center gap-2">
                     <span class="font-semibold text-sm text-teal-700 dark:text-teal-300">🔍 {t('search.webResearch')}</span>
                     {#if search.role}
-                      <span class="text-xs text-teal-500 dark:text-teal-400">— {search.role} — Round {search.round}</span>
+                      <span class="text-xs text-teal-500 dark:text-teal-400">— {search.role} — {t('timeline.round', { num: search.round })}</span>
                     {/if}
                   </div>
                   <span class="text-xs text-gray-400 dark:text-gray-500">
@@ -866,7 +867,7 @@
                 <span class="font-semibold text-sm text-blue-700 dark:text-blue-300">
                   {roleEmoji(currentActivity.role)} {currentActivity.role}
                 </span>
-                <span class="text-xs text-blue-500 dark:text-blue-400">— Round {currentActivity.round} — thinking…</span>
+                <span class="text-xs text-blue-500 dark:text-blue-400">— {t('timeline.round', { num: currentActivity.round })} — {t('timeline.thinking')}</span>
               </div>
               <div class="mt-2 flex gap-1">
                 <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
@@ -909,7 +910,7 @@
             <div>
               <div class="flex items-center gap-3 mb-4">
                 <span class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded">
-                  Round {round.round}
+                  {t('timeline.round', { num: round.round })}
                 </span>
                 <div class="flex items-center gap-2">
                   <div class="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
@@ -955,7 +956,7 @@
                   {/each}
                 </div>
               {:else}
-                <p class="text-sm text-gray-400 dark:text-gray-500 italic">No agent outputs recorded for this round.</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 italic">{t('timeline.noOutputs')}</p>
               {/if}
             </div>
           {/each}
@@ -968,9 +969,9 @@
                 ? 'bg-gradient-to-r from-amber-50 to-red-50 dark:from-amber-900/20 dark:to-red-900/20 border-amber-200 dark:border-amber-800'
                 : 'bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800'}">
                 <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
-                  {hasAnomalies ? '⚠️' : '🏁'} Final Consensus
+                  {hasAnomalies ? '⚠️' : '🏁'} {t('timeline.finalConsensus')}
                   {#if hasAnomalies}
-                    <span class="text-sm font-normal text-amber-600 dark:text-amber-400">(degraded)</span>
+                    <span class="text-sm font-normal text-amber-600 dark:text-amber-400">{t('timeline.degraded')}</span>
                   {/if}
                 </h4>
                 <div class="flex items-center gap-4 mb-3">
@@ -990,14 +991,13 @@
                   {#if hasAnomalies}
                     {t('debate.degradedConsensus')}
                   {:else}
-                    The debate concluded after {displayRounds.length} round{displayRounds.length !== 1 ? 's' : ''}
-                    with a consensus score of {($currentDebate.consensus_score * 100).toFixed(1)}%.
+                    {t('timeline.concludedAfter', { rounds: displayRounds.length, plural: displayRounds.length !== 1 ? 's' : '', percent: ($currentDebate.consensus_score * 100).toFixed(1) })}
                     {#if $currentDebate.consensus_score >= 0.9}
-                      <span class="text-green-600 dark:text-green-400 font-medium">Strong consensus reached.</span>
+                      <span class="text-green-600 dark:text-green-400 font-medium">{t('timeline.strongConsensus')}</span>
                     {:else if $currentDebate.consensus_score >= 0.7}
-                      <span class="text-yellow-600 dark:text-yellow-400 font-medium">Moderate consensus — further rounds may help.</span>
+                      <span class="text-yellow-600 dark:text-yellow-400 font-medium">{t('timeline.moderateConsensus')}</span>
                     {:else}
-                      <span class="text-red-600 dark:text-red-400 font-medium">Low consensus — agents remain divided.</span>
+                      <span class="text-red-600 dark:text-red-400 font-medium">{t('timeline.lowConsensus')}</span>
                     {/if}
                   {/if}
                 </p>

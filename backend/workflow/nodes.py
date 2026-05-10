@@ -769,6 +769,10 @@ def _is_oob_relevant(oob: dict, role: str, current_round: int) -> bool:
         prev_role = target.get("current_agent_role", "")
         idx = _AGENT_ORDER.index(prev_role) if prev_role in _AGENT_ORDER else -1
         next_role = _AGENT_ORDER[idx + 1] if 0 <= idx < len(_AGENT_ORDER) - 1 else ""
+        if not next_role:
+            # If prev_role is unknown (e.g. "input") or is the last agent,
+            # default to the first agent in the order so the OOB doesn't get lost
+            next_role = _AGENT_ORDER[0]
         return role == next_role
 
     if target_type == "all_future":

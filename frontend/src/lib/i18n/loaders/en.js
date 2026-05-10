@@ -64,6 +64,7 @@ export default {
   'debate.titleGenerating': 'Generating title…',
   'debate.titlePlaceholder': 'Processing case description…',
   'debate.titleLabel': 'Title',
+  'debate.language': 'Language',
 
   // Web search mode
   'debate.searchMode': 'Web Search',

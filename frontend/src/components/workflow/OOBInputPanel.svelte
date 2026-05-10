@@ -69,9 +69,15 @@
   }
 
   function getCurrentRole() {
-    if (!rt.activeNodeId) return 'input';
+    if (!rt.activeNodeId) return 'moderator';
     const match = rt.activeNodeId.match(/^(\w+)_r\d+$/);
-    return match ? match[1] : 'input';
+    if (match && ['strategist', 'critic', 'optimizer', 'moderator'].includes(match[1])) return match[1];
+    // Fallback: find last known agent from execution path
+    for (let i = rt.executionPath.length - 1; i >= 0; i--) {
+      const m = rt.executionPath[i].match(/^(\w+)_r\d+$/);
+      if (m && ['strategist', 'critic', 'optimizer', 'moderator'].includes(m[1])) return m[1];
+    }
+    return 'moderator';
   }
 
   function handleKeydown(e) {

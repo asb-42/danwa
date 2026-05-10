@@ -10,6 +10,7 @@
   import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
   import { listInputPlugins, submitInput, approveA2A, rejectA2A } from '../lib/input/inputApi.js';
   import { createInputJobTracker } from '../lib/input/inputJobStore.js';
+  import { listWorkflowTemplates } from '../lib/blueprint/api.js';
   import PluginSelector from '../components/input/PluginSelector.svelte';
   import STTMicrophoneButton from '../components/input/STTMicrophoneButton.svelte';
   import A2AApprovalCard from '../components/input/A2AApprovalCard.svelte';
@@ -42,15 +43,19 @@
 
   // Workflow template state
   let selectedTemplateId = $state('');
+  let workflowTemplates = $state([]);
 
   // Which mode is active: 'compose' (Input Composer) or 'form' (DebateCreatePanel)
   let inputMode = $state('form');
 
-  // Load plugins on mount
+  // Load plugins and workflow templates on mount
   $effect(() => {
     listInputPlugins()
       .then((p) => { plugins = p; })
       .catch((e) => { error = e.message; });
+    listWorkflowTemplates()
+      .then((templates) => { workflowTemplates = templates || []; })
+      .catch((e) => { console.warn('Failed to load workflow templates:', e.message); });
   });
 
   function onPluginChange(key) {
@@ -183,7 +188,7 @@
 
       <!-- Workflow Template Picker -->
       <div class="mb-4">
-        <WorkflowTemplatePicker selectedId={selectedTemplateId} onchange={onTemplateChange} />
+        <WorkflowTemplatePicker templates={workflowTemplates} selectedId={selectedTemplateId} onchange={onTemplateChange} />
       </div>
 
       <!-- Error -->
