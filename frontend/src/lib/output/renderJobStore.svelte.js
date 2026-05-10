@@ -60,6 +60,7 @@ export function createRenderJobTracker(jobId) {
   intervalId = setInterval(poll, 2000);
 
   return {
+    jobId,
     get status() { return status; },
     get outputFiles() { return outputFiles; },
     get error() { return error; },

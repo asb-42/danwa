@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 _DEFAULT_OUTPUT_DIR = Path("output")
 
 
+# Keep references to background tasks to prevent GC before completion.
+_background_tasks: set[asyncio.Task] = set()
+
+
 class RenderEngineService:
     """Orchestrates render job lifecycle: validate, dispatch, track.
 
@@ -95,8 +99,10 @@ class RenderEngineService:
         job_dir = self.output_dir / job.id
         job_dir.mkdir(parents=True, exist_ok=True)
 
-        # 6. Schedule async execution
-        asyncio.create_task(self.execute_job(job.id))
+        # 6. Schedule async execution (store ref to prevent GC)
+        task = asyncio.create_task(self.execute_job(job.id))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
         logger.info(
             "RenderJob %s submitted (plugin=%s, session=%s)",

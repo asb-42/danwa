@@ -9,6 +9,7 @@
   import PluginCard from '../components/output/PluginCard.svelte';
   import ConfigForm from '../components/output/ConfigForm.svelte';
   import RenderJobStatus from '../components/output/RenderJobStatus.svelte';
+  import { onDestroy } from 'svelte';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -17,6 +18,8 @@
     });
     return text;
   });
+
+  const STORAGE_KEY = 'danwa.activeRenderJob';
 
   // State
   let plugins = $state([]);
@@ -34,12 +37,40 @@
 
   let searchTimeout = null;
 
-  // Load plugins on mount
+  // Restore active job from localStorage on mount
   $effect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const jobData = JSON.parse(saved);
+        if (jobData && jobData.job_id) {
+          activeJob = jobData;
+          tracker = createRenderJobTracker(jobData.job_id);
+        }
+      }
+    } catch { /* ignore parse errors */ }
+
     listOutputPlugins()
       .then((p) => { plugins = p; })
       .catch((e) => { error = e.message; });
   });
+
+  // Stop polling on destroy
+  onDestroy(() => {
+    if (tracker) tracker.stop();
+  });
+
+  function persistJob(jobData) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(jobData));
+    } catch { /* ignore */ }
+  }
+
+  function clearPersistedJob() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch { /* ignore */ }
+  }
 
   function onSearchInput(e) {
     sessionSearch = e.target.value;
@@ -80,6 +111,13 @@
     error = null;
   }
 
+  function dismissJob() {
+    if (tracker) tracker.stop();
+    tracker = null;
+    activeJob = null;
+    clearPersistedJob();
+  }
+
   async function handleGenerate() {
     if (!selectedSessionId && !sessionSearch.trim()) {
       error = 'Please select or enter a Session ID.';
@@ -100,6 +138,7 @@
         configValues
       );
       activeJob = result;
+      persistJob(result);
       tracker = createRenderJobTracker(result.job_id);
     } catch (e) {
       error = e.message;
@@ -220,9 +259,17 @@
   <!-- Job Status -->
   {#if tracker}
     <div class="mb-6">
-      <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-        Render Job
-      </h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+          Render Job
+        </h2>
+        <button
+          onclick={dismissJob}
+          class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+        >
+          ✕ Dismiss
+        </button>
+      </div>
       <RenderJobStatus {tracker} />
     </div>
   {/if}
