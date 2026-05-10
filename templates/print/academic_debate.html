@@ -8,6 +8,7 @@
   </style>
 </head>
 <body>
+  {% from '_macros.html' import render_turn, render_minority_callout, render_user_query, render_consensus, render_audit_appendix %}
   <!-- Document Header -->
   <header class="doc-header">
     <h1>{{ doc.metadata.topic }}</h1>
