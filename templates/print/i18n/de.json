@@ -1,0 +1,23 @@
+{
+  "turn_label": "Beitrag",
+  "round_label": "Runde",
+  "agent_label": "Agent",
+  "role_label": "Rolle",
+  "timestamp_label": "Zeitstempel",
+  "injection_label": "Zwischenfrage",
+  "user_query_label": "Nutzerfrage",
+  "minority_vote_label": "Minderheitsvotum",
+  "consensus_label": "Konsens",
+  "audit_trail_label": "Audit-Trail",
+  "topic_label": "Thema",
+  "workflow_label": "Workflow",
+  "participants_label": "Teilnehmer",
+  "duration_label": "Dauer",
+  "tokens_label": "Tokens",
+  "generated_label": "Erstellt",
+  "agent_column": "Agent",
+  "role_column": "Rolle",
+  "llm_column": "LLM-Profil",
+  "latency_column": "Latenz (ms)",
+  "tokens_column": "Tokens"
+}

@@ -1,0 +1,103 @@
+"""DebateArtifact — immutable output of a completed workflow execution.
+
+This is the sole interface between execution (LangGraph) and rendering
+(Output Composer / plugins).  All inner transcript models are standalone
+Pydantic classes, not generic dictionaries.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+# ---------------------------------------------------------------------------
+# Inner Transcript Models
+# ---------------------------------------------------------------------------
+
+
+class Turn(BaseModel):
+    """A single agent turn in the debate transcript."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    round: int
+    node_id: str
+    agent_name: str
+    role_type: str
+    role_definition_id: str = ""
+    llm_profile_id: str = ""
+    content: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    latency_ms: int = 0
+    token_usage: dict[str, int] = Field(default_factory=dict)
+    # Expected keys: "prompt", "completion", "total"
+
+
+class Injection(BaseModel):
+    """A user or system injection into the debate."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    source: Literal["user", "system"] = "user"
+    target_node_id: str
+    content: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    injected_at_round: int = 0
+
+
+class UserQuery(BaseModel):
+    """A user query submitted during the debate."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    content: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    response_turn_id: str | None = None
+
+
+class MinorityVote(BaseModel):
+    """A dissenting opinion from an agent."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    agent_name: str
+    dissent_content: str
+    target_turn_id: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# Top-Level Artifact
+# ---------------------------------------------------------------------------
+
+
+class DebateArtifact(BaseModel):
+    """Immutable output of a completed workflow execution.
+
+    This is the sole interface between execution (LangGraph) and
+    rendering (Output Composer / plugins).  Plugins consume **only**
+    this artifact — never the raw session state or snapshot data.
+    """
+
+    session_id: str
+    workflow_id: str
+    workflow_version: int = 1
+    workflow_name: str = ""
+    topic: str = ""
+    tone_profile_snapshot: dict = Field(default_factory=dict)
+
+    transcript: list[Turn] = Field(default_factory=list)
+    interjections: list[Injection] = Field(default_factory=list)
+    user_queries: list[UserQuery] = Field(default_factory=list)
+    minority_votes: list[MinorityVote] = Field(default_factory=list)
+
+    consensus_result: dict | None = None
+    metadata: dict = Field(default_factory=dict)
+    # metadata keys: token_usage, latencies, timestamps (start/end),
+    #                agents (list of {name, blueprint_id, role_type, llm_profile_id})
+
+    def artifact_hash(self) -> str:
+        """Return a deterministic SHA-256 hex digest of this artifact."""
+        import hashlib
+
+        payload = self.model_dump_json()
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()

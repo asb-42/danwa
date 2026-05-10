@@ -28,6 +28,8 @@ from backend.api.routers import (  # noqa: E402
     debate,
     dms,
     health,
+    optimization_proposals,
+    output_composer,
     profiles,
     projects,
     sessions,
@@ -213,6 +215,20 @@ def create_app() -> FastAPI:
         a2a_discovery.router,
         prefix="/api/v1/a2a",
         tags=["a2a-discovery"],
+    )
+
+    # --- Output Composer ---
+    app.include_router(
+        output_composer.router,
+        prefix="/api/v1",
+        tags=["output-composer"],
+    )
+
+    # --- Optimization Proposals (Reflection) ---
+    app.include_router(
+        optimization_proposals.router,
+        prefix="/api/v1",
+        tags=["optimization-proposals"],
     )
 
     # --- Error handlers (Blueprint Canvas) ---

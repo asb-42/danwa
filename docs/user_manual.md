@@ -1046,113 +1046,190 @@ make check
 ## Missing Links (Features Not Yet in UI)
 
 > **Note**: These features are fully implemented in the backend and/or frontend API client, but **not yet accessible through the user interface**. Users currently cannot use these features without direct API calls.
+>
+> **Last audited**: 2026-05-09 — full scan of all 16 backend routers, 6 frontend API clients, and 10 frontend views.
 
-### Report Download (Backend Ready, No UI)
+### Report Download — Async Report Generation (DOCX/PDF/ODF)
 
-The backend has a fully functional report generation system in `backend/api/routers/sessions.py`:
+The backend provides **async job-based** report generation via two systems:
 
+**New system** (`workflow_reports.py`):
 | Format | Endpoint | Description |
 |--------|----------|-------------|
-| DOCX | `GET /api/v1/sessions/{id}/report/docx` | Generate and download DOCX report |
-| PDF | `GET /api/v1/sessions/{id}/report/pdf` | Generate and download PDF report |
+| DOCX | `POST /api/v1/sessions/{id}/report` + `GET /api/v1/reports/{job_id}/download` | Async report job |
+| PDF | Same pattern | Async report job |
+| ODF | Same pattern | OpenDocument format |
+
+**Legacy system** (`sessions.py`):
+| Format | Endpoint | Description |
+|--------|----------|-------------|
+| DOCX | `GET /api/v1/sessions/{id}/report/docx` | Synchronous download |
+| PDF | `GET /api/v1/sessions/{id}/report/pdf` | Synchronous download |
 
 **What's implemented**:
-- `ReportGenerator` from `src/tools/report_generator.py`
-- Includes metadata table, final argumentation, fact-check results, audit references
-- Supports DOCX (python-docx) and PDF (WeasyPrint) output
+- `generateReport()`, `getReportStatus()`, `downloadReport()` exist in `frontend/src/lib/api.js`
+- i18n strings exist: `report.generate`, `report.download`, `report.status.*`
+- Reports include metadata table, final argumentation, fact-check results, audit references
 
 **What's missing**:
-- No `downloadReport()` function in `frontend/src/lib/api.js`
 - No "Download Report" button in DebateView or ArchiveView
-- No UI for selecting report format (DOCX vs PDF)
+- No report format selector (DOCX vs PDF vs ODF)
+- No report job status indicator or progress bar
 
-**How to enable**: Add a report download button to the debate views when `status === 'completed'`.
+**How to enable**: Wire the existing API functions to download buttons in debate views when `status === 'completed'`.
 
 ---
 
-### Application Settings (Backend + API Ready, No UI Tab)
+### Application Settings Tab
 
-The backend provides application settings management via `backend/api/routers/config.py`:
+The backend provides full application settings management:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/config/settings` | GET | Get current application settings |
-| `/api/v1/config/settings` | PUT | Update application settings |
-
-**Settings managed** (see `config/settings.yaml`):
-- `ui.language` - Default UI language
-- `search.engine` - Search engine (searxng / duckduckgo)
-- `search.max_results` - Max search results
-- `privacy.strict_mode` - Block all external calls
-- `privacy.redact_traces` - PII redaction in logs
-- `privacy.retention_days` - Auto-cleanup old data
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `ui.language` | Default UI language | `en` |
+| `search.engine` | Search engine (searxng / duckduckgo) | `duckduckgo` |
+| `search.max_results` | Max search results | `5` |
+| `privacy.strict_mode` | Block all external calls | `false` |
+| `privacy.redact_traces` | PII redaction in logs | `true` |
+| `privacy.retention_days` | Auto-cleanup old data | `90` |
 
 **What's implemented**:
-- `getSettings()` and `updateSettings()` functions exist in `frontend/src/lib/api.js`
+- `getSettings()` and `updateSettings()` exist in `frontend/src/lib/api.js`
+- `getSettings()` is used in `ProjectSettings.svelte`
 
 **What's missing**:
 - ConfigView tabs: `llm`, `agents`, `prompts`, `cost`, `system`
-- **No "Settings" tab** for application settings
+- **No "Settings" tab** for global application settings
 
 **How to enable**: Add a "Settings" tab to ConfigView that uses the existing API functions.
 
 ---
 
-### Manual RAG Search (Backend + API Ready, No UI)
+### Manual RAG Search
 
-The backend provides RAG (Retrieval-Augmented Generation) search via `backend/api/routers/dms.py`:
+The backend provides RAG (Retrieval-Augmented Generation) search:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/dms/retrieve` | POST | Retrieve relevant chunks for RAG |
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/dms/rag/manual` | List documents in manual RAG context |
+| `GET /api/v1/dms/rag/search?q={query}&k={k}` | Search RAG chunks by query |
 
 **What's implemented**:
-- `getManualRAGDocuments()` and `searchRAG(query, limit)` functions exist in `frontend/src/lib/api.js`
+- `getManualRAGDocuments()` and `searchRAG(query, limit)` exist in `frontend/src/lib/api.js`
 
 **What's missing**:
 - DocumentsView has RAG toggle (add/remove from RAG) but **no manual search UI**
-- Users cannot:
-  - Manually select which documents to search in RAG
-  - Run a custom search query against RAG
-  - View RAG search results with relevance scores
+- Users cannot run custom RAG queries or view search results with relevance scores
 
 **How to enable**: Add a "RAG Search" section to DocumentsView using the existing API functions.
 
 ---
 
-### Session History & Export (Backend Exists, Frontend Missing)
+### A2A Agent Discovery
 
-The `backend/api/routers/sessions.py` router provides:
+The backend provides A2A (Agent-to-Agent) discovery:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/sessions/` | GET | List debate sessions |
-| `/api/v1/sessions/{id}` | DELETE | Delete a session |
-| `/api/v1/sessions/{id}/report/{fmt}` | GET | Download report (DOCX/PDF) |
-| `/api/v1/sessions/{id}/trace` | GET | Get trace file |
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/a2a/discover` | Discover A2A agent capabilities |
+| `POST /api/v1/a2a/capabilities/{profile_id}` | Store discovered capabilities |
+
+**What's implemented**:
+- `discoverA2A()` and `saveA2ACapabilities()` exist in `frontend/src/lib/a2aApi.js`
+- `A2ACapabilities.svelte` component exists (displays capabilities)
+- Full i18n strings exist for discovery UI
 
 **What's missing**:
-- No `sessions`-related functions in `frontend/src/lib/api.js`
-- No session history view in the UI
-- No trace file download option in AuditView
+- No "Discover" button in the A2A section of DebateView
+- `A2ACapabilities.svelte` component is never imported by any view (dead code)
 
-**Note**: The current system uses `/api/v1/debate/` instead of `/api/v1/sessions/`. The report endpoint may need to be migrated to the debates router.
+**How to enable**: Import `A2ACapabilities.svelte` and wire `discoverA2A()` to a discover button.
 
 ---
 
-### Summary
+### Session Archive / Restore
+
+The backend provides session soft-delete and restore:
+
+| Endpoint | Description |
+|----------|-------------|
+| `DELETE /api/v1/workflow-exec/{session_id}` | Soft-delete (archive) session |
+| `POST /api/v1/workflow-exec/{session_id}/restore` | Restore archived session |
+
+**What's implemented**:
+- `softDeleteSession()` and `restoreSession()` exist in `frontend/src/lib/api.js`
+- i18n strings exist: `session.softDelete`, `session.restore`, `session.archived`
+
+**What's missing**:
+- No "Archive" button in ArchiveView
+- No "Restore" functionality for archived sessions
+
+---
+
+### Workflow Execution Controls (Blueprint Engine)
+
+The blueprint workflow engine provides execution control:
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/workflow-exec/{session_id}/pause` | Pause workflow |
+| `POST /api/v1/workflow-exec/{session_id}/resume` | Resume workflow |
+| `POST /api/v1/workflow-exec/{session_id}/cancel` | Cancel workflow |
+| `GET /api/v1/workflow-exec/{session_id}/state` | Get execution state |
+| `GET /api/v1/workflow-exec/{session_id}/stream` | SSE event stream |
+
+**What's implemented**:
+- `pauseWorkflow()`, `resumeWorkflow()`, `cancelWorkflow()` exist in `frontend/src/lib/workflowExec.js`
+- `getWorkflowState()` exists in `frontend/src/lib/workflowExec.js`
+- `createWorkflowSSE()` exists in `frontend/src/lib/workflowSSE.js`
+
+**What's missing**:
+- No pause/resume/cancel controls for blueprint workflow executions
+- No real-time event stream for workflow-exec sessions
+
+**Note**: These are for the **blueprint workflow engine**, separate from the HITL pause/resume for debates.
+
+---
+
+### Blueprint Compile & Clone
+
+The backend provides workflow compilation and cloning:
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/blueprints/workflows/{wf_id}/compile` | Compile workflow (validate references) |
+| `POST /api/v1/blueprints/workflows/{wf_id}/clone` | Clone workflow definition |
+
+**What's implemented**:
+- `compileWorkflow()` and `cloneWorkflow()` exist in `frontend/src/lib/blueprint/api.js`
+
+**What's missing**:
+- No "Compile" or "Clone" buttons in BlueprintCanvasView or Inspector
+
+---
+
+### Summary Table
 
 | Feature | Backend | API Client | UI | Status |
 |---------|---------|------------|-----|--------|
-| Report Download (DOCX/PDF) | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Async Report Generation (DOCX/PDF/ODF) | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
 | Application Settings | ✅ | ✅ Exists | ❌ No tab | **Partially exposed** |
 | Manual RAG Search | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| Session History Export | ✅ (legacy) | ❌ Missing | ❌ Missing | **Not exposed** |
+| A2A Agent Discovery | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Session Archive/Restore | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Workflow-Exec Controls | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Blueprint Compile/Clone | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Canvas Layout CRUD | ✅ | ✅ Exists | ⚠️ Partial | **Partially exposed** |
+| Role Types CRUD | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Language API | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
 | RAG Document Toggle | ✅ | ✅ | ✅ | Exposed |
 | Debate Workflow | ✅ | ✅ | ✅ | Exposed |
-| Config (LLM/Agents) | ✅ | ✅ | ✅ | Exposed |
-
----
+| Config (LLM/Agents/Prompts) | ✅ | ✅ | ✅ | Exposed |
+| HITL Interactions | ✅ | ✅ | ✅ | Exposed |
+| A2A in Debates | ✅ | ✅ | ✅ | Exposed |
+| Blueprint Canvas | ✅ | ✅ | ✅ | Exposed |
+| Replay & Diff Views | ✅ | ✅ | ✅ | Exposed |
 
 ## Troubleshooting
 

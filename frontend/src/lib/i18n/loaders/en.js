@@ -8,6 +8,10 @@ export default {
   'nav.archive': 'Archive',
   'nav.audit': 'Audit Trail',
   'nav.config': 'Configuration',
+  'nav.output': 'Output',
+  'nav.blueprint': 'Blueprint',
+  'nav.documents': 'Documents',
+  'nav.projects': 'Projects',
 
   // Dashboard
   'dashboard.title': 'Dashboard',
