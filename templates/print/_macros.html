@@ -13,14 +13,14 @@
     {% endif %}
   </header>
   <div class="turn-content">
-    {{ section.content | e | replace('\n', '<br>') | safe }}
+    {{ section.content | safe }}
   </div>
   {% if section.margin_notes %}
   <aside class="margin-notes">
     {% for note in section.margin_notes %}
     <div class="margin-note {{ note.type }}">
       <span class="margin-note-icon">{% if note.type == 'injection' %}⚡{% elif note.type == 'dissent' %}⚠{% else %}ℹ{% endif %}</span>
-      <span class="margin-note-content">{{ note.content | e }}</span>
+      <span class="margin-note-content">{{ note.content | safe }}</span>
     </div>
     {% endfor %}
   </aside>
@@ -35,7 +35,7 @@
     <strong>{{ i18n.minority_vote_label }}: {{ section.agent_name }}</strong>
   </header>
   <div class="callout-content">
-    {{ section.content | e | replace('\n', '<br>') | safe }}
+    {{ section.content | safe }}
   </div>
 </section>
 {%- endmacro %}
@@ -47,7 +47,7 @@
     <strong>{{ i18n.user_query_label }}</strong>
   </header>
   <div class="query-content">
-    {{ section.content | e | replace('\n', '<br>') | safe }}
+    {{ section.content | safe }}
   </div>
 </section>
 {%- endmacro %}
@@ -58,7 +58,7 @@
     <strong>{{ i18n.consensus_label }}</strong>
   </header>
   <div class="consensus-content">
-    {{ section.content | e | replace('\n', '<br>') | safe }}
+    {{ section.content | safe }}
   </div>
 </section>
 {%- endmacro %}

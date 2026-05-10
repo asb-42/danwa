@@ -35,7 +35,23 @@ class PrintLayoutEngine:
     """Transforms a ``DebateArtifact`` into a ``PrintDocument``.
 
     Stateless — a fresh instance is created per render call.
+    Content is converted from Markdown to HTML during transformation.
     """
+
+    @staticmethod
+    def _md_to_html(text: str) -> str:
+        """Convert Markdown text to HTML, preserving empty strings."""
+        if not text:
+            return ""
+        try:
+            import markdown
+            return markdown.markdown(
+                text,
+                extensions=["tables", "fenced_code", "sane_lists", "nl2br"],
+            )
+        except ImportError:
+            # Fallback: basic line-break conversion
+            return text.replace("\n", "<br>")
 
     def transform(
         self,
@@ -71,7 +87,7 @@ class PrintLayoutEngine:
                     PrintSection(
                         type=SectionType.USER_QUERY_BLOCK,
                         title=f"Nutzerfrage (Runde {rnd})",
-                        content=q.content,
+                        content=self._md_to_html(q.content),
                         timestamp=q.timestamp,
                         round=rnd,
                         css_class="user-query-block",
@@ -88,7 +104,7 @@ class PrintLayoutEngine:
                     margin_notes.append(
                         MarginNote(
                             type=MarginNoteType.INJECTION,
-                            content=inj.content,
+                            content=self._md_to_html(inj.content),
                             reference_id=inj.id,
                         )
                     )
@@ -97,7 +113,7 @@ class PrintLayoutEngine:
                     PrintSection(
                         type=SectionType.TURN,
                         title=f"{turn.agent_name} ({turn.role_type})",
-                        content=turn.content,
+                        content=self._md_to_html(turn.content),
                         agent_name=turn.agent_name,
                         timestamp=turn.timestamp,
                         round=turn.round,
@@ -114,7 +130,7 @@ class PrintLayoutEngine:
                             PrintSection(
                                 type=SectionType.MINORITY_CALLOUT,
                                 title=f"Minderheitsvotum: {vote.agent_name}",
-                                content=vote.dissent_content,
+                                content=self._md_to_html(vote.dissent_content),
                                 agent_name=vote.agent_name,
                                 timestamp=vote.timestamp,
                                 round=turn.round,
@@ -124,12 +140,12 @@ class PrintLayoutEngine:
 
         # (e) Consensus summary
         if artifact.consensus_result:
-            consensus_content = self._format_consensus(artifact.consensus_result)
+            consensus_content = self._md_to_html(self._format_consensus(artifact.consensus_result))
             sections.append(
                 PrintSection(
                     type=SectionType.CONSENSUS_SUMMARY,
                     title="Konsens-Zusammenfassung",
-                    content=consensus_content,
+                    content=self._md_to_html(consensus_content),
                     css_class="consensus-summary",
                 )
             )

@@ -33,22 +33,22 @@
         {{ section.agent_name }} ({{ section.title }})
         {% if section.round is not none %} — {{ i18n.round_label }} {{ section.round }}{% endif %}
       </div>
-      <div class="turn-content">{{ section.content | e | replace('\n', '<br>') | safe }}</div>
+      <div class="turn-content">{{ section.content | safe }}</div>
     </div>
     {% elif section.type == 'minority_callout' %}
     <div class="minority-callout">
       <strong>{{ i18n.minority_vote_label }}: {{ section.agent_name }}</strong><br>
-      {{ section.content | e | replace('\n', '<br>') | safe }}
+      {{ section.content | safe }}
     </div>
     {% elif section.type == 'user_query_block' %}
     <div class="user-query-block">
       <strong>{{ i18n.user_query_label }}</strong><br>
-      {{ section.content | e | replace('\n', '<br>') | safe }}
+      {{ section.content | safe }}
     </div>
     {% elif section.type == 'consensus_summary' %}
     <div class="consensus-summary">
       <strong>{{ i18n.consensus_label }}</strong><br>
-      {{ section.content | e | replace('\n', '<br>') | safe }}
+      {{ section.content | safe }}
     </div>
     {% elif section.type == 'audit_appendix' %}
     <h2>{{ i18n.audit_trail_label }}</h2>
