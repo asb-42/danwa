@@ -1,6 +1,6 @@
 /* Academic Debate Print Styles
-   Two-column layout: main content (70-75%) + margin notes sidebar (25-30%)
-   Uses CSS Grid for WeasyPrint compatibility.
+   Pure block layout for WeasyPrint page-break support.
+   No flex/grid — WeasyPrint silently truncates flex content at page boundaries.
 */
 
 @page {
@@ -325,6 +325,58 @@ body {
 
 .audit-table tr:nth-child(even) {
   background: #fafafa;
+}
+
+/* Table of Contents */
+.toc {
+  page-break-after: always;
+  margin-bottom: 2em;
+}
+
+.toc-title {
+  font-size: 16pt;
+  margin-bottom: 1em;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.3em;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-list li {
+  margin: 0.3em 0;
+}
+
+.toc-list li a {
+  text-decoration: none;
+  color: #1a1a1a;
+  border-bottom: 1px dotted #ccc;
+}
+
+.toc-list li a::after {
+  content: target-counter(attr(href), page);
+  float: right;
+}
+
+.toc-level-1 {
+  font-weight: bold;
+  font-size: 11pt;
+  margin-top: 0.8em;
+}
+
+.toc-level-2 {
+  font-size: 10pt;
+  padding-left: 1.5em;
+}
+
+.toc-level-3 {
+  font-size: 9.5pt;
+  font-weight: normal;
+  padding-left: 3em;
+  color: #555;
 }
 
 /* Footer */

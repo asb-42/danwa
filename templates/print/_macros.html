@@ -1,7 +1,7 @@
 {# Shared Jinja2 macros for print templates #}
 
 {% macro render_turn(section, i18n) -%}
-<article class="debate-turn">
+<article class="debate-turn"{% if section.id %} id="{{ section.id }}"{% endif %}>
   <header class="turn-header">
     <span class="turn-agent">{{ section.agent_name }}</span>
     <span class="turn-role">({{ section.title }})</span>
@@ -29,7 +29,7 @@
 {%- endmacro %}
 
 {% macro render_minority_callout(section, i18n) -%}
-<section class="minority-callout">
+<section class="minority-callout"{% if section.id %} id="{{ section.id }}"{% endif %}>
   <header>
     <span class="callout-icon">⚠</span>
     <strong>{{ i18n.minority_vote_label }}: {{ section.agent_name }}</strong>
@@ -41,7 +41,7 @@
 {%- endmacro %}
 
 {% macro render_user_query(section, i18n) -%}
-<section class="user-query-block">
+<section class="user-query-block"{% if section.id %} id="{{ section.id }}"{% endif %}>
   <header>
     <span class="query-icon">❓</span>
     <strong>{{ i18n.user_query_label }}</strong>
@@ -53,7 +53,7 @@
 {%- endmacro %}
 
 {% macro render_consensus(section, i18n) -%}
-<section class="consensus-summary">
+<section class="consensus-summary"{% if section.id %} id="{{ section.id }}"{% endif %}>
   <header>
     <strong>{{ i18n.consensus_label }}</strong>
   </header>
@@ -64,7 +64,7 @@
 {%- endmacro %}
 
 {% macro render_audit_appendix(section, i18n) -%}
-<section class="audit-appendix">
+<section class="audit-appendix"{% if section.id %} id="{{ section.id }}"{% endif %}>
   <header>
     <strong>{{ i18n.audit_trail_label }}</strong>
   </header>

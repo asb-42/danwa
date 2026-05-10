@@ -98,7 +98,7 @@ class TestPrintLayoutEngine:
         # First turn (n1) should have injection margin note
         assert len(turn_sections[0].margin_notes) == 1
         assert turn_sections[0].margin_notes[0].type == MarginNoteType.INJECTION
-        assert turn_sections[0].margin_notes[0].content == "Consider X"
+        assert turn_sections[0].margin_notes[0].content == "<p>Consider X</p>"
         # Second turn (n2) should have no margin notes
         assert len(turn_sections[1].margin_notes) == 0
 
@@ -110,7 +110,7 @@ class TestPrintLayoutEngine:
             if s.type == SectionType.USER_QUERY_BLOCK
         ]
         assert len(query_sections) == 1
-        assert query_sections[0].content == "Why A?"
+        assert query_sections[0].content == "<p>Why A?</p>"
 
     def test_rule_d_minority_votes(self) -> None:
         engine = PrintLayoutEngine()

@@ -9,6 +9,21 @@
 </head>
 <body>
   {% from '_macros.html' import render_turn, render_minority_callout, render_user_query, render_consensus, render_audit_appendix %}
+
+  <!-- Table of Contents -->
+  {% if doc.toc %}
+  <nav class="toc">
+    <h2 class="toc-title">{{ i18n.toc_label | default('Inhaltsverzeichnis') }}</h2>
+    <ul class="toc-list">
+      {% for entry in doc.toc %}
+      <li class="toc-level-{{ entry.level }}">
+        <a href="#{{ entry.anchor }}">{{ entry.title }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+
   <!-- Document Header -->
   <header class="doc-header">
     <h1>{{ doc.metadata.topic }}</h1>

@@ -19,5 +19,6 @@
   "role_column": "Role",
   "llm_column": "LLM Profile",
   "latency_column": "Latency (ms)",
-  "tokens_column": "Tokens"
+  "tokens_column": "Tokens",
+  "toc_label": "Table of Contents"
 }

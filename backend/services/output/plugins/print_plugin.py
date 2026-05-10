@@ -50,6 +50,7 @@ class PrintPluginConfig(BaseModel):
     template_name: PrintTemplate = PrintTemplate.ACADEMIC_DEBATE
     include_audit_trail: bool = True
     include_minority_votes: bool = True
+    include_toc: bool = Field(default=True, description="Include Table of Contents")
     primary_format: PrintFormat = PrintFormat.PDF
     page_size: PageSize = PageSize.A4
     language: str = Field(default="de", description="Locale: 'de' or 'en'")
@@ -101,6 +102,7 @@ class PrintOutputPlugin(OutputPlugin):
             artifact,
             include_audit_trail=config.include_audit_trail,
             include_minority_votes=config.include_minority_votes,
+            include_toc=config.include_toc,
         )
 
         # 2. Load i18n

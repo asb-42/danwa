@@ -26,6 +26,7 @@ from backend.services.output.plugins.print_models import (
     PrintMetadata,
     PrintSection,
     SectionType,
+    TOCEntry,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class PrintLayoutEngine:
         artifact: DebateArtifact,
         include_audit_trail: bool = True,
         include_minority_votes: bool = True,
+        include_toc: bool = True,
     ) -> PrintDocument:
         """Build a ``PrintDocument`` from the artifact.
 
@@ -65,11 +67,49 @@ class PrintLayoutEngine:
             artifact: The debate artifact to transform.
             include_audit_trail: Whether to append an audit appendix.
             include_minority_votes: Whether to include minority callouts.
+            include_toc: Whether to build a Table of Contents.
 
         Returns:
             A ``PrintDocument`` ready for HTML rendering.
         """
+        import re
+
         sections: list[PrintSection] = []
+        toc: list[TOCEntry] = []
+        section_idx = 0
+
+        def _make_id(prefix: str, idx: int) -> str:
+            return f"{prefix}-{idx}"
+
+        def _inject_heading_ids(
+            html_content: str, base_id: str
+        ) -> tuple[str, list[TOCEntry]]:
+            """Inject ``id`` attributes into h1/h2 headings for TOC anchoring.
+
+            Returns the modified HTML (with ``id`` attributes added) and a
+            list of :class:`TOCEntry` objects extracted from the headings.
+            """
+            entries: list[TOCEntry] = []
+            heading_re = re.compile(r'<(h[12])([^>]*)>(.*?)</\1>', re.IGNORECASE | re.DOTALL)
+            counter = 0
+
+            def _replace(m: re.Match) -> str:
+                nonlocal counter
+                tag = m.group(1).lower()
+                attrs = m.group(2)
+                inner = m.group(3)
+                title = re.sub(r'<[^>]+>', '', inner).strip()
+                level = 1 if tag == "h1" else 2
+                hid = f"{base_id}-h{counter}"
+                entries.append(TOCEntry(level=level, title=title, anchor=hid))
+                counter += 1
+                # Inject id attribute (avoid duplicating existing id)
+                if "id=" not in attrs:
+                    return f'<{tag} id="{hid}"{attrs}>{inner}</{tag}>'
+                return m.group(0)
+
+            modified = heading_re.sub(_replace, html_content)
+            return modified, entries
 
         # Build lookup maps
         injections_by_node = self._group_injections_by_node(artifact)
@@ -80,11 +120,18 @@ class PrintLayoutEngine:
         rounds = sorted({t.round for t in artifact.transcript})
 
         for rnd in rounds:
+            # Level 1 TOC: Round — anchor will be set to first turn's id
+            # Insert a placeholder; we'll fix the anchor after seeing the first turn
+            round_toc_idx = len(toc)  # remember position
+            toc.append(TOCEntry(level=1, title=f"Runde {rnd}", anchor=""))
+
             # (c) UserQueries before this round
             queries = queries_by_round.get(rnd, [])
             for q in queries:
+                sid = _make_id("query", section_idx)
                 sections.append(
                     PrintSection(
+                        id=sid,
                         type=SectionType.USER_QUERY_BLOCK,
                         title=f"Nutzerfrage (Runde {rnd})",
                         content=self._md_to_html(q.content),
@@ -93,10 +140,22 @@ class PrintLayoutEngine:
                         css_class="user-query-block",
                     )
                 )
+                section_idx += 1
 
             # (a) Turns for this round
             round_turns = [t for t in artifact.transcript if t.round == rnd]
             for turn in round_turns:
+                sid = _make_id("turn", section_idx)
+                # Set round TOC anchor to first turn in this round
+                if toc[round_toc_idx].anchor == "":
+                    toc[round_toc_idx].anchor = sid
+                # Level 2 TOC: Agent
+                toc.append(TOCEntry(
+                    level=2,
+                    title=f"{turn.agent_name} ({turn.role_type})",
+                    anchor=sid,
+                ))
+
                 # (b) Attach injections as margin notes
                 margin_notes: list[MarginNote] = []
                 injections = injections_by_node.get(turn.node_id, [])
@@ -109,11 +168,19 @@ class PrintLayoutEngine:
                         )
                     )
 
+                content_html = self._md_to_html(turn.content)
+
+                # Level 3 TOC: headings within content
+                if include_toc:
+                    content_html, heading_entries = _inject_heading_ids(content_html, sid)
+                    toc.extend(heading_entries)
+
                 sections.append(
                     PrintSection(
+                        id=sid,
                         type=SectionType.TURN,
                         title=f"{turn.agent_name} ({turn.role_type})",
-                        content=self._md_to_html(turn.content),
+                        content=content_html,
                         agent_name=turn.agent_name,
                         timestamp=turn.timestamp,
                         round=turn.round,
@@ -121,6 +188,7 @@ class PrintLayoutEngine:
                         css_class="debate-turn",
                     )
                 )
+                section_idx += 1
 
                 # (d) MinorityVotes for this turn
                 if include_minority_votes:
@@ -128,6 +196,7 @@ class PrintLayoutEngine:
                     for vote in votes:
                         sections.append(
                             PrintSection(
+                                id=_make_id("minority", section_idx),
                                 type=SectionType.MINORITY_CALLOUT,
                                 title=f"Minderheitsvotum: {vote.agent_name}",
                                 content=self._md_to_html(vote.dissent_content),
@@ -137,22 +206,32 @@ class PrintLayoutEngine:
                                 css_class="minority-callout",
                             )
                         )
+                        section_idx += 1
+
 
         # (e) Consensus summary
         if artifact.consensus_result:
             consensus_content = self._md_to_html(self._format_consensus(artifact.consensus_result))
+            sid = _make_id("consensus", section_idx)
+            toc.append(TOCEntry(level=1, title="Konsens-Zusammenfassung", anchor=sid))
             sections.append(
                 PrintSection(
+                    id=sid,
                     type=SectionType.CONSENSUS_SUMMARY,
                     title="Konsens-Zusammenfassung",
-                    content=self._md_to_html(consensus_content),
+                    content=consensus_content,
                     css_class="consensus-summary",
                 )
             )
+            section_idx += 1
 
         # (f) Audit trail appendix
         if include_audit_trail:
-            sections.append(self._build_audit_appendix(artifact))
+            audit = self._build_audit_appendix(artifact)
+            audit.id = _make_id("audit", section_idx)
+            toc.append(TOCEntry(level=1, title="Audit-Trail", anchor=audit.id))
+            sections.append(audit)
+            section_idx += 1
 
         # Build metadata
         participants = list(
@@ -163,7 +242,7 @@ class PrintLayoutEngine:
         )
         metadata = self._build_metadata(artifact, participants, total_tokens)
 
-        return PrintDocument(sections=sections, metadata=metadata)
+        return PrintDocument(sections=sections, metadata=metadata, toc=toc)
 
     # ------------------------------------------------------------------
     # Helpers

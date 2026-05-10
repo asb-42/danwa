@@ -42,9 +42,18 @@ class SectionType(StrEnum):
     AUDIT_APPENDIX = "audit_appendix"
 
 
+class TOCEntry(BaseModel):
+    """A single entry in the Table of Contents."""
+
+    level: int = 1  # 1=round, 2=agent, 3=heading within content
+    title: str = ""
+    anchor: str = ""  # HTML id for linking
+
+
 class PrintSection(BaseModel):
     """A single section in the print document layout."""
 
+    id: str = ""  # HTML id attribute for TOC anchoring
     type: SectionType
     title: str = ""
     content: str = ""
@@ -74,3 +83,4 @@ class PrintDocument(BaseModel):
 
     sections: list[PrintSection] = Field(default_factory=list)
     metadata: PrintMetadata
+    toc: list[TOCEntry] = Field(default_factory=list)
