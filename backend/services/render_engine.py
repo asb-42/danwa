@@ -69,8 +69,10 @@ class RenderEngineService:
             ValueError: If the config is invalid or the artifact is missing.
         """
         # 1. Resolve plugin and validate config
+        logger.info("submit_job: raw config=%s", config)
         plugin_cls = self.registry.get_plugin(plugin_key)
         validated_config = plugin_cls.validate_config(config)
+        logger.info("submit_job: validated_config=%s", validated_config.model_dump())
 
         # 2. Load artifact (with fallback: build from debate store)
         artifact = self.artifact_store.get(session_id)

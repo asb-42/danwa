@@ -163,3 +163,5 @@ class TestPrintOutputPlugin:
         assert PrintOutputPlugin.plugin_key == "print"
         assert "pdf" in PrintOutputPlugin.supported_formats
         assert "docx" in PrintOutputPlugin.supported_formats
+        assert "odt" in PrintOutputPlugin.supported_formats
+        assert "md" in PrintOutputPlugin.supported_formats
