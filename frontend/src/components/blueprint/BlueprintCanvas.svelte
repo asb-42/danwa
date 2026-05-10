@@ -17,6 +17,7 @@
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
   import ModeSwitcher from './ModeSwitcher.svelte';
   import ExecutionPanel from './ExecutionPanel.svelte';
+  import ProposalsPanel from './ProposalsPanel.svelte';
 
   // Initialize registry (idempotent — safe to call multiple times)
   registerAllNodeTypes();
@@ -116,6 +117,35 @@
     nodeExecutionStatus = {};
   }
 
+  // ─── Reflection state ──────────────────────────────────────────────
+  let showProposalsPanel = $state(false);
+  let isReflecting = $state(false);
+  let reflectError = $state('');
+
+  let canReflect = $derived(
+    isWorkflowMode && canvasStore.currentWorkflowId && !canvasStore.isDirty
+  );
+
+  async function handleReflect() {
+    const workflowId = canvasStore.currentWorkflowId;
+    if (!workflowId) return;
+    isReflecting = true;
+    reflectError = '';
+    try {
+      const res = await fetch(`/api/v1/workflows/${workflowId}/reflect`, { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        reflectError = body.detail || `HTTP ${res.status}`;
+        return;
+      }
+      showProposalsPanel = true;
+    } catch (err) {
+      reflectError = err.message;
+    } finally {
+      isReflecting = false;
+    }
+  }
+
   function handleNodeStatusUpdate(nodeId, execStatus) {
     nodeExecutionStatus = { ...nodeExecutionStatus, [nodeId]: execStatus };
     // Update the node's data.executionStatus in the store
@@ -186,6 +216,18 @@
       >
         🚀 {t('workflow.execution.title')}
       </button>
+      {#if canReflect}
+        <button
+          class="toolbar-btn toolbar-btn-reflect"
+          class:active={showProposalsPanel}
+          onclick={handleReflect}
+          disabled={isReflecting}
+          title={t('workflow.reflect.title') || 'Reflect & Optimize'}
+          data-testid="canvas-reflect"
+        >
+          🔍 {isReflecting ? '...' : (t('workflow.reflect.title') || 'Reflect')}
+        </button>
+      {/if}
     {/if}
     <span class="toolbar-info">
       {nodes.length} nodes · {edges.length} edges
@@ -237,6 +279,22 @@
     onclose={handleCloseExecution}
     onNodeStatusUpdate={handleNodeStatusUpdate}
   />
+
+  <!-- Proposals Panel -->
+  {#if showProposalsPanel && canvasStore.currentWorkflowId}
+    <ProposalsPanel
+      workflowId={canvasStore.currentWorkflowId}
+      visible={showProposalsPanel}
+      onclose={() => { showProposalsPanel = false; reflectError = ''; }}
+    />
+  {/if}
+
+  {#if reflectError}
+    <div class="reflect-error" role="alert">
+      ⚠️ {reflectError}
+      <button class="reflect-error-dismiss" onclick={() => reflectError = ''}>✕</button>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -292,6 +350,48 @@
     background: #3b82f6;
     color: white;
     border-color: #3b82f6;
+  }
+  .toolbar-btn-reflect {
+    background: #fefce8;
+    border-color: #fde047;
+    color: #854d0e;
+  }
+  .toolbar-btn-reflect:hover {
+    background: #fef9c3;
+    border-color: #facc15;
+  }
+  .toolbar-btn-reflect.active {
+    background: #eab308;
+    color: white;
+    border-color: #eab308;
+  }
+  .toolbar-btn-reflect:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .reflect-error {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .reflect-error-dismiss {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #991b1b;
+    font-size: 14px;
+    padding: 0 2px;
   }
   .toolbar-info {
     pointer-events: auto;
