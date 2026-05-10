@@ -207,10 +207,14 @@ async def download_render_file(job_id: str, file_index: int = 0) -> FileResponse
     if content_type is None:
         content_type = "application/octet-stream"
 
+    # Generate user-friendly filename: {session_id}_{date}.{ext}
+    ext = file_path.suffix
+    date_str = job.created_at.strftime("%Y-%m-%d") if job.created_at else "unknown"
+    friendly_name = f"{job.session_id[:12]}_{date_str}{ext}"
     return FileResponse(
         path=str(file_path),
         media_type=content_type,
-        filename=file_path.name,
+        filename=friendly_name,
     )
 
 
