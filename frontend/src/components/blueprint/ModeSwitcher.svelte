@@ -21,6 +21,7 @@
 
 <div
   class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1"
+  style="pointer-events: auto;"
   data-testid="mode-switcher"
 >
   <button
