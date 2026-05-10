@@ -36,8 +36,20 @@ export function createRenderJobTracker(jobId) {
       error = data.error_message || null;
       loading = false;
 
+      // Persist terminal status to localStorage
       if (terminalStatuses.has(data.status)) {
         stop();
+        try {
+          const saved = localStorage.getItem('danwa.activeRenderJob');
+          if (saved) {
+            const jobData = JSON.parse(saved);
+            if (jobData && jobData.job_id === jobId) {
+              jobData._terminal = true;
+              jobData._finalStatus = data.status;
+              localStorage.setItem('danwa.activeRenderJob', JSON.stringify(jobData));
+            }
+          }
+        } catch { /* ignore */ }
       }
     } catch (err) {
       error = err.message;
