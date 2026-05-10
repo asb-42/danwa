@@ -6,6 +6,7 @@
    * In Workflow Mode, also shows workflow node placeholders.
    * Uses HTML5 Drag API for DnD to canvas.
    */
+  import { onMount } from 'svelte';
   import { i18n } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
   import { getNodesByCategory } from '../../lib/blueprint/registry.js';
@@ -26,8 +27,8 @@
   let savedLayouts = $state([]);
   let layoutsLoading = $state(false);
 
-  let assetNodes = $derived(getNodesByCategory('asset'));
-  let workflowNodes = $derived(getNodesByCategory('workflow'));
+  const assetNodes = getNodesByCategory('asset');
+  const workflowNodes = getNodesByCategory('workflow');
   let isWorkflowMode = $derived(canvasStore.mode === 'workflow');
 
   async function loadLayouts() {
@@ -54,8 +55,8 @@
     }
   }
 
-  // Load layouts on mount
-  $effect(() => {
+  // Load layouts once on mount
+  onMount(() => {
     loadLayouts();
   });
 </script>

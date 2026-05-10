@@ -89,7 +89,7 @@
   {:else if $route === 'config'}
     <ConfigView />
   {:else if $route === 'blueprint'}
-    <BlueprintCanvasView />
+    <BlueprintCanvasView layoutId={$routeParams[0] || null} {navigate} />
   {:else if $route === 'replay'}
     <ReplayView />
   {:else if $route === 'diff'}

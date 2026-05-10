@@ -84,8 +84,8 @@
 </script>
 
 {#if visible && template}
-  <div class="modal-overlay" role="dialog" aria-label={t('template.instantiate.title')}>
-    <div class="modal-container">
+  <div class="modal-overlay" role="dialog" aria-label={t('template.instantiate.title')} tabindex="-1" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}>
+    <div class="modal-container" role="document" onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <!-- Header -->
       <div class="modal-header">
         <div>
