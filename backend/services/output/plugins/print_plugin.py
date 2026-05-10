@@ -118,7 +118,7 @@ class PrintOutputPlugin(OutputPlugin):
         # 4. Generate output files based on primary_format
         output_files: list[Path] = []
         fmt = config.primary_format
-        logger.info(
+        logger.debug(
             "PrintOutputPlugin rendering format=%s (type=%s) for job %s",
             fmt.value, type(fmt).__name__, job_id,
         )
