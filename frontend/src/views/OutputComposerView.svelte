@@ -5,7 +5,7 @@
     startRenderJob,
     searchSessions,
   } from '../lib/output/composerApi.js';
-  import { createRenderJobTracker } from '../lib/output/renderJobStore.js';
+  import { createRenderJobTracker } from '../lib/output/renderJobStore.svelte.js';
   import PluginCard from '../components/output/PluginCard.svelte';
   import ConfigForm from '../components/output/ConfigForm.svelte';
   import RenderJobStatus from '../components/output/RenderJobStatus.svelte';
