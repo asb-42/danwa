@@ -90,7 +90,7 @@
         <span class="text-green-500">✓</span> Artefakt geladen
       </div>
       <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <span class="animate-spin">⏳</span> HTML wird gerendert → PDF wird generiert…
+        <span class="animate-spin">⏳</span> Ausgabe wird generiert…
       </div>
     </div>
   {/if}

@@ -150,8 +150,9 @@ profiles/prompts/**/*.md
 !profiles/prompts/**/*example*.md
 !profiles/prompts/README.md
 
-# Reports
+# Reports & render output
 reports/
+/output/
 *.docx
 *.pdf
 
