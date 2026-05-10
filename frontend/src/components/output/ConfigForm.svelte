@@ -1,14 +1,31 @@
 <script>
   /**
    * Dynamic JSON Schema → Svelte form renderer.
-   * Handles primitives, enums, booleans, and simple objects/dicts.
+   * Handles primitives, enums, booleans, $ref resolution, and simple objects/dicts.
    *
    * @type {{ schema: object, value: object, onchange: (v: object) => void }}
    */
   let { schema = {}, value = $bindable({}), onchange } = $props();
 
   const properties = $derived(schema.properties || {});
+  const defs = $derived(schema['$defs'] || {});
   const required = $derived(new Set(schema.required || []));
+
+  /**
+   * Resolve a JSON Schema property, following $ref pointers
+   * to inline $defs definitions.
+   */
+  function resolveProp(prop) {
+    if (!prop || !prop['$ref']) return prop;
+    const ref = prop['$ref']; // e.g. "#/$defs/PrintFormat"
+    const match = ref.match(/^#\/\$defs\/(.+)$/);
+    if (match && defs[match[1]]) {
+      // Merge the resolved definition with the original prop
+      // (original may have "default", "title", "description")
+      return { ...defs[match[1]], ...prop };
+    }
+    return prop;
+  }
 
   function updateField(key, newVal) {
     value = { ...value, [key]: newVal };
@@ -21,7 +38,8 @@
 </script>
 
 <div class="config-form space-y-4">
-  {#each Object.entries(properties) as [key, prop]}
+  {#each Object.entries(properties) as [key, rawProp]}
+    {@const prop = resolveProp(rawProp)}
     <div class="form-field">
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cfg-{key}">
         {prop.title || key}
