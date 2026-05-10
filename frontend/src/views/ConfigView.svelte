@@ -422,7 +422,7 @@
             <table class="w-full text-sm text-left">
               <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th class="px-4 py-3">ID</th>
+                  <th class="px-4 py-3">{t('config.name')}</th>
                   <th class="px-4 py-3">{t('config.provider')}</th>
                   <th class="px-4 py-3">{t('config.model')}</th>
                   <th class="px-4 py-3">{t('config.temperature')}</th>
@@ -439,7 +439,7 @@
                     {$selectedLLMProfile === profile.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
                     <td class="px-4 py-3 font-medium">
                       <button class="text-blue-600 dark:text-blue-400 hover:underline" onclick={() => { $selectedLLMProfile = profile.id; }}>
-                        {profile.id}
+                        {profile.name}
                       </button>
                       {#if $selectedLLMProfile === profile.id}
                         <span class="ml-2 text-xs text-green-600 dark:text-green-400">✓ {t('config.active')}</span>
@@ -769,7 +769,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
       <div>
         <span class="text-gray-500 dark:text-gray-400">{t('config.llmProfile')}:</span>
-        <span class="ml-1 font-medium text-gray-800 dark:text-white">{$selectedLLMProfile}</span>
+        <span class="ml-1 font-medium text-gray-800 dark:text-white">{llmProfiles.find(p => p.id === $selectedLLMProfile)?.name || $selectedLLMProfile}</span>
       </div>
       <div>
         <span class="text-gray-500 dark:text-gray-400">{t('config.promptVariants')}:</span>

@@ -34,11 +34,20 @@
   let isSaving = $state(false);
   let tagInput = $state('');
 
+  /** Auto-generate a unique LLM profile ID from provider + model. */
+  function generateLLMId() {
+    const p = (formData.provider || 'llm').replace(/[^a-z0-9]/g, '');
+    const m = (formData.model || 'model').split('/').pop().replace(/[^a-z0-9.-]/g, '');
+    const ts = Date.now().toString(36).slice(-4);
+    return `${p}-${m}-${ts}`;
+  }
+
   function validateForm() {
     const errors = {};
     if (type === 'llm') {
-      if (!formData.id || !/^[a-z0-9][a-z0-9.-]*$/.test(formData.id)) {
-        errors.id = 'ID: lowercase alphanumeric, dots, hyphens (e.g. my-profile)';
+      // Auto-generate ID if empty
+      if (!formData.id && mode === 'create') {
+        formData.id = generateLLMId();
       }
       if (!formData.name?.trim()) errors.name = t('config.required');
       if (!formData.model?.trim()) errors.model = t('config.required');
@@ -137,22 +146,13 @@
 
         {#if type === 'llm'}
           <!-- LLM Profile Form -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label for="form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('config.id')} *
-              </label>
-              <input id="form-id" type="text" bind:value={formData.id}
-                disabled={mode === 'edit'}
-                class="w-full px-3 py-2 border rounded-lg text-sm
-                  {formErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                  disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
-                placeholder="my-llm-profile"
-              />
-              {#if formErrors.id}<p class="text-xs text-red-500 mt-1">{formErrors.id}</p>{/if}
+          {#if mode === 'edit' && formData.id}
+            <div class="mb-2">
+              <span class="text-xs text-gray-500 dark:text-gray-400">{t('config.id')}: </span>
+              <code class="text-xs font-mono text-gray-600 dark:text-gray-400">{formData.id}</code>
             </div>
-
+          {/if}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('config.name')} *

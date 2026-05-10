@@ -38,6 +38,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _resolve_llm_model(llm_profile_id: str, project_id: str) -> str:
+    """Resolve an LLM profile ID to the actual model name."""
+    if not llm_profile_id:
+        return ""
+    try:
+        from backend.api.deps import get_blueprint_repository
+        repo = get_blueprint_repository()
+        profile = repo.get_llm_profile(llm_profile_id)
+        if profile:
+            return profile.model
+    except Exception:
+        pass
+    return llm_profile_id
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -247,6 +262,7 @@ async def get_debate(
         case_text=case_text,
         language=language,
         llm_profile_id=llm_profile_id,
+        llm_profile_model=_resolve_llm_model(llm_profile_id, project_id),
         anomalies=anomalies,
         project_id=project_id,
         project_name=project_name,

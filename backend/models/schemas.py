@@ -174,6 +174,7 @@ class DebateStatusResponse(BaseModel):
     case_text: str = ""
     language: str = "de"
     llm_profile_id: str = ""
+    llm_profile_model: str = ""
     anomalies: list[str] = Field(default_factory=list)
     # --- Project context ---
     project_id: str = ""

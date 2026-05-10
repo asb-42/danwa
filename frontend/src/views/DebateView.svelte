@@ -598,7 +598,7 @@
         {#if $currentDebate.llm_profile_id}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('debate.model')}: </span>
-            <span class="text-gray-800 dark:text-gray-200 font-mono text-xs">{$currentDebate.llm_profile_id}</span>
+            <span class="text-gray-800 dark:text-gray-200 font-mono text-xs">{$currentDebate.llm_profile_model || $currentDebate.llm_profile_id}</span>
           </div>
         {/if}
         {#if $currentDebate.language}
