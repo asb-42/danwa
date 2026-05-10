@@ -500,6 +500,7 @@ async def run_debate_workflow(
         "search_mode": fields["search_mode"],
         "project_id": project_id,
         "session_id": debate_id,
+        "debate_id": debate_id,
         "current_round": 0,
         "current_agent_index": 0,
         "rounds": [],

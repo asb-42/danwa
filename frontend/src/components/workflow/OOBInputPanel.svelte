@@ -6,7 +6,10 @@
 
   import { runtime, pendingOOBCount } from '../../lib/workflow/store.js';
   import { submitOOBInput } from '../../lib/workflow/oob.js';
+  import { submitOOBInput as apiSubmitOOB } from '../../lib/api.js';
   import { i18n } from '../../lib/i18n/index.js';
+
+  let { debateId = '' } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -33,17 +36,36 @@
   let pendingCount = $derived($pendingOOBCount);
   let isVisible = $derived(rt.status === 'running' || rt.status === 'waiting_for_user');
 
-  function handleSubmit() {
-    if (!content.trim()) return;
+  let submitError = $state('');
+  let isSubmitting = $state(false);
+
+  async function handleSubmit() {
+    if (!content.trim() || isSubmitting) return;
+    submitError = '';
+    isSubmitting = true;
 
     const target = targetRole === 'next'
-      ? { type: 'next_agent', currentAgentRole: getCurrentRole() }
+      ? { type: 'next_agent', current_agent_role: getCurrentRole() }
       : targetRole === 'current_active'
         ? { type: 'current_active' }
-        : { type: 'specific_agent', agentRole: targetRole, round: rt.currentRound };
+        : { type: 'specific_agent', agent_role: targetRole, round: rt.currentRound };
 
-    submitOOBInput({ content: content.trim(), target, urgency });
+    const trimmedContent = content.trim();
+
+    // Update local store for immediate UI feedback
+    submitOOBInput({ content: trimmedContent, target, urgency });
+
+    // Submit to backend API so workflow nodes can consume it
+    if (debateId) {
+      try {
+        await apiSubmitOOB(debateId, { content: trimmedContent, target, urgency });
+      } catch (err) {
+        submitError = err.message || 'Failed to submit to backend';
+      }
+    }
+
     content = '';
+    isSubmitting = false;
   }
 
   function getCurrentRole() {
