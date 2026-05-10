@@ -128,7 +128,7 @@
       onblur={onSearchBlur}
       placeholder="Search by debate title or session ID…"
       autocomplete="off"
-      class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+      class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 px-3 py-2 text-sm"
     />
     {#if searchLoading}
       <span class="absolute right-3 top-8 text-xs text-gray-400">Searching…</span>

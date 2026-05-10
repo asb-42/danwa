@@ -202,7 +202,7 @@ class RenderEngineService:
         try:
             project_store = ProjectStore()
             for project in project_store.list_all():
-                project_dir = project_store.get_project_dir(project["id"])
+                project_dir = project_store.get_project_dir(project.id)
                 store = DebateStore(data_dir=project_dir / "debates")
                 debate = store.get(session_id)
                 if debate:
@@ -212,6 +212,18 @@ class RenderEngineService:
                     return artifact
         except Exception as exc:
             logger.warning("Failed to build artifact from debate store for %s: %s", session_id, exc)
+
+        # Second fallback: try global DebateStore (data/debates)
+        try:
+            global_store = DebateStore()
+            debate = global_store.get(session_id)
+            if debate:
+                artifact = _debate_to_artifact(debate)
+                self.artifact_store.save(artifact)
+                return artifact
+        except Exception as exc:
+            logger.warning("Failed to build artifact from global debate store for %s: %s", session_id, exc)
+
         return None
 
 

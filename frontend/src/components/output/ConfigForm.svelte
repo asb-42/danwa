@@ -32,7 +32,7 @@
         <!-- Enum → select -->
         <select
           id="cfg-{key}"
-          class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+          class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 px-3 py-2 text-sm"
           value={getVal(key, prop.default || '')}
           onchange={(e) => updateField(key, e.target.value)}
         >
@@ -62,7 +62,7 @@
           min={prop.minimum}
           max={prop.maximum}
           onchange={(e) => updateField(key, Number(e.target.value))}
-          class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+          class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 px-3 py-2 text-sm"
         />
       {:else if prop.type === 'object' && prop.additionalProperties}
         <!-- Dict → key-value table -->
@@ -73,7 +73,7 @@
                 type="text"
                 value={k}
                 readonly
-                class="flex-1 rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-2 py-1 text-sm"
+                class="flex-1 rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 px-2 py-1 text-sm"
               />
               <input
                 type="text"
@@ -82,7 +82,7 @@
                   const obj = { ...getVal(key, {}), [k]: e.target.value };
                   updateField(key, obj);
                 }}
-                class="flex-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm"
+                class="flex-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 px-2 py-1 text-sm"
               />
             </div>
           {/each}
@@ -98,7 +98,7 @@
           value={getVal(key, prop.default || '')}
           placeholder={prop.description || ''}
           onchange={(e) => updateField(key, e.target.value)}
-          class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+          class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 px-3 py-2 text-sm"
         />
       {/if}
 
