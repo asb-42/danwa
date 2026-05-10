@@ -8,4 +8,22 @@
   body {
     @apply antialiased;
   }
+
+  /* Dark mode: ensure table text is readable */
+  .dark table {
+    color: #d1d5db; /* gray-300 */
+  }
+  .dark thead th {
+    color: #d1d5db; /* gray-300 */
+    background-color: #374151; /* gray-700 */
+  }
+  .dark tbody td {
+    color: #e5e7eb; /* gray-200 */
+  }
+  .dark tbody tr {
+    border-color: #374151; /* gray-700 */
+  }
+  .dark tbody tr:hover {
+    background-color: rgba(55, 65, 81, 0.5); /* gray-700/50 */
+  }
 }
