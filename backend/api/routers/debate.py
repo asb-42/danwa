@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -715,17 +716,32 @@ async def _generate_debate_title(
 
         if language == "en":
             system_prompt = (
-                "You are a title generator. Generate a concise, descriptive title "
-                "for a legal/policy debate based on the case description. "
-                "The title MUST be between 60 and 150 characters. "
-                "Return ONLY the title text, nothing else. No quotes, no punctuation at the end."
+                "You are a debate title generator. Your task is to output ONLY a concise, "
+                "descriptive title for a legal/policy debate based on the user's case description. "
+                "CRITICAL RULES:\n"
+                "- Output ONLY the title text — no explanations, no introductions, no meta-commentary\n"
+                "- Do NOT start with phrases like 'Here is a title', 'The title is', 'I suggest', etc.\n"
+                "- Do NOT describe what you are doing or what the user wants\n"
+                "- The title MUST be between 60 and 150 characters\n"
+                "- No quotes, no punctuation at the end\n"
+                "- Example good output: 'The Role of Universal Basic Income in Reducing Social Inequality'\n"
+                "- Example bad output: 'The user wants me to generate a title for...'\n"
+                "- Just output the title directly as a single line."
             )
         else:
             system_prompt = (
-                "Du bist ein Titel-Generator. Erstelle einen prägnanten, beschreibenden Titel "
-                "für eine rechtliche/politische Debatte basierend auf der Fallbeschreibung. "
-                "Der Titel MUSS zwischen 60 und 150 Zeichen lang sein. "
-                "Gib NUR den Titeltext zurück, nichts anderes. Keine Anführungszeichen, kein Satzzeichen am Ende."
+                "Du bist ein Titel-Generator für Debatten. Deine einzige Aufgabe ist es, NUR einen "
+                "prägnanten, beschreibenden Titel für eine rechtliche/politische Debatte basierend "
+                "auf der Fallbeschreibung auszugeben.\n"
+                "KRITISCHE REGELN:\n"
+                "- Gib AUSSCHLIESSLICH den Titeltext aus — keine Erklärungen, keine Einleitungen\n"
+                "- Beginne NICHT mit Sätzen wie 'Hier ist ein Titel', 'Der Titel lautet', 'Ich schlage vor' usw.\n"
+                "- Beschreibe NICHT, was du tust oder was der Benutzer möchte\n"
+                "- Der Titel MUSS zwischen 60 und 150 Zeichen lang sein\n"
+                "- Keine Anführungszeichen, kein Satzzeichen am Ende\n"
+                "- Beispiel guter Output: 'Die Rolle des bedingungslosen Grundeinkommens bei der Reduzierung sozialer Ungleichheit'\n"
+                "- Beispiel schlechter Output: 'Der Benutzer möchte, dass ich einen Titel erstelle für...'\n"
+                "- Gib den Titel direkt als einzelne Zeile aus."
             )
 
         user_prompt = f"Fallbeschreibung / Case description:\n\n{case_text[:2000]}"
@@ -733,17 +749,32 @@ async def _generate_debate_title(
         result = await llm_service.generate(
             prompt=user_prompt,
             system_prompt=system_prompt,
-            temperature=0.7,
+            temperature=0.3,
             max_tokens=100,
         )
 
         title = result.content.strip().strip('"').strip("'").strip()
+        # Strip common verbose LLM prefixes (e.g., "Here is a title:", "Der Titel lautet:")
+        verbose_prefixes = [
+            r'^(?:Here(?:’s| is) (?:a |the |an )?(?:suggested |proposed )?(?:debate )?title[:\s]*|The title is[:\s]*|Title[:\s]*|I suggest[:\s]*|I propose[:\s]*|I would suggest[:\s]*|I think[:\s]*)',
+            r'^(?:Der Titel lautet[:\s]*|Titel[:\s]*|Hier ist ein Titel[:\s]*|Ich schlage vor[:\s]*|Ich würde vorschlagen[:\s]*|Ich denke[:\s]*|Ein passender Titel (?:wäre|ist)[:\s]*)',
+            r'^(?:Here is my title suggestion[:\s]*|My suggested title[:\s]*|Suggested title[:\s]*|Proposed title[:\s]*)',
+            r'^(?:Mein Titelvorschlag[:\s]*|Vorgeschlagener Titel[:\s]*|Passender Titel[:\s]*)',
+        ]
+        for pattern in verbose_prefixes:
+            title = re.sub(pattern, '', title, count=1, flags=re.IGNORECASE).strip()
+        # Remove leading/trailing quotes, dashes, colons, dots
+        title = title.strip('"\'„“”’`-–:.;, ')
+
         # Enforce length constraints
-        if len(title) < 60:
-            # Pad with context if too short
-            title = title[:150]
-        elif len(title) > 150:
+        if len(title) > 150:
             title = title[:147] + "..."
+        elif len(title) < 10:
+            # If absurdly short, use a padded fallback
+            fallback = case_text[:120].strip()
+            if len(fallback) > 150:
+                fallback = fallback[:147] + "..."
+            title = title or fallback
 
         logger.info("Generated debate title (%d chars): %s", len(title), title)
         return title

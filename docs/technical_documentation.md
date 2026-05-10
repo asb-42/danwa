@@ -2069,278 +2069,28 @@ uv pip install ".[dms]"
 
 > **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client, but **not yet accessible through the user interface**. Users cannot use these features without direct API calls or code changes.
 >
-> **Last audited**: 2026-05-09 against all 16 backend routers, 6 frontend API clients, and 10 frontend views.
-
-### 16.1 Async Report Generation (DOCX/PDF/ODF) — HIGH IMPACT
-
-**Status**: Backend + API client ready, no UI
-
-The backend provides **async job-based** report generation via `backend/api/routers/workflow_reports.py`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/sessions/{session_id}/report` | POST | Create async report job (docx/pdf/odf) |
-| `/api/v1/reports/{job_id}/status` | GET | Query job status |
-| `/api/v1/reports/{job_id}/download` | GET | Download completed report |
-| `/api/v1/sessions/{session_id}/report/stream` | GET | SSE progress stream |
-
-**API Client** (`frontend/src/lib/api.js`) — all exist but **never called**:
-- `generateReport(sessionId, format)`
-- `getReportStatus(jobId)`
-- `downloadReport(jobId)`
-
-**i18n strings** already exist: `report.generate`, `report.status.pending`, `report.status.completed`, `report.status.failed`, `report.download`
-
-**Also available** — legacy synchronous endpoint in `backend/api/routers/sessions.py`:
-```
-GET /api/v1/sessions/{session_id}/report/{fmt}   (fmt = docx|pdf)
-```
-
-**What's missing**:
-- No "Download Report" button in `DebateView.svelte` or `ArchiveView.svelte`
-- No report format selector (DOCX vs PDF vs ODF)
-- No report job status indicator or progress UI
-
-**How to expose**: Wire the existing `generateReport()`/`getReportStatus()`/`downloadReport()` functions to download buttons in debate views when `status === 'completed'`.
-
----
-
-### 16.2 Application Settings Tab — MEDIUM IMPACT
-
-**Status**: Backend + API client ready, no UI tab
-
-The backend provides application settings via `backend/api/routers/config.py`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/config/settings` | GET | Get all application settings |
-| `/api/v1/config/settings` | PUT | Update application settings |
-| `/api/v1/config/settings/project/{id}` | GET | Get project-overridden settings |
-| `/api/v1/config/language` | GET | Get current language + supported list |
-| `/api/v1/config/language` | PUT | Set language |
-
-**API Client** (`frontend/src/lib/api.js`):
-- `getSettings()` — exists, used only in `ProjectSettings.svelte`
-- `updateSettings(settings)` — exists but **never called from ConfigView**
-
-**What's missing**:
-- `ConfigView.svelte` tabs: `llm`, `agents`, `prompts`, `cost`, `system`
-- **No "settings" tab** for global application settings (search engine, privacy, retention)
-- `updateSettings()` is never called — only project config is editable
-
-**How to expose**: Add a "settings" tab to `ConfigView.svelte` that uses the existing `getSettings()` and `updateSettings()` functions.
-
----
-
-### 16.3 Manual RAG Search — HIGH IMPACT
-
-**Status**: Backend + API client ready, no search UI
-
-The backend provides RAG search via `backend/api/routers/dms.py`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/dms/rag/manual` | GET | List manual RAG document IDs |
-| `/api/v1/dms/rag/search?q={query}&k={k}` | GET | Search RAG chunks by query |
-
-**API Client** (`frontend/src/lib/api.js`) — both exist but **never called**:
-- `getManualRAGDocuments()`
-- `searchRAG(query, limit)`
-
-**What's missing**:
-- `DocumentsView.svelte` has RAG toggle (add/remove) but **no search UI**
-- Users cannot run custom RAG queries or view search results with relevance scores
-
-**How to expose**: Add a "RAG Search" section to `DocumentsView.svelte` using the existing API functions.
-
----
-
-### 16.4 A2A Agent Discovery — MEDIUM IMPACT
-
-**Status**: Backend + API client + i18n + component exist, but **never wired**
-
-The backend provides A2A discovery via `backend/api/routers/a2a_discovery.py`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/a2a/discover` | POST | Discover A2A agent capabilities |
-| `/api/v1/a2a/capabilities/{profile_id}` | POST | Store discovered capabilities |
-
-**API Client** (`frontend/src/lib/a2aApi.js`) — both exist but **never called**:
-- `discoverA2A(endpointUrl)`
-- `saveA2ACapabilities(profileId, capabilities)`
-
-**Component** exists but is orphaned:
-- `frontend/src/components/blueprint/A2ACapabilities.svelte` — displays capabilities but is **never imported** by any view
-
-**i18n strings** exist: `a2a.discover.button`, `a2a.discover.loading`, `a2a.discover.success`, `a2a.discover.error`, `a2a.capabilities.title`, `a2a.capabilities.skills`, etc.
-
-**What's missing**:
-- No "Discover" button in the A2A section of `DebateView.svelte`
-- No capability display panel anywhere in the UI
-- `A2ACapabilities.svelte` component is dead code
-
-**How to expose**: Import `A2ACapabilities.svelte` into the A2A section and wire `discoverA2A()` to a discover button.
-
----
-
-### 16.5 Session Soft-Delete / Restore — MEDIUM IMPACT
-
-**Status**: Backend + API client + i18n ready, no UI
-
-The backend provides session archival via `backend/api/routers/workflow_exec.py`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/workflow-exec/{session_id}` | DELETE | Soft-delete (archive) session |
-| `/api/v1/workflow-exec/{session_id}/restore` | POST | Restore archived session |
-
-**API Client** (`frontend/src/lib/api.js`) — both exist but **never called**:
-- `softDeleteSession(sessionId)`
-- `restoreSession(sessionId)`
-
-**i18n strings** exist: `session.softDelete`, `session.restore`, `session.archived`
-
-**What's missing**:
-- No "Archive" button in `ArchiveView.svelte`
-- No "Restore" functionality for archived sessions
-- No visual indication of archived vs. active sessions
-
----
-
-### 16.6 Workflow-Exec Pause/Resume/Cancel — MEDIUM IMPACT
-
-**Status**: Backend + API client ready, no UI (separate from HITL pause)
-
-The blueprint workflow engine provides execution control via `backend/api/routers/workflow_exec.py`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/workflow-exec/{session_id}/pause` | POST | Pause workflow execution |
-| `/api/v1/workflow-exec/{session_id}/resume` | POST | Resume workflow execution |
-| `/api/v1/workflow-exec/{session_id}/cancel` | POST | Cancel workflow execution |
-
-**API Client** (`frontend/src/lib/workflowExec.js`) — all exist but **never called**:
-- `pauseWorkflow(sessionId)`
-- `resumeWorkflow(sessionId)`
-- `cancelWorkflow(sessionId)`
-
-**Note**: The HITL system (`/api/v1/debate/{id}/pause`) provides pause/resume for the **debate** workflow. These workflow-exec endpoints are for the **blueprint workflow engine** — a separate system.
-
-**What's missing**:
-- No pause/resume/cancel controls for blueprint workflow executions in `BlueprintCanvasView.svelte`
-
----
-
-### 16.7 Workflow State Query — LOW IMPACT
-
-**Status**: Backend + API client ready, no UI
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/workflow-exec/{session_id}/state` | GET | Get current execution state |
-
-**API Client** (`frontend/src/lib/workflowExec.js`):
-- `getWorkflowState(sessionId)` — exists but **never called**
-
-**What's missing**: No state inspection panel for running workflow sessions.
-
----
-
-### 16.8 Workflow-Exec SSE Stream — MEDIUM IMPACT
-
-**Status**: Backend + API client ready, no UI
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/workflow-exec/{session_id}/stream` | GET | SSE event stream for workflow execution |
-
-**API Client** (`frontend/src/lib/workflowSSE.js`):
-- `createWorkflowSSE(sessionId)` — exists but **never called**
-
-**What's missing**: No real-time event stream consumption for workflow-exec sessions in `BlueprintCanvasView.svelte`.
-
----
-
-### 16.9 Report SSE Progress Stream — LOW IMPACT
-
-**Status**: Backend exists, no API client or UI
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/sessions/{session_id}/report/stream` | GET | SSE progress stream for report generation |
-
-**What's missing**: No frontend API function and no SSE consumption for report generation progress.
-
----
-
-### 16.10 Blueprint Compile & Clone — MEDIUM IMPACT
-
-**Status**: Backend + API client ready, no UI
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/blueprints/workflows/{wf_id}/compile` | POST | Compile workflow (validate references) |
-| `/api/v1/blueprints/workflows/{wf_id}/clone` | POST | Clone workflow definition |
-
-**API Client** (`frontend/src/lib/blueprint/api.js`) — both exist but **never called**:
-- `compileWorkflow(wfId)`
-- `cloneWorkflow(wfId)`
-
-**What's missing**:
-- No "Compile" or "Clone" buttons in `BlueprintCanvasView.svelte` or `Inspector.svelte`
-- No compilation error display in the UI
-
----
-
-### 16.11 Canvas Layout Management — LOW IMPACT
-
-**Status**: Backend + API client partially used, no layout selector UI
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/canvas/layouts` | GET/POST | List/create layouts |
-| `/api/v1/canvas/layouts/{id}` | GET/PUT/DELETE | CRUD for a layout |
-
-**API Client** (`frontend/src/lib/blueprint/api.js`): All CRUD functions exist.
-
-**What's missing**: No layout list/selector UI. `BlueprintCanvasView.svelte` uses layouts but has no "Save As" or "Load Layout" functionality.
-
----
-
-### 16.12 Role Types CRUD — LOW IMPACT
-
-**Status**: Backend + API client ready, no UI
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/blueprints/role-types` | GET/POST | List/create role types |
-| `/api/v1/blueprints/role-types/{id}` | GET/PUT/DELETE | CRUD for a role type |
-
-**API Client** (`frontend/src/lib/blueprint/api.js`): All functions exist but **never called**.
-
-**What's missing**: No role type management UI anywhere.
-
----
-
-### 16.13 Language API — LOW IMPACT
-
-**Status**: Backend exists, no API client, no backend persistence
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/config/language` | GET | Get current language + supported list |
-| `/api/v1/config/language` | PUT | Set language |
-
-**What's missing**: Language switching in `App.svelte` uses `i18n.setLocale()` but never persists to the backend. No frontend API functions exist for these endpoints.
-
----
-
-### 16.14 Legacy Session History — LOW IMPACT
+> **Last audited**: 2026-05-10 — full codebase scan of all backend routers, frontend API clients, and UI views.
+>
+> **Recently exposed (wired up in prior sprints)**: The following features were previously listed as missing but have since been wired into the UI:
+> - **Report Generation (async DOCX/PDF/ODF)** — download 500 error fixed. Now functional via "Bericht erstellen" in debate view.
+> - **Application Settings Tab** — `getSettings()`/`updateSettings()` called in `ConfigView.svelte` + `ProjectSettings.svelte`
+> - **Manual RAG Search** — `searchRAG()` wired in `DocumentsView.svelte`
+> - **A2A Agent Discovery** — `discoverA2A()` wired + `A2ACapabilities.svelte` displayed in `DebateView.svelte`
+> - **Session Soft-Delete / Restore** — `softDeleteSession()`/`restoreSession()` wired in `ArchiveView.svelte`
+> - **Workflow-Exec Controls** — `pauseWorkflow()`/`resumeWorkflow()`/`cancelWorkflow()` wired in `ExecutionPanel.svelte`
+> - **Workflow Interjection** — interjection UI in `ExecutionPanel.svelte`
+> - **Workflow State Query** — `getWorkflowState()` wired in `ExecutionPanel.svelte`
+> - **Workflow-Exec SSE Stream** — `createWorkflowSSE()` wired in `ExecutionPanel.svelte`
+> - **Blueprint Compile & Clone** — `compileWorkflow()`/`cloneWorkflow()` wired in `BlueprintCanvasView.svelte`
+> - **Canvas Layout CRUD** — `loadLayout()`/`saveLayout()`/`deleteLayout()` wired in Palette + BlueprintCanvas
+> - **Role Types CRUD** — `createRoleType()`/`updateRoleType()`/`deleteRoleType()`/`listRoleTypes()` wired in `RoleTypeForm.svelte`, `RoleDefinitionForm.svelte`, and `ConfigView.svelte`
+> - **Language API** — `setLanguage()` wired in `LanguageSwitcher.svelte`
+
+### 16.1 Legacy Session History — LOW IMPACT
 
 **Status**: Legacy backend router exists, no frontend integration
 
-The `backend/api/routers/sessions.py` router provides:
+The `backend/api/routers/sessions.py` router provides legacy endpoints:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -2350,45 +2100,54 @@ The `backend/api/routers/sessions.py` router provides:
 | `/api/v1/sessions/{id}/trace` | GET | Get audit trace |
 | `/api/v1/sessions/{id}/report/{fmt}` | GET | Download report (sync) |
 
-**What's missing**: No frontend API functions and no UI for session history, trace download, or session deletion.
+**What's missing**: No frontend API functions and no UI for session history, trace download, or session deletion through this legacy router.
 
-**Note**: This is a **legacy** router. The newer `workflow_exec.py` and `workflow_reports.py` routers supersede most of these endpoints.
+**Note**: This is a **legacy** router. The newer `workflow_exec.py` and `workflow_reports.py` routers supersede most of these endpoints and already have UI integration.
 
 ---
 
-### 16.15 Summary Table
+### 16.2 Report SSE Progress Stream — LOW IMPACT
+
+**Status**: Backend + API client function exist, not consumed in any view
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/sessions/{session_id}/report/stream` | GET | SSE progress stream for report generation |
+
+**API Client** (`frontend/src/lib/api.js`):
+- `createReportSSE(sessionId)` — exists but **never called** from any `.svelte` view
+
+**What's missing**: No frontend view consumes the report generation SSE stream for progress indication.
+
+---
+
+### 16.3 Project-Level Settings Override — LOW IMPACT
+
+**Status**: Backend exists, no frontend API client or UI
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/config/settings/project/{id}` | GET | Get project-overridden settings |
+
+**What's missing**: No frontend API function or UI for project-level settings overrides. i18n string exists (`projects.configHint`) but no implementation.
+
+---
+
+### 16.4 Summary Table
 
 | # | Feature | Backend | API Client | UI | Status |
-|---|---------|---------|------------|-----|--------|
-| 1 | Async Report Generation (DOCX/PDF/ODF) | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 2 | Application Settings Tab | ✅ | ✅ Exists | ❌ No tab | **Partially exposed** |
-| 3 | Manual RAG Search | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 4 | A2A Agent Discovery | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 5 | Session Soft-Delete / Restore | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 6 | Workflow-Exec Pause/Resume/Cancel | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 7 | Workflow Interjection (workflow-exec) | ✅ | ✅ Exists | ⚠️ Partial | **Partially exposed** |
-| 8 | Workflow State Query | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 9 | Workflow-Exec SSE Stream | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 10 | Report SSE Progress Stream | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
-| 11 | Blueprint Compile & Clone | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 12 | Canvas Layout CRUD | ✅ | ✅ Exists | ⚠️ Partial | **Partially exposed** |
-| 13 | Role Types CRUD | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| 14 | Language API | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
-| 15 | Project-Level Settings Override | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
-| 16 | Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+|--:|---------|---------|------------|-----|--------|
+| 1 | Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| 2 | Report SSE Progress Stream | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| 3 | Project-Level Settings Override | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
 
 ---
 
-### 16.16 Recommendations (Priority Order)
+### 16.5 Recommendations (Priority Order)
 
-1. **Report Generation UI** — Add download buttons to DebateView/ArchiveView. Highest impact missing feature.
-2. **Application Settings Tab** — Add a "Settings" tab to ConfigView. API is ready; only the UI tab is missing.
-3. **Manual RAG Search** — Add a search panel to DocumentsView. API is ready; only the UI is missing.
-4. **A2A Discovery UI** — Wire up the `A2ACapabilities.svelte` component and add a discover button.
-5. **Session Archive/Restore** — Add archive/restore buttons to ArchiveView.
-6. **Blueprint Compile/Clone** — Add compile and clone buttons to the blueprint canvas.
-7. **Workflow-Exec Controls** — Wire up pause/resume/cancel in the ExecutionPanel.
-8. **Language API Integration** — Persist language preference to backend.
+1. **Legacy Session History** — Add frontend API functions and a session list view for the legacy `sessions.py` router, or document it as fully superseded.
+2. **Report SSE Progress Stream** — Wire `createReportSSE()` into the debate view's report download flow for real-time progress feedback.
+3. **Project-Level Settings Override** — Add API client function and wire into `ProjectSettings.svelte`.
 
 ---
 

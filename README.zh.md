@@ -582,66 +582,37 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 ## 缺失环节（功能尚未在 UI 中暴露）
 
-> **什么是"缺失环节"？** 这些是在后端和/或前端 API 客户端中完全实现但**尚未通过用户界面访问**的功能。
+> **什么是"缺失环节"？** 这些是在后端中完全实现但**尚未通过用户界面访问**的功能。
 >
-> **最后审计时间**：2026-05-09 — 全面扫描了所有 16 个后端路由、6 个前端 API 客户端和 10 个前端视图。
+> **最后审计时间**：2026-05-10 — 全面代码库扫描。
+>
+> **近期已暴露（此前迭代中已接线）**：
+> - 报告生成 — 下载 500 错误已修复
+> - 应用设置 — 已在 ConfigView + ProjectSettings 中接线
+> - 手动 RAG 搜索 — 已在 DocumentsView 中接线
+> - A2A 智能体发现 — 已在 DebateView 中接线
+> - 会话归档/恢复 — 已在 ArchiveView 中接线
+> - 工作流执行控制 — 已在 ExecutionPanel 中接线
+> - 蓝图编译/克隆 — 已在 BlueprintCanvasView 中接线
+> - 画布布局 CRUD — 已在 Palette + BlueprintCanvas 中接线
+> - 角色类型 CRUD — 已在 RoleTypeForm + ConfigView 中接线
+> - 语言 API — 已在 LanguageSwitcher 中接线
 
-### 报告生成（异步，DOCX/PDF/ODF）— 高影响
-- **后端**：`POST /api/v1/sessions/{id}/report` + `GET /api/v1/reports/{job_id}/download`（`backend/api/routers/workflow_reports.py`）
-- **API 客户端**：`generateReport()`、`getReportStatus()`、`downloadReport()` 存在于 `api.js` 中但**从未被调用**
-- **缺失**：DebateView 或 ArchiveView 中没有"下载报告"按钮，没有格式选择器，没有任务状态 UI
-- **影响**：尽管完整管道已实现，用户无法下载报告
+### 历史会话管理 — 低影响
+- **后端**：旧版 `backend/api/routers/sessions.py` 路由（已被新路由替代）
+- **缺失**：没有该旧版路由的前端 API 函数或 UI
 
-### 应用设置选项卡 — 中等影响
-- **后端**：`GET/PUT /api/v1/config/settings`（`backend/api/routers/config.py`）
-- **API 客户端**：`getSettings()` 和 `updateSettings()` 存在于 `api.js` 中
-- **缺失**：ConfigView 中没有"设置"选项卡（当前选项卡：llm、agents、prompts、cost、system）
-- **影响**：用户无法查看/更新全局设置（隐私、搜索引擎、保留期、语言）
-
-### 手动 RAG 搜索 — 高影响
-- **后端**：`GET /api/v1/dms/rag/search?q={query}`（`backend/api/routers/dms.py`）
-- **API 客户端**：`getManualRAGDocuments()` 和 `searchRAG()` 存在于 `api.js` 中但**从未被调用**
-- **缺失**：DocumentsView 中没有 RAG 搜索 UI
-- **影响**：用户只能切换文档的 `in_rag` 标志，但无法运行自定义 RAG 查询
-
-### A2A 智能体发现 — 中等影响
-- **后端**：`POST /api/v1/a2a/discover`（`backend/api/routers/a2a_discovery.py`）
-- **API 客户端**：`discoverA2A()` 和 `saveA2ACapabilities()` 存在于 `a2aApi.js` 中但**从未被调用**
-- **组件**：`A2ACapabilities.svelte` 存在但**从未被任何视图导入**（死代码）
-- **缺失**：DebateView 的 A2A 部分没有"发现"按钮，没有能力显示面板
-
-### 会话归档/恢复 — 中等影响
-- **后端**：`DELETE/POST /api/v1/workflow-exec/{id}` 和 `/{id}/restore`（`backend/api/routers/workflow_exec.py`）
-- **API 客户端**：`softDeleteSession()` 和 `restoreSession()` 存在于 `api.js` 中但**从未被调用**
-- **缺失**：ArchiveView 中没有"归档"或"恢复"按钮
-
-### 工作流执行控制（蓝图引擎）— 中等影响
-- **后端**：`workflow_exec.py` 中的暂停/恢复/取消/状态/流端点
-- **API 客户端**：`pauseWorkflow()`、`resumeWorkflow()`、`cancelWorkflow()`、`getWorkflowState()` 存在于 `workflowExec.js` 中但**从未被调用**
-- **API 客户端**：`createWorkflowSSE()` 存在于 `workflowSSE.js` 中但**从未被调用**
-- **缺失**：蓝图工作流会话没有执行控制或实时流
-
-### 蓝图编译和克隆 — 中等影响
-- **后端**：`POST /api/v1/blueprints/workflows/{id}/compile` 和 `/clone`（`backend/api/routers/blueprints.py`）
-- **API 客户端**：`compileWorkflow()` 和 `cloneWorkflow()` 存在于 `blueprint/api.js` 中但**从未被调用**
-- **缺失**：BlueprintCanvasView 中没有"编译"或"克隆"按钮
+### 报告 SSE 进度流 — 低影响
+- **后端**：`GET /api/v1/sessions/{session_id}/report/stream`
+- **API 客户端**：`createReportSSE()` 存在于 `api.js` 但**从未被调用**
+- **缺失**：没有视图使用报告生成的 SSE 进度流
 
 ### 汇总表
 
 | 功能 | 后端 | API 客户端 | UI | 状态 |
 |------|------|------------|-----|------|
-| 异步报告生成（DOCX/PDF/ODF） | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| 应用设置 | ✅ | ✅ 存在 | ❌ 无选项卡 | **部分暴露** |
-| 手动 RAG 搜索 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| A2A 智能体发现 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| 会话归档/恢复 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| 工作流执行控制 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| 蓝图编译/克隆 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| 画布布局 CRUD | ✅ | ✅ 存在 | ⚠️ 部分 | **部分暴露** |
-| 角色类型 CRUD | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
-| 语言 API | ✅ | ❌ 缺失 | ❌ 缺失 | **未暴露** |
 | 历史会话管理 | ✅ | ❌ 缺失 | ❌ 缺失 | **未暴露** |
-| RAG 文档切换 | ✅ | ✅ | ✅ | 已暴露 |
+| 报告 SSE 进度流 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
 | 辩论工作流 | ✅ | ✅ | ✅ | 已暴露 |
 | HITL 交互 | ✅ | ✅ | ✅ | 已暴露 |
 | 辩论中的 A2A | ✅ | ✅ | ✅ | 已暴露 |
