@@ -19,6 +19,7 @@
     { id: 'debate', label: t('nav.debate'), icon: '💬' },
     { id: 'blueprint', label: t('nav.blueprint'), icon: '🧩' },
     { id: 'output', label: t('nav.output'), icon: '🖨️' },
+    { id: 'input', label: t('nav.input'), icon: '🎤' },
     { id: 'documents', label: t('nav.documents'), icon: '📄' },
     { id: 'archive', label: t('nav.archive'), icon: '📚' },
     { id: 'audit', label: t('nav.audit'), icon: '📋' },
