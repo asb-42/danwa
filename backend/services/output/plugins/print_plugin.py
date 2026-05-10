@@ -160,10 +160,19 @@ class PrintOutputPlugin(OutputPlugin):
         config: PrintPluginConfig,
     ) -> str:
         """Render Jinja2 template to HTML string."""
+
+        def _format_number(value):
+            """Format a number with thousands separator."""
+            try:
+                return f"{int(value):,}"
+            except (ValueError, TypeError):
+                return str(value)
+
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
             autoescape=True,
         )
+        env.filters["format_number"] = _format_number
         template = env.get_template(template_name)
         return template.render(
             doc=doc_data,
