@@ -36,9 +36,6 @@ body {
 }
 
 .doc-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1em;
   font-size: 9pt;
   color: #555;
 }
@@ -51,16 +48,10 @@ body {
 
 /* Main Content */
 .debate-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5em;
 }
 
-/* Debate Turn — Two-column with margin notes (flexbox for WeasyPrint performance) */
+/* Debate Turn — simple block layout for WeasyPrint page-break support */
 .debate-turn {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1em;
   padding: 1em 0;
   border-bottom: 1px solid #e0e0e0;
 }
@@ -70,10 +61,6 @@ body {
 }
 
 .turn-header {
-  flex-basis: 100%;
-  display: flex;
-  align-items: baseline;
-  gap: 0.8em;
   margin-bottom: 0.5em;
   font-size: 10pt;
   color: #444;
@@ -105,11 +92,8 @@ body {
 }
 
 .turn-content {
-  flex: 1 1 60%;
-  min-width: 200px;
   font-size: 11pt;
   line-height: 1.7;
-  text-align: justify;
 }
 
 /* Markdown-rendered content styles */
@@ -201,14 +185,12 @@ body {
   border-radius: 2px;
 }
 
-/* Margin Notes — Right column */
+/* Margin Notes — inline block below turn content */
 .margin-notes {
-  flex: 0 0 200px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
-  padding-left: 0.8em;
-  border-left: 2px solid #ddd;
+  margin-top: 0.8em;
+  padding: 0.5em 0.8em;
+  border-left: 3px solid #ddd;
+  background: #fafafa;
 }
 
 .margin-note {
