@@ -1,5 +1,6 @@
 <script>
   import { i18n } from '../lib/i18n/index.js';
+  import { currentDebate } from '../lib/stores.js';
   import ProjectSelector from './ProjectSelector.svelte';
 
   let { navigate, currentRoute } = $props();
@@ -14,12 +15,17 @@
     return text;
   });
 
+  /** True when a debate is created or running */
+  let hasActiveDebate = $derived(
+    $currentDebate && ['pending', 'running'].includes($currentDebate.status)
+  );
+
   let navItems = $derived([
     { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
-    { id: 'debate', label: t('nav.debate'), icon: '💬' },
+    ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬' }] : []),
+    { id: 'input', label: t('nav.input'), icon: '🎤' },
     { id: 'blueprint', label: t('nav.blueprint'), icon: '🧩' },
     { id: 'output', label: t('nav.output'), icon: '🖨️' },
-    { id: 'input', label: t('nav.input'), icon: '🎤' },
     { id: 'documents', label: t('nav.documents'), icon: '📄' },
     { id: 'archive', label: t('nav.archive'), icon: '📚' },
     { id: 'audit', label: t('nav.audit'), icon: '📋' },

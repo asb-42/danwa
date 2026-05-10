@@ -130,6 +130,7 @@
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.round')}</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.agent')}</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.action')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Content</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.timestamp')}</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.model')}</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.tokens')}</th>
@@ -146,6 +147,20 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-gray-800 dark:text-gray-200">{event.action || '—'}</td>
+                <td class="px-4 py-3 text-gray-700 dark:text-gray-300 text-xs max-w-md">
+                  {#if event.content}
+                    <details>
+                      <summary class="cursor-pointer text-blue-600 dark:text-blue-400 hover:underline">
+                        {event.content.substring(0, 80)}{event.content.length > 80 ? '…' : ''}
+                      </summary>
+                      <div class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded text-xs whitespace-pre-wrap max-h-64 overflow-y-auto">
+                        {event.content}
+                      </div>
+                    </details>
+                  {:else}
+                    <span class="text-gray-400 dark:text-gray-500">—</span>
+                  {/if}
+                </td>
                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs font-mono">
                   {formatTimestamp(event.timestamp)}
                 </td>

@@ -26,16 +26,20 @@ from backend.api.routers import (  # noqa: E402
     canvas,
     config,
     debate,
+    debate_stream,
     dms,
     health,
     input_composer,
+    llm_profiles,
     optimization_proposals,
     output_composer,
     profiles,
     projects,
+    role_definitions,
     sessions,
     system,
     tone_profiles,
+    workflow_definitions,
     workflow_exec,
     workflow_reports,
     workflow_templates,
@@ -160,6 +164,7 @@ def create_app() -> FastAPI:
     # --- Routers ---
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
+    app.include_router(debate_stream.router, prefix="/api/v1/debate", tags=["debate"])
     app.include_router(hitl_router, prefix="/api/v1/debate", tags=["hitl"])
     app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
     app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
@@ -173,6 +178,15 @@ def create_app() -> FastAPI:
     # --- Blueprint Canvas ---
     app.include_router(
         blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"]
+    )
+    app.include_router(
+        llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"]
+    )
+    app.include_router(
+        role_definitions.router, prefix="/api/v1/blueprints", tags=["blueprints"]
+    )
+    app.include_router(
+        workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"]
     )
     app.include_router(
         canvas.router, prefix="/api/v1/canvas", tags=["canvas"]

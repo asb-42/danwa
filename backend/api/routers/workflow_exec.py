@@ -176,8 +176,8 @@ async def start_workflow(
     rag_context = ""
     if body.document_ids or body.rag_auto_retrieve:
         try:
-            from backend.api.routers.debate import _resolve_rag_context
-            rag_context, _ = _resolve_rag_context(
+            from backend.services.debate_workflow import resolve_rag_context
+            rag_context, _ = resolve_rag_context(
                 project_id=body.project_id,
                 case_text=body.context,
                 document_ids=body.document_ids,

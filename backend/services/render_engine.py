@@ -1,8 +1,7 @@
 """RenderEngineService — orchestrates render job lifecycle.
 
-Validates, dispatches, and tracks render jobs.  The actual plugin
-``render()`` call runs as a background task (FastAPI ``BackgroundTasks``
-or ``asyncio.create_task``).
+Validates submissions, dispatches to output plugins, and tracks
+job status through ``queued → running → completed | failed``.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from backend.services.render_job_store import RenderJobStore
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_OUTPUT_DIR = Path("data/outputs")
+_DEFAULT_OUTPUT_DIR = Path("output")
 
 
 class RenderEngineService:
@@ -69,13 +68,15 @@ class RenderEngineService:
         plugin_cls = self.registry.get_plugin(plugin_key)
         validated_config = plugin_cls.validate_config(config)
 
-        # 2. Load artifact
+        # 2. Load artifact (with fallback: build from debate store)
         artifact = self.artifact_store.get(session_id)
         if artifact is None:
-            raise ValueError(
-                f"No DebateArtifact found for session {session_id!r}. "
-                "Ensure the workflow has completed and the artifact was saved."
-            )
+            artifact = self._build_artifact_from_debate_store(session_id)
+            if artifact is None:
+                raise ValueError(
+                    f"No DebateArtifact found for session {session_id!r}. "
+                    "Ensure the workflow has completed and the artifact was saved."
+                )
 
         # 3. Compute artifact hash for integrity checking
         artifact_hash = artifact.artifact_hash()
@@ -129,8 +130,10 @@ class RenderEngineService:
         )
 
         try:
-            # Reload artifact
+            # Reload artifact (with fallback)
             artifact = self.artifact_store.get(job.session_id)
+            if artifact is None:
+                artifact = self._build_artifact_from_debate_store(job.session_id)
             if artifact is None:
                 raise ValueError(
                     f"DebateArtifact for session {job.session_id!r} disappeared"
@@ -181,3 +184,83 @@ class RenderEngineService:
                 exc,
                 exc_info=True,
             )
+
+    # ------------------------------------------------------------------
+    # Fallback: build artifact from debate store
+    # ------------------------------------------------------------------
+
+    def _build_artifact_from_debate_store(self, session_id: str):
+        """Fallback: build a DebateArtifact from the debate store for legacy sessions.
+
+        Searches all projects for a debate with the given session_id and builds
+        an artifact from its rounds/result data.  Returns None if not found.
+        """
+        from backend.models.artifact import DebateArtifact
+        from backend.persistence.debate_store import DebateStore
+        from backend.persistence.project_store import ProjectStore
+
+        try:
+            project_store = ProjectStore()
+            for project in project_store.list_all():
+                project_dir = project_store.get_project_dir(project["id"])
+                store = DebateStore(data_dir=project_dir / "debates")
+                debate = store.get(session_id)
+                if debate:
+                    artifact = _debate_to_artifact(debate)
+                    # Cache for future use
+                    self.artifact_store.save(artifact)
+                    return artifact
+        except Exception as exc:
+            logger.warning("Failed to build artifact from debate store for %s: %s", session_id, exc)
+        return None
+
+
+def _debate_to_artifact(debate: dict):
+    """Convert a debate store dict into a DebateArtifact."""
+    from backend.models.artifact import DebateArtifact, Turn
+
+    result = debate.get("result", {})
+    rounds = debate.get("rounds", [])
+    if not rounds and result:
+        rounds = result.get("rounds", [])
+    req = debate.get("request", {})
+
+    turns: list[Turn] = []
+    for rd in rounds:
+        for ao in rd.get("agent_outputs", []):
+            turns.append(
+                Turn(
+                    round=rd.get("round", 0),
+                    node_id=f"{ao.get('role', 'agent')}_round{rd.get('round', 0)}",
+                    agent_name=ao.get("role", "agent"),
+                    role_type=ao.get("role", "agent"),
+                    content=ao.get("content", ""),
+                    token_usage={"total": ao.get("tokens_used", 0)},
+                )
+            )
+
+    case_text = ""
+    if isinstance(req.get("case"), dict):
+        case_text = req["case"].get("text", "")
+    elif req.get("case"):
+        case_text = str(req["case"])
+
+    return DebateArtifact(
+        session_id=debate.get("debate_id", ""),
+        workflow_id=f"debate_{debate.get('debate_id', '')[:8]}",
+        workflow_version=1,
+        workflow_name="debate",
+        topic=case_text,
+        transcript=turns,
+        consensus_result={
+            "score": result.get("final_consensus", 0.0),
+            "summary": result.get("output", ""),
+        },
+        metadata={
+            "token_usage": {
+                "total": sum(t.token_usage.get("total", 0) for t in turns),
+            },
+            "title": debate.get("title", ""),
+            "language": req.get("language", "de"),
+        },
+    )

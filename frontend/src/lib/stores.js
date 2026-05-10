@@ -71,3 +71,6 @@ export const selectedPersonas = persisted('danwa.selectedPersonas', {
   optimizer: 'optimizer-default',
   moderator: 'moderator-default',
 });
+
+/** When true, DebateView auto-starts the current debate on mount */
+export const autoStartDebate = writable(false);

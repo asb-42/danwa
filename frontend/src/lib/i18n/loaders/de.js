@@ -4,7 +4,7 @@
 export default {
   // Navigation
   'nav.dashboard': 'Dashboard',
-  'nav.debate': 'Debatte',
+  'nav.debate': 'Laufende Debatte',
   'nav.archive': 'Archiv',
   'nav.audit': 'Prüfpfad',
   'nav.config': 'Konfiguration',
@@ -12,7 +12,7 @@ export default {
   'nav.blueprint': 'Blueprint',
   'nav.documents': 'Dokumente',
   'nav.projects': 'Projekte',
-  'nav.input': 'Eingabe',
+  'nav.input': 'Neue Debatte',
 
   // Dashboard
   'dashboard.title': 'Dashboard',

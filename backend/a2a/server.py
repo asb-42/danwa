@@ -140,7 +140,7 @@ class A2AServer:
         import uuid as _uuid
 
         from backend.api.deps import get_audit_service, get_debate_store_for_project
-        from backend.api.routers.debate import _run_debate_workflow
+        from backend.services.debate_workflow import run_debate_workflow
         from backend.models.schemas import DebateStatus
 
         debate_id = str(_uuid.uuid4())
@@ -165,7 +165,7 @@ class A2AServer:
 
         # Run workflow in background
         asyncio.create_task(
-            _run_debate_workflow(debate_id, self.project_id, audit, store)
+            run_debate_workflow(debate_id, self.project_id, audit, store)
         )
 
         return debate_id

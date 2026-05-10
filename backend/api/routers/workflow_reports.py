@@ -13,10 +13,11 @@ import asyncio
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from backend.api.deps import get_debate_store_for_project, get_project_id
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.workflow.report_generator import WorkflowReportGenerator
 from backend.workflow.report_jobs import ReportJobStore
@@ -84,7 +85,12 @@ class ReportStatusResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def _generate_report_job(job_id: str, session_id: str, fmt: str) -> None:
+async def _generate_report_job(
+    job_id: str,
+    session_id: str,
+    fmt: str,
+    project_id: str | None = None,
+) -> None:
     """Background task that generates a report and updates the job store."""
     store = _get_job_store()
     gen = _get_report_gen()
@@ -95,7 +101,19 @@ async def _generate_report_job(job_id: str, session_id: str, fmt: str) -> None:
     })
 
     try:
-        path = await gen.generate(session_id, fmt)
+        # Load debate data from the project-scoped store
+        debate_data = None
+        if project_id:
+            try:
+                debate_store = get_debate_store_for_project(project_id)
+                debate_data = debate_store.get(session_id)
+            except Exception as exc:
+                logger.warning(
+                    "Could not load debate data for session %s (project %s): %s",
+                    session_id, project_id, exc,
+                )
+
+        path = await gen.generate(session_id, fmt, debate_data=debate_data)
         store.update_job(job_id, status="completed", file_path=str(path))
         await publish_async(session_id, "report.progress", {
             "job_id": job_id, "status": "completed", "progress": 100,
@@ -118,6 +136,7 @@ async def create_report_job(
     session_id: str,
     body: CreateReportRequest,
     background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
 ) -> CreateReportResponse:
     """Create an async report generation job.
 
@@ -135,7 +154,9 @@ async def create_report_job(
     store = _get_job_store()
     job_id = store.create_job(session_id, fmt)
 
-    background_tasks.add_task(_generate_report_job, job_id, session_id, fmt)
+    background_tasks.add_task(
+        _generate_report_job, job_id, session_id, fmt, project_id
+    )
 
     return CreateReportResponse(job_id=job_id, status="pending", format=fmt)
 

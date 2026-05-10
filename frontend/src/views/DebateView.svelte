@@ -1,9 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject } from '../lib/stores.js';
-  import { createDebate, getDebate, startDebate, cancelDebate, getDocuments, generateReport, getReportStatus, downloadReport } from '../lib/api.js';
-  import { discoverA2A } from '../lib/a2aApi.js';
-  import A2ACapabilities from '../components/blueprint/A2ACapabilities.svelte';
+  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, autoStartDebate } from '../lib/stores.js';
+  import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
@@ -17,6 +15,9 @@
   import InteractionTimeline from '../components/hitl/InteractionTimeline.svelte';
   import { getHITLStatus, getInteractions } from '../lib/hitl.js';
   import { hitlStatus, hitlInteractions, showAgentQueryModal, currentAgentQuery } from '../lib/stores/hitl.svelte.js';
+  // Extracted sub-components
+  import DebateActivityStrip from '../components/debate/DebateActivityStrip.svelte';
+  import DebateReportPanel from '../components/debate/DebateReportPanel.svelte';
 
   /** @type {function} Navigation helper from App.svelte */
   let { debateId = null, navigate = () => {} } = $props();
@@ -32,31 +33,8 @@
   /** True when viewing a past debate (read-only archive mode) */
   let isArchiveMode = $derived(!!debateId);
 
-  let caseText = $state('');
-  let maxRounds = $state(3);
-  let consensusThreshold = $state(0.8);
-  let searchMode = $state('off');
-  // RAG document selection
-  let availableDocuments = $state([]);
-  let selectedDocumentIds = $state([]);
-  let ragAutoRetrieve = $state(false);
-  let showRAGContextPreview = $state(false);
-
-  // A2A external agent configuration
-  let a2aAgents = $state([]); // [{url: '', role: '', position: ''}]
-  let showA2ASection = $state(false);
-  let a2aDiscovering = $state(false);
-  let a2aDiscoverError = $state('');
-  let a2aCapabilities = $state({}); // { url: capabilities }
   let sseConnection = $state(null);
   let archiveLoading = $state(false);
-
-  // Report generation state
-  let reportFormat = $state('docx');
-  let reportGenerating = $state(false);
-  let reportJobId = $state(null);
-  let reportError = $state(null);
-  let reportPollTimer = $state(null);
 
   // Debate title state
   let debateTitle = $state('');
@@ -65,13 +43,13 @@
 
   let projectId = $derived($activeProject?.id);
 
-  // Live web search results — stores search events as they arrive
-  let liveSearchResults = $state([]); // { round, role, query, results, timestamp }
+  // Live web search results
+  let liveSearchResults = $state([]);
 
-  // Live activity log — stores full agent outputs as they arrive
-  let liveOutputs = $state([]); // { round, role, content, tokens, tokens_in, tokens_out, duration_ms, model, profile, timestamp }
-  let currentActivity = $state(null); // { round, role, profile, model, provider, agent_index, agent_total }
-  let expandedOutputs = $state(new Set()); // track which outputs are expanded
+  // Live activity log
+  let liveOutputs = $state([]);
+  let currentActivity = $state(null);
+  let expandedOutputs = $state(new Set());
 
   // Activity Strip state
   let cumulativeTokens = $state(0);
@@ -80,11 +58,14 @@
   let processingTimer = $state(null);
   let lastRoundTokens = $state(0);
 
-  // Workflow phase tracking — shows what's happening between debate start and first agent
-  let workflowPhase = $state(null); // { type, message, phase, role, model, provider, elapsed }
+  // Workflow phase tracking
+  let workflowPhase = $state(null);
   let workflowStartTime = $state(null);
   let workflowElapsed = $state(0);
   let workflowTimer = $state(null);
+
+  // RAG context preview toggle
+  let showRAGContextPreview = $state(false);
 
   // Load debate from archive when debateId is provided
   onMount(async () => {
@@ -94,7 +75,6 @@
       try {
         const debate = await getDebate(debateId);
         $currentDebate = debate;
-        // Sync title from loaded debate
         if (debate.title) {
           debateTitle = debate.title;
           titleFadedIn = true;
@@ -105,207 +85,54 @@
         archiveLoading = false;
       }
     }
-    // Load available documents for RAG selection
-    loadAvailableDocuments();
   });
 
-  // Reload documents and clear stale debate when project changes
+  // Auto-start debate when navigated from "Neue Debatte" page
+  $effect(() => {
+    if ($autoStartDebate && $currentDebate && $currentDebate.status === 'pending') {
+      $autoStartDebate = false;
+      // Small delay to ensure the component is fully mounted and SSE can connect
+      setTimeout(() => {
+        handleStartDebate();
+      }, 200);
+    }
+  });
+
+  // Reconnect SSE for running debates (e.g., after page refresh)
+  $effect(() => {
+    if ($currentDebate && $currentDebate.status === 'running' && !sseConnection) {
+      sseConnection = createSSE($currentDebate.debate_id, {
+        onEvent: (event) => { handleSSEEvent(event); },
+        onOpen: () => { $sseConnected = true; },
+        onClose: () => { $sseConnected = false; },
+        onError: (err) => { console.error('SSE error:', err); },
+      });
+    }
+  });
+
+  // Clear stale debate when project changes
   let lastProjectId = $state(null);
   $effect(() => {
     if (projectId && projectId !== lastProjectId) {
       if (lastProjectId !== null) {
-        // Project actually changed (not initial mount) — clear stale debate context
         $currentDebate = null;
         liveOutputs = [];
         liveSearchResults = [];
         currentActivity = null;
         expandedOutputs = new Set();
-        selectedDocumentIds = [];
       }
       lastProjectId = projectId;
-      loadAvailableDocuments();
     }
   });
-
-  async function loadAvailableDocuments() {
-    try {
-      availableDocuments = await getDocuments();
-    } catch {
-      // Silently fail — documents are optional
-      availableDocuments = [];
-    }
-  }
-
-  function toggleDocumentSelection(docId) {
-    const idx = selectedDocumentIds.indexOf(docId);
-    if (idx >= 0) {
-      selectedDocumentIds = selectedDocumentIds.filter(id => id !== docId);
-    } else {
-      selectedDocumentIds = [...selectedDocumentIds, docId];
-    }
-  }
-
-  // A2A agent management
-  function addA2AAgent() {
-    a2aAgents = [...a2aAgents, { url: '', role: '', position: '' }];
-  }
-
-  function removeA2AAgent(index) {
-    a2aAgents = a2aAgents.filter((_, i) => i !== index);
-  }
-
-  function updateA2AAgent(index, field, value) {
-    a2aAgents = a2aAgents.map((agent, i) =>
-      i === index ? { ...agent, [field]: value } : agent
-    );
-  }
-
-  let validA2AAgents = $derived(
-    a2aAgents.filter(a => a.url.trim() !== '')
-  );
-
-  async function handleDiscoverA2A() {
-    a2aDiscovering = true;
-    a2aDiscoverError = '';
-    a2aCapabilities = {};
-    try {
-      const urls = a2aAgents.filter(a => a.url.trim()).map(a => a.url.trim());
-      const results = {};
-      for (const url of urls) {
-        try {
-          results[url] = await discoverA2A(url);
-        } catch (e) {
-          results[url] = { error: e.message };
-        }
-      }
-      a2aCapabilities = results;
-    } catch (e) {
-      a2aDiscoverError = e.message;
-    } finally {
-      a2aDiscovering = false;
-    }
-  }
 
   // Cleanup SSE, timers, and workflow state on destroy
   onDestroy(() => {
-    if (sseConnection) {
-      sseConnection.close();
-    }
-    if (processingTimer) {
-      clearInterval(processingTimer);
-    }
-    if (workflowTimer) {
-      clearInterval(workflowTimer);
-    }
-    if (hitlPollTimer) {
-      clearInterval(hitlPollTimer);
-    }
-    if (reportPollTimer) {
-      clearInterval(reportPollTimer);
-    }
+    if (sseConnection) sseConnection.close();
+    if (processingTimer) clearInterval(processingTimer);
+    if (workflowTimer) clearInterval(workflowTimer);
+    if (hitlPollTimer) clearInterval(hitlPollTimer);
     resetWorkflow();
   });
-
-  // --- Report Generation ---
-  async function handleGenerateReport() {
-    if (!$currentDebate) return;
-    reportGenerating = true;
-    reportError = null;
-    reportJobId = null;
-    try {
-      const result = await generateReport($currentDebate.debate_id, reportFormat);
-      reportJobId = result.job_id;
-      // Start polling for status
-      reportPollTimer = setInterval(async () => {
-        try {
-          const status = await getReportStatus(reportJobId);
-          if (status.status === 'completed') {
-            clearInterval(reportPollTimer);
-            reportPollTimer = null;
-            reportGenerating = false;
-            // Trigger download
-            try {
-              const blob = await downloadReport(reportJobId);
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `report-${$currentDebate.debate_id.substring(0, 8)}.${reportFormat}`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            } catch (dlErr) {
-              // If download returns JSON (error), handle gracefully
-              reportError = dlErr.message || t('report.status.failed');
-            }
-          } else if (status.status === 'failed') {
-            clearInterval(reportPollTimer);
-            reportPollTimer = null;
-            reportGenerating = false;
-            reportError = status.error || t('report.status.failed');
-          }
-        } catch (pollErr) {
-          // Continue polling — transient errors are OK
-          console.warn('[Report] Poll error:', pollErr);
-        }
-      }, 2000);
-    } catch (err) {
-      reportError = err.message;
-      reportGenerating = false;
-    }
-  }
-
-  async function handleCreateDebate() {
-    if (!caseText.trim()) {
-      $error = t('debate.enterCase');
-      return;
-    }
-
-    $loading = true;
-    $error = null;
-    liveOutputs = [];
-    liveSearchResults = [];
-    currentActivity = null;
-    expandedOutputs = new Set();
-    cumulativeTokens = 0;
-    processingStartTime = null;
-    processingElapsed = 0;
-    lastRoundTokens = 0;
-    workflowPhase = null;
-    workflowStartTime = null;
-    workflowElapsed = 0;
-    debateTitle = '';
-    titleGenerating = false;
-    titleFadedIn = false;
-    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
-    if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
-    resetWorkflow();
-
-    try {
-      const response = await createDebate(caseText, {
-        max_rounds: maxRounds,
-        consensus_threshold: consensusThreshold,
-        search_mode: searchMode,
-        llm_profile_id: $selectedLLMProfile,
-        prompt_variant: $selectedPromptVariant,
-        agent_persona_ids: $selectedPersonas,
-        language: $locale || 'de',
-        document_ids: selectedDocumentIds,
-        rag_auto_retrieve: ragAutoRetrieve,
-        a2a_agents: validA2AAgents,
-      });
-      $currentDebate = response;
-      $debates = [...$debates, response];
-      caseText = '';
-      selectedDocumentIds = [];
-      ragAutoRetrieve = false;
-      a2aAgents = [];
-    } catch (err) {
-      $error = err.message;
-    } finally {
-      $loading = false;
-    }
-  }
 
   async function handleStartDebate() {
     if (!$currentDebate) return;
@@ -330,11 +157,8 @@
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
     resetWorkflow();
 
-    // Connect SSE FIRST so we receive all events from the start
     sseConnection = createSSE($currentDebate.debate_id, {
-      onEvent: (event) => {
-        handleSSEEvent(event);
-      },
+      onEvent: (event) => { handleSSEEvent(event); },
       onOpen: () => { $sseConnected = true; },
       onClose: () => { $sseConnected = false; },
       onError: (err) => { console.error('SSE error:', err); },
@@ -360,10 +184,7 @@
   }
 
   function stopProcessingTimer() {
-    if (processingTimer) {
-      clearInterval(processingTimer);
-      processingTimer = null;
-    }
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
   }
 
   function startWorkflowTimer() {
@@ -376,43 +197,32 @@
   }
 
   function stopWorkflowTimer() {
-    if (workflowTimer) {
-      clearInterval(workflowTimer);
-      workflowTimer = null;
-    }
+    if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
   }
 
   function handleSSEEvent(event) {
     console.log('SSE event:', event);
 
-    // Forward to workflow visualization store
-    try {
-      handleWorkflowSSE(event);
-    } catch (e) {
+    try { handleWorkflowSSE(event); } catch (e) {
       console.warn('Workflow SSE mapping error:', e);
     }
 
-    // title_generating — LLM is generating the debate title
     if (event.type === 'title_generating') {
       titleGenerating = true;
       titleFadedIn = false;
       return;
     }
 
-    // title_ready — debate title has been generated
     if (event.type === 'title_ready' && event.title) {
       debateTitle = event.title;
       titleGenerating = false;
-      // Trigger fade-in animation after a brief delay
       setTimeout(() => { titleFadedIn = true; }, 50);
-      // Also update the current debate store
       if ($currentDebate) {
         $currentDebate = { ...$currentDebate, title: event.title };
       }
       return;
     }
 
-    // status_change: completed or failed
     if (event.status === 'completed' || event.status === 'failed') {
       $currentDebate = { ...$currentDebate, status: event.status };
       currentActivity = null;
@@ -423,16 +233,13 @@
       return;
     }
 
-    // round_update
     if (event.round !== undefined && event.consensus !== undefined) {
       $currentDebate = {
         ...$currentDebate,
         current_round: event.round + 1,
         consensus_score: event.consensus,
       };
-      if (event.total_tokens) {
-        lastRoundTokens = event.total_tokens;
-      }
+      if (event.total_tokens) lastRoundTokens = event.total_tokens;
       currentActivity = null;
       workflowPhase = null;
       stopProcessingTimer();
@@ -440,55 +247,36 @@
       return;
     }
 
-    // workflow_started — debate workflow engine has begun
     if (event.type === 'workflow_started') {
-      workflowPhase = {
-        type: 'workflow_started',
-        message: event.message,
-      };
+      workflowPhase = { type: 'workflow_started', message: event.message };
       startWorkflowTimer();
       return;
     }
 
-    // agent_preparing — agent is resolving profile or prompts
     if (event.type === 'agent_preparing') {
       workflowPhase = {
-        type: 'agent_preparing',
-        phase: event.phase,
-        role: event.role,
-        round: event.round,
-        agent_index: event.agent_index,
-        agent_total: event.agent_total,
+        type: 'agent_preparing', phase: event.phase, role: event.role,
+        round: event.round, agent_index: event.agent_index, agent_total: event.agent_total,
       };
       if (!workflowTimer) startWorkflowTimer();
       return;
     }
 
-    // llm_call_started — LLM API call is about to be made
     if (event.type === 'llm_call_started') {
       workflowPhase = {
-        type: 'llm_call_started',
-        role: event.role,
-        model: event.model,
-        provider: event.provider,
-        round: event.round,
-        agent_index: event.agent_index,
-        agent_total: event.agent_total,
+        type: 'llm_call_started', role: event.role, model: event.model,
+        provider: event.provider, round: event.round,
+        agent_index: event.agent_index, agent_total: event.agent_total,
       };
       if (!workflowTimer) startWorkflowTimer();
       return;
     }
 
-    // agent_started — enriched with model, provider, agent_index, agent_total
     if (event.role && event.round && event.profile && !event.content) {
       currentActivity = {
-        round: event.round,
-        role: event.role,
-        profile: event.profile,
-        model: event.model || '',
-        provider: event.provider || '',
-        agent_index: event.agent_index ?? 0,
-        agent_total: event.agent_total ?? 0,
+        round: event.round, role: event.role, profile: event.profile,
+        model: event.model || '', provider: event.provider || '',
+        agent_index: event.agent_index ?? 0, agent_total: event.agent_total ?? 0,
       };
       workflowPhase = null;
       stopWorkflowTimer();
@@ -496,7 +284,6 @@
       return;
     }
 
-    // agent_output — full content arrives here (enriched with real tokens + duration)
     if (event.role && event.round && event.content) {
       const profile = currentActivity?.profile || '';
       const model = currentActivity?.model || event.model || '';
@@ -508,50 +295,33 @@
       workflowPhase = null;
       stopWorkflowTimer();
       liveOutputs = [...liveOutputs, {
-        round: event.round,
-        role: event.role,
-        content: event.content,
-        tokens: event.tokens_used,
-        tokens_in: tokensIn,
-        tokens_out: tokensOut,
-        duration_ms: event.duration_ms || 0,
-        model: model,
-        profile: profile,
-        timestamp: new Date(),
+        round: event.round, role: event.role, content: event.content,
+        tokens: event.tokens_used, tokens_in: tokensIn, tokens_out: tokensOut,
+        duration_ms: event.duration_ms || 0, model, profile, timestamp: new Date(),
       }];
     }
 
-    // web_search — search activity feedback
     if (event.type === 'web_search' || event.event === 'web_search') {
       liveSearchResults = [...liveSearchResults, {
-        round: event.round || 0,
-        role: event.role || '',
-        query: event.query || '',
-        results: event.results || [],
-        result_count: event.result_count || 0,
-        timestamp: new Date(),
+        round: event.round || 0, role: event.role || '',
+        query: event.query || '', results: event.results || [],
+        result_count: event.result_count || 0, timestamp: new Date(),
       }];
       return;
     }
 
-    // --- HITL events ---
-    // hitl_query — agent asks user a question
+    // HITL events
     if (event.type === 'hitl_query') {
       currentAgentQuery.set({
-        interrupt_id: event.interrupt_id,
-        agent_role: event.agent_role,
-        question: event.question,
-        confidence: event.confidence,
-        reason: event.reason,
-        round: event.round,
+        interrupt_id: event.interrupt_id, agent_role: event.agent_role,
+        question: event.question, confidence: event.confidence,
+        reason: event.reason, round: event.round,
       });
       showAgentQueryModal.set(true);
-      // Refresh HITL status
       refreshHITLStatus();
       return;
     }
 
-    // hitl_response — user responded to agent query
     if (event.type === 'hitl_response') {
       showAgentQueryModal.set(false);
       currentAgentQuery.set(null);
@@ -560,39 +330,17 @@
       return;
     }
 
-    // hitl_inject — user injected context
-    if (event.type === 'hitl_inject') {
+    if (event.type === 'hitl_inject' || event.type === 'hitl_inject_consumed') {
       refreshHITLStatus();
       refreshHITLInteractions();
       return;
     }
 
-    // hitl_inject_consumed — injects were consumed by an agent
-    if (event.type === 'hitl_inject_consumed') {
-      refreshHITLStatus();
-      refreshHITLInteractions();
-      return;
-    }
-
-    // hitl_pause — debate paused/resumed
-    if (event.type === 'hitl_pause') {
+    if (event.type === 'hitl_pause' || event.type === 'hitl_paused' || event.type === 'hitl_resumed') {
       refreshHITLStatus();
       return;
     }
 
-    // hitl_paused — workflow is waiting (paused state)
-    if (event.type === 'hitl_paused') {
-      refreshHITLStatus();
-      return;
-    }
-
-    // hitl_resumed — workflow resumed
-    if (event.type === 'hitl_resumed') {
-      refreshHITLStatus();
-      return;
-    }
-
-    // hitl_timeout — agent query timed out
     if (event.type === 'hitl_timeout') {
       showAgentQueryModal.set(false);
       currentAgentQuery.set(null);
@@ -609,9 +357,7 @@
     try {
       const status = await getHITLStatus($currentDebate.debate_id);
       hitlStatus.set(status);
-    } catch {
-      // Silently fail — HITL status is optional
-    }
+    } catch { /* Silently fail */ }
   }
 
   async function refreshHITLInteractions() {
@@ -619,12 +365,9 @@
     try {
       const result = await getInteractions($currentDebate.debate_id, { limit: 100 });
       hitlInteractions.set(result.interactions || []);
-    } catch {
-      // Silently fail
-    }
+    } catch { /* Silently fail */ }
   }
 
-  // Poll HITL status and interactions while debate is running
   $effect(() => {
     if ($currentDebate?.status === 'running' && $currentDebate?.hitl_enabled) {
       if (hitlPollTimer) clearInterval(hitlPollTimer);
@@ -635,20 +378,15 @@
         refreshHITLInteractions();
       }, 5000);
     } else {
-      if (hitlPollTimer) {
-        clearInterval(hitlPollTimer);
-        hitlPollTimer = null;
-      }
+      if (hitlPollTimer) { clearInterval(hitlPollTimer); hitlPollTimer = null; }
     }
   });
 
   async function handleRefreshStatus() {
     if (!$currentDebate) return;
-
     try {
       const status = await getDebate($currentDebate.debate_id);
       $currentDebate = { ...$currentDebate, ...status };
-      // Sync title from refreshed data
       if (status.title && !debateTitle) {
         debateTitle = status.title;
         titleGenerating = false;
@@ -665,7 +403,6 @@
     isCancelling = true;
     try {
       const result = await cancelDebate($currentDebate.debate_id);
-      // If debate already completed/failed (race condition), update UI immediately
       if (result.status === 'completed' || result.status === 'failed') {
         $currentDebate = { ...$currentDebate, status: result.status };
         currentActivity = null;
@@ -674,7 +411,6 @@
         stopWorkflowTimer();
         handleRefreshStatus();
       }
-      // Otherwise the SSE stream will deliver the failed status_change event
     } catch (err) {
       $error = err.message;
     } finally {
@@ -684,11 +420,8 @@
 
   function toggleExpand(key) {
     const next = new Set(expandedOutputs);
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     expandedOutputs = next;
   }
 
@@ -704,14 +437,12 @@
 
   let statusLabel = $derived($currentDebate?.status ? t(`status.${$currentDebate.status}`) : '');
 
-  // Group live outputs by round
   let liveOutputsByRound = $derived(liveOutputs.reduce((acc, output) => {
     if (!acc[output.round]) acc[output.round] = [];
     acc[output.round].push(output);
     return acc;
   }, {}));
 
-  // Determine which data source to show for completed/failed debates
   let displayRounds = $derived(($currentDebate?.status === 'completed' || $currentDebate?.status === 'failed') && $currentDebate?.rounds?.length > 0
     ? $currentDebate.rounds
     : null);
@@ -746,65 +477,23 @@
     }
   }
 
-  // Activity Strip helpers
-  function roleDotColor(role) {
-    switch (role) {
-      case 'strategist': return 'bg-blue-500';
-      case 'critic': return 'bg-red-500';
-      case 'optimizer': return 'bg-amber-500';
-      case 'moderator': return 'bg-violet-500';
-      default: return 'bg-zinc-500';
-    }
-  }
-
-  function roleTextColor(role) {
-    switch (role) {
-      case 'strategist': return 'text-blue-400';
-      case 'critic': return 'text-red-400';
-      case 'optimizer': return 'text-amber-400';
-      case 'moderator': return 'text-violet-400';
-      default: return 'text-zinc-400';
-    }
-  }
-
-  function roleVerbKey(role) {
-    switch (role) {
-      case 'strategist': return 'feedback.analysing';
-      case 'critic': return 'feedback.checking';
-      case 'optimizer': return 'feedback.optimizing';
-      case 'moderator': return 'feedback.evaluating';
-      default: return 'feedback.analysing';
-    }
-  }
-
   function formatElapsed(ms) {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
   }
 
-  function formatTokens(n) {
-    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-    return String(n);
-  }
-
-  // Number of agents in the current round (from agent_started events)
+  // Derived state for ActivityStrip
   let agentCount = $derived(currentActivity?.agent_total || $currentDebate?.agent_profile?.length || 0);
-  // Index of the currently active agent (0-based)
   let activeAgentIndex = $derived(currentActivity?.agent_index ?? -1);
-  // How many agents have completed so far in the current round
   let completedInRound = $derived(liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0)).length);
-  // Whether the debate is actively running with an agent processing
   let isProcessing = $derived($currentDebate?.status === 'running' && currentActivity !== null);
-  // Whether the debate is running but between agents
   let isBetweenAgents = $derived($currentDebate?.status === 'running' && currentActivity === null && liveOutputs.length > 0);
-  // Show the strip only during active debate
-  let showActivityStrip = $derived($currentDebate?.status === 'running' || (isBetweenAgents && $currentDebate?.status === 'running'));
 </script>
 
 <div class="space-y-6">
   <!-- Agent Query Modal (overlay) -->
   <AgentQueryModal debateId={$currentDebate?.debate_id} />
+
   <!-- Header with optional back button for archive mode -->
   <div class="flex items-center gap-3">
     {#if isArchiveMode}
@@ -849,291 +538,34 @@
     </div>
   {/if}
 
-  <!-- Create debate form (hidden in archive mode) -->
-  {#if !isArchiveMode}
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('debate.newDebate')}</h3>
-
-    <form onsubmit={(e) => { e.preventDefault(); handleCreateDebate(); }} class="space-y-4">
-      <div>
-        <label for="case-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t('debate.caseLabel')}
-        </label>
-        <textarea
-          id="case-text"
-          bind:value={caseText}
-          rows="4"
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
-          placeholder={t('debate.casePlaceholder')}
-        ></textarea>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label for="max-rounds" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('debate.maxRounds')}
-          </label>
-          <input
-            id="max-rounds"
-            type="number"
-            bind:value={maxRounds}
-            min="1"
-            max="10"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+  <!-- Debate title — prominent, above the status card -->
+  {#if $currentDebate && (titleGenerating || debateTitle)}
+    <div class="transition-all duration-500 ease-out"
+         class:opacity-0={!titleFadedIn && !titleGenerating}
+         class:opacity-100={titleFadedIn || titleGenerating}
+         class:translate-y-0={titleFadedIn || titleGenerating}
+         class:-translate-y-2={!titleFadedIn && !titleGenerating}>
+      {#if titleGenerating}
+        <div class="px-4 py-3 rounded-xl bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-700/80
+                    border border-gray-200 dark:border-gray-600 shadow-sm">
+          <span class="text-lg font-semibold text-gray-400 dark:text-gray-500 animate-pulse tracking-wide">
+            {t('debate.titlePlaceholder')}
+          </span>
         </div>
-
-        <div>
-          <label for="consensus-threshold" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('debate.consensusThreshold')}
-          </label>
-          <input
-            id="consensus-threshold"
-            type="number"
-            bind:value={consensusThreshold}
-            min="0"
-            max="1"
-            step="0.1"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label for="search-mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t('debate.searchMode')}
-        </label>
-        <select
-          id="search-mode"
-          bind:value={searchMode}
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="off">{t('debate.searchOff')}</option>
-          <option value="optional">{t('debate.searchOptional')}</option>
-          <option value="required">{t('debate.searchRequired')}</option>
-        </select>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t(`debate.searchModeHint.${searchMode}`)}
-        </p>
-      </div>
-
-      <!-- RAG Document Selection -->
-      {#if availableDocuments.length > 0}
-        <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              📄 {t('documents.ragContext')}
-            </span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-              {selectedDocumentIds.length} {t('documents.selectDocuments').toLowerCase()}
-            </span>
-          </div>
-
-          <div class="space-y-2 max-h-40 overflow-y-auto">
-            {#each availableDocuments as doc (doc.id)}
-              <label class="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={selectedDocumentIds.includes(doc.id)}
-                  onchange={() => toggleDocumentSelection(doc.id)}
-                  class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">
-                  {doc.filename}
-                </span>
-              </label>
-            {/each}
-          </div>
-
-          <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                bind:checked={ragAutoRetrieve}
-                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
-                🔍 {t('documents.ragAutoRetrieve')}
-              </span>
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
-              {t('documents.ragAutoRetrieveHint')}
-            </p>
-          </div>
+      {:else if debateTitle}
+        <div class="px-4 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/20
+                    border border-blue-200 dark:border-blue-700 shadow-sm">
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
+            {debateTitle}
+          </h3>
         </div>
       {/if}
-
-      <!-- A2A External Agent Configuration -->
-      <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-        <div class="flex items-center justify-between mb-2">
-          <button
-            type="button"
-            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-            onclick={() => showA2ASection = !showA2ASection}
-          >
-            <span class="transition-transform" class:rotate-90={showA2ASection}>▶</span>
-            🌐 {t('a2a.title')}
-          </button>
-          {#if validA2AAgents.length > 0}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-              {validA2AAgents.length}
-            </span>
-          {/if}
-        </div>
-
-        {#if showA2ASection}
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {t('a2a.description')}
-          </p>
-
-          {#if a2aAgents.length === 0}
-            <p class="text-sm text-gray-400 dark:text-gray-500 italic mb-3">
-              {t('a2a.noAgents')}
-            </p>
-          {:else}
-            <div class="space-y-3 mb-3">
-              {#each a2aAgents as agent, i (i)}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <div>
-                    <label for={`a2a-url-${i}`} class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      {t('a2a.agentUrl')} <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                      id={`a2a-url-${i}`}
-                      type="url"
-                      value={agent.url}
-                      oninput={(e) => updateA2AAgent(i, 'url', e.target.value)}
-                      placeholder={t('a2a.agentUrlPlaceholder')}
-                      class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label for={`a2a-role-${i}`} class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      {t('a2a.role')}
-                    </label>
-                    <input
-                      id={`a2a-role-${i}`}
-                      type="text"
-                      value={agent.role}
-                      oninput={(e) => updateA2AAgent(i, 'role', e.target.value)}
-                      placeholder={t('a2a.rolePlaceholder')}
-                      class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  <div class="flex items-end gap-2">
-                    <div class="flex-1">
-                      <label for={`a2a-pos-${i}`} class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        {t('a2a.position')}
-                      </label>
-                      <input
-                        id={`a2a-pos-${i}`}
-                        type="text"
-                        value={agent.position}
-                        oninput={(e) => updateA2AAgent(i, 'position', e.target.value)}
-                        placeholder={t('a2a.positionPlaceholder')}
-                        class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded
-                               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                               focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onclick={() => removeA2AAgent(i)}
-                      class="px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                      title={t('a2a.remove')}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-
-          <button
-            type="button"
-            onclick={addA2AAgent}
-            class="flex items-center gap-1 px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400
-                   border border-purple-300 dark:border-purple-600 rounded-lg
-                   hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-          >
-            + {t('a2a.addAgent')}
-          </button>
-          <button
-            type="button"
-            onclick={handleDiscoverA2A}
-            disabled={a2aDiscovering || a2aAgents.filter(a => a.url.trim()).length === 0}
-            class="flex items-center gap-1 px-3 py-1.5 text-sm text-cyan-600 dark:text-cyan-400
-                   border border-cyan-300 dark:border-cyan-600 rounded-lg
-                   hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors
-                   disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {#if a2aDiscovering}
-              <span class="w-3 h-3 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin"></span>
-              {t('a2a.discover.loading')}
-            {:else}
-              🔎 {t('a2a.discover.button')}
-            {/if}
-          </button>
-        {/if}
-
-        {#if a2aDiscoverError}
-          <p class="mt-2 text-sm text-red-600 dark:text-red-400">{a2aDiscoverError}</p>
-        {/if}
-
-        {#each Object.entries(a2aCapabilities) as [url, caps]}
-          <div class="mt-3">
-            <p class="text-xs font-mono text-gray-500 dark:text-gray-400 mb-1">{url}</p>
-            <A2ACapabilities capabilities={caps} />
-          </div>
-        {/each}
-      </div>
-
-      <button
-        type="submit"
-        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
-               disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={$loading || !caseText.trim()}
-      >
-        {$loading ? t('debate.creating') : t('debate.createButton')}
-      </button>
-    </form>
-  </div>
+    </div>
   {/if}
 
   <!-- Current debate status -->
   {#if $currentDebate}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-      <!-- Debate title — prominent display -->
-      {#if titleGenerating}
-        <div class="mb-4 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
-          <span class="text-base text-gray-400 dark:text-gray-500 animate-pulse">
-            {t('debate.titlePlaceholder')}
-          </span>
-        </div>
-      {:else if debateTitle}
-        <div class="mb-4 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700
-                    transition-opacity duration-700 ease-out"
-             class:opacity-0={!titleFadedIn}
-             class:opacity-100={titleFadedIn}>
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white leading-snug">
-            {debateTitle}
-          </h3>
-        </div>
-      {/if}
-
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
           {isArchiveMode ? t('debate.archiveTitle') : t('debate.currentDebate')}
@@ -1157,28 +589,24 @@
           <span class="text-gray-500 dark:text-gray-400">{t('debate.id')}: </span>
           <code class="font-mono text-gray-800 dark:text-gray-200 text-xs">{$currentDebate.debate_id?.substring(0, 8)}…</code>
         </div>
-
         {#if $currentDebate.created_at}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('debate.date')}: </span>
             <span class="text-gray-800 dark:text-gray-200">{formatDate($currentDebate.created_at)}</span>
           </div>
         {/if}
-
         {#if $currentDebate.llm_profile_id}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('debate.model')}: </span>
             <span class="text-gray-800 dark:text-gray-200 font-mono text-xs">{$currentDebate.llm_profile_id}</span>
           </div>
         {/if}
-
         {#if $currentDebate.language}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('config.language') || 'Sprache'}: </span>
             <span class="text-gray-800 dark:text-gray-200 uppercase">{$currentDebate.language}</span>
           </div>
         {/if}
-
         {#if $currentDebate.rag_enabled}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('documents.ragContext')}: </span>
@@ -1203,7 +631,6 @@
             </span>
           </div>
         {/if}
-
         {#if $currentDebate.consensus_score !== undefined && $currentDebate.consensus_score !== null}
           <div class="flex items-center gap-2">
             <span class="text-gray-500 dark:text-gray-400">{t('debate.consensus')}:</span>
@@ -1220,15 +647,11 @@
         {/if}
       </div>
 
-      <!-- LLM failure / anomaly warnings -->
+      <!-- Anomaly warnings -->
       {#if $currentDebate.anomalies?.length > 0}
         <div class="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-          <p class="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-            {t('debate.llmFailureWarning')}
-          </p>
-          <p class="text-xs text-amber-700 dark:text-amber-300">
-            {t('debate.degradedConsensus')}
-          </p>
+          <p class="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">{t('debate.llmFailureWarning')}</p>
+          <p class="text-xs text-amber-700 dark:text-amber-300">{t('debate.degradedConsensus')}</p>
           <ul class="mt-2 space-y-1">
             {#each $currentDebate.anomalies as anomaly}
               <li class="text-xs text-amber-600 dark:text-amber-400 font-mono">• {anomaly}</li>
@@ -1264,30 +687,25 @@
       <div class="mt-4 flex space-x-3">
         {#if $currentDebate.status === 'pending'}
           <button
-            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors
-                   disabled:opacity-50"
+            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             onclick={handleStartDebate}
             disabled={$loading}
           >
             {$loading ? t('debate.starting') : t('debate.startButton')}
           </button>
         {/if}
-
         {#if $currentDebate.status === 'running'}
           <PauseControls debateId={$currentDebate.debate_id} />
           <button
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors
-                   disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={handleCancelDebate}
             disabled={isCancelling}
           >
             {isCancelling ? t('debate.cancelling') : t('debate.cancelButton')}
           </button>
         {/if}
-
         <button
-          class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200
-                 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+          class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
           onclick={handleRefreshStatus}
         >
           {t('debate.refreshStatus')}
@@ -1296,149 +714,28 @@
       {/if}
     </div>
 
-    <!-- Activity Strip — compact feedback during running debate -->
-    {#if $currentDebate.status === 'running'}
-      <div class="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-        <!-- Row 1: Progress dots + role verb -->
-        <div class="flex items-center gap-3 mb-2">
-          <!-- Progress dots -->
-          <div class="flex items-center gap-1.5">
-            {#if workflowPhase && !currentActivity && liveOutputs.length === 0}
-              <!-- Workflow phase indicator (before first agent) -->
-              <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-              </span>
-            {:else}
-              {#each Array(agentCount) as _, i}
-                {#if i < completedInRound}
-                  <!-- Completed dot -->
-                  <span class="w-2.5 h-2.5 rounded-full {roleDotColor(liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0))[i]?.role || 'default')}"></span>
-                {:else if i === activeAgentIndex && isProcessing}
-                  <!-- Active dot with ping -->
-                  <span class="relative flex h-2.5 w-2.5">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full {roleDotColor(currentActivity?.role || 'default')} opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 {roleDotColor(currentActivity?.role || 'default')}"></span>
-                  </span>
-                {:else}
-                  <!-- Pending dot -->
-                  <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
-                {/if}
-              {/each}
-            {/if}
-          </div>
-
-          <!-- Status text -->
-          {#if isProcessing && currentActivity}
-            <span class="text-sm font-medium {roleTextColor(currentActivity.role)}">
-              {t(roleVerbKey(currentActivity.role), { role: t(`agent.${currentActivity.role}`) })}
-            </span>
-          {:else if workflowPhase}
-            <!-- Workflow phase status messages -->
-            {#if workflowPhase.type === 'workflow_started'}
-              <span class="text-sm font-medium text-cyan-400">
-                {t('feedback.workflowStarted')}
-              </span>
-            {:else if workflowPhase.type === 'agent_preparing' && workflowPhase.phase === 'resolving_profile'}
-              <span class="text-sm font-medium text-cyan-400">
-                {t('feedback.resolvingProfile', { role: t(`agent.${workflowPhase.role}`) })}
-              </span>
-            {:else if workflowPhase.type === 'agent_preparing' && workflowPhase.phase === 'resolving_prompts'}
-              <span class="text-sm font-medium text-cyan-400">
-                {t('feedback.resolvingPrompts', { role: t(`agent.${workflowPhase.role}`) })}
-              </span>
-            {:else if workflowPhase.type === 'llm_call_started'}
-              <span class="text-sm font-medium text-amber-400">
-                {t('feedback.llmCalling', { model: workflowPhase.model || '...' })}
-              </span>
-            {:else}
-              <span class="text-sm font-medium text-zinc-500">
-                {t('feedback.waiting')}
-              </span>
-            {/if}
-          {:else if isBetweenAgents}
-            <span class="text-sm font-medium text-zinc-400">
-              {t('feedback.completed', { role: t(`agent.${liveOutputs[liveOutputs.length - 1]?.role || 'strategist'}`) })}
-            </span>
-          {:else}
-            <span class="text-sm font-medium text-zinc-500">
-              {t('feedback.waiting')}
-            </span>
-          {/if}
-        </div>
-
-        <!-- Row 2: Model name + timer + token counter -->
-        {#if isProcessing || isBetweenAgents || workflowPhase}
-          <div class="flex items-center gap-3">
-            <!-- Model name -->
-            {#if workflowPhase?.model}
-              <span class="text-xs text-zinc-500 font-mono truncate max-w-[200px]">
-                {workflowPhase.model}
-              </span>
-            {:else if currentActivity?.model || liveOutputs[liveOutputs.length - 1]?.model}
-              <span class="text-xs text-zinc-500 font-mono truncate max-w-[200px]">
-                {currentActivity?.model || liveOutputs[liveOutputs.length - 1]?.model}
-              </span>
-            {/if}
-
-            <!-- Provider badge -->
-            {#if workflowPhase?.provider}
-              <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-500 font-mono uppercase">
-                {workflowPhase.provider}
-              </span>
-            {:else if currentActivity?.provider}
-              <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-500 font-mono uppercase">
-                {currentActivity.provider}
-              </span>
-            {/if}
-
-            <div class="flex-1"></div>
-
-            <!-- Timer pill -->
-            {#if isProcessing}
-              <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
-                ⏱ {formatElapsed(processingElapsed)}
-              </span>
-            {:else if workflowPhase && workflowElapsed > 0}
-              <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
-                ⏱ {formatElapsed(workflowElapsed)}
-              </span>
-            {:else if liveOutputs.length > 0}
-              {@const lastOutput = liveOutputs[liveOutputs.length - 1]}
-              {#if lastOutput.duration_ms}
-                <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
-                  ⏱ {formatElapsed(lastOutput.duration_ms)}
-                </span>
-              {/if}
-            {/if}
-
-            <!-- Stuck warning — if workflow phase takes > 30s -->
-            {#if workflowPhase && workflowElapsed > 30000}
-              <span class="px-2 py-0.5 rounded-full bg-amber-900/50 text-xs text-amber-400 font-mono">
-                ⚠ {t('feedback.slowResponse')}
-              </span>
-            {/if}
-
-            <!-- Token counter pill -->
-            {#if cumulativeTokens > 0}
-              <span class="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400 font-mono">
-                📊 {formatTokens(cumulativeTokens)} {t('feedback.tokens')}
-              </span>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {/if}
+    <!-- Activity Strip -->
+    <DebateActivityStrip
+      currentDebate={$currentDebate}
+      {currentActivity}
+      {workflowPhase}
+      {liveOutputs}
+      {isProcessing}
+      {isBetweenAgents}
+      {processingElapsed}
+      {workflowElapsed}
+      {cumulativeTokens}
+      {agentCount}
+      {activeAgentIndex}
+      {completedInRound}
+    />
 
     <!-- Workflow Visualization Graph -->
     {#if $currentDebate.status === 'running' || $currentDebate.status === 'completed' || $currentDebate.status === 'failed'}
-      <WorkflowGraph
-        debateId={$currentDebate.debate_id}
-        isRunning={$currentDebate.status === 'running'}
-      />
+      <WorkflowGraph debateId={$currentDebate.debate_id} isRunning={$currentDebate.status === 'running'} />
     {/if}
 
-    <!-- HITL Inject Panel (during running, when HITL is enabled) -->
+    <!-- HITL Inject Panel -->
     {#if $currentDebate.status === 'running' && $currentDebate.hitl_enabled}
       <InjectPanel debateId={$currentDebate.debate_id} />
     {/if}
@@ -1452,9 +749,7 @@
             {t('debate.timelineTitle')}
           </h3>
         </div>
-
         <div class="p-4 space-y-6 max-h-[70vh] overflow-y-auto">
-          <!-- Show completed agent outputs as chat bubbles -->
           {#each Object.entries(liveOutputsByRound) as [round, outputs]}
             <div>
               <div class="flex items-center gap-2 mb-3">
@@ -1462,7 +757,6 @@
                   Round {round}
                 </span>
               </div>
-
               <div class="space-y-3">
                 {#each outputs as output, i}
                   {@const key = `live-r${output.round}-${output.role}-${i}`}
@@ -1482,31 +776,21 @@
                       </div>
                       <div class="flex items-center gap-2">
                         {#if output.duration_ms}
-                          <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                            ⏱ {formatElapsed(output.duration_ms)}
-                          </span>
+                          <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">⏱ {formatElapsed(output.duration_ms)}</span>
                         {/if}
-                        <span class="text-xs text-gray-400 dark:text-gray-500">
-                          {output.tokens_out || output.tokens} tokens
-                        </span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">{output.tokens_out || output.tokens} tokens</span>
                       </div>
                     </div>
                     <div class="text-sm text-gray-700 dark:text-gray-300">
                       {#if isLong && !isExpanded}
                         <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
-                        <button
-                          class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                          onclick={() => toggleExpand(key)}
-                        >
+                        <button class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block" onclick={() => toggleExpand(key)}>
                           ▼ Show full response ({output.content.length} chars)
                         </button>
                       {:else}
                         <MarkdownRenderer content={output.content} />
                         {#if isLong}
-                          <button
-                            class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                            onclick={() => toggleExpand(key)}
-                          >
+                          <button class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block" onclick={() => toggleExpand(key)}>
                             ▲ Collapse
                           </button>
                         {/if}
@@ -1526,13 +810,9 @@
               <div class="border-l-4 border-teal-400 bg-teal-50 dark:bg-teal-900/20 dark:border-teal-600 rounded-lg p-4">
                 <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center gap-2">
-                    <span class="font-semibold text-sm text-teal-700 dark:text-teal-300">
-                      🔍 {t('search.webResearch')}
-                    </span>
+                    <span class="font-semibold text-sm text-teal-700 dark:text-teal-300">🔍 {t('search.webResearch')}</span>
                     {#if search.role}
-                      <span class="text-xs text-teal-500 dark:text-teal-400">
-                        — {search.role} — Round {search.round}
-                      </span>
+                      <span class="text-xs text-teal-500 dark:text-teal-400">— {search.role} — Round {search.round}</span>
                     {/if}
                   </div>
                   <span class="text-xs text-gray-400 dark:text-gray-500">
@@ -1540,9 +820,7 @@
                   </span>
                 </div>
                 {#if search.query}
-                  <p class="text-xs text-teal-600 dark:text-teal-400 mb-2 font-mono">
-                    {t('search.resultsFor')}: "{search.query}"
-                  </p>
+                  <p class="text-xs text-teal-600 dark:text-teal-400 mb-2 font-mono">{t('search.resultsFor')}: "{search.query}"</p>
                 {/if}
                 {#if search.results?.length > 0}
                   <div class="space-y-1">
@@ -1551,8 +829,7 @@
                         <span class="text-teal-500 mt-0.5">•</span>
                         <div>
                           {#if result.url}
-                            <a href={result.url} target="_blank" rel="noopener noreferrer"
-                               class="text-teal-700 dark:text-teal-300 hover:underline font-medium">
+                            <a href={result.url} target="_blank" rel="noopener noreferrer" class="text-teal-700 dark:text-teal-300 hover:underline font-medium">
                               {result.title || result.url}
                             </a>
                           {:else}
@@ -1566,17 +843,11 @@
                     {/each}
                   </div>
                   {#if search.results.length > 3 && !isSearchExpanded}
-                    <button
-                      class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block"
-                      onclick={() => toggleExpand(searchKey)}
-                    >
+                    <button class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block" onclick={() => toggleExpand(searchKey)}>
                       ▼ {t('timeline.expand', { count: search.results.length })}
                     </button>
                   {:else if search.results.length > 3 && isSearchExpanded}
-                    <button
-                      class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block"
-                      onclick={() => toggleExpand(searchKey)}
-                    >
+                    <button class="text-teal-600 dark:text-teal-400 hover:underline text-xs mt-2 inline-block" onclick={() => toggleExpand(searchKey)}>
                       ▲ {t('timeline.collapse')}
                     </button>
                   {/if}
@@ -1595,9 +866,7 @@
                 <span class="font-semibold text-sm text-blue-700 dark:text-blue-300">
                   {roleEmoji(currentActivity.role)} {currentActivity.role}
                 </span>
-                <span class="text-xs text-blue-500 dark:text-blue-400">
-                  — Round {currentActivity.round} — thinking…
-                </span>
+                <span class="text-xs text-blue-500 dark:text-blue-400">— Round {currentActivity.round} — thinking…</span>
               </div>
               <div class="mt-2 flex gap-1">
                 <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
@@ -1608,9 +877,7 @@
           {/if}
 
           {#if liveOutputs.length === 0 && !currentActivity}
-            <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-8">
-              {t('debate.timelinePlaceholder')}
-            </p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-8">{t('debate.timelinePlaceholder')}</p>
           {/if}
         </div>
       </div>
@@ -1624,7 +891,7 @@
       </div>
     {/if}
 
-    <!-- HITL Interaction Timeline (always visible when HITL enabled) -->
+    <!-- HITL Interaction Timeline -->
     {#if $currentDebate?.hitl_enabled}
       <InteractionTimeline />
     {/if}
@@ -1637,7 +904,6 @@
             📊 {t('debate.timelineTitle')}
           </h3>
         </div>
-
         <div class="p-4 space-y-8 max-h-[80vh] overflow-y-auto">
           {#each displayRounds as round}
             <div>
@@ -1647,17 +913,11 @@
                 </span>
                 <div class="flex items-center gap-2">
                   <div class="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                    <div
-                      class="bg-blue-600 h-1.5 rounded-full transition-all"
-                      style="width: {(round.consensus * 100)}%"
-                    ></div>
+                    <div class="bg-blue-600 h-1.5 rounded-full transition-all" style="width: {(round.consensus * 100)}%"></div>
                   </div>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">
-                    {(round.consensus * 100).toFixed(1)}%
-                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{(round.consensus * 100).toFixed(1)}%</span>
                 </div>
               </div>
-
               {#if round.agent_outputs?.length > 0}
                 <div class="space-y-3">
                   {#each round.agent_outputs as output, i}
@@ -1674,26 +934,18 @@
                             <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">{output.model}</span>
                           {/if}
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">
-                          {output.tokens_used || 0} tokens
-                        </span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">{output.tokens_used || 0} tokens</span>
                       </div>
                       <div class="text-sm text-gray-700 dark:text-gray-300">
                         {#if isLong && !isExpanded}
                           <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
-                          <button
-                            class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                            onclick={() => toggleExpand(key)}
-                          >
+                          <button class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block" onclick={() => toggleExpand(key)}>
                             ▼ Show full response ({output.content.length} chars)
                           </button>
                         {:else}
                           <MarkdownRenderer content={output.content} />
                           {#if isLong}
-                            <button
-                              class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block"
-                              onclick={() => toggleExpand(key)}
-                            >
+                            <button class="text-blue-600 dark:text-blue-400 hover:underline text-xs mt-1 inline-block" onclick={() => toggleExpand(key)}>
                               ▲ Collapse
                             </button>
                           {/if}
@@ -1750,41 +1002,8 @@
                   {/if}
                 </p>
 
-                <!-- Report Generation UI -->
-                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <label for="report-format" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      📄 {t('report.generate')}:
-                    </label>
-                    <select
-                      id="report-format"
-                      bind:value={reportFormat}
-                      class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="docx">DOCX</option>
-                      <option value="pdf">PDF</option>
-                      <option value="odf">ODF</option>
-                    </select>
-                    <button
-                      class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700
-                             transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      onclick={handleGenerateReport}
-                      disabled={reportGenerating}
-                    >
-                      {#if reportGenerating}
-                        <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        {t('report.status.pending')}
-                      {:else}
-                        ⬇ {t('report.download')}
-                      {/if}
-                    </button>
-                  </div>
-                  {#if reportError}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{reportError}</p>
-                  {/if}
-                </div>
+                <!-- Report Generation -->
+                <DebateReportPanel debateId={$currentDebate.debate_id} />
               </div>
             </div>
           {/if}
