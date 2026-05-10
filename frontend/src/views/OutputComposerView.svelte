@@ -105,9 +105,33 @@
     setTimeout(() => { showDropdown = false; }, 200);
   }
 
+  /**
+   * Initialize config values with schema defaults when a plugin is selected.
+   * Ensures all fields are sent to the backend even if the user doesn't
+   * touch every control.
+   */
+  function initDefaults(schema) {
+    const props = schema.properties || {};
+    const defs = schema['$defs'] || {};
+    const defaults = {};
+    for (const [key, rawProp] of Object.entries(props)) {
+      let prop = rawProp;
+      if (prop && prop['$ref']) {
+        const match = prop['$ref'].match(/^#\/\$defs\/(.+)$/);
+        if (match && defs[match[1]]) {
+          prop = { ...defs[match[1]], ...prop };
+        }
+      }
+      if (prop.default !== undefined) {
+        defaults[key] = prop.default;
+      }
+    }
+    return defaults;
+  }
+
   function selectPlugin(plugin) {
     selectedPlugin = plugin;
-    configValues = {};
+    configValues = initDefaults(plugin.config_schema || {});
     error = null;
   }
 
