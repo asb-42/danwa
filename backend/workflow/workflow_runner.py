@@ -12,6 +12,14 @@ import time
 from typing import Any
 
 from backend.api.events import publish_async
+from backend.models.artifact import (
+    DebateArtifact,
+    Injection,
+    MinorityVote,
+    Turn,
+    UserQuery,
+)
+from backend.services.artifact_store import ArtifactStore
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.immutability import lock_session
 from backend.workflow.interjection import interjection_service
@@ -146,6 +154,22 @@ async def run_workflow_background(
 
         duration_ms = int((time.monotonic() - start_time) * 1000)
 
+        # --- Build and save DebateArtifact for Output Composer ---
+        try:
+            artifact = _build_artifact_from_state(
+                session_id=session_id,
+                workflow_id=workflow_id,
+                state=final_state,
+                duration_ms=duration_ms,
+            )
+            ArtifactStore().save(artifact)
+        except Exception:
+            logger.warning(
+                "Failed to build/save DebateArtifact for session %s",
+                session_id,
+                exc_info=True,
+            )
+
         # Publish workflow.complete event
         await publish_async(
             session_id,
@@ -259,3 +283,78 @@ def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
         else:
             serialized[key] = str(value)
     return serialized
+
+
+def _build_artifact_from_state(
+    *,
+    session_id: str,
+    workflow_id: str,
+    state: dict[str, Any],
+    duration_ms: int = 0,
+) -> DebateArtifact:
+    """Build a ``DebateArtifact`` from the final workflow state.
+
+    Extracts transcript turns, interjections, user queries, and
+    metadata from the LangGraph state dict.  This is the bridge
+    between the workflow execution layer and the Output Composer.
+    """
+    from datetime import UTC, datetime
+
+    # Build turns from node_outputs
+    turns: list[Turn] = []
+    for output in state.get("node_outputs", []):
+        turns.append(
+            Turn(
+                node_id=output.get("node_id", ""),
+                round=output.get("round", 0),
+                agent_name=output.get("role", ""),
+                role_type=output.get("node_type", ""),
+                content=output.get("content", ""),
+                latency_ms=output.get("duration_ms", 0),
+                token_usage={"total": output.get("tokens_used", 0)},
+            )
+        )
+
+    # Build interjections from consumed_interjections
+    interjections: list[Injection] = []
+    for ij in state.get("consumed_interjections", []):
+        if isinstance(ij, dict):
+            interjections.append(
+                Injection(
+                    id=ij.get("interjection_id", ""),
+                    source=ij.get("source", "user"),
+                    target_node_id=ij.get("target_node_id", ""),
+                    content=ij.get("content", ""),
+                )
+            )
+
+    # Build tone profile snapshot
+    tone_snapshot = state.get("tone_profiles", {})
+
+    # Metadata
+    now = datetime.now(UTC)
+    metadata: dict[str, Any] = {
+        "token_usage": {
+            "total": sum(t.token_usage.get("total", 0) for t in turns),
+        },
+        "timestamps": {
+            "end": now.isoformat(),
+        },
+        "duration_ms": duration_ms,
+    }
+
+    return DebateArtifact(
+        session_id=session_id,
+        workflow_id=workflow_id,
+        workflow_version=state.get("workflow_version", 1),
+        workflow_name=state.get("workflow_name", ""),
+        topic=state.get("context", ""),
+        tone_profile_snapshot=tone_snapshot,
+        transcript=turns,
+        interjections=interjections,
+        consensus_result={
+            "score": state.get("final_consensus", 0.0),
+            "summary": state.get("output", ""),
+        },
+        metadata=metadata,
+    )

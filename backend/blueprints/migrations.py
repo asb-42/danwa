@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -351,6 +351,74 @@ _MIGRATION_V10_TABLES = [
     "CREATE INDEX IF NOT EXISTS idx_tone_profiles_is_system ON tone_profiles (is_system)",
 ]
 
+# ---------------------------------------------------------------------------
+# V11 — Output Composer tables: debate_artifacts, render_jobs, tts_voices,
+#        optimization_proposals
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V11_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS debate_artifacts (
+        session_id TEXT PRIMARY KEY,
+        workflow_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_debate_artifacts_workflow ON debate_artifacts (workflow_id)",
+    """
+    CREATE TABLE IF NOT EXISTS render_jobs (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        plugin_key TEXT NOT NULL,
+        config TEXT DEFAULT '{}',
+        status TEXT DEFAULT 'queued',
+        output_files TEXT DEFAULT '[]',
+        error_message TEXT,
+        artifact_snapshot_hash TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_render_jobs_session ON render_jobs (session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_render_jobs_status ON render_jobs (status)",
+    """
+    CREATE TABLE IF NOT EXISTS tts_voices (
+        voice_id TEXT PRIMARY KEY,
+        name TEXT,
+        language TEXT,
+        gender TEXT,
+        provider TEXT DEFAULT 'edge_tts',
+        is_active INTEGER DEFAULT 1
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_tts_voices_language ON tts_voices (language)",
+    """
+    CREATE TABLE IF NOT EXISTS optimization_proposals (
+        id TEXT PRIMARY KEY,
+        target_workflow_id TEXT NOT NULL,
+        source_session_id TEXT,
+        proposed_nodes_json TEXT DEFAULT '[]',
+        proposed_edges_json TEXT DEFAULT '[]',
+        rationale TEXT DEFAULT '',
+        risk_assessment TEXT DEFAULT '',
+        estimated_impact TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending',
+        created_by TEXT DEFAULT 'meta_agent',
+        approved_by TEXT,
+        approved_at TEXT,
+        parent_version_id TEXT DEFAULT '',
+        new_version_id TEXT,
+        created_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_opt_proposals_workflow"
+    " ON optimization_proposals (target_workflow_id)",
+    "CREATE INDEX IF NOT EXISTS idx_opt_proposals_status"
+    " ON optimization_proposals (status)",
+]
+
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
@@ -447,6 +515,18 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 10, "Add tone_profiles table")
             conn.commit()
             logger.info("Migration v10 applied successfully")
+
+        if current < 11:
+            logger.info("Applying migration v11: output composer tables")
+            for stmt in _MIGRATION_V11_TABLES:
+                conn.execute(stmt)
+            _record_version(
+                conn, 11,
+                "Add debate_artifacts, render_jobs,"
+                " tts_voices, optimization_proposals"
+            )
+            conn.commit()
+            logger.info("Migration v11 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

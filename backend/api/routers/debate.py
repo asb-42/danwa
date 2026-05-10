@@ -615,7 +615,16 @@ def _resolve_rag_context(
             seen_texts.add(text)
             unique_chunks.append(chunk)
 
-    rag_context = dms.format_rag_context(unique_chunks)
+    # For explicitly selected documents, use a much higher limit so
+    # agents can see the complete documents.  Only apply the default
+    # truncation for auto-retrieved chunks.
+    if document_ids:
+        # ~200,000 chars ≈ 50,000 tokens — covers large documents
+        rag_context = dms.format_rag_context(
+            unique_chunks, max_chars=200_000
+        )
+    else:
+        rag_context = dms.format_rag_context(unique_chunks)
     doc_count = len(document_ids) if document_ids else 0
 
     logger.info(

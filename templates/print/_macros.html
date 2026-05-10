@@ -1,0 +1,93 @@
+{# Shared Jinja2 macros for print templates #}
+
+{% macro render_turn(section, i18n) -%}
+<article class="debate-turn">
+  <header class="turn-header">
+    <span class="turn-agent">{{ section.agent_name }}</span>
+    <span class="turn-role">({{ section.title }})</span>
+    {% if section.round is not none %}
+    <span class="turn-round">{{ i18n.round_label }} {{ section.round }}</span>
+    {% endif %}
+    {% if section.timestamp %}
+    <time class="turn-timestamp">{{ section.timestamp }}</time>
+    {% endif %}
+  </header>
+  <div class="turn-content">
+    {{ section.content | e | replace('\n', '<br>') | safe }}
+  </div>
+  {% if section.margin_notes %}
+  <aside class="margin-notes">
+    {% for note in section.margin_notes %}
+    <div class="margin-note {{ note.type }}">
+      <span class="margin-note-icon">{% if note.type == 'injection' %}⚡{% elif note.type == 'dissent' %}⚠{% else %}ℹ{% endif %}</span>
+      <span class="margin-note-content">{{ note.content | e }}</span>
+    </div>
+    {% endfor %}
+  </aside>
+  {% endif %}
+</article>
+{%- endmacro %}
+
+{% macro render_minority_callout(section, i18n) -%}
+<section class="minority-callout">
+  <header>
+    <span class="callout-icon">⚠</span>
+    <strong>{{ i18n.minority_vote_label }}: {{ section.agent_name }}</strong>
+  </header>
+  <div class="callout-content">
+    {{ section.content | e | replace('\n', '<br>') | safe }}
+  </div>
+</section>
+{%- endmacro %}
+
+{% macro render_user_query(section, i18n) -%}
+<section class="user-query-block">
+  <header>
+    <span class="query-icon">❓</span>
+    <strong>{{ i18n.user_query_label }}</strong>
+  </header>
+  <div class="query-content">
+    {{ section.content | e | replace('\n', '<br>') | safe }}
+  </div>
+</section>
+{%- endmacro %}
+
+{% macro render_consensus(section, i18n) -%}
+<section class="consensus-summary">
+  <header>
+    <strong>{{ i18n.consensus_label }}</strong>
+  </header>
+  <div class="consensus-content">
+    {{ section.content | e | replace('\n', '<br>') | safe }}
+  </div>
+</section>
+{%- endmacro %}
+
+{% macro render_audit_appendix(section, i18n) -%}
+<section class="audit-appendix">
+  <header>
+    <strong>{{ i18n.audit_trail_label }}</strong>
+  </header>
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th>{{ i18n.agent_column }}</th>
+        <th>{{ i18n.role_column }}</th>
+        <th>{{ i18n.llm_column }}</th>
+        <th>{{ i18n.latency_column }}</th>
+        <th>{{ i18n.tokens_column }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in section.content.split('\n') if line.strip() %}
+      {% set parts = line.split(' | ') %}
+      <tr>
+        {% for part in parts %}
+        <td>{{ part }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{%- endmacro %}

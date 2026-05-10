@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="{{ config.language | default('de') }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ doc.metadata.topic }}</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; font-size: 11pt; line-height: 1.5; }
+    h1 { font-size: 16pt; border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
+    .meta { font-size: 9pt; color: #666; margin-bottom: 2em; }
+    .turn { margin-bottom: 1.5em; }
+    .turn-header { font-weight: bold; color: #333; margin-bottom: 0.3em; }
+    .turn-content { text-align: justify; }
+    .minority-callout { background: #fce4ec; padding: 0.5em; margin: 1em 0; border-left: 3px solid #e53935; }
+    .user-query-block { background: #e8f0fe; padding: 0.5em; margin: 1em 0; border-left: 3px solid #1a73e8; }
+    .consensus-summary { background: #e8f5e9; padding: 0.5em; margin: 1em 0; border-left: 3px solid #43a047; }
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    th, td { border: 1px solid #ccc; padding: 0.2em 0.4em; }
+    th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>{{ doc.metadata.topic }}</h1>
+  <div class="meta">
+    {{ doc.metadata.workflow_name }}
+    {% if doc.metadata.participants %} | {{ doc.metadata.participants | join(', ') }}{% endif %}
+    {% if doc.metadata.duration %} | {{ doc.metadata.duration }}{% endif %}
+  </div>
+
+  {% for section in doc.sections %}
+    {% if section.type == 'turn' %}
+    <div class="turn">
+      <div class="turn-header">
+        {{ section.agent_name }} ({{ section.title }})
+        {% if section.round is not none %} — {{ i18n.round_label }} {{ section.round }}{% endif %}
+      </div>
+      <div class="turn-content">{{ section.content | e | replace('\n', '<br>') | safe }}</div>
+    </div>
+    {% elif section.type == 'minority_callout' %}
+    <div class="minority-callout">
+      <strong>{{ i18n.minority_vote_label }}: {{ section.agent_name }}</strong><br>
+      {{ section.content | e | replace('\n', '<br>') | safe }}
+    </div>
+    {% elif section.type == 'user_query_block' %}
+    <div class="user-query-block">
+      <strong>{{ i18n.user_query_label }}</strong><br>
+      {{ section.content | e | replace('\n', '<br>') | safe }}
+    </div>
+    {% elif section.type == 'consensus_summary' %}
+    <div class="consensus-summary">
+      <strong>{{ i18n.consensus_label }}</strong><br>
+      {{ section.content | e | replace('\n', '<br>') | safe }}
+    </div>
+    {% elif section.type == 'audit_appendix' %}
+    <h2>{{ i18n.audit_trail_label }}</h2>
+    <table>
+      <thead><tr><th>{{ i18n.agent_column }}</th><th>{{ i18n.role_column }}</th><th>{{ i18n.llm_column }}</th><th>{{ i18n.latency_column }}</th><th>{{ i18n.tokens_column }}</th></tr></thead>
+      <tbody>
+        {% for line in section.content.split('\n') if line.strip() %}
+        {% set parts = line.split(' | ') %}
+        <tr>{% for part in parts %}<td>{{ part }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  {% endfor %}
+</body>
+</html>

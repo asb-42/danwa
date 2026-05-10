@@ -1,0 +1,23 @@
+{
+  "turn_label": "Turn",
+  "round_label": "Round",
+  "agent_label": "Agent",
+  "role_label": "Role",
+  "timestamp_label": "Timestamp",
+  "injection_label": "Interjection",
+  "user_query_label": "User Question",
+  "minority_vote_label": "Minority Vote",
+  "consensus_label": "Consensus",
+  "audit_trail_label": "Audit Trail",
+  "topic_label": "Topic",
+  "workflow_label": "Workflow",
+  "participants_label": "Participants",
+  "duration_label": "Duration",
+  "tokens_label": "Tokens",
+  "generated_label": "Generated",
+  "agent_column": "Agent",
+  "role_column": "Role",
+  "llm_column": "LLM Profile",
+  "latency_column": "Latency (ms)",
+  "tokens_column": "Tokens"
+}

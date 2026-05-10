@@ -76,6 +76,14 @@ class StartWorkflowRequest(BaseModel):
     project_id: str = Field(default="default", description="Project ID")
     max_rounds: int = Field(default=10, ge=1, description="Maximum rounds")
     threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Consensus threshold")
+    document_ids: list[str] = Field(
+        default_factory=list,
+        description="DMS document IDs to include as RAG context",
+    )
+    rag_auto_retrieve: bool = Field(
+        default=False,
+        description="Automatically retrieve relevant document chunks based on context",
+    )
 
 
 class StartWorkflowResponse(BaseModel):
@@ -165,6 +173,30 @@ async def start_workflow(
     # Generate session ID
     session_id = f"wf-{uuid.uuid4().hex[:12]}"
 
+    # Resolve RAG context
+    rag_context = ""
+    if body.document_ids or body.rag_auto_retrieve:
+        try:
+            from backend.api.routers.debate import _resolve_rag_context
+            rag_context, _ = _resolve_rag_context(
+                project_id=body.project_id,
+                case_text=body.context,
+                document_ids=body.document_ids,
+                rag_auto_retrieve=body.rag_auto_retrieve,
+            )
+            if rag_context:
+                logger.info(
+                    "RAG context resolved for workflow %s (%d chars)",
+                    workflow_id,
+                    len(rag_context),
+                )
+        except Exception:
+            logger.warning(
+                "Failed to resolve RAG context for workflow %s",
+                workflow_id,
+                exc_info=True,
+            )
+
     # Build initial state
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,
@@ -172,6 +204,7 @@ async def start_workflow(
         "project_id": body.project_id,
         "context": body.context,
         "language": body.language,
+        "rag_context": rag_context,
         "node_sequence": compiled.node_sequence,
         "node_configs": {
             agent.node_id: {

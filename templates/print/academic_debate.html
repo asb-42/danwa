@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="{{ config.language | default('de') }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ doc.metadata.topic }} — {{ doc.metadata.workflow_name }}</title>
+  <style>
+    {% include 'css/academic_debate.css' %}
+  </style>
+</head>
+<body>
+  <!-- Document Header -->
+  <header class="doc-header">
+    <h1>{{ doc.metadata.topic }}</h1>
+    <div class="doc-meta">
+      <span>{{ i18n.workflow_label }}: {{ doc.metadata.workflow_name }}</span>
+      {% if doc.metadata.participants %}
+      <span>{{ i18n.participants_label }}: {{ doc.metadata.participants | join(', ') }}</span>
+      {% endif %}
+      {% if doc.metadata.duration %}
+      <span>{{ i18n.duration_label }}: {{ doc.metadata.duration }}</span>
+      {% endif %}
+      {% if doc.metadata.total_tokens %}
+      <span>{{ i18n.tokens_label }}: {{ doc.metadata.total_tokens | format_number }}</span>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="debate-content">
+    {% for section in doc.sections %}
+      {% if section.type == 'turn' %}
+        {{ render_turn(section, i18n) }}
+      {% elif section.type == 'minority_callout' %}
+        {{ render_minority_callout(section, i18n) }}
+      {% elif section.type == 'user_query_block' %}
+        {{ render_user_query(section, i18n) }}
+      {% elif section.type == 'consensus_summary' %}
+        {{ render_consensus(section, i18n) }}
+      {% elif section.type == 'audit_appendix' %}
+        {{ render_audit_appendix(section, i18n) }}
+      {% endif %}
+    {% endfor %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="doc-footer">
+    <p>{{ i18n.generated_label }}: {{ doc.metadata | default('') }}</p>
+  </footer>
+</body>
+</html>

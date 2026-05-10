@@ -16,6 +16,7 @@
   import BlueprintCanvasView from './views/BlueprintCanvasView.svelte';
   import ReplayView from './views/ReplayView.svelte';
   import DiffView from './views/DiffView.svelte';
+  import OutputComposerView from './views/OutputComposerView.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -92,6 +93,8 @@
     <ReplayView />
   {:else if $route === 'diff'}
     <DiffView />
+  {:else if $route === 'output'}
+    <OutputComposerView />
   {:else}
     <Dashboard {navigate} />
   {/if}

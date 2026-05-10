@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # --- A2A Protocol (Phase 8) ---
     a2a_allow_private_ips: bool = False
 
+    # --- Output Composer ---
+    output_dir: Path = Path("data/outputs")
+
 
 # Module-level singleton — importable as `settings`
 settings = Settings()

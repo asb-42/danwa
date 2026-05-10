@@ -584,35 +584,71 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 ## Missing Links (Features Not Yet in UI)
 
-> **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client (`frontend/src/lib/api.js`), but **not yet accessible through the user interface**.
+> **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client, but **not yet accessible through the user interface**. Users cannot use these features without direct API calls.
+>
+> **Last audited**: 2026-05-09 — full scan of all 16 backend routers, 6 frontend API clients, and 10 frontend views.
 
-### Report Download (Backend Ready, No Frontend)
-- **Backend**: `GET /api/v1/sessions/{id}/report/{fmt}` (DOCX/PDF) in `backend/api/routers/sessions.py`
-- **Missing**: No `downloadReport()` in `api.js`, no "Download Report" button in DebateView or ArchiveView
-- **Impact**: Users cannot download reports even though the backend supports it
+### Report Generation (Async, DOCX/PDF/ODF) — HIGH IMPACT
+- **Backend**: `POST /api/v1/sessions/{id}/report` + `GET /api/v1/reports/{job_id}/download` in `backend/api/routers/workflow_reports.py`
+- **API Client**: `generateReport()`, `getReportStatus()`, `downloadReport()` exist in `api.js` but are **never called**
+- **Missing**: No "Download Report" button in DebateView or ArchiveView, no format selector, no job status UI
+- **Impact**: Users cannot download reports even though the full pipeline is implemented
 
-### Application Settings (Backend + API Ready, No UI Tab)
+### Application Settings Tab — MEDIUM IMPACT
 - **Backend**: `GET/PUT /api/v1/config/settings` in `backend/api/routers/config.py`
 - **API Client**: `getSettings()` and `updateSettings()` exist in `api.js`
 - **Missing**: No "Settings" tab in ConfigView (tabs: llm, agents, prompts, cost, system)
-- **Impact**: Users cannot view/update application settings (privacy, UI language default, search engine)
+- **Impact**: Users cannot view/update global settings (privacy, search engine, retention, language)
 
-### Manual RAG Search (Backend + API Ready, No UI)
-- **Backend**: `POST /api/v1/dms/retrieve` in `backend/api/routers/dms.py`
-- **API Client**: `getManualRAGDocuments()` and `searchRAG()` exist in `api.js`
+### Manual RAG Search — HIGH IMPACT
+- **Backend**: `GET /api/v1/dms/rag/search?q={query}` in `backend/api/routers/dms.py`
+- **API Client**: `getManualRAGDocuments()` and `searchRAG()` exist in `api.js` but are **never called**
 - **Missing**: No RAG search UI in DocumentsView
 - **Impact**: Users can only toggle `in_rag` flag on documents, but cannot run custom RAG queries
+
+### A2A Agent Discovery — MEDIUM IMPACT
+- **Backend**: `POST /api/v1/a2a/discover` in `backend/api/routers/a2a_discovery.py`
+- **API Client**: `discoverA2A()` and `saveA2ACapabilities()` exist in `a2aApi.js` but are **never called**
+- **Component**: `A2ACapabilities.svelte` exists but is **never imported** by any view (dead code)
+- **Missing**: No "Discover" button in DebateView's A2A section, no capability display panel
+
+### Session Archive / Restore — MEDIUM IMPACT
+- **Backend**: `DELETE/POST /api/v1/workflow-exec/{id}` and `/{id}/restore` in `backend/api/routers/workflow_exec.py`
+- **API Client**: `softDeleteSession()` and `restoreSession()` exist in `api.js` but are **never called**
+- **Missing**: No "Archive" or "Restore" buttons in ArchiveView
+
+### Workflow-Exec Controls (Blueprint Engine) — MEDIUM IMPACT
+- **Backend**: Pause/Resume/Cancel/State/Stream endpoints in `backend/api/routers/workflow_exec.py`
+- **API Client**: `pauseWorkflow()`, `resumeWorkflow()`, `cancelWorkflow()`, `getWorkflowState()` exist in `workflowExec.js` but are **never called**
+- **API Client**: `createWorkflowSSE()` exists in `workflowSSE.js` but is **never called**
+- **Missing**: No execution controls or real-time stream for blueprint workflow sessions
+
+### Blueprint Compile & Clone — MEDIUM IMPACT
+- **Backend**: `POST /api/v1/blueprints/workflows/{id}/compile` and `/clone` in `backend/api/routers/blueprints.py`
+- **API Client**: `compileWorkflow()` and `cloneWorkflow()` exist in `blueprint/api.js` but are **never called**
+- **Missing**: No "Compile" or "Clone" buttons in BlueprintCanvasView
 
 ### Summary Table
 
 | Feature | Backend | API Client | UI | Status |
 |---------|---------|------------|-----|--------|
-| Report Download (DOCX/PDF) | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Async Report Generation (DOCX/PDF/ODF) | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
 | Application Settings | ✅ | ✅ Exists | ❌ No tab | **Partially exposed** |
 | Manual RAG Search | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
-| Session History Export | ✅ (legacy) | ❌ Missing | ❌ Missing | **Not exposed** |
+| A2A Agent Discovery | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Session Archive/Restore | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Workflow-Exec Controls | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Blueprint Compile/Clone | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Canvas Layout CRUD | ✅ | ✅ Exists | ⚠️ Partial | **Partially exposed** |
+| Role Types CRUD | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Language API | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
+| Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
 | RAG Document Toggle | ✅ | ✅ | ✅ | Exposed |
 | Debate Workflow | ✅ | ✅ | ✅ | Exposed |
+| HITL Interactions | ✅ | ✅ | ✅ | Exposed |
+| A2A in Debates | ✅ | ✅ | ✅ | Exposed |
+| Blueprint Canvas | ✅ | ✅ | ✅ | Exposed |
+| Replay & Diff Views | ✅ | ✅ | ✅ | Exposed |
 
 *For full details, see the "Missing Links" sections in `docs/technical_documentation.md` and `docs/user_manual.md`.*
 

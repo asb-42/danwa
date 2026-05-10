@@ -271,6 +271,12 @@ def agent_node_factory(
         language = state.get("language", "de")
 
         user_prompt = f"Case: {context}"
+
+        # Inject RAG context (document content)
+        rag_context = state.get("rag_context", "")
+        if rag_context:
+            user_prompt += f"\n\n--- DOCUMENT CONTEXT ---\n{rag_context}"
+
         if current_draft:
             user_prompt += f"\n\nCurrent draft:\n{current_draft}"
 

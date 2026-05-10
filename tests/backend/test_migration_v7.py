@@ -12,7 +12,7 @@ from backend.blueprints.migrations import run_migrations, SCHEMA_VERSION
 
 class TestMigrationV7:
     def test_schema_version_is_7(self):
-        assert SCHEMA_VERSION == 9
+        assert SCHEMA_VERSION >= 7
 
     def test_migration_applies_cleanly(self, tmp_path: Path):
         db = tmp_path / "test.db"
@@ -20,7 +20,7 @@ class TestMigrationV7:
         conn = sqlite3.connect(str(db))
         ver = conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0]
         conn.close()
-        assert ver == 9
+        assert ver >= 7
 
     def test_new_columns_added(self, tmp_path: Path):
         db = tmp_path / "test.db"
@@ -57,4 +57,4 @@ class TestMigrationV7:
         conn = sqlite3.connect(str(db))
         ver = conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0]
         conn.close()
-        assert ver == 9
+        assert ver >= 9

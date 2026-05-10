@@ -1,0 +1,267 @@
+/* Academic Debate Print Styles
+   Two-column layout: main content (70-75%) + margin notes sidebar (25-30%)
+   Uses CSS Grid for WeasyPrint compatibility.
+*/
+
+@page {
+  size: A4;
+  margin: 2cm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Document Header */
+.doc-header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 1em;
+  margin-bottom: 2em;
+}
+
+.doc-header h1 {
+  font-size: 18pt;
+  margin: 0 0 0.5em 0;
+  color: #111;
+}
+
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+  font-size: 9pt;
+  color: #555;
+}
+
+.doc-meta span {
+  background: #f5f5f5;
+  padding: 0.2em 0.6em;
+  border-radius: 3px;
+}
+
+/* Main Content */
+.debate-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+}
+
+/* Debate Turn — Two-column with margin notes */
+.debate-turn {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 1em;
+  padding: 1em 0;
+  border-bottom: 1px solid #e0e0e0;
+  page-break-inside: avoid;
+}
+
+.debate-turn:last-child {
+  border-bottom: none;
+}
+
+.turn-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.8em;
+  margin-bottom: 0.5em;
+  font-size: 10pt;
+  color: #444;
+}
+
+.turn-agent {
+  font-weight: bold;
+  font-size: 12pt;
+  color: #111;
+}
+
+.turn-role {
+  font-style: italic;
+  color: #666;
+}
+
+.turn-round {
+  background: #e8f0fe;
+  padding: 0.1em 0.5em;
+  border-radius: 3px;
+  font-size: 9pt;
+  color: #1a73e8;
+}
+
+.turn-timestamp {
+  font-size: 8pt;
+  color: #999;
+  margin-left: auto;
+}
+
+.turn-content {
+  grid-column: 1;
+  font-size: 11pt;
+  line-height: 1.7;
+  text-align: justify;
+}
+
+/* Margin Notes — Right column */
+.margin-notes {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding-left: 0.8em;
+  border-left: 2px solid #ddd;
+}
+
+.margin-note {
+  font-size: 8.5pt;
+  line-height: 1.4;
+  padding: 0.3em 0.5em;
+  border-radius: 3px;
+  background: #fff8e1;
+}
+
+.margin-note.injection {
+  background: #fff3e0;
+  border-left: 3px solid #ff9800;
+}
+
+.margin-note.dissent {
+  background: #fce4ec;
+  border-left: 3px solid #e53935;
+}
+
+.margin-note.meta {
+  background: #e8f5e9;
+  border-left: 3px solid #43a047;
+}
+
+.margin-note-icon {
+  margin-right: 0.3em;
+}
+
+.margin-note-content {
+  font-style: italic;
+}
+
+/* Minority Callout */
+.minority-callout {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border: 2px solid #e53935;
+  border-radius: 4px;
+  background: #fce4ec;
+  page-break-inside: avoid;
+}
+
+.minority-callout header {
+  margin-bottom: 0.5em;
+  color: #c62828;
+}
+
+.callout-icon {
+  margin-right: 0.3em;
+}
+
+.callout-content {
+  font-size: 10.5pt;
+  font-style: italic;
+}
+
+/* User Query Block */
+.user-query-block {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border: 2px solid #1a73e8;
+  border-radius: 4px;
+  background: #e8f0fe;
+  page-break-inside: avoid;
+}
+
+.user-query-block header {
+  margin-bottom: 0.5em;
+  color: #1565c0;
+}
+
+.query-icon {
+  margin-right: 0.3em;
+}
+
+.query-content {
+  font-size: 10.5pt;
+}
+
+/* Consensus Summary */
+.consensus-summary {
+  margin: 1.5em 0;
+  padding: 1em;
+  border: 2px solid #43a047;
+  border-radius: 4px;
+  background: #e8f5e9;
+  page-break-inside: avoid;
+}
+
+.consensus-summary header {
+  margin-bottom: 0.5em;
+  color: #2e7d32;
+  font-size: 12pt;
+}
+
+.consensus-content {
+  font-size: 10.5pt;
+  line-height: 1.6;
+}
+
+/* Audit Appendix */
+.audit-appendix {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 2px solid #333;
+  page-break-before: always;
+}
+
+.audit-appendix header {
+  margin-bottom: 1em;
+  font-size: 12pt;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.audit-table th,
+.audit-table td {
+  border: 1px solid #ccc;
+  padding: 0.3em 0.5em;
+  text-align: left;
+}
+
+.audit-table th {
+  background: #f0f0f0;
+  font-weight: bold;
+}
+
+.audit-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+/* Footer */
+.doc-footer {
+  margin-top: 2em;
+  padding-top: 0.5em;
+  border-top: 1px solid #ddd;
+  font-size: 8pt;
+  color: #999;
+  text-align: center;
+}

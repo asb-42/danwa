@@ -1,8 +1,20 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
-export default defineConfig({
-  plugins: [svelte()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    svelte(
+      mode === 'development'
+        ? {
+            // In dev mode, inject CSS into JS to avoid a race condition where
+            // the browser's CSS sub-request (?svelte&type=style&lang.css)
+            // arrives before the Svelte compiler has cached the extracted CSS,
+            // causing PostCSS to receive the raw .svelte file and fail.
+            compilerOptions: { css: 'injected' },
+          }
+        : undefined,
+    ),
+  ],
   server: {
     port: 5173,
     proxy: {
@@ -20,4 +32,4 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-});
+}));
