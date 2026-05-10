@@ -12,6 +12,7 @@ export default {
   'nav.blueprint': 'Blueprint',
   'nav.documents': 'Documents',
   'nav.projects': 'Projects',
+  'nav.input': 'Input',
 
   // Dashboard
   'dashboard.title': 'Dashboard',

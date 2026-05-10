@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -419,6 +419,53 @@ _MIGRATION_V11_TABLES = [
     " ON optimization_proposals (status)",
 ]
 
+# ---------------------------------------------------------------------------
+# V12 — Input Composer tables: input_jobs, a2a_inbound_tasks,
+#        debate_inputs; extend blueprint_llm_profiles + workflow_definitions
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V12_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS input_jobs (
+        id TEXT PRIMARY KEY,
+        plugin_key TEXT NOT NULL,
+        config TEXT DEFAULT '{}',
+        raw_input_data TEXT DEFAULT '{}',
+        processed_input TEXT,
+        status TEXT DEFAULT 'queued',
+        error_message TEXT,
+        created_at TEXT NOT NULL,
+        completed_at TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_input_jobs_status"
+    " ON input_jobs (status)",
+    "CREATE INDEX IF NOT EXISTS idx_input_jobs_plugin"
+    " ON input_jobs (plugin_key)",
+    """
+    CREATE TABLE IF NOT EXISTS a2a_inbound_tasks (
+        task_id TEXT PRIMARY KEY,
+        agent_id TEXT,
+        message_preview TEXT,
+        input_job_id TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_a2a_inbound_status"
+    " ON a2a_inbound_tasks (status)",
+    """
+    CREATE TABLE IF NOT EXISTS debate_inputs (
+        session_id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+]
+# NOTE: ALTER TABLE workflow_definitions ADD COLUMN input_config is handled
+# separately in run_migrations() with try/except since SQLite doesn't support
+# IF NOT EXISTS for column additions.
+
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
@@ -527,6 +574,29 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             )
             conn.commit()
             logger.info("Migration v11 applied successfully")
+
+        if current < 12:
+            logger.info("Applying migration v12: input composer tables")
+            for stmt in _MIGRATION_V12_TABLES:
+                conn.execute(stmt)
+            # ALTER TABLE for workflow_definitions.input_config
+            # (handled separately since SQLite doesn't support IF NOT EXISTS)
+            try:
+                conn.execute(
+                    "ALTER TABLE workflow_definitions"
+                    " ADD COLUMN input_config TEXT DEFAULT NULL"
+                )
+            except sqlite3.OperationalError:
+                logger.debug(
+                    "workflow_definitions.input_config column already exists"
+                )
+            _record_version(
+                conn, 12,
+                "Add input_jobs, a2a_inbound_tasks, stt_voices,"
+                " debate_inputs; extend workflow_definitions"
+            )
+            conn.commit()
+            logger.info("Migration v12 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

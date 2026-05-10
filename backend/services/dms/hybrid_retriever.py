@@ -4,7 +4,7 @@ Migrated from src/dms/hybrid_retriever.py.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from rank_bm25 import BM25Okapi
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class HybridRetriever:
     """Combines BM25 keyword search with vector similarity search using RRF."""
 
-    def __init__(self, vector_store: DMSVectorStore, metadata_index: Optional[MetadataIndex] = None):
+    def __init__(self, vector_store: DMSVectorStore, metadata_index: MetadataIndex | None = None):
         self.vector_store = vector_store
         self.metadata_index = metadata_index
         self.rrf_k = 60  # Standard RRF constant
@@ -33,7 +33,7 @@ class HybridRetriever:
         except Exception as e:
             logger.warning("Failed to load CrossEncoder: %s, re-ranking disabled", e)
 
-    def retrieve(self, query: str, project_id: Optional[str] = None, k: int = 5) -> list[dict[str, Any]]:
+    def retrieve(self, query: str, project_id: str | None = None, k: int = 5) -> list[dict[str, Any]]:
         chunks = self._fetch_chunks(project_id)
         bm25_results = self._bm25_retrieve(query, chunks, top_n=20)
         vector_results = self.vector_store.search(query, project_id=project_id, k=20)
@@ -77,7 +77,7 @@ class HybridRetriever:
 
         return final_results[:k]
 
-    def _fetch_chunks(self, project_id: Optional[str]) -> list[dict[str, Any]]:
+    def _fetch_chunks(self, project_id: str | None) -> list[dict[str, Any]]:
         if project_id and self.metadata_index:
             return self.metadata_index.get_chunks_by_project(project_id)
         try:

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse
@@ -216,7 +215,7 @@ async def stream_report_progress(session_id: str):
                             "event": "report.progress",
                             "data": str(event.get("data", "")),
                         }
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield {"event": "ping", "data": ""}
         finally:
             unsubscribe(session_id, queue)

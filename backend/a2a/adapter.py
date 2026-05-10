@@ -16,7 +16,6 @@ from backend.a2a.exceptions import (
     A2AError,
     A2AProtocolError,
     A2ATimeoutError,
-    A2AValidationError,
 )
 from backend.a2a.url_validator import validate_a2a_url
 from backend.services.llm_service import GenerationResult

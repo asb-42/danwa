@@ -201,7 +201,7 @@ async def run_agent_node(state: DebateState) -> dict:
 
     # --- OOB: Inject out-of-band user context before LLM call ---
     try:
-        from backend.api.routers.debate import get_oob_for_debate, consume_oob
+        from backend.api.routers.debate import consume_oob, get_oob_for_debate
         debate_id = state.get("debate_id", "")
         if debate_id:
             oob_inputs = get_oob_for_debate(debate_id)

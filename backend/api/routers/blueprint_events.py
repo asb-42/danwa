@@ -53,7 +53,7 @@ async def stream_blueprint_events(
                         # Stop on terminal events
                         if event_type in ("workflow.complete", "node.error"):
                             break
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Send keepalive
                         yield {"event": "ping", "data": "{}"}
             finally:

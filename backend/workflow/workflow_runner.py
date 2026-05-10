@@ -15,9 +15,7 @@ from backend.api.events import publish_async
 from backend.models.artifact import (
     DebateArtifact,
     Injection,
-    MinorityVote,
     Turn,
-    UserQuery,
 )
 from backend.services.artifact_store import ArtifactStore
 from backend.workflow.audit_logger import get_audit_logger

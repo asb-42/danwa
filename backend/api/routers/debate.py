@@ -267,6 +267,8 @@ async def get_debate(
     from backend.workflow.hitl.api import (
         get_active_interrupt,
         get_hitl_config,
+    )
+    from backend.workflow.hitl.api import (
         is_paused as hitl_is_paused,
     )
     hitl_config = get_hitl_config(debate_id)

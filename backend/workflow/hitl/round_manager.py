@@ -11,15 +11,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 
 from backend.workflow.hitl.api import (
-    get_active_interrupt,
-    get_hitl_config,
     get_pending_injects,
-    is_paused,
 )
-from backend.workflow.state import DebateState
 
 logger = logging.getLogger(__name__)
 

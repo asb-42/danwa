@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -84,7 +84,7 @@ class StateSnapshotStore:
             state_dict: Serialized WorkflowState dict.
         """
         state_json = json.dumps(state_dict, default=str)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         with self._connect() as conn:
             conn.execute(

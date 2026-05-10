@@ -20,14 +20,11 @@ from datetime import UTC, datetime
 from backend.api.events import publish_async
 from backend.workflow.hitl.agent_query import analyze_for_query
 from backend.workflow.hitl.api import (
-    consume_all_pending_injects,
     consume_inject,
     get_active_interrupt,
-    get_hitl_config,
     get_pending_injects,
     is_paused,
     register_agent_query,
-    resolve_interrupt,
 )
 from backend.workflow.state import DebateState
 

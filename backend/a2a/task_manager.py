@@ -6,7 +6,6 @@ Follows the same sqlite3 pattern as ``backend.persistence.audit.AuditService``.
 
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 import threading

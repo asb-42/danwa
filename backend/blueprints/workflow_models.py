@@ -18,9 +18,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from backend.blueprints.models import ToneProfile
-
-
 # ---------------------------------------------------------------------------
 # Workflow Node Types
 # ---------------------------------------------------------------------------
@@ -75,7 +72,7 @@ class WorkflowNode(BaseModel):
     position: dict[str, float] = Field(default_factory=dict)  # {x, y} for canvas
 
     @model_validator(mode="after")
-    def validate_agent_blueprint_id(self) -> "WorkflowNode":
+    def validate_agent_blueprint_id(self) -> WorkflowNode:
         """Agent-type nodes must have an agent_blueprint_id."""
         if self.type in AGENT_NODE_TYPES and not self.agent_blueprint_id:
             raise ValueError(
@@ -84,7 +81,7 @@ class WorkflowNode(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_tone_profile_config(self) -> "WorkflowNode":
+    def validate_tone_profile_config(self) -> WorkflowNode:
         """Tone-profile nodes must have exactly one of tone_profile_id or inline_profile."""
         if self.type == "wf-tone-profile":
             has_catalog = bool(self.config.get("tone_profile_id"))
@@ -142,7 +139,7 @@ class WorkflowEdge(BaseModel):
     label: str = ""
 
     @model_validator(mode="after")
-    def validate_condition(self) -> "WorkflowEdge":
+    def validate_condition(self) -> WorkflowEdge:
         """Conditional edges must have a condition expression."""
         if self.type == "conditional" and not self.condition:
             raise ValueError("Conditional edges require a condition expression")

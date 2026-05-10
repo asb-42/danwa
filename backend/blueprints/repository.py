@@ -26,8 +26,8 @@ from backend.blueprints.models import (
 from backend.blueprints.workflow_models import (
     ConditionalEdge,
     InterjectionPoint,
-    TerminationCondition,
     TemplatePlaceholder,
+    TerminationCondition,
     WorkflowDefinition,
     WorkflowEdge,
     WorkflowNode,
