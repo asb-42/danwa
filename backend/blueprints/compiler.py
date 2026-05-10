@@ -7,7 +7,7 @@ LangGraph compilation delegates to WorkflowCompiler.
 from __future__ import annotations
 
 import logging
-from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -169,7 +169,7 @@ class CompilerService:
             warnings=warnings,
         )
 
-    def compile_to_langgraph(self, workflow: WorkflowDefinition) -> "CompiledWorkflow":
+    def compile_to_langgraph(self, workflow: WorkflowDefinition) -> CompiledWorkflow:
         """Compile a WorkflowDefinition into an executable LangGraph StateGraph.
 
         Delegates to ``WorkflowCompiler`` which handles:

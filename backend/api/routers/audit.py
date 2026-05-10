@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from backend.api.deps import get_audit_service, get_debate_store_for_project, get_project_id
 from backend.persistence.audit import AuditService

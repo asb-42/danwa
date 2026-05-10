@@ -28,6 +28,7 @@ from backend.api.routers import (  # noqa: E402
     debate,
     dms,
     health,
+    input_composer,
     optimization_proposals,
     output_composer,
     profiles,
@@ -229,6 +230,13 @@ def create_app() -> FastAPI:
         optimization_proposals.router,
         prefix="/api/v1",
         tags=["optimization-proposals"],
+    )
+
+    # --- Input Composer ---
+    app.include_router(
+        input_composer.router,
+        prefix="/api/v1",
+        tags=["input-composer"],
     )
 
     # --- Error handlers (Blueprint Canvas) ---

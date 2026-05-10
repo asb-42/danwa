@@ -33,7 +33,6 @@ from backend.workflow.workflow_runner import (
     cancel_session,
     get_pause_event,
     get_session_status,
-    is_cancelled,
     pause_session,
     resume_session,
     run_workflow_background,
@@ -387,7 +386,7 @@ async def stream_workflow_events(session_id: str) -> EventSourceResponse:
                     # Stop on terminal events
                     if event_type in ("workflow.complete", "node.error"):
                         break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Send keepalive
                     yield {"event": "ping", "data": "{}"}
         finally:

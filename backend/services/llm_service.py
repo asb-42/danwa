@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -118,7 +118,7 @@ class LLMService:
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-    ) -> "GenerationResult":
+    ) -> GenerationResult:
         """Generate with automatic fallback on A2A failure."""
         from backend.a2a.exceptions import A2AError
 
@@ -137,7 +137,7 @@ class LLMService:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
-    ) -> "GenerationResult":
+    ) -> GenerationResult:
         """Generate via A2A protocol using A2AAdapter."""
         from backend.a2a.adapter import A2AAdapter
         from backend.core.config import settings

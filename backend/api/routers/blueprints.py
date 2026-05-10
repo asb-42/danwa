@@ -469,8 +469,6 @@ def clone_workflow(
     Creates a deep copy with a new ID, incremented version, and
     ``is_locked=False``.
     """
-    import copy
-    import uuid
 
     original = repo.get_workflow_definition(wf_id)
     _require_found("WorkflowDefinition", original, wf_id)
@@ -530,7 +528,6 @@ def save_workflow_as_template(
         wf_data.pop(key, None)
 
     # Extract placeholders: replace concrete values with {{key}}
-    from backend.blueprints.workflow_models import WorkflowTemplate as _WT
 
     placeholders: list[dict] = []
     for pkey in extracted_keys:

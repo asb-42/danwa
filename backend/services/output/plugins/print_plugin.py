@@ -239,9 +239,10 @@ class PrintOutputPlugin(OutputPlugin):
     def _generate_odt_fallback(html: str, output_path: Path) -> None:
         """Fallback ODT generation using odfpy."""
         try:
-            from odf.opendocument import OpenDocumentText
-            from odf.text import P, H
             import re
+
+            from odf.opendocument import OpenDocumentText
+            from odf.text import H, P
 
             doc = OpenDocumentText()
             text = re.sub(r"<[^>]+>", " ", html)

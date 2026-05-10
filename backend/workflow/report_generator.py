@@ -11,16 +11,13 @@ Produces a structured report including:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from docx import Document
-from docx.shared import Pt, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from weasyprint import HTML, CSS
+from weasyprint import HTML
 
 from backend.workflow.audit_logger import AuditLogger
 
@@ -142,9 +139,9 @@ class WorkflowReportGenerator:
         # Write as .odt using a simple text-based approach
         # In production, use odfpy for proper ODF generation
         try:
-            from odf.opendocument import OpenDocumentText
-            from odf.text import P, H
             from odf import teletype
+            from odf.opendocument import OpenDocumentText
+            from odf.text import H, P
 
             doc = OpenDocumentText()
             doc.text.addElement(H(text=f"Workflow Report: {session_id}", outlinelevel=1))

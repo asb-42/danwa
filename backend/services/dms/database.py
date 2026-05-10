@@ -8,7 +8,6 @@ import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +98,7 @@ class DMSDB:
         self.conn.commit()
         return self.get_project(project_id)  # type: ignore[return-value]
 
-    def get_project(self, project_id: str) -> Optional[dict]:
+    def get_project(self, project_id: str) -> dict | None:
         cursor = self.conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
@@ -149,7 +148,7 @@ class DMSDB:
         self.conn.commit()
         return self.get_document(doc_id)  # type: ignore[return-value]
 
-    def get_document(self, doc_id: str) -> Optional[dict]:
+    def get_document(self, doc_id: str) -> dict | None:
         cursor = self.conn.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
