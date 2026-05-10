@@ -704,4 +704,16 @@ export default {
   'config.roleTypeIcon': 'Symbol',
   'archive.viewTrace': 'Trace anzeigen',
   'archive.traceTitle': 'Ausführungs-Trace',
+
+  // Blueprint Canvas — missing keys used by components
+  'blueprint.canvas.saveLayout': 'Layout speichern',
+  'blueprint.canvas.autoLayout': 'Auto-Layout',
+  'blueprint.canvas.loadLayout': 'Laden',
+  'blueprint.canvas.deleteLayout': 'Löschen',
+  'blueprint.inspector.save': 'Speichern',
+  'blueprint.inspector.delete': 'Löschen',
+  'blueprint.inspector.draft': 'Entwurf',
+  'blueprint.inspector.cancel': 'Abbrechen',
+  'blueprint.form.color': 'Farbe',
+  'blueprint.form.icon': 'Symbol',
 };
