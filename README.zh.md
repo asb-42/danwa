@@ -625,7 +625,8 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 ## 许可证
 
-[在此添加您的许可证]
+本项目采用 **GNU Affero 通用公共许可证 (AGPL)** 授权。
+详见 [LICENSE](LICENSE) 文件。
 
 ---
 

@@ -627,7 +627,8 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 ## License
 
-[Add your license here]
+This project is licensed under the **GNU Affero General Public License (AGPL)**.
+See the [LICENSE](LICENSE) file for details.
 
 ---
 
