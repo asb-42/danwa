@@ -22,7 +22,7 @@
   // Initialize registry (idempotent — safe to call multiple times)
   registerAllNodeTypes();
 
-  let { onsave = () => {}, onsaveas = () => {} } = $props();
+  let { onsave = () => {}, onsaveas = () => {}, onnewworkflow = () => {}, onsaveastemplate = () => {} } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -206,7 +206,23 @@
     >
       📐 {t('blueprint.canvas.autoLayout')}
     </button>
+    <button
+      class="toolbar-btn"
+      onclick={() => onnewworkflow()}
+      title={t('template.gallery.title') || 'Templates'}
+      data-testid="canvas-templates"
+    >
+      📋 {t('template.gallery.title') || 'Templates'}
+    </button>
     {#if isWorkflowMode && hasNodes}
+      <button
+        class="toolbar-btn"
+        onclick={() => onsaveastemplate()}
+        title={t('template.saveAs.title')}
+        data-testid="canvas-save-as-template"
+      >
+        📦 {t('template.saveAs.title')}
+      </button>
       <button
         class="toolbar-btn toolbar-btn-execute"
         class:active={showExecutionPanel}
