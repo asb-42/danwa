@@ -47,6 +47,11 @@ class BlueprintLLMProfile(BaseModel):
         "opencode-zen",
         "opencode-go",
         "xiaomi",
+        # STT providers (Input Composer Phase D)
+        "whisper-local",
+        "whisper-api",
+        "azure-stt",
+        "google-stt",
     ]
     model: str
     api_base: str | None = None
@@ -64,7 +69,7 @@ class BlueprintLLMProfile(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # --- A2A Protocol (Phase 8) ---
-    protocol: Literal["litellm", "a2a"] = "litellm"
+    protocol: Literal["litellm", "a2a", "stt"] = "litellm"
     a2a_endpoint: str | None = None
     a2a_timeout: int = 120
     fallback_llm_profile_id: str | None = None

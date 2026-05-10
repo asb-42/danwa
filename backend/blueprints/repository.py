@@ -586,8 +586,9 @@ class BlueprintRepository:
                  conditional_edges_json, interjection_points_json, node_blueprint_map_json,
                  tags_json, is_active, created_at, updated_at,
                  nodes_json, edges_json, entry_point,
-                 termination_conditions_json, version, is_locked, template_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 termination_conditions_json, version, is_locked, template_id,
+                 input_config)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     wf.id,
                     wf.name,
@@ -608,6 +609,7 @@ class BlueprintRepository:
                     wf.version,
                     int(wf.is_locked),
                     wf.template_id,
+                    json.dumps(wf.input_config) if wf.input_config is not None else None,
                 ),
             )
 
@@ -657,6 +659,8 @@ class BlueprintRepository:
         version = row["version"] if "version" in row.keys() else 1
         is_locked = row["is_locked"] if "is_locked" in row.keys() else 0
         template_id = row["template_id"] if "template_id" in row.keys() else None
+        input_config_raw = row["input_config"] if "input_config" in row.keys() else None
+        input_config = json.loads(input_config_raw) if input_config_raw else None
 
         return WorkflowDefinition(
             id=row["id"],
@@ -684,6 +688,7 @@ class BlueprintRepository:
             version=version,
             is_locked=bool(is_locked),
             template_id=template_id,
+            input_config=input_config,
         )
 
     # ------------------------------------------------------------------

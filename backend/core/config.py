@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # --- Output Composer ---
     output_dir: Path = Path("data/outputs")
 
+    # --- Input Composer / External Plugins ---
+    allow_external_plugins: bool = False
+
 
 # Module-level singleton — importable as `settings`
 settings = Settings()

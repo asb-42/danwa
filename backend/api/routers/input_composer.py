@@ -5,6 +5,7 @@ Endpoints:
 - POST /api/v1/input/submit                  — submit input
 - GET  /api/v1/input/jobs/{job_id}           — job status
 - DELETE /api/v1/input/jobs/{job_id}         — delete job
+- POST /api/v1/input/stt/stream              — STT audio streaming (SSE)
 - POST /api/v1/input/a2a/{task_id}/approve   — approve A2A request
 - POST /api/v1/input/a2a/{task_id}/reject    — reject A2A request
 - POST /api/v1/mcp/tools/call                — reserved for future MCP
@@ -12,15 +13,18 @@ Endpoints:
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.services.input.input_engine import InputComposerService
 from backend.services.input.input_job_store import InputJobStore
 from backend.services.input.registry import InputPluginRegistry
+from backend.services.stt_service import STTService
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +224,71 @@ async def reject_a2a(task_id: str) -> dict:
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job {task_id!r} not found")
     return {"job_id": job.id, "status": job.status.value}
+
+
+@router.post("/input/stt/stream")
+async def stt_stream(request: Request) -> StreamingResponse:
+    """STT audio streaming endpoint.
+
+    Receives audio blobs via POST body and returns Server-Sent Events (SSE)
+    with ``event: partial`` for intermediate results and ``event: final``
+    for the completed transcript.
+
+    The request body should be raw audio bytes (WebM/Opus or WAV).
+    Query parameters:
+    - ``profile_id``: LLM profile ID with protocol='stt' (optional, uses default)
+    - ``language``: Language code (default: 'de')
+    """
+    # Read audio bytes from request body
+    audio_bytes = await request.body()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="No audio data provided")
+
+    language = request.query_params.get("language", "de")
+
+    # Get STT profile (for now, use a default local whisper config)
+    # In the future, profile_id query param will select from blueprint_llm_profiles
+    profile_type = type(
+        "STTProfile",
+        (),
+        {"provider": "whisper-local", "model": "base"},
+    )()
+
+    stt_service = STTService()
+
+    async def event_generator():
+        """Yield SSE events for STT transcription."""
+        try:
+            # For now, we transcribe the full chunk and send as final
+            # Future: implement streaming/chunked transcription for partial results
+            transcript = await stt_service.transcribe_chunk(
+                audio_bytes, profile_type, language
+            )
+
+            if transcript.strip():
+                # Send partial event (simulated — full text as "partial")
+                yield f"event: partial\ndata: {json.dumps({'text': transcript})}\n\n"
+
+                # Send final event
+                yield f"event: final\ndata: {json.dumps({'text': transcript})}\n\n"
+            else:
+                yield f"event: final\ndata: {json.dumps({'text': ''})}\n\n"
+
+        except RuntimeError as exc:
+            yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+        except Exception as exc:
+            logger.exception("STT streaming error")
+            yield f"event: error\ndata: {json.dumps({'error': f'STT failed: {exc}'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/mcp/tools/call")

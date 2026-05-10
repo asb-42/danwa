@@ -1,0 +1,249 @@
+/* Minimal Print Styles
+   Single-column layout, clean typography, no margin notes.
+   Uses simple block structure for WeasyPrint compatibility.
+*/
+
+@page {
+  size: A4;
+  margin: 2cm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', 'Arial', sans-serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #222;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Document Header */
+.doc-header {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 1em;
+  margin-bottom: 2em;
+}
+
+.doc-header h1 {
+  font-size: 16pt;
+  margin: 0 0 0.5em 0;
+  color: #111;
+}
+
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+  font-size: 9pt;
+  color: #666;
+}
+
+.doc-meta span {
+  background: #f5f5f5;
+  padding: 0.2em 0.6em;
+  border-radius: 3px;
+}
+
+/* Main Content — single column */
+.debate-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+}
+
+/* Debate Turn */
+.debate-turn {
+  padding: 0.8em 0;
+  border-bottom: 1px solid #eee;
+  page-break-inside: avoid;
+}
+
+.debate-turn:last-child {
+  border-bottom: none;
+}
+
+.turn-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8em;
+  margin-bottom: 0.4em;
+  font-size: 10pt;
+  color: #555;
+}
+
+.turn-agent {
+  font-weight: bold;
+  font-size: 11pt;
+  color: #222;
+}
+
+.turn-role {
+  font-style: italic;
+  color: #888;
+}
+
+.turn-round {
+  background: #f0f0f0;
+  padding: 0.1em 0.5em;
+  border-radius: 3px;
+  font-size: 9pt;
+  color: #555;
+}
+
+.turn-timestamp {
+  font-size: 8pt;
+  color: #aaa;
+  margin-left: auto;
+}
+
+.turn-content {
+  font-size: 11pt;
+  line-height: 1.6;
+  text-align: left;
+}
+
+/* Margin Notes — rendered inline in minimal mode */
+.margin-notes {
+  margin-top: 0.4em;
+  padding: 0.3em 0.6em;
+  border-left: 2px solid #ddd;
+  font-size: 9pt;
+  color: #666;
+}
+
+.margin-note {
+  padding: 0.2em 0;
+}
+
+.margin-note.injection {
+  color: #e65100;
+}
+
+.margin-note.dissent {
+  color: #c62828;
+}
+
+.margin-note.meta {
+  color: #2e7d32;
+}
+
+.margin-note-icon {
+  margin-right: 0.3em;
+}
+
+.margin-note-content {
+  font-style: italic;
+}
+
+/* Minority Callout */
+.minority-callout {
+  margin: 0.8em 0;
+  padding: 0.6em 0.8em;
+  border-left: 3px solid #c62828;
+  background: #fff5f5;
+  page-break-inside: avoid;
+}
+
+.minority-callout header {
+  margin-bottom: 0.4em;
+  color: #c62828;
+  font-weight: bold;
+}
+
+.callout-icon {
+  margin-right: 0.3em;
+}
+
+.callout-content {
+  font-size: 10pt;
+  font-style: italic;
+}
+
+/* User Query Block */
+.user-query-block {
+  margin: 0.8em 0;
+  padding: 0.6em 0.8em;
+  border-left: 3px solid #1565c0;
+  background: #f5f9ff;
+  page-break-inside: avoid;
+}
+
+.user-query-block header {
+  margin-bottom: 0.4em;
+  color: #1565c0;
+  font-weight: bold;
+}
+
+.query-icon {
+  margin-right: 0.3em;
+}
+
+.query-content {
+  font-size: 10pt;
+}
+
+/* Consensus Summary */
+.consensus-summary {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border: 1px solid #43a047;
+  border-radius: 4px;
+  background: #e8f5e9;
+  page-break-inside: avoid;
+}
+
+.consensus-summary header {
+  margin-bottom: 0.5em;
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.consensus-threshold {
+  font-size: 9pt;
+  color: #555;
+}
+
+.consensus-details {
+  font-size: 10pt;
+}
+
+/* Audit Appendix */
+.audit-appendix {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid #ccc;
+  page-break-before: always;
+}
+
+.audit-appendix h2 {
+  font-size: 14pt;
+  color: #333;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+  margin-top: 1em;
+}
+
+.audit-table th,
+.audit-table td {
+  border: 1px solid #ddd;
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+.audit-table th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+.audit-table tr:nth-child(even) {
+  background: #fafafa;
+}

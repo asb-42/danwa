@@ -229,6 +229,15 @@ class WorkflowDefinition(BaseModel):
     # Template reference (set when instantiated from a WorkflowTemplate)
     template_id: str | None = None
 
+    # --- Input Composer (Phase H.5) ---
+    input_config: dict | None = Field(
+        default=None,
+        description=(
+            "Input Composer configuration for this workflow. "
+            "Keys: default_input_plugin, stt_profile_id, a2a_inbound_enabled"
+        ),
+    )
+
     # Metadata
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True

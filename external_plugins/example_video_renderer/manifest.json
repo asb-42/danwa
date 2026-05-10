@@ -1,0 +1,27 @@
+{
+    "manifest_version": "1.0",
+    "plugin_key": "example_video_renderer",
+    "plugin_type": "output",
+    "name": "Example Video Renderer",
+    "description": "Stub output plugin demonstrating the external plugin manifest format. No functionality.",
+    "author": "danwa",
+    "version": "0.1.0",
+    "entrypoint": "external_plugins.example_video_renderer.plugin",
+    "config_schema": {
+        "type": "object",
+        "properties": {
+            "resolution": {
+                "type": "string",
+                "enum": ["720p", "1080p", "4k"],
+                "default": "1080p"
+            },
+            "fps": {
+                "type": "integer",
+                "default": 30,
+                "minimum": 1,
+                "maximum": 60
+            }
+        }
+    },
+    "permissions": ["filesystem"]
+}
