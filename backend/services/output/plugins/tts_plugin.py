@@ -39,6 +39,7 @@ class TTSPluginConfig(BaseModel):
     voice_mapping: dict[str, str] = Field(
         default_factory=dict,
         description="agent_name → voice_id mapping",
+        json_schema_extra={"hidden": True},
     )
     default_voice: str = "de-DE-KatjaNeural"
     segment_pause_ms: int = Field(default=800, ge=0, le=5000)

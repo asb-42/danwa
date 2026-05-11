@@ -39,10 +39,12 @@
 
   let searchTimeout = null;
 
-  // Load voices when engine changes
+  // Load voices when TTS plugin is selected or engine changes
+  let _lastVoiceEngine = null;
   $effect(() => {
     const engine = configValues.engine;
-    if (selectedPlugin?.plugin_key === 'tts' && engine) {
+    if (selectedPlugin?.plugin_key === 'tts' && engine && engine !== _lastVoiceEngine) {
+      _lastVoiceEngine = engine;
       const url = engine === 'mimo_tts'
         ? '/api/v1/tts-voices?engine=mimo_tts'
         : '/api/v1/tts-voices';
@@ -145,6 +147,10 @@
   function selectPlugin(plugin) {
     selectedPlugin = plugin;
     configValues = initDefaults(plugin.config_schema || {});
+    // Ensure voice_mapping is always initialized for TTS
+    if (plugin.plugin_key === 'tts' && !configValues.voice_mapping) {
+      configValues.voice_mapping = {};
+    }
     error = null;
   }
 
@@ -271,7 +277,7 @@
         {#if selectedPlugin.plugin_key === 'tts'}
           <div class="mt-4">
             <VoiceMappingEditor
-              bind:mapping={configValues.voice_mapping}
+              mapping={configValues.voice_mapping || {}}
               voices={ttsVoices}
               defaultVoice={configValues.default_voice || ''}
               onchange={(m) => { configValues = { ...configValues, voice_mapping: m }; }}
