@@ -22,7 +22,7 @@
   style="border-color: {nodeColor}; --node-bg: {nodeColor}11; --node-dark-bg: {nodeColor}22; --node-border: {nodeColor};"
   data-testid="node-role-type-{data?.blueprint_id || 'draft'}"
 >
-  <Handle type="target" position={Position.Left} />
+  <Handle type="target" position={Position.Left} class="port-role" />
 
   <div class="node-header">
     <span class="node-icon">{nodeIcon}</span>
@@ -50,7 +50,7 @@
     </div>
   </div>
 
-  <Handle type="source" position={Position.Right} />
+  <Handle type="source" position={Position.Right} class="port-role" />
 </div>
 
 <style>

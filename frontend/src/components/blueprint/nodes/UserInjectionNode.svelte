@@ -25,7 +25,7 @@
   style="border-color: #6366f1; --node-bg: #eef2ff; --node-dark-bg: #1e1b4b; --node-border: #6366f1;"
   data-testid="node-wf-user-injection"
 >
-  <Handle type="target" position={Position.Left} id="in" />
+  <Handle type="target" position={Position.Left} id="in" class="port-sequence" />
 
   <div class="node-header">
     <span class="node-icon">👤</span>
@@ -39,7 +39,7 @@
     </div>
   </div>
 
-  <Handle type="source" position={Position.Right} id="out" />
+  <Handle type="source" position={Position.Right} id="out" class="port-sequence" />
   <!-- Interjection handle — external input enters here -->
   <Handle type="target" position={Position.Bottom} id="interjection" />
 </div>

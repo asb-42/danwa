@@ -12,7 +12,13 @@
   import { getNodesByCategory } from '../../lib/blueprint/registry.js';
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
   import { listCanvasLayouts, deleteCanvasLayout } from '../../lib/blueprint/api.js';
+  import { listBlueprintLLMProfiles } from '../../lib/blueprint/api.js';
+  import { listRoleDefinitions } from '../../lib/blueprint/api.js';
+  import { listPromptTemplates } from '../../lib/blueprint/api.js';
+  import { listAgentBlueprints } from '../../lib/blueprint/api.js';
+  import { listRoleTypes } from '../../lib/blueprint/api.js';
   import PaletteCategory from './PaletteCategory.svelte';
+  import PaletteEntityList from './PaletteEntityList.svelte';
 
   let { onloadlayout = () => {} } = $props();
 
@@ -27,6 +33,14 @@
   /** @type {Array} */
   let savedLayouts = $state([]);
   let layoutsLoading = $state(false);
+
+  // DB entity lists for palette
+  let llmProfiles = $state([]);
+  let roleDefinitions = $state([]);
+  let promptTemplates = $state([]);
+  let agentBlueprints = $state([]);
+  let roleTypes = $state([]);
+  let entitiesLoading = $state(false);
 
   // Ensure registry is populated before reading categories
   registerAllNodeTypes();
@@ -45,6 +59,28 @@
     }
   }
 
+  async function loadEntities() {
+    entitiesLoading = true;
+    try {
+      const [lp, rd, pt, ab, rt] = await Promise.all([
+        listBlueprintLLMProfiles().catch(() => []),
+        listRoleDefinitions().catch(() => []),
+        listPromptTemplates().catch(() => []),
+        listAgentBlueprints().catch(() => []),
+        listRoleTypes().catch(() => []),
+      ]);
+      llmProfiles = lp;
+      roleDefinitions = rd;
+      promptTemplates = pt;
+      agentBlueprints = ab;
+      roleTypes = rt;
+    } catch (err) {
+      console.warn('[Palette] Failed to load entities:', err);
+    } finally {
+      entitiesLoading = false;
+    }
+  }
+
   async function handleDeleteLayout(layoutId) {
     try {
       await deleteCanvasLayout(layoutId);
@@ -58,9 +94,10 @@
     }
   }
 
-  // Load layouts once on mount
+  // Load layouts and entities once on mount
   onMount(() => {
     loadLayouts();
+    loadEntities();
   });
 </script>
 
@@ -70,6 +107,46 @@
     title={t('blueprint.palette.assets')}
     nodes={assetNodes}
   />
+
+  <!-- Existing DB entities (draggable to canvas) -->
+  <div class="palette-section">
+    <h3 class="palette-title">
+      {t('blueprint.palette.existingEntities') || 'Existing Entities'}
+      {#if entitiesLoading}
+        <span class="loading-dot">⏳</span>
+      {/if}
+    </h3>
+    <PaletteEntityList
+      label={t('blueprint.palette.llmProfiles') || 'LLM Profiles'}
+      icon="🧠"
+      nodeType="llm-profile"
+      entities={llmProfiles}
+    />
+    <PaletteEntityList
+      label={t('blueprint.palette.roleDefinitions') || 'Role Definitions'}
+      icon="👤"
+      nodeType="role-definition"
+      entities={roleDefinitions}
+    />
+    <PaletteEntityList
+      label={t('blueprint.palette.promptTemplates') || 'Prompt Templates'}
+      icon="📝"
+      nodeType="prompt-template"
+      entities={promptTemplates}
+    />
+    <PaletteEntityList
+      label={t('blueprint.palette.agentBlueprints') || 'Agent Blueprints'}
+      icon="🤖"
+      nodeType="agent-blueprint"
+      entities={agentBlueprints}
+    />
+    <PaletteEntityList
+      label={t('blueprint.palette.roleTypes') || 'Role Types'}
+      icon="🏷️"
+      nodeType="role-type"
+      entities={roleTypes}
+    />
+  </div>
 
   <!-- Workflow nodes (only in Workflow Mode) -->
   {#if isWorkflowMode}
@@ -137,8 +214,15 @@
     color: #9ca3af;
     border-color: #374151;
   }
-  :global(.dark)
-  :global(.dark)
+  .loading-dot {
+    font-size: 10px;
+    margin-left: 4px;
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
   .palette-empty {
     font-size: 12px;
     color: #9ca3af;

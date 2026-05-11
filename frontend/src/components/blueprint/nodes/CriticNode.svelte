@@ -22,8 +22,8 @@
   style="border-color: #ef4444; --node-bg: #fef2f2; --node-dark-bg: #450a0a; --node-border: #ef4444;"
   data-testid="node-wf-critic"
 >
-  <Handle type="target" position={Position.Top} id="config-in" class="config-input-port" title="Tone" />
-  <Handle type="target" position={Position.Left} id="in" />
+  <Handle type="target" position={Position.Top} id="config-in" class="config-input-port port-config" title="Tone" />
+  <Handle type="target" position={Position.Left} id="in" class="port-sequence" />
 
   <div class="node-header">
     <span class="node-icon">🔍</span>
@@ -42,7 +42,7 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.Right} id="out" />
+  <Handle type="source" position={Position.Right} id="out" class="port-sequence" />
 </div>
 
 <style>

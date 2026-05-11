@@ -33,7 +33,7 @@
   class:draft={isDraft}
   data-testid="node-llm-profile-{data?.blueprint_id || 'draft'}"
 >
-  <Handle type="target" position={Position.Left} />
+  <Handle type="target" position={Position.Left} class="port-llm" />
 
   <div class="node-header">
     <span class="node-icon">🧠</span>
@@ -60,7 +60,7 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.Right} />
+  <Handle type="source" position={Position.Right} class="port-llm" />
 </div>
 
 <style>

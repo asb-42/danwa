@@ -34,7 +34,7 @@
     title="Tone"
   />
 
-  <Handle type="target" position={Position.Left} id="in" />
+  <Handle type="target" position={Position.Left} id="in" class="port-sequence" />
 
   <div class="node-header">
     <span class="node-icon">🧠</span>
@@ -58,7 +58,7 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.Right} id="out" />
+  <Handle type="source" position={Position.Right} id="out" class="port-sequence" />
 </div>
 
 <style>

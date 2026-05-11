@@ -137,6 +137,20 @@ export function handlePaletteDragStart(event, nodeType) {
 }
 
 /**
+ * Set up drag start data on an existing entity from the palette.
+ *
+ * @param {DragEvent} event
+ * @param {string} nodeType - The node type (e.g. 'llm-profile')
+ * @param {string} entityId - The entity's DB ID
+ */
+export function handleEntityDragStart(event, nodeType, entityId) {
+  if (!event.dataTransfer) return;
+  event.dataTransfer.setData('application/blueprint-node-type', nodeType);
+  event.dataTransfer.setData('application/blueprint-entity-id', entityId);
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+/**
  * Extract the node type from a drop event.
  *
  * @param {DragEvent} event
@@ -144,4 +158,37 @@ export function handlePaletteDragStart(event, nodeType) {
  */
 export function getNodeTypeFromDrop(event) {
   return event.dataTransfer?.getData('application/blueprint-node-type') || null;
+}
+
+/**
+ * Extract the entity ID from a drop event (if dropping an existing entity).
+ *
+ * @param {DragEvent} event
+ * @returns {string|null}
+ */
+export function getEntityIdFromDrop(event) {
+  return event.dataTransfer?.getData('application/blueprint-entity-id') || null;
+}
+
+/**
+ * Create a node from an existing DB entity (non-draft).
+ *
+ * @param {string} nodeType - The blueprint node type
+ * @param {string} entityId - The entity's DB ID
+ * @param {object} entityData - The full entity data from the API
+ * @param {{ x: number, y: number }} position - Canvas position
+ * @returns {import('@xyflow/svelte').Node}
+ */
+export function createEntityNode(nodeType, entityId, entityData, position) {
+  const id = `entity-${entityId}`;
+  return {
+    id,
+    type: nodeType,
+    position,
+    data: {
+      isDraft: false,
+      blueprint_id: entityId,
+      ...entityData,
+    },
+  };
 }

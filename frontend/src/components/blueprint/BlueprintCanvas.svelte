@@ -11,7 +11,13 @@
   import { i18n } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
   import { validateConnection } from '../../lib/blueprint/validation.js';
-  import { screenToFlowPosition, createDraftNode, getNodeTypeFromDrop } from '../../lib/blueprint/dnd.js';
+  import { screenToFlowPosition, createDraftNode, getNodeTypeFromDrop, getEntityIdFromDrop, createEntityNode } from '../../lib/blueprint/dnd.js';
+  import {
+    getAgentBlueprint,
+    getBlueprintLLMProfile,
+    getRoleDefinition,
+    getPromptTemplate,
+  } from '../../lib/blueprint/api.js';
   import { applyBlueprintLayout } from '../../lib/blueprint/layout.js';
   import { getNodeTypes, getEdgeTypes } from '../../lib/blueprint/registry.js';
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
@@ -123,20 +129,53 @@
     }
   }
 
-  function handleDrop(event) {
+  async function handleDrop(event) {
     event.preventDefault();
     const nodeType = getNodeTypeFromDrop(event);
     if (!nodeType || !flowContainer) return;
 
     // Get viewport from the Svelte Flow instance
     const bounds = flowContainer.getBoundingClientRect();
-    // Svelte Flow stores viewport in a data attribute or we can approximate
     const viewport = { x: 0, y: 0, zoom: 1 };
     const position = screenToFlowPosition(event, viewport, bounds);
 
-    const draftNode = createDraftNode(nodeType, position);
-    canvasStore.addNode(draftNode);
-    canvasStore.selectNode(draftNode.id);
+    const entityId = getEntityIdFromDrop(event);
+
+    if (entityId) {
+      // Existing entity drop — load entity data and create non-draft node
+      try {
+        let entityData = null;
+        switch (nodeType) {
+          case 'agent-blueprint':
+            entityData = await getAgentBlueprint(entityId);
+            break;
+          case 'llm-profile':
+            entityData = await getBlueprintLLMProfile(entityId);
+            break;
+          case 'role-definition':
+            entityData = await getRoleDefinition(entityId);
+            break;
+          case 'prompt-template':
+            entityData = await getPromptTemplate(entityId);
+            break;
+          case 'role-type':
+            entityData = { id: entityId };
+            break;
+        }
+        if (entityData) {
+          const entityNode = createEntityNode(nodeType, entityId, entityData, position);
+          canvasStore.addNode(entityNode);
+          canvasStore.selectNode(entityNode.id);
+        }
+      } catch (err) {
+        console.warn('[BlueprintCanvas] Failed to load entity for drop:', err);
+      }
+    } else {
+      // Draft node drop (new)
+      const draftNode = createDraftNode(nodeType, position);
+      canvasStore.addNode(draftNode);
+      canvasStore.selectNode(draftNode.id);
+    }
   }
 
   // ─── Execution state ──────────────────────────────────────────────
@@ -496,5 +535,34 @@
   }
   :global(.svelte-flow__handle:hover) {
     background: #3b82f6;
+  }
+
+  /* Color-coded port types based on edge semantics */
+  :global(.port-llm) {
+    border-color: #3b82f6 !important;
+  }
+  :global(.port-role) {
+    border-color: #8b5cf6 !important;
+  }
+  :global(.port-prompt) {
+    border-color: #10b981 !important;
+  }
+  :global(.port-config) {
+    border-color: #f59e0b !important;
+    background: white !important;
+  }
+  :global(.port-sequence) {
+    border-color: #6366f1 !important;
+  }
+  :global(.port-feedback) {
+    border-color: #ec4899 !important;
+  }
+  :global(.dark) :global(.port-llm),
+  :global(.dark) :global(.port-role),
+  :global(.dark) :global(.port-prompt),
+  :global(.dark) :global(.port-config),
+  :global(.dark) :global(.port-sequence),
+  :global(.dark) :global(.port-feedback) {
+    background: #1f2937 !important;
   }
 </style>

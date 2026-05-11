@@ -20,7 +20,7 @@
   style="border-color: #f43f5e; --node-bg: #fff1f2; --node-dark-bg: #4c0519; --node-border: #f43f5e;"
   data-testid="node-wf-gate"
 >
-  <Handle type="target" position={Position.Left} id="in" />
+  <Handle type="target" position={Position.Left} id="in" class="port-sequence" />
 
   <div class="node-header">
     <span class="node-icon">🔀</span>
@@ -37,7 +37,7 @@
   </div>
 
   <!-- True branch (right) -->
-  <Handle type="source" position={Position.Right} id="true" />
+  <Handle type="source" position={Position.Right} id="true" class="port-sequence" />
   <!-- False branch (bottom) -->
   <Handle type="source" position={Position.Bottom} id="false" />
 </div>

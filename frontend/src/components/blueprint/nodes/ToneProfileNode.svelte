@@ -43,7 +43,7 @@
     type="source"
     position={Position.Bottom}
     id="config-out"
-    class="config-port"
+    class="config-port port-config"
   />
 
   <!-- Sequential output port (right) -->
@@ -51,7 +51,7 @@
     type="source"
     position={Position.Right}
     id="out"
-    class="sequential-port"
+    class="sequential-port port-sequence"
   />
 
   <div class="node-content">

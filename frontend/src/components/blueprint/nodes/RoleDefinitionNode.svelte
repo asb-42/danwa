@@ -38,7 +38,7 @@
   style="border-color: {colors.border}; --node-bg: {colors.bg}; --node-dark-bg: {colors.darkBg}; --node-border: {colors.border};"
   data-testid="node-role-definition-{data?.blueprint_id || 'draft'}"
 >
-  <Handle type="target" position={Position.Left} />
+  <Handle type="target" position={Position.Left} class="port-role" />
 
   <div class="node-header">
     <span class="node-icon">👤</span>
@@ -67,7 +67,7 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.Right} />
+  <Handle type="source" position={Position.Right} class="port-role" />
 </div>
 
 <style>
