@@ -197,7 +197,7 @@ class MiMoTTSRenderer:
             style_hint[:50] if style_hint else "(none)",
         )
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
 

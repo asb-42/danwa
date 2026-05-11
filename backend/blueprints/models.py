@@ -96,13 +96,14 @@ class BlueprintLLMProfile(BaseModel):
     def from_legacy(cls, legacy: LLMProfile) -> BlueprintLLMProfile:
         """Convert from ``backend.core.profiles.LLMProfile``."""
         now = datetime.now(UTC)
-        # Infer profile_type from protocol/provider
         protocol = getattr(legacy, "protocol", "litellm")
-        ptype = "text"
-        if protocol == "stt" or legacy.provider.value in (
-            "whisper-local", "whisper-api", "azure-stt", "google-stt",
-        ):
-            ptype = "stt"
+        # Use explicit profile_type if set, otherwise infer from protocol/provider
+        ptype = getattr(legacy, "profile_type", None) or "text"
+        if ptype == "text":
+            if protocol == "stt" or legacy.provider.value in (
+                "whisper-local", "whisper-api", "azure-stt", "google-stt",
+            ):
+                ptype = "stt"
         return cls(
             id=legacy.id,
             name=legacy.name,
