@@ -719,6 +719,8 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     """Resolve the system prompt for an agent node from its config."""
     role = resolved_config.get("role", "agent")
     prompt_template_id = resolved_config.get("prompt_template_id")
+    role_type_name = resolved_config.get("role_type_name", "")
+    role_type_icon = resolved_config.get("role_type_icon", "👤")
 
     if prompt_template_id:
         try:
@@ -736,4 +738,10 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
         "optimizer": "You are an optimization expert. Refine and improve the draft by addressing the critiques.",
         "moderator": "You are a debate moderator. Synthesize all contributions and evaluate consensus.",
     }
-    return role_prompts.get(role, f"You are a {role} participating in a structured debate.")
+    prompt = role_prompts.get(role, f"You are a {role} participating in a structured debate.")
+
+    # Enhance with RoleType name if available (for custom role types)
+    if role_type_name and role_type_name.lower() != role.lower():
+        prompt = f"{role_type_icon} You are a {role_type_name} ({role}). " + prompt.split(". ", 1)[-1] if ". " in prompt else prompt
+
+    return prompt

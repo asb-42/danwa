@@ -728,4 +728,5 @@ export default {
   'blueprint.form.roleType': 'Role Type',
   'blueprint.form.roleTypeHint': 'Determines the behavioral category',
   'blueprint.form.roleHint': 'Select the role type for this definition',
+  'config.managedByBlueprint': 'Managed by Blueprint Canvas',
 };

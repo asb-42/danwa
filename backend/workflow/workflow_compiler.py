@@ -51,6 +51,12 @@ class ResolvedAgentConfig:
     role_definition_id: str
     role: str
     prompt_template_id: str | None = None
+    # RoleType metadata (resolved from RoleDefinition.role_type_id)
+    role_type_name: str = ""
+    role_type_icon: str = "👤"
+    role_type_color: str = "#8b5cf6"
+    default_max_rounds: int = 5
+    default_consensus_threshold: float = 0.9
 
 
 @dataclass
@@ -127,6 +133,11 @@ class WorkflowCompiler:
                         "role_definition_id": config.role_definition_id,
                         "role": config.role,
                         "prompt_template_id": config.prompt_template_id,
+                        "role_type_name": config.role_type_name,
+                        "role_type_icon": config.role_type_icon,
+                        "role_type_color": config.role_type_color,
+                        "default_max_rounds": config.default_max_rounds,
+                        "default_consensus_threshold": config.default_consensus_threshold,
                     }
                     result.resolved_agents.append(config)
 
@@ -150,7 +161,7 @@ class WorkflowCompiler:
     def _resolve_agent_config(
         self, node: WorkflowNode, errors: list[str]
     ) -> ResolvedAgentConfig | None:
-        """Resolve an agent node's blueprint, LLM profile, and role definition."""
+        """Resolve an agent node's blueprint, LLM profile, role definition, and role type."""
         blueprint_id = node.agent_blueprint_id
         if not blueprint_id:
             errors.append(f"Agent node '{node.id}' has no agent_blueprint_id")
@@ -175,6 +186,25 @@ class WorkflowCompiler:
             )
             return None
 
+        # Resolve RoleType chain: RoleDefinition.role_type_id → RoleType
+        role_type = self._repo.get_role_type(role_def.role_type_id)
+        role_type_name = ""
+        role_type_icon = "👤"
+        role_type_color = "#8b5cf6"
+        default_max_rounds = 5
+        default_consensus_threshold = 0.9
+        if role_type:
+            role_type_name = role_type.name
+            role_type_icon = role_type.icon
+            role_type_color = role_type.color
+            default_max_rounds = role_type.default_max_rounds
+            default_consensus_threshold = role_type.default_consensus_threshold
+        else:
+            logger.warning(
+                "RoleType '%s' not found for RoleDefinition '%s', using defaults",
+                role_def.role_type_id, role_def.id,
+            )
+
         return ResolvedAgentConfig(
             node_id=node.id,
             blueprint_id=blueprint.id,
@@ -184,6 +214,11 @@ class WorkflowCompiler:
             role_definition_id=role_def.id,
             role=role_def.role_type_id,
             prompt_template_id=blueprint.prompt_template_id or role_def.prompt_template_id,
+            role_type_name=role_type_name,
+            role_type_icon=role_type_icon,
+            role_type_color=role_type_color,
+            default_max_rounds=default_max_rounds,
+            default_consensus_threshold=default_consensus_threshold,
         )
 
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:
@@ -392,8 +427,8 @@ class WorkflowCompiler:
         elif node.type in AGENT_NODE_TYPES:
             config = resolved_configs.get(node.id, {})
             if node.type == "wf-moderator":
-                # Moderator also evaluates consensus
-                threshold = 0.7  # Default
+                # Use RoleType default_consensus_threshold if available
+                threshold = config.get("default_consensus_threshold", 0.7)
                 return moderator_node_factory(node.id, config, threshold)
             else:
                 return agent_node_factory(node.id, node.type, config)

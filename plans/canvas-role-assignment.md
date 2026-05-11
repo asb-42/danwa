@@ -95,44 +95,30 @@ The Blueprint Canvas already has the infrastructure:
 - Show computed properties: effective config summary (LLM, Role, Prompt)
 - Inline edit: name, description, tags
 
-### Phase 3: Canvas → Workflow Compilation
+### Phase 3: Canvas → Workflow Compilation ✅ DONE
 
-**Goal**: When a WorkflowDefinition is compiled, resolve the full chain.
+**Goal**: When a WorkflowDefinition is compiled, resolve the full RoleType chain.
 
-#### 3.1 Compiler Enhancement
+#### 3.1 Compiler Enhancement ✅
 
-```python
-# backend/blueprints/compiler.py
-def compile_workflow(workflow_def, repo):
-    for node_id, blueprint_id in workflow_def.node_blueprint_map.items():
-        blueprint = repo.get_agent_blueprint(blueprint_id)
-        role_def = repo.get_role_definition(blueprint.role_definition_id)
-        role_type = repo.get_role_type(role_def.role_type_id)
-        llm_profile = repo.get_llm_profile(blueprint.llm_profile_id)
-        prompt_template = repo.get_prompt_template(blueprint.prompt_template_id)
-        
-        # Resolve full agent config
-        agent_config = {
-            "role": role_type.id,  # e.g. "critic"
-            "llm_profile_id": llm_profile.id,
-            "system_prompt": prompt_template.content if prompt_template else role_def.description,
-            "max_rounds": role_type.default_max_rounds,
-            "consensus_threshold": role_type.default_consensus_threshold,
-        }
-```
+- [`compiler.py`](backend/blueprints/compiler.py:27): `ResolvedAgent` dataclass extended with RoleType metadata: `role_type_name`, `role_type_icon`, `role_type_color`, `default_max_rounds`, `default_consensus_threshold`
+- [`compiler.py`](backend/blueprints/compiler.py:133): Legacy `compile()` now resolves `RoleType` from `RoleDefinition.role_type_id` via `repo.get_role_type()`
+- [`workflow_compiler.py`](backend/workflow/workflow_compiler.py:43): `ResolvedAgentConfig` extended with same RoleType fields
+- [`workflow_compiler.py`](backend/workflow/workflow_compiler.py:160): `_resolve_agent_config()` resolves RoleType chain with fallback warning
+- [`workflow_compiler.py`](backend/workflow/workflow_compiler.py:412): Moderator node uses `default_consensus_threshold` from RoleType instead of hardcoded 0.7
 
-#### 3.2 Runtime Integration
+#### 3.2 Runtime Integration ✅
 
-- [`nodes.py`](backend/workflow/nodes.py) `_resolve_system_prompt()` — already handles persona-based prompts
-- Add fallback: if `agent_persona_ids` is empty, use blueprint-resolved config
+- [`node_functions.py`](backend/workflow/node_functions.py:718): `_resolve_system_prompt()` enhanced to use RoleType name/icon for custom role type fallback prompts
 
-### Phase 4: Config UI Fallback
+### Phase 4: Config UI Fallback ✅ DONE
 
-**Goal**: Keep Config UI working for legacy workflows.
+**Goal**: Show which agent personas are managed by Blueprint Canvas.
 
-- The `role` dropdown in Agent Personas remains as-is
-- When a persona is created from the canvas, `role` is auto-set from `RoleType.id`
-- The Config UI shows a "Managed by Blueprint" badge for canvas-assigned personas
+- [`ConfigView.svelte`](frontend/src/views/ConfigView.svelte:155): `refreshLists()` now loads `listRoleDefinitions()` to build `blueprintRoleDefIds` set
+- [`ConfigView.svelte`](frontend/src/views/ConfigView.svelte:162): `isBlueprintManaged()` checks if a persona ID exists in the blueprint role definitions
+- [`ConfigView.svelte`](frontend/src/views/ConfigView.svelte:599): Agent persona cards show a 🧩 badge with "Managed by Blueprint Canvas" tooltip for blueprint-managed personas
+- i18n: Added `config.managedByBlueprint` key in DE + EN
 
 ## Data Model (No Changes Needed)
 
@@ -159,8 +145,8 @@ PromptTemplate.id ←── AgentBlueprint.prompt_template_id
 
 1. **Phase 1**: Edge → Backend wiring (5 edge types) ✅ DONE
 2. **Phase 2**: Inspector enhancements (3 node types) ✅ DONE
-3. **Phase 3**: Compiler resolution
-4. **Phase 4**: Config UI fallback badges
+3. **Phase 3**: Compiler resolution ✅ DONE
+4. **Phase 4**: Config UI fallback badges ✅ DONE
 
 ## Scope: What Changes, What Doesn't
 

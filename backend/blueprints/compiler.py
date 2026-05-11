@@ -35,6 +35,12 @@ class ResolvedAgent:
     role_definition_id: str
     role: str
     prompt_template_id: str | None
+    # RoleType metadata (resolved from RoleDefinition.role_type_id)
+    role_type_name: str = ""
+    role_type_icon: str = "👤"
+    role_type_color: str = "#8b5cf6"
+    default_max_rounds: int = 5
+    default_consensus_threshold: float = 0.9
 
 
 @dataclass
@@ -117,6 +123,25 @@ class CompilerService:
                 )
                 continue
 
+            # Resolve RoleType chain
+            role_type = self._repo.get_role_type(role_def.role_type_id)
+            role_type_name = ""
+            role_type_icon = "👤"
+            role_type_color = "#8b5cf6"
+            default_max_rounds = 5
+            default_consensus_threshold = 0.9
+            if role_type:
+                role_type_name = role_type.name
+                role_type_icon = role_type.icon
+                role_type_color = role_type.color
+                default_max_rounds = role_type.default_max_rounds
+                default_consensus_threshold = role_type.default_consensus_threshold
+            else:
+                logger.warning(
+                    "RoleType '%s' not found for RoleDefinition '%s', using defaults",
+                    role_def.role_type_id, role_def.id,
+                )
+
             resolved.append(ResolvedAgent(
                 node_id=node_id,
                 blueprint_id=blueprint.id,
@@ -126,6 +151,11 @@ class CompilerService:
                 role_definition_id=role_def.id,
                 role=role_def.role_type_id,
                 prompt_template_id=blueprint.prompt_template_id or role_def.prompt_template_id,
+                role_type_name=role_type_name,
+                role_type_icon=role_type_icon,
+                role_type_color=role_type_color,
+                default_max_rounds=default_max_rounds,
+                default_consensus_threshold=default_consensus_threshold,
             ))
 
         # 2. Validate execution_order references valid node IDs

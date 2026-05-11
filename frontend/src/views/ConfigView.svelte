@@ -26,6 +26,7 @@
     createRoleType,
     updateRoleType,
     deleteRoleType,
+    listRoleDefinitions,
   } from '../lib/blueprint/api.js';
   import ConfigModal from '../components/config/ConfigModal.svelte';
 
@@ -50,6 +51,7 @@
   let agentPersonas = $state([]);
   let promptVariants = $state([]);
   let roleTypes = $state([]);
+  let blueprintRoleDefIds = $state(new Set());
   let costEstimate = $state(null);
   let previewContent = $state(null);
   let previewRole = $state('strategist');
@@ -151,11 +153,16 @@
   }
 
   async function refreshLists() {
-    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes()]);
+    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions()]);
     if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
     if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
     if (results[2].status === 'fulfilled') promptVariants = results[2].value;
     if (results[3].status === 'fulfilled') roleTypes = results[3].value;
+    if (results[4].status === 'fulfilled') blueprintRoleDefIds = new Set(results[4].value.map(rd => rd.id));
+  }
+
+  function isBlueprintManaged(personaId) {
+    return blueprintRoleDefIds.has(personaId);
   }
 
   function getPersonasByRole(role) {
@@ -592,9 +599,14 @@
                 >
                   <div class="flex items-center justify-between mb-1">
                     <span class="font-medium text-sm text-gray-800 dark:text-white">{persona.name}</span>
-                    {#if $selectedPersonas[role] === persona.id}
-                      <span class="text-xs text-green-600 dark:text-green-400">✓</span>
-                    {/if}
+                    <span class="flex items-center gap-1">
+                      {#if isBlueprintManaged(persona.id)}
+                        <span class="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded" title="{t('config.managedByBlueprint') || 'Managed by Blueprint Canvas'}">🧩</span>
+                      {/if}
+                      {#if $selectedPersonas[role] === persona.id}
+                        <span class="text-xs text-green-600 dark:text-green-400">✓</span>
+                      {/if}
+                    </span>
                   </div>
                   {#if persona.description}
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{persona.description}</p>
