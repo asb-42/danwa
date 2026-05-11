@@ -88,8 +88,8 @@
     }
   });
 
-  function handleNodeClick(event) {
-    selectedNode = event?.node || null;
+  function handleNodeClick({ node }) {
+    selectedNode = node || null;
   }
 
   function handlePaneClick() {
@@ -210,4 +210,24 @@
   .status-indicator.waiting { color: #f59e0b; }
   .status-indicator.completed { color: #6b7280; }
   .node-count { color: #9ca3af; }
+
+  /* Ensure SvelteFlow handles are visible on all nodes */
+  :global(.svelte-flow__handle) {
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
+    border-radius: 50%;
+    border: 2px solid #3b82f6;
+    background: white;
+    z-index: 1;
+    pointer-events: all;
+  }
+  :global(.dark .svelte-flow__handle) {
+    background: #1f2937;
+    border-color: #60a5fa;
+  }
+  :global(.svelte-flow__handle:hover) {
+    background: #3b82f6;
+  }
 </style>

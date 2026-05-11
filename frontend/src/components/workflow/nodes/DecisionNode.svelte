@@ -20,7 +20,7 @@
   class:above={isAboveThreshold}
   class:below={consensusPercent != null && !isAboveThreshold}
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
   <div class="node-header">
     <span class="node-icon">⚖️</span>
     <span class="node-title">Consensus Check</span>
@@ -43,8 +43,8 @@
       <span class="pending-text">Waiting...</span>
     {/if}
   </div>
-  <Handle type="source" position={Position.RIGHT} id="pass" />
-  <Handle type="source" position={Position.BOTTOM} id="loop" style="bottom: -4px;" />
+  <Handle type="source" position={Position.Right} id="pass" />
+  <Handle type="source" position={Position.Bottom} id="loop" style="bottom: -4px;" />
 </div>
 
 <style>

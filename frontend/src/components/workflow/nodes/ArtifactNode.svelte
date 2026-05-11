@@ -30,7 +30,7 @@
   style="border-color: {color};"
   class:final={data.status === 'final'}
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
   <div class="node-header">
     <span class="node-icon">{icon}</span>
     <span class="node-type" style="color: {color};">{data.artifactType}</span>
@@ -46,7 +46,7 @@
       <span class="token-count">{data.tokenCount} tokens</span>
     {/if}
   </div>
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>

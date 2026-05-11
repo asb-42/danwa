@@ -10,7 +10,7 @@
 <div
   class="workflow-node a2a-node status-{statusClass}"
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
   <div class="node-header">
     <span class="node-icon">🌐</span>
     <span class="node-role">{data.role || 'A2A Agent'}</span>
@@ -33,7 +33,7 @@
   {#if data.isActive}
     <div class="pulse-ring"></div>
   {/if}
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>

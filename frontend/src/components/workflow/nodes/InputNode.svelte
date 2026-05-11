@@ -13,7 +13,7 @@
   <div class="node-body">
     <p class="node-label">{data.label || 'Case Text'}</p>
   </div>
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>

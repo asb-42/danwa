@@ -20,7 +20,7 @@
   class:oob={data.isOOB}
   class:blocking={data.isBlocking}
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
   <div class="node-header">
     <span class="node-icon">{icon}</span>
     <span class="node-title">
@@ -36,7 +36,7 @@
       <span class="requested-by">from {data.requestedBy}</span>
     {/if}
   </div>
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>

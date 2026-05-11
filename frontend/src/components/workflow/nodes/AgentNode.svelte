@@ -27,7 +27,7 @@
   class="workflow-node agent-node status-{statusClass}"
   style="border-color: {colors.border}; --role-bg: {colors.bg}; --role-dark-bg: {colors.darkBg}; --role-border: {colors.border};"
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
   <div class="node-header">
     <span class="node-icon">{icon}</span>
     <span class="node-role">{data.role}</span>
@@ -52,7 +52,7 @@
   {#if data.isActive}
     <div class="pulse-ring"></div>
   {/if}
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>
