@@ -38,7 +38,7 @@
 </script>
 
 <div class="config-form space-y-4">
-  {#each Object.entries(properties) as [key, rawProp]}
+  {#each Object.entries(properties).filter(([k, rp]) => !rp.hidden) as [key, rawProp]}
     {@const prop = resolveProp(rawProp)}
     <div class="form-field">
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cfg-{key}">

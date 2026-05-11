@@ -8,6 +8,7 @@
   import { createRenderJobTracker } from '../lib/output/renderJobStore.svelte.js';
   import PluginCard from '../components/output/PluginCard.svelte';
   import ConfigForm from '../components/output/ConfigForm.svelte';
+  import VoiceMappingEditor from '../components/output/VoiceMappingEditor.svelte';
   import RenderJobStatus from '../components/output/RenderJobStatus.svelte';
   import { onDestroy } from 'svelte';
 
@@ -34,8 +35,20 @@
   let activeJob = $state(null);
   let tracker = $state(null);
   let searchLoading = $state(false);
+  let ttsVoices = $state([]);
 
   let searchTimeout = null;
+
+  // Load voices when engine changes
+  $effect(() => {
+    const engine = configValues.engine;
+    if (selectedPlugin?.plugin_key === 'tts' && engine) {
+      const url = engine === 'mimo_tts'
+        ? '/api/v1/tts-voices?engine=mimo_tts'
+        : '/api/v1/tts-voices';
+      fetch(url).then(r => r.json()).then(v => { ttsVoices = v; }).catch(() => { ttsVoices = []; });
+    }
+  });
 
   // Restore active job from localStorage on mount
   $effect(() => {
@@ -253,6 +266,18 @@
           schema={selectedPlugin.config_schema}
           bind:value={configValues}
         />
+
+        <!-- Voice Mapping Editor (TTS only) -->
+        {#if selectedPlugin.plugin_key === 'tts'}
+          <div class="mt-4">
+            <VoiceMappingEditor
+              bind:mapping={configValues.voice_mapping}
+              voices={ttsVoices}
+              defaultVoice={configValues.default_voice || ''}
+              onchange={(m) => { configValues = { ...configValues, voice_mapping: m }; }}
+            />
+          </div>
+        {/if}
       </div>
     </div>
   {/if}

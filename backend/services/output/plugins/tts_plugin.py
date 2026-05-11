@@ -53,17 +53,23 @@ class TTSPluginConfig(BaseModel):
         description="Keep individual segment files after concatenation",
     )
     # MiMo TTS specific (only used when engine="mimo_tts")
+    # API base URL, key env, and model are auto-resolved from the
+    # TTS LLM profile in the DB (profile_type="tts", provider="xiaomi").
+    # These fields serve as overrides if no matching profile exists.
     mimo_api_key_env: str = Field(
-        default="XIAOMI_API_KEY",
-        description="Environment variable containing MiMo API key",
+        default="",
+        description="Override env var for MiMo API key (auto-resolved from LLM profile)",
+        json_schema_extra={"hidden": True},
     )
     mimo_api_base: str = Field(
-        default="https://api.xiaomimimo.com/v1",
-        description="MiMo TTS API base URL",
+        default="",
+        description="Override MiMo TTS API base URL (auto-resolved from LLM profile)",
+        json_schema_extra={"hidden": True},
     )
     mimo_model: str = Field(
-        default="mimo-v2.5-tts",
-        description="MiMo TTS model ID",
+        default="",
+        description="Override MiMo TTS model ID (auto-resolved from LLM profile)",
+        json_schema_extra={"hidden": True},
     )
     default_style_hint: str = Field(
         default="",
@@ -129,6 +135,41 @@ class TTSOutputPlugin(OutputPlugin):
             except Exception:
                 logger.debug("Could not resolve voice mappings from blueprints", exc_info=True)
 
+        # Resolve MiMo TTS config from LLM profile (profile_type="tts", provider="xiaomi")
+        mimo_api_base = config.mimo_api_base
+        mimo_api_key_env = config.mimo_api_key_env
+        mimo_model = config.mimo_model
+        if config.engine == TTSEngine.MIMO_TTS:
+            if not mimo_api_base or not mimo_api_key_env or not mimo_model:
+                try:
+                    from backend.blueprints.repository import BlueprintRepository
+                    repo = BlueprintRepository()
+                    for profile in repo.list_llm_profiles(limit=500):
+                        if profile.profile_type == "tts" and profile.provider == "xiaomi":
+                            if not mimo_api_base:
+                                mimo_api_base = (profile.api_base or "").rstrip("/")
+                                if not mimo_api_base.endswith("/v1"):
+                                    mimo_api_base = f"{mimo_api_base}/v1"
+                            if not mimo_api_key_env:
+                                mimo_api_key_env = profile.api_key_env or "XIAOMI_API_KEY"
+                            if not mimo_model:
+                                mimo_model = profile.model or "mimo-v2.5-tts"
+                            logger.info(
+                                "Auto-resolved MiMo TTS config from LLM profile %s: "
+                                "api_base=%s, api_key_env=%s, model=%s",
+                                profile.id, mimo_api_base, mimo_api_key_env, mimo_model,
+                            )
+                            break
+                except Exception:
+                    logger.debug("Could not auto-resolve MiMo TTS config from LLM profiles", exc_info=True)
+            # Final fallback defaults
+            if not mimo_api_base:
+                mimo_api_base = "https://api.xiaomimimo.com/v1"
+            if not mimo_api_key_env:
+                mimo_api_key_env = "XIAOMI_API_KEY"
+            if not mimo_model:
+                mimo_model = "mimo-v2.5-tts"
+
         # Resolve default_voice for MiMo engine (edge-tts voice names are invalid)
         default_voice = config.default_voice
         if config.engine == TTSEngine.MIMO_TTS:
@@ -167,11 +208,10 @@ class TTSOutputPlugin(OutputPlugin):
         if config.engine == TTSEngine.MIMO_TTS:
             from backend.services.output.plugins.mimo_tts_renderer import MiMoTTSRenderer
 
-            # For MiMo, output_format is always wav (API returns wav)
             renderer = MiMoTTSRenderer(
-                api_base=config.mimo_api_base,
-                api_key_env=config.mimo_api_key_env,
-                model=config.mimo_model,
+                api_base=mimo_api_base,
+                api_key_env=mimo_api_key_env,
+                model=mimo_model,
             )
             output_path = await renderer.render(
                 script=script,
@@ -181,6 +221,31 @@ class TTSOutputPlugin(OutputPlugin):
                 bitrate=config.bitrate,
                 keep_segments=config.keep_segments,
             )
+
+            # Convert WAV → MP3 if user requested MP3
+            if config.output_format == AudioFormat.MP3:
+                from backend.services.output.plugins.audio_helpers import check_ffmpeg
+                ffmpeg = check_ffmpeg()
+                mp3_path = output_path.with_suffix(".mp3")
+                import asyncio
+                proc = await asyncio.create_subprocess_exec(
+                    str(ffmpeg), "-y", "-i", str(output_path),
+                    "-codec:a", "libmp3lame", "-b:a", config.bitrate,
+                    str(mp3_path),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                _, stderr = await proc.communicate()
+                if proc.returncode == 0:
+                    output_path.unlink(missing_ok=True)
+                    output_path = mp3_path
+                    logger.info("Converted WAV → MP3: %s", mp3_path)
+                else:
+                    logger.warning(
+                        "WAV→MP3 conversion failed (returning WAV): %s",
+                        stderr.decode()[:200],
+                    )
+
         else:
             from backend.services.output.plugins.edge_tts_renderer import EdgeTTSRenderer
 
