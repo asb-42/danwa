@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -475,6 +475,37 @@ _MIGRATION_V13_TABLES = [
     "CREATE INDEX IF NOT EXISTS idx_llm_profiles_type ON blueprint_llm_profiles (profile_type)",
 ]
 
+# ---------------------------------------------------------------------------
+# V14 — Seed default role types
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V14_SEEDS = [
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('strategist', 'Strategist', 'Develops strategic approaches and frameworks for analysis', '🧠', '#3b82f6', 5, 0.9, 1, datetime('now'), datetime('now'))
+    """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('critic', 'Critic', 'Challenges assumptions and identifies weaknesses in arguments', '🔍', '#ef4444', 5, 0.9, 1, datetime('now'), datetime('now'))
+    """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('optimizer', 'Optimizer', 'Refines and improves proposals for efficiency and effectiveness', '⚡', '#f59e0b', 5, 0.9, 1, datetime('now'), datetime('now'))
+    """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('moderator', 'Moderator', 'Facilitates discussion and guides the group toward consensus', '🎯', '#10b981', 5, 0.9, 1, datetime('now'), datetime('now'))
+    """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('fact-checker', 'Fact Checker', 'Verifies factual claims and cross-references sources', '✅', '#8b5cf6', 5, 0.9, 1, datetime('now'), datetime('now'))
+    """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('expert-reviewer', 'Expert Reviewer', 'Provides domain-specific expert assessment and validation', '🎓', '#06b6d4', 5, 0.9, 1, datetime('now'), datetime('now'))
+    """,
+]
+
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
@@ -614,6 +645,14 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 13, "Add profile_type column to blueprint_llm_profiles")
             conn.commit()
             logger.info("Migration v13 applied successfully")
+
+        if current < 14:
+            logger.info("Applying migration v14: seed default role types")
+            for stmt in _MIGRATION_V14_SEEDS:
+                conn.execute(stmt)
+            _record_version(conn, 14, "Seed default role types (strategist, critic, optimizer, moderator, fact-checker, expert-reviewer)")
+            conn.commit()
+            logger.info("Migration v14 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

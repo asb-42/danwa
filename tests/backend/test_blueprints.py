@@ -745,17 +745,22 @@ class TestBlueprintRepositoryRoleTypes:
         assert loaded.default_consensus_threshold == 0.9
 
     def test_list(self, blueprint_repo: BlueprintRepository) -> None:
+        # Migration v14 seeds 6 default role types; upsert 3 more
         for name in ["strategist", "critic", "optimizer"]:
             blueprint_repo.save_role_type(RoleType(id=name, name=name.title()))
         all_types = blueprint_repo.list_role_types()
-        assert len(all_types) == 3
+        ids = {rt.id for rt in all_types}
+        assert "strategist" in ids
+        assert "critic" in ids
+        assert "optimizer" in ids
 
     def test_list_active_only(self, blueprint_repo: BlueprintRepository) -> None:
         blueprint_repo.save_role_type(RoleType(id="active-rt", name="Active"))
         blueprint_repo.save_role_type(RoleType(id="inactive-rt", name="Inactive", is_active=False))
         active = blueprint_repo.list_role_types(active_only=True)
-        assert len(active) == 1
-        assert active[0].id == "active-rt"
+        active_ids = {rt.id for rt in active}
+        assert "active-rt" in active_ids
+        assert "inactive-rt" not in active_ids
 
     def test_delete(self, blueprint_repo: BlueprintRepository) -> None:
         blueprint_repo.save_role_type(RoleType(id="to-delete", name="Delete"))
