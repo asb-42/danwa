@@ -426,7 +426,9 @@ class TestRoleTypeAPI:
     def test_list_empty(self, client: TestClient) -> None:
         response = client.get("/api/v1/blueprints/role-types")
         assert response.status_code == 200
-        assert response.json() == []
+        # Migration v14 seeds 6 default role types
+        data = response.json()
+        assert len(data) >= 6
 
     def test_create(self, client: TestClient) -> None:
         payload = _sample_role_type()
@@ -496,8 +498,9 @@ class TestRoleTypeAPI:
         response = client.get("/api/v1/blueprints/role-types?active_only=true")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["id"] == "active-rt"
+        active_ids = {rt["id"] for rt in data}
+        assert "active-rt" in active_ids
+        assert "inactive-rt" not in active_ids
 
     def test_validation_error_consensus_threshold(self, client: TestClient) -> None:
         payload = _sample_role_type()

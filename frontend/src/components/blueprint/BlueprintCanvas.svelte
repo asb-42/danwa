@@ -15,6 +15,7 @@
   import { applyBlueprintLayout } from '../../lib/blueprint/layout.js';
   import { getNodeTypes, getEdgeTypes } from '../../lib/blueprint/registry.js';
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
+  import { wireEdgeOnConnect, wireEdgeOnDisconnect, isSemanticEdge } from '../../lib/blueprint/edgeWiring.js';
   import ModeSwitcher from './ModeSwitcher.svelte';
   import ExecutionPanel from './ExecutionPanel.svelte';
   import ProposalsPanel from './ProposalsPanel.svelte';
@@ -67,13 +68,36 @@
     }
 
     const edgeId = `edge-${connection.source}-${connection.target}-${result.edgeType}`;
-    canvasStore.addEdge({
+    const newEdge = {
       id: edgeId,
       source: connection.source,
       target: connection.target,
       type: result.edgeType,
       data: {},
-    });
+    };
+    canvasStore.addEdge(newEdge);
+
+    // Wire semantic edges to backend FK updates
+    if (isSemanticEdge(result.edgeType)) {
+      wireEdgeOnConnect(newEdge, canvasStore.nodes, canvasStore.updateNodeData.bind(canvasStore))
+        .catch((err) => console.error('[BlueprintCanvas] Edge wiring failed:', err));
+    }
+  }
+
+  /**
+   * Handle edge deletion — unwire semantic edges from backend.
+   * Triggered when the user selects and deletes edges (Delete/Backspace key).
+   * @param {Object} event - Svelte Flow edgesdelete event
+   */
+  function handleEdgesDelete(event) {
+    const deletedEdges = event.detail || event;
+    for (const edge of deletedEdges) {
+      canvasStore.removeEdge(edge.id);
+      if (isSemanticEdge(edge.type)) {
+        wireEdgeOnDisconnect(edge, canvasStore.nodes, canvasStore.updateNodeData.bind(canvasStore))
+          .catch((err) => console.error('[BlueprintCanvas] Edge unwiring failed:', err));
+      }
+    }
   }
 
   function handleDragOver(event) {
@@ -268,6 +292,7 @@
       onnodeclick={handleNodeClick}
       onpaneclick={handlePaneClick}
       onconnect={handleConnect}
+      onedgesdelete={handleEdgesDelete}
       onnodestdragstop={handleNodeDragStop}
       class="blueprint-flow"
     >
