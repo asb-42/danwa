@@ -462,4 +462,34 @@
   }
   .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
   .empty-text { font-size: 14px; }
+
+  /* Ensure SvelteFlow handles are visible on all nodes */
+  :global(.svelte-flow__handle) {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #3b82f6;
+    background: white;
+    z-index: 1;
+  }
+  :global(.dark .svelte-flow__handle) {
+    background: #1f2937;
+    border-color: #60a5fa;
+  }
+  :global(.svelte-flow__handle-left) {
+    left: -6px;
+  }
+  :global(.svelte-flow__handle-right) {
+    right: -6px;
+  }
+  :global(.svelte-flow__handle-top) {
+    top: -6px;
+  }
+  :global(.svelte-flow__handle-bottom) {
+    bottom: -6px;
+  }
+  :global(.svelte-flow__handle:hover) {
+    background: #3b82f6;
+    transform: scale(1.3);
+  }
 </style>
