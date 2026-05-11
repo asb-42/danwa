@@ -82,10 +82,17 @@ def _get_profile_service(project_id: str | None = None) -> ProfileService:
 
 
 def _get_prompt_service(project_id: str | None = None) -> PromptService:
-    """Return a PromptService (currently shared, project_dir passed at call site)."""
+    """Return a PromptService wired to the project's ProfileService for DB-first prompt resolution."""
     global _prompt_service
+    profile_svc = _get_profile_service(project_id)
+    if project_id:
+        if project_id not in _prompt_service_cache:
+            _prompt_service_cache[project_id] = PromptService(
+                profile_service=profile_svc,
+            )
+        return _prompt_service_cache[project_id]
     if _prompt_service is None:
-        _prompt_service = PromptService()
+        _prompt_service = PromptService(profile_service=profile_svc)
     return _prompt_service
 
 

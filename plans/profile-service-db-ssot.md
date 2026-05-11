@@ -171,33 +171,51 @@ def reload(self) -> None:
 | `ProfileService._load_llm_profiles()` | **YES** | Read from DB, fallback to YAML |
 | `ProfileService.save_llm_profile()` | **YES** | Write to both DB + YAML |
 | `ProfileService.delete_llm_profile()` | **YES** | Delete from both DB + YAML |
-| Agent personas loading | NO | Still YAML-only (not in blueprints.db) |
-| Prompt variants loading | NO | Still YAML-only |
+| `ProfileService._load_agent_personas()` | **YES** | Read from `role_definitions` DB, fallback to YAML |
+| `ProfileService.save_agent_persona()` | **YES** | Write to both DB + YAML |
+| `ProfileService.delete_agent_persona()` | **YES** | Delete from both DB + YAML |
+| `ProfileService._load_prompt_variants()` | **YES** | Read from `prompt_templates` DB, fallback to YAML |
+| `ProfileService.get_prompt_content()` | **YES** | DB-first prompt content resolution |
+| `ProfileService.create_prompt_variant()` | **YES** | Write to both DB + filesystem |
+| `ProfileService.delete_prompt_variant()` | **YES** | Delete from both DB + filesystem |
+| `PromptService` | **YES** | Delegates to `ProfileService.get_prompt_content()` for DB content |
+| `_get_prompt_service()` in `nodes.py` | **YES** | Wires `ProfileService` into `PromptService` |
+| `RoleDefinition.to_legacy()` | **YES** | Converts DB RoleDefinition → AgentPersona with prompt resolution |
 | `LLMService` | NO | Already uses `ProfileService.get_llm_profile()` |
-| Workflow nodes | NO | Already uses `ProfileService` via `LLMService` |
 | Config UI (`/api/v1/profiles/`) | NO | Already uses `ProfileService` |
 | Blueprint Canvas UI | NO | Already uses `BlueprintRepository` directly |
 | Importer | NO | Still seeds YAML → DB |
 
 ## Migration
 
-1. First startup after deploy: DB is populated from YAML (seed)
+1. First startup after deploy: DB is populated from YAML (seed for all 3 domains)
 2. Subsequent startups: DB is primary, YAML is backup
 3. Blueprint Canvas edits → written to DB → immediately visible to workflow
 4. Config UI edits → written to both DB + YAML
 
 ## Risks
 
-- **DB schema evolution**: `BlueprintLLMProfile` has more fields than `LLMProfile` (e.g. `tags`, `description`). The `to_legacy()` conversion handles this.
-- **Agent personas**: Still YAML-only. If we want DB SSOT for them too, we'd need to add a table. Out of scope for now.
+- **DB schema evolution**: `BlueprintLLMProfile` has more fields than `LLMProfile`. The `to_legacy()` conversion handles this.
+- **`RoleDefinition.to_legacy()`**: Requires prompt content resolution from `prompt_templates` table. Handled by querying DB at load time.
 - **Project overrides**: Still handled by `ProjectConfig` merging on top of global profiles. No change.
 
 ## Todo
 
-1. Add `db_path` parameter to `ProfileService.__init__()`
-2. Refactor `_load_llm_profiles()` to read from DB with YAML fallback
-3. Add `_seed_yaml_to_db()` for first-run migration
-4. Update `save_llm_profile()` to write to both DB + YAML
+1. [x] Add `db_path` parameter to `ProfileService.__init__()`
+2. [x] Refactor `_load_llm_profiles()` to read from DB with YAML fallback
+3. [x] Add `_seed_yaml_to_db()` for first-run migration
+4. [x] Update `save_llm_profile()` to write to both DB + YAML
+5. [x] Add `RoleDefinition.to_legacy()` → `AgentPersona` converter
+6. [x] Refactor `_load_agent_personas()` to read from DB with YAML fallback
+7. [x] Add `_seed_agent_personas_to_db()` for first-run migration
+8. [x] Update `save_agent_persona()` / `delete_agent_persona()` for DB + YAML
+9. [x] Refactor `_load_prompt_variants()` to read from DB with YAML fallback
+10. [x] Add `_seed_prompts_to_db()` with content cache population
+11. [x] Add `get_prompt_content()` for DB-first prompt resolution
+12. [x] Update `create_prompt_variant()` / `delete_prompt_variant()` for DB + filesystem
+13. [x] Adapt `PromptService` to delegate to `ProfileService` for DB content
+14. [x] Wire `ProfileService` into `PromptService` in `nodes.py`
+15. [x] All 84 tests pass
 5. Update `delete_llm_profile()` to delete from both
 6. Add unit test for DB-backed profile loading
 7. Test: import → DB populated → restart → profiles load from DB

@@ -73,8 +73,11 @@ def profile_service(profile_dir, tmp_path) -> ProfileService:
 
 
 @pytest.fixture()
-def prompt_service(profile_dir) -> PromptService:
-    return PromptService(prompts_dir=profile_dir / "prompts")
+def prompt_service(profile_dir, profile_service) -> PromptService:
+    return PromptService(
+        prompts_dir=profile_dir / "prompts",
+        profile_service=profile_service,
+    )
 
 
 # ---------------------------------------------------------------------------

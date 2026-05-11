@@ -2,6 +2,10 @@
 
 Wraps prompt file loading with caching based on file modification time.
 Supports variant overrides and fallback to default prompts.
+
+When a ``ProfileService`` is provided, DB content (from ``blueprints.db``)
+is checked first — this is the Single Source of Truth.  Filesystem prompts
+serve as fallback for project-specific overrides or when the DB is empty.
 """
 
 from __future__ import annotations
@@ -11,6 +15,11 @@ import logging
 import threading
 from pathlib import Path
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.services.profile_service import ProfileService
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_PROMPTS_DIR = Path("profiles/prompts")
@@ -19,10 +28,15 @@ _DEFAULT_PROMPTS_DIR = Path("profiles/prompts")
 class PromptService:
     """Manages prompt templates with hot-reload support."""
 
-    def __init__(self, prompts_dir: Path | str = _DEFAULT_PROMPTS_DIR):
+    def __init__(
+        self,
+        prompts_dir: Path | str = _DEFAULT_PROMPTS_DIR,
+        profile_service: ProfileService | None = None,
+    ):
         self.prompts_dir = Path(prompts_dir)
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
+        self._profile_service = profile_service
 
     def get_prompt(
         self,
@@ -33,15 +47,24 @@ class PromptService:
     ) -> dict:
         """Load a prompt template with caching and hot-reload.
 
+        When a ``ProfileService`` is attached, DB content is checked first
+        (Single Source of Truth).  Falls back to filesystem for project-
+        specific overrides or when DB has no matching template.
+
         For non-default languages (e.g. 'en'), tries ``{role}-{lang}.md``
         first, then falls back to ``{role}.md``.
 
-        If ``project_dir`` is given, project-specific prompts are checked
-        first (``{project_dir}/prompts/{variant}/{role}.md``) before
-        falling back to the global prompts directory.
-
-        Returns a dict with keys: content, hash, mtime, path.
+        Returns a dict with keys: content, hash, path (mtime for filesystem).
         """
+        # 1. Try DB content via ProfileService (SSOT)
+        if self._profile_service is not None:
+            db_data = self._profile_service.get_prompt_content(
+                variant, role, language=language,
+            )
+            if db_data:
+                return db_data
+
+        # 2. Fallback: filesystem with hot-reload caching
         # Build candidate file names: language-specific first, then base
         candidates = []
         if language and language != "de":
