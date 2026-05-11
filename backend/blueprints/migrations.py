@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -507,6 +507,17 @@ _MIGRATION_V14_SEEDS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Migration v15: tts_voice_id on agent_blueprints
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V15_TABLES = [
+    """
+    ALTER TABLE agent_blueprints ADD COLUMN tts_voice_id TEXT DEFAULT NULL
+    """,
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 
@@ -653,6 +664,17 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 14, "Seed default role types (strategist, critic, optimizer, moderator, fact-checker, expert-reviewer)")
             conn.commit()
             logger.info("Migration v14 applied successfully")
+
+        if current < 15:
+            logger.info("Applying migration v15: tts_voice_id on agent_blueprints")
+            for stmt in _MIGRATION_V15_TABLES:
+                try:
+                    conn.execute(stmt)
+                except sqlite3.OperationalError:
+                    logger.debug("tts_voice_id column already exists on agent_blueprints")
+            _record_version(conn, 15, "Add tts_voice_id to agent_blueprints")
+            conn.commit()
+            logger.info("Migration v15 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

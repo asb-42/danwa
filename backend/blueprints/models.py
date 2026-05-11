@@ -343,6 +343,7 @@ class AgentBlueprint(BaseModel):
     llm_profile_id: str  # References BlueprintLLMProfile.id
     role_definition_id: str  # References RoleDefinition.id
     prompt_template_id: str | None = None  # Optional override
+    tts_voice_id: str | None = None  # TTS voice assignment (MiMo or edge-tts voice)
     # Metadata
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True

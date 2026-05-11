@@ -17,6 +17,7 @@ class TTSSegment(BaseModel):
     is_intro: bool = False
     is_outro: bool = False
     injection_reference: str | None = None  # ID of injection being referenced
+    style_hint: str = ""  # Natural language style hint for MiMo TTS
 
 
 class TTSScript(BaseModel):

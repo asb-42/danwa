@@ -10,11 +10,15 @@ Pipeline:
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import shutil
+import shutil as sh
 from pathlib import Path
 
+from backend.services.output.plugins.audio_helpers import (
+    check_ffmpeg,
+    concat_audio,
+    generate_silence,
+)
 from backend.services.output.plugins.tts_models import TTSScript
 from backend.services.output.plugins.tts_plugin import AudioFormat
 
@@ -53,13 +57,7 @@ class EdgeTTSRenderer:
         segments_dir = job_dir / "segments"
         segments_dir.mkdir(parents=True, exist_ok=True)
 
-        # Check ffmpeg availability
-        ffmpeg = shutil.which("ffmpeg")
-        if ffmpeg is None:
-            raise RuntimeError(
-                "ffmpeg is not installed or not in PATH. "
-                "Install it with: apt install ffmpeg / brew install ffmpeg"
-            )
+        ffmpeg = check_ffmpeg()
 
         # 1. Render each segment
         segment_files: list[Path] = []
@@ -73,9 +71,7 @@ class EdgeTTSRenderer:
             # Generate silence for pause_after_ms
             if seg.pause_after_ms > 0 and i < len(script.segments) - 1:
                 silence_file = segments_dir / f"{seg.id}_silence.mp3"
-                await self._generate_silence(
-                    seg.pause_after_ms, silence_file, ffmpeg
-                )
+                await generate_silence(seg.pause_after_ms, silence_file, ffmpeg)
                 segment_files.append(silence_file)
 
         # 2. Build concat list
@@ -87,14 +83,10 @@ class EdgeTTSRenderer:
         # 3. Concatenate
         ext = output_format.value
         output_path = job_dir / f"debate_podcast.{ext}"
-        await self._concat_audio(
-            concat_file, output_path, ffmpeg, bitrate
-        )
+        await concat_audio(concat_file, output_path, ffmpeg, bitrate)
 
         # 4. Cleanup segments
         if not keep_segments:
-            import shutil as sh
-
             sh.rmtree(segments_dir, ignore_errors=True)
             logger.info("Segment files cleaned up for job %s", job_id)
 
@@ -116,59 +108,4 @@ class EdgeTTSRenderer:
         except ImportError:
             raise RuntimeError(
                 "edge-tts is not installed. Install with: pip install edge-tts"
-            )
-
-    @staticmethod
-    async def _generate_silence(
-        duration_ms: int, output_path: Path, ffmpeg: str
-    ) -> None:
-        """Generate a silence file of the given duration using ffmpeg."""
-        duration_s = duration_ms / 1000.0
-        cmd = [
-            ffmpeg,
-            "-y",
-            "-f", "lavfi",
-            "-i", "anullsrc=r=24000:cl=mono",
-            "-t", str(duration_s),
-            "-c:a", "libmp3lame",
-            "-q:a", "9",
-            str(output_path),
-        ]
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"ffmpeg silence generation failed: {stderr.decode()}"
-            )
-
-    @staticmethod
-    async def _concat_audio(
-        concat_file: Path,
-        output_path: Path,
-        ffmpeg: str,
-        bitrate: str,
-    ) -> None:
-        """Concatenate segment files into a single audio file."""
-        cmd = [
-            ffmpeg,
-            "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", str(concat_file),
-            "-b:a", bitrate,
-            str(output_path),
-        ]
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"ffmpeg concat failed: {stderr.decode()}"
             )

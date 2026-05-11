@@ -431,6 +431,7 @@ export default {
   'blueprint.form.llmProfile': 'LLM Profile',
   'blueprint.form.roleDefinition': 'Role Definition',
   'blueprint.form.promptTemplate': 'Prompt Template',
+  'blueprint.form.ttsVoice': 'TTS Voice',
   'blueprint.form.provider': 'Provider',
   'blueprint.form.model': 'Model',
   'blueprint.form.temperature': 'Temperature',

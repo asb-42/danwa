@@ -29,6 +29,7 @@
   let llmProfiles = $state([]);
   let roleDefinitions = $state([]);
   let promptTemplates = $state([]);
+  let mimoVoices = $state([]);
 
   // Initialize draft from node data
   $effect(() => {
@@ -40,6 +41,7 @@
         llm_profile_id: node.data.llm_profile_id || '',
         role_definition_id: node.data.role_definition_id || '',
         prompt_template_id: node.data.prompt_template_id || null,
+        tts_voice_id: node.data.tts_voice_id || null,
         tags: node.data.tags || [],
         is_active: node.data.is_active !== false,
       };
@@ -52,10 +54,12 @@
       listBlueprintLLMProfiles(),
       listRoleDefinitions(),
       listPromptTemplates(),
-    ]).then(([llm, roles, prompts]) => {
+      fetch('/api/v1/tts-voices?engine=mimo_tts').then(r => r.json()).catch(() => []),
+    ]).then(([llm, roles, prompts, voices]) => {
       llmProfiles = llm;
       roleDefinitions = roles;
       promptTemplates = prompts;
+      mimoVoices = voices;
     }).catch(() => {});
   });
 
@@ -283,6 +287,17 @@
     </select>
   </label>
 
+  <label class="form-field">
+    <span class="field-label">{t('blueprint.form.ttsVoice') || 'TTS Voice'}</span>
+    <select bind:value={draft.tts_voice_id} class="field-select" data-testid="form-ab-voice">
+      <option value={null}>-- Default --</option>
+      {#each mimoVoices as voice}
+        <option value={voice.voice_id}>{voice.name} ({voice.gender})</option>
+      {/each}
+    </select>
+    <span class="field-hint">MiMo TTS voice for audio export</span>
+  </label>
+
   <div class="form-actions">
     <button class="btn-save" onclick={handleSave} disabled={saving} data-testid="form-ab-save">
       {saving ? '...' : t('blueprint.inspector.save')}
@@ -436,6 +451,12 @@
     color: #e5e7eb;
   }
   .field-textarea { resize: vertical; }
+  .field-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+  }
+  :global(.dark) .field-hint { color: #6b7280; }
   .form-actions {
     display: flex;
     gap: 8px;

@@ -255,10 +255,20 @@ async def delete_render_job(job_id: str) -> None:
 async def list_tts_voices(
     language: str | None = None,
     gender: str | None = None,
+    engine: str | None = None,
 ) -> list[dict]:
-    """List available TTS voices with optional filters."""
-    from backend.services.output.plugins.voice_store import VoiceStore
+    """List available TTS voices with optional filters.
 
+    Args:
+        language: Filter by language prefix (e.g. "de", "en").
+        gender: Filter by gender ("Male" / "Female").
+        engine: If "mimo_tts", return MiMo voices instead of edge-tts voices.
+    """
+    if engine == "mimo_tts":
+        from backend.services.output.plugins.mimo_tts_renderer import list_mimo_voices
+        return list_mimo_voices(language=language, gender=gender)
+
+    from backend.services.output.plugins.voice_store import VoiceStore
     store = VoiceStore()
     return store.list_voices(language=language, gender=gender)
 

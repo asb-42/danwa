@@ -427,8 +427,9 @@ class BlueprintRepository:
                 INSERT OR REPLACE INTO agent_blueprints
                     (id, name, description, llm_profile_id,
                      role_definition_id, prompt_template_id,
+                     tts_voice_id,
                      tags_json, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     blueprint.id,
@@ -437,6 +438,7 @@ class BlueprintRepository:
                     blueprint.llm_profile_id,
                     blueprint.role_definition_id,
                     blueprint.prompt_template_id,
+                    blueprint.tts_voice_id,
                     json.dumps(blueprint.tags),
                     int(blueprint.is_active),
                     blueprint.created_at.isoformat(),
@@ -482,6 +484,10 @@ class BlueprintRepository:
 
     @staticmethod
     def _row_to_blueprint(row: sqlite3.Row) -> AgentBlueprint:
+        # Graceful fallback for tts_voice_id (may not exist in older DBs)
+        tts_voice_id = None
+        if "tts_voice_id" in row.keys():
+            tts_voice_id = row["tts_voice_id"]
         return AgentBlueprint(
             id=row["id"],
             name=row["name"],
@@ -489,6 +495,7 @@ class BlueprintRepository:
             llm_profile_id=row["llm_profile_id"],
             role_definition_id=row["role_definition_id"],
             prompt_template_id=row["prompt_template_id"],
+            tts_voice_id=tts_voice_id,
             tags=json.loads(row["tags_json"]),
             is_active=bool(row["is_active"]),
             created_at=datetime.fromisoformat(row["created_at"]),

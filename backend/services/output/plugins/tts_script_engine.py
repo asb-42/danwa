@@ -19,6 +19,20 @@ from backend.services.output.plugins.tts_models import TTSScript, TTSSegment
 
 logger = logging.getLogger(__name__)
 
+# Role-type-based default style hints for MiMo TTS.
+# These provide natural language voice direction per agent role.
+ROLE_STYLE_HINTS: dict[str, str] = {
+    "strategist": "Confident, structured delivery. Measured pace with emphasis on key points. Authoritative but approachable.",
+    "critic": "Sharp, analytical tone. Slightly skeptical. Questions assumptions with precision. Thoughtful pauses between arguments.",
+    "optimizer": "Enthusiastic, solution-oriented. Faster pace, forward energy. Positive and constructive framing.",
+    "moderator": "Calm, authoritative. Neutral tone with clear transitions between speakers. Steady, reassuring pace.",
+    "fact-checker": "Precise, careful delivery. Methodical pacing. Emphasis on accuracy and source references.",
+    "expert-reviewer": "Knowledgeable, thorough. Professional tone with technical confidence. Balanced and measured.",
+    "narrator": "Warm, engaging narrator voice. Clear enunciation. Slight dramatic flair for transitions.",
+    "user": "Natural, conversational tone. Curious and engaged. Slightly faster than other speakers.",
+    "injector": "Direct, conversational. Slightly informal interjection style. Brief and focused.",
+}
+
 
 class TTSScriptEngine:
     """Transforms a ``DebateArtifact`` into a ``TTSScript``.
@@ -36,6 +50,8 @@ class TTSScriptEngine:
         intro_text: str | None = None,
         outro_text: str | None = None,
         language: str = "de",
+        default_style_hint: str = "",
+        engine: str = "edge_tts",
     ) -> TTSScript:
         """Build a TTSScript from the artifact.
 
@@ -48,6 +64,8 @@ class TTSScriptEngine:
             intro_text: Optional intro narration.
             outro_text: Optional outro narration.
             language: Language for spoken hints.
+            default_style_hint: Default style hint for MiMo TTS segments.
+            engine: TTS engine type ("edge_tts" or "mimo_tts").
 
         Returns:
             A ``TTSScript`` ready for audio rendering.
@@ -58,9 +76,13 @@ class TTSScriptEngine:
         # Language-specific hints
         hints = self._get_hints(language)
 
+        # Determine if style hints should be applied (only for MiMo TTS)
+        use_style_hints = engine == "mimo_tts"
+
         # (a) Intro segment
         if intro_text:
             seg_counter += 1
+            style = ROLE_STYLE_HINTS.get("narrator", default_style_hint) if use_style_hints else ""
             segments.append(
                 TTSSegment(
                     id=f"seg-{seg_counter:04d}",
@@ -70,6 +92,7 @@ class TTSScriptEngine:
                     text=intro_text,
                     pause_after_ms=segment_pause_ms,
                     is_intro=True,
+                    style_hint=style,
                 )
             )
 
@@ -95,6 +118,7 @@ class TTSScriptEngine:
             # Injections for this round
             for inj in inj_by_round.get(rnd, []):
                 seg_counter += 1
+                style = ROLE_STYLE_HINTS.get("injector", default_style_hint) if use_style_hints else ""
                 segments.append(
                     TTSSegment(
                         id=f"seg-{seg_counter:04d}",
@@ -104,12 +128,14 @@ class TTSScriptEngine:
                         text=f"{hints['interjection']} {inj.content}",
                         pause_after_ms=segment_pause_ms,
                         injection_reference=inj.id,
+                        style_hint=style,
                     )
                 )
 
             # User queries for this round
             for q in queries_by_round.get(rnd, []):
                 seg_counter += 1
+                style = ROLE_STYLE_HINTS.get("user", default_style_hint) if use_style_hints else ""
                 segments.append(
                     TTSSegment(
                         id=f"seg-{seg_counter:04d}",
@@ -118,6 +144,7 @@ class TTSScriptEngine:
                         voice_id=default_voice,
                         text=f"{hints['user_query']} {q.content}",
                         pause_after_ms=segment_pause_ms,
+                        style_hint=style,
                     )
                 )
 
@@ -126,6 +153,7 @@ class TTSScriptEngine:
             for turn in round_turns:
                 seg_counter += 1
                 voice_id = voice_mapping.get(turn.agent_name, default_voice)
+                style = ROLE_STYLE_HINTS.get(turn.role_type, default_style_hint) if use_style_hints else ""
                 segments.append(
                     TTSSegment(
                         id=f"seg-{seg_counter:04d}",
@@ -134,12 +162,14 @@ class TTSScriptEngine:
                         voice_id=voice_id,
                         text=turn.content,
                         pause_after_ms=turn_pause_ms,
+                        style_hint=style,
                     )
                 )
 
         # (c) Outro segment
         if outro_text:
             seg_counter += 1
+            style = ROLE_STYLE_HINTS.get("narrator", default_style_hint) if use_style_hints else ""
             segments.append(
                 TTSSegment(
                     id=f"seg-{seg_counter:04d}",
@@ -149,6 +179,7 @@ class TTSScriptEngine:
                     text=outro_text,
                     pause_after_ms=0,
                     is_outro=True,
+                    style_hint=style,
                 )
             )
 
