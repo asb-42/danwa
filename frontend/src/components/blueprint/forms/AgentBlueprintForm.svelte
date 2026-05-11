@@ -104,9 +104,7 @@
     const edges = canvasStore.edges;
     const nodes = canvasStore.nodes;
 
-    // uses_llm edge: LLMProfile → this (but actually this → LLMProfile in the edge direction)
-    // Wait, let me check validation.js: 'agent-blueprint→llm-profile': 'uses_llm'
-    // So agent-blueprint is SOURCE, llm-profile is TARGET
+    // uses_llm edge: agent-blueprint (source) → llm-profile (target)
     const llmEdge = edges.find(
       (e) => e.source === node.id && e.type === 'uses_llm'
     );
@@ -141,7 +139,7 @@
   });
 
   // Effective config: merge connected entities into a summary
-  let effectiveConfig = $derived(() => {
+  let effectiveConfig = $derived.by(() => {
     const config = {};
     if (connectedLLMProfile) {
       config.llm = {
@@ -211,25 +209,25 @@
   {/if}
 
   <!-- Effective config summary -->
-  {#if Object.keys(effectiveConfig()).length > 0}
+  {#if Object.keys(effectiveConfig).length > 0}
     <div class="effective-config-section">
       <span class="effective-config-label">{t('blueprint.inspector.effectiveConfig') || 'Effective Config'}</span>
-      {#if effectiveConfig().llm}
+      {#if effectiveConfig.llm}
         <div class="config-row">
           <span class="config-key">LLM</span>
-          <span class="config-value">{effectiveConfig().llm.name} ({effectiveConfig().llm.provider})</span>
+          <span class="config-value">{effectiveConfig.llm.name} ({effectiveConfig.llm.provider})</span>
         </div>
       {/if}
-      {#if effectiveConfig().role}
+      {#if effectiveConfig.role}
         <div class="config-row">
           <span class="config-key">Role</span>
-          <span class="config-value">{effectiveConfig().role.name} · {effectiveConfig().role.max_rounds} rounds · {(effectiveConfig().role.consensus_threshold * 100).toFixed(0)}%</span>
+          <span class="config-value">{effectiveConfig.role.name} · {effectiveConfig.role.max_rounds} rounds · {(effectiveConfig.role.consensus_threshold * 100).toFixed(0)}%</span>
         </div>
       {/if}
-      {#if effectiveConfig().prompt}
+      {#if effectiveConfig.prompt}
         <div class="config-row">
           <span class="config-key">Prompt</span>
-          <span class="config-value">{effectiveConfig().prompt.name} ({effectiveConfig().prompt.variant})</span>
+          <span class="config-value">{effectiveConfig.prompt.name} ({effectiveConfig.prompt.variant})</span>
         </div>
       {/if}
     </div>

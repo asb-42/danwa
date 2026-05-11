@@ -85,7 +85,6 @@
       error = err.message;
     }
   }
-</script>
 
   // Connected RoleDefinitions (from defines_role edges)
   let connectedRoleDefs = $state([]);
