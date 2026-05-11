@@ -93,6 +93,80 @@
       error = err.message;
     }
   }
+  // Connected entities (resolved from edges)
+  let connectedLLMProfile = $state(null);
+  let connectedRoleDefinition = $state(null);
+  let connectedPromptTemplate = $state(null);
+
+  // Resolve connected entities from canvas edges
+  $effect(() => {
+    if (!node?.id || typeof window === 'undefined') return;
+    const edges = canvasStore.edges;
+    const nodes = canvasStore.nodes;
+
+    // uses_llm edge: LLMProfile → this (but actually this → LLMProfile in the edge direction)
+    // Wait, let me check validation.js: 'agent-blueprint→llm-profile': 'uses_llm'
+    // So agent-blueprint is SOURCE, llm-profile is TARGET
+    const llmEdge = edges.find(
+      (e) => e.source === node.id && e.type === 'uses_llm'
+    );
+    if (llmEdge) {
+      const llmNode = nodes.find((n) => n.id === llmEdge.target);
+      connectedLLMProfile = llmNode?.data || null;
+    } else {
+      connectedLLMProfile = null;
+    }
+
+    // implements_role edge: this → RoleDefinition
+    const roleEdge = edges.find(
+      (e) => e.source === node.id && e.type === 'implements_role'
+    );
+    if (roleEdge) {
+      const rdNode = nodes.find((n) => n.id === roleEdge.target);
+      connectedRoleDefinition = rdNode?.data || null;
+    } else {
+      connectedRoleDefinition = null;
+    }
+
+    // overrides_prompt edge: this → PromptTemplate
+    const promptEdge = edges.find(
+      (e) => e.source === node.id && e.type === 'overrides_prompt'
+    );
+    if (promptEdge) {
+      const ptNode = nodes.find((n) => n.id === promptEdge.target);
+      connectedPromptTemplate = ptNode?.data || null;
+    } else {
+      connectedPromptTemplate = null;
+    }
+  });
+
+  // Effective config: merge connected entities into a summary
+  let effectiveConfig = $derived(() => {
+    const config = {};
+    if (connectedLLMProfile) {
+      config.llm = {
+        name: connectedLLMProfile.name || connectedLLMProfile.id,
+        model: connectedLLMProfile.model || '',
+        provider: connectedLLMProfile.provider || '',
+      };
+    }
+    if (connectedRoleDefinition) {
+      config.role = {
+        name: connectedRoleDefinition.name || connectedRoleDefinition.id,
+        role_type_id: connectedRoleDefinition.role_type_id || '',
+        max_rounds: connectedRoleDefinition.max_rounds ?? 5,
+        consensus_threshold: connectedRoleDefinition.consensus_threshold ?? 0.9,
+      };
+    }
+    if (connectedPromptTemplate) {
+      config.prompt = {
+        name: connectedPromptTemplate.name || connectedPromptTemplate.id,
+        role: connectedPromptTemplate.role || '',
+        variant: connectedPromptTemplate.variant || 'default',
+      };
+    }
+    return config;
+  });
 </script>
 
 <div class="form-container" data-testid="form-agent-blueprint">
@@ -106,6 +180,59 @@
 
   {#if error}
     <div class="form-error">{error}</div>
+  {/if}
+
+  <!-- Connected entities summary -->
+  {#if connectedLLMProfile || connectedRoleDefinition || connectedPromptTemplate}
+    <div class="connections-section">
+      <span class="connections-label">{t('blueprint.inspector.connections') || 'Connections'}</span>
+      {#if connectedLLMProfile}
+        <div class="connection-item">
+          <span class="connection-edge">uses_llm →</span>
+          <span class="connection-entity">⚡ {connectedLLMProfile.name || connectedLLMProfile.id}</span>
+          {#if connectedLLMProfile.model}
+            <span class="connection-detail">({connectedLLMProfile.model})</span>
+          {/if}
+        </div>
+      {/if}
+      {#if connectedRoleDefinition}
+        <div class="connection-item">
+          <span class="connection-edge">implements_role →</span>
+          <span class="connection-entity">👤 {connectedRoleDefinition.name || connectedRoleDefinition.id}</span>
+        </div>
+      {/if}
+      {#if connectedPromptTemplate}
+        <div class="connection-item">
+          <span class="connection-edge">overrides_prompt →</span>
+          <span class="connection-entity">📝 {connectedPromptTemplate.name || connectedPromptTemplate.id}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- Effective config summary -->
+  {#if Object.keys(effectiveConfig()).length > 0}
+    <div class="effective-config-section">
+      <span class="effective-config-label">{t('blueprint.inspector.effectiveConfig') || 'Effective Config'}</span>
+      {#if effectiveConfig().llm}
+        <div class="config-row">
+          <span class="config-key">LLM</span>
+          <span class="config-value">{effectiveConfig().llm.name} ({effectiveConfig().llm.provider})</span>
+        </div>
+      {/if}
+      {#if effectiveConfig().role}
+        <div class="config-row">
+          <span class="config-key">Role</span>
+          <span class="config-value">{effectiveConfig().role.name} · {effectiveConfig().role.max_rounds} rounds · {(effectiveConfig().role.consensus_threshold * 100).toFixed(0)}%</span>
+        </div>
+      {/if}
+      {#if effectiveConfig().prompt}
+        <div class="config-row">
+          <span class="config-key">Prompt</span>
+          <span class="config-value">{effectiveConfig().prompt.name} ({effectiveConfig().prompt.variant})</span>
+        </div>
+      {/if}
+    </div>
   {/if}
 
   <label class="form-field">
@@ -202,6 +329,87 @@
     padding: 6px 8px;
     border-radius: 6px;
   }
+  .connections-section {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  :global(.dark) .connections-section {
+    background: #0c2d48;
+    border-color: #1e3a5f;
+  }
+  .connections-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0369a1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  :global(.dark) .connections-label { color: #7dd3fc; }
+  .connection-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .connection-edge {
+    font-size: 10px;
+    color: #6b7280;
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  .connection-entity {
+    color: #1f2937;
+    font-weight: 500;
+  }
+  :global(.dark) .connection-entity { color: #e5e7eb; }
+  .connection-detail {
+    font-size: 10px;
+    color: #9ca3af;
+  }
+  .effective-config-section {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  :global(.dark) .effective-config-section {
+    background: #052e16;
+    border-color: #14532d;
+  }
+  .effective-config-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #15803d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  :global(.dark) .effective-config-label { color: #4ade80; }
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .config-key {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6b7280;
+    min-width: 32px;
+    text-transform: uppercase;
+  }
+  .config-value {
+    color: #1f2937;
+    font-weight: 500;
+  }
+  :global(.dark) .config-value { color: #e5e7eb; }
   .form-field {
     display: flex;
     flex-direction: column;

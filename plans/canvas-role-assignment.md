@@ -71,27 +71,28 @@ The Blueprint Canvas already has the infrastructure:
 
 - **Frontend**: [`edgeWiring.js`](frontend/src/lib/blueprint/edgeWiring.js) — on connect, calls `updateAgentBlueprint(blueprint_id, { prompt_template_id: template_id })`
 
-### Phase 2: Inspector Panel Enhancements
+### Phase 2: Inspector Panel Enhancements ✅ DONE
 
 **Goal**: When a node is selected, show its connections and allow editing.
 
-#### 2.1 RoleType Inspector
+#### 2.1 RoleType Inspector ✅
 
 - Show connected RoleDefinitions (from `defines_role` edges)
 - Show behavioral defaults (max_rounds, consensus_threshold)
 - Inline edit: name, icon, color, defaults
 
-#### 2.2 RoleDefinition Inspector
+#### 2.2 RoleDefinition Inspector ✅
 
 - Show connected RoleType (from `defines_role` edge)
 - Show connected AgentBlueprints (from `implements_role` edges)
 - Show prompt template reference
 - Inline edit: name, description, prompt_template_id
+- **Bugfix**: Fixed undefined `roles` variable — now uses `roleTypes` from API
 
-#### 2.3 AgentBlueprint Inspector
+#### 2.3 AgentBlueprint Inspector ✅
 
 - Show all connections: LLM, Role, Prompt
-- Show computed properties: effective role_type, effective prompt
+- Show computed properties: effective config summary (LLM, Role, Prompt)
 - Inline edit: name, description, tags
 
 ### Phase 3: Canvas → Workflow Compilation
@@ -157,7 +158,7 @@ PromptTemplate.id ←── AgentBlueprint.prompt_template_id
 ## Implementation Order
 
 1. **Phase 1**: Edge → Backend wiring (5 edge types) ✅ DONE
-2. **Phase 2**: Inspector enhancements (3 node types)
+2. **Phase 2**: Inspector enhancements (3 node types) ✅ DONE
 3. **Phase 3**: Compiler resolution
 4. **Phase 4**: Config UI fallback badges
 

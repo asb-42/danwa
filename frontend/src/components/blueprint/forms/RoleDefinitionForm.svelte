@@ -13,6 +13,7 @@
     listPromptTemplates,
     listRoleTypes,
   } from '../../../lib/blueprint/api.js';
+  import { getRoleDefinition, getAgentBlueprint } from '../../../lib/blueprint/api.js';
 
   /** @type {{ node: any, onsave?: (data: any) => void, ondelete?: () => void }} */
   let { node, onsave = () => {}, ondelete = () => {} } = $props();
@@ -25,6 +26,10 @@
   let promptTemplates = $state([]);
 
   let roleTypes = $state([]);
+
+  // Connected entities (resolved from edges)
+  let connectedRoleType = $state(null);
+  let connectedAgentBlueprints = $state([]);
 
   $effect(() => {
     if (node?.data) {
@@ -44,6 +49,37 @@
   $effect(() => {
     listPromptTemplates().then((t) => { promptTemplates = t; }).catch(() => {});
     listRoleTypes().then((rt) => { roleTypes = rt; }).catch(() => {});
+  });
+
+  // Resolve connected entities from canvas edges
+  $effect(() => {
+    if (!node?.id || typeof window === 'undefined') return;
+    const edges = canvasStore.edges;
+    const nodes = canvasStore.nodes;
+
+    // Find connected RoleType (defines_role edge: RoleType → this)
+    const roleTypeEdge = edges.find(
+      (e) => e.target === node.id && e.type === 'defines_role'
+    );
+    if (roleTypeEdge) {
+      const rtNode = nodes.find((n) => n.id === roleTypeEdge.source);
+      if (rtNode) {
+        connectedRoleType = rtNode.data;
+      } else {
+        connectedRoleType = null;
+      }
+    } else {
+      connectedRoleType = null;
+    }
+
+    // Find connected AgentBlueprints (implements_role edge: this → AgentBlueprint)
+    const agentEdges = edges.filter(
+      (e) => e.source === node.id && e.type === 'implements_role'
+    );
+    connectedAgentBlueprints = agentEdges
+      .map((e) => nodes.find((n) => n.id === e.target))
+      .filter(Boolean)
+      .map((n) => n.data);
   });
 
   async function handleSave() {
@@ -95,19 +131,40 @@
     <div class="form-error">{error}</div>
   {/if}
 
+  <!-- Connected entities summary -->
+  {#if connectedRoleType || connectedAgentBlueprints.length > 0}
+    <div class="connections-section">
+      <span class="connections-label">{t('blueprint.inspector.connections') || 'Connections'}</span>
+      {#if connectedRoleType}
+        <div class="connection-item">
+          <span class="connection-edge">defines_role →</span>
+          <span class="connection-entity">{connectedRoleType.icon || '👤'} {connectedRoleType.name || connectedRoleType.id}</span>
+        </div>
+      {/if}
+      {#if connectedAgentBlueprints.length > 0}
+        {#each connectedAgentBlueprints as agent}
+          <div class="connection-item">
+            <span class="connection-edge">implements_role ←</span>
+            <span class="connection-entity">🤖 {agent.name || agent.id}</span>
+          </div>
+        {/each}
+      {/if}
+    </div>
+  {/if}
+
   <label class="form-field">
     <span class="field-label">{t('blueprint.form.name')}</span>
     <input type="text" bind:value={draft.name} class="field-input" data-testid="form-rd-name" />
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.role')}</span>
-    <select bind:value={draft.role} class="field-select" data-testid="form-rd-role">
-      {#each roles as r}
-        <option value={r}>{r}</option>
+    <span class="field-label">{t('blueprint.form.roleType') || 'Role Type'}</span>
+    <select bind:value={draft.role_type_id} class="field-select" data-testid="form-rd-role-type">
+      {#each roleTypes as rt}
+        <option value={rt.id}>{rt.icon || '👤'} {rt.name}</option>
       {/each}
     </select>
-    <span class="field-hint">{t('blueprint.form.roleHint')}</span>
+    <span class="field-hint">{t('blueprint.form.roleTypeHint') || 'Determines the behavioral category'}</span>
   </label>
 
   <label class="form-field">
@@ -160,6 +217,44 @@
   .field-input, .field-select, .field-textarea { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; color: #1f2937; }
   :global(.dark) .field-input, :global(.dark) .field-select, :global(.dark) .field-textarea { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
   .field-textarea { resize: vertical; }
+  .connections-section {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  :global(.dark) .connections-section {
+    background: #0c2d48;
+    border-color: #1e3a5f;
+  }
+  .connections-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0369a1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  :global(.dark) .connections-label { color: #7dd3fc; }
+  .connection-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .connection-edge {
+    font-size: 10px;
+    color: #6b7280;
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  .connection-entity {
+    color: #1f2937;
+    font-weight: 500;
+  }
+  :global(.dark) .connection-entity { color: #e5e7eb; }
   .form-actions { display: flex; gap: 8px; margin-top: 4px; }
   .btn-save { flex: 1; padding: 8px 12px; border: none; border-radius: 6px; background: #3b82f6; color: white; font-size: 13px; font-weight: 600; cursor: pointer; }
   .btn-save:hover { background: #2563eb; }

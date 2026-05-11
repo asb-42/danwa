@@ -87,6 +87,26 @@
   }
 </script>
 
+  // Connected RoleDefinitions (from defines_role edges)
+  let connectedRoleDefs = $state([]);
+
+  // Resolve connected entities from canvas edges
+  $effect(() => {
+    if (!node?.id || typeof window === 'undefined') return;
+    const edges = canvasStore.edges;
+    const nodes = canvasStore.nodes;
+
+    // Find connected RoleDefinitions (defines_role edge: this → RoleDefinition)
+    const rdEdges = edges.filter(
+      (e) => e.source === node.id && e.type === 'defines_role'
+    );
+    connectedRoleDefs = rdEdges
+      .map((e) => nodes.find((n) => n.id === e.target))
+      .filter(Boolean)
+      .map((n) => n.data);
+  });
+</script>
+
 <div class="form-container" data-testid="form-role-type">
   <div class="form-header">
     <span class="form-icon">{draft.icon || '👤'}</span>
@@ -98,6 +118,19 @@
 
   {#if error}
     <div class="form-error">{error}</div>
+  {/if}
+
+  <!-- Connected RoleDefinitions -->
+  {#if connectedRoleDefs.length > 0}
+    <div class="connections-section">
+      <span class="connections-label">{t('blueprint.inspector.connections') || 'Connections'}</span>
+      {#each connectedRoleDefs as rd}
+        <div class="connection-item">
+          <span class="connection-edge">defines_role →</span>
+          <span class="connection-entity">👤 {rd.name || rd.id}</span>
+        </div>
+      {/each}
+    </div>
   {/if}
 
   <label class="form-field">
@@ -171,6 +204,44 @@
   .form-error { font-size: 12px; color: #ef4444; background: #fef2f2; padding: 6px 8px; border-radius: 6px; }
   .form-field { display: flex; flex-direction: column; gap: 4px; }
   .field-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+  .connections-section {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  :global(.dark) .connections-section {
+    background: #0c2d48;
+    border-color: #1e3a5f;
+  }
+  .connections-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0369a1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  :global(.dark) .connections-label { color: #7dd3fc; }
+  .connection-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .connection-edge {
+    font-size: 10px;
+    color: #6b7280;
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  .connection-entity {
+    color: #1f2937;
+    font-weight: 500;
+  }
+  :global(.dark) .connection-entity { color: #e5e7eb; }
   .icon-grid { display: flex; flex-wrap: wrap; gap: 4px; }
   .icon-btn {
     width: 32px; height: 32px; border: 2px solid transparent; border-radius: 6px;

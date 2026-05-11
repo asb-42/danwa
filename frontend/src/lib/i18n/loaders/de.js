@@ -723,4 +723,9 @@ export default {
   'blueprint.inspector.cancel': 'Abbrechen',
   'blueprint.form.color': 'Farbe',
   'blueprint.form.icon': 'Symbol',
+  'blueprint.inspector.connections': 'Verbindungen',
+  'blueprint.inspector.effectiveConfig': 'Effektive Konfiguration',
+  'blueprint.form.roleType': 'Rollentyp',
+  'blueprint.form.roleTypeHint': 'Bestimmt die Verhaltenskategorie',
+  'blueprint.form.roleHint': 'Wähle den Rollentyp für diese Definition',
 };
