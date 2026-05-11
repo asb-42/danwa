@@ -10,6 +10,7 @@
   import { i18n } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
   import { getNodesByCategory } from '../../lib/blueprint/registry.js';
+  import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
   import { listCanvasLayouts, deleteCanvasLayout } from '../../lib/blueprint/api.js';
   import PaletteCategory from './PaletteCategory.svelte';
 
@@ -27,6 +28,8 @@
   let savedLayouts = $state([]);
   let layoutsLoading = $state(false);
 
+  // Ensure registry is populated before reading categories
+  registerAllNodeTypes();
   const assetNodes = getNodesByCategory('asset');
   const workflowNodes = getNodesByCategory('workflow');
   let isWorkflowMode = $derived(canvasStore.mode === 'workflow');
