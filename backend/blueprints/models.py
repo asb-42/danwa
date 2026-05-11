@@ -121,7 +121,7 @@ class BlueprintLLMProfile(BaseModel):
     def to_legacy(self) -> LLMProfile:
         """Convert to ``backend.core.profiles.LLMProfile`` for backward compat."""
         return LLMProfile(
-            id=self.id,
+            id=self.id.replace("_", "-"),  # normalize underscores → hyphens
             name=self.name,
             provider=self.provider,  # type: ignore[arg-type]
             model=self.model,

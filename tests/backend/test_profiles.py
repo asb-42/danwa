@@ -68,8 +68,8 @@ def profile_dir(tmp_path) -> Path:
 
 
 @pytest.fixture()
-def profile_service(profile_dir) -> ProfileService:
-    return ProfileService(profile_dir=profile_dir)
+def profile_service(profile_dir, tmp_path) -> ProfileService:
+    return ProfileService(profile_dir=profile_dir, db_path=tmp_path / "test.db")
 
 
 @pytest.fixture()
