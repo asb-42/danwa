@@ -111,37 +111,37 @@
   <!-- Existing DB entities (draggable to canvas) -->
   <div class="palette-section">
     <h3 class="palette-title">
-      {t('blueprint.palette.existingEntities') || 'Existing Entities'}
+      {t('blueprint.palette.existingEntities')}
       {#if entitiesLoading}
         <span class="loading-dot">⏳</span>
       {/if}
     </h3>
     <PaletteEntityList
-      label={t('blueprint.palette.llmProfiles') || 'LLM Profiles'}
+      label={t('blueprint.palette.llmProfiles')}
       icon="🧠"
       nodeType="llm-profile"
       entities={llmProfiles}
     />
     <PaletteEntityList
-      label={t('blueprint.palette.roleDefinitions') || 'Role Definitions'}
+      label={t('blueprint.palette.roleDefinitions')}
       icon="👤"
       nodeType="role-definition"
       entities={roleDefinitions}
     />
     <PaletteEntityList
-      label={t('blueprint.palette.promptTemplates') || 'Prompt Templates'}
+      label={t('blueprint.palette.promptTemplates')}
       icon="📝"
       nodeType="prompt-template"
       entities={promptTemplates}
     />
     <PaletteEntityList
-      label={t('blueprint.palette.agentBlueprints') || 'Agent Blueprints'}
+      label={t('blueprint.palette.agentBlueprints')}
       icon="🤖"
       nodeType="agent-blueprint"
       entities={agentBlueprints}
     />
     <PaletteEntityList
-      label={t('blueprint.palette.roleTypes') || 'Role Types'}
+      label={t('blueprint.palette.roleTypes')}
       icon="🏷️"
       nodeType="role-type"
       entities={roleTypes}
