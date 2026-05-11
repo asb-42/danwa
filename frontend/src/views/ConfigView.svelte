@@ -495,6 +495,10 @@
                   <th class="px-4 py-3">{t('config.provider')}</th>
                   <th class="px-4 py-3">{t('config.model')}</th>
                   <th class="px-4 py-3">{t('config.temperature')}</th>
+                  <th class="px-4 py-3">{t('config.maxTokens')}</th>
+                  <th class="px-4 py-3">{t('config.contextWindow')}</th>
+                  <th class="px-4 py-3">{t('config.costInput')}</th>
+                  <th class="px-4 py-3">{t('config.costOutput')}</th>
                   <th class="px-4 py-3 text-right">{t('config.actions') || 'Aktionen'}</th>
                 </tr>
               </thead>
@@ -518,18 +522,24 @@
                     <td class="px-4 py-3">{profile.provider}</td>
                     <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
                     <td class="px-4 py-3">{profile.temperature}</td>
+                    <td class="px-4 py-3">{profile.max_tokens}</td>
+                    <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
+                    <td class="px-4 py-3">{formatCost(profile.cost_per_1k_input)}</td>
+                    <td class="px-4 py-3">{formatCost(profile.cost_per_1k_output)}</td>
                     <td class="px-4 py-3 text-right">
                       <div class="relative inline-block">
                         <button
                           class="px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                          onclick={() => toggleDropdown(profile.id)}
+                          onclick={(e) => { e.stopPropagation(); toggleDropdown(profile.id); }}
+                          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); toggleDropdown(profile.id); }}}
                           aria-haspopup="true"
                           aria-expanded={llmDropdownOpen === profile.id}
                         >
                           ⋮
                         </button>
                         {#if llmDropdownOpen === profile.id}
-                          <div class="absolute right-0 top-full mt-1 z-40 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
+                          <!-- svelte-ignore a11y_no_static_element_interactions -->
+                          <div class="absolute right-0 top-full mt-1 z-40 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
                             <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { llmDropdownOpen = null; openEditLLM(profile); }}>
                               ✏️ {t('common.edit')}
                             </button>
