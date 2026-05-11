@@ -22,7 +22,8 @@
   let error = $state(null);
 
   const protocols = ['litellm', 'a2a'];
-  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'google', 'azure'];
+  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'xiaomi', 'opencode-zen', 'opencode-go'];
+  const profileTypes = ['text', 'tts', 'stt'];
   let discovering = $state(false);
   let discoverError = $state(null);
   let discoveredCapabilities = $state(null);
@@ -32,16 +33,21 @@
       draft = {
         id: node.data.blueprint_id || node.id,
         name: node.data.name || '',
+        profile_type: node.data.profile_type || 'text',
         provider: node.data.provider || 'openrouter',
         model: node.data.model || '',
         temperature: node.data.temperature ?? 0.7,
         max_tokens: node.data.max_tokens ?? 4096,
-        api_base: node.data.api_base || null,
-        api_key_env: node.data.api_key_env || null,
-        a2a_endpoint: node.data.a2a_endpoint || null,
+        context_window: node.data.context_window ?? null,
+        api_base: node.data.api_base || '',
+        api_key_env: node.data.api_key_env || 'OPENROUTER_API_KEY',
+        timeout: node.data.timeout ?? 600,
+        cost_per_1k_input: node.data.cost_per_1k_input ?? null,
+        cost_per_1k_output: node.data.cost_per_1k_output ?? null,
+        a2a_endpoint: node.data.a2a_endpoint || '',
         protocol: node.data.protocol || 'litellm',
         a2a_timeout: node.data.a2a_timeout ?? 120,
-        fallback_llm_profile_id: node.data.fallback_llm_profile_id || null,
+        fallback_llm_profile_id: node.data.fallback_llm_profile_id || '',
       };
     }
   });
@@ -101,6 +107,15 @@
   </label>
 
   <label class="form-field">
+    <span class="field-label">{t('blueprint.form.profileType') || 'Type'}</span>
+    <select bind:value={draft.profile_type} class="field-select" data-testid="form-lp-profile-type">
+      {#each profileTypes as pt}
+        <option value={pt}>{pt}</option>
+      {/each}
+    </select>
+  </label>
+
+  <label class="form-field">
     <span class="field-label">{t('blueprint.form.provider')}</span>
     <select bind:value={draft.provider} class="field-select" data-testid="form-lp-provider">
       {#each providers as p}
@@ -115,6 +130,16 @@
   </label>
 
   <label class="form-field">
+    <span class="field-label">{t('blueprint.form.apiBase') || 'API Base URL'}</span>
+    <input type="text" bind:value={draft.api_base} class="field-input" placeholder="https://api.openrouter.ai" data-testid="form-lp-api-base" />
+  </label>
+
+  <label class="form-field">
+    <span class="field-label">{t('blueprint.form.apiKeyEnv') || 'API Key Env Var'}</span>
+    <input type="text" bind:value={draft.api_key_env} class="field-input" placeholder="OPENROUTER_API_KEY" data-testid="form-lp-api-key-env" />
+  </label>
+
+  <label class="form-field">
     <span class="field-label">{t('blueprint.form.temperature')}</span>
     <input type="number" bind:value={draft.temperature} min="0" max="2" step="0.1" class="field-input" data-testid="form-lp-temperature" />
   </label>
@@ -123,6 +148,32 @@
     <span class="field-label">{t('blueprint.form.maxTokens')}</span>
     <input type="number" bind:value={draft.max_tokens} min="1" step="1" class="field-input" data-testid="form-lp-max-tokens" />
   </label>
+
+  <label class="form-field">
+    <span class="field-label">{t('blueprint.form.contextWindow') || 'Context Window'}</span>
+    <input type="number" bind:value={draft.context_window} min="0" step="1" class="field-input" placeholder="128000" data-testid="form-lp-context-window" />
+  </label>
+
+  <label class="form-field">
+    <span class="field-label">{t('blueprint.form.timeout') || 'Timeout (s)'}</span>
+    <input type="number" bind:value={draft.timeout} min="1" step="1" class="field-input" data-testid="form-lp-timeout" />
+  </label>
+
+  <label class="form-field">
+    <span class="field-label">{t('blueprint.form.protocol') || 'Protocol'}</span>
+    <select bind:value={draft.protocol} class="field-select" data-testid="form-lp-protocol">
+      {#each protocols as p}
+        <option value={p}>{p}</option>
+      {/each}
+    </select>
+  </label>
+
+  {#if draft.protocol === 'a2a'}
+    <label class="form-field">
+      <span class="field-label">{t('blueprint.form.a2aEndpoint') || 'A2A Endpoint'}</span>
+      <input type="text" bind:value={draft.a2a_endpoint} class="field-input" placeholder="http://agent.example.com" data-testid="form-lp-a2a-endpoint" />
+    </label>
+  {/if}
 
   <div class="form-actions">
     <button class="btn-save" onclick={handleSave} disabled={saving} data-testid="form-lp-save">
