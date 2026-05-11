@@ -56,7 +56,7 @@ class MiMoTTSRenderer:
         self,
         api_base: str | None = None,
         api_key: str | None = None,
-        api_key_env: str = "MIMO_API_KEY",
+        api_key_env: str = "XIAOMI_API_KEY",
         model: str = _DEFAULT_MODEL,
     ) -> None:
         self._api_base = (api_base or _DEFAULT_API_BASE).rstrip("/")

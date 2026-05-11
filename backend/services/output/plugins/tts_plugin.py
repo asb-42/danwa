@@ -54,7 +54,7 @@ class TTSPluginConfig(BaseModel):
     )
     # MiMo TTS specific (only used when engine="mimo_tts")
     mimo_api_key_env: str = Field(
-        default="MIMO_API_KEY",
+        default="XIAOMI_API_KEY",
         description="Environment variable containing MiMo API key",
     )
     mimo_api_base: str = Field(
