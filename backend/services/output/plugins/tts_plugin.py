@@ -129,12 +129,24 @@ class TTSOutputPlugin(OutputPlugin):
             except Exception:
                 logger.debug("Could not resolve voice mappings from blueprints", exc_info=True)
 
+        # Resolve default_voice for MiMo engine (edge-tts voice names are invalid)
+        default_voice = config.default_voice
+        if config.engine == TTSEngine.MIMO_TTS:
+            mimo_valid = {"Mia", "Chloe", "Milo", "Dean"}
+            if default_voice not in mimo_valid:
+                default_voice = "Mia"
+                logger.info(
+                    "MiMo TTS: overriding default_voice from '%s' to '%s'",
+                    config.default_voice,
+                    default_voice,
+                )
+
         # 1. Transform artifact → TTSScript
         script_engine = TTSScriptEngine()
         script = script_engine.transform(
             artifact,
             voice_mapping=voice_mapping,
-            default_voice=config.default_voice,
+            default_voice=default_voice,
             segment_pause_ms=config.segment_pause_ms,
             turn_pause_ms=config.turn_pause_ms,
             intro_text=config.intro_text,

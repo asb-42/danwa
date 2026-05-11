@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -675,6 +675,28 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 15, "Add tts_voice_id to agent_blueprints")
             conn.commit()
             logger.info("Migration v15 applied successfully")
+
+        if current < 16:
+            logger.info("Applying migration v16: fix profile_type from model/name heuristics")
+            try:
+                conn.execute("""
+                    UPDATE blueprint_llm_profiles
+                    SET profile_type = 'tts'
+                    WHERE profile_type = 'text'
+                      AND (LOWER(model) LIKE '%tts%' OR LOWER(name) LIKE '%tts%')
+                """)
+                conn.execute("""
+                    UPDATE blueprint_llm_profiles
+                    SET profile_type = 'stt'
+                    WHERE profile_type = 'text'
+                      AND (LOWER(model) LIKE '%stt%' OR LOWER(model) LIKE '%whisper%'
+                           OR LOWER(name) LIKE '%stt%' OR LOWER(name) LIKE '%whisper%')
+                """)
+            except sqlite3.OperationalError as exc:
+                logger.debug("Migration v16 heuristic update failed: %s", exc)
+            _record_version(conn, 16, "Fix profile_type heuristics for existing TTS/STT profiles")
+            conn.commit()
+            logger.info("Migration v16 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # Default MiMo TTS configuration
 _DEFAULT_API_BASE = "https://api.xiaomimimo.com/v1"
 _DEFAULT_MODEL = "mimo-v2.5-tts"
-_DEFAULT_VOICE = "mimo_default"
+_DEFAULT_VOICE = "Mia"
 
 # Maximum text length per segment (MiMo may have limits)
 _MAX_TEXT_LENGTH = 3000
@@ -101,8 +101,17 @@ class MiMoTTSRenderer:
 
         # 1. Render each segment
         segment_files: list[Path] = []
+        total = len(script.segments)
         for i, seg in enumerate(script.segments):
             seg_file = segments_dir / f"{seg.id}.wav"
+
+            logger.info(
+                "MiMo TTS segment %d/%d: voice=%s, text_len=%d, style=%s",
+                i + 1, total,
+                seg.voice_id or _DEFAULT_VOICE,
+                len(seg.text),
+                (seg.style_hint or "(none)")[:60],
+            )
 
             # Generate speech via MiMo TTS API
             await self._render_segment(
@@ -184,9 +193,12 @@ class MiMoTTSRenderer:
             },
         }
 
+        # MiMo TTS uses "api-key" header (per API docs).
+        # Also send Authorization: Bearer as fallback for compatibility.
         headers: dict[str, str] = {
             "Content-Type": "application/json",
             "api-key": self._api_key,
+            "Authorization": f"Bearer {self._api_key}",
         }
 
         logger.debug(
@@ -199,7 +211,11 @@ class MiMoTTSRenderer:
 
         async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
+            if response.status_code != 200:
+                body = response.text[:500]
+                raise RuntimeError(
+                    f"MiMo TTS API returned {response.status_code}: {body}"
+                )
 
         data = response.json()
 
@@ -210,7 +226,7 @@ class MiMoTTSRenderer:
         except (KeyError, IndexError) as exc:
             raise RuntimeError(
                 f"MiMo TTS API returned unexpected response structure: {exc}. "
-                f"Response keys: {list(data.keys())}"
+                f"Response (truncated): {str(data)[:500]}"
             )
 
         # Decode and write WAV file
