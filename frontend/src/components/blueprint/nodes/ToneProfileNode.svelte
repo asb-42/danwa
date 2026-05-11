@@ -41,7 +41,7 @@
   <!-- Config output port (bottom) -->
   <Handle
     type="source"
-    position={Position.BOTTOM}
+    position={Position.Bottom}
     id="config-out"
     class="config-port"
   />
@@ -49,7 +49,7 @@
   <!-- Sequential output port (right) -->
   <Handle
     type="source"
-    position={Position.RIGHT}
+    position={Position.Right}
     id="out"
     class="sequential-port"
   />

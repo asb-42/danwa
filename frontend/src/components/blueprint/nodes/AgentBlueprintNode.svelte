@@ -33,7 +33,7 @@
   style="border-color: {colors.border}; --node-bg: {colors.bg}; --node-dark-bg: {colors.darkBg}; --node-border: {colors.border};"
   data-testid="node-agent-blueprint-{data?.blueprint_id || 'draft'}"
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
 
   <div class="node-header">
     <span class="node-icon">🤖</span>
@@ -65,7 +65,7 @@
     </div>
   </div>
 
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>

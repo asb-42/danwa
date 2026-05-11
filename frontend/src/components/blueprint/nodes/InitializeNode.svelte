@@ -20,7 +20,7 @@
   style="border-color: #06b6d4; --node-bg: #ecfeff; --node-dark-bg: #083344; --node-border: #06b6d4;"
   data-testid="node-wf-initialize"
 >
-  <Handle type="target" position={Position.LEFT} id="in" />
+  <Handle type="target" position={Position.Left} id="in" />
 
   <div class="node-header">
     <span class="node-icon">🚀</span>
@@ -38,7 +38,7 @@
     </div>
   </div>
 
-  <Handle type="source" position={Position.RIGHT} id="out" />
+  <Handle type="source" position={Position.Right} id="out" />
 </div>
 
 <style>

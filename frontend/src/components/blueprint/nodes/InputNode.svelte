@@ -37,7 +37,7 @@
   </div>
 
   <!-- Source only — entry point has no incoming edge -->
-  <Handle type="source" position={Position.RIGHT} id="out" />
+  <Handle type="source" position={Position.Right} id="out" />
 </div>
 
 <style>

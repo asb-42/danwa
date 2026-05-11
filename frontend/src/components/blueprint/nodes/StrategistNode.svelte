@@ -25,13 +25,13 @@
   <!-- Config input port (top) — orange/yellow hollow circle -->
   <Handle
     type="target"
-    position={Position.TOP}
+    position={Position.Top}
     id="config-in"
     class="config-input-port"
     title="Tone"
   />
 
-  <Handle type="target" position={Position.LEFT} id="in" />
+  <Handle type="target" position={Position.Left} id="in" />
 
   <div class="node-header">
     <span class="node-icon">🧠</span>
@@ -50,7 +50,7 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.RIGHT} id="out" />
+  <Handle type="source" position={Position.Right} id="out" />
 </div>
 
 <style>

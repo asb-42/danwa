@@ -22,8 +22,8 @@
   style="border-color: #10b981; --node-bg: #ecfdf5; --node-dark-bg: #022c22; --node-border: #10b981;"
   data-testid="node-wf-moderator"
 >
-  <Handle type="target" position={Position.TOP} id="config-in" class="config-input-port" title="Tone" />
-  <Handle type="target" position={Position.LEFT} id="in" />
+  <Handle type="target" position={Position.Top} id="config-in" class="config-input-port" title="Tone" />
+  <Handle type="target" position={Position.Left} id="in" />
 
   <div class="node-header">
     <span class="node-icon">🎯</span>
@@ -42,9 +42,9 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.RIGHT} id="out" />
+  <Handle type="source" position={Position.Right} id="out" />
   <!-- Feedback handle — connects back to agents for another round -->
-  <Handle type="source" position={Position.BOTTOM} id="feedback" />
+  <Handle type="source" position={Position.Bottom} id="feedback" />
 </div>
 
 <style>

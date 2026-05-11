@@ -46,16 +46,15 @@
 
   // ─── Event handlers ───────────────────────────────────────────────
 
-  function handleNodeClick(event) {
-    canvasStore.selectNode(event?.node?.id || null);
+  function handleNodeClick({ node }) {
+    canvasStore.selectNode(node?.id || null);
   }
 
   function handlePaneClick() {
     canvasStore.clearSelection();
   }
 
-  function handleConnect(event) {
-    const connection = event.detail || event;
+  function handleConnect(connection) {
     const sourceNode = nodes.find((n) => n.id === connection.source);
     const targetNode = nodes.find((n) => n.id === connection.target);
 
@@ -85,18 +84,20 @@
   }
 
   /**
-   * Handle edge deletion — unwire semantic edges from backend.
-   * Triggered when the user selects and deletes edges (Delete/Backspace key).
-   * @param {Object} event - Svelte Flow edgesdelete event
+   * Handle node/edge deletion — unwire semantic edges from backend.
+   * Triggered when the user selects and deletes nodes/edges (Delete/Backspace key).
+   * @param {{ nodes: Array, edges: Array }} param0
    */
-  function handleEdgesDelete(event) {
-    const deletedEdges = event.detail || event;
+  function handleDelete({ nodes: deletedNodes = [], edges: deletedEdges = [] }) {
     for (const edge of deletedEdges) {
       canvasStore.removeEdge(edge.id);
       if (isSemanticEdge(edge.type)) {
         wireEdgeOnDisconnect(edge, canvasStore.nodes, canvasStore.updateNodeData.bind(canvasStore))
           .catch((err) => console.error('[BlueprintCanvas] Edge unwiring failed:', err));
       }
+    }
+    for (const node of deletedNodes) {
+      canvasStore.removeNode(node.id);
     }
   }
 
@@ -187,10 +188,9 @@
     onsave();
   }
 
-  function handleNodeDragStop(event) {
-    const node = event.detail?.node || event.node;
-    if (node) {
-      canvasStore.updateNodePosition(node.id, node.position);
+  function handleNodeDragStop({ targetNode }) {
+    if (targetNode) {
+      canvasStore.updateNodePosition(targetNode.id, targetNode.position);
     }
   }
 </script>
@@ -292,8 +292,8 @@
       onnodeclick={handleNodeClick}
       onpaneclick={handlePaneClick}
       onconnect={handleConnect}
-      onedgesdelete={handleEdgesDelete}
-      onnodestdragstop={handleNodeDragStop}
+      ondelete={handleDelete}
+      onnodedragstop={handleNodeDragStop}
       class="blueprint-flow"
     >
       <Background />
@@ -467,29 +467,19 @@
   :global(.svelte-flow__handle) {
     width: 12px;
     height: 12px;
+    min-width: 12px;
+    min-height: 12px;
     border-radius: 50%;
     border: 2px solid #3b82f6;
     background: white;
     z-index: 1;
+    pointer-events: all;
   }
   :global(.dark .svelte-flow__handle) {
     background: #1f2937;
     border-color: #60a5fa;
   }
-  :global(.svelte-flow__handle-left) {
-    left: -6px;
-  }
-  :global(.svelte-flow__handle-right) {
-    right: -6px;
-  }
-  :global(.svelte-flow__handle-top) {
-    top: -6px;
-  }
-  :global(.svelte-flow__handle-bottom) {
-    bottom: -6px;
-  }
   :global(.svelte-flow__handle:hover) {
     background: #3b82f6;
-    transform: scale(1.3);
   }
 </style>

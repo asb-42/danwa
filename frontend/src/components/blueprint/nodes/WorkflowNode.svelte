@@ -75,7 +75,7 @@
   data-testid="node-workflow-{data.role}"
 >
   <!-- Previous step input -->
-  <Handle type="target" position={Position.LEFT} id="prev" />
+  <Handle type="target" position={Position.Left} id="prev" />
 
   <div class="flex items-center gap-2 mb-1">
     <span class="text-lg">{icon}</span>
@@ -102,11 +102,11 @@
   </div>
 
   <!-- Next step output -->
-  <Handle type="source" position={Position.RIGHT} id="next" />
+  <Handle type="source" position={Position.Right} id="next" />
 
   <!-- Interjection input (for user_input / external input) -->
   {#if data.role === 'user_input'}
-    <Handle type="target" position={Position.BOTTOM} id="interjection" />
+    <Handle type="target" position={Position.Bottom} id="interjection" />
   {/if}
 </div>
 

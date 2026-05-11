@@ -25,7 +25,7 @@
   class:draft={isDraft}
   data-testid="node-prompt-template-{data?.blueprint_id || 'draft'}"
 >
-  <Handle type="target" position={Position.LEFT} />
+  <Handle type="target" position={Position.Left} />
 
   <div class="node-header">
     <span class="node-icon">📝</span>
@@ -55,7 +55,7 @@
     {/if}
   </div>
 
-  <Handle type="source" position={Position.RIGHT} />
+  <Handle type="source" position={Position.Right} />
 </div>
 
 <style>
