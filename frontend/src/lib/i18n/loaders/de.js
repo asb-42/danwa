@@ -191,6 +191,12 @@ export default {
   'config.selectProfile': 'Profil auswählen',
   'config.active': 'Aktiv',
   'config.inactive': 'Inaktiv',
+  'config.type': 'Typ',
+  'config.actions': 'Aktionen',
+  'config.search': 'Schnellsuche',
+  'config.duplicate': 'Duplizieren',
+  'config.profiles': 'Profile',
+  'config.noResults': 'Keine Treffer',
 
   // Profile CRUD
   'config.createProfile': 'Profil erstellen',

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -466,6 +466,15 @@ _MIGRATION_V12_TABLES = [
 # separately in run_migrations() with try/except since SQLite doesn't support
 # IF NOT EXISTS for column additions.
 
+# ---------------------------------------------------------------------------
+# V13 — profile_type column on blueprint_llm_profiles
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V13_TABLES = [
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN profile_type TEXT DEFAULT 'text'",
+    "CREATE INDEX IF NOT EXISTS idx_llm_profiles_type ON blueprint_llm_profiles (profile_type)",
+]
+
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
@@ -597,6 +606,14 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             )
             conn.commit()
             logger.info("Migration v12 applied successfully")
+
+        if current < 13:
+            logger.info("Applying migration v13: profile_type on blueprint_llm_profiles")
+            for stmt in _MIGRATION_V13_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 13, "Add profile_type column to blueprint_llm_profiles")
+            conn.commit()
+            logger.info("Migration v13 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

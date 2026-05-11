@@ -63,17 +63,18 @@ class BlueprintRepository:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO blueprint_llm_profiles
-                    (id, name, provider, model, api_base, api_key_env,
+                    (id, name, profile_type, provider, model, api_base, api_key_env,
                      max_tokens, context_window, temperature, timeout,
                      cost_per_1k_input, cost_per_1k_output,
                      description, tags_json, created_at, updated_at,
                      protocol, a2a_endpoint, a2a_timeout,
                      fallback_llm_profile_id, a2a_config_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     profile.id,
                     profile.name,
+                    profile.profile_type,
                     profile.provider,
                     profile.model,
                     profile.api_base,
@@ -133,6 +134,7 @@ class BlueprintRepository:
         return BlueprintLLMProfile(
             id=row["id"],
             name=row["name"],
+            profile_type=row["profile_type"] if "profile_type" in row.keys() else "text",
             provider=row["provider"],
             model=row["model"],
             api_base=row["api_base"],

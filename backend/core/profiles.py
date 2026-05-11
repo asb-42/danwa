@@ -30,6 +30,7 @@ class LLMProfile(BaseModel):
 
     id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
     name: str
+    profile_type: Literal["text", "tts", "stt"] = "text"
     provider: LLMProvider
     model: str  # e.g. "anthropic/claude-3.5-sonnet"
     api_base: str | None = None  # For OpenRouter / local

@@ -38,6 +38,7 @@ class BlueprintLLMProfile(BaseModel):
 
     id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9._-]*$")
     name: str
+    profile_type: Literal["text", "tts", "stt"] = "text"
     provider: Literal[
         "openrouter",
         "openai",
@@ -95,9 +96,17 @@ class BlueprintLLMProfile(BaseModel):
     def from_legacy(cls, legacy: LLMProfile) -> BlueprintLLMProfile:
         """Convert from ``backend.core.profiles.LLMProfile``."""
         now = datetime.now(UTC)
+        # Infer profile_type from protocol/provider
+        protocol = getattr(legacy, "protocol", "litellm")
+        ptype = "text"
+        if protocol == "stt" or legacy.provider.value in (
+            "whisper-local", "whisper-api", "azure-stt", "google-stt",
+        ):
+            ptype = "stt"
         return cls(
             id=legacy.id,
             name=legacy.name,
+            profile_type=ptype,
             provider=legacy.provider.value,  # type: ignore[arg-type]
             model=legacy.model,
             api_base=legacy.api_base,
@@ -112,7 +121,7 @@ class BlueprintLLMProfile(BaseModel):
             tags=[],
             created_at=now,
             updated_at=now,
-            protocol=getattr(legacy, "protocol", "litellm"),
+            protocol=protocol,
             a2a_endpoint=getattr(legacy, "a2a_endpoint", None),
             a2a_timeout=getattr(legacy, "a2a_timeout", 120),
             fallback_llm_profile_id=getattr(legacy, "fallback_llm_profile_id", None),
@@ -123,6 +132,7 @@ class BlueprintLLMProfile(BaseModel):
         return LLMProfile(
             id=self.id.replace("_", "-"),  # normalize underscores → hyphens
             name=self.name,
+            profile_type=self.profile_type,
             provider=self.provider,  # type: ignore[arg-type]
             model=self.model,
             api_base=self.api_base,

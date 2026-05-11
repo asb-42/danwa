@@ -167,6 +167,19 @@
             </div>
 
             <div>
+              <label for="form-profile-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('config.type') || 'Typ'} *
+              </label>
+              <select id="form-profile-type" bind:value={formData.profile_type}
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="text">Text</option>
+                <option value="tts">TTS</option>
+                <option value="stt">STT</option>
+              </select>
+            </div>
+
+            <div>
               <label for="form-provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('config.provider')} *
               </label>
