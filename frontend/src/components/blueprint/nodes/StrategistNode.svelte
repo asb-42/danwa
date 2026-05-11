@@ -14,6 +14,9 @@
 
   let isLinked = $derived(!!data?.agent_blueprint_id);
   let blueprintName = $derived(data?.blueprintName || data?.agent_blueprint_id || '');
+  let hasIncomingEdge = $derived((data?._incomingEdges || []).length > 0);
+  let hasOutgoingEdge = $derived((data?._outgoingEdges || []).length > 0);
+  let incomingEdgeTypes = $derived((data?._incomingEdges || []).map(e => e.type));
 </script>
 
 <div
@@ -44,6 +47,11 @@
       <div class="linked-info">
         <span class="status-linked">✓</span>
         <span class="blueprint-name">{blueprintName}</span>
+      </div>
+    {:else if hasIncomingEdge}
+      <div class="linked-info">
+        <span class="status-connected">●</span>
+        <span class="edge-info">{incomingEdgeTypes.join(', ')}</span>
       </div>
     {:else}
       <span class="status-unlinked">○ Not linked</span>
@@ -118,6 +126,16 @@
   .status-unlinked {
     font-size: 10px;
     color: #9ca3af;
+  }
+  .status-connected {
+    font-size: 10px;
+    color: #3b82f6;
+    font-weight: 600;
+  }
+  .edge-info {
+    font-size: 9px;
+    color: #6b7280;
+    font-style: italic;
   }
 
   /* Config input port (top) — orange/yellow hollow circle */

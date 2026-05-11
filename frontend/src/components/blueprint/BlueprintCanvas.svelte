@@ -40,9 +40,20 @@
   const nodeTypes = getNodeTypes();
   const edgeTypes = getEdgeTypes();
 
-  // Reactive nodes/edges for Svelte Flow
-  let nodes = $derived(canvasStore.nodes);
+  // Reactive nodes/edges for Svelte Flow — enriched with edge connection info
   let edges = $derived(canvasStore.edges);
+  let nodes = $derived(canvasStore.nodes.map((n) => {
+    const incomingEdges = edges.filter((e) => e.target === n.id);
+    const outgoingEdges = edges.filter((e) => e.source === n.id);
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        _incomingEdges: incomingEdges.map((e) => ({ type: e.type, source: e.source })),
+        _outgoingEdges: outgoingEdges.map((e) => ({ type: e.type, target: e.target })),
+      },
+    };
+  }));
 
   // ─── Event handlers ───────────────────────────────────────────────
 
@@ -66,11 +77,15 @@
       return;
     }
 
-    const edgeId = `edge-${connection.source}-${connection.target}-${result.edgeType}`;
+    const sourceHandle = connection.sourceHandle || 'out';
+    const targetHandle = connection.targetHandle || 'in';
+    const edgeId = `edge-${connection.source}-${sourceHandle}-${connection.target}-${targetHandle}-${result.edgeType}`;
     const newEdge = {
       id: edgeId,
       source: connection.source,
+      sourceHandle,
       target: connection.target,
+      targetHandle,
       type: result.edgeType,
       data: {},
     };
