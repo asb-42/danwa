@@ -60,10 +60,13 @@ class DocumentProcessor:
         """
         ocr = await asyncio.to_thread(self._get_ocr)
         if ocr is None or not hasattr(ocr, "predict"):
-            raise ValueError(
-                f"Cannot process image '{Path(file_path).name}': "
-                "PaddleOCR is not installed. Install with: pip install paddlepaddle paddleocr"
-            )
+            error_msg = f"Cannot process image '{Path(file_path).name}': OCR engine unavailable"
+            if ocr is None:
+                error_msg += " (PaddleOCR not initialized)"
+            elif not hasattr(ocr, "predict"):
+                error_msg += " (OCR instance invalid)"
+            error_msg += ". Check OCR configuration and dependencies."
+            raise ValueError(error_msg)
 
         try:
             predict = getattr(ocr, "predict")
@@ -139,7 +142,8 @@ class DocumentProcessor:
         """Check for known PaddlePaddle version compatibility issues."""
         try:
             import paddle
-            version_str = paddle.__version__
+            # Use getattr to avoid lint issues with __version__
+            version_str = getattr(paddle, '__version__', '0.0.0')
             parts = version_str.split('.')
             major = parts[0]
             minor = parts[1] if len(parts) > 1 else "0"
