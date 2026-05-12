@@ -36,6 +36,9 @@ class BlueprintCanvasStore {
   /** @type {string|null} */
   error = $state(null);
 
+  /** @type {string|null} — Linked WorkflowDefinition ID (set after "Save as Workflow") */
+  currentWorkflowId = $state(null);
+
   /** @returns {import('@xyflow/svelte').Node|null} */
   get selectedNode() {
     return this.nodes.find((n) => n.id === this.selectedNodeId) || null;
@@ -145,12 +148,20 @@ class BlueprintCanvasStore {
         x: n.position?.x ?? 0,
         y: n.position?.y ?? 0,
         blueprint_id: n.data?.blueprint_id || n.id,
+        // Persist workflow-relevant data for canvas-to-workflow conversion
+        label: n.data?.label || n.data?.name || '',
+        config: n.data?.config || {},
+        agent_blueprint_id: n.data?.agent_blueprint_id || null,
+        data: n.data || {},
       })),
       edges: this.edges.map((e) => ({
         id: e.id,
         source: e.source,
+        sourceHandle: e.sourceHandle || null,
         target: e.target,
+        targetHandle: e.targetHandle || null,
         type: e.type,
+        data: e.data || {},
       })),
     };
   }
@@ -251,6 +262,7 @@ class BlueprintCanvasStore {
     this.selectedNodeId = null;
     this.currentLayoutId = null;
     this.currentLayoutName = null;
+    this.currentWorkflowId = null;
     this.isDirty = false;
     this.error = null;
     this.mode = 'blueprint';

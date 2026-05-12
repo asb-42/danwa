@@ -18,8 +18,26 @@
   } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
 
-  /** @type {{ workflowId?: string, visible?: boolean, onclose?: Function, onNodeStatusUpdate?: Function }} */
-  let { workflowId = null, visible = false, onclose = () => {}, onNodeStatusUpdate = () => {} } = $props();
+  /**
+   * @type {{
+   *   workflowId?: string,
+   *   sessionId?: string|null,
+   *   context?: string,
+   *   startOptions?: object,
+   *   visible?: boolean,
+   *   onclose?: Function,
+   *   onNodeStatusUpdate?: Function
+   * }}
+   */
+  let {
+    workflowId = null,
+    sessionId: initialSessionId = null,
+    context = '',
+    startOptions = {},
+    visible = false,
+    onclose = () => {},
+    onNodeStatusUpdate = () => {},
+  } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -72,6 +90,72 @@
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
+  /** Connect SSE to a running workflow session. */
+  function connectSSE(sid) {
+    cleanupSSE = createWorkflowSSE(sid, {
+      onWorkflowStarted: () => {
+        status = 'running';
+      },
+      onNodeStart: (data) => {
+        currentNodeId = data.node_id || '';
+        onNodeStatusUpdate(data.node_id, 'running');
+      },
+      onNodeComplete: (data) => {
+        nodeOutputs = [...nodeOutputs, {
+          nodeId: data.node_id,
+          nodeType: data.node_type,
+          role: data.role,
+          content: data.content,
+          durationMs: data.duration_ms,
+          round: data.round,
+        }];
+        onNodeStatusUpdate(data.node_id, 'completed');
+        if (data.consensus !== undefined) {
+          consensus = data.consensus;
+        }
+        if (data.round !== undefined) {
+          currentRound = data.round;
+        }
+      },
+      onNodeError: (data) => {
+        error = data.error || 'Unknown error';
+        status = 'failed';
+        stopTimer();
+        onNodeStatusUpdate(data.node_id, 'failed');
+      },
+      onWorkflowComplete: (data) => {
+        status = 'completed';
+        stopTimer();
+        if (data.final_consensus !== undefined) {
+          consensus = data.final_consensus;
+        }
+      },
+      onWorkflowPaused: () => {
+        status = 'paused';
+      },
+      onWorkflowResumed: () => {
+        status = 'running';
+      },
+      onError: (err) => {
+        console.error('[ExecutionPanel] SSE error:', err);
+      },
+    });
+  }
+
+  // Auto-start when initialSessionId is provided (workflow already started by parent)
+  $effect(() => {
+    if (initialSessionId && visible) {
+      sessionId = initialSessionId;
+      status = 'running';
+      nodeOutputs = [];
+      currentRound = 0;
+      consensus = 0;
+      elapsedMs = 0;
+      startTimer();
+      connectSSE(initialSessionId);
+    }
+  });
+
   // Start workflow execution
   async function handleStart() {
     if (!workflowId) return;
@@ -83,61 +167,14 @@
     elapsedMs = 0;
 
     try {
-      const result = await startWorkflow(workflowId, 'Workflow execution', {
-        maxRounds: maxRounds,
-      });
+      const result = await startWorkflow(
+        workflowId,
+        context || 'Workflow execution',
+        { maxRounds: maxRounds, ...startOptions },
+      );
       sessionId = result.session_id;
       startTimer();
-
-      // Connect SSE
-      cleanupSSE = createWorkflowSSE(sessionId, {
-        onWorkflowStarted: (data) => {
-          status = 'running';
-        },
-        onNodeStart: (data) => {
-          currentNodeId = data.node_id || '';
-          onNodeStatusUpdate(data.node_id, 'running');
-        },
-        onNodeComplete: (data) => {
-          nodeOutputs = [...nodeOutputs, {
-            nodeId: data.node_id,
-            nodeType: data.node_type,
-            role: data.role,
-            content: data.content,
-            durationMs: data.duration_ms,
-            round: data.round,
-          }];
-          onNodeStatusUpdate(data.node_id, 'completed');
-          if (data.consensus !== undefined) {
-            consensus = data.consensus;
-          }
-          if (data.round !== undefined) {
-            currentRound = data.round;
-          }
-        },
-        onNodeError: (data) => {
-          error = data.error || 'Unknown error';
-          status = 'failed';
-          stopTimer();
-          onNodeStatusUpdate(data.node_id, 'failed');
-        },
-        onWorkflowComplete: (data) => {
-          status = 'completed';
-          stopTimer();
-          if (data.final_consensus !== undefined) {
-            consensus = data.final_consensus;
-          }
-        },
-        onWorkflowPaused: () => {
-          status = 'paused';
-        },
-        onWorkflowResumed: () => {
-          status = 'running';
-        },
-        onError: (err) => {
-          console.error('[ExecutionPanel] SSE error:', err);
-        },
-      });
+      connectSSE(sessionId);
     } catch (err) {
       error = err.message || 'Failed to start workflow';
       status = 'failed';

@@ -1,6 +1,6 @@
-# Danwa (Debate-Agent)
+# Danwa (だんわ / 談話)
 
-Auditable multi-agent debate workflow system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration, **RAG (Retrieval-Augmented Generation)** pipeline, **project isolation**, **A2A (Agent-to-Agent) Protocol** integration, and **real-time SSE updates**.
+Auditable multi-agent debate platform that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration, **RAG (Retrieval-Augmented Generation)** pipeline, **project isolation**, **A2A (Agent-to-Agent) Protocol** integration, and **real-time SSE updates**.
 
 ## Quick Start
 

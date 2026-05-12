@@ -18,7 +18,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -363,10 +363,14 @@ class CanvasLayoutNode(BaseModel):
     """A node in the simplified canvas layout format."""
 
     id: str
-    type: str  # e.g. "agent-blueprint", "llm-profile"
-    x: float
-    y: float
+    type: str  # e.g. "agent-blueprint", "llm-profile", "wf-strategist"
+    x: float = 0
+    y: float = 0
     blueprint_id: str | None = None  # References AgentBlueprint.id
+    label: str = ""
+    agent_blueprint_id: str | None = None  # For workflow nodes referencing AgentBlueprint
+    config: dict[str, Any] = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)  # Raw node data for round-tripping
 
 
 class CanvasLayoutEdge(BaseModel):
@@ -375,7 +379,10 @@ class CanvasLayoutEdge(BaseModel):
     id: str
     source: str  # Node ID
     target: str  # Node ID
-    type: str  # e.g. "uses_llm", "implements_role"
+    type: str = "sequential"  # e.g. "uses_llm", "implements_role", "sequential"
+    sourceHandle: str | None = None
+    targetHandle: str | None = None
+    data: dict[str, Any] = Field(default_factory=dict)  # Raw edge data for round-tripping
 
 
 class CanvasLayoutViewport(BaseModel):

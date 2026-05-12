@@ -17,7 +17,9 @@
     runBlueprintImport,
     compileWorkflow,
     cloneWorkflow,
+    convertLayoutToWorkflow,
   } from '../lib/blueprint/api.js';
+  import { startWorkflow } from '../lib/workflowExec.js';
 
   import Palette from '../components/blueprint/Palette.svelte';
   import BlueprintCanvas from '../components/blueprint/BlueprintCanvas.svelte';
@@ -25,6 +27,8 @@
   import TemplateGallery from '../components/blueprint/TemplateGallery.svelte';
   import TemplateInstantiateModal from '../components/blueprint/TemplateInstantiateModal.svelte';
   import SaveAsTemplateDialog from '../components/blueprint/SaveAsTemplateDialog.svelte';
+  import RunWorkflowDialog from '../components/blueprint/RunWorkflowDialog.svelte';
+  import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
 
   /** @type {{ layoutId?: string|null, navigate?: function }} */
   let { layoutId = null, navigate = () => {} } = $props();
@@ -54,6 +58,23 @@
   let compileError = $state('');
   let isCloning = $state(false);
 
+  // "Save as Workflow" state
+  let showWorkflowDialog = $state(false);
+  let isConverting = $state(false);
+  let workflowName = $state('');
+  let workflowDescription = $state('');
+  let workflowMaxRounds = $state(5);
+  let workflowConsensus = $state(0.9);
+  let convertError = $state(null);
+  let convertSuccess = $state(null);
+
+  // "Run Debate" state
+  let showRunDialog = $state(false);
+  let showExecutionPanel = $state(false);
+  let executionSessionId = $state(null);
+  let executionContext = $state('');
+  let executionOptions = $state({});
+
   // Load layout if layoutId provided
   $effect(() => {
     if (layoutId) {
@@ -71,7 +92,7 @@
 
       // Load entity data for each node
       const entityDataMap = {};
-      const layoutData = layout.layout_json || { nodes: [], edges: [] };
+      const layoutData = layout.layout_data || { nodes: [], edges: [] };
 
       for (const node of layoutData.nodes || []) {
         const entityId = node.blueprint_id || node.id;
@@ -121,7 +142,7 @@
       const layoutJson = canvasStore.toLayoutJson();
       await updateCanvasLayout(canvasStore.currentLayoutId, {
         name: canvasStore.currentLayoutName || 'Untitled Layout',
-        layout_json: layoutJson,
+        layout_data: layoutJson,
       });
       canvasStore.isDirty = false;
     } catch (err) {
@@ -147,7 +168,7 @@
       const result = await createCanvasLayout({
         id: `layout-${crypto.randomUUID().slice(0, 8)}`,
         name: layoutName.trim(),
-        layout_json: layoutJson,
+        layout_data: layoutJson,
       });
       canvasStore.currentLayoutId = result.id;
       canvasStore.currentLayoutName = result.name;
@@ -214,7 +235,14 @@
     compileResult = null;
     compileError = '';
     try {
-      compileResult = await compileWorkflow(canvasStore.currentLayoutId);
+      // Convert layout to workflow first if not already linked
+      let workflowId = canvasStore.currentWorkflowId;
+      if (!workflowId) {
+        const wf = await convertLayoutToWorkflow(canvasStore.currentLayoutId);
+        workflowId = wf.id;
+        canvasStore.currentWorkflowId = wf.id;
+      }
+      compileResult = await compileWorkflow(workflowId);
     } catch (err) {
       compileError = err.message;
     } finally {
@@ -226,15 +254,124 @@
     if (!canvasStore.currentLayoutId) return;
     isCloning = true;
     try {
-      const cloned = await cloneWorkflow(canvasStore.currentLayoutId);
+      // Convert to workflow first if needed, then clone the workflow
+      let workflowId = canvasStore.currentWorkflowId;
+      if (!workflowId) {
+        const wf = await convertLayoutToWorkflow(canvasStore.currentLayoutId);
+        workflowId = wf.id;
+        canvasStore.currentWorkflowId = wf.id;
+      }
+      const cloned = await cloneWorkflow(workflowId);
       if (cloned && cloned.id) {
-        navigate(`blueprint/${cloned.id}`);
+        canvasStore.currentWorkflowId = cloned.id;
       }
     } catch (err) {
       compileError = err.message;
     } finally {
       isCloning = false;
     }
+  }
+
+  // --- "Save as Workflow" handlers ---
+
+  function handleOpenWorkflowDialog() {
+    workflowName = canvasStore.currentLayoutName || '';
+    workflowDescription = '';
+    workflowMaxRounds = 5;
+    workflowConsensus = 0.9;
+    convertError = null;
+    convertSuccess = null;
+    showWorkflowDialog = true;
+  }
+
+  async function handleSaveAsWorkflow() {
+    if (!canvasStore.currentLayoutId) return;
+    convertError = null;
+    convertSuccess = null;
+    isConverting = true;
+
+    try {
+      // Save the layout first if dirty
+      if (canvasStore.isDirty) {
+        await handleSaveLayout();
+      }
+
+      const wf = await convertLayoutToWorkflow(canvasStore.currentLayoutId, {
+        name: workflowName.trim() || canvasStore.currentLayoutName || 'Untitled Workflow',
+        description: workflowDescription.trim(),
+        max_rounds: workflowMaxRounds,
+        consensus_threshold: workflowConsensus,
+      });
+
+      canvasStore.currentWorkflowId = wf.id;
+      convertSuccess = wf.name || wf.id;
+
+      // Close dialog after short delay to show success
+      setTimeout(() => {
+        showWorkflowDialog = false;
+        convertSuccess = null;
+      }, 1500);
+    } catch (err) {
+      convertError = err.message;
+    } finally {
+      isConverting = false;
+    }
+  }
+
+  // --- "Run Debate" handlers ---
+
+  function handleOpenRunDialog() {
+    showRunDialog = true;
+  }
+
+  async function handleStartDebate(params) {
+    if (!canvasStore.currentLayoutId) return;
+
+    try {
+      // Save layout first if dirty
+      if (canvasStore.isDirty) {
+        await handleSaveLayout();
+      }
+
+      // Convert layout to workflow if not already linked
+      let workflowId = canvasStore.currentWorkflowId;
+      if (!workflowId) {
+        const wf = await convertLayoutToWorkflow(canvasStore.currentLayoutId, {
+          name: canvasStore.currentLayoutName || 'Untitled Workflow',
+          max_rounds: params.maxRounds,
+          consensus_threshold: params.consensusThreshold,
+        });
+        workflowId = wf.id;
+        canvasStore.currentWorkflowId = wf.id;
+      }
+
+      // Start the workflow execution
+      const result = await startWorkflow(workflowId, params.topic, {
+        language: params.language,
+        maxRounds: params.maxRounds,
+        threshold: params.consensusThreshold,
+      });
+
+      // Close run dialog, open execution panel with session ID
+      showRunDialog = false;
+      executionContext = params.topic;
+      executionOptions = {
+        language: params.language,
+        maxRounds: params.maxRounds,
+        threshold: params.consensusThreshold,
+      };
+      executionSessionId = result.session_id;
+      showExecutionPanel = true;
+    } catch (err) {
+      console.error('[BlueprintCanvasView] Failed to start debate:', err);
+      // Re-throw so RunWorkflowDialog can display the error
+      throw err;
+    }
+  }
+
+  function handleCloseExecutionPanel() {
+    showExecutionPanel = false;
+    executionSessionId = null;
   }
 </script>
 
@@ -246,7 +383,7 @@
 
   <!-- Center: Canvas -->
   <main class="canvas-column">
-    <!-- Compile/Clone toolbar -->
+    <!-- Compile/Clone/Save-as-Workflow toolbar -->
     {#if canvasStore.currentLayoutId}
       <div class="absolute top-2 right-2 z-10 flex items-center gap-2">
         <button
@@ -266,6 +403,15 @@
         </button>
         <button
           class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                 bg-violet-600 text-white hover:bg-violet-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick={handleOpenWorkflowDialog}
+          title={t('blueprint.workflow.saveAsWorkflow')}
+        >
+          💾 {t('blueprint.workflow.saveAsWorkflow')}
+        </button>
+        <button
+          class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
                  bg-indigo-600 text-white hover:bg-indigo-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleClone}
@@ -278,6 +424,15 @@
             📋
           {/if}
           {t('blueprint.workflow.clone')}
+        </button>
+        <button
+          class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                 bg-green-600 text-white hover:bg-green-700 transition-colors
+                 disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick={handleOpenRunDialog}
+          title={t('blueprint.workflow.runDebate')}
+        >
+          ▶️ {t('blueprint.workflow.runDebate')}
         </button>
       </div>
     {/if}
@@ -394,6 +549,110 @@
   </div>
 {/if}
 
+<!-- "Save as Workflow" dialog -->
+{#if showWorkflowDialog}
+  <div class="dialog-overlay" role="button" tabindex="-1" onclick={() => { showWorkflowDialog = false; }} onkeydown={(e) => { if (e.key === 'Escape') showWorkflowDialog = false; }}>
+    <div class="dialog dialog-wide" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' && !isConverting) handleSaveAsWorkflow(); }}>
+      <h3 class="dialog-title">💾 {t('blueprint.workflow.saveAsWorkflow')}</h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+        {t('blueprint.workflow.saveAsWorkflowHint')}
+      </p>
+
+      {#if convertError}
+        <p class="dialog-error">{convertError}</p>
+      {/if}
+      {#if convertSuccess}
+        <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium mb-3">
+          ✓ {t('blueprint.workflow.workflowCreated')}: {convertSuccess}
+        </p>
+      {/if}
+
+      <label class="dialog-field">
+        <span class="dialog-label">{t('blueprint.workflow.workflowName')}</span>
+        <input
+          type="text"
+          bind:value={workflowName}
+          class="dialog-input"
+          placeholder={canvasStore.currentLayoutName || 'My Debate Workflow'}
+          data-testid="workflow-name"
+        />
+      </label>
+
+      <label class="dialog-field">
+        <span class="dialog-label">{t('blueprint.workflow.workflowDescription')}</span>
+        <input
+          type="text"
+          bind:value={workflowDescription}
+          class="dialog-input"
+          placeholder={t('blueprint.workflow.workflowDescriptionPlaceholder')}
+          data-testid="workflow-description"
+        />
+      </label>
+
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <label class="dialog-field">
+          <span class="dialog-label">{t('blueprint.workflow.maxRounds')}</span>
+          <input
+            type="number"
+            bind:value={workflowMaxRounds}
+            min="1"
+            max="50"
+            class="dialog-input"
+            data-testid="workflow-max-rounds"
+          />
+        </label>
+        <label class="dialog-field">
+          <span class="dialog-label">{t('blueprint.workflow.consensusThreshold')}</span>
+          <input
+            type="number"
+            bind:value={workflowConsensus}
+            min="0"
+            max="1"
+            step="0.05"
+            class="dialog-input"
+            data-testid="workflow-consensus"
+          />
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="dialog-btn-cancel" onclick={() => { showWorkflowDialog = false; }}>
+          {t('blueprint.inspector.cancel')}
+        </button>
+        <button
+          class="dialog-btn-save"
+          onclick={handleSaveAsWorkflow}
+          disabled={isConverting}
+          data-testid="save-as-workflow-confirm"
+        >
+          {#if isConverting}
+            <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-1"></span>
+          {/if}
+          {t('blueprint.workflow.convert')}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Run Workflow Dialog -->
+<RunWorkflowDialog
+  visible={showRunDialog}
+  layoutName={canvasStore.currentLayoutName || ''}
+  onstart={handleStartDebate}
+  onclose={() => { showRunDialog = false; }}
+/>
+
+<!-- Execution Panel -->
+<ExecutionPanel
+  workflowId={canvasStore.currentWorkflowId}
+  sessionId={executionSessionId}
+  context={executionContext}
+  startOptions={executionOptions}
+  visible={showExecutionPanel}
+  onclose={handleCloseExecutionPanel}
+/>
+
 <style>
   .blueprint-canvas-view {
     display: flex;
@@ -444,6 +703,9 @@
     padding: 24px;
     width: 360px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .dialog-wide {
+    width: 440px;
   }
   :global(.dark) .dialog { background: #1f2937; }
   .dialog-title {

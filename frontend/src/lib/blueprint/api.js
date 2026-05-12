@@ -322,6 +322,20 @@ export function deleteCanvasLayout(layoutId) {
   });
 }
 
+/**
+ * Convert a canvas layout to a WorkflowDefinition.
+ * If the layout was previously converted, the existing workflow is updated.
+ * @param {string} layoutId
+ * @param {{ name?: string, description?: string, max_rounds?: number, consensus_threshold?: number }} [body]
+ * @returns {Promise<import('./workflow_models.js').WorkflowDefinition>}
+ */
+export function convertLayoutToWorkflow(layoutId, body = {}) {
+  return request(`/api/v1/canvas/layouts/${layoutId}/to-workflow`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 // ─── Import ─────────────────────────────────────────────────────────
 
 /**
