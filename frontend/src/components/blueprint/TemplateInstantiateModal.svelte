@@ -85,7 +85,7 @@
 
 {#if visible && template}
   <div class="modal-overlay" role="button" tabindex="0" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}>
-    <div class="modal-container" role="document" onclick={(e) => e.stopPropagation()}>
+    <div class="modal-container" role="document">
       <!-- Header -->
       <div class="modal-header">
         <div>
