@@ -53,6 +53,27 @@ export async function rejectA2A(taskId) {
 }
 
 /**
+ * List input jobs with optional filters.
+ * @param {object} [filters]
+ * @param {string} [filters.status] - Filter by status (queued, processing, completed, failed, pending_approval)
+ * @param {string} [filters.pluginKey] - Filter by plugin key
+ * @param {number} [filters.limit] - Max results (default 50)
+ * @param {number} [filters.offset] - Pagination offset (default 0)
+ * @returns {Promise<Array>}
+ */
+export async function listInputJobs({ status, pluginKey, limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (pluginKey) params.set('plugin_key', pluginKey);
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+  const qs = params.toString();
+  const res = await fetch(`${BASE}/input/jobs${qs ? '?' + qs : ''}`);
+  if (!res.ok) throw new Error(`Failed to list jobs: ${res.status}`);
+  return res.json();
+}
+
+/**
  * Launch a workflow execution from a completed input job.
  * @param {string} jobId - The completed InputJob ID.
  * @param {object} [options] - Launch options.

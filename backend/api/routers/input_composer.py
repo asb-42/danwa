@@ -193,6 +193,54 @@ async def submit_input(body: SubmitInputRequest) -> SubmitInputResponse:
     )
 
 
+@router.get("/input/jobs", response_model=list[InputJobStatusResponse])
+async def list_input_jobs(
+    status: str | None = None,
+    plugin_key: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[InputJobStatusResponse]:
+    """List input jobs with optional filters.
+
+    Query parameters:
+    - ``status``: Filter by job status (queued, processing, completed, failed, pending_approval)
+    - ``plugin_key``: Filter by plugin key (e.g. standard_text, a2a_inbound)
+    - ``limit``: Max results (default 50)
+    - ``offset``: Pagination offset (default 0)
+    """
+    store = _get_job_store()
+    parsed_status = None
+    if status is not None:
+        try:
+            parsed_status = InputJobStatus(status)
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid status '{status}'. Valid: {[s.value for s in InputJobStatus]}",
+            )
+    jobs = store.list_jobs(
+        plugin_key=plugin_key,
+        status=parsed_status,
+        limit=limit,
+        offset=offset,
+    )
+    return [
+        InputJobStatusResponse(
+            job_id=j.id,
+            plugin_key=j.plugin_key,
+            status=j.status.value,
+            processed_input=(
+                j.processed_input.model_dump(mode="json")
+                if j.processed_input else None
+            ),
+            error_message=j.error_message,
+            created_at=j.created_at.isoformat(),
+            completed_at=j.completed_at.isoformat() if j.completed_at else None,
+        )
+        for j in jobs
+    ]
+
+
 @router.get("/input/jobs/{job_id}", response_model=InputJobStatusResponse)
 async def get_input_job_status(job_id: str) -> InputJobStatusResponse:
     """Get the status and metadata of an input job."""

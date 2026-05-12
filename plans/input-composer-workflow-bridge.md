@@ -183,29 +183,44 @@ Add [`ExecutionPanel`](frontend/src/components/blueprint/ExecutionPanel.svelte:1
 />
 ```
 
-### Phase 3: A2A Inbound — Pending Job Polling
+### Phase 3: A2A Inbound — Pending Job Polling ✅ DONE
 
 **Goal:** Show pending A2A requests in the InputComposerView and allow approval/rejection.
 
-#### 3.1 Backend: Add `GET /api/v1/input/jobs?status=pending_approval`
+**Status:** Implemented.
 
-New endpoint to list jobs filtered by status. Currently only `GET /input/jobs/{job_id}` exists.
+#### 3.1 Backend: `GET /api/v1/input/jobs` ✅
 
-#### 3.2 Frontend: Poll for pending A2A jobs
+Added list endpoint in [`input_composer.py`](backend/api/routers/input_composer.py:196) with `status` and `plugin_key` query filters.
+Uses [`InputJobStore.list_jobs()`](backend/services/input/input_job_store.py:130) which already supports filtering.
 
-In `InputComposerView`, when `inputMode === 'compose'`:
-- Poll `GET /input/jobs?status=pending_approval` every 5 seconds
-- Populate `pendingA2A` state → `A2AApprovalCard` renders
-- On approve → `approveA2A(taskId)` → re-poll → if completed → `launchWorkflow()`
+#### 3.2 Frontend: Poll for pending A2A jobs ✅
 
-### Phase 4: Default Workflow Selection
+In [`InputComposerView.svelte`](frontend/src/views/InputComposerView.svelte:1):
+- Added [`listInputJobs()`](frontend/src/lib/input/inputApi.js:72) to inputApi.js
+- On mount, starts polling `GET /input/jobs?status=pending_approval&plugin_key=a2a_inbound` every 5s
+- Populates `pendingA2A` state → `A2AApprovalCard` renders with count badge
+- On approve → `approveA2A(taskId)` → `pollAndLaunch(jobId)` → auto-launches workflow
+- On reject → `rejectA2A(taskId)` → removes from list
+- Polling stops on component unmount (cleanup in `$effect` return)
+
+### Phase 4: Default Workflow Selection ✅ DONE
 
 **Goal:** When no template is selected, use a sensible default workflow.
 
-#### 4.1 Backend: Add `GET /api/v1/blueprints/workflows/default`
+**Status:** Implemented. Backend already auto-selects first active workflow in Phase 1.
+Frontend now pre-selects first template on mount.
 
-Returns the first active `WorkflowDefinition`, or creates one from the default template.
-This ensures the Input Composer always has a workflow to run.
+#### 4.1 Backend ✅ (Already done in Phase 1)
+
+The [`POST /input/launch`](backend/api/routers/input_composer.py:360) endpoint already auto-selects the first
+active `WorkflowDefinition` when no `workflow_id` is provided.
+
+#### 4.2 Frontend: Pre-select default workflow template ✅
+
+In [`InputComposerView.svelte`](frontend/src/views/InputComposerView.svelte:67):
+- After loading workflow templates, auto-selects the first one if none is selected
+- `selectedTemplateId` is populated before user interaction
 
 #### 4.2 Frontend: Pre-select default workflow template
 

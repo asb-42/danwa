@@ -107,6 +107,52 @@ class TestInputJobEndpoints:
         assert data["status"] == "completed"
         assert data["processed_input"]["topic"] == "Test"
 
+    async def test_list_jobs_returns_list(self, client: AsyncClient):
+        """List jobs should return a list (may be empty or populated by other tests)."""
+        res = await client.get("/api/v1/input/jobs")
+        assert res.status_code == 200
+        assert isinstance(res.json(), list)
+
+    async def test_list_jobs_with_filter(self, client: AsyncClient):
+        """Submit a job and list it back with status filter."""
+        # Submit a completed job
+        res = await client.post(
+            "/api/v1/input/submit",
+            json={"plugin_key": "standard_text", "topic": "List test"},
+        )
+        assert res.status_code == 202
+        job_id = res.json()["job_id"]
+
+        # List completed jobs — should include our job
+        res = await client.get("/api/v1/input/jobs?status=completed")
+        assert res.status_code == 200
+        jobs = res.json()
+        assert len(jobs) >= 1
+        assert any(j["job_id"] == job_id for j in jobs)
+
+    async def test_list_jobs_invalid_status(self, client: AsyncClient):
+        """Listing with invalid status should return 422."""
+        res = await client.get("/api/v1/input/jobs?status=invalid_status")
+        assert res.status_code == 422
+
+    async def test_list_jobs_with_plugin_filter(self, client: AsyncClient):
+        """List jobs filtered by plugin_key."""
+        # Submit a standard_text job
+        res = await client.post(
+            "/api/v1/input/submit",
+            json={"plugin_key": "standard_text", "topic": "Plugin filter test"},
+        )
+        assert res.status_code == 202
+        job_id = res.json()["job_id"]
+
+        # List with matching plugin_key — should include our job
+        res = await client.get("/api/v1/input/jobs?plugin_key=standard_text")
+        assert res.status_code == 200
+        jobs = res.json()
+        assert len(jobs) >= 1
+        assert any(j["job_id"] == job_id for j in jobs)
+        assert all(j["plugin_key"] == "standard_text" for j in jobs)
+
 
 class TestMCPEndpoint:
     async def test_mcp_not_implemented(self, client: AsyncClient):

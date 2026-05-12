@@ -8,7 +8,15 @@
    */
   import { i18n } from '../lib/i18n/index.js';
   import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
-  import { listInputPlugins, submitInput, launchWorkflow, getInputJobStatus, approveA2A, rejectA2A } from '../lib/input/inputApi.js';
+  import {
+    listInputPlugins,
+    submitInput,
+    launchWorkflow,
+    getInputJobStatus,
+    listInputJobs,
+    approveA2A,
+    rejectA2A,
+  } from '../lib/input/inputApi.js';
   import { createInputJobTracker } from '../lib/input/inputJobStore.js';
   import { listWorkflowTemplates } from '../lib/blueprint/api.js';
   import PluginSelector from '../components/input/PluginSelector.svelte';
@@ -54,15 +62,61 @@
   // Which mode is active: 'compose' (Input Composer) or 'form' (DebateCreatePanel)
   let inputMode = $state('form');
 
+  // A2A polling interval reference
+  let a2aPollInterval = null;
+
   // Load plugins and workflow templates on mount
   $effect(() => {
     listInputPlugins()
       .then((p) => { plugins = p; })
       .catch((e) => { error = e.message; });
     listWorkflowTemplates()
-      .then((templates) => { workflowTemplates = templates || []; })
+      .then((templates) => {
+        workflowTemplates = templates || [];
+        // Phase 4: Pre-select first workflow template if none selected
+        if (!selectedTemplateId && workflowTemplates.length > 0) {
+          selectedTemplateId = workflowTemplates[0].id;
+        }
+      })
       .catch((e) => { console.warn('Failed to load workflow templates:', e.message); });
+
+    // Phase 3: Start polling for pending A2A jobs
+    startA2APolling();
+
+    return () => {
+      stopA2APolling();
+    };
   });
+
+  // --- Phase 3: A2A Pending Job Polling ---
+
+  function startA2APolling() {
+    if (a2aPollInterval) return;
+    pollPendingA2A();
+    a2aPollInterval = setInterval(pollPendingA2A, 5000);
+  }
+
+  function stopA2APolling() {
+    if (a2aPollInterval) {
+      clearInterval(a2aPollInterval);
+      a2aPollInterval = null;
+    }
+  }
+
+  async function pollPendingA2A() {
+    try {
+      const jobs = await listInputJobs({ status: 'pending_approval', pluginKey: 'a2a_inbound' });
+      pendingA2A = (jobs || []).map((j) => ({
+        job_id: j.job_id,
+        agent_id: j.processed_input?.source_metadata?.agent_id || 'unknown',
+        topic: j.processed_input?.topic || '',
+        task_id: j.job_id, // task_id == job_id for A2A inbound
+      }));
+    } catch (e) {
+      // Silently ignore polling errors (server may not be ready)
+      console.warn('A2A poll failed:', e.message);
+    }
+  }
 
   function onPluginChange(key) {
     selectedPlugin = key;
@@ -152,10 +206,17 @@
     }
   }
 
+  // --- Phase 3: A2A Approval Handlers ---
+
   async function handleApproveA2A(taskId) {
     try {
       await approveA2A(taskId);
+      // Remove from pending list immediately
       pendingA2A = pendingA2A.filter(p => p.task_id !== taskId);
+      // The approved job transitions to PROCESSING → COMPLETED.
+      // Poll for completion and then launch.
+      tracker = createInputJobTracker(taskId);
+      pollAndLaunch(taskId);
     } catch (e) {
       error = e.message;
     }
@@ -287,7 +348,7 @@
     {#if pendingA2A.length > 0}
       <div class="space-y-3">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
-          🤖 Pending A2A Requests
+          🤖 Pending A2A Requests ({pendingA2A.length})
         </h2>
         {#each pendingA2A as a2a}
           <A2AApprovalCard
@@ -307,7 +368,7 @@
         🤖 A2A Inbound
       </h3>
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        External agents can submit debate topics via the A2A protocol. 
+        External agents can submit debate topics via the A2A protocol.
         Pending requests will appear above for approval.
       </p>
     </div>
@@ -318,7 +379,7 @@
         🔧 MCP Stub
       </h3>
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        Model Context Protocol integration is available as a stub plugin. 
+        Model Context Protocol integration is available as a stub plugin.
         Full MCP support will be enabled in a future release.
       </p>
     </div>
