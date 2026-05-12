@@ -46,6 +46,19 @@
     }
   });
 
+  // Real-time sync: push draft changes back to canvas store
+  $effect(() => {
+    if (node?.id && draft.name !== undefined) {
+      canvasStore.updateNodeData(node.id, {
+        name: draft.name,
+        description: draft.description,
+        role: draft.role,
+        max_rounds: draft.max_rounds,
+        consensus_threshold: draft.consensus_threshold,
+      });
+    }
+  });
+
   $effect(() => {
     listPromptTemplates().then((t) => { promptTemplates = t; }).catch(() => {});
     listRoleTypes().then((rt) => { roleTypes = rt; }).catch(() => {});

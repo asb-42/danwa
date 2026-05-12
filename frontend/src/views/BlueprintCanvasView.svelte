@@ -111,7 +111,8 @@
   async function handleSaveLayout() {
     saveError = null;
 
-    if (!canvasStore.currentLayoutId) {
+    // Force show save dialog if no layout ID or no layout name
+    if (!canvasStore.currentLayoutId || !canvasStore.currentLayoutName) {
       showSaveDialog = true;
       return;
     }
@@ -158,7 +159,11 @@
   }
 
   async function handleLoadLayout(layout) {
-    navigate(`blueprint/${layout.id}`);
+    // Load layout directly instead of relying on hash navigation
+    if (layout && layout.id) {
+      await loadLayout(layout.id);
+      window.location.hash = `#/blueprint/${layout.id}`;
+    }
   }
 
   async function handleImport() {
@@ -362,7 +367,7 @@
 <!-- Save dialog for new layouts -->
 {#if showSaveDialog}
   <div class="dialog-overlay" role="button" tabindex="-1" onclick={() => { showSaveDialog = false; }} onkeydown={(e) => { if (e.key === 'Escape') showSaveDialog = false; }}>
-    <div class="dialog" role="dialog" aria-modal="true">
+    <div class="dialog" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter') handleSaveNewLayout(); }}>
       <h3 class="dialog-title">{t('blueprint.canvas.saveLayout')}</h3>
       {#if saveError}
         <p class="dialog-error">{saveError}</p>

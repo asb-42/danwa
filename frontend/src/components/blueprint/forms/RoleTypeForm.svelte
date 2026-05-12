@@ -51,6 +51,21 @@
     }
   });
 
+  // Real-time sync: push draft changes back to canvas store
+  // so the node preview updates as the user types
+  $effect(() => {
+    if (node?.id && draft.name !== undefined) {
+      canvasStore.updateNodeData(node.id, {
+        name: draft.name,
+        description: draft.description,
+        icon: draft.icon,
+        color: draft.color,
+        default_max_rounds: draft.default_max_rounds,
+        default_consensus_threshold: draft.default_consensus_threshold,
+      });
+    }
+  });
+
   async function handleSave() {
     saving = true;
     error = null;

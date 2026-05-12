@@ -48,6 +48,18 @@
     }
   });
 
+  // Real-time sync: push draft changes back to canvas store
+  $effect(() => {
+    if (node?.id && draft.name !== undefined) {
+      canvasStore.updateNodeData(node.id, {
+        name: draft.name,
+        description: draft.description,
+        tags: draft.tags,
+        is_active: draft.is_active,
+      });
+    }
+  });
+
   // Load dropdown options
   $effect(() => {
     Promise.all([
