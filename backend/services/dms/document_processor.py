@@ -22,6 +22,7 @@ class DocumentProcessor:
         self.config = config or {}
         self._ocr = None
         self._parser = DocumentParser()
+        self._check_version_compatibility()
 
     async def process_file(self, file_path: str) -> dict[str, Any]:
         """Process a file and extract text. Uses OCR for images.
@@ -115,3 +116,22 @@ class DocumentProcessor:
         merged["char_count"] = len(text)
         merged["ocr_used"] = ocr_used
         return merged
+
+    def _check_version_compatibility(self):
+        """Check for known PaddlePaddle version compatibility issues."""
+        try:
+            import paddle
+            major = paddle.version.major
+            minor = paddle.version.minor
+            
+            if major == "3" and int(minor) >= 3:
+                logger.warning(
+                    "PaddlePaddle 3.3+ has known PIR compatibility issues with OneDNN "
+                    "that cause OCR crashes. Consider downgrading to PaddlePaddle 3.2.x "
+                    "for stable OCR operations. See ADR-2024-05-12 for details."
+                )
+        except ImportError:
+            # PaddlePaddle not installed - no compatibility check needed
+            pass
+        except Exception as e:
+            logger.warning("Failed to check PaddlePaddle version compatibility: %s", e)

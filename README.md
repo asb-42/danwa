@@ -572,8 +572,10 @@ python-dotenv>=1.0.0
 
 [project.optional-dependencies]
 test = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4"]
-dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
+dms = ["paddlepaddle>=3.0,<3.3.0", "paddleocr>=3.5.0"]
 ```
+
+**Important Note**: PaddlePaddle 3.3.0+ has known PIR compatibility issues with OneDNN that cause OCR crashes. The version constraint `<3.3.0` ensures stable OCR operations. See [ADR-2024-05-12](docs/adr/2024-05-12-paddlepaddle-downgrade.md) for details.
 
 ## Documentation
 
