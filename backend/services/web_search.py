@@ -202,9 +202,21 @@ def extract_search_queries(case_text: str, role: str, max_queries: int = 3) -> l
     # For moderator: extract potential claims (sentences with keywords)
     if role == "moderator":
         claim_keywords = [
-            "laut", "according", "behaupt", "claim", "statist", "studie",
-            "study", "data", "daten", "evidence", "beweis", "report",
-            "bericht", "research", "forschung",
+            "laut",
+            "according",
+            "behaupt",
+            "claim",
+            "statist",
+            "studie",
+            "study",
+            "data",
+            "daten",
+            "evidence",
+            "beweis",
+            "report",
+            "bericht",
+            "research",
+            "forschung",
         ]
         sentences = re.split(r"[.!?]\s", case_text)
         for sent in sentences:

@@ -176,21 +176,11 @@ def create_app() -> FastAPI:
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
 
     # --- Blueprint Canvas ---
-    app.include_router(
-        blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"]
-    )
-    app.include_router(
-        llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"]
-    )
-    app.include_router(
-        role_definitions.router, prefix="/api/v1/blueprints", tags=["blueprints"]
-    )
-    app.include_router(
-        workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"]
-    )
-    app.include_router(
-        canvas.router, prefix="/api/v1/canvas", tags=["canvas"]
-    )
+    app.include_router(blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"])
+    app.include_router(llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"])
+    app.include_router(role_definitions.router, prefix="/api/v1/blueprints", tags=["blueprints"])
+    app.include_router(workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"])
+    app.include_router(canvas.router, prefix="/api/v1/canvas", tags=["canvas"])
     app.include_router(
         blueprint_events.router,
         prefix="/api/v1/blueprint-events",

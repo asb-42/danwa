@@ -109,9 +109,7 @@ class BlueprintRepository:
             return None
         return self._row_to_llm_profile(row)
 
-    def list_llm_profiles(
-        self, limit: int = 50, offset: int = 0
-    ) -> list[BlueprintLLMProfile]:
+    def list_llm_profiles(self, limit: int = 50, offset: int = 0) -> list[BlueprintLLMProfile]:
         """List all LLM profiles with pagination."""
         with self._connect() as conn:
             rows = conn.execute(
@@ -368,14 +366,10 @@ class BlueprintRepository:
     def get_role_type(self, role_type_id: str) -> RoleType | None:
         """Retrieve a role type by ID."""
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM role_types WHERE id = ?", (role_type_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM role_types WHERE id = ?", (role_type_id,)).fetchone()
         return self._row_to_role_type(row) if row else None
 
-    def list_role_types(
-        self, limit: int = 100, offset: int = 0, active_only: bool = False
-    ) -> list[RoleType]:
+    def list_role_types(self, limit: int = 100, offset: int = 0, active_only: bool = False) -> list[RoleType]:
         """List role types with pagination."""
         with self._connect() as conn:
             if active_only:
@@ -393,9 +387,7 @@ class BlueprintRepository:
     def delete_role_type(self, role_type_id: str) -> bool:
         """Delete a role type. Returns True if a row was deleted."""
         with self._connect() as conn:
-            cursor = conn.execute(
-                "DELETE FROM role_types WHERE id = ?", (role_type_id,)
-            )
+            cursor = conn.execute("DELETE FROM role_types WHERE id = ?", (role_type_id,))
         return cursor.rowcount > 0
 
     @staticmethod
@@ -633,9 +625,7 @@ class BlueprintRepository:
             return None
         return self._row_to_workflow_definition(row)
 
-    def list_workflow_definitions(
-        self, limit: int = 50, offset: int = 0
-    ) -> list[WorkflowDefinition]:
+    def list_workflow_definitions(self, limit: int = 50, offset: int = 0) -> list[WorkflowDefinition]:
         """List all workflow definitions with pagination."""
         with self._connect() as conn:
             rows = conn.execute(
@@ -660,11 +650,7 @@ class BlueprintRepository:
         nodes_json = row["nodes_json"] if "nodes_json" in row.keys() else "[]"
         edges_json = row["edges_json"] if "edges_json" in row.keys() else "[]"
         entry_point = row["entry_point"] if "entry_point" in row.keys() else None
-        term_json = (
-            row["termination_conditions_json"]
-            if "termination_conditions_json" in row.keys()
-            else "[]"
-        )
+        term_json = row["termination_conditions_json"] if "termination_conditions_json" in row.keys() else "[]"
         version = row["version"] if "version" in row.keys() else 1
         is_locked = row["is_locked"] if "is_locked" in row.keys() else 0
         template_id = row["template_id"] if "template_id" in row.keys() else None
@@ -677,12 +663,8 @@ class BlueprintRepository:
             description=row["description"],
             canvas_layout_id=row["canvas_layout_id"],
             execution_order=json.loads(row["execution_order_json"]),
-            conditional_edges=[
-                ConditionalEdge(**e) for e in json.loads(row["conditional_edges_json"])
-            ],
-            interjection_points=[
-                InterjectionPoint(**p) for p in json.loads(row["interjection_points_json"])
-            ],
+            conditional_edges=[ConditionalEdge(**e) for e in json.loads(row["conditional_edges_json"])],
+            interjection_points=[InterjectionPoint(**p) for p in json.loads(row["interjection_points_json"])],
             node_blueprint_map=json.loads(row["node_blueprint_map_json"]),
             tags=json.loads(row["tags_json"]),
             is_active=bool(row["is_active"]),
@@ -691,9 +673,7 @@ class BlueprintRepository:
             nodes=[WorkflowNode(**n) for n in json.loads(nodes_json)],
             edges=[WorkflowEdge(**e) for e in json.loads(edges_json)],
             entry_point=entry_point,
-            termination_conditions=[
-                TerminationCondition(**t) for t in json.loads(term_json)
-            ],
+            termination_conditions=[TerminationCondition(**t) for t in json.loads(term_json)],
             version=version,
             is_locked=bool(is_locked),
             template_id=template_id,
@@ -782,9 +762,7 @@ class BlueprintRepository:
             category=row["category"],
             tags=json.loads(row["tags_json"]),
             template_data=json.loads(row["template_data_json"]),
-            placeholders=[
-                TemplatePlaceholder(**p) for p in json.loads(row["placeholders_json"])
-            ],
+            placeholders=[TemplatePlaceholder(**p) for p in json.loads(row["placeholders_json"])],
             is_system=bool(row["is_system"]),
             source_workflow_id=row["source_workflow_id"],
             created_at=datetime.fromisoformat(row["created_at"]),

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from backend.a2a.adapter import A2AAdapter
-from backend.a2a.exceptions import A2AConnectionError, A2AError
-from backend.services.llm_service import GenerationResult
+from backend.a2a.exceptions import A2AConnectionError
 
 
 class TestA2AAdapterInit:
@@ -17,11 +17,13 @@ class TestA2AAdapterInit:
 
     def test_invalid_scheme(self):
         from backend.a2a.exceptions import A2AValidationError
+
         with pytest.raises(A2AValidationError):
             A2AAdapter("file:///etc/passwd")
 
     def test_private_ip_blocked(self):
         from backend.a2a.exceptions import A2AValidationError
+
         with pytest.raises(A2AValidationError):
             A2AAdapter("http://192.168.1.1")
 
@@ -62,11 +64,7 @@ class TestBuildTaskPayload:
 
 class TestExtractResponse:
     def test_from_artifacts(self):
-        result = {
-            "artifacts": [
-                {"parts": [{"type": "text", "text": "Response text"}]}
-            ]
-        }
+        result = {"artifacts": [{"parts": [{"type": "text", "text": "Response text"}]}]}
         content, tokens = A2AAdapter._extract_response(result)
         assert content == "Response text"
         assert tokens > 0
@@ -94,10 +92,12 @@ class TestDiscover:
             "capabilities": {"input_modes": ["text"]},
             "skills": [{"id": "skill1", "name": "Skill 1"}],
         }
+
         async def mock_discover():
             return mock_card
-        with patch("backend.a2a.adapter.A2AClient") as MockClient:
-            instance = MockClient.return_value
+
+        with patch("backend.a2a.adapter.A2AClient") as mock_client:
+            instance = mock_client.return_value
             instance.discover = mock_discover
             result = await adapter.discover()
         assert result["name"] == "Test Agent"

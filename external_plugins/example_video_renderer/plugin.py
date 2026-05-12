@@ -56,7 +56,4 @@ class ExampleVideoRenderer:
         output_dir: Path,
     ) -> list[Path]:
         """Render artifact to video files. NOT IMPLEMENTED."""
-        raise NotImplementedError(
-            "ExampleVideoRenderer is a stub. "
-            "Implement render() to produce actual video output."
-        )
+        raise NotImplementedError("ExampleVideoRenderer is a stub. Implement render() to produce actual video output.")

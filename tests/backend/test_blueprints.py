@@ -101,19 +101,13 @@ def sample_profile_dir(tmp_path: Path) -> Path:
     # --- profiles/prompts/default/ ---
     prompts_default = tmp_path / "profiles" / "prompts" / "default"
     prompts_default.mkdir(parents=True)
-    (prompts_default / "strategist.md").write_text(
-        "# Strategist Prompt\n\nAnalyze the case.", encoding="utf-8"
-    )
-    (prompts_default / "critic.md").write_text(
-        "# Critic Prompt\n\nChallenge the arguments.", encoding="utf-8"
-    )
+    (prompts_default / "strategist.md").write_text("# Strategist Prompt\n\nAnalyze the case.", encoding="utf-8")
+    (prompts_default / "critic.md").write_text("# Critic Prompt\n\nChallenge the arguments.", encoding="utf-8")
 
     # --- profiles/prompts/variants/kantian/ ---
     prompts_kantian = tmp_path / "profiles" / "prompts" / "variants" / "kantian"
     prompts_kantian.mkdir(parents=True)
-    (prompts_kantian / "strategist.md").write_text(
-        "# Kantian Strategist\n\nApply Kantian ethics.", encoding="utf-8"
-    )
+    (prompts_kantian / "strategist.md").write_text("# Kantian Strategist\n\nApply Kantian ethics.", encoding="utf-8")
 
     return tmp_path
 
@@ -150,9 +144,7 @@ def sample_archive_dir(tmp_path: Path) -> Path:
     # --- archive/config/prompts/ ---
     prompts_dir = archive_dir / "prompts"
     prompts_dir.mkdir(parents=True)
-    (prompts_dir / "strategist.md").write_text(
-        "Du bist ein erfahrener Strategie-Entwickler.", encoding="utf-8"
-    )
+    (prompts_dir / "strategist.md").write_text("Du bist ein erfahrener Strategie-Entwickler.", encoding="utf-8")
 
     return tmp_path
 
@@ -217,8 +209,14 @@ class TestBlueprintLLMProfile:
 
     def test_all_providers_accepted(self) -> None:
         for provider in [
-            "openrouter", "openai", "anthropic", "local",
-            "ollama", "opencode-zen", "opencode-go", "xiaomi",
+            "openrouter",
+            "openai",
+            "anthropic",
+            "local",
+            "ollama",
+            "opencode-zen",
+            "opencode-go",
+            "xiaomi",
         ]:
             profile = BlueprintLLMProfile(
                 id=f"p-{provider}",
@@ -715,17 +713,13 @@ class TestBlueprintRepositoryRoleDefinitions:
 
     def test_list_filtered_by_role(self, blueprint_repo: BlueprintRepository) -> None:
         for role in ("strategist", "critic", "optimizer"):
-            blueprint_repo.save_role_definition(
-                RoleDefinition(id=f"role-{role}", name=role.title(), role_type_id=role)
-            )
+            blueprint_repo.save_role_definition(RoleDefinition(id=f"role-{role}", name=role.title(), role_type_id=role))
         critics = blueprint_repo.list_role_definitions(role="critic")
         assert len(critics) == 1
         assert critics[0].role_type_id == "critic"
 
     def test_delete(self, blueprint_repo: BlueprintRepository) -> None:
-        blueprint_repo.save_role_definition(
-            RoleDefinition(id="to-delete", name="Delete", role_type_id="moderator")
-        )
+        blueprint_repo.save_role_definition(RoleDefinition(id="to-delete", name="Delete", role_type_id="moderator"))
         assert blueprint_repo.delete_role_definition("to-delete") is True
 
 
@@ -781,14 +775,8 @@ class TestBlueprintRepositoryAgentBlueprints:
 
     def test_save_and_get(self, blueprint_repo: BlueprintRepository) -> None:
         # Create referenced entities first (FK constraints)
-        blueprint_repo.save_llm_profile(
-            BlueprintLLMProfile(
-                id="test-llm", name="Test LLM", provider="openrouter", model="test/model"
-            )
-        )
-        blueprint_repo.save_role_definition(
-            RoleDefinition(id="test-role", name="Test Role", role_type_id="strategist")
-        )
+        blueprint_repo.save_llm_profile(BlueprintLLMProfile(id="test-llm", name="Test LLM", provider="openrouter", model="test/model"))
+        blueprint_repo.save_role_definition(RoleDefinition(id="test-role", name="Test Role", role_type_id="strategist"))
         bp = AgentBlueprint(
             id="bp-test",
             name="Test Blueprint",
@@ -802,14 +790,8 @@ class TestBlueprintRepositoryAgentBlueprints:
 
     def test_list_active_only(self, blueprint_repo: BlueprintRepository) -> None:
         # Create referenced entities first (FK constraints)
-        blueprint_repo.save_llm_profile(
-            BlueprintLLMProfile(
-                id="llm", name="LLM", provider="openrouter", model="test/model"
-            )
-        )
-        blueprint_repo.save_role_definition(
-            RoleDefinition(id="role", name="Role", role_type_id="strategist")
-        )
+        blueprint_repo.save_llm_profile(BlueprintLLMProfile(id="llm", name="LLM", provider="openrouter", model="test/model"))
+        blueprint_repo.save_role_definition(RoleDefinition(id="role", name="Role", role_type_id="strategist"))
         blueprint_repo.save_blueprint(
             AgentBlueprint(
                 id="bp-active",
@@ -837,14 +819,8 @@ class TestBlueprintRepositoryAgentBlueprints:
 
     def test_delete(self, blueprint_repo: BlueprintRepository) -> None:
         # Create referenced entities first (FK constraints)
-        blueprint_repo.save_llm_profile(
-            BlueprintLLMProfile(
-                id="llm", name="LLM", provider="openrouter", model="test/model"
-            )
-        )
-        blueprint_repo.save_role_definition(
-            RoleDefinition(id="role", name="Role", role_type_id="strategist")
-        )
+        blueprint_repo.save_llm_profile(BlueprintLLMProfile(id="llm", name="LLM", provider="openrouter", model="test/model"))
+        blueprint_repo.save_role_definition(RoleDefinition(id="role", name="Role", role_type_id="strategist"))
         blueprint_repo.save_blueprint(
             AgentBlueprint(
                 id="bp-delete",
@@ -881,12 +857,8 @@ class TestBlueprintRepositoryCanvasLayouts:
         assert retrieved.layout_data.nodes[0].x == 100
 
     def test_list_filtered_by_project(self, blueprint_repo: BlueprintRepository) -> None:
-        blueprint_repo.save_layout(
-            CanvasLayout(id="l1", name="L1", project_id="proj-a")
-        )
-        blueprint_repo.save_layout(
-            CanvasLayout(id="l2", name="L2", project_id="proj-b")
-        )
+        blueprint_repo.save_layout(CanvasLayout(id="l1", name="L1", project_id="proj-a"))
+        blueprint_repo.save_layout(CanvasLayout(id="l2", name="L2", project_id="proj-b"))
         proj_a = blueprint_repo.list_layouts(project_id="proj-a")
         assert len(proj_a) == 1
         assert proj_a[0].project_id == "proj-a"
@@ -915,9 +887,7 @@ class TestBlueprintRepositoryCanvasLayouts:
 class TestBlueprintImporter:
     """Tests for the idempotent YAML/MD importer."""
 
-    def test_import_llm_profiles_from_yaml(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_llm_profiles_from_yaml(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         importer = BlueprintImporter(
             repo=blueprint_repo,
             profile_dir=sample_profile_dir / "profiles",
@@ -931,9 +901,7 @@ class TestBlueprintImporter:
         assert profile is not None
         assert profile.model == "anthropic/claude-3.5-sonnet"
 
-    def test_import_legacy_llm_profiles(
-        self, blueprint_repo: BlueprintRepository, sample_archive_dir: Path
-    ) -> None:
+    def test_import_legacy_llm_profiles(self, blueprint_repo: BlueprintRepository, sample_archive_dir: Path) -> None:
         importer = BlueprintImporter(
             repo=blueprint_repo,
             profile_dir=sample_archive_dir / "profiles",
@@ -954,9 +922,7 @@ class TestBlueprintImporter:
         assert cloud is not None
         assert cloud.provider == "openrouter"
 
-    def test_import_agent_personas(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_agent_personas(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         importer = BlueprintImporter(
             repo=blueprint_repo,
             profile_dir=sample_profile_dir / "profiles",
@@ -977,9 +943,7 @@ class TestBlueprintImporter:
         assert critic is not None
         assert critic.consensus_threshold == 0.8
 
-    def test_import_prompt_templates(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_prompt_templates(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         importer = BlueprintImporter(
             repo=blueprint_repo,
             profile_dir=sample_profile_dir / "profiles",
@@ -1001,9 +965,7 @@ class TestBlueprintImporter:
         assert "Kantian" in kantian.content
         assert kantian.variant == "kantian"
 
-    def test_import_prompt_content_stored_inline(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_prompt_content_stored_inline(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """Full .md content must be stored inline, not as a file path."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1016,9 +978,7 @@ class TestBlueprintImporter:
         assert "# Strategist Prompt" in template.content
         assert template.source_path is not None
 
-    def test_import_archive_prompts(
-        self, blueprint_repo: BlueprintRepository, sample_archive_dir: Path
-    ) -> None:
+    def test_import_archive_prompts(self, blueprint_repo: BlueprintRepository, sample_archive_dir: Path) -> None:
         """Archive prompts should be imported with variant='archive'."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1034,9 +994,7 @@ class TestBlueprintImporter:
         assert len(archive_templates) == 1
         assert "Strategie-Entwickler" in archive_templates[0].content
 
-    def test_import_idempotency(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_idempotency(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """Running import twice should skip unchanged items."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1053,9 +1011,7 @@ class TestBlueprintImporter:
         assert result2.updated == 0
         assert result2.errors == []
 
-    def test_import_dry_run_no_persistence(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_dry_run_no_persistence(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """Dry run should not persist anything to the database."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1070,9 +1026,7 @@ class TestBlueprintImporter:
         assert blueprint_repo.list_role_definitions() == []
         assert blueprint_repo.list_prompt_templates() == []
 
-    def test_import_result_counts(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_result_counts(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """ImportResult should track created/updated/skipped/errors."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1083,9 +1037,7 @@ class TestBlueprintImporter:
         assert result.total == result.created + result.updated + result.skipped
         assert result.errors == []
 
-    def test_import_no_auto_assembly(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_no_auto_assembly(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """Import should NOT create AgentBlueprints — that's a Phase 3 user action."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1095,9 +1047,7 @@ class TestBlueprintImporter:
         importer.import_all()
         assert blueprint_repo.list_blueprints(active_only=False) == []
 
-    def test_import_updates_changed_content(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_updates_changed_content(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """Changed content should trigger an update, not a skip."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1110,9 +1060,7 @@ class TestBlueprintImporter:
 
         # Modify a prompt file
         prompts_dir = sample_profile_dir / "profiles" / "prompts" / "default"
-        (prompts_dir / "strategist.md").write_text(
-            "# Updated Strategist\n\nNew content.", encoding="utf-8"
-        )
+        (prompts_dir / "strategist.md").write_text("# Updated Strategist\n\nNew content.", encoding="utf-8")
 
         # Second import should detect the change
         result2 = importer.import_prompt_templates()
@@ -1124,9 +1072,7 @@ class TestBlueprintImporter:
         assert template is not None
         assert "Updated Strategist" in template.content
 
-    def test_import_all_orchestrator(
-        self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path
-    ) -> None:
+    def test_import_all_orchestrator(self, blueprint_repo: BlueprintRepository, sample_profile_dir: Path) -> None:
         """import_all should run all three importers."""
         importer = BlueprintImporter(
             repo=blueprint_repo,
@@ -1270,9 +1216,7 @@ class TestBlueprintRepositoryWorkflowDefinitions:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         for i in range(3):
-            blueprint_repo.save_workflow_definition(
-                WorkflowDefinition(id=f"wf-{i}", name=f"Workflow {i}")
-            )
+            blueprint_repo.save_workflow_definition(WorkflowDefinition(id=f"wf-{i}", name=f"Workflow {i}"))
         results = blueprint_repo.list_workflow_definitions()
         assert len(results) == 3
 
@@ -1280,9 +1224,7 @@ class TestBlueprintRepositoryWorkflowDefinitions:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         for i in range(5):
-            blueprint_repo.save_workflow_definition(
-                WorkflowDefinition(id=f"wf-{i}", name=f"Workflow {i}")
-            )
+            blueprint_repo.save_workflow_definition(WorkflowDefinition(id=f"wf-{i}", name=f"Workflow {i}"))
         page1 = blueprint_repo.list_workflow_definitions(limit=2, offset=0)
         assert len(page1) == 2
         page2 = blueprint_repo.list_workflow_definitions(limit=2, offset=2)
@@ -1293,9 +1235,7 @@ class TestBlueprintRepositoryWorkflowDefinitions:
     def test_delete(self, blueprint_repo: BlueprintRepository) -> None:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
-        blueprint_repo.save_workflow_definition(
-            WorkflowDefinition(id="wf-del", name="Delete Me")
-        )
+        blueprint_repo.save_workflow_definition(WorkflowDefinition(id="wf-del", name="Delete Me"))
         assert blueprint_repo.delete_workflow_definition("wf-del") is True
         assert blueprint_repo.get_workflow_definition("wf-del") is None
 
@@ -1305,12 +1245,8 @@ class TestBlueprintRepositoryWorkflowDefinitions:
     def test_upsert_updates(self, blueprint_repo: BlueprintRepository) -> None:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
-        blueprint_repo.save_workflow_definition(
-            WorkflowDefinition(id="wf-up", name="Original")
-        )
-        blueprint_repo.save_workflow_definition(
-            WorkflowDefinition(id="wf-up", name="Updated")
-        )
+        blueprint_repo.save_workflow_definition(WorkflowDefinition(id="wf-up", name="Original"))
+        blueprint_repo.save_workflow_definition(WorkflowDefinition(id="wf-up", name="Updated"))
         retrieved = blueprint_repo.get_workflow_definition("wf-up")
         assert retrieved is not None
         assert retrieved.name == "Updated"
@@ -1386,21 +1322,37 @@ class TestCompilerService:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="Test LLM", provider="openrouter",
-            model="test/model", max_tokens=2048, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="Strategist", role_type_id="strategist",
-            description="Test", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="Test BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="Test LLM",
+                provider="openrouter",
+                model="test/model",
+                max_tokens=2048,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="Strategist",
+                role_type_id="strategist",
+                description="Test",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="Test BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+            )
+        )
 
         wf = WorkflowDefinition(
-            id="wf-1", name="Valid",
+            id="wf-1",
+            name="Valid",
             node_blueprint_map={"n1": "bp-1"},
             execution_order=["n1"],
         )
@@ -1418,7 +1370,8 @@ class TestCompilerService:
 
         repo = self._make_repo(tmp_path)
         wf = WorkflowDefinition(
-            id="wf-1", name="Missing BP",
+            id="wf-1",
+            name="Missing BP",
             node_blueprint_map={"n1": "nonexistent"},
         )
         compiler = CompilerService(repo)
@@ -1439,25 +1392,41 @@ class TestCompilerService:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="L", provider="openrouter",
-            model="m", max_tokens=1024, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role_type_id="strategist",
-            description="T", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="L",
+                provider="openrouter",
+                model="m",
+                max_tokens=1024,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="R",
+                role_type_id="strategist",
+                description="T",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+            )
+        )
         # Delete the LLM profile via raw SQL (bypassing FK check)
         with sqlite3.connect(str(tmp_path / "compiler_test.db")) as conn:
             conn.execute("PRAGMA foreign_keys = OFF")
             conn.execute("DELETE FROM blueprint_llm_profiles WHERE id = 'llm-1'")
 
         wf = WorkflowDefinition(
-            id="wf-1", name="Missing LLM",
+            id="wf-1",
+            name="Missing LLM",
             node_blueprint_map={"n1": "bp-1"},
         )
         compiler = CompilerService(repo)
@@ -1478,25 +1447,41 @@ class TestCompilerService:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="L", provider="openrouter",
-            model="m", max_tokens=1024, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role_type_id="strategist",
-            description="T", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="L",
+                provider="openrouter",
+                model="m",
+                max_tokens=1024,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="R",
+                role_type_id="strategist",
+                description="T",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+            )
+        )
         # Delete the role definition via raw SQL (bypassing FK check)
         with sqlite3.connect(str(tmp_path / "compiler_test.db")) as conn:
             conn.execute("PRAGMA foreign_keys = OFF")
             conn.execute("DELETE FROM role_definitions WHERE id = 'role-1'")
 
         wf = WorkflowDefinition(
-            id="wf-1", name="Missing Role",
+            id="wf-1",
+            name="Missing Role",
             node_blueprint_map={"n1": "bp-1"},
         )
         compiler = CompilerService(repo)
@@ -1514,20 +1499,36 @@ class TestCompilerService:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="L", provider="openrouter",
-            model="m", max_tokens=1024, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role_type_id="strategist",
-            description="T", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="L",
+                provider="openrouter",
+                model="m",
+                max_tokens=1024,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="R",
+                role_type_id="strategist",
+                description="T",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+            )
+        )
         wf = WorkflowDefinition(
-            id="wf-1", name="Bad Order",
+            id="wf-1",
+            name="Bad Order",
             node_blueprint_map={"n1": "bp-1"},
             execution_order=["n1", "ghost"],
         )
@@ -1549,20 +1550,36 @@ class TestCompilerService:
         )
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="L", provider="openrouter",
-            model="m", max_tokens=1024, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role_type_id="strategist",
-            description="T", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="L",
+                provider="openrouter",
+                model="m",
+                max_tokens=1024,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="R",
+                role_type_id="strategist",
+                description="T",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+            )
+        )
         wf = WorkflowDefinition(
-            id="wf-1", name="Bad Edge",
+            id="wf-1",
+            name="Bad Edge",
             node_blueprint_map={"n1": "bp-1"},
             conditional_edges=[
                 ConditionalEdge(
@@ -1590,20 +1607,36 @@ class TestCompilerService:
         )
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="L", provider="openrouter",
-            model="m", max_tokens=1024, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role_type_id="strategist",
-            description="T", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="L",
+                provider="openrouter",
+                model="m",
+                max_tokens=1024,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="R",
+                role_type_id="strategist",
+                description="T",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+            )
+        )
         wf = WorkflowDefinition(
-            id="wf-1", name="Bad Interjection",
+            id="wf-1",
+            name="Bad Interjection",
             node_blueprint_map={"n1": "bp-1"},
             interjection_points=[
                 InterjectionPoint(node_id="ghost", input_type="user_query"),
@@ -1624,21 +1657,37 @@ class TestCompilerService:
         from backend.blueprints.workflow_models import WorkflowDefinition
 
         repo = self._make_repo(tmp_path)
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-1", name="L", provider="openrouter",
-            model="m", max_tokens=1024, temperature=0.5,
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-1", name="R", role_type_id="strategist",
-            description="T", consensus_threshold=0.8,
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-1", name="BP",
-            llm_profile_id="llm-1", role_definition_id="role-1",
-            is_active=False,
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-1",
+                name="L",
+                provider="openrouter",
+                model="m",
+                max_tokens=1024,
+                temperature=0.5,
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-1",
+                name="R",
+                role_type_id="strategist",
+                description="T",
+                consensus_threshold=0.8,
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-1",
+                name="BP",
+                llm_profile_id="llm-1",
+                role_definition_id="role-1",
+                is_active=False,
+            )
+        )
         wf = WorkflowDefinition(
-            id="wf-1", name="Inactive",
+            id="wf-1",
+            name="Inactive",
             node_blueprint_map={"n1": "bp-1"},
         )
         compiler = CompilerService(repo)

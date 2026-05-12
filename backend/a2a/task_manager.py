@@ -199,7 +199,7 @@ class TaskManager:
 
         Returns the number of deleted tasks.
         """
-        cutoff = datetime.now(UTC).isoformat()
+        datetime.now(UTC).isoformat()
         # Calculate cutoff timestamp
         from datetime import timedelta
 

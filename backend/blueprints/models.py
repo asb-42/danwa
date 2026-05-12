@@ -101,7 +101,10 @@ class BlueprintLLMProfile(BaseModel):
         ptype = getattr(legacy, "profile_type", None) or "text"
         if ptype == "text":
             if protocol == "stt" or legacy.provider.value in (
-                "whisper-local", "whisper-api", "azure-stt", "google-stt",
+                "whisper-local",
+                "whisper-api",
+                "azure-stt",
+                "google-stt",
             ):
                 ptype = "stt"
             elif "tts" in legacy.model.lower() or "tts" in legacy.name.lower():
@@ -380,8 +383,8 @@ class CanvasLayoutEdge(BaseModel):
     source: str  # Node ID
     target: str  # Node ID
     type: str = "sequential"  # e.g. "uses_llm", "implements_role", "sequential"
-    sourceHandle: str | None = None
-    targetHandle: str | None = None
+    source_handle: str | None = None
+    target_handle: str | None = None
     data: dict[str, Any] = Field(default_factory=dict)  # Raw edge data for round-tripping
 
 

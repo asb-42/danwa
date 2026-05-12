@@ -165,7 +165,10 @@ def convert_layout_to_workflow(
             wf.created_at = existing.created_at
             logger.info(
                 "Updating existing workflow '%s' from layout '%s' (v%d → v%d)",
-                existing.id, layout_id, existing.version, wf.version,
+                existing.id,
+                layout_id,
+                existing.version,
+                wf.version,
             )
             repo.save_workflow_definition(wf)
             return wf

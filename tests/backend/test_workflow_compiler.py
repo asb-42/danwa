@@ -94,9 +94,7 @@ def _make_simple_workflow(sample_blueprint: AgentBlueprint) -> WorkflowDefinitio
 class TestValidCompilation:
     """Test WorkflowCompiler.compile() with valid workflows."""
 
-    def test_compile_valid_workflow(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_compile_valid_workflow(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """A valid workflow should compile successfully."""
         workflow = _make_simple_workflow(sample_blueprint)
         compiler = WorkflowCompiler(repo)
@@ -108,9 +106,7 @@ class TestValidCompilation:
         assert len(result.resolved_agents) == 1
         assert result.resolved_agents[0].blueprint_id == "bp-1"
 
-    def test_compile_produces_node_sequence(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_compile_produces_node_sequence(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """Compiled result should include a node_sequence from topological sort."""
         workflow = _make_simple_workflow(sample_blueprint)
         compiler = WorkflowCompiler(repo)
@@ -120,9 +116,7 @@ class TestValidCompilation:
         assert "wf-input" in result.node_sequence
         assert "node-s1" in result.node_sequence
 
-    def test_compile_resolves_agent_config(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_compile_resolves_agent_config(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """Agent config should be fully resolved from the repository."""
         workflow = _make_simple_workflow(sample_blueprint)
         compiler = WorkflowCompiler(repo)
@@ -174,9 +168,7 @@ class TestInvalidCompilation:
         assert not result.is_valid
         assert any("entry_point" in e.lower() for e in result.errors)
 
-    def test_missing_blueprint(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_missing_blueprint(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """Agent node referencing nonexistent blueprint should produce an error."""
         workflow = WorkflowDefinition(
             id="wf-missing-bp",
@@ -200,9 +192,7 @@ class TestInvalidCompilation:
         assert not result.is_valid
         assert any("not found" in e.lower() for e in result.errors)
 
-    def test_invalid_edge_source(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_invalid_edge_source(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """Edge with invalid source should produce an error."""
         workflow = WorkflowDefinition(
             id="wf-bad-edge",
@@ -234,9 +224,7 @@ class TestInvalidCompilation:
 class TestFeedbackEdges:
     """Test compilation with feedback (back) edges."""
 
-    def test_feedback_edge_compiles(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_feedback_edge_compiles(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """A workflow with a feedback edge should compile with conditional routing."""
         workflow = WorkflowDefinition(
             id="wf-feedback",
@@ -283,9 +271,7 @@ class TestFeedbackEdges:
 class TestInterjectionEdges:
     """Test compilation with interjection edges."""
 
-    def test_interjection_edge_inserts_node(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_interjection_edge_inserts_node(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """An interjection edge should insert an interjection node."""
         workflow = WorkflowDefinition(
             id="wf-inj",
@@ -320,9 +306,7 @@ class TestInterjectionEdges:
 class TestGateNodes:
     """Test compilation with gate nodes and conditional routing."""
 
-    def test_gate_node_with_two_targets(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_gate_node_with_two_targets(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """A gate node with two outgoing edges should use conditional routing."""
         workflow = WorkflowDefinition(
             id="wf-gate",
@@ -370,9 +354,7 @@ class TestGateNodes:
 class TestTopologicalSort:
     """Test topological sort with complex graphs."""
 
-    def test_linear_sort(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_linear_sort(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """Linear graph should produce correct topological order."""
         workflow = _make_simple_workflow(sample_blueprint)
         compiler = WorkflowCompiler(repo)
@@ -382,9 +364,7 @@ class TestTopologicalSort:
         seq = result.node_sequence
         assert seq.index("wf-input") < seq.index("node-s1")
 
-    def test_diamond_sort(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_diamond_sort(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """Diamond graph should produce valid topological order."""
         workflow = WorkflowDefinition(
             id="wf-diamond",
@@ -429,9 +409,7 @@ class TestTopologicalSort:
 class TestCycleDetection:
     """Test compilation with cycles (non-feedback)."""
 
-    def test_cycle_detected(
-        self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-    ) -> None:
+    def test_cycle_detected(self, repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> None:
         """A cycle in non-feedback edges should be detected by the compiler."""
         workflow = WorkflowDefinition(
             id="wf-cycle",

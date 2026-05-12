@@ -95,10 +95,7 @@ def get_active_interrupt(debate_id: str) -> dict | None:
 
 def get_pending_injects(debate_id: str) -> list[dict]:
     """Get pending inject interactions for a debate (not yet consumed)."""
-    return [
-        i for i in _interaction_log.get(debate_id, [])
-        if i["type"] == "inject" and i["status"] == "pending"
-    ]
+    return [i for i in _interaction_log.get(debate_id, []) if i["type"] == "inject" and i["status"] == "pending"]
 
 
 def consume_inject(debate_id: str, interaction_id: str) -> None:
@@ -470,7 +467,7 @@ async def pause_debate(
         return PauseResponse(debate_id=debate_id, paused=True, action=body.action, message=message)
 
     else:  # resume
-        pause_info = _paused_debates.pop(debate_id, None)
+        _paused_debates.pop(debate_id, None)
         message = "Debate resumed"
 
         # Emit SSE event
@@ -528,10 +525,7 @@ async def get_hitl_status(
 
     # Count interrupts in current round
     current_round = debate.get("current_round", 0)
-    round_count = sum(
-        1 for i in interactions
-        if i.get("type") == "query" and i.get("round") == current_round
-    )
+    round_count = sum(1 for i in interactions if i.get("type") == "query" and i.get("round") == current_round)
 
     return HITLStatusResponse(
         debate_id=debate_id,

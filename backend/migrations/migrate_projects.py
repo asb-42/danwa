@@ -96,14 +96,8 @@ def _migrate_audit_db() -> None:
                 conn.execute(
                     f"ALTER TABLE audit_events ADD COLUMN project_id TEXT NOT NULL DEFAULT '{_DEFAULT_PROJECT_ID}'",
                 )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_audit_project "
-                    "ON audit_events (project_id)"
-                )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_audit_project_debate "
-                    "ON audit_events (project_id, debate_id)"
-                )
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_project ON audit_events (project_id)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_project_debate ON audit_events (project_id, debate_id)")
                 logger.info("Added project_id column to audit_events")
             else:
                 logger.debug("audit_events.project_id column already exists")
@@ -126,10 +120,7 @@ def _migrate_profiles_db() -> None:
                     conn.execute(
                         f"ALTER TABLE {table} ADD COLUMN project_id TEXT NOT NULL DEFAULT '{_DEFAULT_PROJECT_ID}'",
                     )
-                    conn.execute(
-                        f"CREATE INDEX IF NOT EXISTS idx_{table}_project "
-                        f"ON {table} (project_id)"
-                    )
+                    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_project ON {table} (project_id)")
                     logger.info("Added project_id column to %s", table)
                 else:
                     logger.debug("%s.project_id column already exists", table)

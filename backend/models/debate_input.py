@@ -55,10 +55,7 @@ class DebateInput(BaseModel):
         payload = json.dumps(
             {
                 "topic": self.topic,
-                "attachments": [
-                    a.model_dump(include={"id", "mime_type", "content_ref"})
-                    for a in self.attachments
-                ],
+                "attachments": [a.model_dump(include={"id", "mime_type", "content_ref"}) for a in self.attachments],
             },
             sort_keys=True,
             default=str,

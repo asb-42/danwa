@@ -96,9 +96,7 @@ class DebateRequest(BaseModel):
     prompt_variant: str = Field(default="default", description="Prompt variant ID")
     agent_persona_ids: dict[str, str] = Field(
         default_factory=dict,
-        description=(
-            "Mapping of agent role to persona ID (e.g. {'strategist': 'strategist-default'})"
-        ),
+        description=("Mapping of agent role to persona ID (e.g. {'strategist': 'strategist-default'})"),
     )
 
     # --- Language (Sprint 4) ---
@@ -134,10 +132,7 @@ class A2AAgentConfig(BaseModel):
     )
     position: str = Field(
         default="after_all",
-        description=(
-            "Where to insert the A2A agent: 'after_all', 'after:critic', "
-            "'before:moderator', etc."
-        ),
+        description=("Where to insert the A2A agent: 'after_all', 'after:critic', 'before:moderator', etc."),
     )
 
 
@@ -249,6 +244,7 @@ class AuditEvent(BaseModel):
 
 class OOBTargetType(StrEnum):
     """Target type for OOB input routing."""
+
     SPECIFIC_AGENT = "specific_agent"
     NEXT_AGENT = "next_agent"
     ALL_FUTURE = "all_future"
@@ -257,6 +253,7 @@ class OOBTargetType(StrEnum):
 
 class OOBTarget(BaseModel):
     """Routing target for an OOB input."""
+
     type: OOBTargetType
     agent_role: str | None = None
     round: int | None = None
@@ -266,6 +263,7 @@ class OOBTarget(BaseModel):
 
 class OOBInputBody(BaseModel):
     """POST /api/v1/debate/{id}/oob request body."""
+
     content: str = Field(..., min_length=1, max_length=5000, description="Additional context")
     target: OOBTarget
     urgency: str = "append"  # 'append' | 'inject_now' | 'override_context'
@@ -273,6 +271,7 @@ class OOBInputBody(BaseModel):
 
 class OOBInputResponse(BaseModel):
     """Response after submitting an OOB input."""
+
     oob_id: str
     status: str = "pending"
     target_resolved: str = ""
@@ -329,12 +328,8 @@ class AuditLogQuery(BaseModel):
     session_id: str | None = None
     workflow_id: str | None = None
     event_type: str | None = None
-    date_from: str | None = Field(
-        None, description="ISO-8601 lower bound (inclusive)"
-    )
-    date_to: str | None = Field(
-        None, description="ISO-8601 upper bound (inclusive)"
-    )
+    date_from: str | None = Field(None, description="ISO-8601 lower bound (inclusive)")
+    date_to: str | None = Field(None, description="ISO-8601 upper bound (inclusive)")
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
 

@@ -272,10 +272,7 @@ def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, (str, int, float, bool, type(None))):
             serialized[key] = value
         elif isinstance(value, list):
-            serialized[key] = [
-                str(item) if not isinstance(item, (str, int, float, bool, dict, type(None))) else item
-                for item in value
-            ]
+            serialized[key] = [str(item) if not isinstance(item, (str, int, float, bool, dict, type(None))) else item for item in value]
         elif isinstance(value, dict):
             serialized[key] = {k: str(v) for k, v in value.items()}
         else:

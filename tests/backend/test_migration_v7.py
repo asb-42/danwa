@@ -5,9 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-import pytest
-
-from backend.blueprints.migrations import run_migrations, SCHEMA_VERSION
+from backend.blueprints.migrations import SCHEMA_VERSION, run_migrations
 
 
 class TestMigrationV7:
@@ -28,7 +26,13 @@ class TestMigrationV7:
         conn = sqlite3.connect(str(db))
         cols = [r[1] for r in conn.execute("PRAGMA table_info(blueprint_llm_profiles)").fetchall()]
         conn.close()
-        for col in ["protocol", "a2a_endpoint", "a2a_timeout", "fallback_llm_profile_id", "a2a_config_json"]:
+        for col in [
+            "protocol",
+            "a2a_endpoint",
+            "a2a_timeout",
+            "fallback_llm_profile_id",
+            "a2a_config_json",
+        ]:
             assert col in cols, f"Missing column: {col}"
 
     def test_default_values(self, tmp_path: Path):

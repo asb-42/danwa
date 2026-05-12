@@ -41,8 +41,12 @@ def _make_layout(
 
 def _wf_input_node(node_id: str = "input-1") -> CanvasLayoutNode:
     return CanvasLayoutNode(
-        id=node_id, type="wf-input", x=0, y=0,
-        label="Input", data={"label": "Input"},
+        id=node_id,
+        type="wf-input",
+        x=0,
+        y=0,
+        label="Input",
+        data={"label": "Input"},
     )
 
 
@@ -53,7 +57,10 @@ def _wf_strategist_node(
     # Use node_id as default blueprint_id so WorkflowNode validation passes
     bp_id = blueprint_id if blueprint_id is not None else node_id
     return CanvasLayoutNode(
-        id=node_id, type="wf-strategist", x=200, y=0,
+        id=node_id,
+        type="wf-strategist",
+        x=200,
+        y=0,
         blueprint_id=bp_id,
         agent_blueprint_id=bp_id,
         label="Strategist",
@@ -67,7 +74,10 @@ def _wf_critic_node(
 ) -> CanvasLayoutNode:
     bp_id = blueprint_id if blueprint_id is not None else node_id
     return CanvasLayoutNode(
-        id=node_id, type="wf-critic", x=400, y=0,
+        id=node_id,
+        type="wf-critic",
+        x=400,
+        y=0,
         blueprint_id=bp_id,
         agent_blueprint_id=bp_id,
         label="Critic",
@@ -81,7 +91,10 @@ def _wf_moderator_node(
 ) -> CanvasLayoutNode:
     bp_id = blueprint_id if blueprint_id is not None else node_id
     return CanvasLayoutNode(
-        id=node_id, type="wf-moderator", x=600, y=0,
+        id=node_id,
+        type="wf-moderator",
+        x=600,
+        y=0,
         blueprint_id=bp_id,
         agent_blueprint_id=bp_id,
         label="Moderator",
@@ -96,7 +109,10 @@ def _wf_moderator_node(
 
 def _wf_gate_node(node_id: str = "gate-1") -> CanvasLayoutNode:
     return CanvasLayoutNode(
-        id=node_id, type="wf-gate", x=300, y=100,
+        id=node_id,
+        type="wf-gate",
+        x=300,
+        y=100,
         label="Gate",
         config={"condition": "round >= 3"},
         data={"label": "Gate", "config": {"condition": "round >= 3"}},
@@ -218,7 +234,10 @@ class TestCanvasToWorkflowConverter:
         converter = CanvasToWorkflowConverter(repo)
         # Node with NO blueprint_id — must resolve from connected asset edge
         strat_no_bp = CanvasLayoutNode(
-            id="strat-1", type="wf-strategist", x=200, y=0,
+            id="strat-1",
+            type="wf-strategist",
+            x=200,
+            y=0,
             label="Strategist",
         )
         layout = _make_layout(
@@ -230,7 +249,9 @@ class TestCanvasToWorkflowConverter:
             edges=[
                 _sequential_edge("input-1", "strat-1"),
                 CanvasLayoutEdge(
-                    id="e-bp", source="bp-asset", target="strat-1",
+                    id="e-bp",
+                    source="bp-asset",
+                    target="strat-1",
                     type="implements_role",
                 ),
             ],
@@ -317,7 +338,9 @@ class TestCanvasToWorkflowConverter:
             edges=[
                 _sequential_edge("input-1", "strat-1"),
                 CanvasLayoutEdge(
-                    id="e-bp", source="bp-1", target="strat-1",
+                    id="e-bp",
+                    source="bp-1",
+                    target="strat-1",
                     type="implements_role",
                 ),
             ],

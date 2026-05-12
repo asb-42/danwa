@@ -5,12 +5,9 @@ from __future__ import annotations
 import io
 import sys
 import types
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from backend.main import create_app
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -70,6 +67,7 @@ class TestDocumentProcessorOCR:
         img_path.write_bytes(b"fake png data")
 
         import asyncio
+
         with pytest.raises(ValueError, match="requires OCR but ocr_enabled is false"):
             asyncio.run(processor.process_file(str(img_path)))
 
@@ -82,6 +80,7 @@ class TestDocumentProcessorOCR:
         img_path.write_bytes(b"fake png data")
 
         import asyncio
+
         with patch.dict(sys.modules, {"paddleocr": None}):
             processor._ocr = None
             with pytest.raises(ValueError, match="PaddleOCR is not installed"):
@@ -96,6 +95,7 @@ class TestDocumentProcessorOCR:
         txt_path.write_text("hello world")
 
         import asyncio
+
         result = asyncio.run(processor.process_file(str(txt_path)))
         assert result["text"] == "hello world"
         assert result["ocr_used"] is False
@@ -108,9 +108,7 @@ class TestDocumentProcessorOCR:
         img_path.write_bytes(b"fake png data")
 
         ocr_instance = MagicMock()
-        ocr_instance.predict.return_value = [
-            types.SimpleNamespace(json={"ocr_results": [{"text": "Hello"}, {"text": "world"}]})
-        ]
+        ocr_instance.predict.return_value = [types.SimpleNamespace(json={"ocr_results": [{"text": "Hello"}, {"text": "world"}]})]
         paddle_cls = MagicMock(return_value=ocr_instance)
         paddle_module = types.SimpleNamespace(PaddleOCR=paddle_cls)
 
@@ -118,6 +116,7 @@ class TestDocumentProcessorOCR:
             processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_device": "cpu"})
             processor._ocr = None
             import asyncio
+
             result = asyncio.run(processor.process_file(str(img_path)))
 
         assert result["ocr_used"] is True
@@ -161,11 +160,13 @@ class TestDMSConfigFlow:
     def test_default_config_has_ocr_enabled(self):
         """DEFAULT_DMS_CONFIG should have ocr_enabled=True."""
         from backend.services.dms.config import DEFAULT_DMS_CONFIG
+
         assert DEFAULT_DMS_CONFIG["ocr_enabled"] is True
 
     def test_load_dms_config_fallback(self):
         """load_dms_config should fall back to defaults when config file missing."""
         from backend.services.dms.config import load_dms_config
+
         config = load_dms_config("/nonexistent/path/settings.yaml")
         assert config["ocr_enabled"] is True
         assert config["ocr_device"] == "cpu"
@@ -173,6 +174,7 @@ class TestDMSConfigFlow:
     def test_config_passed_to_document_processor(self):
         """DMS should pass config to DocumentProcessor."""
         from backend.services.dms.service import DMS
+
         config = {"ocr_enabled": True, "ocr_device": "cpu"}
         dms = DMS(db_path=":memory:", chroma_path="/tmp/test_chroma", config=config)
         assert dms.document_processor.config == config

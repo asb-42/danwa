@@ -11,7 +11,6 @@ from backend.models.render_job import RenderJob, RenderJobStatus
 from backend.services.artifact_store import ArtifactStore
 from backend.services.render_job_store import RenderJobStore
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -55,9 +54,7 @@ def _make_artifact(session_id: str = "s1") -> DebateArtifact:
 
 
 class TestArtifactStore:
-    def test_save_and_get(
-        self, artifact_store: ArtifactStore
-    ) -> None:
+    def test_save_and_get(self, artifact_store: ArtifactStore) -> None:
         a = _make_artifact()
         artifact_store.save(a)
         loaded = artifact_store.get("s1")
@@ -66,29 +63,21 @@ class TestArtifactStore:
         assert loaded.topic == "Test"
         assert len(loaded.transcript) == 1
 
-    def test_get_nonexistent(
-        self, artifact_store: ArtifactStore
-    ) -> None:
+    def test_get_nonexistent(self, artifact_store: ArtifactStore) -> None:
         assert artifact_store.get("nonexistent") is None
 
-    def test_exists(
-        self, artifact_store: ArtifactStore
-    ) -> None:
+    def test_exists(self, artifact_store: ArtifactStore) -> None:
         assert not artifact_store.exists("s1")
         artifact_store.save(_make_artifact())
         assert artifact_store.exists("s1")
 
-    def test_delete(
-        self, artifact_store: ArtifactStore
-    ) -> None:
+    def test_delete(self, artifact_store: ArtifactStore) -> None:
         artifact_store.save(_make_artifact())
         assert artifact_store.exists("s1")
         artifact_store.delete("s1")
         assert not artifact_store.exists("s1")
 
-    def test_overwrite(
-        self, artifact_store: ArtifactStore
-    ) -> None:
+    def test_overwrite(self, artifact_store: ArtifactStore) -> None:
         a1 = _make_artifact()
         artifact_store.save(a1)
         a2 = _make_artifact()
@@ -105,9 +94,7 @@ class TestArtifactStore:
 
 
 class TestRenderJobStore:
-    def test_create_and_get(
-        self, job_store: RenderJobStore
-    ) -> None:
+    def test_create_and_get(self, job_store: RenderJobStore) -> None:
         job = RenderJob(session_id="s1", plugin_key="print")
         job_store.create_job(job)
         loaded = job_store.get_job(job.id)
@@ -116,14 +103,10 @@ class TestRenderJobStore:
         assert loaded.plugin_key == "print"
         assert loaded.status == RenderJobStatus.QUEUED
 
-    def test_get_nonexistent(
-        self, job_store: RenderJobStore
-    ) -> None:
+    def test_get_nonexistent(self, job_store: RenderJobStore) -> None:
         assert job_store.get_job("nonexistent") is None
 
-    def test_update_status(
-        self, job_store: RenderJobStore
-    ) -> None:
+    def test_update_status(self, job_store: RenderJobStore) -> None:
         job = RenderJob(session_id="s1", plugin_key="print")
         job_store.create_job(job)
         job_store.update_job(job.id, status=RenderJobStatus.RUNNING)
@@ -131,9 +114,7 @@ class TestRenderJobStore:
         assert loaded is not None
         assert loaded.status == RenderJobStatus.RUNNING
 
-    def test_update_output_files(
-        self, job_store: RenderJobStore
-    ) -> None:
+    def test_update_output_files(self, job_store: RenderJobStore) -> None:
         job = RenderJob(session_id="s1", plugin_key="print")
         job_store.create_job(job)
         job_store.update_job(
@@ -145,32 +126,20 @@ class TestRenderJobStore:
         assert loaded is not None
         assert loaded.output_files == ["/data/outputs/j1/debate.pdf"]
 
-    def test_list_jobs(
-        self, job_store: RenderJobStore
-    ) -> None:
+    def test_list_jobs(self, job_store: RenderJobStore) -> None:
         for i in range(3):
-            job_store.create_job(
-                RenderJob(session_id=f"s{i}", plugin_key="print")
-            )
+            job_store.create_job(RenderJob(session_id=f"s{i}", plugin_key="print"))
         jobs = job_store.list_jobs()
         assert len(jobs) == 3
 
-    def test_list_filter_session(
-        self, job_store: RenderJobStore
-    ) -> None:
-        job_store.create_job(
-            RenderJob(session_id="s1", plugin_key="print")
-        )
-        job_store.create_job(
-            RenderJob(session_id="s2", plugin_key="tts")
-        )
+    def test_list_filter_session(self, job_store: RenderJobStore) -> None:
+        job_store.create_job(RenderJob(session_id="s1", plugin_key="print"))
+        job_store.create_job(RenderJob(session_id="s2", plugin_key="tts"))
         s1_jobs = job_store.list_jobs(session_id="s1")
         assert len(s1_jobs) == 1
         assert s1_jobs[0].session_id == "s1"
 
-    def test_delete_job(
-        self, job_store: RenderJobStore
-    ) -> None:
+    def test_delete_job(self, job_store: RenderJobStore) -> None:
         job = RenderJob(session_id="s1", plugin_key="print")
         job_store.create_job(job)
         assert job_store.get_job(job.id) is not None

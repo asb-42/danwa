@@ -77,10 +77,7 @@ class RenderEngineService:
         if artifact is None:
             artifact = self._build_artifact_from_debate_store(session_id)
             if artifact is None:
-                raise ValueError(
-                    f"No DebateArtifact found for session {session_id!r}. "
-                    "Ensure the workflow has completed and the artifact was saved."
-                )
+                raise ValueError(f"No DebateArtifact found for session {session_id!r}. Ensure the workflow has completed and the artifact was saved.")
 
         # 3. Compute artifact hash for integrity checking
         artifact_hash = artifact.artifact_hash()
@@ -141,9 +138,7 @@ class RenderEngineService:
             if artifact is None:
                 artifact = self._build_artifact_from_debate_store(job.session_id)
             if artifact is None:
-                raise ValueError(
-                    f"DebateArtifact for session {job.session_id!r} disappeared"
-                )
+                raise ValueError(f"DebateArtifact for session {job.session_id!r} disappeared")
 
             # Get plugin and validate config
             plugin_cls = self.registry.get_plugin(job.plugin_key)
@@ -201,7 +196,6 @@ class RenderEngineService:
         Searches all projects for a debate with the given session_id and builds
         an artifact from its rounds/result data.  Returns None if not found.
         """
-        from backend.models.artifact import DebateArtifact
         from backend.persistence.debate_store import DebateStore
         from backend.persistence.project_store import ProjectStore
 

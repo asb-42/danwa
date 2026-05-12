@@ -24,6 +24,7 @@ class InputStore:
         self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         from backend.blueprints.migrations import run_migrations
+
         run_migrations(self._db_path)
 
     def _connect(self) -> sqlite3.Connection:

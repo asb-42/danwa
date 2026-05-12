@@ -14,7 +14,6 @@ import hashlib
 import logging
 import threading
 from pathlib import Path
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -59,7 +58,9 @@ class PromptService:
         # 1. Try DB content via ProfileService (SSOT)
         if self._profile_service is not None:
             db_data = self._profile_service.get_prompt_content(
-                variant, role, language=language,
+                variant,
+                role,
+                language=language,
             )
             if db_data:
                 return db_data
@@ -115,9 +116,7 @@ class PromptService:
                         break
 
         if prompt_path is None:
-            raise FileNotFoundError(
-                f"Prompt not found: {variant}/{role} (language={language})"
-            )
+            raise FileNotFoundError(f"Prompt not found: {variant}/{role} (language={language})")
 
         cache_key = f"{variant}/{role}/{language}"
 

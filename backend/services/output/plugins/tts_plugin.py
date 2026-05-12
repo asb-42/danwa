@@ -123,6 +123,7 @@ class TTSOutputPlugin(OutputPlugin):
         if not voice_mapping:
             try:
                 from backend.blueprints.repository import BlueprintRepository
+
                 repo = BlueprintRepository()
                 blueprints = repo.list_blueprints(active_only=True, limit=500)
                 for bp in blueprints:
@@ -144,6 +145,7 @@ class TTSOutputPlugin(OutputPlugin):
             if not mimo_api_base or not mimo_api_key_env or not mimo_model:
                 try:
                     from backend.blueprints.repository import BlueprintRepository
+
                     repo = BlueprintRepository()
                     for profile in repo.list_llm_profiles(limit=500):
                         if profile.profile_type == "tts" and profile.provider == "xiaomi":
@@ -156,9 +158,11 @@ class TTSOutputPlugin(OutputPlugin):
                             if not mimo_model:
                                 mimo_model = profile.model or "mimo-v2.5-tts"
                             logger.info(
-                                "Auto-resolved MiMo TTS config from LLM profile %s: "
-                                "api_base=%s, api_key_env=%s, model=%s",
-                                profile.id, mimo_api_base, mimo_api_key_env, mimo_model,
+                                "Auto-resolved MiMo TTS config from LLM profile %s: api_base=%s, api_key_env=%s, model=%s",
+                                profile.id,
+                                mimo_api_base,
+                                mimo_api_key_env,
+                                mimo_model,
                             )
                             break
                 except Exception:
@@ -226,12 +230,20 @@ class TTSOutputPlugin(OutputPlugin):
             # Convert WAV → MP3 if user requested MP3
             if config.output_format == AudioFormat.MP3:
                 from backend.services.output.plugins.audio_helpers import check_ffmpeg
+
                 ffmpeg = check_ffmpeg()
                 mp3_path = output_path.with_suffix(".mp3")
                 import asyncio
+
                 proc = await asyncio.create_subprocess_exec(
-                    str(ffmpeg), "-y", "-i", str(output_path),
-                    "-codec:a", "libmp3lame", "-b:a", config.bitrate,
+                    str(ffmpeg),
+                    "-y",
+                    "-i",
+                    str(output_path),
+                    "-codec:a",
+                    "libmp3lame",
+                    "-b:a",
+                    config.bitrate,
                     str(mp3_path),
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,

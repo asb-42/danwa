@@ -59,9 +59,7 @@ class MetaWorkflowService:
             raise ValueError(f"Workflow {target_workflow_id!r} not found")
 
         if workflow.is_locked:
-            raise ValueError(
-                f"Workflow {target_workflow_id!r} is locked and cannot be reflected upon"
-            )
+            raise ValueError(f"Workflow {target_workflow_id!r} is locked and cannot be reflected upon")
 
         # Build source session reference
         source_session_id = artifact.session_id if artifact else None

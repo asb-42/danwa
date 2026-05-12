@@ -105,9 +105,7 @@ class TestGetHistory:
 class TestGetByNode:
     """Test get_by_node() returns the correct snapshot."""
 
-    def test_get_by_node_returns_correct_snapshot(
-        self, store: StateSnapshotStore
-    ) -> None:
+    def test_get_by_node_returns_correct_snapshot(self, store: StateSnapshotStore) -> None:
         """get_by_node() should return the snapshot for a specific node."""
         store.save("sess-1", "wf-1", "node-a", "wf-strategist", 1, {"data": "a"})
         store.save("sess-1", "wf-1", "node-b", "wf-critic", 1, {"data": "b"})
@@ -123,9 +121,7 @@ class TestGetByNode:
         result = store.get_by_node("sess-1", "node-z")
         assert result is None
 
-    def test_get_by_node_returns_latest_for_node(
-        self, store: StateSnapshotStore
-    ) -> None:
+    def test_get_by_node_returns_latest_for_node(self, store: StateSnapshotStore) -> None:
         """get_by_node() should return the latest snapshot for a node
         if it appears multiple times (e.g. in a feedback loop)."""
         store.save("sess-1", "wf-1", "node-a", "wf-strategist", 1, {"round": 1})

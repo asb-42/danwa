@@ -55,8 +55,7 @@ class PluginRegistry:
         key = plugin_class.plugin_key
         if key in self._plugins:
             raise ValueError(
-                f"Plugin with key {key!r} is already registered "
-                f"({self._plugins[key].__name__}). Cannot register {plugin_class.__name__}."
+                f"Plugin with key {key!r} is already registered ({self._plugins[key].__name__}). Cannot register {plugin_class.__name__}."
             )
         self._plugins[key] = plugin_class
         logger.info("Output plugin registered: %s (%s)", key, plugin_class.plugin_name)
@@ -75,10 +74,7 @@ class PluginRegistry:
         """
         if key not in self._plugins:
             available = ", ".join(sorted(self._plugins.keys())) or "(none)"
-            raise KeyError(
-                f"No output plugin registered with key {key!r}. "
-                f"Available plugins: {available}"
-            )
+            raise KeyError(f"No output plugin registered with key {key!r}. Available plugins: {available}")
         return self._plugins[key]
 
     def list_plugins(self) -> list[type[OutputPlugin]]:

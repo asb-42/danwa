@@ -9,11 +9,6 @@ Validates:
 
 from __future__ import annotations
 
-import json
-
-import pytest
-
-
 # ─── Agent Card Discovery ────────────────────────────────────────────
 
 
@@ -69,44 +64,53 @@ class TestJSONRPCFormat:
 
     def test_response_always_has_jsonrpc_version(self, client):
         """All responses include jsonrpc: '2.0'."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "tasks/send",
-            "id": "test-1",
-            "params": {
-                "message": {
-                    "role": "user",
-                    "parts": [{"type": "text", "text": "Test"}],
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/send",
+                "id": "test-1",
+                "params": {
+                    "message": {
+                        "role": "user",
+                        "parts": [{"type": "text", "text": "Test"}],
+                    },
                 },
             },
-        })
+        )
         body = resp.json()
         assert body.get("jsonrpc") == "2.0"
 
     def test_response_echoes_request_id(self, client):
         """Response echoes the request id."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "tasks/send",
-            "id": "echo-test-42",
-            "params": {
-                "message": {
-                    "role": "user",
-                    "parts": [{"type": "text", "text": "Echo test"}],
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/send",
+                "id": "echo-test-42",
+                "params": {
+                    "message": {
+                        "role": "user",
+                        "parts": [{"type": "text", "text": "Echo test"}],
+                    },
                 },
             },
-        })
+        )
         body = resp.json()
         assert body.get("id") == "echo-test-42"
 
     def test_unknown_method_returns_error(self, client):
         """Request with unknown method returns -32601 error."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "unknown/method",
-            "id": "test-4",
-            "params": {},
-        })
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "unknown/method",
+                "id": "test-4",
+                "params": {},
+            },
+        )
         body = resp.json()
         assert "error" in body
         assert body["error"]["code"] == -32601  # Method not found
@@ -115,11 +119,14 @@ class TestJSONRPCFormat:
 
     def test_missing_method_returns_error(self, client):
         """Request without 'method' field returns method-not-found error."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "id": "test-3",
-            "params": {},
-        })
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "id": "test-3",
+                "params": {},
+            },
+        )
         body = resp.json()
         assert "error" in body
         # Empty method string falls through to unknown method handler
@@ -127,12 +134,15 @@ class TestJSONRPCFormat:
 
     def test_get_nonexistent_task_has_jsonrpc_and_id(self, client):
         """tasks/get for nonexistent task includes jsonrpc and id."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "tasks/get",
-            "id": "err-test",
-            "params": {"id": "nonexistent"},
-        })
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/get",
+                "id": "err-test",
+                "params": {"id": "nonexistent"},
+            },
+        )
         body = resp.json()
         assert body.get("jsonrpc") == "2.0"
         assert body.get("id") == "err-test"
@@ -168,32 +178,41 @@ class TestTaskLifecycle:
         }
         if task_id:
             params["id"] = task_id
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "tasks/send",
-            "id": "req-send",
-            "params": params,
-        })
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/send",
+                "id": "req-send",
+                "params": params,
+            },
+        )
         return resp.json()
 
     def _get_task(self, client, task_id):
         """Helper: get task status and return the response body."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "tasks/get",
-            "id": "req-get",
-            "params": {"id": task_id},
-        })
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/get",
+                "id": "req-get",
+                "params": {"id": task_id},
+            },
+        )
         return resp.json()
 
     def _cancel_task(self, client, task_id):
         """Helper: cancel a task and return the response body."""
-        resp = client.post("/a2a", json={
-            "jsonrpc": "2.0",
-            "method": "tasks/cancel",
-            "id": "req-cancel",
-            "params": {"id": task_id},
-        })
+        resp = client.post(
+            "/a2a",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/cancel",
+                "id": "req-cancel",
+                "params": {"id": task_id},
+            },
+        )
         return resp.json()
 
     def test_send_task_returns_task_id(self, client):
@@ -268,47 +287,59 @@ class TestA2AConfigInDebateRequest:
 
     def test_create_debate_with_empty_a2a_agents(self, client):
         """Debate creation accepts empty a2a_agents list."""
-        resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Test case"},
-            "a2a_agents": [],
-        })
+        resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Test case"},
+                "a2a_agents": [],
+            },
+        )
         assert resp.status_code == 201
 
     def test_create_debate_with_a2a_agent(self, client):
         """Debate creation accepts a2a_agents with url, role, position."""
-        resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Test case with A2A"},
-            "a2a_agents": [
-                {
-                    "url": "https://external.example.com/a2a",
-                    "role": "analyst",
-                    "position": "after_moderator",
-                },
-            ],
-        })
+        resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Test case with A2A"},
+                "a2a_agents": [
+                    {
+                        "url": "https://external.example.com/a2a",
+                        "role": "analyst",
+                        "position": "after_moderator",
+                    },
+                ],
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "pending"
 
     def test_create_debate_with_multiple_a2a_agents(self, client):
         """Debate creation accepts multiple a2a_agents."""
-        resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Multi-agent test"},
-            "a2a_agents": [
-                {"url": "https://agent1.example.com/a2a", "role": "analyst"},
-                {"url": "https://agent2.example.com/a2a", "role": "reviewer"},
-            ],
-        })
+        resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Multi-agent test"},
+                "a2a_agents": [
+                    {"url": "https://agent1.example.com/a2a", "role": "analyst"},
+                    {"url": "https://agent2.example.com/a2a", "role": "reviewer"},
+                ],
+            },
+        )
         assert resp.status_code == 201
 
     def test_create_debate_a2a_agent_url_required(self, client):
         """a2a_agents entry without url is rejected."""
-        resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Invalid A2A"},
-            "a2a_agents": [
-                {"role": "analyst"},  # missing url
-            ],
-        })
+        resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Invalid A2A"},
+                "a2a_agents": [
+                    {"role": "analyst"},  # missing url
+                ],
+            },
+        )
         assert resp.status_code == 422  # Validation error
 
 
@@ -320,16 +351,19 @@ class TestA2ADebateWithExternalAgent:
 
     def test_create_and_get_debate_with_a2a_agents(self, client):
         """Create debate with A2A agents, then GET it back."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "AI ethics debate with external agent"},
-            "a2a_agents": [
-                {
-                    "url": "https://external-agent.example.com/a2a",
-                    "role": "external_reviewer",
-                    "position": "after:moderator",
-                },
-            ],
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "AI ethics debate with external agent"},
+                "a2a_agents": [
+                    {
+                        "url": "https://external-agent.example.com/a2a",
+                        "role": "external_reviewer",
+                        "position": "after:moderator",
+                    },
+                ],
+            },
+        )
         assert create_resp.status_code == 201
         debate_id = create_resp.json()["debate_id"]
 
@@ -345,14 +379,18 @@ class TestA2ADebateWithExternalAgent:
         # Use raise_server_exceptions=False because the background workflow
         # will fail (no LLM profiles / no external agent in test env)
         from fastapi.testclient import TestClient
+
         client_no_exc = TestClient(app, raise_server_exceptions=False)
 
-        create_resp = client_no_exc.post("/api/v1/debate", json={
-            "case": {"text": "Start A2A debate test"},
-            "a2a_agents": [
-                {"url": "https://agent.example.com/a2a", "role": "analyst"},
-            ],
-        })
+        create_resp = client_no_exc.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Start A2A debate test"},
+                "a2a_agents": [
+                    {"url": "https://agent.example.com/a2a", "role": "analyst"},
+                ],
+            },
+        )
         assert create_resp.status_code == 201
         debate_id = create_resp.json()["debate_id"]
 
@@ -363,14 +401,17 @@ class TestA2ADebateWithExternalAgent:
 
     def test_debate_with_multiple_a2a_agents(self, client):
         """Create debate with multiple A2A agents and verify storage."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Multi-agent debate"},
-            "a2a_agents": [
-                {"url": "https://agent1.example.com/a2a", "role": "analyst"},
-                {"url": "https://agent2.example.com/a2a", "role": "critic"},
-                {"url": "https://agent3.example.com/a2a", "role": "reviewer"},
-            ],
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Multi-agent debate"},
+                "a2a_agents": [
+                    {"url": "https://agent1.example.com/a2a", "role": "analyst"},
+                    {"url": "https://agent2.example.com/a2a", "role": "critic"},
+                    {"url": "https://agent3.example.com/a2a", "role": "reviewer"},
+                ],
+            },
+        )
         assert create_resp.status_code == 201
         debate_id = create_resp.json()["debate_id"]
 
@@ -380,9 +421,12 @@ class TestA2ADebateWithExternalAgent:
 
     def test_debate_without_a2a_agents_still_works(self, client):
         """Debate without A2A agents works normally (regression test)."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Normal debate without A2A"},
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Normal debate without A2A"},
+            },
+        )
         assert create_resp.status_code == 201
         debate_id = create_resp.json()["debate_id"]
 
@@ -392,24 +436,30 @@ class TestA2ADebateWithExternalAgent:
 
     def test_a2a_agent_with_all_fields(self, client):
         """A2A agent with all optional fields is accepted."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Full A2A config test"},
-            "a2a_agents": [
-                {
-                    "url": "https://full-agent.example.com/a2a",
-                    "role": "external_critic",
-                    "position": "after:critic",
-                },
-            ],
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Full A2A config test"},
+                "a2a_agents": [
+                    {
+                        "url": "https://full-agent.example.com/a2a",
+                        "role": "external_critic",
+                        "position": "after:critic",
+                    },
+                ],
+            },
+        )
         assert create_resp.status_code == 201
 
     def test_a2a_agent_default_role_and_position(self, client):
         """A2A agent with only url uses default role and position."""
-        create_resp = client.post("/api/v1/debate", json={
-            "case": {"text": "Default A2A config test"},
-            "a2a_agents": [
-                {"url": "https://minimal-agent.example.com/a2a"},
-            ],
-        })
+        create_resp = client.post(
+            "/api/v1/debate",
+            json={
+                "case": {"text": "Default A2A config test"},
+                "a2a_agents": [
+                    {"url": "https://minimal-agent.example.com/a2a"},
+                ],
+            },
+        )
         assert create_resp.status_code == 201

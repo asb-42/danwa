@@ -16,9 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
-from backend.api.deps import get_blueprint_repository
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.migrations import run_migrations
 from backend.blueprints.models import (
@@ -34,7 +32,6 @@ from backend.blueprints.workflow_models import (
     WorkflowEdge,
     WorkflowNode,
 )
-
 
 # =========================================================================
 # Fixtures
@@ -169,9 +166,7 @@ class TestWorkflowEdgeModel:
 
     def test_valid_conditional_edge_with_condition(self):
         """Conditional edge with condition should validate."""
-        edge = WorkflowEdge(
-            source="n1", target="n2", type="conditional", condition="round >= 3"
-        )
+        edge = WorkflowEdge(source="n1", target="n2", type="conditional", condition="round >= 3")
         assert edge.condition == "round >= 3"
 
     def test_conditional_edge_without_condition_fails(self):

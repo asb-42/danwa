@@ -22,7 +22,6 @@ from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -324,8 +323,8 @@ class TestFilesystemIsolation:
     """Each project has its own directory structure."""
 
     def test_project_directories_are_separate(self, project_store, tmp_path):
-        p1 = project_store.create(name="P1", project_id="proj-1")
-        p2 = project_store.create(name="P2", project_id="proj-2")
+        project_store.create(name="P1", project_id="proj-1")
+        project_store.create(name="P2", project_id="proj-2")
 
         dir1 = project_store.get_project_dir("proj-1")
         dir2 = project_store.get_project_dir("proj-2")

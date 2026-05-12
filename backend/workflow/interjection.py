@@ -97,12 +97,14 @@ class InterjectionService:
             results: list[dict[str, Any]] = []
             for ij in pending:
                 ij.status = "consumed"
-                results.append({
-                    "interjection_id": ij.interjection_id,
-                    "content": ij.content,
-                    "source": ij.source,
-                    "metadata": ij.metadata,
-                })
+                results.append(
+                    {
+                        "interjection_id": ij.interjection_id,
+                        "content": ij.content,
+                        "source": ij.source,
+                        "metadata": ij.metadata,
+                    }
+                )
 
         if results:
             logger.info(

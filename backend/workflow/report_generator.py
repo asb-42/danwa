@@ -66,17 +66,11 @@ class WorkflowReportGenerator:
         transcript = self._build_transcript(debate_data)
 
         if fmt == "docx":
-            await asyncio.to_thread(
-                self._build_docx, session_id, transcript, audit_entries, path
-            )
+            await asyncio.to_thread(self._build_docx, session_id, transcript, audit_entries, path)
         elif fmt == "pdf":
-            await asyncio.to_thread(
-                self._build_pdf, session_id, transcript, audit_entries, path
-            )
+            await asyncio.to_thread(self._build_pdf, session_id, transcript, audit_entries, path)
         elif fmt == "odf":
-            await asyncio.to_thread(
-                self._build_odf, session_id, transcript, audit_entries, path
-            )
+            await asyncio.to_thread(self._build_odf, session_id, transcript, audit_entries, path)
 
         logger.info("Report generated: %s", path)
         return path
@@ -143,8 +137,6 @@ class WorkflowReportGenerator:
     ) -> None:
         doc = Document()
         doc.styles["Normal"].font.name = "Calibri"
-
-        esc = html_mod.escape
 
         # --- Title ---
         title = transcript["title"] or f"Debatte {session_id[:8]}"
@@ -222,9 +214,7 @@ class WorkflowReportGenerator:
                 row.cells[2].text = str(entry.get("node_id", ""))
                 row.cells[3].text = str(entry.get("actor", ""))
                 row.cells[4].text = str(entry.get("latency_ms", 0))
-                row.cells[5].text = str(
-                    entry.get("prompt_tokens", 0) + entry.get("completion_tokens", 0)
-                )
+                row.cells[5].text = str(entry.get("prompt_tokens", 0) + entry.get("completion_tokens", 0))
 
         doc.save(str(path))
 
@@ -295,9 +285,7 @@ class WorkflowReportGenerator:
                 for rd in rounds:
                     round_num = rd.get("round", "?")
                     consensus = rd.get("consensus", 0.0)
-                    doc.text.addElement(
-                        H(text=f"Runde {round_num} — Konsens: {consensus:.1%}", outlinelevel=3)
-                    )
+                    doc.text.addElement(H(text=f"Runde {round_num} — Konsens: {consensus:.1%}", outlinelevel=3))
                     for ao in rd.get("agent_outputs", []):
                         role = ao.get("role", "unbekannt")
                         content = ao.get("content", "")
@@ -321,12 +309,7 @@ class WorkflowReportGenerator:
             if audit_entries:
                 doc.text.addElement(H(text="Audit-Trail", outlinelevel=2))
                 for entry in audit_entries:
-                    line = (
-                        f"{entry.get('timestamp', '')} | "
-                        f"{entry.get('event_type', '')} | "
-                        f"{entry.get('node_id', '')} | "
-                        f"{entry.get('actor', '')}"
-                    )
+                    line = f"{entry.get('timestamp', '')} | {entry.get('event_type', '')} | {entry.get('node_id', '')} | {entry.get('actor', '')}"
                     doc.text.addElement(P(text=line))
 
             doc.save(str(path))
@@ -362,49 +345,39 @@ class WorkflowReportGenerator:
             ("Finaler Konsens", f"{transcript['final_consensus']:.1%}"),
             ("Generiert", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         ]
-        meta_rows = "".join(
-            f"<tr><td><strong>{k}</strong></td><td>{v}</td></tr>" for k, v in meta_pairs
-        )
+        meta_rows = "".join(f"<tr><td><strong>{k}</strong></td><td>{v}</td></tr>" for k, v in meta_pairs)
 
         # --- Case description ---
         case_text = transcript["case_text"]
         case_section = ""
         if case_text:
-            case_section = (
-                f'<h2>Fallbeschreibung</h2>'
-                f'<div class="case-text">{esc(case_text)}</div>'
-            )
+            case_section = f'<h2>Fallbeschreibung</h2><div class="case-text">{esc(case_text)}</div>'
 
         # --- Rounds ---
         rounds_html = ""
         rounds = transcript["rounds"]
         if rounds:
-            rounds_html += '<h2>Debatte-Transkript</h2>'
+            rounds_html += "<h2>Debatte-Transkript</h2>"
             for rd in rounds:
                 round_num = rd.get("round", "?")
                 consensus = rd.get("consensus", 0.0)
-                rounds_html += f'<h3>Runde {round_num} — Konsens: {consensus:.1%}</h3>'
+                rounds_html += f"<h3>Runde {round_num} — Konsens: {consensus:.1%}</h3>"
                 for ao in rd.get("agent_outputs", []):
                     role = esc(ao.get("role", "unbekannt"))
                     content = esc(ao.get("content", ""))
                     tokens = ao.get("tokens_used", 0)
                     rounds_html += (
-                        f'<div class="agent-block">'
-                        f'<div class="agent-role">{role.capitalize()}</div>'
-                        f'<div class="agent-content">{content}</div>'
+                        f'<div class="agent-block"><div class="agent-role">{role.capitalize()}</div><div class="agent-content">{content}</div>'
                     )
                     if tokens:
                         rounds_html += f'<div class="agent-meta">Tokens: {tokens}</div>'
-                    rounds_html += '</div>'
+                    rounds_html += "</div>"
 
         # --- Final output ---
         output = transcript["output"]
         output_section = ""
         if output:
-            output_section = (
-                f'<h2>Ergebnis</h2>'
-                f'<div class="output-text">{esc(output)}</div>'
-            )
+            output_section = f'<h2>Ergebnis</h2><div class="output-text">{esc(output)}</div>'
 
         # --- Audit trail ---
         audit_rows = ""

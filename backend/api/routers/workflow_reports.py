@@ -96,9 +96,15 @@ async def _generate_report_job(
     gen = _get_report_gen()
 
     store.update_job(job_id, status="running")
-    await publish_async(session_id, "report.progress", {
-        "job_id": job_id, "status": "running", "progress": 50,
-    })
+    await publish_async(
+        session_id,
+        "report.progress",
+        {
+            "job_id": job_id,
+            "status": "running",
+            "progress": 50,
+        },
+    )
 
     try:
         # Load debate data from the project-scoped store
@@ -110,20 +116,34 @@ async def _generate_report_job(
             except Exception as exc:
                 logger.warning(
                     "Could not load debate data for session %s (project %s): %s",
-                    session_id, project_id, exc,
+                    session_id,
+                    project_id,
+                    exc,
                 )
 
         path = await gen.generate(session_id, fmt, debate_data=debate_data)
         store.update_job(job_id, status="completed", file_path=str(path))
-        await publish_async(session_id, "report.progress", {
-            "job_id": job_id, "status": "completed", "progress": 100,
-        })
+        await publish_async(
+            session_id,
+            "report.progress",
+            {
+                "job_id": job_id,
+                "status": "completed",
+                "progress": 100,
+            },
+        )
     except Exception as exc:
         logger.error("Report generation failed for job %s: %s", job_id, exc, exc_info=True)
         store.update_job(job_id, status="failed", error=str(exc))
-        await publish_async(session_id, "report.progress", {
-            "job_id": job_id, "status": "failed", "error": str(exc),
-        })
+        await publish_async(
+            session_id,
+            "report.progress",
+            {
+                "job_id": job_id,
+                "status": "failed",
+                "error": str(exc),
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -154,9 +174,7 @@ async def create_report_job(
     store = _get_job_store()
     job_id = store.create_job(session_id, fmt)
 
-    background_tasks.add_task(
-        _generate_report_job, job_id, session_id, fmt, project_id
-    )
+    background_tasks.add_task(_generate_report_job, job_id, session_id, fmt, project_id)
 
     return CreateReportResponse(job_id=job_id, status="pending", format=fmt)
 

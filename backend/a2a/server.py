@@ -13,6 +13,7 @@ import uuid
 
 from backend.a2a.schemas import A2AMessage, A2ATask
 from backend.a2a.task_manager import TaskManager, TaskStatus
+from backend.models.schemas import DebateRequest
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +75,7 @@ class A2AServer:
         }
 
         if task["status"] == TaskStatus.COMPLETED:
-            result["artifacts"] = [
-                {"parts": [{"type": "text", "text": task["result"]}]}
-            ]
+            result["artifacts"] = [{"parts": [{"type": "text", "text": task["result"]}]}]
         elif task["status"] == TaskStatus.FAILED:
             result["status"]["message"] = task.get("error", "Unknown error")
 
@@ -140,8 +139,8 @@ class A2AServer:
         import uuid as _uuid
 
         from backend.api.deps import get_audit_service, get_debate_store_for_project
-        from backend.services.debate_workflow import run_debate_workflow
         from backend.models.schemas import DebateStatus
+        from backend.services.debate_workflow import run_debate_workflow
 
         debate_id = str(_uuid.uuid4())
         store = get_debate_store_for_project(self.project_id)
@@ -164,9 +163,7 @@ class A2AServer:
         store.put(debate_id, debate)
 
         # Run workflow in background
-        asyncio.create_task(
-            run_debate_workflow(debate_id, self.project_id, audit, store)
-        )
+        asyncio.create_task(run_debate_workflow(debate_id, self.project_id, audit, store))
 
         return debate_id
 

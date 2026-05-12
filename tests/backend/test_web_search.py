@@ -147,13 +147,17 @@ class TestWebSearchToolSearch:
         """When SearXNG returns empty, search tries DuckDuckGo."""
         tool = WebSearchTool()
         tool._search_searxng = AsyncMock(return_value=[])
-        tool._search_ddg = AsyncMock(return_value=[{
-            "title": "DDG Result",
-            "url": "https://ddg.com",
-            "snippet": "DDG snippet",
-            "engine": "duckduckgo",
-            "date": "",
-        }])
+        tool._search_ddg = AsyncMock(
+            return_value=[
+                {
+                    "title": "DDG Result",
+                    "url": "https://ddg.com",
+                    "snippet": "DDG snippet",
+                    "engine": "duckduckgo",
+                    "date": "",
+                }
+            ]
+        )
 
         results = await tool.search("test query")
         assert len(results) == 1
@@ -164,13 +168,17 @@ class TestWebSearchToolSearch:
     async def test_search_skips_ddg_when_searxng_succeeds(self):
         """When SearXNG returns results, DuckDuckGo is not called."""
         tool = WebSearchTool()
-        tool._search_searxng = AsyncMock(return_value=[{
-            "title": "SearXNG Result",
-            "url": "https://searxng.com",
-            "snippet": "OK",
-            "engine": "google",
-            "date": "",
-        }])
+        tool._search_searxng = AsyncMock(
+            return_value=[
+                {
+                    "title": "SearXNG Result",
+                    "url": "https://searxng.com",
+                    "snippet": "OK",
+                    "engine": "google",
+                    "date": "",
+                }
+            ]
+        )
         tool._search_ddg = AsyncMock()
 
         results = await tool.search("test query")
@@ -244,8 +252,7 @@ class TestExtractSearchQueries:
     def test_moderator_extracts_claims(self):
         """Moderator role extracts sentences with claim keywords."""
         queries = extract_search_queries(
-            "Laut einer Studie der Universität München steigen die Temperaturen. "
-            "Die Regierung plant neue Maßnahmen.",
+            "Laut einer Studie der Universität München steigen die Temperaturen. Die Regierung plant neue Maßnahmen.",
             "moderator",
         )
         assert len(queries) >= 2
@@ -283,10 +290,7 @@ class TestExtractSearchMarkers:
         assert markers == ["current GDP Germany 2024"]
 
     def test_multiple_markers(self):
-        content = (
-            "First claim [SEARCH: inflation rate EU 2024] "
-            "and second claim [SEARCH: unemployment statistics Germany]"
-        )
+        content = "First claim [SEARCH: inflation rate EU 2024] and second claim [SEARCH: unemployment statistics Germany]"
         markers = extract_search_markers(content)
         assert len(markers) == 2
         assert markers[0] == "inflation rate EU 2024"

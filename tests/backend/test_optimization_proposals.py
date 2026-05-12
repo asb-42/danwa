@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -15,8 +13,6 @@ from backend.models.optimization_proposal import (
     ProposalStatus,
 )
 from backend.repositories.proposal_repo import ProposalRepository
-from backend.services.meta_workflow import MetaWorkflowService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -87,24 +83,22 @@ class TestProposalRepository:
 
     def test_list_all(self, proposal_repo: ProposalRepository) -> None:
         for i in range(3):
-            proposal_repo.save(
-                OptimizationProposal(id=f"p{i}", target_workflow_id="wf1")
-            )
+            proposal_repo.save(OptimizationProposal(id=f"p{i}", target_workflow_id="wf1"))
         proposals = proposal_repo.list_proposals()
         assert len(proposals) == 3
 
-    def test_list_filter_status(
-        self, proposal_repo: ProposalRepository
-    ) -> None:
+    def test_list_filter_status(self, proposal_repo: ProposalRepository) -> None:
         proposal_repo.save(
             OptimizationProposal(
-                id="p1", target_workflow_id="wf1",
+                id="p1",
+                target_workflow_id="wf1",
                 status=ProposalStatus.PENDING,
             )
         )
         proposal_repo.save(
             OptimizationProposal(
-                id="p2", target_workflow_id="wf1",
+                id="p2",
+                target_workflow_id="wf1",
                 status=ProposalStatus.REJECTED,
             )
         )
@@ -114,12 +108,8 @@ class TestProposalRepository:
         assert len(pending) == 1
         assert pending[0].id == "p1"
 
-    def test_update_status_approved(
-        self, proposal_repo: ProposalRepository
-    ) -> None:
-        proposal_repo.save(
-            OptimizationProposal(id="p1", target_workflow_id="wf1")
-        )
+    def test_update_status_approved(self, proposal_repo: ProposalRepository) -> None:
+        proposal_repo.save(OptimizationProposal(id="p1", target_workflow_id="wf1"))
         proposal_repo.update_status(
             "p1",
             ProposalStatus.APPROVED,
@@ -133,12 +123,8 @@ class TestProposalRepository:
         assert loaded.new_version_id == "wf1-v2"
         assert loaded.approved_at is not None
 
-    def test_update_status_rejected(
-        self, proposal_repo: ProposalRepository
-    ) -> None:
-        proposal_repo.save(
-            OptimizationProposal(id="p1", target_workflow_id="wf1")
-        )
+    def test_update_status_rejected(self, proposal_repo: ProposalRepository) -> None:
+        proposal_repo.save(OptimizationProposal(id="p1", target_workflow_id="wf1"))
         proposal_repo.update_status("p1", ProposalStatus.REJECTED)
         loaded = proposal_repo.get("p1")
         assert loaded is not None

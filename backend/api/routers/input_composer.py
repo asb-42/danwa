@@ -52,6 +52,7 @@ def _get_engine() -> InputComposerService:
     if _engine is None:
         # Ensure plugins are imported (triggers @register_input_plugin)
         import backend.services.input.plugins  # noqa: F401
+
         _engine = InputComposerService()
     return _engine
 
@@ -87,12 +88,10 @@ class InputPluginInfo(BaseModel):
 
     plugin_key: str
     plugin_name: str
-    config_schema: dict[str, Any] = Field(
-        description="JSON Schema for the plugin's config"
-    )
+    config_schema: dict[str, Any] = Field(description="JSON Schema for the plugin's config")
     ui_hints: dict[str, Any] = Field(
         default_factory=dict,
-        description="Frontend metadata (requires_microphone, supports_streaming, etc.)"
+        description="Frontend metadata (requires_microphone, supports_streaming, etc.)",
     )
 
 
@@ -229,10 +228,7 @@ async def list_input_jobs(
             job_id=j.id,
             plugin_key=j.plugin_key,
             status=j.status.value,
-            processed_input=(
-                j.processed_input.model_dump(mode="json")
-                if j.processed_input else None
-            ),
+            processed_input=(j.processed_input.model_dump(mode="json") if j.processed_input else None),
             error_message=j.error_message,
             created_at=j.created_at.isoformat(),
             completed_at=j.completed_at.isoformat() if j.completed_at else None,
@@ -335,9 +331,7 @@ async def stt_stream(request: Request) -> StreamingResponse:
         try:
             # For now, we transcribe the full chunk and send as final
             # Future: implement streaming/chunked transcription for partial results
-            transcript = await stt_service.transcribe_chunk(
-                audio_bytes, profile_type, language
-            )
+            transcript = await stt_service.transcribe_chunk(audio_bytes, profile_type, language)
 
             if transcript.strip():
                 # Send partial event (simulated — full text as "partial")
@@ -388,8 +382,7 @@ class LaunchWorkflowRequest(BaseModel):
     job_id: str = Field(..., description="InputJob ID (must have status=completed)")
     workflow_id: str | None = Field(
         default=None,
-        description="WorkflowDefinition ID to execute. "
-        "If omitted, uses the first available active workflow.",
+        description="WorkflowDefinition ID to execute. If omitted, uses the first available active workflow.",
     )
     max_rounds: int = Field(default=5, ge=1, le=50)
     consensus_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
@@ -452,13 +445,13 @@ async def launch_workflow_from_input(
         if not active:
             raise HTTPException(
                 status_code=422,
-                detail="No active WorkflowDefinition found. "
-                "Create a workflow in the Blueprint Canvas first.",
+                detail="No active WorkflowDefinition found. Create a workflow in the Blueprint Canvas first.",
             )
         workflow_id = active[0].id
         logger.info(
             "No workflow_id specified, using first active: '%s' (%s)",
-            active[0].name, workflow_id,
+            active[0].name,
+            workflow_id,
         )
 
     workflow = repo.get_workflow_definition(workflow_id)
@@ -537,7 +530,10 @@ async def launch_workflow_from_input(
 
     logger.info(
         "Launched workflow '%s' from InputJob '%s' (plugin=%s) as session '%s'",
-        workflow_id, body.job_id, job.plugin_key, session_id,
+        workflow_id,
+        body.job_id,
+        job.plugin_key,
+        session_id,
     )
 
     return LaunchWorkflowResponse(

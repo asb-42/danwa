@@ -12,8 +12,6 @@ Covers all 7 endpoints of the workflow_exec router:
 
 from __future__ import annotations
 
-import asyncio
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -76,9 +74,7 @@ def sample_blueprint(repo: BlueprintRepository) -> AgentBlueprint:
 
 
 @pytest.fixture()
-def workflow_in_repo(
-    repo: BlueprintRepository, sample_blueprint: AgentBlueprint
-) -> str:
+def workflow_in_repo(repo: BlueprintRepository, sample_blueprint: AgentBlueprint) -> str:
     """Save a valid workflow definition to the repo and return its ID."""
     workflow = WorkflowDefinition(
         id="wf-test",
@@ -121,9 +117,7 @@ def mock_compiled_workflow() -> CompiledWorkflow:
 
 
 @pytest.fixture()
-def client_with_repo(
-    app, repo: BlueprintRepository, tmp_path: Path
-) -> tuple[TestClient, BlueprintRepository]:
+def client_with_repo(app, repo: BlueprintRepository, tmp_path: Path) -> tuple[TestClient, BlueprintRepository]:
     """TestClient with the workflow_exec router using the test repo."""
     import backend.api.routers.workflow_exec as wf_exec_module
 
@@ -135,14 +129,10 @@ def client_with_repo(
     wf_exec_module._snapshot_store = None  # Will be lazily created
 
     # Patch StateSnapshotStore to use temp path
-    with patch(
-        "backend.api.routers.workflow_exec.StateSnapshotStore"
-    ) as mock_store_cls:
+    with patch("backend.api.routers.workflow_exec.StateSnapshotStore") as mock_store_cls:
         from backend.workflow.state_snapshot import StateSnapshotStore
 
-        mock_store_cls.return_value = StateSnapshotStore(
-            db_path=tmp_path / "test_snapshots.db"
-        )
+        mock_store_cls.return_value = StateSnapshotStore(db_path=tmp_path / "test_snapshots.db")
         yield TestClient(app), repo
 
     wf_exec_module._repo = old_repo
@@ -166,16 +156,12 @@ class TestStartWorkflow:
         """Starting a valid workflow should return a session_id."""
         client, _ = client_with_repo
 
-        with patch(
-            "backend.api.routers.workflow_exec.CompilerService"
-        ) as mock_compiler_cls:
+        with patch("backend.api.routers.workflow_exec.CompilerService") as mock_compiler_cls:
             mock_compiler = MagicMock()
             mock_compiler.compile_to_langgraph.return_value = mock_compiled_workflow
             mock_compiler_cls.return_value = mock_compiler
 
-            with patch(
-                "backend.api.routers.workflow_exec.run_workflow_background"
-            ):
+            with patch("backend.api.routers.workflow_exec.run_workflow_background"):
                 resp = client.post(
                     f"/api/v1/workflow-exec/{workflow_in_repo}/start",
                     json={"context": "Test debate topic"},
@@ -186,9 +172,7 @@ class TestStartWorkflow:
         assert "session_id" in data
         assert data["status"] == "running"
 
-    def test_start_nonexistent_workflow(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_start_nonexistent_workflow(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Starting a nonexistent workflow should return 404."""
         client, _ = client_with_repo
         resp = client.post(
@@ -205,13 +189,9 @@ class TestStartWorkflow:
         """Starting a workflow that fails compilation should return 422."""
         client, _ = client_with_repo
 
-        failed_compiled = CompiledWorkflow(
-            graph=None, errors=["Missing blueprint"], warnings=[]
-        )
+        failed_compiled = CompiledWorkflow(graph=None, errors=["Missing blueprint"], warnings=[])
 
-        with patch(
-            "backend.api.routers.workflow_exec.CompilerService"
-        ) as mock_compiler_cls:
+        with patch("backend.api.routers.workflow_exec.CompilerService") as mock_compiler_cls:
             mock_compiler = MagicMock()
             mock_compiler.compile_to_langgraph.return_value = failed_compiled
             mock_compiler_cls.return_value = mock_compiler
@@ -245,9 +225,7 @@ class TestStartWorkflow:
 class TestInterjectEndpoint:
     """Test POST /{session_id}/interject endpoint."""
 
-    def test_interject_returns_queued(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_interject_returns_queued(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Submitting an interjection should return queued status."""
         client, _ = client_with_repo
 
@@ -261,9 +239,7 @@ class TestInterjectEndpoint:
         assert "interjection_id" in data
         assert data["status"] == "queued"
 
-    def test_interject_empty_content(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_interject_empty_content(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Empty content should return 422."""
         client, _ = client_with_repo
         resp = client.post(
@@ -272,9 +248,7 @@ class TestInterjectEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_interject_with_source(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_interject_with_source(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Interjection with custom source should work."""
         client, _ = client_with_repo
         resp = client.post(
@@ -292,9 +266,7 @@ class TestInterjectEndpoint:
 class TestPauseEndpoint:
     """Test POST /{session_id}/pause endpoint."""
 
-    def test_pause_running_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_pause_running_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Pausing a running session should succeed."""
         client, _ = client_with_repo
 
@@ -307,9 +279,7 @@ class TestPauseEndpoint:
         assert resp.status_code == 200
         assert resp.json()["status"] == "paused"
 
-    def test_pause_unknown_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_pause_unknown_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Pausing an unknown session should return 409."""
         client, _ = client_with_repo
         resp = client.post("/api/v1/workflow-exec/sess-unknown/pause")
@@ -324,9 +294,7 @@ class TestPauseEndpoint:
 class TestResumeEndpoint:
     """Test POST /{session_id}/resume endpoint."""
 
-    def test_resume_paused_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_resume_paused_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Resuming a paused session should succeed."""
         client, _ = client_with_repo
 
@@ -338,9 +306,7 @@ class TestResumeEndpoint:
         assert resp.status_code == 200
         assert resp.json()["status"] == "running"
 
-    def test_resume_running_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_resume_running_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Resuming a running session should return 409."""
         client, _ = client_with_repo
 
@@ -360,9 +326,7 @@ class TestResumeEndpoint:
 class TestCancelEndpoint:
     """Test POST /{session_id}/cancel endpoint."""
 
-    def test_cancel_running_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_cancel_running_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Cancelling a running session should succeed."""
         client, _ = client_with_repo
 
@@ -374,9 +338,7 @@ class TestCancelEndpoint:
         assert resp.status_code == 200
         assert resp.json()["status"] == "cancelled"
 
-    def test_cancel_completed_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_cancel_completed_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Cancelling a completed session should be idempotent."""
         client, _ = client_with_repo
 
@@ -397,17 +359,13 @@ class TestCancelEndpoint:
 class TestGetStateEndpoint:
     """Test GET /{session_id}/state endpoint."""
 
-    def test_state_unknown_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_state_unknown_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Querying state for unknown session should return 404."""
         client, _ = client_with_repo
         resp = client.get("/api/v1/workflow-exec/sess-unknown/state")
         assert resp.status_code == 404
 
-    def test_state_running_session(
-        self, client_with_repo: tuple[TestClient, BlueprintRepository]
-    ) -> None:
+    def test_state_running_session(self, client_with_repo: tuple[TestClient, BlueprintRepository]) -> None:
         """Querying state for a running session should return status."""
         client, _ = client_with_repo
 

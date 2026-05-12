@@ -72,21 +72,22 @@ async def run_a2a_agent_node(state: dict) -> dict:
         messages = []
         context = state.get("context", "")
         if context:
-            messages.append({
-                "role": "user",
-                "content": f"## Context\n{context}",
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"## Context\n{context}",
+                }
+            )
 
         previous_outputs = state.get("agent_outputs", [])
         if previous_outputs:
-            prev_text = "\n\n".join(
-                f"### {o.get('role', 'Agent')}\n{o.get('content', '')}"
-                for o in previous_outputs
+            prev_text = "\n\n".join(f"### {o.get('role', 'Agent')}\n{o.get('content', '')}" for o in previous_outputs)
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"## Previous Contributions\n{prev_text}",
+                }
             )
-            messages.append({
-                "role": "user",
-                "content": f"## Previous Contributions\n{prev_text}",
-            })
 
         result = await adapter.invoke(
             messages=messages,
@@ -108,6 +109,7 @@ async def run_a2a_agent_node(state: dict) -> dict:
         if fallback_id:
             try:
                 from backend.services.llm_service import LLMService
+
                 fallback_service = LLMService(profile_id=fallback_id)
                 fallback_result = await fallback_service.generate(
                     prompt=f"[A2A Fallback] Context: {context}\nRole: {role}",
@@ -148,6 +150,7 @@ async def run_a2a_agent_node(state: dict) -> dict:
         # Audit log the error
         try:
             from backend.workflow.audit_logger import get_audit_logger
+
             get_audit_logger().log_node_failed(
                 session_id=session_id,
                 workflow_id=state.get("workflow_id", ""),
@@ -176,8 +179,6 @@ async def run_a2a_agent_node(state: dict) -> dict:
     )
 
     return {
-        "agent_outputs": [
-            {"role": role, "content": content, "tokens_used": tokens_used}
-        ],
+        "agent_outputs": [{"role": role, "content": content, "tokens_used": tokens_used}],
         "current_agent_index": state["current_agent_index"] + 1,
     }

@@ -58,12 +58,14 @@ class HybridRetriever:
         for chunk_id, score in sorted_chunk_ids:
             chunk = chunk_map.get(chunk_id)
             if chunk:
-                final_results.append({
-                    "text": chunk["text"],
-                    "metadata": chunk["metadata"],
-                    "score": score,
-                    "source": "hybrid",
-                })
+                final_results.append(
+                    {
+                        "text": chunk["text"],
+                        "metadata": chunk["metadata"],
+                        "score": score,
+                        "source": "hybrid",
+                    }
+                )
 
         if self.cross_encoder and final_results:
             pairs = [(query, res["text"]) for res in final_results]
@@ -82,28 +84,26 @@ class HybridRetriever:
             return self.metadata_index.get_chunks_by_project(project_id)
         try:
             where = {"project_id": project_id} if project_id else None
-            results = self.vector_store.collection.get(
-                where=where, include=["documents", "metadatas", "ids"]
-            )
+            results = self.vector_store.collection.get(where=where, include=["documents", "metadatas", "ids"])
             chunks = []
             for chunk_id, doc_text, meta in zip(
                 results.get("ids", []),
                 results.get("documents", []),
                 results.get("metadatas", []),
             ):
-                chunks.append({
-                    "id": chunk_id,
-                    "text": doc_text,
-                    "metadata": meta,
-                })
+                chunks.append(
+                    {
+                        "id": chunk_id,
+                        "text": doc_text,
+                        "metadata": meta,
+                    }
+                )
             return chunks
         except Exception as e:
             logger.error("Failed to fetch chunks: %s", e)
             return []
 
-    def _bm25_retrieve(
-        self, query: str, chunks: list[dict], top_n: int = 20
-    ) -> list[dict[str, Any]]:
+    def _bm25_retrieve(self, query: str, chunks: list[dict], top_n: int = 20) -> list[dict[str, Any]]:
         if not chunks:
             return []
         try:
@@ -116,20 +116,20 @@ class HybridRetriever:
             results = []
             for idx in top_indices:
                 chunk = chunks[idx]
-                results.append({
-                    "id": chunk["id"],
-                    "text": chunk["text"],
-                    "metadata": chunk["metadata"],
-                    "bm25_score": scores[idx],
-                })
+                results.append(
+                    {
+                        "id": chunk["id"],
+                        "text": chunk["text"],
+                        "metadata": chunk["metadata"],
+                        "bm25_score": scores[idx],
+                    }
+                )
             return results
         except Exception as e:
             logger.error("BM25 retrieval failed: %s", e)
             return []
 
-    def _rrf_combine(
-        self, bm25_results: list[dict], vector_results: list[dict]
-    ) -> dict[str, float]:
+    def _rrf_combine(self, bm25_results: list[dict], vector_results: list[dict]) -> dict[str, float]:
         rrf_scores: dict[str, float] = {}
         for rank, result in enumerate(bm25_results, start=1):
             chunk_id = result["id"]

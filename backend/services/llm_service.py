@@ -164,10 +164,7 @@ class LLMService:
         """
         api_base = self._profile.api_base
         if not api_base:
-            raise ValueError(
-                f"Local profile '{self._profile.id}' requires api_base "
-                f"(e.g. http://192.168.178.200:1234/v1)"
-            )
+            raise ValueError(f"Local profile '{self._profile.id}' requires api_base (e.g. http://192.168.178.200:1234/v1)")
 
         # Ensure api_base ends with /v1 and build the chat completions URL
         api_base = api_base.rstrip("/")
@@ -236,16 +233,12 @@ class LLMService:
         try:
             import litellm
         except ImportError:
-            raise ImportError(
-                "litellm is required for cloud LLM calls. Install it with: uv add litellm"
-            )
+            raise ImportError("litellm is required for cloud LLM calls. Install it with: uv add litellm")
 
         # Get API key from environment
         api_key = os.getenv(self._profile.api_key_env)
         if not api_key:
-            raise ValueError(
-                f"API key not found. Set the {self._profile.api_key_env} environment variable."
-            )
+            raise ValueError(f"API key not found. Set the {self._profile.api_key_env} environment variable.")
 
         # Auto-prepend provider prefix for litellm routing.
         # e.g. "openrouter" + "tencent/hy3-preview:free" → "openrouter/tencent/hy3-preview:free"
@@ -287,15 +280,13 @@ class LLMService:
             reasoning = psf.get("reasoning_content")
             if reasoning:
                 logger.info(
-                    "LLM returned reasoning_content for model=%s "
-                    "(thinking model detected, using reasoning output).",
+                    "LLM returned reasoning_content for model=%s (thinking model detected, using reasoning output).",
                     model_name,
                 )
                 content = reasoning
             else:
                 logger.warning(
-                    "LLM returned None content for model=%s. "
-                    "This may indicate a content filter or empty response.",
+                    "LLM returned None content for model=%s. This may indicate a content filter or empty response.",
                     model_name,
                 )
                 content = ""
@@ -326,11 +317,7 @@ class LLMService:
         output_tokens: int,
     ) -> float:
         """Estimate cost for a given token count in USD."""
-        if (
-            not self._profile
-            or not self._profile.cost_per_1k_input
-            or not self._profile.cost_per_1k_output
-        ):
+        if not self._profile or not self._profile.cost_per_1k_input or not self._profile.cost_per_1k_output:
             return 0.0
         input_cost = (input_tokens / 1000) * self._profile.cost_per_1k_input
         output_cost = (output_tokens / 1000) * self._profile.cost_per_1k_output

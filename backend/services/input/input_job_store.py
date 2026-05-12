@@ -28,6 +28,7 @@ class InputJobStore:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         # Ensure migrations are applied (following BlueprintRepository pattern)
         from backend.blueprints.migrations import run_migrations
+
         run_migrations(self._db_path)
 
     def _connect(self) -> sqlite3.Connection:
@@ -49,11 +50,7 @@ class InputJobStore:
             processed_input=processed,
             error_message=row["error_message"],
             created_at=datetime.fromisoformat(row["created_at"]),
-            completed_at=(
-                datetime.fromisoformat(row["completed_at"])
-                if row["completed_at"]
-                else None
-            ),
+            completed_at=(datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None),
         )
 
     def create_job(self, job: InputJob) -> None:
@@ -83,9 +80,7 @@ class InputJobStore:
     def get_job(self, job_id: str) -> InputJob | None:
         """Return the job for *job_id*, or ``None`` if not found."""
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM input_jobs WHERE id = ?", (job_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM input_jobs WHERE id = ?", (job_id,)).fetchone()
         if row is None:
             return None
         return self._row_to_job(row)

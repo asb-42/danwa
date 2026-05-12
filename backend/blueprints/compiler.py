@@ -97,30 +97,22 @@ class CompilerService:
         for node_id, blueprint_id in workflow.node_blueprint_map.items():
             blueprint = self._repo.get_blueprint(blueprint_id)
             if blueprint is None:
-                errors.append(
-                    f"Node '{node_id}': AgentBlueprint '{blueprint_id}' not found in catalog"
-                )
+                errors.append(f"Node '{node_id}': AgentBlueprint '{blueprint_id}' not found in catalog")
                 continue
 
             if not blueprint.is_active:
-                warnings.append(
-                    f"Node '{node_id}': AgentBlueprint '{blueprint_id}' is inactive"
-                )
+                warnings.append(f"Node '{node_id}': AgentBlueprint '{blueprint_id}' is inactive")
 
             # Resolve LLM profile
             llm_profile = self._repo.get_llm_profile(blueprint.llm_profile_id)
             if llm_profile is None:
-                errors.append(
-                    f"Node '{node_id}': LLMProfile '{blueprint.llm_profile_id}' not found"
-                )
+                errors.append(f"Node '{node_id}': LLMProfile '{blueprint.llm_profile_id}' not found")
                 continue
 
             # Resolve role definition
             role_def = self._repo.get_role_definition(blueprint.role_definition_id)
             if role_def is None:
-                errors.append(
-                    f"Node '{node_id}': RoleDefinition '{blueprint.role_definition_id}' not found"
-                )
+                errors.append(f"Node '{node_id}': RoleDefinition '{blueprint.role_definition_id}' not found")
                 continue
 
             # Resolve RoleType chain
@@ -139,50 +131,45 @@ class CompilerService:
             else:
                 logger.warning(
                     "RoleType '%s' not found for RoleDefinition '%s', using defaults",
-                    role_def.role_type_id, role_def.id,
+                    role_def.role_type_id,
+                    role_def.id,
                 )
 
-            resolved.append(ResolvedAgent(
-                node_id=node_id,
-                blueprint_id=blueprint.id,
-                blueprint_name=blueprint.name,
-                llm_profile_id=llm_profile.id,
-                llm_model=llm_profile.model,
-                role_definition_id=role_def.id,
-                role=role_def.role_type_id,
-                prompt_template_id=blueprint.prompt_template_id or role_def.prompt_template_id,
-                role_type_name=role_type_name,
-                role_type_icon=role_type_icon,
-                role_type_color=role_type_color,
-                default_max_rounds=default_max_rounds,
-                default_consensus_threshold=default_consensus_threshold,
-            ))
+            resolved.append(
+                ResolvedAgent(
+                    node_id=node_id,
+                    blueprint_id=blueprint.id,
+                    blueprint_name=blueprint.name,
+                    llm_profile_id=llm_profile.id,
+                    llm_model=llm_profile.model,
+                    role_definition_id=role_def.id,
+                    role=role_def.role_type_id,
+                    prompt_template_id=blueprint.prompt_template_id or role_def.prompt_template_id,
+                    role_type_name=role_type_name,
+                    role_type_icon=role_type_icon,
+                    role_type_color=role_type_color,
+                    default_max_rounds=default_max_rounds,
+                    default_consensus_threshold=default_consensus_threshold,
+                )
+            )
 
         # 2. Validate execution_order references valid node IDs
         all_node_ids = set(workflow.node_blueprint_map.keys())
         for node_id in workflow.execution_order:
             if node_id not in all_node_ids:
-                errors.append(
-                    f"execution_order references unknown node '{node_id}'"
-                )
+                errors.append(f"execution_order references unknown node '{node_id}'")
 
         # 3. Validate conditional edges reference valid nodes
         for edge in workflow.conditional_edges:
             if edge.source_node_id not in all_node_ids:
-                errors.append(
-                    f"Conditional edge source '{edge.source_node_id}' not in node map"
-                )
+                errors.append(f"Conditional edge source '{edge.source_node_id}' not in node map")
             if edge.target_node_id not in all_node_ids:
-                errors.append(
-                    f"Conditional edge target '{edge.target_node_id}' not in node map"
-                )
+                errors.append(f"Conditional edge target '{edge.target_node_id}' not in node map")
 
         # 4. Validate interjection points reference valid nodes
         for point in workflow.interjection_points:
             if point.node_id not in all_node_ids:
-                errors.append(
-                    f"Interjection point '{point.node_id}' not in node map"
-                )
+                errors.append(f"Interjection point '{point.node_id}' not in node map")
 
         # ------------------------------------------------------------------
         # Graph validation (nodes/edges based — Phase 1)
@@ -232,20 +219,16 @@ class CompilerService:
     ) -> None:
         """Validate the structured graph representation (nodes + edges)."""
         node_ids = {n.id for n in workflow.nodes}
-        node_type_map = {n.id: n.type for n in workflow.nodes}
+        {n.id: n.type for n in workflow.nodes}
 
         # 7. entry_point must reference a valid node
         if workflow.entry_point and workflow.entry_point not in node_ids:
-            errors.append(
-                f"entry_point '{workflow.entry_point}' does not reference any node"
-            )
+            errors.append(f"entry_point '{workflow.entry_point}' does not reference any node")
 
         # 8. Agent nodes must have agent_blueprint_id
         for node in workflow.nodes:
             if node.type in AGENT_NODE_TYPES and not node.agent_blueprint_id:
-                errors.append(
-                    f"Agent node '{node.id}' (type={node.type}) is missing agent_blueprint_id"
-                )
+                errors.append(f"Agent node '{node.id}' (type={node.type}) is missing agent_blueprint_id")
 
         # Build adjacency for edge-based checks
         outgoing: dict[str, list[str]] = defaultdict(list)
@@ -255,13 +238,9 @@ class CompilerService:
         for edge in workflow.edges:
             # 12. Edge source/target must reference valid node IDs
             if edge.source not in node_ids:
-                errors.append(
-                    f"Edge '{edge.id}': source '{edge.source}' is not a valid node ID"
-                )
+                errors.append(f"Edge '{edge.id}': source '{edge.source}' is not a valid node ID")
             if edge.target not in node_ids:
-                errors.append(
-                    f"Edge '{edge.id}': target '{edge.target}' is not a valid node ID"
-                )
+                errors.append(f"Edge '{edge.id}': target '{edge.target}' is not a valid node ID")
             outgoing[edge.source].append(edge.target)
             incoming[edge.target].append(edge.source)
             if edge.type != "feedback":
@@ -270,27 +249,18 @@ class CompilerService:
         # 9. Gate nodes must have at least 2 outgoing edges
         for node in workflow.nodes:
             if node.type == "wf-gate" and len(outgoing[node.id]) < 2:
-                errors.append(
-                    f"Gate node '{node.id}' must have at least 2 outgoing edges "
-                    f"(found {len(outgoing[node.id])})"
-                )
+                errors.append(f"Gate node '{node.id}' must have at least 2 outgoing edges (found {len(outgoing[node.id])})")
 
         # 10. No isolated nodes (every node must have at least one edge)
         for node in workflow.nodes:
             if not outgoing[node.id] and not incoming[node.id]:
-                errors.append(
-                    f"Node '{node.id}' is isolated — it has no incoming or outgoing edges"
-                )
+                errors.append(f"Node '{node.id}' is isolated — it has no incoming or outgoing edges")
 
         # 11. Detect cycles (warning only — feedback edges create intentional cycles)
         if non_feedback_edges:
             cycle = _detect_cycle(node_ids, non_feedback_edges)
             if cycle:
-                warnings.append(
-                    f"Cycle detected in non-feedback edges: {' → '.join(cycle)}. "
-                    "This may be intentional if feedback edges are used."
-                )
-
+                warnings.append(f"Cycle detected in non-feedback edges: {' → '.join(cycle)}. This may be intentional if feedback edges are used.")
 
     @staticmethod
     def _validate_tone_profile_edges(
@@ -309,7 +279,10 @@ class CompilerService:
         """
         node_type_map = {n.id: n.type for n in workflow.nodes}
         injectable_types = {
-            "wf-strategist", "wf-critic", "wf-optimizer", "wf-moderator",
+            "wf-strategist",
+            "wf-critic",
+            "wf-optimizer",
+            "wf-moderator",
         }
 
         # Track: agent_node_id → list of source tone_profile node IDs
@@ -332,10 +305,7 @@ class CompilerService:
 
             # Rule 1: source must be wf-tone-profile
             if source_type != "wf-tone-profile":
-                errors.append(
-                    f"injects_config edge '{edge.id}': source '{edge.source}' "
-                    f"is type '{source_type}', expected 'wf-tone-profile'"
-                )
+                errors.append(f"injects_config edge '{edge.id}': source '{edge.source}' is type '{source_type}', expected 'wf-tone-profile'")
 
             # Rule 2: target must be an agent node type
             if target_type not in injectable_types:
@@ -352,25 +322,17 @@ class CompilerService:
         # Rule 3: Agent node may have at most one incoming injects_config
         for agent_id, sources in agent_incoming_config.items():
             if len(sources) > 1:
-                errors.append(
-                    f"Agent node '{agent_id}' has {len(sources)} incoming "
-                    f"injects_config edges (max 1 allowed): {sources}"
-                )
+                errors.append(f"Agent node '{agent_id}' has {len(sources)} incoming injects_config edges (max 1 allowed): {sources}")
 
         # Rule 4: Tone profile node may have at most one injects_config per agent
         for tone_id, targets in tone_outgoing_config.items():
             if len(targets) != len(set(targets)):
-                errors.append(
-                    f"Tone profile node '{tone_id}' has duplicate injects_config "
-                    f"edges to the same agent node"
-                )
+                errors.append(f"Tone profile node '{tone_id}' has duplicate injects_config edges to the same agent node")
 
         # Rule 5: Tone profile nodes must not be isolated
         for node in workflow.nodes:
             if node.type == "wf-tone-profile":
-                has_edge = (
-                    node.id in all_edge_sources or node.id in all_edge_targets
-                )
+                has_edge = node.id in all_edge_sources or node.id in all_edge_targets
                 if not has_edge:
                     errors.append(
                         f"Tone profile node '{node.id}' is isolated — "
@@ -392,16 +354,16 @@ def _detect_cycle(
     for src, tgt in edges:
         adj[src].append(tgt)
 
-    WHITE, GRAY, BLACK = 0, 1, 2
-    color: dict[str, int] = {nid: WHITE for nid in node_ids}
+    white, gray, black = 0, 1, 2
+    color: dict[str, int] = {nid: white for nid in node_ids}
     parent: dict[str, str | None] = {nid: None for nid in node_ids}
 
     def _dfs(u: str) -> list[str] | None:
-        color[u] = GRAY
+        color[u] = gray
         for v in adj.get(u, []):
             if v not in color:
                 continue
-            if color[v] == GRAY:
+            if color[v] == gray:
                 # Reconstruct cycle
                 cycle = [v, u]
                 p = parent[u]
@@ -410,16 +372,16 @@ def _detect_cycle(
                     p = parent[p]
                 cycle.reverse()
                 return cycle
-            if color[v] == WHITE:
+            if color[v] == white:
                 parent[v] = u
                 result = _dfs(v)
                 if result:
                     return result
-        color[u] = BLACK
+        color[u] = black
         return None
 
     for nid in node_ids:
-        if color[nid] == WHITE:
+        if color[nid] == white:
             result = _dfs(nid)
             if result:
                 return result

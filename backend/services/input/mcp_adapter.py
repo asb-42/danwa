@@ -21,9 +21,7 @@ class MCPAdapter(Protocol):
     an incoming MCP tool invocation and returns a result dict.
     """
 
-    async def handle_tool_call(
-        self, tool_name: str, arguments: dict
-    ) -> dict:
+    async def handle_tool_call(self, tool_name: str, arguments: dict) -> dict:
         """Handle an incoming MCP tool call.
 
         Args:

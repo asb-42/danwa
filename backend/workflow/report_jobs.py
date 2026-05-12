@@ -80,7 +80,13 @@ class ReportJobStore:
                 SET status = ?, file_path = ?, error = ?, completed_at = ?
                 WHERE id = ?
                 """,
-                (status, file_path, error, now if status in ("completed", "failed") else None, job_id),
+                (
+                    status,
+                    file_path,
+                    error,
+                    now if status in ("completed", "failed") else None,
+                    job_id,
+                ),
             )
         logger.info("Report job %s → %s", job_id, status)
 

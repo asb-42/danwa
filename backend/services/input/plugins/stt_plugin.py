@@ -19,9 +19,7 @@ from backend.services.input.registry import register_input_plugin
 class STTPluginConfig(BaseModel):
     """Configuration schema for the STT Input plugin."""
 
-    llm_profile_id: str = Field(
-        description="ID of the LLMProfile with protocol='stt'"
-    )
+    llm_profile_id: str = Field(description="ID of the LLMProfile with protocol='stt'")
     stream_partial: bool = Field(
         default=True,
         description="Enable partial transcription streaming",

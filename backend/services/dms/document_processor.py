@@ -142,12 +142,13 @@ class DocumentProcessor:
         """Check for known PaddlePaddle version compatibility issues."""
         try:
             import paddle
+
             # Use getattr to avoid lint issues with __version__
-            version_str = getattr(paddle, '__version__', '0.0.0')
-            parts = version_str.split('.')
+            version_str = getattr(paddle, "__version__", "0.0.0")
+            parts = version_str.split(".")
             major = parts[0]
             minor = parts[1] if len(parts) > 1 else "0"
-            
+
             if major == "3" and int(minor) >= 3:
                 logger.warning(
                     "PaddlePaddle 3.3+ has known PIR compatibility issues with OneDNN "

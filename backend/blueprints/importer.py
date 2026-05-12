@@ -140,9 +140,7 @@ class BlueprintImporter:
 
         return result
 
-    def _import_legacy_llm_profiles(
-        self, legacy_file: Path, dry_run: bool
-    ) -> ImportResult:
+    def _import_legacy_llm_profiles(self, legacy_file: Path, dry_run: bool) -> ImportResult:
         """Parse the legacy nested ``profiles:`` format."""
         result = ImportResult()
         try:
@@ -169,16 +167,12 @@ class BlueprintImporter:
                 self._upsert_llm_profile(profile, result, dry_run)
             except Exception as exc:
                 result.errors.append(f"{legacy_file}:{profile_id}: {exc}")
-                logger.warning(
-                    "Failed to import legacy LLM profile %s: %s", profile_id, exc
-                )
+                logger.warning("Failed to import legacy LLM profile %s: %s", profile_id, exc)
 
         return result
 
     @staticmethod
-    def _convert_legacy_llm_profile(
-        profile_id: str, data: dict
-    ) -> BlueprintLLMProfile:
+    def _convert_legacy_llm_profile(profile_id: str, data: dict) -> BlueprintLLMProfile:
         """Convert a legacy nested profile entry to a BlueprintLLMProfile.
 
         Legacy format::
@@ -325,24 +319,18 @@ class BlueprintImporter:
                     self._upsert_prompt_template(template, result, dry_run)
                 except Exception as exc:
                     result.errors.append(f"{md_file}: {exc}")
-                    logger.warning(
-                        "Failed to import prompt template from %s: %s", md_file, exc
-                    )
+                    logger.warning("Failed to import prompt template from %s: %s", md_file, exc)
 
         # --- archive/config/prompts/ ---
         archive_prompts = self.archive_dir / "prompts"
         if archive_prompts.is_dir():
             for md_file in sorted(archive_prompts.glob("*.md")):
                 try:
-                    template = self._md_file_to_prompt_template(
-                        md_file, archive_prompts, is_archive=True
-                    )
+                    template = self._md_file_to_prompt_template(md_file, archive_prompts, is_archive=True)
                     self._upsert_prompt_template(template, result, dry_run)
                 except Exception as exc:
                     result.errors.append(f"{md_file}: {exc}")
-                    logger.warning(
-                        "Failed to import archive prompt from %s: %s", md_file, exc
-                    )
+                    logger.warning("Failed to import archive prompt from %s: %s", md_file, exc)
 
         return result
 

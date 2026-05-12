@@ -94,19 +94,21 @@ async def hitl_check_node(state: DebateState) -> dict:
     if pending:
         interactions = []
         for inject in pending:
-            interactions.append({
-                "interaction_id": inject["interaction_id"],
-                "type": "inject",
-                "direction": "user_to_agent",
-                "source": "user",
-                "target": inject.get("target", "all_future"),
-                "content": inject["content"],
-                "round": state.get("current_round", 0),
-                "agent_index": state.get("current_agent_index", 0),
-                "timestamp": datetime.now(UTC).isoformat(),
-                "status": "consumed",
-                "metadata": inject.get("metadata", {}),
-            })
+            interactions.append(
+                {
+                    "interaction_id": inject["interaction_id"],
+                    "type": "inject",
+                    "direction": "user_to_agent",
+                    "source": "user",
+                    "target": inject.get("target", "all_future"),
+                    "content": inject["content"],
+                    "round": state.get("current_round", 0),
+                    "agent_index": state.get("current_agent_index", 0),
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "status": "consumed",
+                    "metadata": inject.get("metadata", {}),
+                }
+            )
             consume_inject(debate_id, inject["interaction_id"])
 
         logger.info(
@@ -183,10 +185,7 @@ async def hitl_agent_query_node(state: DebateState) -> dict:
     agent_index = state.get("current_agent_index", 1) - 1  # Already incremented
 
     # Get previous outputs for loop detection
-    previous_outputs = [
-        ao["content"] for ao in agent_outputs[:-1]
-        if ao.get("role") == agent_role
-    ]
+    previous_outputs = [ao["content"] for ao in agent_outputs[:-1] if ao.get("role") == agent_role]
 
     # Analyze for query potential
     analysis = analyze_for_query(
@@ -265,10 +264,7 @@ async def hitl_agent_query_node(state: DebateState) -> dict:
 
     response_content = None
     for interaction in _interaction_log.get(debate_id, []):
-        if (
-            interaction.get("type") == "response"
-            and interaction.get("metadata", {}).get("interrupt_id") == interrupt_id
-        ):
+        if interaction.get("type") == "response" and interaction.get("metadata", {}).get("interrupt_id") == interrupt_id:
             response_content = interaction["content"]
             break
 
@@ -352,10 +348,7 @@ def build_inject_context(state: DebateState, agent_role: str) -> str:
 
     # Read from state["interactions"] — populated by hitl_check_node
     interactions = state.get("interactions", [])
-    inject_interactions = [
-        i for i in interactions
-        if i.get("type") == "inject" and i.get("status") == "consumed"
-    ]
+    inject_interactions = [i for i in interactions if i.get("type") == "inject" and i.get("status") == "consumed"]
 
     if not inject_interactions:
         return ""

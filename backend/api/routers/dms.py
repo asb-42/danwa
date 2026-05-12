@@ -70,9 +70,7 @@ async def upload_document(
         tmp_path = tmp.name
 
     try:
-        result = dms.upload_document(
-            project_id, tmp_path, original_filename=original_filename
-        )
+        result = dms.upload_document(project_id, tmp_path, original_filename=original_filename)
         doc_id = result.get("doc_id", "")
         if not doc_id:
             raise HTTPException(status_code=500, detail="Failed to upload document")
@@ -187,6 +185,7 @@ def ocr_status():
     """
     try:
         import paddleocr  # noqa: F401
+
         return {"available": True, "engine": "paddleocr"}
     except ImportError:
         return {"available": False, "engine": None}

@@ -46,6 +46,7 @@ class PrintLayoutEngine:
             return ""
         try:
             import markdown
+
             return markdown.markdown(
                 text,
                 extensions=["tables", "fenced_code", "sane_lists", "nl2br"],
@@ -81,16 +82,14 @@ class PrintLayoutEngine:
         def _make_id(prefix: str, idx: int) -> str:
             return f"{prefix}-{idx}"
 
-        def _inject_heading_ids(
-            html_content: str, base_id: str
-        ) -> tuple[str, list[TOCEntry]]:
+        def _inject_heading_ids(html_content: str, base_id: str) -> tuple[str, list[TOCEntry]]:
             """Inject ``id`` attributes into h1/h2 headings for TOC anchoring.
 
             Returns the modified HTML (with ``id`` attributes added) and a
             list of :class:`TOCEntry` objects extracted from the headings.
             """
             entries: list[TOCEntry] = []
-            heading_re = re.compile(r'<(h[12])([^>]*)>(.*?)</\1>', re.IGNORECASE | re.DOTALL)
+            heading_re = re.compile(r"<(h[12])([^>]*)>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
             counter = 0
 
             def _replace(m: re.Match) -> str:
@@ -98,7 +97,7 @@ class PrintLayoutEngine:
                 tag = m.group(1).lower()
                 attrs = m.group(2)
                 inner = m.group(3)
-                title = re.sub(r'<[^>]+>', '', inner).strip()
+                title = re.sub(r"<[^>]+>", "", inner).strip()
                 level = 1 if tag == "h1" else 2
                 hid = f"{base_id}-h{counter}"
                 entries.append(TOCEntry(level=level, title=title, anchor=hid))
@@ -150,11 +149,13 @@ class PrintLayoutEngine:
                 if toc[round_toc_idx].anchor == "":
                     toc[round_toc_idx].anchor = sid
                 # Level 2 TOC: Agent
-                toc.append(TOCEntry(
-                    level=2,
-                    title=f"{turn.agent_name} ({turn.role_type})",
-                    anchor=sid,
-                ))
+                toc.append(
+                    TOCEntry(
+                        level=2,
+                        title=f"{turn.agent_name} ({turn.role_type})",
+                        anchor=sid,
+                    )
+                )
 
                 # (b) Attach injections as margin notes
                 margin_notes: list[MarginNote] = []
@@ -208,7 +209,6 @@ class PrintLayoutEngine:
                         )
                         section_idx += 1
 
-
         # (e) Consensus summary
         if artifact.consensus_result:
             consensus_content = self._md_to_html(self._format_consensus(artifact.consensus_result))
@@ -234,12 +234,8 @@ class PrintLayoutEngine:
             section_idx += 1
 
         # Build metadata
-        participants = list(
-            {t.agent_name for t in artifact.transcript if t.agent_name}
-        )
-        total_tokens = sum(
-            t.token_usage.get("total", 0) for t in artifact.transcript
-        )
+        participants = list({t.agent_name for t in artifact.transcript if t.agent_name})
+        total_tokens = sum(t.token_usage.get("total", 0) for t in artifact.transcript)
         metadata = self._build_metadata(artifact, participants, total_tokens)
 
         return PrintDocument(sections=sections, metadata=metadata, toc=toc)
@@ -307,10 +303,7 @@ class PrintLayoutEngine:
         rows: list[str] = []
         for turn in artifact.transcript:
             tokens = turn.token_usage.get("total", 0)
-            rows.append(
-                f"{turn.agent_name} | {turn.role_type} | "
-                f"{turn.llm_profile_id} | {turn.latency_ms}ms | {tokens} tokens"
-            )
+            rows.append(f"{turn.agent_name} | {turn.role_type} | {turn.llm_profile_id} | {turn.latency_ms}ms | {tokens} tokens")
         content = "\n".join(rows) if rows else "Keine Audit-Daten verfügbar."
         return PrintSection(
             type=SectionType.AUDIT_APPENDIX,

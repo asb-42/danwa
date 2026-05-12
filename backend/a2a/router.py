@@ -103,10 +103,7 @@ async def handle_a2a_request(request: Request):
         if method == "tasks/send":
             message = None
             if "message" in params:
-                parts = [
-                    A2ATextPart(type=p.get("type", "text"), text=p.get("text", ""))
-                    for p in params["message"].get("parts", [])
-                ]
+                parts = [A2ATextPart(type=p.get("type", "text"), text=p.get("text", "")) for p in params["message"].get("parts", [])]
                 message = A2AMessage(
                     role=params["message"].get("role", "user"),
                     parts=parts,
@@ -134,9 +131,7 @@ async def handle_a2a_request(request: Request):
                 status_code=400,
             )
 
-        return JSONResponse(
-            content={"jsonrpc": "2.0", "id": req_id, "result": result}
-        )
+        return JSONResponse(content={"jsonrpc": "2.0", "id": req_id, "result": result})
 
     except Exception as exc:
         logger.error("A2A request failed: %s", exc, exc_info=True)

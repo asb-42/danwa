@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 class InteractionType(StrEnum):
     """Type of HITL interaction."""
+
     INJECT = "inject"
     QUERY = "query"
     RESPONSE = "response"
@@ -28,12 +29,14 @@ class InteractionType(StrEnum):
 
 class InteractionDirection(StrEnum):
     """Direction of HITL interaction."""
+
     USER_TO_AGENT = "user_to_agent"
     AGENT_TO_USER = "agent_to_user"
 
 
 class InteractionStatus(StrEnum):
     """Lifecycle status of an interaction."""
+
     PENDING = "pending"
     DELIVERED = "delivered"
     CONSUMED = "consumed"
@@ -42,6 +45,7 @@ class InteractionStatus(StrEnum):
 
 class HITLMode(StrEnum):
     """HITL operation mode."""
+
     FULL = "full"  # Both inject and query
     INJECT_ONLY = "inject_only"  # Only user → agent
     QUERY_ONLY = "query_only"  # Only agent → user
@@ -50,6 +54,7 @@ class HITLMode(StrEnum):
 
 class InterruptStatus(StrEnum):
     """Status of an active interrupt."""
+
     WAITING = "waiting"
     ANSWERED = "answered"
     TIMEOUT = "timeout"
@@ -58,6 +63,7 @@ class InterruptStatus(StrEnum):
 
 class PauseAction(StrEnum):
     """Pause/resume action."""
+
     PAUSE = "pause"
     RESUME = "resume"
 
@@ -78,10 +84,7 @@ class InjectRequest(BaseModel):
     )
     target_agent: str | None = Field(
         default=None,
-        description=(
-            "Target agent role (e.g. 'critic'). If None, injected to all "
-            "future agents in the current and subsequent rounds."
-        ),
+        description=("Target agent role (e.g. 'critic'). If None, injected to all future agents in the current and subsequent rounds."),
     )
     target_round: int | None = Field(
         default=None,

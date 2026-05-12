@@ -57,9 +57,7 @@ class StateSnapshotStore:
             """)
             # Safe migration: add is_locked column for existing databases
             try:
-                conn.execute(
-                    "ALTER TABLE state_snapshots ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0"
-                )
+                conn.execute("ALTER TABLE state_snapshots ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0")
             except sqlite3.OperationalError:
                 pass  # column already exists
             conn.commit()

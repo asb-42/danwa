@@ -105,12 +105,8 @@ class ProfileService:
                         legacy = bp.to_legacy()
                         self._llm_cache[legacy.id] = legacy
                     except Exception:
-                        logger.exception(
-                            "Failed to convert DB LLM profile %s", bp.id
-                        )
-                logger.info(
-                    "Loaded %d LLM profiles from DB", len(self._llm_cache)
-                )
+                        logger.exception("Failed to convert DB LLM profile %s", bp.id)
+                logger.info("Loaded %d LLM profiles from DB", len(self._llm_cache))
                 return True
         except Exception:
             logger.warning(
@@ -149,9 +145,7 @@ class ProfileService:
                     repo.save_llm_profile(bp)
                     count += 1
                 except Exception:
-                    logger.exception(
-                        "Failed to seed LLM profile %s to DB", profile.id
-                    )
+                    logger.exception("Failed to seed LLM profile %s to DB", profile.id)
             logger.info("Seeded %d LLM profiles from YAML into DB", count)
         except Exception:
             logger.exception("Failed to seed LLM profiles to DB")
@@ -185,9 +179,7 @@ class ProfileService:
                         )
                         self._agent_cache[legacy.id] = legacy
                     except Exception:
-                        logger.exception(
-                            "Failed to convert DB role definition %s", rd.id
-                        )
+                        logger.exception("Failed to convert DB role definition %s", rd.id)
                 logger.info(
                     "Loaded %d agent personas from DB",
                     len(self._agent_cache),
@@ -230,9 +222,7 @@ class ProfileService:
                     repo.save_role_definition(rd)
                     count += 1
                 except Exception:
-                    logger.exception(
-                        "Failed to seed agent persona %s to DB", persona.id
-                    )
+                    logger.exception("Failed to seed agent persona %s to DB", persona.id)
             logger.info("Seeded %d agent personas from YAML into DB", count)
         except Exception:
             logger.exception("Failed to seed agent personas to DB")
@@ -452,9 +442,7 @@ class ProfileService:
             repo = BlueprintRepository(self._db_path)
             repo.delete_llm_profile(profile_id)
         except Exception:
-            logger.exception(
-                "Failed to delete LLM profile %s from DB", profile_id
-            )
+            logger.exception("Failed to delete LLM profile %s from DB", profile_id)
 
         # Delete from YAML
         try:
@@ -462,9 +450,7 @@ class ProfileService:
             if yaml_path.exists():
                 yaml_path.unlink()
         except Exception:
-            logger.exception(
-                "Failed to delete LLM profile %s YAML file", profile_id
-            )
+            logger.exception("Failed to delete LLM profile %s YAML file", profile_id)
 
         # Update cache
         del self._llm_cache[profile_id]
@@ -535,9 +521,7 @@ class ProfileService:
             repo = BlueprintRepository(self._db_path)
             repo.delete_role_definition(persona_id)
         except Exception:
-            logger.exception(
-                "Failed to delete agent persona %s from DB", persona_id
-            )
+            logger.exception("Failed to delete agent persona %s from DB", persona_id)
 
         # Delete from YAML
         try:
@@ -545,9 +529,7 @@ class ProfileService:
             if yaml_path.exists():
                 yaml_path.unlink()
         except Exception:
-            logger.exception(
-                "Failed to delete agent persona %s YAML file", persona_id
-            )
+            logger.exception("Failed to delete agent persona %s YAML file", persona_id)
 
         # Update cache
         del self._agent_cache[persona_id]
@@ -615,7 +597,9 @@ class ProfileService:
                 if path.exists():
                     logger.warning(
                         "Prompt %s/%s not found, falling back to default/%s",
-                        variant, role, name,
+                        variant,
+                        role,
+                        name,
                     )
                     content = path.read_text(encoding="utf-8")
                     return {
@@ -640,9 +624,7 @@ class ProfileService:
         if data:
             return data["content"]
 
-        raise FileNotFoundError(
-            f"Prompt not found for role '{agent_role}' in variant '{variant_id}'"
-        )
+        raise FileNotFoundError(f"Prompt not found for role '{agent_role}' in variant '{variant_id}'")
 
     def delete_prompt_variant(self, variant_id: str) -> bool:
         """Delete a prompt variant from DB and filesystem."""
@@ -660,12 +642,11 @@ class ProfileService:
                 repo.delete_prompt_template(pt.id)
             logger.info(
                 "Deleted %d prompt templates from DB for variant %s",
-                len(templates), variant_id,
+                len(templates),
+                variant_id,
             )
         except Exception:
-            logger.exception(
-                "Failed to delete prompt variant %s from DB", variant_id
-            )
+            logger.exception("Failed to delete prompt variant %s from DB", variant_id)
 
         # Delete from filesystem
         variant = self._prompt_cache[variant_id]
@@ -674,9 +655,7 @@ class ProfileService:
             shutil.rmtree(variant_path)
 
         # Remove from content cache
-        keys_to_remove = [
-            k for k in self._prompt_content_cache if k.startswith(f"db:{variant_id}/")
-        ]
+        keys_to_remove = [k for k in self._prompt_content_cache if k.startswith(f"db:{variant_id}/")]
         for k in keys_to_remove:
             del self._prompt_content_cache[k]
 
@@ -735,9 +714,7 @@ class ProfileService:
                         "path": f"db:{template.id}",
                     }
         except Exception:
-            logger.exception(
-                "Failed to save prompt variant %s to DB", variant_id
-            )
+            logger.exception("Failed to save prompt variant %s to DB", variant_id)
 
         # Write to filesystem (backup)
         variants_dir = self.profile_dir / "prompts" / "variants"

@@ -33,9 +33,7 @@ class DiscoverRequest(BaseModel):
 class CapabilitiesRequest(BaseModel):
     """Request body for storing A2A capabilities."""
 
-    capabilities: dict[str, Any] = Field(
-        ..., description="Discovered capabilities from A2A agent"
-    )
+    capabilities: dict[str, Any] = Field(..., description="Discovered capabilities from A2A agent")
 
 
 @router.post("/discover")

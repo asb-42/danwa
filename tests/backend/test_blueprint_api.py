@@ -635,9 +635,7 @@ class TestCanvasLayoutAPI:
         client.post("/api/v1/canvas/layouts", json=_sample_layout())
         updated = _sample_layout()
         updated["name"] = "Updated Layout"
-        updated["layout_data"]["nodes"].append(
-            {"id": "n2", "type": "llm-profile", "x": 300, "y": 400}
-        )
+        updated["layout_data"]["nodes"].append({"id": "n2", "type": "llm-profile", "x": 300, "y": 400})
         response = client.put("/api/v1/canvas/layouts/test-layout", json=updated)
         assert response.status_code == 200
         assert response.json()["name"] == "Updated Layout"
@@ -1052,9 +1050,7 @@ class TestCompilerAPI:
         wf["node_blueprint_map"] = {"node-1": "bp-strategist"}
         wf["execution_order"] = ["node-1"]
         wf["conditional_edges"] = []
-        wf["interjection_points"] = [
-            {"node_id": "ghost", "input_type": "user_query", "blocking": True}
-        ]
+        wf["interjection_points"] = [{"node_id": "ghost", "input_type": "user_query", "blocking": True}]
         client.post("/api/v1/blueprints/workflows", json=wf)
         response = client.post("/api/v1/blueprints/workflows/test-wf/compile")
         assert response.status_code == 200

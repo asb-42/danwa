@@ -52,10 +52,7 @@ class PluginManifest(BaseModel):
     )
     entrypoint: str = Field(
         ...,
-        description=(
-            "Python module path (e.g. 'external_plugins.my_plugin.plugin') "
-            "or Docker image reference"
-        ),
+        description=("Python module path (e.g. 'external_plugins.my_plugin.plugin') or Docker image reference"),
     )
     config_schema: dict = Field(
         default_factory=dict,

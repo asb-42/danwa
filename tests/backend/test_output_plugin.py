@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, Type
+from typing import ClassVar
 
 import pytest
 from pydantic import BaseModel
 
-from backend.models.artifact import DebateArtifact
 from backend.services.output.base import OutputPlugin
 from backend.services.output.registry import PluginRegistry, register_plugin
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -26,7 +23,7 @@ class DummyPlugin(OutputPlugin):
     plugin_key: ClassVar[str] = "dummy"
     plugin_name: ClassVar[str] = "Dummy Plugin"
     supported_formats: ClassVar[list[str]] = ["txt"]
-    config_schema: ClassVar[Type[BaseModel]] = DummyConfig
+    config_schema: ClassVar[type[BaseModel]] = DummyConfig
 
     async def render(self, artifact, config, job_id, output_dir):
         return []
@@ -92,7 +89,7 @@ class TestRegisterPluginDecorator:
             plugin_key: ClassVar[str] = "decorated"
             plugin_name: ClassVar[str] = "Decorated"
             supported_formats: ClassVar[list[str]] = ["pdf"]
-            config_schema: ClassVar[Type[BaseModel]] = DummyConfig
+            config_schema: ClassVar[type[BaseModel]] = DummyConfig
 
             async def render(self, artifact, config, job_id, output_dir):
                 return []

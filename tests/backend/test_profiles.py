@@ -60,9 +60,7 @@ def profile_dir(tmp_path) -> Path:
     # Prompt files
     (prompts_dir / "strategist.md").write_text("# Strategist Prompt\nTest content for {context}")
     (prompts_dir / "critic.md").write_text("# Critic Prompt\nTest content")
-    (variants_dir / "strategist.md").write_text(
-        "# Variant Strategist\nVariant content for {context}"
-    )
+    (variants_dir / "strategist.md").write_text("# Variant Strategist\nVariant content for {context}")
 
     return tmp_path
 

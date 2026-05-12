@@ -35,9 +35,7 @@ def list_tone_profiles(
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> list[ToneProfile]:
     """List all tone profiles (system + custom), filterable via include_system."""
-    return repo.list_tone_profiles(
-        include_system=include_system, limit=limit, offset=offset
-    )
+    return repo.list_tone_profiles(include_system=include_system, limit=limit, offset=offset)
 
 
 @router.get("/{profile_id}", response_model=ToneProfile)

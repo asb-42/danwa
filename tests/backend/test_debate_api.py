@@ -7,9 +7,7 @@ import time
 
 class TestCreateDebate:
     def test_create_debate_returns_201(self, client):
-        response = client.post(
-            "/api/v1/debate", json={"case": {"text": "Test case for debate creation"}}
-        )
+        response = client.post("/api/v1/debate", json={"case": {"text": "Test case for debate creation"}})
         assert response.status_code == 201
         data = response.json()
         assert "debate_id" in data
@@ -198,16 +196,12 @@ class TestSSEStreamEndpoint:
 
     def test_sse_accepts_project_id_query_param(self, client):
         """With ?project_id=_default the endpoint must return 200."""
-        response = client.get(
-            "/api/v1/debate/nonexistent/stream?project_id=_default"
-        )
+        response = client.get("/api/v1/debate/nonexistent/stream?project_id=_default")
         # nonexistent debate → 200 with SSE error event (not 422)
         assert response.status_code == 200
         assert "error" in response.text
 
     def test_sse_rejects_invalid_project_id(self, client):
         """With an invalid project_id the endpoint must return 404."""
-        response = client.get(
-            "/api/v1/debate/nonexistent/stream?project_id=invalid-project"
-        )
+        response = client.get("/api/v1/debate/nonexistent/stream?project_id=invalid-project")
         assert response.status_code == 404

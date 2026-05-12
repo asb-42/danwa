@@ -109,9 +109,7 @@ class InputComposerService:
                 plugin = plugin_cls()
                 debate_input = await plugin.capture(validated_config)
                 # Fill in topic from raw_data
-                debate_input = debate_input.model_copy(
-                    update={"topic": raw_data.get("topic", debate_input.topic)}
-                )
+                debate_input = debate_input.model_copy(update={"topic": raw_data.get("topic", debate_input.topic)})
                 job.status = InputJobStatus.COMPLETED
                 job.processed_input = debate_input
                 job.completed_at = datetime.now(UTC)
@@ -126,9 +124,7 @@ class InputComposerService:
 
         return job
 
-    async def finalize_input(
-        self, job_id: str, processed_data: DebateInput
-    ) -> None:
+    async def finalize_input(self, job_id: str, processed_data: DebateInput) -> None:
         """Finalize an input job with processed data.
 
         Called after STT transcription completes or A2A approval.

@@ -47,18 +47,11 @@ class STTService:
         model = getattr(profile, "model", "base")
 
         if provider == "whisper-local":
-            return await self._transcribe_whisper_local(
-                audio_bytes, model, language
-            )
+            return await self._transcribe_whisper_local(audio_bytes, model, language)
         elif provider == "whisper-api":
-            return await self._transcribe_whisper_api(
-                audio_bytes, model, language
-            )
+            return await self._transcribe_whisper_api(audio_bytes, model, language)
         else:
-            raise RuntimeError(
-                f"STT provider {provider!r} is not yet implemented. "
-                f"Supported: whisper-local, whisper-api"
-            )
+            raise RuntimeError(f"STT provider {provider!r} is not yet implemented. Supported: whisper-local, whisper-api")
 
     async def transcribe_file(
         self,
@@ -89,10 +82,7 @@ class STTService:
         try:
             from faster_whisper import WhisperModel
         except ImportError:
-            raise RuntimeError(
-                "faster-whisper is not installed. "
-                "Install with: pip install faster-whisper"
-            )
+            raise RuntimeError("faster-whisper is not installed. Install with: pip install faster-whisper")
 
         # Write audio bytes to temp file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -111,7 +101,9 @@ class STTService:
             result = " ".join(text_parts).strip()
             logger.info(
                 "Whisper transcription complete: %d chars (model=%s, lang=%s)",
-                len(result), model, language,
+                len(result),
+                model,
+                language,
             )
             return result
         finally:
@@ -127,7 +119,4 @@ class STTService:
 
         Stub — requires API key configuration.
         """
-        raise RuntimeError(
-            "Whisper API transcription is not yet implemented. "
-            "Use whisper-local for now."
-        )
+        raise RuntimeError("Whisper API transcription is not yet implemented. Use whisper-local for now.")

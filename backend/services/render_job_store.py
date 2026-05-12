@@ -43,16 +43,8 @@ class RenderJobStore:
             plugin_key=row["plugin_key"],
             config=json.loads(row["config"] or "{}"),
             created_at=datetime.fromisoformat(row["created_at"]),
-            started_at=(
-                datetime.fromisoformat(row["started_at"])
-                if row["started_at"]
-                else None
-            ),
-            completed_at=(
-                datetime.fromisoformat(row["completed_at"])
-                if row["completed_at"]
-                else None
-            ),
+            started_at=(datetime.fromisoformat(row["started_at"]) if row["started_at"] else None),
+            completed_at=(datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None),
             error_message=row["error_message"],
             output_files=json.loads(row["output_files"] or "[]"),
             artifact_snapshot_hash=row["artifact_snapshot_hash"] or "",

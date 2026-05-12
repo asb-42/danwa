@@ -5,7 +5,6 @@ Factory function get_dms_for_project() provides project-scoped instances.
 """
 
 import asyncio
-import concurrent.futures
 import logging
 from pathlib import Path
 from typing import Any
@@ -113,9 +112,10 @@ class DMS:
         chunk_ids: list[str] = []
         processing_error: str | None = None
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # We're inside an async context (FastAPI) — run in a thread
             import concurrent.futures
+
             try:
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     future = pool.submit(asyncio.run, self.rag_pipeline.process_file(doc_id, file_path))
@@ -246,30 +246,28 @@ class DMS:
             logger.error("Failed to get manual RAG context: %s", e)
             return []
 
-    def auto_retrieve_for_topic(
-        self, topic: str, project_id: str | None = None, k: int = 5
-    ) -> list[dict[str, Any]]:
+    def auto_retrieve_for_topic(self, topic: str, project_id: str | None = None, k: int = 5) -> list[dict[str, Any]]:
         """Auto-retrieve relevant chunks for a topic."""
         try:
             raw_results = self.get_rag_context(topic, project_id, k)
             formatted_results = []
             for chunk in raw_results:
                 meta = chunk.get("metadata", {})
-                formatted_results.append({
-                    "text": chunk.get("text", ""),
-                    "source": meta.get("file_name", "unknown"),
-                    "chunk_index": meta.get("chunk_index", -1),
-                    "project_id": meta.get("project_id", project_id or "unknown"),
-                })
+                formatted_results.append(
+                    {
+                        "text": chunk.get("text", ""),
+                        "source": meta.get("file_name", "unknown"),
+                        "chunk_index": meta.get("chunk_index", -1),
+                        "project_id": meta.get("project_id", project_id or "unknown"),
+                    }
+                )
             logger.info("Auto-retrieved %d chunks for topic '%s'", len(formatted_results), topic)
             return formatted_results
         except Exception as e:
             logger.error("Failed to auto-retrieve for topic '%s': %s", topic, e)
             return []
 
-    def format_rag_context(
-        self, chunks: list[dict[str, Any]], max_chars: int | None = None
-    ) -> str:
+    def format_rag_context(self, chunks: list[dict[str, Any]], max_chars: int | None = None) -> str:
         """Format RAG chunks into a context string for LLM prompts."""
         return self.rag_formatter.format(chunks, max_chars=max_chars)
 
@@ -286,6 +284,7 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
 
     if project_store is None:
         from backend.api.deps import get_project_store
+
         project_store = get_project_store()
 
     project = project_store.get(project_id)
@@ -298,6 +297,7 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
 
     # Load DMS config (includes ocr_enabled, ocr_device, etc.)
     from backend.services.dms.config import load_dms_config
+
     try:
         dms_config = load_dms_config()
     except Exception:
@@ -312,6 +312,7 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
     # Ensure the project exists in the DMS database (required for FK constraint)
     if not dms.db.get_project(project_id):
         from datetime import datetime
+
         dms.db.conn.execute(
             "INSERT OR IGNORE INTO projects (id, name, description, created_at, metadata_json) VALUES (?, ?, ?, ?, ?)",
             (project_id, project.name, "", datetime.now().isoformat(), ""),

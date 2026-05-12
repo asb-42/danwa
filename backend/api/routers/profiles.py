@@ -134,12 +134,13 @@ async def list_prompt_variants() -> list[PromptVariant]:
 
 class CreatePromptVariantRequest(BaseModel):
     """Request body for creating a prompt variant."""
+
     id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$", min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=200)
     description: str = ""
     prompts: dict[str, str] = Field(
         default_factory=dict,
-        description="Role → prompt content mapping (e.g. {\"strategist\": \"...\", \"critic\": \"...\"})",
+        description='Role → prompt content mapping (e.g. {"strategist": "...", "critic": "..."})',
     )
 
 

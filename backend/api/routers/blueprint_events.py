@@ -45,9 +45,7 @@ async def stream_blueprint_events(
 
                 while True:
                     try:
-                        event_type, payload = await asyncio.wait_for(
-                            queue.get(), timeout=300.0
-                        )
+                        event_type, payload = await asyncio.wait_for(queue.get(), timeout=300.0)
                         yield {"event": event_type, "data": payload}
 
                         # Stop on terminal events

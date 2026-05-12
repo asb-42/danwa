@@ -126,9 +126,7 @@ class A2AClient:
             prompt_parts.append(ao.get("content", "")[:1000])
             prompt_parts.append("")
 
-        prompt_parts.append(
-            f"Please provide your {role} analysis. Be thorough and specific."
-        )
+        prompt_parts.append(f"Please provide your {role} analysis. Be thorough and specific.")
 
         message = "\n".join(prompt_parts)
 

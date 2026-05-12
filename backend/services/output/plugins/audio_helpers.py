@@ -15,9 +15,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-async def generate_silence(
-    duration_ms: int, output_path: Path, ffmpeg: str
-) -> None:
+async def generate_silence(duration_ms: int, output_path: Path, ffmpeg: str) -> None:
     """Generate a silence file of the given duration using ffmpeg.
 
     Args:
@@ -29,11 +27,16 @@ async def generate_silence(
     cmd = [
         ffmpeg,
         "-y",
-        "-f", "lavfi",
-        "-i", "anullsrc=r=24000:cl=mono",
-        "-t", str(duration_s),
-        "-c:a", "libmp3lame",
-        "-q:a", "9",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=r=24000:cl=mono",
+        "-t",
+        str(duration_s),
+        "-c:a",
+        "libmp3lame",
+        "-q:a",
+        "9",
         str(output_path),
     ]
     proc = await asyncio.create_subprocess_exec(
@@ -43,9 +46,7 @@ async def generate_silence(
     )
     _, stderr = await proc.communicate()
     if proc.returncode != 0:
-        raise RuntimeError(
-            f"ffmpeg silence generation failed: {stderr.decode()}"
-        )
+        raise RuntimeError(f"ffmpeg silence generation failed: {stderr.decode()}")
 
 
 async def concat_audio(
@@ -65,10 +66,14 @@ async def concat_audio(
     cmd = [
         ffmpeg,
         "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(concat_file),
-        "-b:a", bitrate,
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(concat_file),
+        "-b:a",
+        bitrate,
         str(output_path),
     ]
     proc = await asyncio.create_subprocess_exec(
@@ -78,14 +83,10 @@ async def concat_audio(
     )
     _, stderr = await proc.communicate()
     if proc.returncode != 0:
-        raise RuntimeError(
-            f"ffmpeg concat failed: {stderr.decode()}"
-        )
+        raise RuntimeError(f"ffmpeg concat failed: {stderr.decode()}")
 
 
-async def decode_base64_audio(
-    b64_data: str, output_path: Path
-) -> None:
+async def decode_base64_audio(b64_data: str, output_path: Path) -> None:
     """Decode a base64-encoded audio blob and write to file.
 
     Used by MiMo TTS renderer where the API returns audio data
@@ -115,8 +116,5 @@ def check_ffmpeg() -> str:
     """
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
-        raise RuntimeError(
-            "ffmpeg is not installed or not in PATH. "
-            "Install it with: apt install ffmpeg / brew install ffmpeg"
-        )
+        raise RuntimeError("ffmpeg is not installed or not in PATH. Install it with: apt install ffmpeg / brew install ffmpeg")
     return ffmpeg

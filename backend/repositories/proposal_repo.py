@@ -49,11 +49,7 @@ class ProposalRepository:
             status=ProposalStatus(row["status"]),
             created_by=ProposalCreatedBy(row["created_by"]),
             approved_by=row["approved_by"],
-            approved_at=(
-                datetime.fromisoformat(row["approved_at"])
-                if row["approved_at"]
-                else None
-            ),
+            approved_at=(datetime.fromisoformat(row["approved_at"]) if row["approved_at"] else None),
             parent_version_id=row["parent_version_id"] or "",
             new_version_id=row["new_version_id"],
             created_at=datetime.fromisoformat(row["created_at"]),

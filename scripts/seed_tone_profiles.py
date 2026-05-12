@@ -23,8 +23,7 @@ SYSTEM_PROFILES: list[dict] = [
     {
         "id": "system-heated",
         "name": "Heated Debate",
-        "description": "A confrontational, emotionally charged debate style. "
-        "Agents challenge each other aggressively and use rhetorical devices.",
+        "description": "A confrontational, emotionally charged debate style. Agents challenge each other aggressively and use rhetorical devices.",
         "style": "heated",
         "formality": 0.3,
         "verbosity": "verbose",
@@ -35,8 +34,7 @@ SYSTEM_PROFILES: list[dict] = [
     {
         "id": "system-academic",
         "name": "Academic Debate",
-        "description": "A formal, evidence-based debate style. "
-        "Agents cite sources, use precise language, and maintain scholarly decorum.",
+        "description": "A formal, evidence-based debate style. Agents cite sources, use precise language, and maintain scholarly decorum.",
         "style": "academic",
         "formality": 0.9,
         "verbosity": "normal",
@@ -47,8 +45,7 @@ SYSTEM_PROFILES: list[dict] = [
     {
         "id": "system-neutral",
         "name": "Neutral / Sachlich",
-        "description": "A balanced, objective debate style. "
-        "Agents present facts and arguments without emotional coloring.",
+        "description": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring.",
         "style": "neutral",
         "formality": 0.5,
         "verbosity": "normal",

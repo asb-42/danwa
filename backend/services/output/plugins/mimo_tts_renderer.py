@@ -66,10 +66,7 @@ class MiMoTTSRenderer:
         self._model = model
 
         if not self._api_key:
-            raise ValueError(
-                f"MiMo API key not found. Set the {api_key_env} environment "
-                f"variable or pass api_key directly."
-            )
+            raise ValueError(f"MiMo API key not found. Set the {api_key_env} environment variable or pass api_key directly.")
 
     async def render(
         self,
@@ -107,7 +104,8 @@ class MiMoTTSRenderer:
 
             logger.info(
                 "MiMo TTS segment %d/%d: voice=%s, text_len=%d, style=%s",
-                i + 1, total,
+                i + 1,
+                total,
                 seg.voice_id or _DEFAULT_VOICE,
                 len(seg.text),
                 (seg.style_hint or "(none)")[:60],
@@ -173,16 +171,20 @@ class MiMoTTSRenderer:
 
         # Style hint goes in user message (optional, for tone control)
         if style_hint:
-            messages.append({
-                "role": "user",
-                "content": style_hint,
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": style_hint,
+                }
+            )
 
         # Target text MUST be in assistant message
-        messages.append({
-            "role": "assistant",
-            "content": text,
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": text,
+            }
+        )
 
         payload: dict = {
             "model": self._model,
@@ -213,9 +215,7 @@ class MiMoTTSRenderer:
             response = await client.post(url, json=payload, headers=headers)
             if response.status_code != 200:
                 body = response.text[:500]
-                raise RuntimeError(
-                    f"MiMo TTS API returned {response.status_code}: {body}"
-                )
+                raise RuntimeError(f"MiMo TTS API returned {response.status_code}: {body}")
 
         data = response.json()
 
@@ -224,10 +224,7 @@ class MiMoTTSRenderer:
             message = data["choices"][0]["message"]
             audio_data = message["audio"]["data"]
         except (KeyError, IndexError) as exc:
-            raise RuntimeError(
-                f"MiMo TTS API returned unexpected response structure: {exc}. "
-                f"Response (truncated): {str(data)[:500]}"
-            )
+            raise RuntimeError(f"MiMo TTS API returned unexpected response structure: {exc}. Response (truncated): {str(data)[:500]}")
 
         # Decode and write WAV file
         await decode_base64_audio(audio_data, output_path)

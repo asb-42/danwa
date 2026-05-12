@@ -12,7 +12,6 @@ from backend.models.artifact import (
 from backend.services.output.plugins.print_layout_engine import PrintLayoutEngine
 from backend.services.output.plugins.print_models import (
     MarginNoteType,
-    PrintDocument,
     SectionType,
 )
 from backend.services.output.plugins.print_plugin import (
@@ -51,19 +50,26 @@ class TestPrintLayoutEngine:
             topic="AI Ethics",
             transcript=[
                 Turn(
-                    id="t1", round=1, node_id="n1",
-                    agent_name="Alice", role_type="strategist",
+                    id="t1",
+                    round=1,
+                    node_id="n1",
+                    agent_name="Alice",
+                    role_type="strategist",
                     content="Argument A",
                 ),
                 Turn(
-                    id="t2", round=1, node_id="n2",
-                    agent_name="Bob", role_type="critic",
+                    id="t2",
+                    round=1,
+                    node_id="n2",
+                    agent_name="Bob",
+                    role_type="critic",
                     content="Counter B",
                 ),
             ],
             interjections=[
                 Injection(
-                    id="ij1", source="user",
+                    id="ij1",
+                    source="user",
                     target_node_id="n1",
                     content="Consider X",
                     injected_at_round=1,
@@ -74,7 +80,8 @@ class TestPrintLayoutEngine:
             ],
             minority_votes=[
                 MinorityVote(
-                    id="mv1", agent_name="Carol",
+                    id="mv1",
+                    agent_name="Carol",
                     dissent_content="I disagree with consensus",
                     target_turn_id="t2",
                 ),
@@ -105,49 +112,34 @@ class TestPrintLayoutEngine:
     def test_rule_c_user_queries(self) -> None:
         engine = PrintLayoutEngine()
         doc = engine.transform(self._make_artifact())
-        query_sections = [
-            s for s in doc.sections
-            if s.type == SectionType.USER_QUERY_BLOCK
-        ]
+        query_sections = [s for s in doc.sections if s.type == SectionType.USER_QUERY_BLOCK]
         assert len(query_sections) == 1
         assert query_sections[0].content == "<p>Why A?</p>"
 
     def test_rule_d_minority_votes(self) -> None:
         engine = PrintLayoutEngine()
         doc = engine.transform(self._make_artifact(), include_minority_votes=True)
-        minority_sections = [
-            s for s in doc.sections
-            if s.type == SectionType.MINORITY_CALLOUT
-        ]
+        minority_sections = [s for s in doc.sections if s.type == SectionType.MINORITY_CALLOUT]
         assert len(minority_sections) == 1
         assert "Carol" in minority_sections[0].title
 
     def test_rule_e_consensus(self) -> None:
         engine = PrintLayoutEngine()
         doc = engine.transform(self._make_artifact())
-        consensus = [
-            s for s in doc.sections
-            if s.type == SectionType.CONSENSUS_SUMMARY
-        ]
+        consensus = [s for s in doc.sections if s.type == SectionType.CONSENSUS_SUMMARY]
         assert len(consensus) == 1
         assert "0.85" in consensus[0].content
 
     def test_rule_f_audit_trail(self) -> None:
         engine = PrintLayoutEngine()
         doc = engine.transform(self._make_artifact(), include_audit_trail=True)
-        audit = [
-            s for s in doc.sections
-            if s.type == SectionType.AUDIT_APPENDIX
-        ]
+        audit = [s for s in doc.sections if s.type == SectionType.AUDIT_APPENDIX]
         assert len(audit) == 1
 
     def test_no_audit_when_disabled(self) -> None:
         engine = PrintLayoutEngine()
         doc = engine.transform(self._make_artifact(), include_audit_trail=False)
-        audit = [
-            s for s in doc.sections
-            if s.type == SectionType.AUDIT_APPENDIX
-        ]
+        audit = [s for s in doc.sections if s.type == SectionType.AUDIT_APPENDIX]
         assert len(audit) == 0
 
     def test_metadata(self) -> None:

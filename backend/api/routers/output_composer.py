@@ -37,6 +37,7 @@ def _get_engine() -> RenderEngineService:
     if _engine is None:
         # Ensure plugins are imported (triggers @register_plugin)
         import backend.services.output.plugins  # noqa: F401
+
         _engine = RenderEngineService()
     return _engine
 
@@ -59,9 +60,7 @@ class PluginInfo(BaseModel):
     plugin_key: str
     plugin_name: str
     supported_formats: list[str]
-    config_schema: dict[str, Any] = Field(
-        description="JSON Schema for the plugin's config, usable for dynamic form generation"
-    )
+    config_schema: dict[str, Any] = Field(description="JSON Schema for the plugin's config, usable for dynamic form generation")
 
 
 class CreateRenderRequest(BaseModel):
@@ -266,9 +265,11 @@ async def list_tts_voices(
     """
     if engine == "mimo_tts":
         from backend.services.output.plugins.mimo_tts_renderer import list_mimo_voices
+
         return list_mimo_voices(language=language, gender=gender)
 
     from backend.services.output.plugins.voice_store import VoiceStore
+
     store = VoiceStore()
     return store.list_voices(language=language, gender=gender)
 
@@ -311,11 +312,13 @@ async def search_sessions(q: str = "", limit: int = 20) -> list[dict]:
             if q_lower not in did.lower() and q_lower not in title.lower():
                 continue
 
-        results.append({
-            "session_id": did,
-            "title": title or did,
-            "status": status,
-        })
+        results.append(
+            {
+                "session_id": did,
+                "title": title or did,
+                "status": status,
+            }
+        )
 
         if len(results) >= limit:
             break

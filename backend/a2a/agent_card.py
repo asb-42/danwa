@@ -10,8 +10,7 @@ from __future__ import annotations
 AGENT_CARD: dict = {
     "name": "Danwa Debate Engine",
     "description": (
-        "Multi-agent debate system that analyzes topics from multiple "
-        "perspectives using AI agents (Strategist, Critic, Optimizer, Moderator)."
+        "Multi-agent debate system that analyzes topics from multiple perspectives using AI agents (Strategist, Critic, Optimizer, Moderator)."
     ),
     "url": "",  # Set dynamically from server config
     "version": "2.0.0",
@@ -23,10 +22,7 @@ AGENT_CARD: dict = {
         {
             "id": "debate",
             "name": "Multi-Agent Debate",
-            "description": (
-                "Run a structured multi-agent debate on any topic. "
-                "Returns consensus analysis with multiple perspectives."
-            ),
+            "description": ("Run a structured multi-agent debate on any topic. Returns consensus analysis with multiple perspectives."),
             "tags": ["debate", "analysis", "multi-agent"],
             "examples": [
                 "Analyze the pros and cons of remote work",

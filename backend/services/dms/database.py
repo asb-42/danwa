@@ -142,8 +142,21 @@ class DMSDB:
             (id, project_id, filename, original_filename, file_path, file_type, file_size,
              page_count, word_count, char_count, uploaded_at, ocr_used, metadata_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (doc_id, project_id, filename, original_filename, file_path, file_type, file_size,
-             page_count, word_count, char_count, now, int(ocr_used), metadata_json),
+            (
+                doc_id,
+                project_id,
+                filename,
+                original_filename,
+                file_path,
+                file_type,
+                file_size,
+                page_count,
+                word_count,
+                char_count,
+                now,
+                int(ocr_used),
+                metadata_json,
+            ),
         )
         self.conn.commit()
         return self.get_document(doc_id)  # type: ignore[return-value]
@@ -154,9 +167,7 @@ class DMSDB:
         return dict(row) if row else None
 
     def list_documents(self, project_id: str) -> list[dict]:
-        cursor = self.conn.execute(
-            "SELECT * FROM documents WHERE project_id = ? ORDER BY uploaded_at DESC", (project_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM documents WHERE project_id = ? ORDER BY uploaded_at DESC", (project_id,))
         return [dict(row) for row in cursor.fetchall()]
 
     def delete_document(self, doc_id: str) -> bool:
@@ -196,7 +207,8 @@ class DMSDB:
 
     def list_chunks(self, document_id: str) -> list[dict]:
         cursor = self.conn.execute(
-            "SELECT * FROM document_chunks WHERE document_id = ? ORDER BY chunk_index", (document_id,)
+            "SELECT * FROM document_chunks WHERE document_id = ? ORDER BY chunk_index",
+            (document_id,),
         )
         return [dict(row) for row in cursor.fetchall()]
 
@@ -212,9 +224,7 @@ class DMSDB:
         return {"session_id": session_id, "document_id": document_id, "added_at": now}
 
     def list_rag_context(self, session_id: str) -> list[dict]:
-        cursor = self.conn.execute(
-            "SELECT * FROM rag_context WHERE session_id = ? ORDER BY added_at", (session_id,)
-        )
+        cursor = self.conn.execute("SELECT * FROM rag_context WHERE session_id = ? ORDER BY added_at", (session_id,))
         return [dict(row) for row in cursor.fetchall()]
 
     def remove_rag_context(self, session_id: str, document_id: str) -> bool:

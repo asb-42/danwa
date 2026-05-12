@@ -103,9 +103,7 @@ class AuditService:
             ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_events_by_project(
-        self, project_id: str, limit: int = 100, offset: int = 0
-    ) -> list[dict]:
+    def get_events_by_project(self, project_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
         """Return audit events for a project, ordered by timestamp desc."""
         with self._connect() as conn:
             conn.row_factory = sqlite3.Row

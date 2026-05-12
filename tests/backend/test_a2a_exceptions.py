@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from backend.a2a.exceptions import (
-    A2AConnectionError,
     A2AAgentError,
+    A2AConnectionError,
     A2AError,
     A2AProtocolError,
     A2ATimeoutError,

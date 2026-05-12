@@ -68,9 +68,7 @@ class ProfileRepository:
     # Active Configurations
     # ------------------------------------------------------------------
 
-    def save_active_config(
-        self, config: ActiveConfiguration, project_id: str = _DEFAULT_PROJECT_ID
-    ) -> None:
+    def save_active_config(self, config: ActiveConfiguration, project_id: str = _DEFAULT_PROJECT_ID) -> None:
         """Save or update an active configuration."""
         with self._connect() as conn:
             conn.execute(
@@ -140,21 +138,16 @@ class ProfileRepository:
             )
         return cursor.rowcount > 0
 
-    def list_active_configs(
-        self, project_id: str | None = None
-    ) -> list[ActiveConfiguration]:
+    def list_active_configs(self, project_id: str | None = None) -> list[ActiveConfiguration]:
         """List all active configurations, optionally filtered by project."""
         with self._connect() as conn:
             if project_id:
                 rows = conn.execute(
-                    "SELECT * FROM active_configurations "
-                    "WHERE project_id = ? ORDER BY created_at DESC",
+                    "SELECT * FROM active_configurations WHERE project_id = ? ORDER BY created_at DESC",
                     (project_id,),
                 ).fetchall()
             else:
-                rows = conn.execute(
-                    "SELECT * FROM active_configurations ORDER BY created_at DESC"
-                ).fetchall()
+                rows = conn.execute("SELECT * FROM active_configurations ORDER BY created_at DESC").fetchall()
         return [
             ActiveConfiguration(
                 debate_id=row["debate_id"],

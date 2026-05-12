@@ -62,9 +62,7 @@ class ProjectStore:
                     project = Project(**data)
                     self._cache[project.id] = project
                 except Exception as exc:
-                    logger.warning(
-                        "Failed to load project from %s: %s", json_path, exc
-                    )
+                    logger.warning("Failed to load project from %s: %s", json_path, exc)
             logger.info("Loaded %d projects from %s", len(self._cache), self._base_dir)
 
     # ------------------------------------------------------------------

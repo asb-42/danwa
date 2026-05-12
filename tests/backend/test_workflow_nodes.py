@@ -138,14 +138,10 @@ class TestAgentNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.node_functions.LLMService")
-    async def test_agent_produces_output(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_agent_produces_output(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """agent_node_factory should produce output from LLM call."""
         mock_service = AsyncMock()
-        mock_service.generate = AsyncMock(
-            return_value=AsyncMock(content="Agent response", tokens_out=10, duration_ms=100)
-        )
+        mock_service.generate = AsyncMock(return_value=AsyncMock(content="Agent response", tokens_out=10, duration_ms=100))
         mock_llm_cls.return_value = mock_service
 
         config = {
@@ -173,9 +169,7 @@ class TestAgentNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.node_functions.LLMService")
-    async def test_agent_handles_llm_failure(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_agent_handles_llm_failure(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """agent_node_factory should handle LLM failures gracefully."""
         mock_service = AsyncMock()
         mock_service.generate = AsyncMock(side_effect=Exception("LLM unavailable"))
@@ -203,14 +197,10 @@ class TestAgentNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.node_functions.LLMService")
-    async def test_agent_appends_to_draft(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_agent_appends_to_draft(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """agent_node_factory should append content to current_draft."""
         mock_service = AsyncMock()
-        mock_service.generate = AsyncMock(
-            return_value=AsyncMock(content="New content", tokens_out=5, duration_ms=50)
-        )
+        mock_service.generate = AsyncMock(return_value=AsyncMock(content="New content", tokens_out=5, duration_ms=50))
         mock_llm_cls.return_value = mock_service
 
         config = {
@@ -243,9 +233,7 @@ class TestGateNodeFactory:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    async def test_gate_evaluates_true_condition(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_gate_evaluates_true_condition(self, mock_publish: AsyncMock) -> None:
         """gate_node_factory should evaluate a true condition."""
         node_fn = gate_node_factory("gate-1", "current_round >= 1")
         state = _make_state(current_round=3)
@@ -257,9 +245,7 @@ class TestGateNodeFactory:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    async def test_gate_evaluates_false_condition(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_gate_evaluates_false_condition(self, mock_publish: AsyncMock) -> None:
         """gate_node_factory should evaluate a false condition."""
         node_fn = gate_node_factory("gate-1", "current_round >= 10")
         state = _make_state(current_round=1)
@@ -341,16 +327,10 @@ class TestModeratorNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.node_functions.LLMService")
-    async def test_moderator_produces_consensus(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_moderator_produces_consensus(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """moderator_node_factory should compute and return a consensus score."""
         mock_service = AsyncMock()
-        mock_service.generate = AsyncMock(
-            return_value=AsyncMock(
-                content="Moderator synthesis", tokens_out=15, duration_ms=80
-            )
-        )
+        mock_service.generate = AsyncMock(return_value=AsyncMock(content="Moderator synthesis", tokens_out=15, duration_ms=80))
         mock_llm_cls.return_value = mock_service
 
         config = {
@@ -380,14 +360,10 @@ class TestModeratorNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.node_functions.LLMService")
-    async def test_moderator_publishes_consensus_event(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_moderator_publishes_consensus_event(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """moderator_node_factory should publish a consensus.reached event."""
         mock_service = AsyncMock()
-        mock_service.generate = AsyncMock(
-            return_value=AsyncMock(content="Synthesis", tokens_out=10, duration_ms=50)
-        )
+        mock_service.generate = AsyncMock(return_value=AsyncMock(content="Synthesis", tokens_out=10, duration_ms=50))
         mock_llm_cls.return_value = mock_service
 
         config = {
@@ -430,9 +406,7 @@ class TestCompleteNode:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    async def test_complete_publishes_workflow_complete(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_complete_publishes_workflow_complete(self, mock_publish: AsyncMock) -> None:
         """complete_wf_node should publish workflow.complete event."""
         state = _make_state()
         await complete_wf_node(state)

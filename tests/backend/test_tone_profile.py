@@ -11,9 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-import json
-from datetime import UTC, datetime
-
 import pytest
 from pydantic import ValidationError
 
@@ -25,7 +22,6 @@ from backend.blueprints.workflow_models import (
     WorkflowNode,
 )
 from backend.services.tone_prompt_injector import inject_tone_profile
-
 
 # ---------------------------------------------------------------------------
 # ToneProfile model tests
@@ -206,7 +202,6 @@ class TestInjectsConfigValidation:
 
     def _validate(self, workflow: WorkflowDefinition) -> tuple[list[str], list[str]]:
         """Run validation and return (errors, warnings)."""
-        repo = None  # We don't need a real repo for structural validation
         # Use a mock or skip repo-dependent checks
         from unittest.mock import MagicMock
 
@@ -220,7 +215,11 @@ class TestInjectsConfigValidation:
         """A valid injects_config edge from tone_profile to agent should pass."""
         nodes = [
             {"id": "input-1", "type": "wf-input"},
-            {"id": "tp-1", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-heated"}},
+            {
+                "id": "tp-1",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-heated"},
+            },
             {"id": "strat-1", "type": "wf-strategist", "agent_blueprint_id": "bp-1"},
         ]
         edges = [
@@ -237,7 +236,11 @@ class TestInjectsConfigValidation:
         """injects_config to a non-agent node should be rejected."""
         nodes = [
             {"id": "input-1", "type": "wf-input"},
-            {"id": "tp-1", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-heated"}},
+            {
+                "id": "tp-1",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-heated"},
+            },
         ]
         edges = [
             {"source": "tp-1", "target": "input-1", "type": "injects_config"},
@@ -251,8 +254,16 @@ class TestInjectsConfigValidation:
         """Agent node with multiple injects_config edges should be rejected."""
         nodes = [
             {"id": "input-1", "type": "wf-input"},
-            {"id": "tp-1", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-heated"}},
-            {"id": "tp-2", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-academic"}},
+            {
+                "id": "tp-1",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-heated"},
+            },
+            {
+                "id": "tp-2",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-academic"},
+            },
             {"id": "strat-1", "type": "wf-strategist", "agent_blueprint_id": "bp-1"},
         ]
         edges = [
@@ -284,7 +295,11 @@ class TestInjectsConfigValidation:
         nodes = [
             {"id": "input-1", "type": "wf-input"},
             {"id": "strat-1", "type": "wf-strategist", "agent_blueprint_id": "bp-1"},
-            {"id": "tp-1", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-heated"}},
+            {
+                "id": "tp-1",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-heated"},
+            },
         ]
         edges = [
             {"source": "input-1", "target": "strat-1", "type": "sequential"},
@@ -298,8 +313,16 @@ class TestInjectsConfigValidation:
         """Multiple agents each with their own tone_profile should pass."""
         nodes = [
             {"id": "input-1", "type": "wf-input"},
-            {"id": "tp-1", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-heated"}},
-            {"id": "tp-2", "type": "wf-tone-profile", "config": {"tone_profile_id": "system-academic"}},
+            {
+                "id": "tp-1",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-heated"},
+            },
+            {
+                "id": "tp-2",
+                "type": "wf-tone-profile",
+                "config": {"tone_profile_id": "system-academic"},
+            },
             {"id": "strat-1", "type": "wf-strategist", "agent_blueprint_id": "bp-1"},
             {"id": "crit-1", "type": "wf-critic", "agent_blueprint_id": "bp-2"},
         ]

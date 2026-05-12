@@ -44,6 +44,7 @@ def _resolve_llm_model(llm_profile_id: str, project_id: str) -> str:
         return ""
     try:
         from backend.api.deps import get_blueprint_repository
+
         repo = get_blueprint_repository()
         profile = repo.get_llm_profile(llm_profile_id)
         if profile:
@@ -86,9 +87,7 @@ async def list_debates(
             case_text = req.case.text
             language = getattr(req, "language", "de")
         elif isinstance(req, dict):
-            case_text = (
-                req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
-            )
+            case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
             language = req.get("language", "de")
         else:
             case_text = ""
@@ -100,9 +99,11 @@ async def list_debates(
         debate_title = d.get("title", "")
         if search:
             search_lower = search.lower()
-            if (search_lower not in case_text.lower()
-                    and search_lower not in debate_title.lower()
-                    and search_lower not in d.get("debate_id", "").lower()):
+            if (
+                search_lower not in case_text.lower()
+                and search_lower not in debate_title.lower()
+                and search_lower not in d.get("debate_id", "").lower()
+            ):
                 continue
 
         result = d.get("result")
@@ -179,6 +180,7 @@ async def delete_debate(
     store.delete(debate_id)
 
     from backend.workflow.hitl.api import cleanup_hitl_state
+
     cleanup_hitl_state(debate_id)
 
     logger.info(
@@ -203,13 +205,7 @@ async def get_debate(
         raise HTTPException(status_code=404, detail="Debate not found")
 
     req = debate.get("request", {})
-    max_rounds = (
-        getattr(req, "max_rounds", None)
-        if hasattr(req, "max_rounds")
-        else req.get("max_rounds", 3)
-        if isinstance(req, dict)
-        else 3
-    )
+    max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
 
     if hasattr(req, "case"):
         case_text = req.case.text
@@ -239,8 +235,11 @@ async def get_debate(
     from backend.workflow.hitl.api import (
         get_active_interrupt,
         get_hitl_config,
+    )
+    from backend.workflow.hitl.api import (
         is_paused as hitl_is_paused,
     )
+
     hitl_config = get_hitl_config(debate_id)
     hitl_enabled = hitl_config.get("hitl_enabled", False)
     hitl_mode = hitl_config.get("hitl_mode", "off")
@@ -306,13 +305,7 @@ async def start_debate(
     background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store)
 
     req = debate.get("request", {})
-    max_rounds = (
-        getattr(req, "max_rounds", None)
-        if hasattr(req, "max_rounds")
-        else req.get("max_rounds", 3)
-        if isinstance(req, dict)
-        else 3
-    )
+    max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
 
     if hasattr(req, "case"):
         case_text = req.case.text

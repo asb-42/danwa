@@ -20,7 +20,6 @@ from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -122,8 +121,8 @@ class TestProjectStoreList:
         assert project_store.list_all() == []
 
     def test_list_returns_newest_first(self, project_store):
-        p1 = project_store.create(name="First")
-        p2 = project_store.create(name="Second")
+        project_store.create(name="First")
+        project_store.create(name="Second")
         projects = project_store.list_all()
         assert len(projects) == 2
         # Newest first (p2 created after p1)
@@ -182,7 +181,7 @@ class TestProjectStoreDelete:
         assert not project_dir.exists()
 
     def test_delete_system_project_refused(self, project_store):
-        project = project_store.create(name="System", is_system=True, project_id="sys")
+        project_store.create(name="System", is_system=True, project_id="sys")
         assert project_store.delete("sys") is False
         assert project_store.get("sys") is not None
 
@@ -318,9 +317,7 @@ class TestProjectsAPIUpdate:
         assert response.json()["description"] == "Updated"
 
     def test_update_nonexistent_returns_404(self, client):
-        response = client.put(
-            "/api/v1/projects/nope", json={"name": "X"}
-        )
+        response = client.put("/api/v1/projects/nope", json={"name": "X"})
         assert response.status_code == 404
 
 

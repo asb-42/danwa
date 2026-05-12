@@ -62,9 +62,7 @@ class TestComputeHash:
 
     def test_dict_hash_matches_manual(self, audit: AuditLogger):
         data = {"a": 1}
-        expected = hashlib.sha256(
-            json.dumps(data, sort_keys=True, default=str).encode("utf-8")
-        ).hexdigest()
+        expected = hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode("utf-8")).hexdigest()
         assert audit._compute_hash(data) == expected
 
 
@@ -184,7 +182,6 @@ class TestGetAuditLog:
                 workflow_version=1,
                 node_id=f"n{i}",
             )
-        from backend.models.schemas import AuditLogQuery
         results = audit.get_audit_log("s1")
         assert len(results) == 3
 
@@ -192,6 +189,7 @@ class TestGetAuditLog:
         audit.log_node_execution(session_id="s1", workflow_id="w1", workflow_version=1, node_id="n1")
         audit.log_interjection(session_id="s1", workflow_id="w1", workflow_version=1, actor="user", content="test")
         from backend.models.schemas import AuditLogQuery
+
         results = audit.get_audit_log("s1", AuditLogQuery(event_type="interjection_submitted"))
         assert len(results) == 1
         assert results[0]["event_type"] == "interjection_submitted"
@@ -205,6 +203,7 @@ class TestGetAuditLog:
                 node_id=f"n{i}",
             )
         from backend.models.schemas import AuditLogQuery
+
         results = audit.get_audit_log("s1", AuditLogQuery(limit=2, offset=0))
         assert len(results) == 2
         results2 = audit.get_audit_log("s1", AuditLogQuery(limit=2, offset=2))

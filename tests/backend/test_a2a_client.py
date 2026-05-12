@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 import httpx
+import pytest
 
 from backend.a2a.client import A2AClient
-
 
 # ------------------------------------------------------------------
 # _extract_text_from_result
@@ -15,11 +14,7 @@ from backend.a2a.client import A2AClient
 
 class TestExtractTextFromResult:
     def test_extracts_text_from_artifacts(self):
-        result = {
-            "artifacts": [
-                {"parts": [{"type": "text", "text": "Hello from agent"}]}
-            ]
-        }
+        result = {"artifacts": [{"parts": [{"type": "text", "text": "Hello from agent"}]}]}
         assert A2AClient._extract_text_from_result(result) == "Hello from agent"
 
     def test_returns_none_when_no_artifacts(self):
@@ -27,20 +22,18 @@ class TestExtractTextFromResult:
         assert A2AClient._extract_text_from_result({"artifacts": []}) is None
 
     def test_returns_none_when_no_text_part(self):
-        result = {
-            "artifacts": [
-                {"parts": [{"type": "image", "text": ""}]}
-            ]
-        }
+        result = {"artifacts": [{"parts": [{"type": "image", "text": ""}]}]}
         assert A2AClient._extract_text_from_result(result) is None
 
     def test_returns_first_text_part(self):
         result = {
             "artifacts": [
-                {"parts": [
-                    {"type": "text", "text": "First"},
-                    {"type": "text", "text": "Second"},
-                ]}
+                {
+                    "parts": [
+                        {"type": "text", "text": "First"},
+                        {"type": "text", "text": "Second"},
+                    ]
+                }
             ]
         }
         assert A2AClient._extract_text_from_result(result) == "First"
@@ -48,10 +41,12 @@ class TestExtractTextFromResult:
     def test_skips_empty_text(self):
         result = {
             "artifacts": [
-                {"parts": [
-                    {"type": "text", "text": ""},
-                    {"type": "text", "text": "Real content"},
-                ]}
+                {
+                    "parts": [
+                        {"type": "text", "text": ""},
+                        {"type": "text", "text": "Real content"},
+                    ]
+                }
             ]
         }
         assert A2AClient._extract_text_from_result(result) == "Real content"
@@ -82,9 +77,7 @@ class TestInvokeAgentPrompt:
                 "result": {
                     "id": "task-1",
                     "status": {"state": "completed"},
-                    "artifacts": [
-                        {"parts": [{"type": "text", "text": "Agent response here"}]}
-                    ],
+                    "artifacts": [{"parts": [{"type": "text", "text": "Agent response here"}]}],
                 },
             },
         )
@@ -105,6 +98,7 @@ class TestInvokeAgentPrompt:
         # Verify the request body contains the structured prompt
         request = httpx_mock.get_requests()[0]
         import json
+
         body = json.loads(request.content)
         message_text = body["params"]["message"]["parts"][0]["text"]
 
@@ -141,9 +135,7 @@ class TestInvokeAgentPrompt:
                 "result": {
                     "id": "task-async",
                     "status": {"state": "completed"},
-                    "artifacts": [
-                        {"parts": [{"type": "text", "text": "Polled result"}]}
-                    ],
+                    "artifacts": [{"parts": [{"type": "text", "text": "Polled result"}]}],
                 },
             },
         )
@@ -249,9 +241,7 @@ class TestSendGetTask:
                 "result": {
                     "id": "task-123",
                     "status": {"state": "completed"},
-                    "artifacts": [
-                        {"parts": [{"type": "text", "text": "Done"}]}
-                    ],
+                    "artifacts": [{"parts": [{"type": "text", "text": "Done"}]}],
                 },
             },
         )
@@ -266,13 +256,18 @@ class TestSendGetTask:
     async def test_send_task_sends_jsonrpc_payload(self, httpx_mock):
         httpx_mock.add_response(
             url="http://agent.example.com",
-            json={"jsonrpc": "2.0", "id": 1, "result": {"id": "t1", "status": {"state": "submitted"}}},
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {"id": "t1", "status": {"state": "submitted"}},
+            },
         )
 
         client = A2AClient("http://agent.example.com")
         await client.send_task("Test message", task_id="t1")
 
         import json
+
         request = httpx_mock.get_requests()[0]
         body = json.loads(request.content)
 
@@ -318,9 +313,7 @@ class TestPollForResult:
                 "result": {
                     "id": "task-poll",
                     "status": {"state": "completed"},
-                    "artifacts": [
-                        {"parts": [{"type": "text", "text": "Poll result"}]}
-                    ],
+                    "artifacts": [{"parts": [{"type": "text", "text": "Poll result"}]}],
                 },
             },
         )

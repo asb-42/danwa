@@ -93,15 +93,11 @@ class TestOptimizationProposalsEndpoints:
         assert res.status_code == 404
 
     async def test_approve_nonexistent_proposal(self, client: AsyncClient):
-        res = await client.post(
-            "/api/v1/optimization-proposals/nonexistent/approve"
-        )
+        res = await client.post("/api/v1/optimization-proposals/nonexistent/approve")
         assert res.status_code == 404
 
     async def test_reject_nonexistent_proposal(self, client: AsyncClient):
-        res = await client.post(
-            "/api/v1/optimization-proposals/nonexistent/reject"
-        )
+        res = await client.post("/api/v1/optimization-proposals/nonexistent/reject")
         assert res.status_code == 404
 
     async def test_reflect_nonexistent_workflow(self, client: AsyncClient):

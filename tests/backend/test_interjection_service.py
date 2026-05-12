@@ -5,8 +5,6 @@ Covers submit/consume roundtrips, get_pending, clear, and multi-session isolatio
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from backend.workflow.interjection import Interjection, InterjectionService
@@ -181,9 +179,7 @@ class TestMultiSession:
         assert results_2[0]["content"] == "For session 2"
 
     @pytest.mark.asyncio
-    async def test_clear_one_session_preserves_other(
-        self, service: InterjectionService
-    ) -> None:
+    async def test_clear_one_session_preserves_other(self, service: InterjectionService) -> None:
         """Clearing one session should not affect another."""
         await service.submit("sess-1", "A")
         await service.submit("sess-2", "B")

@@ -75,9 +75,7 @@ class WorkflowNode(BaseModel):
     def validate_agent_blueprint_id(self) -> WorkflowNode:
         """Agent-type nodes must have an agent_blueprint_id."""
         if self.type in AGENT_NODE_TYPES and not self.agent_blueprint_id:
-            raise ValueError(
-                f"Node type '{self.type}' requires an agent_blueprint_id"
-            )
+            raise ValueError(f"Node type '{self.type}' requires an agent_blueprint_id")
         return self
 
     @model_validator(mode="after")
@@ -87,13 +85,9 @@ class WorkflowNode(BaseModel):
             has_catalog = bool(self.config.get("tone_profile_id"))
             has_inline = "inline_profile" in self.config and self.config["inline_profile"] is not None
             if not has_catalog and not has_inline:
-                raise ValueError(
-                    "Tone-profile node requires either 'tone_profile_id' or 'inline_profile' in config"
-                )
+                raise ValueError("Tone-profile node requires either 'tone_profile_id' or 'inline_profile' in config")
             if has_catalog and has_inline:
-                raise ValueError(
-                    "Tone-profile node must have exactly one of 'tone_profile_id' or 'inline_profile', not both"
-                )
+                raise ValueError("Tone-profile node must have exactly one of 'tone_profile_id' or 'inline_profile', not both")
         return self
 
 
@@ -232,10 +226,7 @@ class WorkflowDefinition(BaseModel):
     # --- Input Composer (Phase H.5) ---
     input_config: dict | None = Field(
         default=None,
-        description=(
-            "Input Composer configuration for this workflow. "
-            "Keys: default_input_plugin, stt_profile_id, a2a_inbound_enabled"
-        ),
+        description=("Input Composer configuration for this workflow. Keys: default_input_plugin, stt_profile_id, a2a_inbound_enabled"),
     )
 
     # Metadata
@@ -260,9 +251,7 @@ class WorkflowDefinition(BaseModel):
             nodes = info.data.get("nodes", [])
             node_ids = {n.id for n in nodes} if nodes else set()
             if node_ids and v not in node_ids:
-                raise ValueError(
-                    f"entry_point '{v}' does not reference any node in the workflow"
-                )
+                raise ValueError(f"entry_point '{v}' does not reference any node in the workflow")
         return v
 
 
@@ -367,11 +356,9 @@ class WorkflowTemplate(BaseModel):
         Raises ValueError if required placeholders are missing.
         """
         # Check for missing required placeholders
-        defined_keys = {p.key for p in self.placeholders}
-        used_keys = self.extract_placeholder_keys()
-        required_keys = {
-            p.key for p in self.placeholders if p.default is None
-        }
+        {p.key for p in self.placeholders}
+        self.extract_placeholder_keys()
+        required_keys = {p.key for p in self.placeholders if p.default is None}
         missing = required_keys - set(values.keys())
         if missing:
             raise ValueError(f"Missing placeholder values: {sorted(missing)}")
@@ -389,5 +376,3 @@ class WorkflowTemplate(BaseModel):
         for key, val in merged.items():
             raw = raw.replace("{{" + key + "}}", str(val))
         return json.loads(raw)
-
-

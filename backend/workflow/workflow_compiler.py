@@ -158,9 +158,7 @@ class WorkflowCompiler:
 
         return result
 
-    def _resolve_agent_config(
-        self, node: WorkflowNode, errors: list[str]
-    ) -> ResolvedAgentConfig | None:
+    def _resolve_agent_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:
         """Resolve an agent node's blueprint, LLM profile, role definition, and role type."""
         blueprint_id = node.agent_blueprint_id
         if not blueprint_id:
@@ -174,16 +172,12 @@ class WorkflowCompiler:
 
         llm_profile = self._repo.get_llm_profile(blueprint.llm_profile_id)
         if llm_profile is None:
-            errors.append(
-                f"LLMProfile '{blueprint.llm_profile_id}' not found for blueprint '{blueprint_id}'"
-            )
+            errors.append(f"LLMProfile '{blueprint.llm_profile_id}' not found for blueprint '{blueprint_id}'")
             return None
 
         role_def = self._repo.get_role_definition(blueprint.role_definition_id)
         if role_def is None:
-            errors.append(
-                f"RoleDefinition '{blueprint.role_definition_id}' not found for blueprint '{blueprint_id}'"
-            )
+            errors.append(f"RoleDefinition '{blueprint.role_definition_id}' not found for blueprint '{blueprint_id}'")
             return None
 
         # Resolve RoleType chain: RoleDefinition.role_type_id → RoleType
@@ -202,7 +196,8 @@ class WorkflowCompiler:
         else:
             logger.warning(
                 "RoleType '%s' not found for RoleDefinition '%s', using defaults",
-                role_def.role_type_id, role_def.id,
+                role_def.role_type_id,
+                role_def.id,
             )
 
         return ResolvedAgentConfig(
@@ -394,9 +389,10 @@ class WorkflowCompiler:
                 # Multiple targets without gate — use first as primary
                 graph.add_edge(node.id, non_feedback[0].target)
                 logger.warning(
-                    "Node '%s' has %d non-feedback outgoing edges but is not a gate. "
-                    "Using first target '%s'.",
-                    node.id, len(non_feedback), non_feedback[0].target,
+                    "Node '%s' has %d non-feedback outgoing edges but is not a gate. Using first target '%s'.",
+                    node.id,
+                    len(non_feedback),
+                    non_feedback[0].target,
                 )
 
         # --- Ensure terminal nodes connect to END ---
@@ -409,7 +405,9 @@ class WorkflowCompiler:
 
         logger.info(
             "Compiled workflow graph: %d nodes, %d edges, entry='%s'",
-            len(workflow.nodes), len(workflow.edges), entry_point,
+            len(workflow.nodes),
+            len(workflow.edges),
+            entry_point,
         )
 
         return graph.compile()

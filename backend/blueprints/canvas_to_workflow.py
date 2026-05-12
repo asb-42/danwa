@@ -108,32 +108,25 @@ class CanvasToWorkflowConverter:
         canvas_edges: list[CanvasLayoutEdge] = layout_data.edges
 
         # Separate workflow nodes from asset nodes
-        wf_canvas_nodes = [
-            n for n in canvas_nodes
-            if n.type in CANVAS_TO_WF_NODE_TYPE
-        ]
-        asset_canvas_nodes = [
-            n for n in canvas_nodes
-            if n.type in ASSET_NODE_TYPES
-        ]
+        wf_canvas_nodes = [n for n in canvas_nodes if n.type in CANVAS_TO_WF_NODE_TYPE]
+        asset_canvas_nodes = [n for n in canvas_nodes if n.type in ASSET_NODE_TYPES]
 
         if not wf_canvas_nodes:
             raise ConversionError(
-                "Canvas has no workflow nodes. Add at least one workflow node "
-                "(Input, Strategist, Critic, etc.) before converting to a workflow.",
+                "Canvas has no workflow nodes. Add at least one workflow node (Input, Strategist, Critic, etc.) before converting to a workflow.",
             )
 
         # Build a set of workflow node IDs for validation
         wf_node_ids = {n.id for n in wf_canvas_nodes}
 
         # Build a map of asset node ID → asset data for resolving blueprint references
-        asset_node_map: dict[str, CanvasLayoutNode] = {
-            n.id: n for n in asset_canvas_nodes
-        }
+        asset_node_map: dict[str, CanvasLayoutNode] = {n.id: n for n in asset_canvas_nodes}
 
         # Convert canvas nodes to WorkflowNode objects
         workflow_nodes, agent_blueprint_map = self._convert_nodes(
-            wf_canvas_nodes, asset_node_map, canvas_edges,
+            wf_canvas_nodes,
+            asset_node_map,
+            canvas_edges,
         )
 
         # Convert canvas edges to WorkflowEdge objects
@@ -144,7 +137,9 @@ class CanvasToWorkflowConverter:
 
         # Build termination conditions
         termination_conditions = self._build_termination_conditions(
-            workflow_nodes, max_rounds, consensus_threshold,
+            workflow_nodes,
+            max_rounds,
+            consensus_threshold,
         )
 
         # Build node_blueprint_map for legacy compatibility
@@ -172,10 +167,14 @@ class CanvasToWorkflowConverter:
         )
 
         logger.info(
-            "Converted canvas layout '%s' (%s) to workflow '%s' (%s): "
-            "%d nodes, %d edges, entry_point=%s",
-            layout.name, layout.id, wf.name, wf.id,
-            len(wf.nodes), len(wf.edges), wf.entry_point,
+            "Converted canvas layout '%s' (%s) to workflow '%s' (%s): %d nodes, %d edges, entry_point=%s",
+            layout.name,
+            layout.id,
+            wf.name,
+            wf.id,
+            len(wf.nodes),
+            len(wf.edges),
+            wf.entry_point,
         )
 
         return wf
@@ -262,7 +261,9 @@ class CanvasToWorkflowConverter:
             except Exception as exc:
                 logger.warning(
                     "Skipping canvas node '%s' (type=%s): %s",
-                    node_id, node_type, exc,
+                    node_id,
+                    node_type,
+                    exc,
                 )
 
         return nodes, wf_to_blueprint
@@ -304,7 +305,10 @@ class CanvasToWorkflowConverter:
             except Exception as exc:
                 logger.warning(
                     "Skipping canvas edge '%s' (%s → %s): %s",
-                    ce.id, ce.source, ce.target, exc,
+                    ce.id,
+                    ce.source,
+                    ce.target,
+                    exc,
                 )
 
         return edges

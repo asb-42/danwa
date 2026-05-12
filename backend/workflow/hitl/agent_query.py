@@ -92,12 +92,14 @@ def analyze_for_query(
     for pattern in _CLARIFICATION_PATTERNS:
         match = pattern.search(agent_output)
         if match:
-            detections.append({
-                "type": "explicit_marker",
-                "severity": "high",
-                "matched": match.group(0)[:100],
-                "confidence_impact": 0.6,
-            })
+            detections.append(
+                {
+                    "type": "explicit_marker",
+                    "severity": "high",
+                    "matched": match.group(0)[:100],
+                    "confidence_impact": 0.6,
+                }
+            )
             min_confidence = min(min_confidence, 0.2)
 
     # --- 2. Uncertainty markers ---
@@ -107,73 +109,87 @@ def analyze_for_query(
             uncertainty_count += 1
 
     if uncertainty_count >= 2:
-        detections.append({
-            "type": "uncertainty",
-            "severity": "medium",
-            "count": uncertainty_count,
-            "confidence_impact": 0.3,
-        })
+        detections.append(
+            {
+                "type": "uncertainty",
+                "severity": "medium",
+                "count": uncertainty_count,
+                "confidence_impact": 0.3,
+            }
+        )
         min_confidence = min(min_confidence, 0.5)
     elif uncertainty_count == 1:
-        detections.append({
-            "type": "uncertainty",
-            "severity": "low",
-            "count": uncertainty_count,
-            "confidence_impact": 0.15,
-        })
+        detections.append(
+            {
+                "type": "uncertainty",
+                "severity": "low",
+                "count": uncertainty_count,
+                "confidence_impact": 0.15,
+            }
+        )
         min_confidence = min(min_confidence, 0.7)
 
     # --- 3. Question density (agent asking many questions) ---
     question_marks = agent_output.count("?")
     if question_marks >= 3:
-        detections.append({
-            "type": "high_question_density",
-            "severity": "medium",
-            "count": question_marks,
-            "confidence_impact": 0.25,
-        })
+        detections.append(
+            {
+                "type": "high_question_density",
+                "severity": "medium",
+                "count": question_marks,
+                "confidence_impact": 0.25,
+            }
+        )
         min_confidence = min(min_confidence, 0.6)
 
     # --- 4. Loop detection (repeated content across rounds) ---
     if previous_outputs and len(previous_outputs) >= 2:
         loop_score = _detect_loop(agent_output, previous_outputs)
         if loop_score > 0.7:
-            detections.append({
-                "type": "loop_detected",
-                "severity": "high",
-                "similarity": round(loop_score, 3),
-                "confidence_impact": 0.4,
-            })
+            detections.append(
+                {
+                    "type": "loop_detected",
+                    "severity": "high",
+                    "similarity": round(loop_score, 3),
+                    "confidence_impact": 0.4,
+                }
+            )
             min_confidence = min(min_confidence, 0.3)
         elif loop_score > 0.5:
-            detections.append({
-                "type": "repetition",
-                "severity": "medium",
-                "similarity": round(loop_score, 3),
-                "confidence_impact": 0.2,
-            })
+            detections.append(
+                {
+                    "type": "repetition",
+                    "severity": "medium",
+                    "similarity": round(loop_score, 3),
+                    "confidence_impact": 0.2,
+                }
+            )
             min_confidence = min(min_confidence, 0.5)
 
     # --- 5. Very short output (agent produced almost nothing) ---
     word_count = len(agent_output.split())
     if word_count < 20:
-        detections.append({
-            "type": "minimal_output",
-            "severity": "medium",
-            "word_count": word_count,
-            "confidence_impact": 0.3,
-        })
+        detections.append(
+            {
+                "type": "minimal_output",
+                "severity": "medium",
+                "word_count": word_count,
+                "confidence_impact": 0.3,
+            }
+        )
         min_confidence = min(min_confidence, 0.4)
 
     # --- 6. Late-round uncertainty (more likely to query in later rounds) ---
     if current_round >= max_rounds - 1 and min_confidence < 0.7:
-        detections.append({
-            "type": "late_round_uncertainty",
-            "severity": "low",
-            "round": current_round,
-            "max_rounds": max_rounds,
-            "confidence_impact": 0.1,
-        })
+        detections.append(
+            {
+                "type": "late_round_uncertainty",
+                "severity": "low",
+                "round": current_round,
+                "max_rounds": max_rounds,
+                "confidence_impact": 0.1,
+            }
+        )
         min_confidence = min(min_confidence, 0.6)
 
     # --- Decision ---
@@ -241,7 +257,7 @@ def _extract_question(agent_output: str) -> str:
         if match:
             # Get surrounding context (next sentence)
             start = match.end()
-            remaining = agent_output[start:start + 200].strip()
+            remaining = agent_output[start : start + 200].strip()
             if remaining:
                 next_sentence = re.split(r"[.!?\n]+", remaining)[0].strip()
                 if next_sentence:

@@ -10,9 +10,9 @@ from backend.models.artifact import (
 )
 from backend.services.output.plugins.tts_plugin import (
     AudioFormat,
+    TTSEngine,
     TTSOutputPlugin,
     TTSPluginConfig,
-    TTSEngine,
 )
 from backend.services.output.plugins.tts_script_engine import TTSScriptEngine
 
@@ -45,19 +45,26 @@ class TestTTSScriptEngine:
             topic="Test",
             transcript=[
                 Turn(
-                    id="t1", round=1, node_id="n1",
-                    agent_name="Alice", role_type="strategist",
+                    id="t1",
+                    round=1,
+                    node_id="n1",
+                    agent_name="Alice",
+                    role_type="strategist",
                     content="Hello world",
                 ),
                 Turn(
-                    id="t2", round=1, node_id="n2",
-                    agent_name="Bob", role_type="critic",
+                    id="t2",
+                    round=1,
+                    node_id="n2",
+                    agent_name="Bob",
+                    role_type="critic",
                     content="I disagree",
                 ),
             ],
             interjections=[
                 Injection(
-                    id="ij1", source="user",
+                    id="ij1",
+                    source="user",
                     target_node_id="n1",
                     content="Extra info",
                 ),

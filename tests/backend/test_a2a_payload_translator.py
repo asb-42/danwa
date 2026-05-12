@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from backend.a2a.payload_translator import translate_from_a2a, translate_to_a2a
 
 
@@ -40,11 +38,7 @@ class TestTranslateToA2A:
 
 class TestTranslateFromA2A:
     def test_from_artifacts(self):
-        result = {
-            "artifacts": [
-                {"parts": [{"type": "text", "text": "Hello world"}]}
-            ]
-        }
+        result = {"artifacts": [{"parts": [{"type": "text", "text": "Hello world"}]}]}
         translated = translate_from_a2a(result)
         assert translated["content"] == "Hello world"
         assert translated["tokens_out"] > 0

@@ -21,6 +21,7 @@ def db_path(tmp_path: Path) -> Path:
 @pytest.fixture
 def job_store(db_path: Path) -> InputJobStore:
     from backend.blueprints.migrations import run_migrations
+
     run_migrations(db_path)
     return InputJobStore(db_path)
 
@@ -28,6 +29,7 @@ def job_store(db_path: Path) -> InputJobStore:
 @pytest.fixture
 def input_store(db_path: Path) -> InputStore:
     from backend.blueprints.migrations import run_migrations
+
     run_migrations(db_path)
     return InputStore(db_path)
 
@@ -36,6 +38,7 @@ def input_store(db_path: Path) -> InputStore:
 def _ensure_plugins():
     """Ensure plugins are registered (idempotent import)."""
     import backend.services.input.plugins  # noqa: F401
+
     yield
 
 
@@ -145,27 +148,17 @@ class TestInputComposerService:
         return InputComposerService(job_store=job_store)
 
     async def test_submit_standard_text(self, engine: InputComposerService) -> None:
-        job = await engine.submit_input(
-            "standard_text", {}, {"topic": "Test debate"}
-        )
+        job = await engine.submit_input("standard_text", {}, {"topic": "Test debate"})
         assert job.status == InputJobStatus.COMPLETED
         assert job.processed_input is not None
         assert job.processed_input.topic == "Test debate"
 
-    async def test_submit_stt_creates_processing_job(
-        self, engine: InputComposerService
-    ) -> None:
-        job = await engine.submit_input(
-            "stt", {"llm_profile_id": "whisper-1"}, {}
-        )
+    async def test_submit_stt_creates_processing_job(self, engine: InputComposerService) -> None:
+        job = await engine.submit_input("stt", {"llm_profile_id": "whisper-1"}, {})
         assert job.status == InputJobStatus.PROCESSING
 
-    async def test_submit_a2a_with_approval(
-        self, engine: InputComposerService
-    ) -> None:
-        job = await engine.submit_input(
-            "a2a_inbound", {"require_approval": True}, {"topic": "From agent"}
-        )
+    async def test_submit_a2a_with_approval(self, engine: InputComposerService) -> None:
+        job = await engine.submit_input("a2a_inbound", {"require_approval": True}, {"topic": "From agent"})
         assert job.status == InputJobStatus.PENDING_APPROVAL
 
     async def test_submit_unknown_plugin(self, engine: InputComposerService) -> None:
@@ -173,26 +166,20 @@ class TestInputComposerService:
             await engine.submit_input("nonexistent", {}, {})
 
     async def test_approve_a2a(self, engine: InputComposerService) -> None:
-        job = await engine.submit_input(
-            "a2a_inbound", {"require_approval": True}, {}
-        )
+        job = await engine.submit_input("a2a_inbound", {"require_approval": True}, {})
         assert job.status == InputJobStatus.PENDING_APPROVAL
         updated = await engine.approve_a2a(job.id)
         assert updated is not None
         assert updated.status == InputJobStatus.PROCESSING
 
     async def test_reject_a2a(self, engine: InputComposerService) -> None:
-        job = await engine.submit_input(
-            "a2a_inbound", {"require_approval": True}, {}
-        )
+        job = await engine.submit_input("a2a_inbound", {"require_approval": True}, {})
         updated = await engine.reject_a2a(job.id)
         assert updated is not None
         assert updated.status == InputJobStatus.FAILED
 
     async def test_finalize_input(self, engine: InputComposerService) -> None:
-        job = await engine.submit_input(
-            "stt", {"llm_profile_id": "whisper-1"}, {}
-        )
+        job = await engine.submit_input("stt", {"llm_profile_id": "whisper-1"}, {})
         debate_input = DebateInput(
             source_plugin_key="stt",
             topic="Transcribed text",

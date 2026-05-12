@@ -11,7 +11,6 @@ from backend.workflow.debate_graph import (
     should_continue_agents_or_a2a,
 )
 
-
 # ------------------------------------------------------------------
 # A2AAgentConfig schema
 # ------------------------------------------------------------------
@@ -171,9 +170,7 @@ class TestRunA2aAgentNode:
                 "result": {
                     "id": "t1",
                     "status": {"state": "completed"},
-                    "artifacts": [
-                        {"parts": [{"type": "text", "text": "External analysis"}]}
-                    ],
+                    "artifacts": [{"parts": [{"type": "text", "text": "External analysis"}]}],
                 },
             },
         )

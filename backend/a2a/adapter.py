@@ -170,7 +170,7 @@ class A2AAdapter:
         if previous:
             parts.append("\n## Previous Contributions")
             for i, prev in enumerate(previous):
-                prev_role = prev.get("role", f"Agent {i+1}")
+                prev_role = prev.get("role", f"Agent {i + 1}")
                 prev_content = prev.get("content", "")
                 parts.append(f"\n### {prev_role}\n{prev_content}")
 

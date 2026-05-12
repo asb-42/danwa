@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import re
-import uuid
 from datetime import UTC, datetime
 
 from backend.api.events import publish_async
@@ -54,10 +53,7 @@ def mark_cancelled(debate_id: str) -> None:
 
 def get_oob_for_debate(debate_id: str) -> list[dict]:
     """Get all pending OOB inputs for a debate (used by workflow nodes)."""
-    return [
-        oob for oob in _oob_queues.get(debate_id, [])
-        if oob["status"] == "pending"
-    ]
+    return [oob for oob in _oob_queues.get(debate_id, []) if oob["status"] == "pending"]
 
 
 def consume_oob(debate_id: str, oob_ids: list[str]) -> None:
@@ -99,6 +95,7 @@ def build_rag_preview(project_id: str, document_ids: list[str]) -> str:
         return ""
     try:
         from backend.services.dms.service import get_dms_for_project
+
         dms = get_dms_for_project(project_id)
         chunks = []
         for doc_id in document_ids:
@@ -133,19 +130,12 @@ def extract_request_fields(req: object | dict) -> dict:
         a2a_agents_raw = getattr(req, "a2a_agents", [])
         raw_search_mode = getattr(req, "search_mode", None)
         if raw_search_mode is not None:
-            search_mode = (
-                raw_search_mode.value
-                if hasattr(raw_search_mode, "value")
-                else str(raw_search_mode)
-            )
+            search_mode = raw_search_mode.value if hasattr(raw_search_mode, "value") else str(raw_search_mode)
         elif enable_fact_check:
             search_mode = "required"
         else:
             search_mode = "off"
-        agent_profile_list = [
-            {"role": a.role.value, "llm_profile": a.llm_profile, "temperature": a.temperature}
-            for a in req.agent_profile
-        ]
+        agent_profile_list = [{"role": a.role.value, "llm_profile": a.llm_profile, "temperature": a.temperature} for a in req.agent_profile]
     else:
         case_text = req.get("case", {}).get("text", "")
         max_rounds = req.get("max_rounds", 3)
@@ -306,9 +296,7 @@ def resolve_rag_context(
 # ---------------------------------------------------------------------------
 
 
-async def generate_debate_title(
-    case_text: str, llm_profile_id: str, language: str, project_id: str | None = None
-) -> str:
+async def generate_debate_title(case_text: str, llm_profile_id: str, language: str, project_id: str | None = None) -> str:
     """Generate a concise debate title (60-150 chars) from the case description using LLM."""
     from backend.services.llm_service import LLMService
     from backend.services.profile_service import ProfileService
@@ -373,8 +361,8 @@ async def generate_debate_title(
             r"^(?:Mein Titelvorschlag[:\s]*|Vorgeschlagener Titel[:\s]*|Passender Titel[:\s]*)",
         ]
         for pattern in verbose_prefixes:
-            title = re.sub(pattern, '', title, count=1, flags=re.IGNORECASE).strip()
-        title = title.strip('"\'\u201e\u201c\u201d\u2018\u2019`-\u2013:.;, ')
+            title = re.sub(pattern, "", title, count=1, flags=re.IGNORECASE).strip()
+        title = title.strip("\"'\u201e\u201c\u201d\u2018\u2019`-\u2013:.;, ")
 
         # --- Step 2: Detect prompt reflection / meta-commentary ---
         # If the LLM returned its thinking instead of a title, the output
@@ -396,9 +384,9 @@ async def generate_debate_title(
         if is_reflection or len(title) > 200:
             # LLM returned meta-commentary - use case text as fallback
             logger.warning(
-                "Title generation returned prompt reflection (%d chars, reflection=%s), "
-                "using case text fallback",
-                len(title), is_reflection,
+                "Title generation returned prompt reflection (%d chars, reflection=%s), using case text fallback",
+                len(title),
+                is_reflection,
             )
             fallback = case_text[:120].strip()
             if len(fallback) > 150:
@@ -428,9 +416,7 @@ async def generate_debate_title(
 # ---------------------------------------------------------------------------
 
 
-async def run_debate_workflow(
-    debate_id: str, project_id: str, audit: AuditService, store: DebateStore
-) -> None:
+async def run_debate_workflow(debate_id: str, project_id: str, audit: AuditService, store: DebateStore) -> None:
     """Run the LangGraph workflow for a debate (called as background task)."""
     debate = store.get(debate_id)
     if not debate:
@@ -457,9 +443,7 @@ async def run_debate_workflow(
         {"type": "title_generating", "message": "Generating debate title..."},
     )
 
-    generated_title = await generate_debate_title(
-        fields["case_text"], fields["llm_profile_id"], fields["language"], project_id
-    )
+    generated_title = await generate_debate_title(fields["case_text"], fields["llm_profile_id"], fields["language"], project_id)
 
     store.update(debate_id, title=generated_title)
 
@@ -531,14 +515,17 @@ async def run_debate_workflow(
     hitl_enabled = initial_state.get("hitl_enabled", False)
     if a2a_enabled:
         from backend.workflow.debate_graph import a2a_debate_graph
+
         graph = a2a_debate_graph
         logger.info("Using A2A-aware graph for debate %s", debate_id)
     elif hitl_enabled:
         from backend.workflow.hitl.graph import hitl_debate_graph
+
         graph = hitl_debate_graph
         logger.info("Using HITL-aware graph for debate %s", debate_id)
     else:
         from backend.api.deps import get_debate_graph
+
         graph = get_debate_graph()
 
     try:
@@ -654,6 +641,7 @@ async def run_debate_workflow(
     clear_cancel(debate_id)
 
     from backend.workflow.hitl.api import cleanup_hitl_state
+
     cleanup_hitl_state(debate_id)
 
     logger.info(

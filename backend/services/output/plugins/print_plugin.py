@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from backend.models.artifact import DebateArtifact
 from backend.services.output.base import OutputPlugin
 from backend.services.output.plugins.print_layout_engine import PrintLayoutEngine
+from backend.services.output.plugins.print_models import PrintDocument
 from backend.services.output.registry import register_plugin
 
 logger = logging.getLogger(__name__)
@@ -111,16 +112,16 @@ class PrintOutputPlugin(OutputPlugin):
 
         # 3. Render HTML via Jinja2 (needed for PDF, DOCX, ODT)
         template_name = f"{config.template_name.value}.html"
-        html = await asyncio.to_thread(
-            self._render_html, template_name, doc.model_dump(), i18n, config
-        )
+        html = await asyncio.to_thread(self._render_html, template_name, doc.model_dump(), i18n, config)
 
         # 4. Generate output files based on primary_format
         output_files: list[Path] = []
         fmt = config.primary_format
         logger.debug(
             "PrintOutputPlugin rendering format=%s (type=%s) for job %s",
-            fmt.value, type(fmt).__name__, job_id,
+            fmt.value,
+            type(fmt).__name__,
+            job_id,
         )
 
         if fmt in (PrintFormat.PDF, PrintFormat.ALL):
@@ -140,9 +141,7 @@ class PrintOutputPlugin(OutputPlugin):
 
         if fmt in (PrintFormat.MD, PrintFormat.ALL):
             md_path = job_dir / "debate.md"
-            md_content = await asyncio.to_thread(
-                self._generate_md, doc, i18n, config
-            )
+            md_content = await asyncio.to_thread(self._generate_md, doc, i18n, config)
             md_path.write_text(md_content, encoding="utf-8")
             output_files.append(md_path)
 
@@ -252,9 +251,7 @@ class PrintOutputPlugin(OutputPlugin):
         try:
             import pypandoc
 
-            pypandoc.convert_text(
-                html, "odt", format="html", outputfile=str(output_path)
-            )
+            pypandoc.convert_text(html, "odt", format="html", outputfile=str(output_path))
             logger.info("ODT generated via pypandoc: %s", output_path)
         except ImportError:
             logger.warning("pypandoc not available, falling back to odfpy")
@@ -267,7 +264,7 @@ class PrintOutputPlugin(OutputPlugin):
             import re
 
             from odf.opendocument import OpenDocumentText
-            from odf.text import H, P
+            from odf.text import P
 
             doc = OpenDocumentText()
             text = re.sub(r"<[^>]+>", " ", html)
@@ -284,9 +281,9 @@ class PrintOutputPlugin(OutputPlugin):
 
     @staticmethod
     def _generate_md(
-        doc: "PrintDocument",
+        doc: PrintDocument,
         i18n: dict,
-        config: "PrintPluginConfig",
+        config: PrintPluginConfig,
     ) -> str:
         """Generate Markdown from a PrintDocument.
 
@@ -294,11 +291,8 @@ class PrintOutputPlugin(OutputPlugin):
         further processing or archival.
         """
         import re
-        from backend.services.output.plugins.print_models import (
-            PrintDocument as _PD,
-        )
 
-        assert isinstance(doc, _PD)
+        assert isinstance(doc, PrintDocument)
         lines: list[str] = []
 
         # Title
@@ -308,22 +302,13 @@ class PrintOutputPlugin(OutputPlugin):
         # Metadata
         meta_parts: list[str] = []
         if doc.metadata.workflow_name:
-            meta_parts.append(
-                f"**{i18n.get('workflow_label', 'Workflow')}:** {doc.metadata.workflow_name}"
-            )
+            meta_parts.append(f"**{i18n.get('workflow_label', 'Workflow')}:** {doc.metadata.workflow_name}")
         if doc.metadata.participants:
-            meta_parts.append(
-                f"**{i18n.get('participants_label', 'Participants')}:** "
-                + ", ".join(doc.metadata.participants)
-            )
+            meta_parts.append(f"**{i18n.get('participants_label', 'Participants')}:** " + ", ".join(doc.metadata.participants))
         if doc.metadata.duration:
-            meta_parts.append(
-                f"**{i18n.get('duration_label', 'Duration')}:** {doc.metadata.duration}"
-            )
+            meta_parts.append(f"**{i18n.get('duration_label', 'Duration')}:** {doc.metadata.duration}")
         if doc.metadata.total_tokens:
-            meta_parts.append(
-                f"**{i18n.get('tokens_label', 'Tokens')}:** {doc.metadata.total_tokens:,}"
-            )
+            meta_parts.append(f"**{i18n.get('tokens_label', 'Tokens')}:** {doc.metadata.total_tokens:,}")
         if meta_parts:
             lines.append(" | ".join(meta_parts))
             lines.append("")
@@ -332,9 +317,7 @@ class PrintOutputPlugin(OutputPlugin):
 
         # Table of Contents
         if doc.toc:
-            lines.append(
-                f"## {i18n.get('toc_label', 'Table of Contents')}"
-            )
+            lines.append(f"## {i18n.get('toc_label', 'Table of Contents')}")
             lines.append("")
             for entry in doc.toc:
                 indent = "  " * (entry.level - 1)
@@ -350,21 +333,11 @@ class PrintOutputPlugin(OutputPlugin):
             plain_content = re.sub(r"\n{3,}", "\n\n", plain_content).strip()
 
             if section.type.value == "turn":
-                round_str = (
-                    f" ({i18n.get('round_label', 'Round')} {section.round})"
-                    if section.round is not None
-                    else ""
-                )
-                lines.append(
-                    f"## {section.agent_name} — "
-                    f"{i18n.get('turn_label', 'Turn')}{round_str}"
-                )
+                round_str = f" ({i18n.get('round_label', 'Round')} {section.round})" if section.round is not None else ""
+                lines.append(f"## {section.agent_name} — {i18n.get('turn_label', 'Turn')}{round_str}")
                 lines.append("")
                 if section.timestamp:
-                    lines.append(
-                        f"*{i18n.get('timestamp_label', 'Timestamp')}: "
-                        f"{section.timestamp}*"
-                    )
+                    lines.append(f"*{i18n.get('timestamp_label', 'Timestamp')}: {section.timestamp}*")
                     lines.append("")
                 lines.append(plain_content)
                 lines.append("")
@@ -377,34 +350,25 @@ class PrintOutputPlugin(OutputPlugin):
                     lines.append("")
 
             elif section.type.value == "minority_callout":
-                lines.append(
-                    f"### ⚠ {i18n.get('minority_vote_label', 'Minority Vote')}: "
-                    f"{section.agent_name}"
-                )
+                lines.append(f"### ⚠ {i18n.get('minority_vote_label', 'Minority Vote')}: {section.agent_name}")
                 lines.append("")
                 lines.append(plain_content)
                 lines.append("")
 
             elif section.type.value == "user_query_block":
-                lines.append(
-                    f"### ❓ {i18n.get('user_query_label', 'User Question')}"
-                )
+                lines.append(f"### ❓ {i18n.get('user_query_label', 'User Question')}")
                 lines.append("")
                 lines.append(plain_content)
                 lines.append("")
 
             elif section.type.value == "consensus_summary":
-                lines.append(
-                    f"## {i18n.get('consensus_label', 'Consensus')}"
-                )
+                lines.append(f"## {i18n.get('consensus_label', 'Consensus')}")
                 lines.append("")
                 lines.append(plain_content)
                 lines.append("")
 
             elif section.type.value == "audit_appendix":
-                lines.append(
-                    f"## {i18n.get('audit_trail_label', 'Audit Trail')}"
-                )
+                lines.append(f"## {i18n.get('audit_trail_label', 'Audit Trail')}")
                 lines.append("")
                 # Parse the pipe-delimited content into a Markdown table
                 audit_lines = section.content.strip().split("\n")
@@ -412,18 +376,13 @@ class PrintOutputPlugin(OutputPlugin):
                     parts = [p.strip() for p in aline.split(" | ")]
                     if i == 0:
                         lines.append("| " + " | ".join(parts) + " |")
-                        lines.append(
-                            "| " + " | ".join(["---"] * len(parts)) + " |"
-                        )
+                        lines.append("| " + " | ".join(["---"] * len(parts)) + " |")
                     else:
                         lines.append("| " + " | ".join(parts) + " |")
                 lines.append("")
 
         # Footer
         lines.append("---")
-        lines.append(
-            f"*{i18n.get('generated_label', 'Generated')}: "
-            f"{doc.metadata.topic}*"
-        )
+        lines.append(f"*{i18n.get('generated_label', 'Generated')}: {doc.metadata.topic}*")
 
         return "\n".join(lines) + "\n"

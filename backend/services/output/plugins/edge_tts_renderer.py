@@ -106,6 +106,4 @@ class EdgeTTSRenderer:
             communicate = edge_tts.Communicate(text, voice)
             await communicate.save(str(output_path))
         except ImportError:
-            raise RuntimeError(
-                "edge-tts is not installed. Install with: pip install edge-tts"
-            )
+            raise RuntimeError("edge-tts is not installed. Install with: pip install edge-tts")

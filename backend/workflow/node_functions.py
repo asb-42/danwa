@@ -55,11 +55,15 @@ async def input_node(state: WorkflowState) -> dict:
     session_id = state.get("session_id", "")
     node_id = state.get("current_node_id", "wf-input")
 
-    await publish_async(session_id, "node.start", {
-        "node_id": node_id,
-        "node_type": "wf-input",
-        "round": state.get("current_round", 1),
-    })
+    await publish_async(
+        session_id,
+        "node.start",
+        {
+            "node_id": node_id,
+            "node_type": "wf-input",
+            "round": state.get("current_round", 1),
+        },
+    )
 
     output: WorkflowNodeOutput = {
         "node_id": node_id,
@@ -71,14 +75,18 @@ async def input_node(state: WorkflowState) -> dict:
         "status": "completed",
     }
 
-    await publish_async(session_id, "node.complete", {
-        "node_id": node_id,
-        "node_type": "wf-input",
-        "role": "input",
-        "content": output["content"][:200],
-        "tokens_used": 0,
-        "duration_ms": 0,
-    })
+    await publish_async(
+        session_id,
+        "node.complete",
+        {
+            "node_id": node_id,
+            "node_type": "wf-input",
+            "role": "input",
+            "content": output["content"][:200],
+            "tokens_used": 0,
+            "duration_ms": 0,
+        },
+    )
 
     # --- Audit log ---
     try:
@@ -108,11 +116,15 @@ async def initialize_wf_node(state: WorkflowState) -> dict:
     session_id = state.get("session_id", "")
     node_id = state.get("current_node_id", "wf-initialize")
 
-    await publish_async(session_id, "node.start", {
-        "node_id": node_id,
-        "node_type": "wf-initialize",
-        "round": 1,
-    })
+    await publish_async(
+        session_id,
+        "node.start",
+        {
+            "node_id": node_id,
+            "node_type": "wf-initialize",
+            "round": 1,
+        },
+    )
 
     output: WorkflowNodeOutput = {
         "node_id": node_id,
@@ -124,14 +136,18 @@ async def initialize_wf_node(state: WorkflowState) -> dict:
         "status": "completed",
     }
 
-    await publish_async(session_id, "node.complete", {
-        "node_id": node_id,
-        "node_type": "wf-initialize",
-        "role": "initialize",
-        "content": "Workflow initialized",
-        "tokens_used": 0,
-        "duration_ms": 0,
-    })
+    await publish_async(
+        session_id,
+        "node.complete",
+        {
+            "node_id": node_id,
+            "node_type": "wf-initialize",
+            "role": "initialize",
+            "content": "Workflow initialized",
+            "tokens_used": 0,
+            "duration_ms": 0,
+        },
+    )
 
     # --- Audit log ---
     try:
@@ -171,11 +187,15 @@ async def complete_wf_node(state: WorkflowState) -> dict:
         "status": "completed",
     }
 
-    await publish_async(session_id, "workflow.complete", {
-        "session_id": session_id,
-        "total_rounds": state.get("current_round", 1),
-        "final_consensus": state.get("final_consensus", 0.0),
-    })
+    await publish_async(
+        session_id,
+        "workflow.complete",
+        {
+            "session_id": session_id,
+            "total_rounds": state.get("current_round", 1),
+            "final_consensus": state.get("final_consensus", 0.0),
+        },
+    )
 
     # --- Audit log ---
     try:
@@ -222,7 +242,7 @@ def agent_node_factory(
     """
     role = resolved_config.get("role", node_type.replace("wf-", ""))
     llm_profile_id = resolved_config.get("llm_profile_id", "")
-    blueprint_name = resolved_config.get("blueprint_name", role)
+    resolved_config.get("blueprint_name", role)
 
     # Extract tone_profile_source_node_id from resolved config
     tone_profile_source_node_id = resolved_config.get("tone_profile_source_node_id")
@@ -233,12 +253,16 @@ def agent_node_factory(
         start_time = time.monotonic()
 
         # --- Publish: node started ---
-        await publish_async(session_id, "node.start", {
-            "node_id": node_id,
-            "node_type": node_type,
-            "role": role,
-            "round": current_round,
-        })
+        await publish_async(
+            session_id,
+            "node.start",
+            {
+                "node_id": node_id,
+                "node_type": node_type,
+                "role": role,
+                "round": current_round,
+            },
+        )
 
         # --- Build system prompt ---
         system_prompt = _resolve_system_prompt(resolved_config, state)
@@ -252,17 +276,22 @@ def agent_node_factory(
                 try:
                     from backend.blueprints.models import ToneProfile
                     from backend.services.tone_prompt_injector import inject_tone_profile
+
                     profile = ToneProfile.model_validate(profile_data)
                     system_prompt = inject_tone_profile(system_prompt, profile)
                     tone_profile_name = profile.name
                     logger.info(
                         "Injected tone profile '%s' into agent %s (node %s)",
-                        profile.name, role, node_id,
+                        profile.name,
+                        role,
+                        node_id,
                     )
                 except Exception as exc:
                     logger.warning(
                         "Failed to inject tone profile for agent %s (node %s): %s",
-                        role, node_id, exc,
+                        role,
+                        node_id,
+                        exc,
                     )
 
         # --- Build user prompt ---
@@ -313,13 +342,21 @@ def agent_node_factory(
 
             logger.info(
                 "Agent %s (node %s, round %d): LLM response (%d tokens, %dms)",
-                role, node_id, current_round, tokens_used, duration_ms,
+                role,
+                node_id,
+                current_round,
+                tokens_used,
+                duration_ms,
             )
 
         except Exception as exc:
             logger.error(
                 "Agent %s (node %s, round %d): LLM call FAILED: %s",
-                role, node_id, current_round, exc, exc_info=True,
+                role,
+                node_id,
+                current_round,
+                exc,
+                exc_info=True,
             )
             content = f"[{role}] Round {current_round}: LLM call failed ({exc})"
             tokens_used = len(content.split())
@@ -338,14 +375,18 @@ def agent_node_factory(
         }
 
         # --- Publish: node completed ---
-        await publish_async(session_id, "node.complete", {
-            "node_id": node_id,
-            "node_type": node_type,
-            "role": role,
-            "content": content[:500],
-            "tokens_used": tokens_used,
-            "duration_ms": elapsed_ms,
-        })
+        await publish_async(
+            session_id,
+            "node.complete",
+            {
+                "node_id": node_id,
+                "node_type": node_type,
+                "role": role,
+                "content": content[:500],
+                "tokens_used": tokens_used,
+                "duration_ms": elapsed_ms,
+            },
+        )
 
         # --- Audit log ---
         try:
@@ -370,7 +411,11 @@ def agent_node_factory(
                     workflow_version=state.get("workflow_version", 1),
                     node_id=node_id,
                     actor=role,
-                    input_data={"system_prompt": system_prompt, "user_prompt": user_prompt, **audit_metadata},
+                    input_data={
+                        "system_prompt": system_prompt,
+                        "user_prompt": user_prompt,
+                        **audit_metadata,
+                    },
                     output_data={"content": content, "tokens_used": tokens_used},
                     llm_profile_id=llm_profile_id,
                     latency_ms=duration_ms,
@@ -413,11 +458,15 @@ def moderator_node_factory(
         consensus = min(1.0, (num_outputs * 0.15) + (draft_length / 10000))
 
         session_id = state.get("session_id", "")
-        await publish_async(session_id, "consensus.reached", {
-            "score": round(consensus, 2),
-            "threshold": threshold,
-            "round": state.get("current_round", 1),
-        })
+        await publish_async(
+            session_id,
+            "consensus.reached",
+            {
+                "score": round(consensus, 2),
+                "threshold": threshold,
+                "round": state.get("current_round", 1),
+            },
+        )
 
         result["final_consensus"] = round(consensus, 2)
         return result
@@ -449,11 +498,15 @@ def gate_node_factory(
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
 
-        await publish_async(session_id, "node.start", {
-            "node_id": node_id,
-            "node_type": "wf-gate",
-            "round": current_round,
-        })
+        await publish_async(
+            session_id,
+            "node.start",
+            {
+                "node_id": node_id,
+                "node_type": "wf-gate",
+                "round": current_round,
+            },
+        )
 
         # Evaluate condition for logging
         condition_result = False
@@ -475,14 +528,18 @@ def gate_node_factory(
             "status": "completed",
         }
 
-        await publish_async(session_id, "node.complete", {
-            "node_id": node_id,
-            "node_type": "wf-gate",
-            "role": "gate",
-            "content": output["content"],
-            "tokens_used": 0,
-            "duration_ms": 0,
-        })
+        await publish_async(
+            session_id,
+            "node.complete",
+            {
+                "node_id": node_id,
+                "node_type": "wf-gate",
+                "role": "gate",
+                "content": output["content"],
+                "tokens_used": 0,
+                "duration_ms": 0,
+            },
+        )
 
         # --- Audit log ---
         try:
@@ -531,11 +588,15 @@ def tone_profile_node_factory(
     async def _tone_profile_node(state: WorkflowState) -> dict:
         session_id = state.get("session_id", "")
 
-        await publish_async(session_id, "node.start", {
-            "node_id": node_id,
-            "node_type": "wf-tone-profile",
-            "role": "tone-profile",
-        })
+        await publish_async(
+            session_id,
+            "node.start",
+            {
+                "node_id": node_id,
+                "node_type": "wf-tone-profile",
+                "role": "tone-profile",
+            },
+        )
 
         profile: ToneProfile | None = None
 
@@ -574,14 +635,18 @@ def tone_profile_node_factory(
             "status": "completed" if profile else "failed",
         }
 
-        await publish_async(session_id, "node.complete", {
-            "node_id": node_id,
-            "node_type": "wf-tone-profile",
-            "role": "tone-profile",
-            "content": output["content"],
-            "tokens_used": 0,
-            "duration_ms": 0,
-        })
+        await publish_async(
+            session_id,
+            "node.complete",
+            {
+                "node_id": node_id,
+                "node_type": "wf-tone-profile",
+                "role": "tone-profile",
+                "content": output["content"],
+                "tokens_used": 0,
+                "duration_ms": 0,
+            },
+        )
 
         # --- Audit log ---
         try:
@@ -620,11 +685,15 @@ async def interjection_node(state: WorkflowState) -> dict:
     session_id = state.get("session_id", "")
     node_id = state.get("current_node_id", "wf-user-injection")
 
-    await publish_async(session_id, "node.start", {
-        "node_id": node_id,
-        "node_type": "wf-user-injection",
-        "round": state.get("current_round", 1),
-    })
+    await publish_async(
+        session_id,
+        "node.start",
+        {
+            "node_id": node_id,
+            "node_type": "wf-user-injection",
+            "round": state.get("current_round", 1),
+        },
+    )
 
     queue = state.get("interjection_queue", [])
 
@@ -643,14 +712,18 @@ async def interjection_node(state: WorkflowState) -> dict:
             "status": "completed",
         }
 
-        await publish_async(session_id, "node.complete", {
-            "node_id": node_id,
-            "node_type": "wf-user-injection",
-            "role": "user-injection",
-            "content": combined_content[:500],
-            "tokens_used": 0,
-            "duration_ms": 0,
-        })
+        await publish_async(
+            session_id,
+            "node.complete",
+            {
+                "node_id": node_id,
+                "node_type": "wf-user-injection",
+                "role": "user-injection",
+                "content": combined_content[:500],
+                "tokens_used": 0,
+                "duration_ms": 0,
+            },
+        )
 
         # --- Audit log ---
         try:
@@ -676,10 +749,14 @@ async def interjection_node(state: WorkflowState) -> dict:
         # No interjections pending — pause execution
         logger.info("Interjection node %s: no pending input, pausing", node_id)
 
-        await publish_async(session_id, "workflow.paused", {
-            "session_id": session_id,
-            "current_node_id": node_id,
-        })
+        await publish_async(
+            session_id,
+            "workflow.paused",
+            {
+                "session_id": session_id,
+                "current_node_id": node_id,
+            },
+        )
 
         output_pause: WorkflowNodeOutput = {
             "node_id": node_id,

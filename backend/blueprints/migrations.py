@@ -33,9 +33,7 @@ def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
 
 def _get_current_version(conn: sqlite3.Connection) -> int:
     """Return the highest applied schema version, or 0 if none."""
-    row = conn.execute(
-        "SELECT MAX(version) FROM schema_version"
-    ).fetchone()
+    row = conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
     return row[0] if row and row[0] is not None else 0
 
 
@@ -413,10 +411,8 @@ _MIGRATION_V11_TABLES = [
         created_at TEXT NOT NULL
     )
     """,
-    "CREATE INDEX IF NOT EXISTS idx_opt_proposals_workflow"
-    " ON optimization_proposals (target_workflow_id)",
-    "CREATE INDEX IF NOT EXISTS idx_opt_proposals_status"
-    " ON optimization_proposals (status)",
+    "CREATE INDEX IF NOT EXISTS idx_opt_proposals_workflow ON optimization_proposals (target_workflow_id)",
+    "CREATE INDEX IF NOT EXISTS idx_opt_proposals_status ON optimization_proposals (status)",
 ]
 
 # ---------------------------------------------------------------------------
@@ -438,10 +434,8 @@ _MIGRATION_V12_TABLES = [
         completed_at TEXT
     )
     """,
-    "CREATE INDEX IF NOT EXISTS idx_input_jobs_status"
-    " ON input_jobs (status)",
-    "CREATE INDEX IF NOT EXISTS idx_input_jobs_plugin"
-    " ON input_jobs (plugin_key)",
+    "CREATE INDEX IF NOT EXISTS idx_input_jobs_status ON input_jobs (status)",
+    "CREATE INDEX IF NOT EXISTS idx_input_jobs_plugin ON input_jobs (plugin_key)",
     """
     CREATE TABLE IF NOT EXISTS a2a_inbound_tasks (
         task_id TEXT PRIMARY KEY,
@@ -452,8 +446,7 @@ _MIGRATION_V12_TABLES = [
         created_at TEXT NOT NULL
     )
     """,
-    "CREATE INDEX IF NOT EXISTS idx_a2a_inbound_status"
-    " ON a2a_inbound_tasks (status)",
+    "CREATE INDEX IF NOT EXISTS idx_a2a_inbound_status ON a2a_inbound_tasks (status)",
     """
     CREATE TABLE IF NOT EXISTS debate_inputs (
         session_id TEXT PRIMARY KEY,
@@ -562,7 +555,11 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             logger.info("Applying migration v4: workflow graph columns")
             for stmt in _MIGRATION_V4_TABLES:
                 conn.execute(stmt)
-            _record_version(conn, 4, "Add workflow graph columns (nodes, edges, entry_point, termination, version, is_locked)")
+            _record_version(
+                conn,
+                4,
+                "Add workflow graph columns (nodes, edges, entry_point, termination, version, is_locked)",
+            )
             conn.commit()
             logger.info("Migration v4 applied successfully")
 
@@ -618,11 +615,7 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             logger.info("Applying migration v11: output composer tables")
             for stmt in _MIGRATION_V11_TABLES:
                 conn.execute(stmt)
-            _record_version(
-                conn, 11,
-                "Add debate_artifacts, render_jobs,"
-                " tts_voices, optimization_proposals"
-            )
+            _record_version(conn, 11, "Add debate_artifacts, render_jobs, tts_voices, optimization_proposals")
             conn.commit()
             logger.info("Migration v11 applied successfully")
 
@@ -633,18 +626,13 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             # ALTER TABLE for workflow_definitions.input_config
             # (handled separately since SQLite doesn't support IF NOT EXISTS)
             try:
-                conn.execute(
-                    "ALTER TABLE workflow_definitions"
-                    " ADD COLUMN input_config TEXT DEFAULT NULL"
-                )
+                conn.execute("ALTER TABLE workflow_definitions ADD COLUMN input_config TEXT DEFAULT NULL")
             except sqlite3.OperationalError:
-                logger.debug(
-                    "workflow_definitions.input_config column already exists"
-                )
+                logger.debug("workflow_definitions.input_config column already exists")
             _record_version(
-                conn, 12,
-                "Add input_jobs, a2a_inbound_tasks, stt_voices,"
-                " debate_inputs; extend workflow_definitions"
+                conn,
+                12,
+                "Add input_jobs, a2a_inbound_tasks, stt_voices, debate_inputs; extend workflow_definitions",
             )
             conn.commit()
             logger.info("Migration v12 applied successfully")
@@ -661,7 +649,11 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             logger.info("Applying migration v14: seed default role types")
             for stmt in _MIGRATION_V14_SEEDS:
                 conn.execute(stmt)
-            _record_version(conn, 14, "Seed default role types (strategist, critic, optimizer, moderator, fact-checker, expert-reviewer)")
+            _record_version(
+                conn,
+                14,
+                "Seed default role types (strategist, critic, optimizer, moderator, fact-checker, expert-reviewer)",
+            )
             conn.commit()
             logger.info("Migration v14 applied successfully")
 

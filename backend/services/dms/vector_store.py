@@ -18,9 +18,7 @@ class DMSVectorStore:
         chroma_dir = Path(chroma_path)
         chroma_dir.mkdir(parents=True, exist_ok=True)
         self.client = chromadb.PersistentClient(path=str(chroma_dir))
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name, metadata={"hnsw:space": "cosine"}
-        )
+        self.collection = self.client.get_or_create_collection(name=collection_name, metadata={"hnsw:space": "cosine"})
         logger.info("DMS VectorStore loaded: %d chunks in '%s'", self.collection.count(), collection_name)
 
     def add_chunks(self, document_id: str, chunks: list[dict], project_id: str = "") -> None:
@@ -34,12 +32,14 @@ class DMSVectorStore:
             chunk_id = f"{document_id}_chunk_{chunk_index}"
             ids.append(chunk_id)
             documents.append(chunk["text"])
-            metadatas.append({
-                "document_id": document_id,
-                "project_id": project_id,
-                "chunk_index": chunk_index,
-                "page": chunk.get("page", 0),
-            })
+            metadatas.append(
+                {
+                    "document_id": document_id,
+                    "project_id": project_id,
+                    "chunk_index": chunk_index,
+                    "page": chunk.get("page", 0),
+                }
+            )
         self.collection.add(ids=ids, documents=documents, metadatas=metadatas)
         logger.info("Added %d chunks for document %s", len(chunks), document_id)
 
@@ -62,11 +62,13 @@ class DMSVectorStore:
                 results["metadatas"][0],
                 results["distances"][0],
             ):
-                output.append({
-                    "text": doc,
-                    "metadata": meta,
-                    "relevance_score": max(0.0, 1.0 - dist),
-                })
+                output.append(
+                    {
+                        "text": doc,
+                        "metadata": meta,
+                        "relevance_score": max(0.0, 1.0 - dist),
+                    }
+                )
             return sorted(output, key=lambda x: x["relevance_score"], reverse=True)
         except Exception as e:
             logger.warning("DMS search failed: %s", e)

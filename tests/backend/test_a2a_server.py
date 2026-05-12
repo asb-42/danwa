@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from backend.a2a.schemas import A2AMessage, A2ATask, A2ATextPart

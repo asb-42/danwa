@@ -6,8 +6,6 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from backend.workflow.immutability import (
     archive_session,

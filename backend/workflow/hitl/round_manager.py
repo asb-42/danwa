@@ -124,9 +124,7 @@ class HITLRoundManager:
             summary.total_pause_seconds += stats.total_pause_seconds
             summary.rounds.append(stats)
 
-        summary.total_interactions = (
-            summary.total_injects + summary.total_queries + summary.total_responses
-        )
+        summary.total_interactions = summary.total_injects + summary.total_queries + summary.total_responses
 
         return summary
 

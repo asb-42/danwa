@@ -157,9 +157,17 @@ def save_workflow_as_template(
     wf_data = json.loads(wf.model_dump_json())
 
     for key in [
-        "id", "name", "description", "canvas_layout_id", "tags",
-        "is_active", "created_at", "updated_at", "template_id",
-        "version", "is_locked",
+        "id",
+        "name",
+        "description",
+        "canvas_layout_id",
+        "tags",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "template_id",
+        "version",
+        "is_locked",
     ]:
         wf_data.pop(key, None)
 
@@ -179,11 +187,13 @@ def save_workflow_as_template(
             if "blueprint" in pkey.lower():
                 ph_type = "blueprint_ref"
 
-            placeholders.append({
-                "key": pkey,
-                "type": ph_type,
-                "description": f"Extracted from workflow field: {pkey}",
-            })
+            placeholders.append(
+                {
+                    "key": pkey,
+                    "type": ph_type,
+                    "description": f"Extracted from workflow field: {pkey}",
+                }
+            )
 
     now = datetime.now(UTC)
 

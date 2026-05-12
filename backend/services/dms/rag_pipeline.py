@@ -50,10 +50,7 @@ class RAGPipeline:
             logger.warning("No chunks generated for document %s", doc_id)
             return []
 
-        chunk_dicts = [
-            {"text": chunk_text, "chunk_index": idx, "page": 0}
-            for idx, chunk_text in enumerate(chunks)
-        ]
+        chunk_dicts = [{"text": chunk_text, "chunk_index": idx, "page": 0} for idx, chunk_text in enumerate(chunks)]
 
         try:
             self.vector_store.add_chunks(
@@ -72,11 +69,13 @@ class RAGPipeline:
                     chunk_index=idx,
                     text=chunk_text,
                     page=0,
-                    metadata_json=str({
-                        "file_name": doc["filename"],
-                        "upload_date": doc["uploaded_at"],
-                        "project_id": doc["project_id"],
-                    }),
+                    metadata_json=str(
+                        {
+                            "file_name": doc["filename"],
+                            "upload_date": doc["uploaded_at"],
+                            "project_id": doc["project_id"],
+                        }
+                    ),
                 )
             except Exception as e:
                 logger.error("Failed to add chunk %d to DB for document %s: %s", idx, doc_id, e)

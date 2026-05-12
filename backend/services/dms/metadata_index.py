@@ -57,15 +57,17 @@ class MetadataIndex:
             results.get("documents", []),
             results.get("metadatas", []),
         ):
-            chunks.append({
-                "id": chunk_id,
-                "text": doc_text,
-                "metadata": {
-                    "project_id": meta.get("project_id"),
-                    "document_id": meta.get("document_id"),
-                    "chunk_index": meta.get("chunk_index"),
-                    "file_name": meta.get("file_name"),
-                    "upload_date": meta.get("upload_date"),
-                },
-            })
+            chunks.append(
+                {
+                    "id": chunk_id,
+                    "text": doc_text,
+                    "metadata": {
+                        "project_id": meta.get("project_id"),
+                        "document_id": meta.get("document_id"),
+                        "chunk_index": meta.get("chunk_index"),
+                        "file_name": meta.get("file_name"),
+                        "upload_date": meta.get("upload_date"),
+                    },
+                }
+            )
         return chunks

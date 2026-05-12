@@ -199,8 +199,14 @@ async def run_agent_node(state: DebateState) -> dict:
     # --- Resolve system prompt ---
     project_dir = _get_project_dir(project_id)
     system_prompt = _resolve_system_prompt(
-        role, prompt_variant, persona_ids, state, language, search_mode,
-        project_id=project_id, project_dir=project_dir,
+        role,
+        prompt_variant,
+        persona_ids,
+        state,
+        language,
+        search_mode,
+        project_id=project_id,
+        project_dir=project_dir,
     )
 
     # --- Build user prompt ---
@@ -209,19 +215,15 @@ async def run_agent_node(state: DebateState) -> dict:
     # --- OOB: Inject out-of-band user context before LLM call ---
     try:
         from backend.services.debate_workflow import consume_oob, get_oob_for_debate
+
         debate_id = state.get("debate_id", "")
         if debate_id:
             oob_inputs = get_oob_for_debate(debate_id)
             # Filter for this agent role and round
-            relevant_oob = [
-                oob for oob in oob_inputs
-                if _is_oob_relevant(oob, role, state["current_round"])
-            ]
+            relevant_oob = [oob for oob in oob_inputs if _is_oob_relevant(oob, role, state["current_round"])]
             if relevant_oob:
                 oob_context = "\n\n--- ADDITIONAL CONTEXT (User) ---\n"
-                oob_context += "\n".join(
-                    f"- {oob['content']}" for oob in relevant_oob
-                )
+                oob_context += "\n".join(f"- {oob['content']}" for oob in relevant_oob)
                 user_prompt += oob_context
                 # Mark as consumed
                 consume_oob(debate_id, [oob["oob_id"] for oob in relevant_oob])
@@ -238,7 +240,9 @@ async def run_agent_node(state: DebateState) -> dict:
                 )
                 logger.info(
                     "Injected %d OOB inputs for %s (round %d)",
-                    len(relevant_oob), role, state["current_round"],
+                    len(relevant_oob),
+                    role,
+                    state["current_round"],
                 )
     except Exception as exc:
         logger.warning("OOB injection failed (non-fatal): %s", exc)
@@ -246,21 +250,21 @@ async def run_agent_node(state: DebateState) -> dict:
     # --- HITL: Inject user context before LLM call ---
     try:
         from backend.workflow.hitl.nodes import build_inject_context
+
         hitl_context = build_inject_context(state, role)
         if hitl_context:
             user_prompt += hitl_context
             logger.info(
                 "HITL inject context added for %s (round %d)",
-                role, state["current_round"],
+                role,
+                state["current_round"],
             )
     except Exception as exc:
         logger.warning("HITL inject failed (non-fatal): %s", exc)
 
     # --- Required mode: auto-search before LLM call ---
     if search_mode == "required":
-        user_prompt = await _perform_required_search(
-            state, role, language, user_prompt, session_id
-        )
+        user_prompt = await _perform_required_search(state, role, language, user_prompt, session_id)
 
     # --- Publish: LLM call starting ---
     await publish_async(
@@ -316,9 +320,7 @@ async def run_agent_node(state: DebateState) -> dict:
 
         # --- Optional mode: check for [SEARCH: ...] markers ---
         if search_mode == "optional":
-            content = await _perform_optional_search(
-                content, role, language, session_id, state
-            )
+            content = await _perform_optional_search(content, role, language, session_id, state)
             tokens = len(content.split())
 
     except Exception as exc:
@@ -332,11 +334,7 @@ async def run_agent_node(state: DebateState) -> dict:
         )
         llm_failed = True
         anomaly_detail = f"{type(exc).__name__}: {exc}"
-        content = (
-            f"[{role}] Round {state['current_round']}: "
-            f"LLM call failed ({anomaly_detail}). "
-            f"Profile: {llm_profile_id}"
-        )
+        content = f"[{role}] Round {state['current_round']}: LLM call failed ({anomaly_detail}). Profile: {llm_profile_id}"
         tokens = len(content.split())
         tokens_in = 0
         tokens_out = 0
@@ -373,9 +371,7 @@ async def run_agent_node(state: DebateState) -> dict:
 
     # Track anomaly if LLM call failed
     if llm_failed:
-        result["anomalies"] = [
-            f"LLM call failed for {role} in round {state['current_round']} ({anomaly_detail})"
-        ]
+        result["anomalies"] = [f"LLM call failed for {role} in round {state['current_round']} ({anomaly_detail})"]
 
     return result
 
@@ -470,15 +466,9 @@ def _append_language_instruction(prompt: str, language: str) -> str:
     German debate language).
     """
     if language == "en":
-        instruction = (
-            "\n\nIMPORTANT: You MUST respond in English. "
-            "Write all your analysis and conclusions in English."
-        )
+        instruction = "\n\nIMPORTANT: You MUST respond in English. Write all your analysis and conclusions in English."
     else:
-        instruction = (
-            "\n\nWICHTIG: Du MUSST auf Deutsch antworten. "
-            "Schreibe deine gesamte Analyse und deine Schlussfolgerungen auf Deutsch."
-        )
+        instruction = "\n\nWICHTIG: Du MUSST auf Deutsch antworten. Schreibe deine gesamte Analyse und deine Schlussfolgerungen auf Deutsch."
     return prompt + instruction
 
 
@@ -566,9 +556,7 @@ def _resolve_system_prompt(
         logger.debug("Using prompt template for %s/%s (lang=%s)", prompt_variant, role, language)
         prompt = rendered
     except FileNotFoundError:
-        logger.debug(
-            "No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language
-        )
+        logger.debug("No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language)
         prompt = None
 
     # 2. Try persona-specific system prompt (always in persona's language)
@@ -586,15 +574,14 @@ def _resolve_system_prompt(
     if prompt is None:
         logger.warning(
             "No prompt found for %s/%s (lang=%s), using generic default",
-            prompt_variant, role, language,
+            prompt_variant,
+            role,
+            language,
         )
         if language == "en":
             prompt = f"You are a {role} agent analyzing a legal case. Provide your expert analysis."
         else:
-            prompt = (
-                f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. "
-                f"Gib deine Expertenanalyse ab."
-            )
+            prompt = f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
 
     # 4. Append search instructions based on mode
     prompt = _append_search_instruction(prompt, search_mode, language)
@@ -632,9 +619,7 @@ def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> s
             "Do not simply agree for the sake of consensus — intellectual honesty is required."
         )
     else:
-        parts.append(
-            "Bitte gib deine Analyse basierend auf dem Fall und der bisherigen Diskussion."
-        )
+        parts.append("Bitte gib deine Analyse basierend auf dem Fall und der bisherigen Diskussion.")
         parts.append(
             "WICHTIG: Wenn du mit der Mehrheitsposition oder früheren Analysen "
             "nicht einverstanden bist, musst du deine abweichende Meinung klar "
@@ -684,9 +669,7 @@ async def check_consensus_node(state: DebateState) -> dict:
     }
 
     # --- Publish: round completed ---
-    total_tokens = sum(
-        ao.get("tokens_used", 0) for ao in state.get("agent_outputs", [])
-    )
+    total_tokens = sum(ao.get("tokens_used", 0) for ao in state.get("agent_outputs", []))
     await publish_async(
         session_id,
         "round_update",
@@ -767,10 +750,7 @@ def _is_oob_relevant(oob: dict, role: str, current_round: int) -> bool:
     target_type = target.get("type", "")
 
     if target_type == "specific_agent":
-        return (
-            target.get("agent_role") == role
-            and (target.get("round") is None or target.get("round") == current_round)
-        )
+        return target.get("agent_role") == role and (target.get("round") is None or target.get("round") == current_round)
 
     if target_type == "next_agent":
         prev_role = target.get("current_agent_role", "")

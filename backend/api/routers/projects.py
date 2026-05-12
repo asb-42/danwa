@@ -112,9 +112,7 @@ def delete_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     if project.is_system:
-        raise HTTPException(
-            status_code=403, detail="Cannot delete system project"
-        )
+        raise HTTPException(status_code=403, detail="Cannot delete system project")
     deleted = store.delete(project_id)
     if not deleted:
         raise HTTPException(status_code=500, detail="Failed to delete project")

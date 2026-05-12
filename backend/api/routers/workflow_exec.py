@@ -177,6 +177,7 @@ async def start_workflow(
     if body.document_ids or body.rag_auto_retrieve:
         try:
             from backend.services.debate_workflow import resolve_rag_context
+
             rag_context, _ = resolve_rag_context(
                 project_id=body.project_id,
                 case_text=body.context,
@@ -378,9 +379,7 @@ async def stream_workflow_events(session_id: str) -> EventSourceResponse:
         try:
             while True:
                 try:
-                    event_type, payload = await asyncio.wait_for(
-                        queue.get(), timeout=300.0
-                    )
+                    event_type, payload = await asyncio.wait_for(queue.get(), timeout=300.0)
                     yield {"event": event_type, "data": payload}
 
                     # Stop on terminal events

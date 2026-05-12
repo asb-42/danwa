@@ -63,8 +63,7 @@ def validate_a2a_url(url: str, allow_private_ips: bool = False) -> str:
             for network in _private_networks:
                 if addr in network:
                     raise A2AValidationError(
-                        f"Private IP address '{hostname}' is blocked. "
-                        f"Set DANWA_A2A_ALLOW_PRIVATE_IPS=true to allow.",
+                        f"Private IP address '{hostname}' is blocked. Set DANWA_A2A_ALLOW_PRIVATE_IPS=true to allow.",
                         endpoint=url,
                     )
         except ValueError:
