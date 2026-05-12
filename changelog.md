@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-12
+
+- docs: update technical documentation with Blueprint System, HITL System, and Input/Output Composer
+- docs: update user manual with new systems and views (Blueprint Canvas, Input/Output Composer, Diff, Replay)
+- docs: move PADDLEOCR_COMPATIBILITY_REPORT.md to docs/
+- chore: update README.md and README.zh.md with enhanced feature descriptions
+
 ## 2026-05-10
 
 - refactor: extract routers/services, fix report generation, restructure debate UI

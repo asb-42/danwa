@@ -64,6 +64,14 @@ bash scripts/stop.sh
 - **A2A 协议** — 通过 JSON-RPC 2.0 实现智能体到智能体通信（服务端 + 客户端）
 - **外部智能体集成** — 将外部 AI 智能体作为辩论参与者
 - **智能体卡片发现** — 标准的 `/.well-known/agent.json` 端点，供 A2A 客户端发现
+- **蓝图系统** — 可视化工作流编辑器，支持拖放画布创建自定义多智能体工作流
+- **HITL 系统** — 人机交互系统，支持在执行期间查询智能体和提供反馈
+- **输入/输出编排器** — 可扩展插件系统，支持处理各种输入源（音频、文本、文件）并生成多种输出格式（文档、音频、报告）
+- **文本转语音（TTS）** — 将辩论结果转换为音频，支持多种语音配置和渲染器
+- **语气配置文件** — 为不同用例配置辩论语气和风格
+- **角色定义** — 定义具有特定行为和约束的自定义智能体角色
+- **工作流模板** — 常见用例的预构建工作流模板
+- **对比和回放视图** — 比较辩论会话并通过时间轴导航回放过去执行
 
 ## 技术栈
 
@@ -110,31 +118,104 @@ danwa/
 │   │       ├── config.py      # 应用设置
 │   │       ├── sessions.py    # 会话管理
 │   │       ├── health.py      # 健康检查端点
-│   │       └── system.py      # 系统操作（重载、日志）
+│   │       ├── system.py      # 系统操作（重载、日志）
+│   │       ├── blueprints.py  # 蓝图 CRUD
+│   │       ├── canvas.py      # 画布布局管理
+│   │       ├── workflow_exec.py  # 工作流执行 API
+│   │       ├── workflow_reports.py  # 工作流报告生成
+│   │       ├── workflow_templates.py  # 工作流模板
+│   │       ├── workflow_definitions.py  # 工作流定义
+│   │       ├── input_composer.py  # 输入编排器 API
+│   │       ├── output_composer.py  # 输出编排器 API
+│   │       ├── role_definitions.py  # 角色定义 API
+│   │       ├── tone_profiles.py  # 语气配置文件 API
+│   │       └── llm_profiles.py  # LLM 配置文件 API
+│   ├── blueprints/              # 蓝图系统（可视化工作流编辑器）
+│   │   ├── models.py         # 蓝图数据模型
+│   │   ├── repository.py     # 蓝图仓库
+│   │   ├── compiler.py       # 蓝图编译器
+│   │   ├── canvas_to_workflow.py  # 画布到工作流转换
+│   │   ├── importer.py       # 蓝图导入器
+│   │   ├── migrations.py     # 蓝图数据库迁移
+│   │   └── workflow_models.py  # 工作流模型
 │   ├── core/
 │   │   ├── config.py         # Pydantic Settings（环境变量）
 │   │   └── profiles.py       # LLMProfile、AgentPersona、PromptVariant 模式
 │   ├── models/
-│   │   └── schemas.py        # API 请求/响应 Pydantic 模型
+│   │   ├── schemas.py        # API 请求/响应 Pydantic 模型
+│   │   ├── render_job.py    # 渲染作业模型
+│   │   └── artifact.py      # 工件模型
 │   ├── workflow/
 │   │   ├── debate_graph.py   # LangGraph 状态机构建器
 │   │   ├── nodes.py          # 节点函数（initialize、run_agent 等）
-│   │   └── state.py         # DebateState TypedDict 定义
+│   │   ├── state.py         # DebateState TypedDict 定义
+│   │   ├── hitl/           # 人机交互系统
+│   │   │   ├── api.py       # HITL API 端点
+│   │   │   ├── contracts.py # HITL 契约
+│   │   │   ├── graph.py     # HITL 图管理
+│   │   │   ├── nodes.py     # HITL 节点
+│   │   │   ├── round_manager.py  # HITL 轮次管理
+│   │   │   ├── security.py  # HITL 安全
+│   │   │   ├── state.py     # HITL 状态
+│   │   │   └── agent_query.py  # HITL 智能体查询
+│   │   ├── debate_workflow.py  # 辩论工作流编排
+│   │   ├── immutability.py  # 工作流不可变性
+│   │   ├── interjection.py  # 工作流插值
+│   │   ├── report_generator.py  # 报告生成
+│   │   ├── report_jobs.py   # 报告作业管理
+│   │   ├── state_snapshot.py  # 状态快照管理
+│   │   ├── workflow_compiler.py  # 工作流编译
+│   │   ├── workflow_routers.py  # 工作流 API 路由
+│   │   ├── workflow_runner.py  # 工作流执行
+│   │   ├── workflow_state.py  # 工作流状态管理
+│   │   └── audit_logger.py  # 审计日志记录
 │   ├── services/
 │   │   ├── llm_service.py   # LLM 调用（LiteLLM + 本地 HTTP）
 │   │   ├── profile_service.py # YAML 配置文件 CRUD + 验证
 │   │   ├── prompt_service.py # Markdown 模板渲染
 │   │   ├── web_search.py    # SearXNG / DuckDuckGo 集成
-│   │   └── dms/            # 文档管理系统服务
-│   │       ├── service.py   # DMS 门面（编排器）
-│   │       ├── database.py  # DMS 的 SQLite 模式
-│   │       ├── document_processor.py # 文件解析 + OCR
-│   │       ├── chunker.py   # 文本分块（512 token）
-│   │       ├── vector_store.py # ChromaDB 接口
-│   │       ├── metadata_index.py # 分块元数据索引
-│   │       ├── rag_pipeline.py # RAG 管道
-│   │       ├── hybrid_retriever.py # BM25 + 向量 + 重排序
-│   │       └── rag_context_formatter.py # RAG 上下文格式化
+│   │   ├── dms/            # 文档管理系统服务
+│   │   │   ├── service.py   # DMS 门面（编排器）
+│   │   │   ├── database.py  # DMS 的 SQLite 模式
+│   │   │   ├── project_manager.py # 项目 CRUD
+│   │   │   ├── document_processor.py # 文件解析 + OCR
+│   │   │   ├── chunker.py   # 文本分块（512 token）
+│   │   │   ├── vector_store.py # ChromaDB 接口
+│   │   │   ├── metadata_index.py # 分块元数据索引
+│   │   │   ├── rag_pipeline.py # RAG 管道
+│   │   │   ├── hybrid_retriever.py # BM25 + 向量 + 重排序
+│   │   │   ├── rag_context_formatter.py # RAG 上下文格式化
+│   │   │   └── config.py    # DMS 配置
+│   │   ├── input/         # 输入插件系统
+│   │   │   ├── base.py     # 基础插件接口
+│   │   │   ├── input_engine.py  # 输入引擎
+│   │   │   ├── input_job_store.py  # 输入作业存储
+│   │   │   ├── input_store.py  # 输入存储
+│   │   │   ├── plugin_manifest.py  # 插件清单
+│   │   │   ├── registry.py  # 插件注册表
+│   │   │   ├── mcp_adapter.py  # MCP 适配器
+│   │   │   └── plugins/    # 输入插件
+│   │   ├── output/        # 输出插件系统
+│   │   │   ├── base.py     # 基础插件接口
+│   │   │   ├── registry.py  # 插件注册表
+│   │   │   └── plugins/    # 输出插件
+│   │   │       ├── print_plugin.py  # 打印插件（DOCX/PDF/ODF）
+│   │   │       ├── tts_plugin.py  # TTS 插件
+│   │   │       ├── mimo_tts_renderer.py  # MIMO TTS 渲染器
+│   │   │       ├── edge_tts_renderer.py  # Edge TTS 渲染器
+│   │   │       ├── print_layout_engine.py  # 打印布局引擎
+│   │   │       ├── print_models.py  # 打印模型
+│   │   │       ├── tts_models.py  # TTS 模型
+│   │   │       ├── tts_script_engine.py  # TTS 脚本引擎
+│   │   │       ├── audio_helpers.py  # 音频助手
+│   │   │       └── voice_store.py  # 语音存储
+│   │   ├── artifact_store.py  # 工件存储
+│   │   ├── doc_parser.py  # 文档解析
+│   │   ├── meta_workflow.py  # 元工作流管理
+│   │   ├── render_engine.py  # 渲染引擎编排
+│   │   ├── render_job_store.py  # 渲染作业存储
+│   │   ├── stt_service.py  # 语音转文本服务
+│   │   └── tone_prompt_injector.py  # 语气提示词注入
 │   ├── a2a/                    # A2A 协议（智能体到智能体）
 │   │   ├── schemas.py        # A2A JSON-RPC 模式（Task、Message、Part）
 │   │   ├── config.py         # A2A 配置加载器
@@ -148,6 +229,9 @@ danwa/
 │   │   ├── project_store.py # 基于 JSON 文件的项目存储
 │   │   ├── debate_store.py  # SQLite 辩论存储
 │   │   └── audit.py         # 审计事件记录
+│   ├── repositories/
+│   │   ├── profile_repo.py # 配置文件仓库
+│   │   └── proposal_repo.py  # 提案仓库
 │   └── migrations/
 │       └── migrate_projects.py # 项目隔离迁移
 ├── frontend/                    # Svelte 5 SPA
@@ -161,13 +245,24 @@ danwa/
 │   │   │   ├── ConfigView.svelte
 │   │   │   ├── ProjectsView.svelte
 │   │   │   ├── DocumentsView.svelte
-│   │   │   └── ArchiveView.svelte
+│   │   │   ├── ArchiveView.svelte
+│   │   │   ├── BlueprintCanvasView.svelte  # 蓝图画布编辑器
+│   │   │   ├── InputComposerView.svelte  # 输入编排器
+│   │   │   ├── OutputComposerView.svelte  # 输出编排器
+│   │   │   ├── DiffView.svelte  # 对比视图
+│   │   │   └── ReplayView.svelte  # 回放视图
 │   │   ├── components/       # 可复用 UI 组件
 │   │   │   ├── Layout.svelte
 │   │   │   ├── Sidebar.svelte
 │   │   │   ├── WorkflowGraph.svelte
 │   │   │   ├── DebateTimeline.svelte
 │   │   │   ├── ConsensusPanel.svelte
+│   │   │   ├── blueprint/      # 蓝图组件
+│   │   │   ├── config/        # 配置组件
+│   │   │   ├── debate/        # 辩论组件
+│   │   │   ├── hitl/          # HITL 组件
+│   │   │   ├── input/         # 输入编排器组件
+│   │   │   ├── output/        # 输出编排器组件
 │   │   │   └── workflow/      # 工作流可视化
 │   │   │       ├── WorkflowCanvas.svelte
 │   │   │       ├── nodes/     # AgentNode、InputNode 等
@@ -584,7 +679,7 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 > **什么是"缺失环节"？** 这些是在后端中完全实现但**尚未通过用户界面访问**的功能。
 >
-> **最后审计时间**：2026-05-10 — 全面代码库扫描。
+> **最后审计时间**：2026-05-12 — 全面代码库扫描。
 >
 > **近期已暴露（此前迭代中已接线）**：
 > - 报告生成 — 下载 500 错误已修复
@@ -597,26 +692,39 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 > - 画布布局 CRUD — 已在 Palette + BlueprintCanvas 中接线
 > - 角色类型 CRUD — 已在 RoleTypeForm + ConfigView 中接线
 > - 语言 API — 已在 LanguageSwitcher 中接线
+> - 蓝图系统 — 已在 BlueprintCanvasView 中完全暴露
+> - HITL 系统 — 已在 ExecutionPanel 中完全暴露
+> - 输入/输出编排器 — 已在 InputComposerView 和 OutputComposerView 中完全暴露
+> - 回放和对比视图 — 已在 ReplayView 和 DiffView 中完全暴露
 
 ### 历史会话管理 — 低影响
 - **后端**：旧版 `backend/api/routers/sessions.py` 路由（已被新路由替代）
 - **缺失**：没有该旧版路由的前端 API 函数或 UI
+- **状态**：有意不暴露，因为已被新路由替代
 
 ### 报告 SSE 进度流 — 低影响
 - **后端**：`GET /api/v1/sessions/{session_id}/report/stream`
 - **API 客户端**：`createReportSSE()` 存在于 `api.js` 但**从未被调用**
 - **缺失**：没有视图使用报告生成的 SSE 进度流
+- **状态**：报告生成功能正常，无需此进度指示器
+
+### 项目级别设置覆盖 — 低影响
+- **后端**：`GET /api/v1/config/settings/project/{id}`
+- **缺失**：没有项目级别设置覆盖的前端 API 函数或 UI
+- **状态**：i18n 字符串存在（`projects.configHint`）但未实现
 
 ### 汇总表
 
 | 功能 | 后端 | API 客户端 | UI | 状态 |
 |------|------|------------|-----|------|
-| 历史会话管理 | ✅ | ❌ 缺失 | ❌ 缺失 | **未暴露** |
-| 报告 SSE 进度流 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露** |
+| 历史会话管理 | ✅ | ❌ 缺失 | ❌ 缺失 | **未暴露（已替代）** |
+| 报告 SSE 进度流 | ✅ | ✅ 存在 | ❌ 缺失 | **未暴露（低优先级）** |
+| 项目级别设置覆盖 | ✅ | ❌ 缺失 | ❌ 缺失 | **未暴露** |
 | 辩论工作流 | ✅ | ✅ | ✅ | 已暴露 |
 | HITL 交互 | ✅ | ✅ | ✅ | 已暴露 |
 | 辩论中的 A2A | ✅ | ✅ | ✅ | 已暴露 |
-| 蓝图画布 | ✅ | ✅ | ✅ | 已暴露 |
+| 蓝图系统 | ✅ | ✅ | ✅ | 已暴露 |
+| 输入/输出编排器 | ✅ | ✅ | ✅ | 已暴露 |
 | 回放和对比视图 | ✅ | ✅ | ✅ | 已暴露 |
 
 *详细信息请参阅 `docs/technical_documentation.md` 和 `docs/user_manual.md` 中的"缺失环节"部分。*

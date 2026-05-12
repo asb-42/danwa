@@ -64,6 +64,14 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 - **A2A Protocol** - Agent-to-Agent communication via JSON-RPC 2.0 (server + client)
 - **External Agent Integration** - Include external AI agents as debate participants
 - **Agent Card Discovery** - Standard `/.well-known/agent.json` endpoint for A2A clients
+- **Blueprint System** - Visual workflow editor for creating custom multi-agent workflows with drag-and-drop canvas
+- **HITL System** - Human-in-the-loop interactions for querying agents and providing feedback during execution
+- **Input/Output Composer** - Extensible plugin system for processing various input sources (audio, text, files) and generating multiple output formats (documents, audio, reports)
+- **Text-to-Speech (TTS)** - Convert debate results to audio with multiple voice profiles and renderers
+- **Tone Profiles** - Configure debate tone and style for different use cases
+- **Role Definitions** - Define custom agent roles with specific behaviors and constraints
+- **Workflow Templates** - Pre-built workflow templates for common use cases
+- **Diff & Replay Views** - Compare debate sessions and replay past executions with timeline navigation
 
 ## Technology Stack
 
@@ -111,32 +119,104 @@ danwa/
 │   │       ├── config.py     # Application settings
 │   │       ├── sessions.py   # Session management
 │   │       ├── health.py     # Health check endpoint
-│   │       └── system.py     # System operations (reload, logs)
+│   │       ├── system.py     # System operations (reload, logs)
+│   │       ├── blueprints.py  # Blueprint CRUD
+│   │       ├── canvas.py     # Canvas layout management
+│   │       ├── workflow_exec.py  # Workflow execution API
+│   │       ├── workflow_reports.py  # Workflow report generation
+│   │       ├── workflow_templates.py  # Workflow templates
+│   │       ├── workflow_definitions.py  # Workflow definitions
+│   │       ├── input_composer.py  # Input composer API
+│   │       ├── output_composer.py  # Output composer API
+│   │       ├── role_definitions.py  # Role definitions API
+│   │       ├── tone_profiles.py  # Tone profiles API
+│   │       └── llm_profiles.py  # LLM profiles API
+│   ├── blueprints/              # Blueprint system (visual workflow editor)
+│   │   ├── models.py         # Blueprint data models
+│   │   ├── repository.py     # Blueprint repository
+│   │   ├── compiler.py       # Blueprint compiler
+│   │   ├── canvas_to_workflow.py  # Canvas to workflow conversion
+│   │   ├── importer.py       # Blueprint importer
+│   │   ├── migrations.py     # Blueprint database migrations
+│   │   └── workflow_models.py  # Workflow models
 │   ├── core/
 │   │   ├── config.py        # Pydantic Settings (env vars)
 │   │   └── profiles.py      # LLMProfile, AgentPersona, PromptVariant schemas
 │   ├── models/
-│   │   └── schemas.py       # API request/response Pydantic models
+│   │   ├── schemas.py       # API request/response Pydantic models
+│   │   ├── render_job.py    # Render job models
+│   │   └── artifact.py      # Artifact models
 │   ├── workflow/
 │   │   ├── debate_graph.py  # LangGraph state machine builder
 │   │   ├── nodes.py         # Node functions (initialize, run_agent, etc.)
-│   │   └── state.py        # DebateState TypedDict definition
+│   │   ├── state.py        # DebateState TypedDict definition
+│   │   ├── hitl/           # Human-in-the-loop system
+│   │   │   ├── api.py       # HITL API endpoints
+│   │   │   ├── contracts.py # HITL contracts
+│   │   │   ├── graph.py     # HITL graph management
+│   │   │   ├── nodes.py     # HITL nodes
+│   │   │   ├── round_manager.py  # HITL round management
+│   │   │   ├── security.py  # HITL security
+│   │   │   ├── state.py     # HITL state
+│   │   │   └── agent_query.py  # HITL agent queries
+│   │   ├── debate_workflow.py  # Debate workflow orchestration
+│   │   ├── immutability.py  # Workflow immutability
+│   │   ├── interjection.py  # Workflow interjection
+│   │   ├── report_generator.py  # Report generation
+│   │   ├── report_jobs.py   # Report job management
+│   │   ├── state_snapshot.py  # State snapshot management
+│   │   ├── workflow_compiler.py  # Workflow compilation
+│   │   ├── workflow_routers.py  # Workflow API routers
+│   │   ├── workflow_runner.py  # Workflow execution
+│   │   ├── workflow_state.py  # Workflow state management
+│   │   └── audit_logger.py  # Audit logging
 │   ├── services/
 │   │   ├── llm_service.py  # LLM calls (LiteLLM + local HTTP)
 │   │   ├── profile_service.py # YAML profile CRUD + validation
 │   │   ├── prompt_service.py # Markdown template rendering
 │   │   ├── web_search.py   # SearXNG / DuckDuckGo integration
-│   │   └── dms/           # Document Management System services
-│   │       ├── service.py   # DMS facade (orchestrator)
-│   │       ├── database.py  # SQLite schema for DMS
-│   │       ├── document_processor.py # File parsing + OCR
-│   │       ├── chunker.py   # Text chunking (512 tokens)
-│   │       ├── vector_store.py # ChromaDB interface
-│   │       ├── metadata_index.py # Chunk metadata indexing
-│   │       ├── rag_pipeline.py # RAG pipeline
-│   │       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
-│   │       ├── rag_context_formatter.py # RAG context formatting
-│   │       └── config.py    # DMS configuration
+│   │   ├── dms/           # Document Management System services
+│   │   │   ├── service.py   # DMS facade (orchestrator)
+│   │   │   ├── database.py  # SQLite schema for DMS
+│   │   │   ├── project_manager.py # Project CRUD
+│   │   │   ├── document_processor.py # File parsing + OCR
+│   │   │   ├── chunker.py   # Text chunking (512 tokens)
+│   │   │   ├── vector_store.py # ChromaDB interface
+│   │   │   ├── metadata_index.py # Chunk metadata indexing
+│   │   │   ├── rag_pipeline.py # RAG pipeline
+│   │   │   ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
+│   │   │   ├── rag_context_formatter.py # RAG context formatting
+│   │   │   └── config.py    # DMS configuration
+│   │   ├── input/         # Input plugin system
+│   │   │   ├── base.py     # Base plugin interface
+│   │   │   ├── input_engine.py  # Input engine
+│   │   │   ├── input_job_store.py  # Input job storage
+│   │   │   ├── input_store.py  # Input storage
+│   │   │   ├── plugin_manifest.py  # Plugin manifest
+│   │   │   ├── registry.py  # Plugin registry
+│   │   │   ├── mcp_adapter.py  # MCP adapter
+│   │   │   └── plugins/    # Input plugins
+│   │   ├── output/        # Output plugin system
+│   │   │   ├── base.py     # Base plugin interface
+│   │   │   ├── registry.py  # Plugin registry
+│   │   │   └── plugins/    # Output plugins
+│   │   │       ├── print_plugin.py  # Print plugin (DOCX/PDF/ODF)
+│   │   │       ├── tts_plugin.py  # TTS plugin
+│   │   │       ├── mimo_tts_renderer.py  # MIMO TTS renderer
+│   │   │       ├── edge_tts_renderer.py  # Edge TTS renderer
+│   │   │       ├── print_layout_engine.py  # Print layout engine
+│   │   │       ├── print_models.py  # Print models
+│   │   │       ├── tts_models.py  # TTS models
+│   │   │       ├── tts_script_engine.py  # TTS script engine
+│   │   │       ├── audio_helpers.py  # Audio helpers
+│   │   │       └── voice_store.py  # Voice store
+│   │   ├── artifact_store.py  # Artifact storage
+│   │   ├── doc_parser.py  # Document parsing
+│   │   ├── meta_workflow.py  # Meta workflow management
+│   │   ├── render_engine.py  # Render engine orchestration
+│   │   ├── render_job_store.py  # Render job storage
+│   │   ├── stt_service.py  # Speech-to-Text service
+│   │   └── tone_prompt_injector.py  # Tone prompt injection
 │   ├── a2a/                    # A2A Protocol (Agent-to-Agent)
 │   │   ├── schemas.py        # A2A JSON-RPC schemas (Task, Message, Part)
 │   │   ├── config.py         # A2A configuration loader
@@ -150,6 +230,9 @@ danwa/
 │   │   ├── project_store.py # JSON file-based project storage
 │   │   ├── debate_store.py  # SQLite debate storage
 │   │   └── audit.py        # Audit event recording
+│   ├── repositories/
+│   │   ├── profile_repo.py # Profile repository
+│   │   └── proposal_repo.py  # Proposal repository
 │   └── migrations/
 │       └── migrate_projects.py # Project isolation migration
 ├── frontend/                    # Svelte 5 SPA
@@ -163,13 +246,24 @@ danwa/
 │   │   │   ├── ConfigView.svelte
 │   │   │   ├── ProjectsView.svelte
 │   │   │   ├── DocumentsView.svelte
-│   │   │   └── ArchiveView.svelte
+│   │   │   ├── ArchiveView.svelte
+│   │   │   ├── BlueprintCanvasView.svelte  # Blueprint canvas editor
+│   │   │   ├── InputComposerView.svelte  # Input composer
+│   │   │   ├── OutputComposerView.svelte  # Output composer
+│   │   │   ├── DiffView.svelte  # Diff view
+│   │   │   └── ReplayView.svelte  # Replay view
 │   │   ├── components/       # Reusable UI components
 │   │   │   ├── Layout.svelte
 │   │   │   ├── Sidebar.svelte
 │   │   │   ├── WorkflowGraph.svelte
 │   │   │   ├── DebateTimeline.svelte
 │   │   │   ├── ConsensusPanel.svelte
+│   │   │   ├── blueprint/      # Blueprint components
+│   │   │   ├── config/        # Config components
+│   │   │   ├── debate/        # Debate components
+│   │   │   ├── hitl/          # HITL components
+│   │   │   ├── input/         # Input composer components
+│   │   │   ├── output/        # Output composer components
 │   │   │   └── workflow/      # Workflow visualization
 │   │   │       ├── WorkflowCanvas.svelte
 │   │   │       ├── nodes/     # AgentNode, InputNode, etc.
@@ -588,7 +682,7 @@ dms = ["paddlepaddle>=3.0,<3.3.0", "paddleocr>=3.5.0"]
 
 > **What are "Missing Links"?** These are features fully implemented in the backend but **not yet accessible through the user interface**.
 >
-> **Last audited**: 2026-05-10 — full codebase scan.
+> **Last audited**: 2026-05-12 — full codebase scan.
 >
 > **Recently exposed (wired up in prior sprints)**:
 > - Report Generation — download 500 error fixed, now functional
@@ -601,26 +695,39 @@ dms = ["paddlepaddle>=3.0,<3.3.0", "paddleocr>=3.5.0"]
 > - Canvas Layout CRUD — wired in Palette + BlueprintCanvas
 > - Role Types CRUD — wired in RoleTypeForm + ConfigView
 > - Language API — wired in LanguageSwitcher
+> - Blueprint System — fully exposed in BlueprintCanvasView
+> - HITL System — fully exposed in ExecutionPanel
+> - Input/Output Composer — fully exposed in InputComposerView and OutputComposerView
+> - Replay & Diff Views — fully exposed in ReplayView and DiffView
 
 ### Legacy Session History — LOW IMPACT
 - **Backend**: Legacy `backend/api/routers/sessions.py` router (superseded by newer routers)
 - **Missing**: No frontend API functions or UI for legacy session list/detail/trace endpoints
+- **Status**: Intentionally not exposed as it's superseded by newer routers
 
 ### Report SSE Progress Stream — LOW IMPACT
 - **Backend**: `GET /api/v1/sessions/{session_id}/report/stream`
 - **API Client**: `createReportSSE()` exists in `api.js` but **never called**
 - **Missing**: No view consumes the report generation SSE stream for progress indication
+- **Status**: Report generation is functional without this progress indicator
+
+### Project-Level Settings Override — LOW IMPACT
+- **Backend**: `GET /api/v1/config/settings/project/{id}`
+- **Missing**: No frontend API function or UI for project-level settings overrides
+- **Status**: i18n string exists (`projects.configHint`) but no implementation
 
 ### Summary Table
 
 | Feature | Backend | API Client | UI | Status |
 |---------|---------|------------|-----|--------|
-| Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
-| Report SSE Progress Stream | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed (superseded)** |
+| Report SSE Progress Stream | ✅ | ✅ Exists | ❌ Missing | **Not exposed (low priority)** |
+| Project-Level Settings Override | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
 | Debate Workflow | ✅ | ✅ | ✅ | Exposed |
 | HITL Interactions | ✅ | ✅ | ✅ | Exposed |
 | A2A in Debates | ✅ | ✅ | ✅ | Exposed |
-| Blueprint Canvas | ✅ | ✅ | ✅ | Exposed |
+| Blueprint System | ✅ | ✅ | ✅ | Exposed |
+| Input/Output Composer | ✅ | ✅ | ✅ | Exposed |
 | Replay & Diff Views | ✅ | ✅ | ✅ | Exposed |
 
 *For full details, see the "Missing Links" sections in `docs/technical_documentation.md` and `docs/user_manual.md`.*
