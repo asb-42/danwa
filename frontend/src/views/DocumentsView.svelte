@@ -85,15 +85,25 @@
     }
   });
 
+  let uploadSuccess = $state('');
+
   async function handleUpload(files) {
     if (!files || files.length === 0) return;
     uploading = true;
     error = '';
+    uploadSuccess = '';
     try {
+      let count = 0;
       for (const file of files) {
         await uploadDocument(file);
+        count++;
       }
       await loadDocuments();
+      uploadSuccess = count === 1
+        ? `✅ "${files[0].name}" ${t('documents.uploadSuccess')}`
+        : `✅ ${count} ${t('documents.uploadSuccess')}`;
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => { uploadSuccess = ''; }, 5000);
     } catch (e) {
       error = e.message || t('documents.uploadError');
     } finally {
@@ -205,6 +215,11 @@
   {#if error}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300" role="alert">
       {error}
+    </div>
+  {/if}
+  {#if uploadSuccess}
+    <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300" role="status">
+      {uploadSuccess}
     </div>
   {/if}
 
@@ -378,14 +393,18 @@
               </td>
               <td class="px-4 py-3 whitespace-nowrap">
                 <button
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors
+                  class="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border
                     {doc.in_rag
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
-                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}"
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50 border-green-300 dark:border-green-700'
+                      : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-blue-300 dark:border-blue-700'}"
                   onclick={() => toggleRAG(doc)}
                   title={doc.in_rag ? t('documents.removeFromRAG') : t('documents.addToRAG')}
                 >
-                  {doc.in_rag ? `✓ ${t('documents.inRAG')}` : t('documents.notInRAG')}
+                  {#if doc.in_rag}
+                    ✓ {t('documents.inRAG')} ✕
+                  {:else}
+                    ＋ {t('documents.addToRAG')}
+                  {/if}
                 </button>
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-right text-sm space-x-2">
@@ -449,16 +468,20 @@
           <!-- RAG status -->
           <div class="mb-4 flex items-center gap-3">
             <button
-              class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-colors
+              class="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer border
                 {viewingDocContent.in_rag
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200'
-                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200'}"
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 border-green-300 dark:border-green-700'
+                  : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-blue-300 dark:border-blue-700'}"
               onclick={() => {
                 toggleRAG(viewingDoc);
                 viewingDocContent = { ...viewingDocContent, in_rag: !viewingDocContent.in_rag };
               }}
             >
-              {viewingDocContent.in_rag ? `✓ ${t('documents.inRAG')}` : t('documents.notInRAG')}
+              {#if viewingDocContent.in_rag}
+                ✓ {t('documents.inRAG')} ✕
+              {:else}
+                ＋ {t('documents.addToRAG')}
+              {/if}
             </button>
             {#if viewingDocContent.chunk_count > 0}
               <span class="text-xs text-gray-500 dark:text-gray-400">

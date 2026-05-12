@@ -115,9 +115,22 @@ class DMS:
             loop = asyncio.get_running_loop()
             # We're inside an async context (FastAPI) — run in a thread
             import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, self.rag_pipeline.process_file(doc_id, file_path))
-                chunk_ids = future.result(timeout=120)
+            try:
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    future = pool.submit(asyncio.run, self.rag_pipeline.process_file(doc_id, file_path))
+                    chunk_ids = future.result(timeout=300)
+            except concurrent.futures.TimeoutError:
+                processing_error = "Document processing timed out (5 minutes). OCR model download may be in progress."
+                logger.error("Timeout processing document %s", doc_id)
+            except concurrent.futures.process.BrokenProcessPool:
+                processing_error = "Processing failed: worker process crashed"
+                logger.error("BrokenProcessPool for document %s", doc_id)
+            except ValueError as e:
+                processing_error = str(e)
+                logger.warning("Processing error for document %s: %s", doc_id, e)
+            except Exception as e:
+                processing_error = f"Processing failed: {e}"
+                logger.error("Failed to process document %s: %s", doc_id, e)
         except RuntimeError:
             # No running loop — safe to call asyncio.run directly
             try:
@@ -128,12 +141,6 @@ class DMS:
             except Exception as e:
                 processing_error = f"Processing failed: {e}"
                 logger.error("Failed to process document %s: %s", doc_id, e)
-        except ValueError as e:
-            processing_error = str(e)
-            logger.warning("Processing error for document %s: %s", doc_id, e)
-        except Exception as e:
-            processing_error = f"Processing failed: {e}"
-            logger.error("Failed to process document %s: %s", doc_id, e)
 
         return {
             "doc_id": doc_id,
