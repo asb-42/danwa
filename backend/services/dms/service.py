@@ -5,6 +5,7 @@ Factory function get_dms_for_project() provides project-scoped instances.
 """
 
 import asyncio
+import concurrent.futures
 import logging
 from pathlib import Path
 from typing import Any
@@ -122,7 +123,7 @@ class DMS:
             except concurrent.futures.TimeoutError:
                 processing_error = "Document processing timed out (5 minutes). OCR model download may be in progress."
                 logger.error("Timeout processing document %s", doc_id)
-            except concurrent.futures.process.BrokenProcessPool:
+            except concurrent.futures.BrokenExecutor:
                 processing_error = "Processing failed: worker process crashed"
                 logger.error("BrokenProcessPool for document %s", doc_id)
             except ValueError as e:
