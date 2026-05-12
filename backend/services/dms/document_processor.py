@@ -88,6 +88,24 @@ class DocumentProcessor:
                 )
             except ImportError:
                 self._ocr = False
+            except RuntimeError as e:
+                if "PDX has already been initialized" in str(e):
+                    logger.warning("PaddleX already initialized - attempting to reuse existing instance")
+                    # Try to get existing PaddleOCR instance
+                    try:
+                        paddle_module = importlib.import_module("paddleocr")
+                        paddle_ocr = getattr(paddle_module, "PaddleOCR")
+                        self._ocr = paddle_ocr(
+                            use_doc_orientation_classify=False,
+                            use_doc_unwarping=False,
+                            device=self.config.get("ocr_device", "cpu"),
+                        )
+                    except RuntimeError:
+                        logger.error("Cannot create PaddleOCR instance due to PaddleX initialization conflict")
+                        self._ocr = False
+                else:
+                    logger.error("PaddleOCR initialization failed: %s", e)
+                    self._ocr = False
         return self._ocr if self._ocr is not False else None
 
     def _extract_ocr_text(self, results: Any) -> str:
@@ -121,8 +139,10 @@ class DocumentProcessor:
         """Check for known PaddlePaddle version compatibility issues."""
         try:
             import paddle
-            major = paddle.version.major
-            minor = paddle.version.minor
+            version_str = paddle.__version__
+            parts = version_str.split('.')
+            major = parts[0]
+            minor = parts[1] if len(parts) > 1 else "0"
             
             if major == "3" and int(minor) >= 3:
                 logger.warning(
