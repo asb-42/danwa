@@ -74,7 +74,7 @@
   <div
     class="dialog-overlay"
     role="button"
-    tabindex="-1"
+    tabindex="0"
     onclick={handleCancel}
     onkeydown={(e) => { if (e.key === 'Escape') handleCancel(); }}
   >
@@ -82,6 +82,7 @@
       class="dialog dialog-wide"
       role="dialog"
       aria-modal="true"
+      tabindex="0"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Enter' && !isStarting) handleConfirm(); }}
     >

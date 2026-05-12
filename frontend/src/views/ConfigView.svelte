@@ -978,9 +978,8 @@
 
 <!-- Create Prompt Variant Modal -->
 {#if showPromptCreateModal}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_interactive_supports_focus -->
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick={closePromptCreate}>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onclick={(e) => e.stopPropagation()}>
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="button" tabindex="0" onclick={closePromptCreate} onkeydown={(e) => e.key === 'Enter' && closePromptCreate()}>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" role="button" tabindex="0" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === 'Enter' && e.stopPropagation()}>
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{t('config.createPromptVariant') || 'Create Prompt Variant'}</h3>
         <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={closePromptCreate}>✕</button>
