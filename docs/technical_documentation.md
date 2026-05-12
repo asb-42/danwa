@@ -1,7 +1,7 @@
 # Danwa (Debate-Agent) — Technical Documentation
 
 > **Version**: 2.0.0  
-> **Last Updated**: 2026-05-06  
+> **Last Updated**: 2026-05-12  
 > **Authors**: Development Team  
 
 ---
@@ -17,12 +17,15 @@
 7. [Core Features](#7-core-features)
 8. [Profile System](#8-profile-system)
 9. [Document Management System (DMS)](#9-document-management-system-dms)
-10. [Data Models & Schemas](#10-data-models--schemas)
-11. [API Reference](#11-api-reference)
-12. [Configuration](#12-configuration)
-13. [A2A Protocol Integration](#13-a2a-protocol-integration)
-14. [Development Guide](#14-development-guide)
-15. [Deployment](#15-deployment)
+10. [Blueprint System](#10-blueprint-system)
+11. [HITL (Human-in-the-Loop) System](#11-hitl-human-in-the-loop-system)
+12. [Input/Output Plugin System](#12-inputoutput-plugin-system)
+13. [Data Models & Schemas](#13-data-models--schemas)
+14. [API Reference](#14-api-reference)
+15. [Configuration](#15-configuration)
+16. [A2A Protocol Integration](#16-a2a-protocol-integration)
+17. [Development Guide](#17-development-guide)
+18. [Deployment](#18-deployment)
 
 ---
 
@@ -164,33 +167,105 @@ danwa/
 │   │       ├── config.py     # Application settings
 │   │       ├── sessions.py   # Session management
 │   │       ├── health.py     # Health check endpoint
-│   │       └── system.py     # System operations (reload, logs)
+│   │       ├── system.py     # System operations (reload, logs)
+│   │       ├── blueprints.py  # Blueprint CRUD
+│   │       ├── canvas.py     # Canvas layout management
+│   │       ├── workflow_exec.py  # Workflow execution API
+│   │       ├── workflow_reports.py  # Workflow report generation
+│   │       ├── workflow_templates.py  # Workflow templates
+│   │       ├── workflow_definitions.py  # Workflow definitions
+│   │       ├── input_composer.py  # Input composer API
+│   │       ├── output_composer.py  # Output composer API
+│   │       ├── role_definitions.py  # Role definitions API
+│   │       ├── tone_profiles.py  # Tone profiles API
+│   │       ├── llm_profiles.py  # LLM profiles API
+│   │       └── optimization_proposals.py  # Optimization proposals API
+│   ├── blueprints/              # Blueprint system (visual workflow editor)
+│   │   ├── models.py         # Blueprint data models
+│   │   ├── repository.py     # Blueprint repository
+│   │   ├── compiler.py       # Blueprint compiler
+│   │   ├── canvas_to_workflow.py  # Canvas to workflow conversion
+│   │   ├── importer.py       # Blueprint importer
+│   │   ├── migrations.py     # Blueprint database migrations
+│   │   └── workflow_models.py  # Workflow models
 │   ├── core/
 │   │   ├── config.py        # Pydantic Settings (env vars)
 │   │   └── profiles.py      # LLMProfile, AgentPersona, PromptVariant schemas
 │   ├── models/
-│   │   └── schemas.py       # API request/response Pydantic models
+│   │   ├── schemas.py       # API request/response Pydantic models
+│   │   ├── render_job.py    # Render job models
+│   │   └── artifact.py      # Artifact models
 │   ├── workflow/
 │   │   ├── debate_graph.py  # LangGraph state machine builder
 │   │   ├── nodes.py         # Node functions (initialize, run_agent, etc.)
-│   │   └── state.py        # DebateState TypedDict definition
+│   │   ├── state.py        # DebateState TypedDict definition
+│   │   ├── hitl/           # Human-in-the-loop system
+│   │   │   ├── api.py       # HITL API endpoints
+│   │   │   ├── contracts.py # HITL contracts
+│   │   │   ├── graph.py     # HITL graph management
+│   │   │   ├── nodes.py     # HITL nodes
+│   │   │   ├── round_manager.py  # HITL round management
+│   │   │   ├── security.py  # HITL security
+│   │   │   ├── state.py     # HITL state
+│   │   │   └── agent_query.py  # HITL agent queries
+│   │   ├── debate_workflow.py  # Debate workflow orchestration
+│   │   ├── immutability.py  # Workflow immutability
+│   │   ├── interjection.py  # Workflow interjection
+│   │   ├── report_generator.py  # Report generation
+│   │   ├── report_jobs.py   # Report job management
+│   │   ├── state_snapshot.py  # State snapshot management
+│   │   ├── workflow_compiler.py  # Workflow compilation
+│   │   ├── workflow_routers.py  # Workflow API routers
+│   │   ├── workflow_runner.py  # Workflow execution
+│   │   ├── workflow_state.py  # Workflow state management
+│   │   └── audit_logger.py  # Audit logging
 │   ├── services/
 │   │   ├── llm_service.py  # LLM calls (LiteLLM + local HTTP)
 │   │   ├── profile_service.py # YAML profile CRUD + validation
 │   │   ├── prompt_service.py # Markdown template rendering
 │   │   ├── web_search.py   # SearXNG / DuckDuckGo integration
-│   │   └── dms/           # Document Management System services
-│   │       ├── service.py   # DMS facade (orchestrator)
-│   │       ├── database.py  # SQLite schema for DMS
-│   │       ├── project_manager.py # Project CRUD
-│   │       ├── document_processor.py # File parsing + OCR
-│   │       ├── chunker.py   # Text chunking (512 tokens)
-│   │       ├── vector_store.py # ChromaDB interface
-│   │       ├── metadata_index.py # Chunk metadata indexing
-│   │       ├── rag_pipeline.py # RAG pipeline
-│   │       ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
-│   │       ├── rag_context_formatter.py # RAG context formatting
-│   │       └── config.py    # DMS configuration
+│   │   ├── dms/           # Document Management System services
+│   │   │   ├── service.py   # DMS facade (orchestrator)
+│   │   │   ├── database.py  # SQLite schema for DMS
+│   │   │   ├── project_manager.py # Project CRUD
+│   │   │   ├── document_processor.py # File parsing + OCR
+│   │   │   ├── chunker.py   # Text chunking (512 tokens)
+│   │   │   ├── vector_store.py # ChromaDB interface
+│   │   │   ├── metadata_index.py # Chunk metadata indexing
+│   │   │   ├── rag_pipeline.py # RAG pipeline
+│   │   │   ├── hybrid_retriever.py # BM25 + Vector + Re-ranking
+│   │   │   ├── rag_context_formatter.py # RAG context formatting
+│   │   │   └── config.py    # DMS configuration
+│   │   ├── input/         # Input plugin system
+│   │   │   ├── base.py     # Base plugin interface
+│   │   │   ├── input_engine.py  # Input engine
+│   │   │   ├── input_job_store.py  # Input job storage
+│   │   │   ├── input_store.py  # Input storage
+│   │   │   ├── plugin_manifest.py  # Plugin manifest
+│   │   │   ├── registry.py  # Plugin registry
+│   │   │   ├── mcp_adapter.py  # MCP adapter
+│   │   │   └── plugins/    # Input plugins
+│   │   ├── output/        # Output plugin system
+│   │   │   ├── base.py     # Base plugin interface
+│   │   │   ├── registry.py  # Plugin registry
+│   │   │   └── plugins/    # Output plugins
+│   │   │       ├── print_plugin.py  # Print plugin (DOCX/PDF/ODF)
+│   │   │       ├── tts_plugin.py  # TTS plugin
+│   │   │       ├── mimo_tts_renderer.py  # MIMO TTS renderer
+│   │   │       ├── edge_tts_renderer.py  # Edge TTS renderer
+│   │   │       ├── print_layout_engine.py  # Print layout engine
+│   │   │       ├── print_models.py  # Print models
+│   │   │       ├── tts_models.py  # TTS models
+│   │   │       ├── tts_script_engine.py  # TTS script engine
+│   │   │       ├── audio_helpers.py  # Audio helpers
+│   │   │       └── voice_store.py  # Voice store
+│   │   ├── artifact_store.py  # Artifact storage
+│   │   ├── doc_parser.py  # Document parsing
+│   │   ├── meta_workflow.py  # Meta workflow management
+│   │   ├── render_engine.py  # Render engine orchestration
+│   │   ├── render_job_store.py  # Render job storage
+│   │   ├── stt_service.py  # Speech-to-Text service
+│   │   └── tone_prompt_injector.py  # Tone prompt injection
 │   ├── a2a/                   # A2A Protocol integration
 │   │   ├── __init__.py
 │   │   ├── schemas.py       # A2A data models (Task, Message, Part)
@@ -205,6 +280,9 @@ danwa/
 │   │   ├── project_store.py # JSON file-based project storage
 │   │   ├── debate_store.py  # SQLite debate storage
 │   │   └── audit.py        # Audit event recording
+│   ├── repositories/
+│   │   ├── profile_repo.py # Profile repository
+│   │   └── proposal_repo.py  # Proposal repository
 │   └── migrations/
 │       └── migrate_projects.py # Project isolation migration
 │
@@ -219,7 +297,12 @@ danwa/
 │   │   │   ├── ConfigView.svelte
 │   │   │   ├── ProjectsView.svelte
 │   │   │   ├── DocumentsView.svelte
-│   │   │   └── ArchiveView.svelte
+│   │   │   ├── ArchiveView.svelte
+│   │   │   ├── BlueprintCanvasView.svelte  # Blueprint canvas editor
+│   │   │   ├── InputComposerView.svelte  # Input composer
+│   │   │   ├── OutputComposerView.svelte  # Output composer
+│   │   │   ├── DiffView.svelte  # Diff view
+│   │   │   └── ReplayView.svelte  # Replay view
 │   │   ├── components/       # Reusable UI components
 │   │   │   ├── Layout.svelte
 │   │   │   ├── Sidebar.svelte
@@ -233,6 +316,12 @@ danwa/
 │   │   │   ├── LanguageSwitcher.svelte
 │   │   │   ├── ProjectSelector.svelte
 │   │   │   ├── ProjectSettings.svelte
+│   │   │   ├── blueprint/      # Blueprint components
+│   │   │   ├── config/        # Config components
+│   │   │   ├── debate/        # Debate components
+│   │   │   ├── hitl/          # HITL components
+│   │   │   ├── input/         # Input composer components
+│   │   │   ├── output/        # Output composer components
 │   │   │   └── workflow/      # Workflow visualization components
 │   │   │       ├── WorkflowCanvas.svelte
 │   │   │       ├── nodes/     # AgentNode, InputNode, etc.
@@ -1215,11 +1304,332 @@ class HybridRetriever:
 
 ---
 
-## 10. Data Models & Schemas
+## 10. Blueprint System
 
-### 10.1 Pydantic Schemas (`backend/models/schemas.py`)
+### 10.1 Overview
 
-#### 10.1.1 Enums
+The Blueprint System is a visual workflow editor that allows users to create, manage, and execute custom multi-agent workflows through a graphical interface. It provides a canvas-based editor for designing workflows with nodes and edges, which can then be compiled into executable LangGraph workflows.
+
+### 10.2 Architecture (`backend/blueprints/`)
+
+```
+backend/blueprints/
+├── models.py              # Blueprint data models
+├── repository.py          # Blueprint repository (SQLite-backed)
+├── compiler.py            # Blueprint compiler (validation)
+├── canvas_to_workflow.py  # Canvas layout to workflow conversion
+├── importer.py            # External blueprint import
+├── migrations.py          # Database migrations
+└── workflow_models.py     # Workflow execution models
+```
+
+### 10.3 Core Models
+
+#### BlueprintLLMProfile
+Extended LLM profile with blueprint-specific metadata:
+- `profile_type`: "text", "tts", or "stt"
+- `protocol`: "litellm", "a2a", or "stt"
+- `a2a_endpoint`: A2A protocol endpoint
+- `tags`: Blueprint-specific tags
+- `created_at`/`updated_at`: Timestamps
+
+#### RoleDefinition
+Agent role with behavior constraints:
+- `role_type_id`: Reference to RoleType
+- `system_prompt`: Agent behavior
+- `max_rounds`: Default round limit
+- `consensus_threshold`: Default consensus threshold
+
+#### AgentBlueprint
+Composite model tying LLM + role + prompt:
+- `llm_profile_id`: LLM configuration
+- `role_definition_id`: Agent role
+- `prompt_template_id`: Prompt template
+- `position`: Execution position in workflow
+
+#### WorkflowDefinition
+Executable workflow definition:
+- `nodes`: List of workflow nodes
+- `edges`: List of workflow edges
+- `entry_point`: Starting node
+- `execution_order`: Legacy list-based execution order
+- `interjection_points`: Human interjection points
+
+### 10.4 Compiler Service (`compiler.py`)
+
+Validates and compiles WorkflowDefinitions:
+
+**Validation checks:**
+1. All referenced AgentBlueprints exist and are active
+2. All LLM profiles referenced by blueprints exist
+3. All role definitions referenced by blueprints exist
+4. Execution order references valid node IDs
+5. Conditional edges reference valid nodes
+6. Interjection points reference valid nodes
+7. Entry point references a valid node
+8. All agent nodes have valid agent_blueprint_id references
+9. Gate nodes have at least 2 outgoing edges
+10. No isolated nodes (every node must have at least one edge)
+11. Detect cycles (warning, not error — feedback edges create intentional cycles)
+12. Edge source/target reference valid node IDs
+
+**Compilation result:**
+```python
+@dataclass
+class CompilationResult:
+    is_valid: bool
+    resolved_agents: list[ResolvedAgent]
+    errors: list[str]
+    warnings: list[str]
+```
+
+### 10.5 Canvas to Workflow Conversion (`canvas_to_workflow.py`)
+
+Converts visual canvas layouts to executable WorkflowDefinitions:
+
+**CanvasLayout model:**
+- `nodes`: Canvas node positions and sizes
+- `edges`: Canvas edge connections
+- `viewport`: Canvas viewport state
+
+**Conversion process:**
+1. Parse canvas node/edge layout
+2. Map canvas nodes to workflow nodes
+3. Validate node types and connections
+4. Generate WorkflowDefinition with entry point
+
+### 10.6 Blueprint Repository (`repository.py`)
+
+SQLite-backed storage for blueprints:
+
+**Tables:**
+- `blueprint_llm_profiles`: LLM profiles
+- `role_types`: Role type definitions
+- `role_definitions`: Agent roles
+- `prompt_templates`: Prompt templates
+- `agent_blueprints`: Agent configurations
+- `workflow_definitions`: Workflow definitions
+- `canvas_layouts`: Canvas layouts
+
+**CRUD operations:**
+- Create, read, update, delete for all entities
+- Query by tags, status, type
+- Soft delete support
+
+### 10.7 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/blueprints` | List all blueprints |
+| POST | `/api/v1/blueprints` | Create new blueprint |
+| GET | `/api/v1/blueprints/{id}` | Get blueprint details |
+| PUT | `/api/v1/blueprints/{id}` | Update blueprint |
+| DELETE | `/api/v1/blueprints/{id}` | Delete blueprint |
+| POST | `/api/v1/blueprints/{id}/compile` | Compile blueprint |
+| GET | `/api/v1/canvas/{id}` | Get canvas layout |
+| PUT | `/api/v1/canvas/{id}` | Save canvas layout |
+
+---
+
+## 11. HITL (Human-in-the-Loop) System
+
+### 11.1 Overview
+
+The HITL system enables human interaction with running workflows, allowing users to:
+- Query agents for clarification
+- Provide feedback or corrections
+- Interject at specific workflow points
+- Monitor and control workflow execution
+
+### 11.2 Architecture (`backend/workflow/hitl/`)
+
+```
+backend/workflow/hitl/
+├── api.py              # HITL API endpoints
+├── contracts.py        # HITL contracts (request/response models)
+├── graph.py            # HITL graph management
+├── nodes.py            # HITL workflow nodes
+├── round_manager.py    # HITL round management
+├── security.py         # HITL security (authentication/authorization)
+├── state.py            # HITL state management
+└── agent_query.py      # Agent query handling
+```
+
+### 11.3 Core Components
+
+#### AgentQuery
+Query agents for clarification:
+- `query_id`: Unique query identifier
+- `agent_id`: Target agent
+- `question`: User question
+- `response`: Agent response
+- `status`: Query status (pending, answered, failed)
+
+#### HITLNode
+Workflow node for human interaction:
+- `node_id`: Node identifier
+- `node_type`: Node type (query, feedback, approval)
+- `config`: Node configuration
+- `state`: Node state
+
+#### RoundManager
+Manages HITL interaction rounds:
+- `round_id`: Round identifier
+- `session_id`: Workflow session
+- `queries`: List of queries in round
+- `status`: Round status
+
+### 11.4 Security (`security.py`)
+
+HITL security features:
+- Authentication for HITL endpoints
+- Authorization checks (project-based)
+- Query validation and sanitization
+- Rate limiting for agent queries
+
+### 11.5 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/hitl/query` | Submit agent query |
+| GET | `/api/v1/hitl/query/{id}` | Get query response |
+| POST | `/api/v1/hitl/feedback` | Submit workflow feedback |
+| GET | `/api/v1/hitl/round/{id}` | Get round status |
+| POST | `/api/v1/hitl/interject` | Interject in workflow |
+
+---
+
+## 12. Input/Output Plugin System
+
+### 12.1 Overview
+
+The Input/Output plugin system provides extensible architecture for:
+- **Input plugins**: Process various input sources (audio, text, files)
+- **Output plugins**: Generate various output formats (audio, documents, reports)
+
+### 12.2 Input Plugin Architecture (`backend/services/input/`)
+
+```
+backend/services/input/
+├── base.py              # Base plugin interface
+├── input_engine.py      # Input engine orchestration
+├── input_job_store.py   # Input job storage
+├── input_store.py       # Input storage
+├── plugin_manifest.py   # Plugin manifest
+├── registry.py          # Plugin registry
+├── mcp_adapter.py       # MCP (Model Context Protocol) adapter
+└── plugins/             # Input plugins
+```
+
+**Base plugin interface:**
+```python
+class InputPlugin(ABC):
+    @abstractmethod
+    async def process(self, config: dict) -> InputResult:
+        """Process input and return result."""
+        pass
+    
+    @classmethod
+    def validate_config(cls, config: dict) -> BaseModel:
+        """Validate plugin configuration."""
+        pass
+```
+
+**Supported input types:**
+- Text input
+- Audio input (via STT)
+- File upload
+- API-based input
+
+### 12.3 Output Plugin Architecture (`backend/services/output/`)
+
+```
+backend/services/output/
+├── base.py              # Base plugin interface
+├── registry.py          # Plugin registry
+└── plugins/             # Output plugins
+    ├── print_plugin.py           # Print plugin (DOCX/PDF/ODF)
+    ├── tts_plugin.py             # TTS plugin
+    ├── mimo_tts_renderer.py      # MIMO TTS renderer
+    ├── edge_tts_renderer.py      # Edge TTS renderer
+    ├── print_layout_engine.py    # Print layout engine
+    ├── print_models.py           # Print models
+    ├── tts_models.py             # TTS models
+    ├── tts_script_engine.py      # TTS script engine
+    ├── audio_helpers.py          # Audio helpers
+    └── voice_store.py            # Voice store
+```
+
+**Base plugin interface:**
+```python
+class OutputPlugin(ABC):
+    @abstractmethod
+    async def render(self, artifact: DebateArtifact, config: dict) -> RenderResult:
+        """Render artifact to output format."""
+        pass
+    
+    @classmethod
+    def validate_config(cls, config: dict) -> BaseModel:
+        """Validate plugin configuration."""
+        pass
+```
+
+**Output plugins:**
+
+1. **Print Plugin** (`print_plugin.py`)
+   - Generates DOCX, PDF, ODF reports
+   - Supports custom layouts via Jinja2 templates
+   - Multi-language support (German/English)
+   - Audit trail inclusion
+
+2. **TTS Plugin** (`tts_plugin.py`)
+   - Text-to-Speech generation
+   - Multiple renderers:
+     - MIMO TTS (multi-modal)
+     - Edge TTS (edge-based)
+   - Voice store for voice profiles
+   - Script engine for TTS scripts
+
+### 12.4 Render Engine (`render_engine.py`)
+
+Orchestrates render job lifecycle:
+
+**Job lifecycle:**
+```
+queued → running → completed
+                → failed
+```
+
+**Render job:**
+```python
+class RenderJob:
+    session_id: str
+    status: RenderJobStatus
+    plugin_key: str
+    config: dict
+    artifact_snapshot_hash: str
+    output_path: str | None
+    error: str | None
+```
+
+### 12.5 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/input/compose` | Submit input job |
+| GET | `/api/v1/input/jobs/{id}` | Get input job status |
+| POST | `/api/v1/output/compose` | Submit output job |
+| GET | `/api/v1/output/jobs/{id}` | Get output job status |
+| GET | `/api/v1/output/plugins` | List available output plugins |
+| GET | `/api/v1/input/plugins` | List available input plugins |
+
+---
+
+## 13. Data Models & Schemas
+
+### 13.1 Pydantic Schemas (`backend/models/schemas.py`)
+
+#### 13.1.1 Enums
 
 ```python
 class DebateStatus(StrEnum):
@@ -1240,7 +1650,7 @@ class SearchMode(StrEnum):
     REQUIRED = "required"
 ```
 
-#### 10.1.2 Request Models
+#### 13.1.2 Request Models
 
 ```python
 class DebateRequest(BaseModel):
@@ -1260,7 +1670,7 @@ class DebateRequest(BaseModel):
     a2a_agents: list[A2AAgentConfig] = Field(default_factory=list)
 ```
 
-#### 10.1.2a A2A Schemas (`backend/a2a/schemas.py`)
+#### 13.1.2a A2A Schemas (`backend/a2a/schemas.py`)
 
 ```python
 class TaskStatus(StrEnum):
@@ -1295,7 +1705,7 @@ class A2AAgentConfig(BaseModel):
     position: str = "after:moderator"
 ```
 
-#### 10.1.3 Response Models
+#### 13.1.3 Response Models
 
 ```python
 class DebateStatusResponse(BaseModel):
@@ -1320,7 +1730,7 @@ class DebateStatusResponse(BaseModel):
 
 ---
 
-### 10.2 Profile Schemas (`backend/core/profiles.py`)
+### 13.2 Profile Schemas (`backend/core/profiles.py`)
 
 ```python
 class LLMProfile(BaseModel):
@@ -1359,9 +1769,9 @@ class PromptVariant(BaseModel):
 
 ---
 
-## 11. API Reference
+## 14. API Reference
 
-### 11.1 Debate Endpoints
+### 14.1 Debate Endpoints
 
 #### POST /api/v1/debate
 Create a new debate.
@@ -1427,7 +1837,7 @@ SSE endpoint for real-time updates.
 
 ---
 
-### 11.2 Profile Endpoints
+### 14.2 Profile Endpoints
 
 #### GET /api/v1/profiles/llm
 List all LLM profiles.
@@ -1460,7 +1870,7 @@ Preview a prompt template for a specific agent role.
 
 ---
 
-### 11.3 DMS Endpoints
+### 14.3 DMS Endpoints
 
 #### POST /api/v1/dms/documents
 Upload a document to the active project.
@@ -1492,7 +1902,7 @@ Retrieve relevant chunks for RAG.
 
 ---
 
-### 11.4 Configuration Endpoints
+### 14.4 Configuration Endpoints
 
 #### GET /api/v1/config/settings
 Get current application settings.
@@ -1515,7 +1925,7 @@ Update application settings.
 
 ---
 
-### 11.5 A2A Endpoints
+### 14.5 A2A Endpoints
 
 #### GET /.well-known/agent.json
 Agent Card discovery endpoint (A2A spec).
@@ -1579,9 +1989,9 @@ JSON-RPC 2.0 endpoint for A2A protocol methods.
 
 ---
 
-## 12. Configuration
+## 15. Configuration
 
-### 12.1 Environment Variables
+### 15.1 Environment Variables
 
 Prefix: `DANWA_` (configured in `backend/core/config.py`)
 
@@ -1606,7 +2016,7 @@ Prefix: `DANWA_` (configured in `backend/core/config.py`)
 
 ---
 
-### 12.2 YAML Configuration (`config/settings.yaml`)
+### 15.2 YAML Configuration (`config/settings.yaml`)
 
 ```yaml
 # Application settings
@@ -1627,7 +2037,7 @@ privacy:
 
 ---
 
-### 12.3 Profile YAML Examples
+### 15.3 Profile YAML Examples
 
 #### LLM Profile (`profiles/llm/openrouter-claude.yaml`)
 
@@ -1669,16 +2079,16 @@ tags: [default, balanced]
 
 ---
 
-## 13. A2A Protocol Integration
+## 16. A2A Protocol Integration
 
-### 13.1 Overview
+### 16.1 Overview
 
 Danwa implements the [A2A (Agent-to-Agent) protocol](https://github.com/google/A2A) for interoperability with external AI agents. The integration supports two modes:
 
 1. **Danwa as A2A Server** (incoming): External agents can create debates via JSON-RPC `tasks/send`
 2. **Danwa as A2A Client** (outgoing): Danwa can invoke external agents as additional debate participants
 
-### 13.2 Module Architecture (`backend/a2a/`)
+### 16.2 Module Architecture (`backend/a2a/`)
 
 ```
 backend/a2a/
@@ -1693,7 +2103,7 @@ backend/a2a/
 └── router.py            # FastAPI router (Agent Card + JSON-RPC endpoint)
 ```
 
-### 13.3 Configuration (`config/a2a.json`)
+### 16.3 Configuration (`config/a2a.json`)
 
 ```json
 {
@@ -1713,7 +2123,7 @@ backend/a2a/
 | `server.path` | `string` | JSON-RPC endpoint path (default: `/a2a`) |
 | `external_agents` | `string[]` | List of external agent URLs for outgoing calls |
 
-### 13.4 Task Lifecycle
+### 16.4 Task Lifecycle
 
 A2A tasks follow this state machine:
 
@@ -1725,7 +2135,7 @@ submitted → working → completed
 
 Tasks are persisted in SQLite (`data/a2a_tasks.db`) and survive server restarts.
 
-### 13.5 Using A2A in Debates
+### 16.5 Using A2A in Debates
 
 Include `a2a_agents` in the debate creation request:
 
@@ -1747,7 +2157,7 @@ The external agent is invoked after the standard agents (strategist, critic, opt
 - `after:strategist` — after the strategist
 - `before:critic` — before the critic
 
-### 13.6 Architecture
+### 16.6 Architecture
 
 ```
 Danwa as Server (incoming):          Danwa as Client (outgoing):
@@ -1764,7 +2174,7 @@ Danwa as Server (incoming):          Danwa as Client (outgoing):
 └─────────────┘
 ```
 
-### 13.7 Testing
+### 16.7 Testing
 
 A2A integration has comprehensive test coverage:
 
@@ -1779,9 +2189,9 @@ A2A integration has comprehensive test coverage:
 
 ---
 
-## 14. Development Guide
+## 17. Development Guide
 
-### 14.1 Prerequisites
+### 17.1 Prerequisites
 
 - **Python 3.11+**
 - **uv** (Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
@@ -1791,7 +2201,7 @@ A2A integration has comprehensive test coverage:
 
 ---
 
-### 13.2 Quick Setup
+### 17.2 Quick Setup
 
 ```bash
 cd /media/data/coding/danwa
@@ -1808,7 +2218,7 @@ export OPENROUTER_API_KEY="your_key_here"
 
 ---
 
-### 13.3 Frontend Setup
+### 17.3 Frontend Setup
 
 ```bash
 cd frontend
@@ -1828,7 +2238,7 @@ npm run preview
 
 ---
 
-### 13.4 Running the Application
+### 17.4 Running the Application
 
 #### Development Mode
 
@@ -1858,7 +2268,7 @@ Access at `http://localhost:8000`.
 
 ---
 
-### 13.5 Testing
+### 17.5 Testing
 
 #### Backend Tests (pytest)
 
@@ -1898,7 +2308,7 @@ npm run test:i18n          # Internationalization tests
 
 ---
 
-### 13.6 Linting and Formatting
+### 17.6 Linting and Formatting
 
 #### Backend (ruff)
 
@@ -1931,7 +2341,7 @@ npm run format
 
 ---
 
-### 13.7 Project Dependencies (`pyproject.toml`)
+### 17.7 Project Dependencies (`pyproject.toml`)
 
 ```toml
 [project]
@@ -1974,9 +2384,9 @@ testpaths = ["tests/backend"]
 
 ---
 
-## 15. Deployment
+## 18. Deployment
 
-### 15.1 Production Build
+### 18.1 Production Build
 
 ```bash
 # Build frontend
@@ -1992,7 +2402,7 @@ The FastAPI app automatically detects `frontend/dist/` and serves static files.
 
 ---
 
-### 15.2 Docker Deployment (Optional)
+### 18.2 Docker Deployment (Optional)
 
 While Danwa doesn't include Dockerfiles by default, you can create them:
 
@@ -2040,7 +2450,7 @@ services:
 
 ---
 
-### 15.3 Scripts
+### 18.3 Scripts
 
 #### `scripts/setup.sh`
 Initial setup: install uv, create venv, install dependencies.
