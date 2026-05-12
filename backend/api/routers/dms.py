@@ -70,12 +70,20 @@ async def upload_document(
         tmp_path = tmp.name
 
     try:
-        doc_id = dms.upload_document(
+        result = dms.upload_document(
             project_id, tmp_path, original_filename=original_filename
         )
+        doc_id = result.get("doc_id", "")
         if not doc_id:
             raise HTTPException(status_code=500, detail="Failed to upload document")
-        return {"status": "ok", "document_id": doc_id, "filename": original_filename}
+        if result.get("error"):
+            raise HTTPException(status_code=422, detail=result["error"])
+        return {
+            "status": "ok",
+            "document_id": doc_id,
+            "filename": original_filename,
+            "chunk_count": result.get("chunk_count", 0),
+        }
     finally:
         # Clean up temp file
         try:
@@ -165,3 +173,20 @@ def search_rag(
         raise HTTPException(status_code=404, detail="Project not found")
     results = dms.get_rag_context(query, project_id=project_id, k=k)
     return {"results": results}
+
+
+# --- OCR Status ---
+
+
+@router.get("/ocr-status")
+def ocr_status():
+    """Check whether PaddleOCR is available for image text extraction.
+
+    Returns:
+        Dict with ``available`` (bool) and ``engine`` (str or null).
+    """
+    try:
+        import paddleocr  # noqa: F401
+        return {"available": True, "engine": "paddleocr"}
+    except ImportError:
+        return {"available": False, "engine": None}

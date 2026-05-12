@@ -31,13 +31,19 @@ class DMS:
     Each instance is scoped to a specific project directory.
     """
 
-    def __init__(self, db_path: str | Path, chroma_path: str | Path):
+    def __init__(
+        self,
+        db_path: str | Path,
+        chroma_path: str | Path,
+        config: dict | None = None,
+    ):
         self.db_path = str(db_path)
         self.chroma_path = str(chroma_path)
+        self.config = config or {}
 
         self.db = DMSDB(db_path=self.db_path)
 
-        self.document_processor = DocumentProcessor()
+        self.document_processor = DocumentProcessor(config=self.config)
         self.text_chunker = TextChunker()
 
         self.vector_store = DMSVectorStore(chroma_path=self.chroma_path)
@@ -65,18 +71,21 @@ class DMS:
         project_id: str,
         file_path: str,
         original_filename: str = "",
-    ) -> str:
+    ) -> dict[str, Any]:
         """Upload a document: create DB entry, process file, index chunks.
 
         Args:
             project_id: The project to upload to.
             file_path: Path to the temporary uploaded file.
             original_filename: The original filename from the user's upload.
+
+        Returns:
+            Dict with keys: ``doc_id``, ``error`` (str or None), ``chunk_count``.
         """
         file_p = Path(file_path)
         if not file_p.exists():
             logger.error("File not found: %s", file_path)
-            return ""
+            return {"doc_id": "", "error": f"File not found: {file_path}", "chunk_count": 0}
 
         if not original_filename:
             original_filename = file_p.name
@@ -97,25 +106,40 @@ class DMS:
             logger.info("Created document entry %s for project %s", doc_id, project_id)
         except Exception as e:
             logger.error("Failed to create document entry for %s: %s", file_path, e)
-            return ""
+            return {"doc_id": "", "error": f"Database error: {e}", "chunk_count": 0}
 
+        # Process file (extract text, chunk, index)
+        chunk_ids: list[str] = []
+        processing_error: str | None = None
         try:
             loop = asyncio.get_running_loop()
             # We're inside an async context (FastAPI) — run in a thread
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 future = pool.submit(asyncio.run, self.rag_pipeline.process_file(doc_id, file_path))
-                future.result(timeout=120)
+                chunk_ids = future.result(timeout=120)
         except RuntimeError:
             # No running loop — safe to call asyncio.run directly
             try:
-                asyncio.run(self.rag_pipeline.process_file(doc_id, file_path))
+                chunk_ids = asyncio.run(self.rag_pipeline.process_file(doc_id, file_path))
+            except ValueError as e:
+                processing_error = str(e)
+                logger.warning("Processing error for document %s: %s", doc_id, e)
             except Exception as e:
+                processing_error = f"Processing failed: {e}"
                 logger.error("Failed to process document %s: %s", doc_id, e)
+        except ValueError as e:
+            processing_error = str(e)
+            logger.warning("Processing error for document %s: %s", doc_id, e)
         except Exception as e:
+            processing_error = f"Processing failed: {e}"
             logger.error("Failed to process document %s: %s", doc_id, e)
 
-        return doc_id
+        return {
+            "doc_id": doc_id,
+            "error": processing_error,
+            "chunk_count": len(chunk_ids) if chunk_ids else 0,
+        }
 
     def delete_document(self, document_id: str) -> bool:
         """Delete a document and its chunks from DB and vector store."""
@@ -246,6 +270,8 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
     """Get or create a DMS instance for a specific project.
 
     Factory function used by both the DMS router and the debate router.
+    Loads DMS configuration (including OCR settings) and passes it through
+    to ``DocumentProcessor``.
     """
     if project_id in _dms_cache:
         return _dms_cache[project_id]
@@ -262,7 +288,18 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
     dms_dir = project_dir / "dms"
     dms_dir.mkdir(parents=True, exist_ok=True)
 
-    dms = DMS(db_path=str(dms_dir / "dms.db"), chroma_path=str(dms_dir / "chroma_db"))
+    # Load DMS config (includes ocr_enabled, ocr_device, etc.)
+    from backend.services.dms.config import load_dms_config
+    try:
+        dms_config = load_dms_config()
+    except Exception:
+        dms_config = {}
+
+    dms = DMS(
+        db_path=str(dms_dir / "dms.db"),
+        chroma_path=str(dms_dir / "chroma_db"),
+        config=dms_config,
+    )
 
     # Ensure the project exists in the DMS database (required for FK constraint)
     if not dms.db.get_project(project_id):

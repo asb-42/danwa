@@ -86,15 +86,15 @@ class RAGPipeline:
         return chunk_ids
 
     async def process_file(self, doc_id: str, file_path: str) -> list[str]:
-        """Process a file: extract text, then chunk and index."""
+        """Process a file: extract text, then chunk and index.
+
+        Raises:
+            ValueError: If the file cannot be processed (e.g. image without OCR).
+        """
         logger.info("Processing file %s for document %s", file_path, doc_id)
-        try:
-            result = await self.document_processor.process_file(file_path)
-            text = result.get("text", "")
-            if not text:
-                logger.warning("No text extracted from file %s", file_path)
-                return []
-            return self.process_document(doc_id, text)
-        except Exception as e:
-            logger.error("Failed to process file %s: %s", file_path, e)
+        result = await self.document_processor.process_file(file_path)
+        text = result.get("text", "")
+        if not text:
+            logger.warning("No text extracted from file %s", file_path)
             return []
+        return self.process_document(doc_id, text)

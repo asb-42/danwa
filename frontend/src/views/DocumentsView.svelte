@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { activeProject } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus } from '../lib/api.js';
 
   let { navigate } = $props();
 
@@ -24,6 +24,9 @@
   let searchResults = $state(null);
   let isSearching = $state(false);
   let searchError = $state('');
+
+  // OCR availability state
+  let ocrAvailable = $state(null); // null = loading, true/false = loaded
 
   async function handleRAGSearch() {
     if (!searchQuery.trim()) return;
@@ -69,6 +72,10 @@
 
   onMount(() => {
     loadDocuments();
+    // Check OCR availability (non-blocking)
+    getOcrStatus()
+      .then((res) => { ocrAvailable = res.available; })
+      .catch(() => { ocrAvailable = false; });
   });
 
   // Reload when project changes
@@ -232,6 +239,11 @@
       <p class="text-xs text-gray-500 dark:text-gray-400">
         {t('documents.supportedFormats')}
       </p>
+      {#if ocrAvailable === true}
+        <p class="text-xs text-green-600 dark:text-green-400">✅ OCR available — images supported</p>
+      {:else if ocrAvailable === false}
+        <p class="text-xs text-orange-500 dark:text-orange-400">⚠️ OCR not available — image upload may produce empty text</p>
+      {/if}
     </div>
   </div>
 

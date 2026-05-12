@@ -24,9 +24,19 @@ class DocumentProcessor:
         self._parser = DocumentParser()
 
     async def process_file(self, file_path: str) -> dict[str, Any]:
-        """Process a file and extract text. Uses OCR for images."""
+        """Process a file and extract text. Uses OCR for images.
+
+        Raises:
+            ValueError: If the file is an image and OCR is not available.
+        """
         ext = Path(file_path).suffix.lower()
         if ext in IMAGE_EXTENSIONS:
+            if not self.config.get("ocr_enabled", False):
+                raise ValueError(
+                    f"Image file '{Path(file_path).name}' requires OCR but "
+                    "ocr_enabled is false. Enable OCR in config/settings.yaml "
+                    "under dms.ocr_enabled: true"
+                )
             return await self._process_with_paddle(file_path)
         return await self._process_with_existing(file_path)
 
@@ -42,9 +52,17 @@ class DocumentProcessor:
         return {"text": text, "metadata": metadata, "ocr_used": False}
 
     async def _process_with_paddle(self, file_path: str) -> dict[str, Any]:
+        """Process an image file with PaddleOCR.
+
+        Raises:
+            ValueError: If PaddleOCR is not installed or cannot be initialized.
+        """
         ocr = await asyncio.to_thread(self._get_ocr)
         if ocr is None or not hasattr(ocr, "predict"):
-            return await self._process_with_existing(file_path)
+            raise ValueError(
+                f"Cannot process image '{Path(file_path).name}': "
+                "PaddleOCR is not installed. Install with: pip install paddlepaddle paddleocr"
+            )
 
         try:
             predict = getattr(ocr, "predict")

@@ -336,6 +336,11 @@ export function searchRAG(query, limit = 5) {
   return request(`/api/v1/dms/rag/search?q=${encodeURIComponent(query)}&limit=${limit}`);
 }
 
+export function getOcrStatus() {
+  return request('/api/v1/dms/ocr-status');
+}
+
+
 export function assignDocumentsToDebate(debateId, documentIds, ragAutoRetrieve = false) {
   return request(`/api/v1/debate/${debateId}/documents`, {
     method: 'PUT',

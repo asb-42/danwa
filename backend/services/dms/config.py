@@ -11,7 +11,7 @@ DEFAULT_DMS_CONFIG = {
     "chunk_size": 512,
     "chunk_overlap": 51,
     "embedding_model": "intfloat/multilingual-e5-small",
-    "ocr_enabled": False,
+    "ocr_enabled": True,
     "ocr_device": "cpu",
     "max_file_size_mb": 50,
     "chroma_collection": "document_chunks",
@@ -20,11 +20,16 @@ DEFAULT_DMS_CONFIG = {
 
 
 def load_dms_config(config_path: str = "config/settings.yaml") -> dict:
-    """Load DMS configuration from YAML file, merged with defaults."""
-    with open(config_path) as f:
-        config = yaml.safe_load(f) or {}
+    """Load DMS configuration from YAML file, merged with defaults.
 
-    dms_config = {**DEFAULT_DMS_CONFIG, **(config.get("dms") or {})}
+    Falls back to defaults if the config file doesn't exist.
+    """
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f) or {}
+        dms_config = {**DEFAULT_DMS_CONFIG, **(config.get("dms") or {})}
+    except FileNotFoundError:
+        dms_config = dict(DEFAULT_DMS_CONFIG)
 
     chunk_size = dms_config["chunk_size"]
     chunk_overlap = dms_config["chunk_overlap"]
