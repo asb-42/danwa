@@ -6,6 +6,53 @@
 - docs: update user manual with new systems and views (Blueprint Canvas, Input/Output Composer, Diff, Replay)
 - docs: move PADDLEOCR_COMPATIBILITY_REPORT.md to docs/
 - chore: update README.md and README.zh.md with enhanced feature descriptions
+- docs: update technical documentation with new systems
+- chore: move frontend README files to archive
+- ci: fix CI linting errors
+- ci: fix CI test collection errors
+- fix: configure Vite to listen on all interfaces
+- a11y: fix remaining accessibility warning in TemplateInstantiateModal.svelte
+- a11y: fix accessibility issues in Svelte components
+- fix(dms): improve OCR error messages and fix version access issues
+- fix(dms): fix PaddleX initialization conflicts in OCR functionality
+- fix(dms): fix DMS upload regression: correct concurrent.futures exception handling
+- fix(dms): fix PaddleOCR compatibility: downgrade PaddlePaddle to resolve PIR OneDNN bug
+- fix(dms): DMS upload feedback + RAG button UX improvements
+- feat(dms): PaddleOCR integration — fix silent image upload failures
+- feat(a2a): Phase 3+4 — A2A polling, approval UI, default workflow selection
+- feat(input-composer): Input Composer → Workflow Execution bridge (Phase 1+2)
+- feat(blueprint): Blueprint → Debate Pipeline (Phase 1-4)
+- fix(blueprint): layout loading, real-time node preview, save dialog
+- fix(i18n): add t() keys for Palette entity section labels
+- feat(blueprint): DB entities in Palette + color-coded ports
+- fix(blueprint): edge handle IDs + connection state display
+- fix(workflow-viz): Position enum casing + handle CSS + event API
+- fix(blueprint): Position enum casing + SvelteFlow event API — canvas fully functional
+- fix(blueprint): node handles not visible + canvas handle styles
+- fix(blueprint): LLM Profile form — missing fields + null validation
+- fix(blueprint): Palette shows empty — registry not populated
+- fix(tts): VoiceMappingEditor visibility + Generate button
+- fix(tts): auto-resolve MiMo config from LLM profile + WAV→MP3 + voice mapping UI
+- fix(tts): MiMo silent failure + profile_type persistence
+- fix(tts): profile_type persistence + MiMo TTS timeout
+- fix(tts): MiMo TTS 401 — wrong env var name
+- feat(tts): MiMo-V2.5-TTS integration with per-agent voice assignment
+- fix(blueprint): Svelte 5 syntax errors in inspector forms
+- feat(blueprint): Phase 3+4 — Compiler RoleType chain + Config UI badges
+- feat(blueprint): Phase 2 — Inspector Panel Enhancements + ADR-001
+- feat(blueprint): Phase 1 — Edge → Backend Wiring for canvas role assignment
+- fix(config): Role Types — tab order, create error, seed defaults
+- fix(config): LLM Profiles dropdown + restore missing table columns
+- feat(config): LLM Profiles UI — profile_type, dropdown actions, search, sort
+- feat(config): Agent Personas + Prompts → DB SSOT (blueprints.db)
+- refactor: ProfileService LLM profiles → DB as Single Source of Truth
+- chore: move duplicate Xiaomi LLM profile to archive
+- chore: remove debug logging, downgrade format log to DEBUG
+- fix: generic progress text + add /output/ to .gitignore
+- fix(output): initialize config defaults from schema on plugin select
+- feat(output): add Markdown (MD) output format + debug logging for format branching
+- fix(output): resolve $ref in ConfigForm for enum fields (ODT/DOCX select)
+- feat(pdf): add Table of Contents to PDF export
 
 ## 2026-05-10
 
