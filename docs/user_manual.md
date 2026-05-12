@@ -15,16 +15,19 @@
 11. [Report Generation](#report-generation)
 12. [Project Management](#project-management)
 13. [Document Management System (DMS)](#document-management-system-dms)
-14. [Real-Time Updates (SSE)](#real-time-updates-sse)
-15. [Out-of-Band Inputs](#out-of-band-inputs)
-16. [A2A Protocol Integration](#a2a-protocol-integration)
-17. [Workflow Visualization](#workflow-visualization)
-18. [Internationalization (i18n)](#internationalization-i18n)
-19. [Privacy & Data Protection](#privacy--data-protection)
-20. [Audit & Reproducibility](#audit--reproducibility)
-21. [Advanced Configuration](#advanced-configuration)
-22. [Development](#development)
-23. [Troubleshooting](#troubleshooting)
+14. [Blueprint System](#blueprint-system)
+15. [HITL (Human-in-the-Loop) System](#hitl-human-in-the-loop-system)
+16. [Input/Output Composer](#inputoutput-composer)
+17. [Real-Time Updates (SSE)](#real-time-updates-sse)
+18. [Out-of-Band Inputs](#out-of-band-inputs)
+19. [A2A Protocol Integration](#a2a-protocol-integration)
+20. [Workflow Visualization](#workflow-visualization)
+21. [Internationalization (i18n)](#internationalization-i18n)
+22. [Privacy & Data Protection](#privacy--data-protection)
+23. [Audit & Reproducibility](#audit--reproducibility)
+24. [Advanced Configuration](#advanced-configuration)
+25. [Development](#development)
+26. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -49,6 +52,11 @@ Danwa (formerly Debate-Agent) is an auditable multi-agent debate workflow system
 - **Real-Time SSE**: Server-Sent Events for live debate progress visualization
 - **Out-of-Band Inputs**: Inject additional context during running debates
 - **A2A Protocol**: Agent-to-Agent communication for multi-agent workflows with external AI agents
+- **Blueprint System**: Visual workflow editor for creating custom multi-agent workflows
+- **HITL System**: Human-in-the-loop interactions for querying agents and providing feedback
+- **Input/Output Composer**: Extensible plugin system for processing various input sources and generating multiple output formats (including TTS)
+- **Tone Profiles**: Configure debate tone and style for different use cases
+- **Role Definitions**: Define custom agent roles with specific behaviors
 
 ### Technology Stack
 
@@ -414,6 +422,103 @@ Manage projects with isolated data storage:
 └─────────────────────────────────────────────────────┘
 ```
 
+### Blueprint Canvas View
+
+Visual workflow editor for creating custom multi-agent workflows:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  🎨 Blueprint Canvas                                │
+├─────────────────────────────────────────────────────┤
+│  [+ New Blueprint] [Load Layout] [Compile] [Run]   │
+├─────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────┐   │
+│  │  [Input] ──→ [Agent 1] ──→ [Agent 2]      │   │
+│  │              ↓              ↓                │   │
+│  │          [Gate] ──→ [Output]                │   │
+│  └──────────────────────────────────────────────┘   │
+│  Palette: [Agent] [Input] [Output] [Gate] [HITL]   │
+└─────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- Drag and drop nodes from palette
+- Connect nodes to define execution flow
+- Configure agent blueprints (LLM, role, prompt)
+- Save and load canvas layouts
+- Compile and validate workflows
+- Execute workflows with real-time monitoring
+
+### Input Composer View
+
+Process various input sources for workflows:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  📥 Input Composer                                  │
+├─────────────────────────────────────────────────────┤
+│  Input Type: [Text ▼] | [Audio ▼] | [File ▼]       │
+├─────────────────────────────────────────────────────┤
+│  Configuration:                                     │
+│  [Input parameters...]                              │
+├─────────────────────────────────────────────────────┤
+│  Target Workflow: [Select workflow ▼]              │
+│  [Submit] [View Jobs]                               │
+└─────────────────────────────────────────────────────┘
+```
+
+### Output Composer View
+
+Generate various output formats from debate results:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  📤 Output Composer                                 │
+├─────────────────────────────────────────────────────┤
+│  Output Format: [DOCX ▼] | [PDF ▼] | [TTS ▼]       │
+├─────────────────────────────────────────────────────┤
+│  Source Artifact: [Select session ▼]                │
+│  Configuration:                                     │
+│  [Output parameters...]                             │
+├─────────────────────────────────────────────────────┤
+│  [Generate] [View Jobs] [Download]                  │
+└─────────────────────────────────────────────────────┘
+```
+
+### Diff View
+
+Compare two debate sessions or workflow states:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  🔍 Diff View                                       │
+├─────────────────────────────────────────────────────┤
+│  Compare:                                           │
+│  Session A: [abc123...]  Session B: [def456...]     │
+├─────────────────────────────────────────────────────┤
+│  Round 1 - Strategist:                              │
+│  - Added: "New insight..."                          │
+│  - Removed: "Old argument..."                        │
+│  - Modified: "Updated analysis..."                  │
+└─────────────────────────────────────────────────────┘
+```
+
+### Replay View
+
+Replay past debate sessions with timeline navigation:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ▶️ Replay View                                     │
+├─────────────────────────────────────────────────────┤
+│  Session: abc123... | [Play] [Pause] [Step]        │
+│  Timeline: [━━━━━━━━━━━━━━━━━━━━━━━●━━━━]          │
+├─────────────────────────────────────────────────────┤
+│  Current State: Round 2 - Critic                    │
+│  [Agent output preview...]                          │
+└─────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Core Features
@@ -714,6 +819,270 @@ Combines three retrieval methods:
 - **BM25**: Keyword-based search
 - **Vector Search**: Semantic similarity search
 - **Re-ranking**: RRF (Reciprocal Rank Fusion) to merge results
+
+---
+
+## Blueprint System
+
+### What is the Blueprint System?
+
+The Blueprint System is a visual workflow editor that allows you to create, manage, and execute custom multi-agent workflows through a graphical interface. Instead of using the fixed debate workflow (Strategist → Critic → Optimizer → Moderator), you can design your own workflows with custom agents, nodes, and execution paths.
+
+### Accessing the Blueprint Editor
+
+Navigate to the **Blueprint Canvas** view from the main navigation menu.
+
+### Creating a Workflow
+
+1. **Create a New Blueprint**
+   - Click **+ New Blueprint** in the Blueprint Canvas view
+   - Enter a name and description for your blueprint
+   - Select the project context
+
+2. **Design Your Workflow**
+   - Drag and drop nodes from the palette onto the canvas
+   - Connect nodes to define execution flow
+   - Configure each node's properties
+
+3. **Define Agent Blueprints**
+   - Create agent configurations with LLM profiles, roles, and prompts
+   - Define role types with icons and colors
+   - Set execution parameters (max rounds, consensus threshold)
+
+4. **Compile and Validate**
+   - Click **Compile** to validate your workflow
+   - Review compilation errors and warnings
+   - Fix any issues before execution
+
+### Node Types
+
+| Node Type | Description |
+|-----------|-------------|
+| **Agent Node** | Represents an AI agent with specific role and LLM profile |
+| **Input Node** | Workflow input and context |
+| **Output Node** | Workflow output and artifacts |
+| **Gate Node** | Conditional branching point |
+| **Interjection Node** | Human-in-the-loop interaction point |
+
+### Canvas Features
+
+- **Drag & Drop**: Move nodes freely on the canvas
+- **Auto-Layout**: Automatically arrange nodes using ELK layout engine
+- **Zoom & Pan**: Navigate large workflows
+- **Save Layouts**: Save multiple canvas layouts for the same workflow
+- **Import/Export**: Share blueprints between projects
+
+### Workflow Execution
+
+Once compiled, workflows can be executed from the Blueprint Canvas view:
+- Click **Run Workflow** to start execution
+- Monitor progress in real-time with SSE updates
+- View execution history and results
+
+### API Endpoints
+
+```
+GET    /api/v1/blueprints              # List blueprints
+POST   /api/v1/blueprints              # Create blueprint
+GET    /api/v1/blueprints/{id}         # Get blueprint details
+PUT    /api/v1/blueprints/{id}         # Update blueprint
+DELETE /api/v1/blueprints/{id}         # Delete blueprint
+POST   /api/v1/blueprints/{id}/compile # Compile blueprint
+GET    /api/v1/canvas/{id}             # Get canvas layout
+PUT    /api/v1/canvas/{id}             # Save canvas layout
+```
+
+---
+
+## HITL (Human-in-the-Loop) System
+
+### What is HITL?
+
+The Human-in-the-Loop (HITL) system enables direct interaction with running workflows, allowing you to:
+- Query agents for clarification during execution
+- Provide feedback or corrections mid-debate
+- Interject at specific workflow points
+- Monitor and control workflow execution in real-time
+
+### Agent Queries
+
+During a running workflow, you can submit queries to specific agents:
+
+1. **Submit a Query**
+   - Click **Query Agent** in the execution panel
+   - Select the target agent
+   - Enter your question or clarification request
+   - Submit the query
+
+2. **View Responses**
+   - Agent responses appear in real-time
+   - Responses are logged in the audit trail
+   - You can ask follow-up questions
+
+### Feedback Submission
+
+Provide feedback to agents during execution:
+
+1. **Submit Feedback**
+   - Click **Provide Feedback** in the execution panel
+   - Select the target agent or round
+   - Enter your feedback or correction
+   - Set priority (high/medium/low)
+
+2. **Feedback Integration**
+   - Feedback is injected into the agent's context
+   - Agents can adjust their responses based on feedback
+   - Feedback is logged for reproducibility
+
+### Workflow Interjection
+
+Interject at specific points in the workflow:
+
+1. **Set Interjection Points**
+   - Define interjection points in your blueprint
+   - Configure interjection conditions
+   - Set required human approval
+
+2. **Respond to Interjections**
+   - When workflow reaches an interjection point, it pauses
+   - Review the current state
+   - Approve, modify, or reject the current step
+   - Workflow resumes based on your decision
+
+### HITL Security
+
+- **Authentication**: All HITL endpoints require authentication
+- **Authorization**: Project-based access control
+- **Validation**: All inputs are validated and sanitized
+- **Rate Limiting**: Prevents abuse of agent queries
+
+### API Endpoints
+
+```
+POST   /api/v1/hitl/query              # Submit agent query
+GET    /api/v1/hitl/query/{id}         # Get query response
+POST   /api/v1/hitl/feedback           # Submit workflow feedback
+GET    /api/v1/hitl/round/{id}         # Get round status
+POST   /api/v1/hitl/interject          # Interject in workflow
+```
+
+---
+
+## Input/Output Composer
+
+### What is the Input/Output Composer?
+
+The Input/Output Composer is an extensible plugin system that allows you to:
+- Process various input sources (audio, text, files)
+- Generate multiple output formats (documents, audio, reports)
+- Customize processing pipelines with plugins
+
+### Input Composer
+
+Access via the **Input Composer** view.
+
+#### Supported Input Types
+
+| Input Type | Description | Plugin |
+|------------|-------------|--------|
+| **Text** | Plain text input | Built-in |
+| **Audio** | Speech-to-text conversion | STT Plugin |
+| **File** | Document upload | Built-in |
+| **API** | External API input | MCP Adapter |
+
+#### Using the Input Composer
+
+1. **Select Input Type**
+   - Choose from available input plugins
+   - Configure input parameters
+   - Select target workflow
+
+2. **Process Input**
+   - Submit input job
+   - Monitor processing status
+   - View processed results
+
+3. **Integration**
+   - Processed input is automatically routed to workflows
+   - Can be used with Blueprint system
+   - Supports batch processing
+
+### Output Composer
+
+Access via the **Output Composer** view.
+
+#### Supported Output Formats
+
+| Output Type | Description | Plugin |
+|-------------|-------------|--------|
+| **DOCX** | Word document | Print Plugin |
+| **PDF** | PDF document | Print Plugin |
+| **ODF** | OpenDocument format | Print Plugin |
+| **Audio (TTS)** | Text-to-speech audio | TTS Plugin |
+| **Custom** | User-defined formats | Custom Plugins |
+
+#### Using the Output Composer
+
+1. **Select Output Format**
+   - Choose from available output plugins
+   - Configure output parameters
+   - Select source artifact (debate session)
+
+2. **Generate Output**
+   - Submit render job
+   - Monitor rendering progress
+   - Download generated output
+
+3. **TTS Features**
+   - Multiple voice profiles
+   - Adjustable speech rate and pitch
+   - Multi-language support
+   - Batch audio generation
+
+### Print Plugin
+
+The Print Plugin generates professional documents:
+
+**Features:**
+- Custom layouts via Jinja2 templates
+- Multi-language support (German/English)
+- Audit trail inclusion
+- Metadata tables
+- Styled formatting
+
+**Configuration:**
+```yaml
+output:
+  format: docx  # docx | pdf | odf
+  template: default
+  include_audit: true
+  language: en
+```
+
+### TTS Plugin
+
+The TTS Plugin converts text to speech:
+
+**Renderers:**
+- **MIMO TTS**: Multi-modal text-to-speech
+- **Edge TTS**: Edge-based text-to-speech
+
+**Features:**
+- Voice profile management
+- Script engine for custom TTS scripts
+- Audio format selection (MP3, WAV)
+- Batch processing
+
+### API Endpoints
+
+```
+POST   /api/v1/input/compose           # Submit input job
+GET    /api/v1/input/jobs/{id}        # Get input job status
+POST   /api/v1/output/compose          # Submit output job
+GET    /api/v1/output/jobs/{id}       # Get output job status
+GET    /api/v1/output/plugins          # List output plugins
+GET    /api/v1/input/plugins           # List input plugins
+```
 
 ---
 
@@ -1047,7 +1416,7 @@ make check
 
 > **Note**: These are features fully implemented in the backend but **not yet accessible through the user interface**.
 >
-> **Last audited**: 2026-05-10 — full codebase scan.
+> **Last audited**: 2026-05-12 — full codebase scan.
 >
 > **Recently exposed (wired up in prior sprints)**:
 > - Report Generation — download 500 error fixed, now functional
@@ -1060,6 +1429,10 @@ make check
 > - Canvas Layout CRUD — wired in Palette + BlueprintCanvas
 > - Role Types CRUD — wired in RoleTypeForm + ConfigView
 > - Language API — wired in LanguageSwitcher
+> - Blueprint System — fully exposed in BlueprintCanvasView
+> - HITL System — fully exposed in ExecutionPanel
+> - Input/Output Composer — fully exposed in InputComposerView and OutputComposerView
+> - Replay & Diff Views — fully exposed in ReplayView and DiffView
 
 ### Legacy Session History
 
@@ -1072,7 +1445,7 @@ The legacy `backend/api/routers/sessions.py` router provides endpoints (supersed
 | `DELETE /api/v1/sessions/{id}` | Delete session |
 | `GET /api/v1/sessions/{id}/trace` | Get audit trace |
 
-**What's missing**: No frontend API functions or UI for this legacy router.
+**What's missing**: No frontend API functions or UI for this legacy router. This is intentionally not exposed as it's superseded by newer routers.
 
 ### Report SSE Progress Stream
 
@@ -1080,20 +1453,30 @@ The legacy `backend/api/routers/sessions.py` router provides endpoints (supersed
 |----------|-------------|
 | `GET /api/v1/sessions/{session_id}/report/stream` | SSE progress stream for report generation |
 
-**What's missing**: `createReportSSE()` exists in `api.js` but is not consumed in any view.
+**What's missing**: `createReportSSE()` exists in `api.js` but is not consumed in any view. Report generation is functional without this progress indicator.
+
+### Project-Level Settings Override
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/config/settings/project/{id}` | Get project-overridden settings |
+
+**What's missing**: No frontend API function or UI for project-level settings overrides. i18n string exists (`projects.configHint`) but no implementation.
 
 ### Summary Table
 
 | Feature | Backend | API Client | UI | Status |
 |---------|---------|------------|-----|--------|
-| Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
-| Report SSE Progress Stream | ✅ | ✅ Exists | ❌ Missing | **Not exposed** |
+| Legacy Session History | ✅ | ❌ Missing | ❌ Missing | **Not exposed (superseded)** |
+| Report SSE Progress Stream | ✅ | ✅ Exists | ❌ Missing | **Not exposed (low priority)** |
+| Project-Level Settings Override | ✅ | ❌ Missing | ❌ Missing | **Not exposed** |
 | RAG Document Toggle | ✅ | ✅ | ✅ | Exposed |
 | Debate Workflow | ✅ | ✅ | ✅ | Exposed |
 | Config (LLM/Agents/Prompts) | ✅ | ✅ | ✅ | Exposed |
 | HITL Interactions | ✅ | ✅ | ✅ | Exposed |
 | A2A in Debates | ✅ | ✅ | ✅ | Exposed |
-| Blueprint Canvas | ✅ | ✅ | ✅ | Exposed |
+| Blueprint System | ✅ | ✅ | ✅ | Exposed |
+| Input/Output Composer | ✅ | ✅ | ✅ | Exposed |
 | Replay & Diff Views | ✅ | ✅ | ✅ | Exposed |
 
 ## Troubleshooting
