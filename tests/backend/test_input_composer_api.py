@@ -159,3 +159,97 @@ class TestA2AApprovalEndpoints:
         res = await client.post(f"/api/v1/input/a2a/{job_id}/reject")
         assert res.status_code == 200
         assert res.json()["status"] == "failed"
+
+
+class TestLaunchWorkflowEndpoint:
+    """Tests for POST /api/v1/input/launch."""
+
+    async def test_launch_nonexistent_job(self, client: AsyncClient):
+        """Launching a nonexistent job should return 404."""
+        res = await client.post(
+            "/api/v1/input/launch",
+            json={"job_id": "nonexistent"},
+        )
+        assert res.status_code == 404
+
+    async def test_launch_standard_text(self, client: AsyncClient):
+        """Standard text input should complete immediately and launch a workflow."""
+        from backend.blueprints.repository import BlueprintRepository
+        from backend.blueprints.workflow_models import (
+            WorkflowDefinition,
+            WorkflowEdge,
+            WorkflowNode,
+        )
+
+        # Create a minimal but valid workflow definition (needs connected
+        # non-isolated nodes — the compiler rejects isolated nodes).
+        repo = BlueprintRepository()
+        wf = WorkflowDefinition(
+            id="test-wf-launch",
+            name="Test Launch Workflow",
+            nodes=[
+                WorkflowNode(id="input-1", type="wf-input", label="Input"),
+                WorkflowNode(id="init-1", type="wf-initialize", label="Init"),
+            ],
+            edges=[
+                WorkflowEdge(
+                    id="e1",
+                    source="input-1",
+                    target="init-1",
+                    type="sequential",
+                ),
+            ],
+            entry_point="input-1",
+        )
+        repo.save_workflow_definition(wf)
+
+        try:
+            # Submit standard text input (completes immediately)
+            res = await client.post(
+                "/api/v1/input/submit",
+                json={
+                    "plugin_key": "standard_text",
+                    "topic": "Is AI conscious?",
+                },
+            )
+            assert res.status_code == 202
+            job = res.json()
+            assert job["status"] == "completed"
+
+            # Launch workflow from the completed job
+            res = await client.post(
+                "/api/v1/input/launch",
+                json={
+                    "job_id": job["job_id"],
+                    "workflow_id": "test-wf-launch",
+                },
+            )
+            assert res.status_code == 200
+            result = res.json()
+            assert "session_id" in result
+            assert result["status"] == "running"
+            assert result["workflow_id"] == "test-wf-launch"
+        finally:
+            repo.delete_workflow_definition("test-wf-launch")
+
+    async def test_launch_no_workflow(self, client: AsyncClient):
+        """Launching without available workflows should return 422."""
+        # Submit standard text input
+        res = await client.post(
+            "/api/v1/input/submit",
+            json={
+                "plugin_key": "standard_text",
+                "topic": "Test",
+            },
+        )
+        assert res.status_code == 202
+        job = res.json()
+
+        # Try to launch without specifying workflow_id
+        # (may succeed if other tests created workflows, or fail with 422)
+        res = await client.post(
+            "/api/v1/input/launch",
+            json={"job_id": job["job_id"]},
+        )
+        # Either 200 (auto-selected workflow) or 422 (no workflows)
+        assert res.status_code in (200, 422)

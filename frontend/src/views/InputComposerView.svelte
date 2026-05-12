@@ -8,7 +8,7 @@
    */
   import { i18n } from '../lib/i18n/index.js';
   import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
-  import { listInputPlugins, submitInput, approveA2A, rejectA2A } from '../lib/input/inputApi.js';
+  import { listInputPlugins, submitInput, launchWorkflow, getInputJobStatus, approveA2A, rejectA2A } from '../lib/input/inputApi.js';
   import { createInputJobTracker } from '../lib/input/inputJobStore.js';
   import { listWorkflowTemplates } from '../lib/blueprint/api.js';
   import PluginSelector from '../components/input/PluginSelector.svelte';
@@ -16,6 +16,7 @@
   import A2AApprovalCard from '../components/input/A2AApprovalCard.svelte';
   import WorkflowTemplatePicker from '../components/input/WorkflowTemplatePicker.svelte';
   import DebateCreatePanel from '../components/debate/DebateCreatePanel.svelte';
+  import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
 
   /** @type {function} Navigation helper from App.svelte */
   let { navigate = () => {} } = $props();
@@ -44,6 +45,11 @@
   // Workflow template state
   let selectedTemplateId = $state('');
   let workflowTemplates = $state([]);
+
+  // Workflow execution state (Input Composer → ExecutionPanel)
+  let showExecutionPanel = $state(false);
+  let executionSessionId = $state(null);
+  let launchError = $state(null);
 
   // Which mode is active: 'compose' (Input Composer) or 'form' (DebateCreatePanel)
   let inputMode = $state('form');
@@ -83,16 +89,66 @@
     }
     loading = true;
     error = null;
+    launchError = null;
     try {
       const result = await submitInput(selectedPlugin, {}, topic.trim());
       activeJob = result;
-      if (result.status === 'processing' || result.status === 'pending_approval') {
+
+      if (result.status === 'completed') {
+        // Standard text completes immediately — launch workflow right away
+        await handleLaunch(result.job_id);
+      } else if (result.status === 'processing' || result.status === 'pending_approval') {
+        // STT or A2A — poll for completion, then launch
         tracker = createInputJobTracker(result.job_id);
+        // Watch for completion via polling
+        pollAndLaunch(result.job_id);
       }
     } catch (e) {
       error = e.message;
     } finally {
       loading = false;
+    }
+  }
+
+  /** Poll an input job until completed, then launch the workflow. */
+  async function pollAndLaunch(jobId) {
+    const maxAttempts = 30; // 60 seconds max (2s interval)
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const job = await getInputJobStatus(jobId);
+        if (job.status === 'completed') {
+          await handleLaunch(jobId);
+          return;
+        } else if (job.status === 'failed') {
+          error = job.error_message || 'Input processing failed';
+          return;
+        }
+        // pending_approval or processing — keep polling
+      } catch (e) {
+        error = e.message;
+        return;
+      }
+    }
+    error = 'Input processing timed out';
+  }
+
+  /** Launch workflow execution from a completed input job. */
+  async function handleLaunch(jobId) {
+    launchError = null;
+    try {
+      const options = {
+        language: 'de',
+      };
+      // Note: selectedTemplateId is a WorkflowTemplate ID, not a WorkflowDefinition ID.
+      // For now, let the backend auto-select the first active workflow.
+      // Phase 4 will wire template instantiation → workflow_id.
+      const result = await launchWorkflow(jobId, options);
+      executionSessionId = result.session_id;
+      showExecutionPanel = true;
+    } catch (e) {
+      launchError = e.message || 'Failed to launch workflow';
+      error = launchError;
     }
   }
 
@@ -268,3 +324,11 @@
     </div>
   {/if}
 </div>
+
+<!-- Execution Panel (slides in from right) -->
+<ExecutionPanel
+  sessionId={executionSessionId}
+  context={topic}
+  visible={showExecutionPanel}
+  onclose={() => { showExecutionPanel = false; executionSessionId = null; }}
+/>

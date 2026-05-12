@@ -15,16 +15,26 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend.blueprints.compiler import CompilerService
+from backend.blueprints.repository import BlueprintRepository
+from backend.models.input_job import InputJobStatus
 from backend.services.input.input_engine import InputComposerService
 from backend.services.input.input_job_store import InputJobStore
 from backend.services.input.registry import InputPluginRegistry
 from backend.services.stt_service import STTService
+from backend.workflow.state_snapshot import StateSnapshotStore
+from backend.workflow.workflow_runner import (
+    get_pause_event,
+    run_workflow_background,
+    set_session_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +43,8 @@ router = APIRouter(tags=["input-composer"])
 # Module-level singletons
 _engine: InputComposerService | None = None
 _job_store: InputJobStore | None = None
+_repo: BlueprintRepository | None = None
+_snapshot_store: StateSnapshotStore | None = None
 
 
 def _get_engine() -> InputComposerService:
@@ -49,6 +61,20 @@ def _get_job_store() -> InputJobStore:
     if _job_store is None:
         _job_store = InputJobStore()
     return _job_store
+
+
+def _get_repo() -> BlueprintRepository:
+    global _repo
+    if _repo is None:
+        _repo = BlueprintRepository()
+    return _repo
+
+
+def _get_snapshot_store() -> StateSnapshotStore:
+    global _snapshot_store
+    if _snapshot_store is None:
+        _snapshot_store = StateSnapshotStore()
+    return _snapshot_store
 
 
 # ---------------------------------------------------------------------------
@@ -300,4 +326,174 @@ async def mcp_tools_call() -> dict:
     raise HTTPException(
         status_code=501,
         detail="MCP tools/call is not yet implemented. This is a reserved endpoint.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Input → Workflow bridge
+# ---------------------------------------------------------------------------
+
+
+class LaunchWorkflowRequest(BaseModel):
+    """Request body for launching a workflow from a completed input job."""
+
+    job_id: str = Field(..., description="InputJob ID (must have status=completed)")
+    workflow_id: str | None = Field(
+        default=None,
+        description="WorkflowDefinition ID to execute. "
+        "If omitted, uses the first available active workflow.",
+    )
+    max_rounds: int = Field(default=5, ge=1, le=50)
+    consensus_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
+    language: str = Field(default="de", description="Language code")
+    project_id: str = Field(default="default", description="Project ID")
+
+
+class LaunchWorkflowResponse(BaseModel):
+    """Response after launching a workflow from input."""
+
+    session_id: str
+    status: str
+    workflow_id: str
+
+
+@router.post("/input/launch", response_model=LaunchWorkflowResponse)
+async def launch_workflow_from_input(
+    body: LaunchWorkflowRequest,
+    background_tasks: BackgroundTasks,
+) -> LaunchWorkflowResponse:
+    """Launch a workflow execution from a completed input job.
+
+    Takes a completed InputJob (with its DebateInput artifact), resolves
+    a workflow definition, and starts execution via the workflow runner.
+
+    This bridges the Input Composer pipeline to the Workflow Execution
+    pipeline — the missing link between input capture and debate execution.
+    """
+    job_store = _get_job_store()
+    repo = _get_repo()
+    snapshot_store = _get_snapshot_store()
+
+    # 1. Load and validate the input job
+    job = job_store.get_job(body.job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"InputJob '{body.job_id}' not found",
+        )
+    if job.status != InputJobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=422,
+            detail=f"InputJob '{body.job_id}' has status '{job.status}', expected 'completed'",
+        )
+    if job.processed_input is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"InputJob '{body.job_id}' has no processed_input (DebateInput)",
+        )
+
+    debate_input = job.processed_input
+    topic = debate_input.topic
+
+    # 2. Resolve workflow definition
+    workflow_id = body.workflow_id
+    if workflow_id is None:
+        # Use the first available active workflow
+        workflows = repo.list_workflow_definitions(limit=10)
+        active = [w for w in workflows if w.is_active]
+        if not active:
+            raise HTTPException(
+                status_code=422,
+                detail="No active WorkflowDefinition found. "
+                "Create a workflow in the Blueprint Canvas first.",
+            )
+        workflow_id = active[0].id
+        logger.info(
+            "No workflow_id specified, using first active: '%s' (%s)",
+            active[0].name, workflow_id,
+        )
+
+    workflow = repo.get_workflow_definition(workflow_id)
+    if workflow is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"WorkflowDefinition '{workflow_id}' not found",
+        )
+
+    # 3. Compile workflow
+    compiler = CompilerService(repo)
+    compiled = compiler.compile_to_langgraph(workflow)
+    if not compiled.is_valid:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Workflow compilation failed",
+                "errors": compiled.errors,
+                "warnings": compiled.warnings,
+            },
+        )
+
+    # 4. Generate session ID and build initial state
+    session_id = f"wf-{uuid.uuid4().hex[:12]}"
+
+    initial_state: dict[str, Any] = {
+        "workflow_id": workflow_id,
+        "session_id": session_id,
+        "project_id": body.project_id,
+        "context": topic,
+        "language": body.language,
+        "rag_context": "",
+        "node_sequence": compiled.node_sequence,
+        "node_configs": {
+            agent.node_id: {
+                "blueprint_id": agent.blueprint_id,
+                "blueprint_name": agent.blueprint_name,
+                "llm_profile_id": agent.llm_profile_id,
+                "llm_model": agent.llm_model,
+                "role_definition_id": agent.role_definition_id,
+                "role": agent.role,
+                "prompt_template_id": agent.prompt_template_id,
+            }
+            for agent in compiled.resolved_agents
+        },
+        "edge_map": {},
+        "termination_conditions": [],
+        "current_node_id": "",
+        "current_round": 1,
+        "max_rounds": body.max_rounds,
+        "threshold": body.consensus_threshold,
+        "node_outputs": [],
+        "messages": [],
+        "current_draft": "",
+        "interjection_queue": [],
+        "consumed_interjections": [],
+        "final_consensus": 0.0,
+        "output": "",
+        "status": "running",
+        "is_paused": False,
+        "pause_event": get_pause_event(session_id),
+    }
+
+    set_session_status(session_id, "running")
+
+    # 5. Launch as background task
+    background_tasks.add_task(
+        run_workflow_background,
+        session_id=session_id,
+        workflow_id=workflow_id,
+        project_id=body.project_id,
+        initial_state=initial_state,
+        compiled_workflow=compiled,
+        snapshot_store=snapshot_store,
+    )
+
+    logger.info(
+        "Launched workflow '%s' from InputJob '%s' (plugin=%s) as session '%s'",
+        workflow_id, body.job_id, job.plugin_key, session_id,
+    )
+
+    return LaunchWorkflowResponse(
+        session_id=session_id,
+        status="running",
+        workflow_id=workflow_id,
     )

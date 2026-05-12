@@ -51,3 +51,27 @@ export async function rejectA2A(taskId) {
   }
   return res.json();
 }
+
+/**
+ * Launch a workflow execution from a completed input job.
+ * @param {string} jobId - The completed InputJob ID.
+ * @param {object} [options] - Launch options.
+ * @param {string} [options.workflow_id] - Specific workflow ID (optional).
+ * @param {number} [options.max_rounds] - Max debate rounds.
+ * @param {number} [options.consensus_threshold] - Consensus threshold.
+ * @param {string} [options.language] - Language code.
+ * @param {string} [options.project_id] - Project ID.
+ * @returns {Promise<{ session_id: string, status: string, workflow_id: string }>}
+ */
+export async function launchWorkflow(jobId, options = {}) {
+  const res = await fetch(`${BASE}/input/launch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ job_id: jobId, ...options }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Launch failed: ${res.status} ${detail}`);
+  }
+  return res.json();
+}
