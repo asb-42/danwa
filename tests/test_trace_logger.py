@@ -2,11 +2,16 @@ import pytest
 from src.core.trace_logger import TraceLogger
 from pathlib import Path
 import tempfile
+from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
 def logger(tmp_path):
-    return TraceLogger("test_session"), tmp_path
+    # Patch LOG_DIR to use tmp_path for test isolation
+    with patch("src.core.trace_logger.LOG_DIR", tmp_path / "logs"):
+        tmp_path.mkdir(exist_ok=True)
+        (tmp_path / "logs").mkdir(exist_ok=True)
+        return TraceLogger("test_session"), tmp_path
 
 
 def test_logger_initialization(logger):
@@ -96,11 +101,10 @@ def test_log_special_characters(logger):
 
 
 def test_file_created_in_logs_dir(tmp_path):
-    with patch("src.core.trace_logger.LOG_DIR") as mock_dir:
-        mock_dir.__truediv__ = lambda s, o: tmp_path / "logs" / o
-        mock_dir.mkdir = MagicMock()
-        mock_dir.exists = MagicMock(return_value=True)
-        
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    
+    with patch("src.core.trace_logger.LOG_DIR", logs_dir):
         log = TraceLogger("session1")
         log.log("s", "a", "p", "r", {})
         

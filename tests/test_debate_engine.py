@@ -12,7 +12,24 @@ def engine():
          patch("src.core.debate_engine.WebSearchTool") as mock_search_cls, \
          patch("src.core.debate_engine.DebateMemory") as mock_memory_cls, \
          patch("src.core.debate_engine.PrivacyGuard") as mock_privacy_cls, \
-         patch("src.core.debate_engine.PromptManager") as mock_pm_cls:
+         patch("src.core.debate_engine.PromptManager") as mock_pm_cls, \
+         patch("src.core.debate_engine.yaml.safe_load") as mock_yaml_load:
+
+        # Mock settings.yaml content
+        mock_yaml_load.return_value = {
+            "search": {
+                "engine": "duckduckgo",
+                "url": "",
+                "max_results": 5
+            },
+            "privacy": {
+                "strict_mode": False,
+                "retention_days": 90
+            },
+            "agent_profiles": {
+                "profiles": {}
+            }
+        }
 
         mock_router = MagicMock()
         mock_router.call = AsyncMock()
@@ -77,15 +94,13 @@ async def test_debate_state_defaults():
 @pytest.mark.asyncio
 async def test_debate_runs_to_completion(engine, mock_llm_response):
     async def side_effect(*args, **kwargs):
-        prompt = args[0] if args else kwargs.get("system_prompt", "")
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "0.95", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
-        return mock_llm_response() if callable(mock_llm_response) else mock_llm_response
+        return {"content": "Test response", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
 
-    if hasattr(engine.router.call, 'side_effect'):
-        engine.router.call.side_effect = side_effect
-    else:
-        engine.router.call = AsyncMock(side_effect=side_effect)
+    engine.router.call.side_effect = side_effect
 
     state = await engine.run("Test topic")
 
@@ -102,12 +117,13 @@ async def test_debate_stops_early_on_consensus(engine):
     async def moderator_high_consensus(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        prompt = args[0] if args else ""
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "0.80", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
         return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
 
-    engine.router.call = AsyncMock(side_effect=moderator_high_consensus)
+    engine.router.call.side_effect = moderator_high_consensus
 
     state = await engine.run("Test topic", progress_callback=None)
 
@@ -118,12 +134,13 @@ async def test_debate_stops_early_on_consensus(engine):
 @pytest.mark.asyncio
 async def test_debate_runs_max_rounds(engine):
     async def low_consensus(*args, **kwargs):
-        prompt = args[0] if args else ""
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "0.50", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
         return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
 
-    engine.router.call = AsyncMock(side_effect=low_consensus)
+    engine.router.call.side_effect = low_consensus
 
     state = await engine.run("Test topic")
 
@@ -138,12 +155,13 @@ async def test_debate_with_fact_check(engine, mock_llm_response):
     ])
 
     async def side_effect(*args, **kwargs):
-        prompt = args[0] if args else ""
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "0.80", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
         return mock_llm_response()
 
-    engine.router.call = AsyncMock(side_effect=side_effect)
+    engine.router.call.side_effect = side_effect
 
     state = await engine.run("Test topic with claims")
 
@@ -172,6 +190,9 @@ async def test_debate_fact_check_validation(engine):
         {"title": "Test", "url": "http://test.com", "snippet": "Info"}
     ])
 
+    # Mock _extract_claims to avoid calling the router
+    engine._extract_claims = AsyncMock(return_value=["Test claim"])
+
     validation = await engine._run_search_validation("Test claim here")
 
     assert isinstance(validation, list)
@@ -192,12 +213,14 @@ async def test_debate_memory_injection(engine):
     ]
     engine.memory = mock_memory
 
-    engine.router.call = AsyncMock(return_value={
-        "content": "0.90",
-        "tokens_used": 50,
-        "model": "test",
-        "finish_reason": "stop"
-    })
+    async def side_effect(*args, **kwargs):
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
+            return {"content": "0.90", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
+        return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
+
+    engine.router.call.side_effect = side_effect
 
     state = await engine.run("Test topic with memory")
 
@@ -208,12 +231,13 @@ async def test_debate_memory_injection(engine):
 @pytest.mark.asyncio
 async def test_debate_moderator_invalid_response(engine):
     async def side_effect(*args, **kwargs):
-        prompt = args[0] if args else ""
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "invalid text", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
         return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
 
-    engine.router.call = AsyncMock(side_effect=side_effect)
+    engine.router.call.side_effect = side_effect
 
     state = await engine.run("Test topic")
 
@@ -228,12 +252,13 @@ async def test_debate_with_progress_callback(engine):
         progress_calls.append((step, detail))
 
     async def side_effect(*args, **kwargs):
-        prompt = args[0] if args else ""
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "0.80", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
         return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
 
-    engine.router.call = AsyncMock(side_effect=side_effect)
+    engine.router.call.side_effect = side_effect
 
     await engine.run("Test topic", progress_callback=progress_callback)
 
@@ -247,12 +272,13 @@ async def test_debate_strict_mode_blocks_external(engine):
     engine.search_tool = MagicMock()
 
     async def side_effect(*args, **kwargs):
-        prompt = args[0] if args else ""
-        if "Moderator" in prompt or "Bewert" in prompt:
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
             return {"content": "0.80", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
         return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
 
-    engine.router.call = AsyncMock(side_effect=side_effect)
+    engine.router.call.side_effect = side_effect
 
     await engine.run("Test topic")
 
@@ -261,12 +287,14 @@ async def test_debate_strict_mode_blocks_external(engine):
 
 @pytest.mark.asyncio
 async def test_debate_variant_override(engine):
-    engine.router.call = AsyncMock(return_value={
-        "content": "0.80",
-        "tokens_used": 50,
-        "model": "test",
-        "finish_reason": "stop"
-    })
+    async def side_effect(*args, **kwargs):
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
+            return {"content": "0.80", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
+        return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
+
+    engine.router.call.side_effect = side_effect
 
     state = await engine.run("Test topic", variant_override="B")
 
@@ -276,12 +304,14 @@ async def test_debate_variant_override(engine):
 
 @pytest.mark.asyncio
 async def test_debate_trace_logger_writes(engine):
-    engine.router.call = AsyncMock(return_value={
-        "content": "0.85",
-        "tokens_used": 50,
-        "model": "test",
-        "finish_reason": "stop"
-    })
+    async def side_effect(*args, **kwargs):
+        system_prompt = args[0] if args else kwargs.get("system_prompt", "")
+        user_prompt = args[1] if len(args) > 1 else kwargs.get("user_prompt", "")
+        if "Moderator" in system_prompt or "Rate consensus" in user_prompt:
+            return {"content": "0.85", "tokens_used": 50, "model": "test", "finish_reason": "stop"}
+        return {"content": "Draft", "tokens_used": 100, "model": "test", "finish_reason": "stop"}
+
+    engine.router.call.side_effect = side_effect
 
     state = await engine.run("Test topic")
 

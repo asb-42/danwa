@@ -3,6 +3,7 @@ from src.core.privacy import PrivacyGuard
 from pathlib import Path
 import tempfile
 import time
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -63,19 +64,19 @@ def test_redact_idempotent(privacy):
 
 
 def test_enforce_retention(privacy, tmp_path):
-    old_file = tmp_path / "old_log.jsonl"
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    
+    old_file = logs_dir / "old_log.jsonl"
     old_file.write_text("old data")
     old_time = time.time() - (100 * 24 * 3600)
     import os
     os.utime(old_file, (old_time, old_time))
     
-    recent_file = tmp_path / "recent_log.jsonl"
+    recent_file = logs_dir / "recent_log.jsonl"
     recent_file.write_text("recent data")
     
-    with patch("src.core.privacy.Path") as mock_path:
-        mock_path.return_value.iterdir.return_value = [old_file, recent_file]
-        mock_path.return_value.exists.return_value = True
-        privacy.enforce_retention(str(tmp_path))
+    privacy.enforce_retention(str(tmp_path))
     
     assert not old_file.exists()
     assert recent_file.exists()

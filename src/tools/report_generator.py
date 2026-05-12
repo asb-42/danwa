@@ -18,7 +18,7 @@ class ReportGenerator:
         self.output_dir.mkdir(exist_ok=True)
 
     async def generate(self, state: DebateState, fmt: str = "docx") -> Path:
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         filename = f"debate_{state.session_id}_{ts}.{fmt}"
         path = self.output_dir / filename
 

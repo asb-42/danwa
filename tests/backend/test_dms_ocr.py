@@ -83,7 +83,7 @@ class TestDocumentProcessorOCR:
 
         with patch.dict(sys.modules, {"paddleocr": None}):
             processor._ocr = None
-            with pytest.raises(ValueError, match="PaddleOCR is not installed"):
+            with pytest.raises(ValueError, match="OCR engine unavailable"):
                 asyncio.run(processor.process_file(str(img_path)))
 
     def test_non_image_files_not_affected_by_ocr_check(self, tmp_path):

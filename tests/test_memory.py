@@ -70,12 +70,12 @@ def test_search_precedents(memory):
     mock_collection.count.return_value = 2
     mock_collection.query.return_value = {
         "documents": [["Doc 1", "Doc 2"]],
-        "metadatas": [[{"session_id": "abc", "consensus": 0.85, "timestamp": "2024-01-01", "rounds": 3, "validated": True}]],
+        "metadatas": [[{"session_id": "abc", "consensus": 0.85, "timestamp": "2024-01-01", "rounds": 3, "validated": True}, {"session_id": "def", "consensus": 0.90, "timestamp": "2024-01-02", "rounds": 2, "validated": True}]],
         "distances": [[0.1, 0.3]]
     }
-    
+
     results = mem.search_precedents("test query", top_k=2)
-    
+
     assert len(results) == 2
     assert "document" in results[0]
     assert "relevance_score" in results[0]
