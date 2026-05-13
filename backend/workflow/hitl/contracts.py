@@ -214,7 +214,9 @@ class ExtensionRequest(BaseModel):
     """POST /debate/{id}/extension-request — moderator requests extra rounds."""
 
     current_consensus: float = Field(
-        ..., ge=0.0, le=1.0,
+        ...,
+        ge=0.0,
+        le=1.0,
         description="Current consensus score",
     )
     current_round: int = Field(..., ge=1, description="Current round number")

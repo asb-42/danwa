@@ -266,7 +266,7 @@ class BlueprintRepository:
                 (
                     role_def.id,
                     role_def.name,
-                    role_def.role_type_id.split('-')[0] if role_def.role_type_id else 'strategist',
+                    role_def.role_type_id.split("-")[0] if role_def.role_type_id else "strategist",
                     role_def.role_type_id,
                     role_def.description,
                     role_def.argumentation_pattern,
@@ -366,7 +366,7 @@ class BlueprintRepository:
                     role_type.color,
                     role_type.default_max_rounds,
                     role_type.default_consensus_threshold,
-                     role_type.category,
+                    role_type.category,
                     json.dumps(role_type.tags),
                     int(role_type.is_active),
                     role_type.created_at.isoformat(),
@@ -847,7 +847,6 @@ class BlueprintRepository:
             )
         return cursor.rowcount > 0
 
-
     # ------------------------------------------------------------------
     # Argumentation Patterns
     # ------------------------------------------------------------------
@@ -857,10 +856,7 @@ class BlueprintRepository:
         patterns_dir = Path("profiles/argumentation-patterns")
         if not patterns_dir.is_dir():
             return []
-        return sorted(
-            d.name for d in patterns_dir.iterdir()
-            if d.is_dir() and not d.name.startswith(".")
-        )
+        return sorted(d.name for d in patterns_dir.iterdir() if d.is_dir() and not d.name.startswith("."))
 
     def get_argumentation_pattern(self, name: str) -> dict[str, str] | None:
         """Get all role prompts for a given argumentation pattern.
@@ -893,4 +889,3 @@ class BlueprintRepository:
     def _row_to_tone_profile(row: sqlite3.Row) -> ToneProfile:
         """Convert a SQLite row to a ToneProfile model."""
         return ToneProfile.model_validate_json(row["profile_json"])
-

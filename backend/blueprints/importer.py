@@ -354,8 +354,14 @@ class BlueprintImporter:
         # Determine role from filename
         role_name = md_file.stem  # e.g. "strategist" or "fact-checker"
         valid_roles = (
-            "strategist", "critic", "optimizer", "moderator",
-            "fact-checker", "expert-reviewer", "analyst", "creative",
+            "strategist",
+            "critic",
+            "optimizer",
+            "moderator",
+            "fact-checker",
+            "expert-reviewer",
+            "analyst",
+            "creative",
         )
         if role_name not in valid_roles:
             # Try parent directory name (e.g. "fact-checker" from variant dir)

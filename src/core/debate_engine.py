@@ -43,17 +43,22 @@ class DebateEngine:
         enable_memory: bool = False,
         rag_context: Optional[str] = None,
         agent_profile_name: Optional[str] = None,
-    ):
+):
         # Load configuration
-        with open("config/settings.yaml") as f:
-            settings = yaml.safe_load(f)
+        try:
+            with open("config/settings.yaml") as f:
+                settings = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            settings = {}
 
         self.router = LLMRouter(profile_name)
+        search_cfg = settings.get("search", {})
+        privacy_cfg = settings.get("privacy", {})
         self.search_tool = (
             WebSearchTool(
-                engine=settings["search"]["engine"],
-                searx_url=settings["search"]["url"],
-                max_results=settings["search"]["max_results"],
+                engine=search_cfg.get("engine", "duckduckgo"),
+                searx_url=search_cfg.get("url", ""),
+                max_results=search_cfg.get("max_results", 5),
             )
             if enable_fact_check
             else None
@@ -64,8 +69,8 @@ class DebateEngine:
         self.logger = None
         self.memory = DebateMemory() if enable_memory else None
         self.privacy = PrivacyGuard(
-            strict_mode=settings["privacy"]["strict_mode"],
-            retention_days=settings["privacy"]["retention_days"],
+            strict_mode=privacy_cfg.get("strict_mode", False),
+            retention_days=privacy_cfg.get("retention_days", 90),
         )
         self.prompt_mgr = PromptManager()
         self.state = DebateState()

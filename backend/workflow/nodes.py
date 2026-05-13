@@ -690,9 +690,7 @@ async def check_consensus_node(state: DebateState) -> dict:
     # If consensus is NOT reached and extra rounds are enabled,
     # the HITL extension_request_node will decide whether to grant more rounds
     needs_extension = (
-        enable_extra_rounds
-        and consensus < threshold
-        and next_round <= max_rounds + 2  # Allow up to 2 extra rounds beyond max
+        enable_extra_rounds and consensus < threshold and next_round <= max_rounds + 2  # Allow up to 2 extra rounds beyond max
     )
 
     return {

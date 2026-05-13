@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Conditional edge helpers — extension-aware routing
 # ---------------------------------------------------------------------------
 
+
 def _should_request_extension(state: DebateState) -> str:
     """Check if extension request should be sent after consensus check.
 
@@ -53,6 +54,7 @@ def _extension_decision_router(state: DebateState) -> str:
 # ---------------------------------------------------------------------------
 # Standard debate graph (no HITL, no A2A)
 # ---------------------------------------------------------------------------
+
 
 def build_graph() -> StateGraph:
     """Build and compile the standard debate workflow graph.
@@ -100,6 +102,7 @@ def build_graph() -> StateGraph:
 # A2A-aware debate graph with extension support
 # ---------------------------------------------------------------------------
 
+
 def build_graph_with_a2a() -> StateGraph:
     """Build the A2A-aware debate graph with built-in extension support.
 
@@ -116,11 +119,8 @@ def build_graph_with_a2a() -> StateGraph:
                           → complete → END
     """
     # Lazy imports to avoid circular dependency
-    from backend.workflow.hitl.nodes import (
-        extension_request_node,
-        reset_round_interrupt_count,
-    )
     from backend.a2a.node import run_a2a_agent_node
+    from backend.workflow.hitl.nodes import extension_request_node
 
     graph = StateGraph(DebateState)
 
