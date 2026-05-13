@@ -19,8 +19,8 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.api.deps import get_settings  # noqa: E402
 from backend.api.routers import (
-    argumentation_patterns,  # noqa: E402
     a2a_discovery,
+    argumentation_patterns,  # noqa: E402
     audit,
     blueprint_events,
     blueprints,

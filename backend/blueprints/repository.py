@@ -868,7 +868,6 @@ class BlueprintRepository:
         Returns a dict mapping role_type_id -> prompt content,
         or None if the pattern directory does not exist.
         """
-        import os
         pattern_dir = Path(f"profiles/argumentation-patterns/{name}")
         if not pattern_dir.is_dir():
             return None

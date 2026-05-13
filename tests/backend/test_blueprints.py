@@ -2066,7 +2066,9 @@ class TestSteigerungsrollen:
         """ResolvedAgentConfig includes argumentation_pattern and mode."""
         from backend.blueprints.compiler import CompilerService
         from backend.blueprints.models import (
-            AgentBlueprint, BlueprintLLMProfile, RoleDefinition,
+            AgentBlueprint,
+            BlueprintLLMProfile,
+            RoleDefinition,
         )
         from backend.blueprints.workflow_models import WorkflowDefinition
 

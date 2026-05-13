@@ -26,7 +26,6 @@ from backend.workflow.hitl.api import (
     is_paused,
     register_agent_query,
 )
-from backend.workflow.hitl.contracts import ExtensionDecision
 from backend.workflow.state import DebateState
 
 logger = logging.getLogger(__name__)
