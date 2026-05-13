@@ -1898,7 +1898,7 @@ class TestImporterNewStructures:
             profile_dir=tmp_path / "profiles",
             archive_dir=tmp_path / "archive" / "config",
         )
-        result = importer.import_prompt_templates()
+        importer.import_prompt_templates()
 
         wf_strategist = blueprint_repo.get_prompt_template("prompt-strategist-dialectic")
         assert wf_strategist is not None
@@ -2066,7 +2066,7 @@ class TestSteigerungsrollen:
         """ResolvedAgentConfig includes argumentation_pattern and mode."""
         from backend.blueprints.compiler import CompilerService
         from backend.blueprints.models import (
-            BlueprintLLMProfile, RoleDefinition, AgentBlueprint,
+            AgentBlueprint, BlueprintLLMProfile, RoleDefinition,
         )
         from backend.blueprints.workflow_models import WorkflowDefinition
 

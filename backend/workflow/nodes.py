@@ -755,7 +755,6 @@ def should_continue_rounds(state: DebateState) -> str:
     current_round = state["current_round"]
     max_rounds = state["max_rounds"]
     extension_granted = state.get("extension_granted")
-    needs_extension = state.get("needs_extension", False)
 
     # Within normal round budget
     if current_round <= max_rounds:

@@ -854,7 +854,6 @@ class BlueprintRepository:
 
     def list_argumentation_patterns(self) -> list[str]:
         """List available argumentation pattern directory names from filesystem."""
-        import os
         patterns_dir = Path("profiles/argumentation-patterns")
         if not patterns_dir.is_dir():
             return []
