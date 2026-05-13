@@ -19,24 +19,57 @@ from backend.workflow.state import DebateState
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Conditional edge helpers — extension-aware routing
+# ---------------------------------------------------------------------------
+
+def _should_request_extension(state: DebateState) -> str:
+    """Check if extension request should be sent after consensus check.
+
+    Mirrors the logic in ``backend.workflow.hitl.graph._should_request_extension``
+    but lives here so the A2A graph does not depend on the HITL sub-package.
+    """
+    current = state.get("current_round", 0)
+    max_r = state.get("max_rounds", 3)
+    if current <= max_r:
+        return "next_round"
+
+    if state.get("enable_extra_rounds", False):
+        needs = state.get("needs_extension", False)
+        if needs:
+            return "extension_request"
+
+    return "complete"
+
+
+def _extension_decision_router(state: DebateState) -> str:
+    """Route based on moderator's extension decision."""
+    decision = state.get("extension_granted")
+    if decision is True:
+        return "next_round"
+    return "complete"
+
+
+# ---------------------------------------------------------------------------
+# Standard debate graph (no HITL, no A2A)
+# ---------------------------------------------------------------------------
+
 def build_graph() -> StateGraph:
-    """Build and compile the debate workflow graph.
+    """Build and compile the standard debate workflow graph.
 
     Flow::
 
         initialize → run_agent ⟲ (next_agent / check_consensus)
-                              → check_consensus ⟲ (next_round / complete)
-                              → complete → END
+                          → check_consensus ⟲ (next_round / complete)
+                          → complete → END
     """
     graph = StateGraph(DebateState)
 
-    # --- Nodes ---
     graph.add_node("initialize", initialize_node)
     graph.add_node("run_agent", run_agent_node)
     graph.add_node("check_consensus", check_consensus_node)
     graph.add_node("complete", complete_node)
 
-    # --- Edges ---
     graph.set_entry_point("initialize")
     graph.add_edge("initialize", "run_agent")
 
@@ -63,16 +96,30 @@ def build_graph() -> StateGraph:
     return graph.compile()
 
 
+# ---------------------------------------------------------------------------
+# A2A-aware debate graph with extension support
+# ---------------------------------------------------------------------------
+
 def build_graph_with_a2a() -> StateGraph:
-    """Build debate graph with an A2A agent node inserted after all built-in agents.
+    """Build the A2A-aware debate graph with built-in extension support.
+
+    The graph inserts an A2A agent node after all built-in agents, and
+    routes through an extension_request node when consensus is not reached
+    and the user has opted in to extra rounds.
 
     Flow::
 
         initialize → run_agent ⟲ (next_agent / run_a2a / check_consensus)
-                              → run_a2a_agent → check_consensus
-                              → check_consensus ⟲ (next_round / complete)
-                              → complete → END
+                          → run_a2a_agent → check_consensus
+                          → check_consensus ⟲ (next_round / extension_request / complete)
+                          → extension_request → (next_round / complete)
+                          → complete → END
     """
+    # Lazy imports to avoid circular dependency
+    from backend.workflow.hitl.nodes import (
+        extension_request_node,
+        reset_round_interrupt_count,
+    )
     from backend.a2a.node import run_a2a_agent_node
 
     graph = StateGraph(DebateState)
@@ -81,14 +128,15 @@ def build_graph_with_a2a() -> StateGraph:
     graph.add_node("initialize", initialize_node)
     graph.add_node("run_agent", run_agent_node)
     graph.add_node("run_a2a_agent", run_a2a_agent_node)
-    graph.add_node("check_consensus", check_consensus_node)
+    graph.add_node("check_consensus", _wrapped_check_consensus)
+    graph.add_node("extension_request", extension_request_node)
     graph.add_node("complete", complete_node)
 
     # --- Edges ---
     graph.set_entry_point("initialize")
     graph.add_edge("initialize", "run_agent")
 
-    # After all built-in agents: route to A2A agent or directly to consensus check
+    # After built-in agents: route to next agent, A2A agent, or consensus check
     graph.add_conditional_edges(
         "run_agent",
         should_continue_agents_or_a2a,
@@ -102,9 +150,21 @@ def build_graph_with_a2a() -> StateGraph:
     # A2A agent always goes to consensus check
     graph.add_edge("run_a2a_agent", "check_consensus")
 
+    # After consensus: continue rounds, request extension, or finish
     graph.add_conditional_edges(
         "check_consensus",
-        should_continue_rounds,
+        _should_request_extension,
+        {
+            "next_round": "run_agent",
+            "extension_request": "extension_request",
+            "complete": "complete",
+        },
+    )
+
+    # Extension decision: grant → next round, deny/timeout → complete
+    graph.add_conditional_edges(
+        "extension_request",
+        _extension_decision_router,
         {
             "next_round": "run_agent",
             "complete": "complete",
@@ -113,8 +173,21 @@ def build_graph_with_a2a() -> StateGraph:
 
     graph.add_edge("complete", END)
 
-    logger.info("Built A2A-aware debate graph")
+    logger.info("Built A2A-aware debate graph with extension support")
     return graph.compile()
+
+
+async def _wrapped_check_consensus(state: DebateState) -> dict:
+    """Wrapper around check_consensus_node that also resets the interrupt counter."""
+    from backend.workflow.hitl.nodes import reset_round_interrupt_count
+
+    result = await check_consensus_node(state)
+
+    if result.get("current_round", 0) > state.get("current_round", 0):
+        reset = reset_round_interrupt_count(state)
+        result.update(reset)
+
+    return result
 
 
 def should_continue_agents_or_a2a(state: DebateState) -> str:
@@ -128,7 +201,6 @@ def should_continue_agents_or_a2a(state: DebateState) -> str:
     if state["current_agent_index"] < len(state["agent_profile"]):
         return "next_agent"
 
-    # Check if A2A agent is configured for this debate
     a2a_config = state.get("a2a_config")
     if a2a_config and a2a_config.get("enabled") and a2a_config.get("agent_url"):
         return "run_a2a"
@@ -138,4 +210,11 @@ def should_continue_agents_or_a2a(state: DebateState) -> str:
 
 # Module-level compiled graph instances
 debate_graph = build_graph()
-a2a_debate_graph = build_graph_with_a2a()
+# NOTE: a2a_debate_graph is built lazily to avoid circular imports at module load.
+# Call get_a2a_debate_graph() to obtain the compiled instance.
+
+
+def get_a2a_debate_graph() -> StateGraph:
+    """Return the A2A-aware debate graph, building it on first call."""
+    # Rebuild each time to pick up latest node implementations
+    return build_graph_with_a2a()

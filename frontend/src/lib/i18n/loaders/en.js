@@ -65,6 +65,15 @@ export default {
   'debate.titlePlaceholder': 'Processing case description…',
   'debate.titleLabel': 'Title',
   'debate.language': 'Language',
+   'debate.enableExtraRounds': 'Allow additional rounds',
+   'debate.extensionRequested': 'Extension requested',
+   'debate.extensionRequest': 'The debate has not reached consensus after {rounds} rounds (current: {current}%, threshold: {threshold}%). Should additional rounds be debated?',
+   'debate.extensionCurrentConsensus': 'Current consensus',
+   'debate.extensionThreshold': 'Threshold',
+   'debate.round': 'Round',
+   'debate.maxRounds': 'Max rounds',
+   'debate.extensionGrant': 'Grant extension',
+   'debate.extensionDeny': 'Deny extension',
 
   // Web search mode
   'debate.searchMode': 'Web Search',

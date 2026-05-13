@@ -65,6 +65,15 @@ export default {
   'debate.titlePlaceholder': 'Fallbeschreibung wird verarbeitet…',
   'debate.titleLabel': 'Titel',
   'debate.language': 'Sprache',
+  'debate.enableExtraRounds': 'Zusätzliche Runden zulassen',
+  'debate.extensionRequested': 'Verlängerung angefragt',
+  'debate.extensionRequest': 'Die Debatte hat nach {rounds} Runden noch keinen Konsens erreicht (aktuell: {current}%, Schwellenwert: {threshold}%). Sollen weitere Runden debattiert werden?',
+  'debate.extensionCurrentConsensus': 'Aktueller Konsens',
+  'debate.extensionThreshold': 'Schwellenwert',
+  'debate.round': 'Runde',
+  'debate.maxRounds': 'Max. Runden',
+  'debate.extensionGrant': 'Verlängerung gewähren',
+  'debate.extensionDeny': 'Verlängerung ablehnen',
 
   // Web search mode
   'debate.searchMode': 'Web-Suche',

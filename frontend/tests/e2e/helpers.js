@@ -19,6 +19,7 @@ export async function createDebateViaAPI(request, caseText = 'Test case', option
       consensus_threshold: options.consensus_threshold || 0.8,
       enable_fact_check: false,
       enable_memory: false,
+      enable_extra_rounds: options.enable_extra_rounds || false,
     },
   });
   return response.json();

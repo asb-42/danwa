@@ -519,9 +519,9 @@ async def run_debate_workflow(debate_id: str, project_id: str, audit: AuditServi
     a2a_enabled = a2a_config.get("enabled", False)
     hitl_enabled = initial_state.get("hitl_enabled", False)
     if a2a_enabled:
-        from backend.workflow.debate_graph import a2a_debate_graph
+        from backend.workflow.debate_graph import get_a2a_debate_graph
 
-        graph = a2a_debate_graph
+        graph = get_a2a_debate_graph()
         logger.info("Using A2A-aware graph for debate %s", debate_id)
     elif hitl_enabled:
         from backend.workflow.hitl.graph import hitl_debate_graph
