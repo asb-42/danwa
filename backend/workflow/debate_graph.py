@@ -116,11 +116,8 @@ def build_graph_with_a2a() -> StateGraph:
                           → complete → END
     """
     # Lazy imports to avoid circular dependency
-    from backend.workflow.hitl.nodes import (
-        extension_request_node,
-        reset_round_interrupt_count,
-    )
     from backend.a2a.node import run_a2a_agent_node
+    from backend.workflow.hitl.nodes import extension_request_node
 
     graph = StateGraph(DebateState)
 
