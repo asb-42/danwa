@@ -791,6 +791,7 @@ async def interjection_node(state: WorkflowState) -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     """Resolve the system prompt for an agent node using the assembly pipeline.
 
@@ -840,8 +841,7 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
                             prompt = f"{prompt}\n\n[{mode.title()}-Modus: {hint}]"
                 return prompt
         except Exception as exc:
-            logger.warning("Failed to assemble prompt for role '%s' (pattern=%s): %s",
-                         role, argumentation_pattern, exc)
+            logger.warning("Failed to assemble prompt for role '%s' (pattern=%s): %s", role, argumentation_pattern, exc)
 
     # Fallback: generic system prompt based on role
     role_prompts = {
@@ -860,4 +860,3 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
         prompt = f"{role_type_icon} You are a {role_type_name} ({role}). " + prompt.split(". ", 1)[-1] if ". " in prompt else prompt
 
     return prompt
-

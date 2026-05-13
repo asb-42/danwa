@@ -263,8 +263,15 @@ class TestSeedTemplates:
         assert result["skipped"] == 0
 
         # Verify all seven exist
-        for tid in ("tpl-standard-debate", "tpl-kantian-analysis", "tpl-quick-review",
-                    "tpl-dialectic-debate", "tpl-interview", "tpl-mediation", "tpl-streitgespraech"):
+        for tid in (
+            "tpl-standard-debate",
+            "tpl-kantian-analysis",
+            "tpl-quick-review",
+            "tpl-dialectic-debate",
+            "tpl-interview",
+            "tpl-mediation",
+            "tpl-streitgespraech",
+        ):
             tmpl = repo.get_workflow_template(tid)
             assert tmpl is not None
             assert tmpl.is_system is True

@@ -215,9 +215,7 @@ class PromptService:
 
         # Layer 1: Argumentation pattern
         if argumentation_pattern:
-            ap_prompt = self.get_argumentation_pattern(
-                argumentation_pattern, role_type_id, language
-            )
+            ap_prompt = self.get_argumentation_pattern(argumentation_pattern, role_type_id, language)
             if ap_prompt:
                 parts.append(ap_prompt)
 

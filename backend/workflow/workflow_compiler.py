@@ -140,8 +140,8 @@ class WorkflowCompiler:
                         "role_type_color": config.role_type_color,
                         "default_max_rounds": config.default_max_rounds,
                         "default_consensus_threshold": config.default_consensus_threshold,
-                         "argumentation_pattern": config.argumentation_pattern,
-                         "mode": config.mode,
+                        "argumentation_pattern": config.argumentation_pattern,
+                        "mode": config.mode,
                     }
                     result.resolved_agents.append(config)
 

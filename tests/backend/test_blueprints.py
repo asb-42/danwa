@@ -1836,8 +1836,7 @@ class TestArgumentationPatterns:
             if wf_path.is_dir():
                 available = {f.stem for f in wf_path.glob("*.md")}
                 required = {"strategist", "critic", "optimizer", "moderator"}
-                assert required.issubset(available), \
-                    f"Workflow {wf} missing roles: {required - available}"
+                assert required.issubset(available), f"Workflow {wf} missing roles: {required - available}"
 
 
 # =========================================================================
@@ -1854,12 +1853,8 @@ class TestImporterNewStructures:
 
         ap_dir = tmp_path / "profiles" / "argumentation-patterns" / "testpattern"
         ap_dir.mkdir(parents=True)
-        (ap_dir / "strategist.md").write_text(
-            "Test AP strategists content.", encoding="utf-8"
-        )
-        (ap_dir / "critic.md").write_text(
-            "Test AP critic content.", encoding="utf-8"
-        )
+        (ap_dir / "strategist.md").write_text("Test AP strategists content.", encoding="utf-8")
+        (ap_dir / "critic.md").write_text("Test AP critic content.", encoding="utf-8")
 
         prompts_default = tmp_path / "profiles" / "prompts" / "default"
         prompts_default.mkdir(parents=True)
@@ -1884,9 +1879,7 @@ class TestImporterNewStructures:
 
         wf_dir = tmp_path / "profiles" / "prompts" / "variants" / "dialectic"
         wf_dir.mkdir(parents=True)
-        (wf_dir / "strategist.md").write_text(
-            "Dialectic Strategist workflow content.", encoding="utf-8"
-        )
+        (wf_dir / "strategist.md").write_text("Dialectic Strategist workflow content.", encoding="utf-8")
 
         prompts_default = tmp_path / "profiles" / "prompts" / "default"
         prompts_default.mkdir(parents=True)
@@ -1924,7 +1917,7 @@ class TestImporterNewStructures:
             "description: 'A test persona'\n"
             "tags:\n"
             "  - test\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
 
         prompts_default = tmp_path / "profiles" / "prompts" / "default"
@@ -1961,18 +1954,15 @@ class TestPromptAssemblyWithPatterns:
 
         ap_dir = tmp_path / "profiles" / "argumentation-patterns" / "test_pattern"
         ap_dir.mkdir(parents=True)
-        (ap_dir / "strategist.md").write_text(
-            "Test Pattern: Act according to universal law.", encoding="utf-8"
-        )
+        (ap_dir / "strategist.md").write_text("Test Pattern: Act according to universal law.", encoding="utf-8")
 
         default_dir = tmp_path / "prompts" / "default"
         default_dir.mkdir(parents=True)
-        (default_dir / "strategist.md").write_text(
-            "Variant: Default Strategist - Use standard approach.", encoding="utf-8"
-        )
+        (default_dir / "strategist.md").write_text("Variant: Default Strategist - Use standard approach.", encoding="utf-8")
 
         # Rename for the PromptsService constructor
         import shutil
+
         shutil.move(str(tmp_path / "prompts"), str(tmp_path / "prompts"))
 
         ps = PromptService(
@@ -1996,9 +1986,7 @@ class TestPromptAssemblyWithPatterns:
 
         default_dir = tmp_path / "prompts" / "default"
         default_dir.mkdir(parents=True)
-        (default_dir / "critic.md").write_text(
-            "Default Critic - Standard critique.", encoding="utf-8"
-        )
+        (default_dir / "critic.md").write_text("Default Critic - Standard critique.", encoding="utf-8")
 
         ps = PromptService(prompts_dir=tmp_path / "prompts")
         result = ps.assemble_prompt(
@@ -2032,10 +2020,8 @@ class TestSteigerungsrollen:
         """All 8 seeded role types are retrievable."""
         roles = blueprint_repo.list_role_types()
         role_ids = {rt.id for rt in roles}
-        expected = {"strategist", "critic", "optimizer", "moderator",
-                     "fact-checker", "expert-reviewer", "analyst", "creative"}
-        assert expected.issubset(role_ids), \
-            f"Missing role types: {expected - role_ids}"
+        expected = {"strategist", "critic", "optimizer", "moderator", "fact-checker", "expert-reviewer", "analyst", "creative"}
+        assert expected.issubset(role_ids), f"Missing role types: {expected - role_ids}"
 
     def test_role_type_category_functional(self) -> None:
         """New role types have category='functional'."""
@@ -2054,10 +2040,7 @@ class TestSteigerungsrollen:
 
     def test_analyst_node_type_registered(self) -> None:
         """Analyst is a valid workflow node type string."""
-        valid_node_types = {
-            "wf-strategist", "wf-critic", "wf-optimizer", "wf-moderator",
-            "wf-fact-checker", "wf-analyst", "wf-creative"
-        }
+        valid_node_types = {"wf-strategist", "wf-critic", "wf-optimizer", "wf-moderator", "wf-fact-checker", "wf-analyst", "wf-creative"}
         assert "wf-analyst" in valid_node_types
         assert "wf-creative" in valid_node_types
         assert "wf-fact-checker" in valid_node_types
@@ -2074,22 +2057,31 @@ class TestSteigerungsrollen:
 
         repo = BlueprintRepository(db_path=tmp_path / "rb_test.db")
 
-        repo.save_llm_profile(BlueprintLLMProfile(
-            id="llm-resolve", name="Resolve LLM",
-            provider="openrouter", model="test/model",
-        ))
-        repo.save_role_definition(RoleDefinition(
-            id="role-resolve",
-            name="Resolved Role",
-            role_type_id="analyst",
-            argumentation_pattern="kantian",
-            mode="facilitator",
-        ))
-        repo.save_blueprint(AgentBlueprint(
-            id="bp-resolve", name="Resolve BP",
-            llm_profile_id="llm-resolve",
-            role_definition_id="role-resolve",
-        ))
+        repo.save_llm_profile(
+            BlueprintLLMProfile(
+                id="llm-resolve",
+                name="Resolve LLM",
+                provider="openrouter",
+                model="test/model",
+            )
+        )
+        repo.save_role_definition(
+            RoleDefinition(
+                id="role-resolve",
+                name="Resolved Role",
+                role_type_id="analyst",
+                argumentation_pattern="kantian",
+                mode="facilitator",
+            )
+        )
+        repo.save_blueprint(
+            AgentBlueprint(
+                id="bp-resolve",
+                name="Resolve BP",
+                llm_profile_id="llm-resolve",
+                role_definition_id="role-resolve",
+            )
+        )
 
         wf = WorkflowDefinition(
             id="wf-resolve",
