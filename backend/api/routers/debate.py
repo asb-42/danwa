@@ -223,6 +223,7 @@ async def get_debate(
     result = debate.get("result")
     consensus = result.get("final_consensus") if isinstance(result, dict) else None
     anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
+    consensus_reached = consensus is not None and consensus >= req.get("consensus_threshold", 0.8) if isinstance(req, dict) else False
 
     project_store = get_project_store()
     project = project_store.get(project_id)

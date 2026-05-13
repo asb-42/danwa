@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.deps import get_debate_store_for_project, get_project_id
 from backend.api.events import publish_async
 from backend.workflow.hitl.contracts import (
+    ExtensionResponse,
     HITLMode,
     HITLStatusResponse,
     InjectRequest,
@@ -480,6 +481,168 @@ async def pause_debate(
 
         logger.info("Debate %s resumed", debate_id)
         return PauseResponse(debate_id=debate_id, paused=False, action=body.action, message=message)
+
+
+# ---------------------------------------------------------------------------
+# Extension / Extra Rounds endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{debate_id}/extension-request",
+    response_model=dict,
+)
+async def request_extension(
+    debate_id: str,
+    body: ExtensionRequest,
+    project_id: str = Depends(get_project_id),
+):
+    """Submit an extension request for additional debate rounds.
+
+    Called by the workflow when consensus is not reached and extra rounds
+    are enabled. Creates an interrupt that the moderator can respond to.
+    """
+    store = get_debate_store_for_project(project_id)
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    # Verify extension is enabled for this debate
+    if not debate.get("enable_extra_rounds", False):
+        raise HTTPException(
+            status_code=409,
+            detail="Extra rounds not enabled for this debate",
+        )
+
+    # Check current max rounds to enforce hard cap (max + 2)
+    current_max = body.max_rounds
+    hard_cap = current_max + 2
+    current_round = body.current_round
+
+    if current_round > hard_cap:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Hard round cap ({hard_cap}) exceeded",
+        )
+
+    # Store extension request in debate state
+    debate["extension_request"] = {
+        "current_consensus": body.current_consensus,
+        "threshold": body.threshold,
+        "current_round": body.current_round,
+        "max_rounds": body.max_rounds,
+        "requested_at": datetime.now(UTC).isoformat(),
+    }
+    store.put(debate_id, debate)
+
+    logger.info(
+        "Extension requested for debate %s: round %d, consensus=%.3f, threshold=%.3f",
+        debate_id,
+        body.current_round,
+        body.current_consensus,
+        body.threshold,
+    )
+
+    # Emit SSE event
+    session_id = debate.get("session_id", debate_id)
+    await publish_async(
+        session_id,
+        "extension_request",
+        {
+            "type": "extension_request",
+            "debate_id": debate_id,
+            "current_consensus": body.current_consensus,
+            "threshold": body.threshold,
+            "current_round": body.current_round,
+            "max_rounds": body.max_rounds,
+        },
+    )
+
+    return {"status": "pending", "debate_id": debate_id}
+
+
+@router.post(
+    "/{debate_id}/extension-decision",
+    response_model=ExtensionResponse,
+)
+async def extension_decision(
+    debate_id: str,
+    body: ExtensionDecisionModel,
+    project_id: str = Depends(get_project_id),
+):
+    """Respond to an extension request — grant or deny extra rounds.
+
+    Called by the moderator (or user) to decide whether additional rounds
+    should be debated.
+    """
+    store = get_debate_store_for_project(project_id)
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate.get("status")
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val != "running":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Debate is not running (current status: {status_val})",
+        )
+
+    if not debate.get("enable_extra_rounds", False):
+        raise HTTPException(
+            status_code=409,
+            detail="Extra rounds not enabled for this debate",
+        )
+
+    # Validate decision
+    decision = body.decision
+    if decision not in (ExtensionDecision.GRANTED, ExtensionDecision.DENIED):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid decision: {decision}",
+        )
+
+    # Determine new max rounds
+    current_max = debate.get("max_rounds", 3)
+    current_round = debate.get("current_round", 0)
+
+    if decision == ExtensionDecision.GRANTED:
+        new_max = min(current_max + 2, current_round + 2)
+        debate["extension_granted"] = True
+        message = f"Extension granted. {new_max} total rounds allowed."
+    else:
+        new_max = current_max
+        debate["extension_granted"] = False
+        message = "Extension denied. Debate will conclude at current round."
+
+    store.put(debate_id, debate)
+
+    # Emit SSE event
+    session_id = debate.get("session_id", debate_id)
+    await publish_async(
+        session_id,
+        "extension_decision",
+        {
+            "type": "extension_decision",
+            "debate_id": debate_id,
+            "decision": decision.value,
+            "new_max_rounds": new_max,
+        },
+    )
+
+    logger.info(
+        "Extension decision for debate %s: %s (new_max=%d)",
+        debate_id,
+        decision.value,
+        new_max,
+    )
+
+    return ExtensionResponse(
+        decision=decision,
+        debate_id=debate_id,
+        new_max_rounds=new_max,
+        message=message,
+    )
 
 
 @router.get(

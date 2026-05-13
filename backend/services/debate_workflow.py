@@ -135,6 +135,7 @@ def extract_request_fields(req: object | dict) -> dict:
             search_mode = "required"
         else:
             search_mode = "off"
+        enable_extra_rounds = getattr(req, "enable_extra_rounds", False)
         agent_profile_list = [{"role": a.role.value, "llm_profile": a.llm_profile, "temperature": a.temperature} for a in req.agent_profile]
     else:
         case_text = req.get("case", {}).get("text", "")
@@ -165,6 +166,7 @@ def extract_request_fields(req: object | dict) -> dict:
                 {"role": "moderator", "llm_profile": "default", "temperature": 0.7},
             ],
         )
+        enable_extra_rounds = req.get("enable_extra_rounds", False)
 
     return {
         "case_text": case_text,
@@ -181,6 +183,7 @@ def extract_request_fields(req: object | dict) -> dict:
         "a2a_agents_raw": a2a_agents_raw,
         "search_mode": search_mode,
         "agent_profile_list": agent_profile_list,
+        "enable_extra_rounds": enable_extra_rounds,
     }
 
 
@@ -504,6 +507,8 @@ async def run_debate_workflow(debate_id: str, project_id: str, audit: AuditServi
         "pending_injects": [],
         "round_interrupt_count": 0,
         "is_paused": False,
+        "enable_extra_rounds": fields.get("enable_extra_rounds", False),
+        "extension_granted": None,
     }
 
     # --- A2A configuration ---

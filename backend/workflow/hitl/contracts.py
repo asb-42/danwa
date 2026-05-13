@@ -61,6 +61,15 @@ class InterruptStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ExtensionDecision(StrEnum):
+    """Decision on whether to grant extra debate rounds."""
+
+    PENDING = "pending"
+    GRANTED = "granted"
+    DENIED = "denied"
+    TIMEOUT = "timeout"
+
+
 class PauseAction(StrEnum):
     """Pause/resume action."""
 
@@ -199,6 +208,36 @@ class HITLStatusResponse(BaseModel):
     interactions_by_type: dict[str, int] = Field(default_factory=dict)
     round_interrupt_count: int = 0
     max_interrupts_per_round: int = 3
+
+
+class ExtensionRequest(BaseModel):
+    """POST /debate/{id}/extension-request — moderator requests extra rounds."""
+
+    current_consensus: float = Field(
+        ..., ge=0.0, le=1.0,
+        description="Current consensus score",
+    )
+    current_round: int = Field(..., ge=1, description="Current round number")
+    max_rounds: int = Field(..., ge=1, description="Configured max rounds")
+    threshold: float = Field(..., ge=0.0, le=1.0, description="Consensus threshold")
+
+
+class ExtensionDecisionModel(BaseModel):
+    """POST /debate/{id}/extension-decision — user/player decides on extension."""
+
+    decision: ExtensionDecision = Field(
+        ...,
+        description="GRANTED to allow extra rounds, DENIED to end debate",
+    )
+
+
+class ExtensionResponse(BaseModel):
+    """Response after submitting an extension decision."""
+
+    decision: ExtensionDecision
+    debate_id: str
+    new_max_rounds: int
+    message: str = ""
 
 
 class InteractionListResponse(BaseModel):

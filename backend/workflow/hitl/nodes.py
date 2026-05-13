@@ -26,6 +26,7 @@ from backend.workflow.hitl.api import (
     is_paused,
     register_agent_query,
 )
+from backend.workflow.hitl.contracts import ExtensionDecision
 from backend.workflow.state import DebateState
 
 logger = logging.getLogger(__name__)
@@ -388,6 +389,72 @@ def build_inject_context(state: DebateState, agent_role: str) -> str:
 # ---------------------------------------------------------------------------
 # HITL round reset
 # ---------------------------------------------------------------------------
+
+
+async def extension_request_node(state: DebateState) -> dict:
+    """Extension request node: moderator decides on extra rounds.
+
+    After check_consensus, if consensus is NOT reached AND extra rounds
+    are enabled, this node creates a query to the user asking whether
+    they want to continue debating.
+
+    Returns state update with extension_granted decision.
+    """
+    enable_extra = state.get("enable_extra_rounds", False)
+    consensus = state.get("final_consensus", 0.0)
+    threshold = state.get("threshold", 0.8)
+    current_round = state.get("current_round", 0)
+    max_rounds = state.get("max_rounds", 3)
+    session_id = state.get("session_id", "")
+    debate_id = state.get("debate_id", "")
+    language = state.get("language", "de")
+
+    # Only trigger if extra rounds enabled, consensus not reached, and
+    # we're within the extended round budget (max + 2)
+    if not enable_extra or consensus >= threshold or current_round > max_rounds + 2:
+        return {}
+
+    # Create an interrupt asking for extension decision
+    from backend.workflow.hitl.api import register_agent_query
+
+    question_de = (
+        f"Die Debatte hat nach {current_round} Runden noch keinen Konsens "
+        f"(aktuell: {consensus:.1%}, Schwellenwert: {threshold:.0%}). "
+        f"Sollen weitere Runden debattiert werden?"
+    )
+    question_en = (
+        f"The debate has not reached consensus after {current_round} rounds "
+        f"(current: {consensus:.1%}, threshold: {threshold:.0%}). "
+        f"Should additional rounds be debated?"
+    )
+
+    interrupt_id = register_agent_query(
+        debate_id,
+        {
+            "agent_role": "moderator",
+            "agent_index": -1,
+            "round": current_round,
+            "question": question_en if language == "en" else question_de,
+            "context": f"Debate extension request. Consensus={consensus:.3f}, threshold={threshold}, round {current_round}/{max_rounds}.",
+        },
+    )
+
+    # Publish SSE event for the extension request
+    await publish_async(
+        session_id,
+        "extension_request",
+        {
+            "type": "extension_request",
+            "debate_id": debate_id,
+            "current_consensus": consensus,
+            "threshold": threshold,
+            "current_round": current_round,
+            "max_rounds": max_rounds,
+            "interrupt_id": interrupt_id,
+        },
+    )
+
+    return {"extension_requested": True, "extension_interrupt_id": interrupt_id}
 
 
 def reset_round_interrupt_count(state: DebateState) -> dict:

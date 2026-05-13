@@ -127,6 +127,24 @@ export function cancelDebate(debateId) {
 }
 
 // ---------------------------------------------------------------------------
+// Extension / Extra Rounds
+// ---------------------------------------------------------------------------
+
+export function requestExtension(debateId, body) {
+  return request(`/api/v1/debate/${debateId}/extension-request`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function decideExtension(debateId, decision) {
+  return request(`/api/v1/debate/${debateId}/extension-decision`, {
+    method: 'POST',
+    body: JSON.stringify({ decision }),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Audit
 // ---------------------------------------------------------------------------
 

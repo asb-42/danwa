@@ -115,6 +115,12 @@ class DebateRequest(BaseModel):
         description="If true, automatically retrieve relevant document chunks based on the case text",
     )
 
+    # --- Extension / Extra Rounds (Sprint 9) ---
+    enable_extra_rounds: bool = Field(
+        default=False,
+        description="If true, the moderator can request additional rounds when consensus is not reached",
+    )
+
     # --- A2A Integration ---
     a2a_agents: list[A2AAgentConfig] = Field(
         default_factory=list,

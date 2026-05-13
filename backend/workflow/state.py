@@ -119,5 +119,9 @@ class DebateState(TypedDict, total=False):
     # --- A2A (Agent-to-Agent) ---
     a2a_config: dict  # A2A agent configuration (url, role, enabled, etc.)
 
+    # --- Extension / Extra Rounds ---
+    enable_extra_rounds: bool = False  # User opted in for extra rounds
+    extension_granted: bool | None = None  # None=not yet decided, True=granted, False=denied
+
     # --- Tone Profiles (Phase: ToneProfileNode) ---
     tone_profiles: dict[str, Any]  # node_id → ToneProfile dict

@@ -645,6 +645,7 @@ async def check_consensus_node(state: DebateState) -> dict:
     threshold = state["threshold"]
     session_id = state.get("session_id", "")
     anomalies = state.get("anomalies", [])
+    enable_extra_rounds = state.get("enable_extra_rounds", False)
 
     # Check if any LLM failures occurred in this round
     has_failures = any("LLM call failed" in a for a in anomalies)
@@ -681,11 +682,26 @@ async def check_consensus_node(state: DebateState) -> dict:
         },
     )
 
+    # --- Extension logic: reset extension_granted for the new round ---
+    # When a new round starts (current_round incremented), reset the decision
+    next_round = current_round + 1
+    extension_granted = None  # Reset — must be decided again for the new round
+
+    # If consensus is NOT reached and extra rounds are enabled,
+    # the HITL extension_request_node will decide whether to grant more rounds
+    needs_extension = (
+        enable_extra_rounds
+        and consensus < threshold
+        and next_round <= max_rounds + 2  # Allow up to 2 extra rounds beyond max
+    )
+
     return {
         "rounds": [round_data],
         "final_consensus": round(consensus, 3),
         "current_agent_index": 0,
-        "current_round": current_round + 1,
+        "current_round": next_round,
+        "extension_granted": extension_granted,
+        "needs_extension": needs_extension,
     }
 
 
@@ -729,12 +745,29 @@ def should_continue_rounds(state: DebateState) -> str:
     Note: current_round is incremented by check_consensus_node before
     this function is called, so we use ``>`` (strict) to allow exactly
     max_rounds iterations.
+
+    Extension logic: if enable_extra_rounds is set and the extension was
+    granted by the moderator, allow additional rounds beyond max_rounds.
     """
     if state["final_consensus"] >= state["threshold"]:
         return "complete"
-    if state["current_round"] > state["max_rounds"]:
-        return "complete"
-    return "next_round"
+
+    current_round = state["current_round"]
+    max_rounds = state["max_rounds"]
+    extension_granted = state.get("extension_granted")
+    needs_extension = state.get("needs_extension", False)
+
+    # Within normal round budget
+    if current_round <= max_rounds:
+        return "next_round"
+
+    # Beyond normal budget — only continue if extension was explicitly granted
+    # and we haven't exceeded max + 2 extra rounds (hard safety cap)
+    hard_cap = max_rounds + 2
+    if extension_granted and current_round <= hard_cap:
+        return "next_round"
+
+    return "complete"
 
 
 # ---------------------------------------------------------------------------
