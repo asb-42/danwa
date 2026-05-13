@@ -263,9 +263,11 @@ class BlueprintImporter:
         return RoleDefinition(
             id=data.get("id", Path(source_path).stem),
             name=data.get("name", data.get("id", "Unnamed")),
-            role=data.get("role", "strategist"),
+            role_type_id=data.get("role", "strategist"),
             description=data.get("description", ""),
             prompt_template_id=None,  # Not linked during import
+            argumentation_pattern=data.get("argumentation_pattern"),
+            mode=data.get("mode"),
             max_rounds=data.get("max_rounds", 5),
             consensus_threshold=data.get("consensus_threshold", 0.9),
             tags=list(data.get("tags", [])),
@@ -350,14 +352,27 @@ class BlueprintImporter:
         parts = relative.parts  # e.g. ("default", "strategist.md") or ("strategist.md")
 
         # Determine role from filename
-        role_name = md_file.stem  # e.g. "strategist"
-        if role_name not in ("strategist", "critic", "optimizer", "moderator"):
-            # Try to infer from parent directory or use filename as-is
-            role_name = "strategist"  # fallback
+        role_name = md_file.stem  # e.g. "strategist" or "fact-checker"
+        valid_roles = (
+            "strategist", "critic", "optimizer", "moderator",
+            "fact-checker", "expert-reviewer", "analyst", "creative",
+        )
+        if role_name not in valid_roles:
+            # Try parent directory name (e.g. "fact-checker" from variant dir)
+            if md_file.parent.name in valid_roles:
+                role_name = md_file.parent.name
+            else:
+                role_name = "strategist"  # fallback
 
         # Determine variant from path
-        # Handle "variants/kantian/strategist.md" structure
-        if len(parts) >= 3 and parts[0] == "variants":
+        # Handle "argumentation-patterns/{pattern}/{role}.md" structure
+        if len(parts) >= 3 and parts[0] == "argumentation-patterns":
+            variant = parts[1]  # e.g. "kantian", "steiner", "hegelian"
+        # Handle "workflows/{workflow}/{role}.md" structure
+        elif len(parts) >= 2 and parts[0] == "workflows":
+            variant = parts[1]  # e.g. "dialectic"
+        # Handle "variants/{variant}/{role}.md" structure (legacy)
+        elif len(parts) >= 3 and parts[0] == "variants":
             variant = parts[1]  # e.g. "kantian", "steiner"
         elif len(parts) > 1 and parts[0] != "default":
             variant = parts[0]  # e.g. "kantian", "steiner"

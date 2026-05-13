@@ -57,6 +57,8 @@ class ResolvedAgentConfig:
     role_type_color: str = "#8b5cf6"
     default_max_rounds: int = 5
     default_consensus_threshold: float = 0.9
+    argumentation_pattern: str = ""
+    mode: str = ""
 
 
 @dataclass
@@ -138,6 +140,8 @@ class WorkflowCompiler:
                         "role_type_color": config.role_type_color,
                         "default_max_rounds": config.default_max_rounds,
                         "default_consensus_threshold": config.default_consensus_threshold,
+                         "argumentation_pattern": config.argumentation_pattern,
+                         "mode": config.mode,
                     }
                     result.resolved_agents.append(config)
 
@@ -214,6 +218,8 @@ class WorkflowCompiler:
             role_type_color=role_type_color,
             default_max_rounds=default_max_rounds,
             default_consensus_threshold=default_consensus_threshold,
+            argumentation_pattern=role_def.argumentation_pattern or "",
+            mode=role_def.mode or "",
         )
 
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 18
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -497,6 +497,14 @@ _MIGRATION_V14_SEEDS = [
     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
     VALUES ('expert-reviewer', 'Expert Reviewer', 'Provides domain-specific expert assessment and validation', '🎓', '#06b6d4', 5, 0.9, 1, datetime('now'), datetime('now'))
     """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('analyst', 'Analyst', 'Conducts in-depth data analysis and identifies key patterns', '📊', '#06b6d4', 5, 0.9, 1 ,datetime('now'), datetime('now'))
+    """,
+    """
+    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+    VALUES ('creative', 'Creative Thinker', 'Generates unconventional ideas and new perspectives', '💡', '#ec4899', 5, 0.9, 1 ,datetime('now'), datetime('now'))
+    """,
 ]
 
 
@@ -652,7 +660,7 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(
                 conn,
                 14,
-                "Seed default role types (strategist, critic, optimizer, moderator, fact-checker, expert-reviewer)",
+                "Seed default role types (strategist, critic, optimizer, moderator, fact-checker, expert-reviewer, analyst, creative)",
             )
             conn.commit()
             logger.info("Migration v14 applied successfully")
@@ -689,6 +697,45 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 16, "Fix profile_type heuristics for existing TTS/STT profiles")
             conn.commit()
             logger.info("Migration v16 applied successfully")
+
+        if current < 17:
+             logger.info("Applying migration v17: category on role_types, argumentation_pattern+mode on role_definitions")
+             try:
+                 conn.execute("ALTER TABLE role_types ADD COLUMN category TEXT DEFAULT 'functional'")
+             except sqlite3.OperationalError:
+                 logger.debug("role_types.category column already exists")
+             try:
+                 conn.execute("ALTER TABLE role_definitions ADD COLUMN argumentation_pattern TEXT")
+             except sqlite3.OperationalError:
+                 logger.debug("role_definitions.argumentation_pattern column already exists")
+             try:
+                 conn.execute("ALTER TABLE role_definitions ADD COLUMN mode TEXT")
+             except sqlite3.OperationalError:
+                 logger.debug("role_definitions.mode column already exists")
+             _record_version(conn, 17, "Add category to role_types, argumentation_pattern+mode to role_definitions")
+             conn.commit()
+             logger.info("Migration v17 applied successfully")
+
+        if current < 18:
+             logger.info("Applying migration v18: seed analyst, creative, expert-reviewer role types")
+             try:
+                 conn.execute("""
+                     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+                     VALUES ('analyst', 'Analyst', 'Conducts in-depth data analysis and identifies key patterns', '📊', '#06b6d4', 5, 0.9, 1, 1, datetime('now'), datetime('now'))
+                 """)
+                 conn.execute("""
+                     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+                     VALUES ('creative', 'Creative Thinker', 'Generates unconventional ideas and new perspectives', '💡', '#ec4899', 5, 0.9, 1, 1, datetime('now'), datetime('now'))
+                 """)
+                 conn.execute("""
+                     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
+                     VALUES ('expert-reviewer', 'Expert Reviewer', 'Provides domain-specific expert assessment and validation', '🎓', '#06b6d4', 5, 0.9, 'functional', 1, datetime('now'), datetime('now'))
+                 """)
+             except sqlite3.OperationalError as exc:
+                 logger.debug("V18 seed migration failed: %s", exc)
+             _record_version(conn, 18, "Seed analyst, creative, expert-reviewer role types")
+             conn.commit()
+             logger.info("Migration v18 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

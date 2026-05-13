@@ -206,7 +206,7 @@ export function handleWorkflowSSE(sseEvent) {
 function getInputArtifacts(role, round) {
   if (round === 1 && role === 'strategist') return ['input'];
   // For subsequent agents in same round, use previous agent's output
-  const roles = ['strategist', 'critic', 'optimizer', 'moderator'];
+  const roles = ['strategist', 'critic', 'fact-checker', 'optimizer', 'moderator', 'analyst', 'creative'];
   const idx = roles.indexOf(role);
   if (idx > 0) return [`${roles[idx - 1]}_output_r${round}`];
   // A2A agents (custom roles) receive moderator output as input
@@ -225,6 +225,9 @@ function mapRoleToArtifactType(role) {
   const map = {
     strategist: 'strategy',
     critic: 'critique',
+    'fact-checker': 'fact-check',
+    analyst: 'analysis',
+    creative: 'creative',
     optimizer: 'synthesis',
     moderator: 'consensus',
   };

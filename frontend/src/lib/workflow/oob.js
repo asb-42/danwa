@@ -173,7 +173,7 @@ function resolveTargetAgentId(target) {
 }
 
 function getPreviousRole(role) {
-  const order = ['strategist', 'critic', 'optimizer', 'moderator'];
+  const order = ['strategist', 'critic', 'fact-checker', 'optimizer', 'moderator', 'analyst', 'creative'];
   const idx = order.indexOf(role);
   return idx > 0 ? order[idx - 1] : 'input';
 }

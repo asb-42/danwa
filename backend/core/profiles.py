@@ -70,13 +70,17 @@ class AgentPersona(BaseModel):
 
     id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
     name: str
-    role: Literal["strategist", "critic", "optimizer", "moderator"]
+    role: str  # Legacy role; widened for new role types (analyst, creative, etc.)
     system_prompt: str
     llm_profile_id: str  # Reference to LLMProfile.id
 
     # Behaviour constraints
     max_rounds: int = 5
     consensus_threshold: float = 0.9
+
+    # Argumentation & mode (for blueprint system compatibility)
+    argumentation_pattern: str | None = None
+    mode: str | None = None
 
     # Metadata
     description: str | None = None

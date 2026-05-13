@@ -287,15 +287,28 @@ class TestProfileSchemas:
         )
         assert persona.role == "strategist"
 
-    def test_agent_persona_invalid_role(self):
-        with pytest.raises(Exception):
-            AgentPersona(
-                id="test-agent",
-                name="Test Agent",
-                role="invalid-role",
+    def test_agent_persona_custom_role_accepted(self):
+        """Role field is now a free-form str, so custom roles are accepted."""
+        persona = AgentPersona(
+            id="test-agent",
+            name="Test Agent",
+            role="custom-role",
+            system_prompt="Test prompt",
+            llm_profile_id="test-llm",
+        )
+        assert persona.role == "custom-role"
+
+    def test_agent_persona_new_role_types(self):
+        """New role types (analyst, creative, fact-checker) are accepted."""
+        for role in ("analyst", "creative", "fact-checker", "expert-reviewer"):
+            persona = AgentPersona(
+                id=f"test-{role}",
+                name=f"Test {role}",
+                role=role,
                 system_prompt="Test prompt",
                 llm_profile_id="test-llm",
             )
+            assert persona.role == role
 
     def test_prompt_variant_valid(self):
         variant = PromptVariant(

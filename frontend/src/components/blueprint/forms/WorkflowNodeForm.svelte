@@ -6,24 +6,31 @@
    * For agent nodes: AgentBlueprint selector dropdown (fetched from API).
    * For gate nodes: condition text input.
    * For user-injection nodes: input_type selector.
+   * For agent nodes: argumentation_pattern and mode dropdowns.
    * Save updates node data via canvasStore.updateNodeData().
    */
   import { onMount } from 'svelte';
   import { canvasStore } from '../../../lib/blueprint/store.svelte.js';
-  import { listAgentBlueprints } from '../../../lib/blueprint/api.js';
+  import { listAgentBlueprints, listArgumentationPatterns } from '../../../lib/blueprint/api.js';
 
   /** @type {{ node: any, onsave?: Function, ondelete?: Function }} */
   let { node, onsave, ondelete } = $props();
 
-  const AGENT_NODE_TYPES = ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator'];
+  const AGENT_NODE_TYPES = [
+    'wf-strategist', 'wf-critic', 'wf-fact-checker',
+    'wf-optimizer', 'wf-moderator', 'wf-analyst', 'wf-creative'
+  ];
 
   const NODE_TYPE_LABELS = {
     'wf-input': '📥 Input',
     'wf-initialize': '🚀 Initialize',
     'wf-strategist': '🧠 Strategist',
     'wf-critic': '🔍 Critic',
+    'wf-fact-checker': '✅ Fact Checker',
     'wf-optimizer': '⚡ Optimizer',
     'wf-moderator': '🎯 Moderator',
+    'wf-analyst': '📊 Analyst',
+    'wf-creative': '💡 Creative',
     'wf-user-injection': '👤 User Injection',
     'wf-gate': '🔀 Gate',
   };
@@ -34,11 +41,25 @@
     { value: 'external_event', label: 'External Event' },
   ];
 
+  const MODE_OPTIONS = [
+    { value: '', label: '— None —' },
+    { value: 'interviewer', label: 'Interviewer' },
+    { value: 'advocate', label: 'Advocate' },
+    { value: 'adversary', label: 'Adversary' },
+    { value: 'mediator', label: 'Mediator' },
+    { value: 'referee', label: 'Referee' },
+    { value: 'facilitator', label: 'Facilitator' },
+    { value: 'devils_advocate', label: "Devil's Advocate" },
+  ];
+
   let label = $state('');
   let agentBlueprintId = $state('');
   let condition = $state('');
   let inputType = $state('user_query');
+  let argumentationPattern = $state('');
+  let mode = $state('');
   let blueprints = $state([]);
+  let availablePatterns = $state([]);
   let loading = $state(false);
 
   $effect(() => {
@@ -46,6 +67,8 @@
     agentBlueprintId = node?.data?.agent_blueprint_id || '';
     condition = node?.data?.config?.condition || node?.data?.condition || '';
     inputType = node?.data?.config?.input_type || node?.data?.input_type || 'user_query';
+    argumentationPattern = node?.data?.argumentation_pattern || '';
+    mode = node?.data?.mode || '';
   });
 
   let isAgentNode = $derived(AGENT_NODE_TYPES.includes(node?.type));
@@ -57,8 +80,9 @@
       loading = true;
       try {
         blueprints = await listAgentBlueprints({ active_only: true });
+        availablePatterns = await listArgumentationPatterns();
       } catch (err) {
-        console.warn('[WorkflowNodeForm] Failed to load blueprints:', err);
+        console.warn('[WorkflowNodeForm] Failed to load blueprints/patterns:', err);
       } finally {
         loading = false;
       }
@@ -69,6 +93,8 @@
     const data = { label };
     if (isAgentNode) {
       data.agent_blueprint_id = agentBlueprintId || null;
+      data.argumentation_pattern = argumentationPattern || null;
+      data.mode = mode || null;
     }
     if (isGateNode) {
       data.config = { ...(node?.data?.config || {}), condition };
@@ -120,6 +146,41 @@
           {/each}
         </select>
       {/if}
+    </div>
+
+    <!-- Argumentation Pattern selector (for agent nodes) -->
+    <div class="form-group">
+      <label class="form-label" for="wf-arg-pattern">Argumentation Pattern</label>
+      {#if loading && availablePatterns.length === 0}
+        <div class="form-loading">Loading patterns...</div>
+      {:else}
+        <select
+          id="wf-arg-pattern"
+          class="form-select"
+          bind:value={argumentationPattern}
+          onchange={handleSave}
+        >
+          <option value="">— Default —</option>
+          {#each availablePatterns as pattern}
+            <option value={pattern}>{pattern}</option>
+          {/each}
+        </select>
+      {/if}
+    </div>
+
+    <!-- Mode selector (for agent nodes) -->
+    <div class="form-group">
+      <label class="form-label" for="wf-mode">Mode</label>
+      <select
+        id="wf-mode"
+        class="form-select"
+        bind:value={mode}
+        onchange={handleSave}
+      >
+        {#each MODE_OPTIONS as opt}
+          <option value={opt.value}>{opt.label}</option>
+        {/each}
+      </select>
     </div>
   {/if}
 

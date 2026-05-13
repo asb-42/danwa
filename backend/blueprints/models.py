@@ -219,6 +219,10 @@ class RoleDefinition(BaseModel):
     name: str
     role_type_id: str = "strategist"  # References RoleType.id (dynamic, not hardcoded enum)
     description: str = ""
+    # Argumentation pattern (philosophische/sachliche Ausrichtung)
+    argumentation_pattern: str | None = None
+    # Formatorischer Modus (Art der Gesprächsführung)
+    mode: str | None = None
     # Prompt reference (by ID, not inline text)
     prompt_template_id: str | None = None  # References PromptTemplate.id
     # Behavior constraints
@@ -256,6 +260,8 @@ class RoleDefinition(BaseModel):
             role_type_id=legacy.role,
             description=legacy.description or "",
             prompt_template_id=prompt_template_id,
+            argumentation_pattern=getattr(legacy, "argumentation_pattern", None),
+            mode=getattr(legacy, "mode", None),
             max_rounds=legacy.max_rounds,
             consensus_threshold=legacy.consensus_threshold,
             tags=list(legacy.tags) if legacy.tags else [],
@@ -308,6 +314,8 @@ class RoleType(BaseModel):
     # Behavioral defaults applied to RoleDefinitions using this type
     default_max_rounds: int = 5
     default_consensus_threshold: float = 0.9
+    # Klassifikation: Funktionale vs. formatorische Rolle
+    category: Literal["functional", "formative"] = "functional"
     # Metadata
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True

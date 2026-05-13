@@ -1,0 +1,3 @@
+DEPRECATED — 2026-05-13
+Moved to: profiles/argumentation-patterns/steiner/
+This copy is retained for backward compatibility only.

@@ -28,8 +28,11 @@ WORKFLOW_NODE_TYPES: list[str] = [
     "wf-initialize",
     "wf-strategist",
     "wf-critic",
+    "wf-fact-checker",
     "wf-optimizer",
     "wf-moderator",
+    "wf-analyst",
+    "wf-creative",
     "wf-user-injection",
     "wf-gate",
     "wf-tone-profile",
@@ -39,8 +42,11 @@ WORKFLOW_NODE_TYPES: list[str] = [
 AGENT_NODE_TYPES: list[str] = [
     "wf-strategist",
     "wf-critic",
+    "wf-fact-checker",
     "wf-optimizer",
     "wf-moderator",
+    "wf-analyst",
+    "wf-creative",
 ]
 
 
@@ -60,8 +66,11 @@ class WorkflowNode(BaseModel):
         "wf-initialize",
         "wf-strategist",
         "wf-critic",
+        "wf-fact-checker",
         "wf-optimizer",
         "wf-moderator",
+        "wf-analyst",
+        "wf-creative",
         "wf-user-injection",
         "wf-gate",
         "wf-tone-profile",
@@ -108,8 +117,11 @@ WORKFLOW_EDGE_TYPES: list[str] = [
 INJECTABLE_AGENT_NODE_TYPES: list[str] = [
     "wf-strategist",
     "wf-critic",
+    "wf-fact-checker",
     "wf-optimizer",
     "wf-moderator",
+    "wf-analyst",
+    "wf-creative",
     # Note: wf-input, wf-gate, wf-user-injection, wf-tone-profile cannot receive injects_config
 ]
 

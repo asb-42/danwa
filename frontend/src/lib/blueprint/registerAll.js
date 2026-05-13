@@ -23,6 +23,9 @@ import StrategistNode from '../../components/blueprint/nodes/StrategistNode.svel
 import CriticNode from '../../components/blueprint/nodes/CriticNode.svelte';
 import OptimizerNode from '../../components/blueprint/nodes/OptimizerNode.svelte';
 import ModeratorNode from '../../components/blueprint/nodes/ModeratorNode.svelte';
+import FactCheckerNode from '../../components/blueprint/nodes/FactCheckerNode.svelte';
+import AnalystNode from '../../components/blueprint/nodes/AnalystNode.svelte';
+import CreativeNode from '../../components/blueprint/nodes/CreativeNode.svelte';
 import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNode.svelte';
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
 import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
@@ -217,6 +220,51 @@ export function registerAllNodeTypes() {
     defaultData: () => ({
       isDraft: true,
       label: 'Moderator',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-fact-checker',
+    component: FactCheckerNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '✅',
+    labelKey: 'blueprint.palette.wfFactChecker',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Fact Checker',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-analyst',
+    component: AnalystNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '📊',
+    labelKey: 'blueprint.palette.wfAnalyst',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Analyst',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-creative',
+    component: CreativeNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '💡',
+    labelKey: 'blueprint.palette.wfCreative',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Creative',
       agent_blueprint_id: null,
     }),
     active: true,

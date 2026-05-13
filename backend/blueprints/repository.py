@@ -257,17 +257,20 @@ class BlueprintRepository:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO role_definitions
-                    (id, name, role, role_type_id, description, prompt_template_id,
+                    (id, name, role, role_type_id, description, argumentation_pattern, mode,
+                     prompt_template_id,
                      max_rounds, consensus_threshold, tags_json,
                      created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     role_def.id,
                     role_def.name,
-                    role_def.role_type_id,
+                    role_def.role_type_id.split('-')[0] if role_def.role_type_id else 'strategist',
                     role_def.role_type_id,
                     role_def.description,
+                    role_def.argumentation_pattern,
+                    role_def.mode,
                     role_def.prompt_template_id,
                     role_def.max_rounds,
                     role_def.consensus_threshold,
@@ -292,6 +295,7 @@ class BlueprintRepository:
     def list_role_definitions(
         self,
         role: str | None = None,
+        argumentation_pattern: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[RoleDefinition]:
@@ -301,6 +305,9 @@ class BlueprintRepository:
         if role:
             clauses.append("role_type_id = ?")
             params.append(role)
+        if argumentation_pattern:
+            clauses.append("argumentation_pattern = ?")
+            params.append(argumentation_pattern)
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._connect() as conn:
             rows = conn.execute(
@@ -325,6 +332,8 @@ class BlueprintRepository:
             name=row["name"],
             role_type_id=row["role_type_id"] if "role_type_id" in row.keys() else row["role"],
             description=row["description"],
+            argumentation_pattern=row["argumentation_pattern"] if "argumentation_pattern" in row.keys() else None,
+            mode=row["mode"] if "mode" in row.keys() else None,
             prompt_template_id=row["prompt_template_id"],
             max_rounds=row["max_rounds"],
             consensus_threshold=row["consensus_threshold"],
@@ -345,8 +354,9 @@ class BlueprintRepository:
                 INSERT OR REPLACE INTO role_types
                     (id, name, description, icon, color,
                      default_max_rounds, default_consensus_threshold,
+                     category,
                      tags_json, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     role_type.id,
@@ -356,6 +366,7 @@ class BlueprintRepository:
                     role_type.color,
                     role_type.default_max_rounds,
                     role_type.default_consensus_threshold,
+                     role_type.category,
                     json.dumps(role_type.tags),
                     int(role_type.is_active),
                     role_type.created_at.isoformat(),
@@ -401,6 +412,7 @@ class BlueprintRepository:
             color=row["color"],
             default_max_rounds=row["default_max_rounds"],
             default_consensus_threshold=row["default_consensus_threshold"],
+            category=row["category"] if "category" in row.keys() else "functional",
             tags=json.loads(row["tags_json"]),
             is_active=bool(row["is_active"]),
             created_at=datetime.fromisoformat(row["created_at"]),
@@ -835,7 +847,52 @@ class BlueprintRepository:
             )
         return cursor.rowcount > 0
 
+
+    # ------------------------------------------------------------------
+    # Argumentation Patterns
+    # ------------------------------------------------------------------
+
+    def list_argumentation_patterns(self) -> list[str]:
+        """List available argumentation pattern directory names from filesystem."""
+        import os
+        patterns_dir = Path("profiles/argumentation-patterns")
+        if not patterns_dir.is_dir():
+            return []
+        return sorted(
+            d.name for d in patterns_dir.iterdir()
+            if d.is_dir() and not d.name.startswith(".")
+        )
+
+    def get_argumentation_pattern(self, name: str) -> dict[str, str] | None:
+        """Get all role prompts for a given argumentation pattern.
+
+        Returns a dict mapping role_type_id -> prompt content,
+        or None if the pattern directory does not exist.
+        """
+        import os
+        pattern_dir = Path(f"profiles/argumentation-patterns/{name}")
+        if not pattern_dir.is_dir():
+            return None
+
+        result: dict[str, str] = {}
+        for md_file in sorted(pattern_dir.glob("*.md")):
+            # e.g. "strategist.md" -> role_type_id = "strategist"
+            role_type_id = md_file.stem
+            # skip language variants like "strategist-en.md"
+            if "-" in role_type_id:
+                continue
+            content = md_file.read_text(encoding="utf-8")
+            if content.strip():
+                result[role_type_id] = content
+
+        return result if result else None
+
+    # ------------------------------------------------------------------
+    # Tone Profiles
+    # ------------------------------------------------------------------
+
     @staticmethod
     def _row_to_tone_profile(row: sqlite3.Row) -> ToneProfile:
         """Convert a SQLite row to a ToneProfile model."""
         return ToneProfile.model_validate_json(row["profile_json"])
+

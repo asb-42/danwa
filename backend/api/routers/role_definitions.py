@@ -41,12 +41,13 @@ def _require_not_exists(repo: BlueprintRepository, entity: str, entity_id: str) 
 @router.get("/role-definitions", response_model=list[RoleDefinition])
 def list_role_definitions(
     role: str | None = None,
+    argumentation_pattern: str | None = None,
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> list[RoleDefinition]:
     """List role definitions with optional filtering and pagination."""
-    return repo.list_role_definitions(role=role, limit=limit, offset=offset)
+    return repo.list_role_definitions(role=role, argumentation_pattern=argumentation_pattern, limit=limit, offset=offset)
 
 
 @router.get("/role-definitions/{role_id}", response_model=RoleDefinition)

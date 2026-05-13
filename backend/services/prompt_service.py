@@ -31,8 +31,10 @@ class PromptService:
         self,
         prompts_dir: Path | str = _DEFAULT_PROMPTS_DIR,
         profile_service: ProfileService | None = None,
+        argumentation_patterns_dir: Path | str | None = None,
     ):
         self.prompts_dir = Path(prompts_dir)
+        self._argumentation_patterns_dir = Path(argumentation_patterns_dir) if argumentation_patterns_dir else None
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
         self._profile_service = profile_service
@@ -171,6 +173,69 @@ class PromptService:
             return []
 
         return sorted(p.stem for p in variant_dir.glob("*.md"))
+
+    def get_argumentation_pattern(
+        self,
+        pattern: str,
+        role_type_id: str,
+        language: str = "de",
+    ) -> str | None:
+        """Load an argumentation pattern prompt for a given role.
+
+        Looks up profiles/argumentation-patterns/{pattern}/{role_type_id}.md
+        with language fallback ({role_type_id}-{lang}.md then {role_type_id}.md).
+        """
+        base_dir = self._argumentation_patterns_dir or Path("profiles/argumentation-patterns")
+        base = base_dir / pattern
+        candidates = []
+        if language and language != "de":
+            candidates.append(f"{role_type_id}-{language}.md")
+        candidates.append(f"{role_type_id}.md")
+
+        for name in candidates:
+            p = base / name
+            if p.exists():
+                return p.read_text(encoding="utf-8")
+        return None
+
+    def assemble_prompt(
+        self,
+        role_type_id: str,
+        argumentation_pattern: str | None = None,
+        workflow_variant: str = "default",
+        language: str = "de",
+    ) -> str:
+        """Assemble the full system prompt from layers:
+
+        1. Argumentation pattern base (if set)
+        2. Workflow-variant prompt overlay
+        3. Fallback to default variant if workflow_variant not found
+        """
+        parts: list[str] = []
+
+        # Layer 1: Argumentation pattern
+        if argumentation_pattern:
+            ap_prompt = self.get_argumentation_pattern(
+                argumentation_pattern, role_type_id, language
+            )
+            if ap_prompt:
+                parts.append(ap_prompt)
+
+        # Layer 2: Workflow-variant prompt
+        try:
+            wf_prompt = self.get_prompt(workflow_variant, role_type_id, language=language)
+            if wf_prompt and wf_prompt.get("content"):
+                parts.append(wf_prompt["content"])
+        except FileNotFoundError:
+            # Fallback to default
+            try:
+                wf_prompt = self.get_prompt("default", role_type_id, language=language)
+                if wf_prompt and wf_prompt.get("content"):
+                    parts.append(wf_prompt["content"])
+            except FileNotFoundError:
+                pass
+
+        return "\n\n".join(parts)
 
     def clear_cache(self) -> None:
         """Clear the prompt cache (forces reload on next access)."""

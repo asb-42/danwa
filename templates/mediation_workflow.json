@@ -1,0 +1,187 @@
+{
+  "id": "tpl-mediation",
+  "name": "Mediation",
+  "description": "A conflict resolution workflow where a Mediator facilitates dialogue between opposing parties (represented by Strategist and Critic perspectives). The Mediator guides toward common ground and a mutually acceptable resolution.",
+  "category": "system",
+  "tags": [
+    "mediation",
+    "conflict-resolution",
+    "facilitation",
+    "consensus"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Conflict Statement",
+        "position": {
+          "x": 100,
+          "y": 250
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Understand Both Sides",
+        "position": {
+          "x": 350,
+          "y": 250
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Position A",
+        "agent_blueprint_id": "{{position_a_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 100
+        }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Position B",
+        "agent_blueprint_id": "{{position_b_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 400
+        }
+      },
+      {
+        "id": "optimizer-1",
+        "type": "wf-optimizer",
+        "label": "Find Common Ground",
+        "agent_blueprint_id": "{{optimizer_blueprint_id}}",
+        "position": {
+          "x": 850,
+          "y": 200
+        }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Final Agreement",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": {
+          "x": 1100,
+          "y": 250
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Agreement Reached?",
+        "config": {
+          "condition": "consensus_reached"
+        },
+        "position": {
+          "x": 1100,
+          "y": 450
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "init-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "init-1",
+        "target": "critic-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e4",
+        "source": "strategist-1",
+        "target": "optimizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e5",
+        "source": "critic-1",
+        "target": "optimizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e6",
+        "source": "optimizer-1",
+        "target": "moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e7",
+        "source": "moderator-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e8",
+        "source": "gate-1",
+        "target": "optimizer-1",
+        "type": "feedback",
+        "label": "continue negotiation"
+      },
+      {
+        "id": "e9",
+        "source": "gate-1",
+        "target": "moderator-1",
+        "type": "conditional",
+        "condition": "consensus_reached",
+        "label": "agreement reached"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": "{{max_rounds}}",
+        "description": "Maximum mediation rounds"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.8,
+        "description": "Agreement threshold"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "position_a_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for Position A"
+    },
+    {
+      "key": "position_b_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for Position B"
+    },
+    {
+      "key": "optimizer_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Optimizer/Mediator"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Final Agreement Moderator"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 7,
+      "description": "Maximum number of mediation rounds"
+    }
+  ],
+  "is_system": true
+}

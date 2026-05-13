@@ -791,29 +791,67 @@ async def interjection_node(state: WorkflowState) -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
-
 def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
-    """Resolve the system prompt for an agent node from its config."""
+    """Resolve the system prompt for an agent node using the assembly pipeline.
+
+    Prompt Assembly Pipeline (layered approach):
+      1. Argumentation Pattern base (philosophical/sachliche Ausrichtung)
+      2. Workflow-variant prompt overlay (Formatierungsvorgaben etc.)
+      3. Tone Profile injection (Stimmung/Aszendenz) — handled in agent_node_factory
+      4. Fallback to default role prompt if nothing else is configured
+    """
     role = resolved_config.get("role", "agent")
     prompt_template_id = resolved_config.get("prompt_template_id")
     role_type_name = resolved_config.get("role_type_name", "")
     role_type_icon = resolved_config.get("role_type_icon", "👤")
+    argumentation_pattern = resolved_config.get("argumentation_pattern")
+    mode = resolved_config.get("mode")
+    language = state.get("language", "de")
 
-    if prompt_template_id:
+    # --- Layer 1+2: Use PromptService assemble_prompt ---
+    if argumentation_pattern or prompt_template_id:
         try:
             prompt_service = _get_prompt_service()
-            template = prompt_service.get_template(prompt_template_id)
-            if template:
-                return template.get("content", f"You are a {role}.")
+            # Determine workflow variant from prompt_template_id if set
+            workflow_variant = "default"
+            assembled = prompt_service.assemble_prompt(
+                role_type_id=role,
+                argumentation_pattern=argumentation_pattern,
+                workflow_variant=workflow_variant,
+                language=language,
+            )
+            if assembled.strip():
+                prompt = assembled
+                # Enhance with Mode info if available
+                if mode:
+                    mode_hints = {
+                        "interviewer": "Stelle gezielte Nachfolgefragen und vertiefe die Antworten.",
+                        "advocate": "Verteide die Position ueberzeugend und einseitig.",
+                        "adversary": "Nimm aktiv die Gegenposition ein und widerlege die Argumente.",
+                        "mediator": "Vermittle zwischen den Positionen und suche Gemeinsamkeiten.",
+                        "referee": "Bewerte die Fairness und Relevanz der Argumente.",
+                        "facilitator": "Foerder den strukturierten Dialog und halte den Prozess auf Kurs.",
+                    }
+                    hint = mode_hints.get(mode)
+                    if hint:
+                        if language == "en":
+                            prompt = f"{prompt}\n\n[{mode.title()} mode: {hint}]"
+                        else:
+                            prompt = f"{prompt}\n\n[{mode.title()}-Modus: {hint}]"
+                return prompt
         except Exception as exc:
-            logger.warning("Failed to resolve prompt template '%s': %s", prompt_template_id, exc)
+            logger.warning("Failed to assemble prompt for role '%s' (pattern=%s): %s",
+                         role, argumentation_pattern, exc)
 
     # Fallback: generic system prompt based on role
     role_prompts = {
         "strategist": "You are a strategic analyst. Analyze the case and provide a structured initial assessment.",
         "critic": "You are a critical reviewer. Identify weaknesses, gaps, and potential issues in the analysis.",
+        "fact-checker": "You are a fact-checker. Verify factual claims against reliable sources and flag inaccuracies.",
         "optimizer": "You are an optimization expert. Refine and improve the draft by addressing the critiques.",
         "moderator": "You are a debate moderator. Synthesize all contributions and evaluate consensus.",
+        "analyst": "You are an analyst. Conduct in-depth analysis of data and identify key patterns.",
+        "creative": "You are a creative thinker. Generate unconventional ideas and new perspectives.",
     }
     prompt = role_prompts.get(role, f"You are a {role} participating in a structured debate.")
 
@@ -822,3 +860,4 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
         prompt = f"{role_type_icon} You are a {role_type_name} ({role}). " + prompt.split(". ", 1)[-1] if ". " in prompt else prompt
 
     return prompt
+

@@ -1,0 +1,17 @@
+DEPRECATED — 2026-05-13
+=======================
+This directory is deprecated. All prompt variants have been migrated to:
+
+  profiles/argumentation-patterns/{pattern}/{role}.md
+  profiles/workflows/{workflow}/{role}.md
+
+The old structure (prompts/variants/{name}/{role}.md) is kept for backward
+compatibility but should NOT be used for new content.
+
+Migration mapping:
+  prompts/variants/kantian/*     → profiles/argumentation-patterns/kantian/*
+  prompts/variants/steiner/*     → profiles/argumentation-patterns/steiner/*
+  prompts/variants/dialectic/*   → profiles/workflows/dialectic/*
+
+The PromptService.get_argumentation_pattern() method now reads from
+profiles/argumentation-patterns/ as the primary source.

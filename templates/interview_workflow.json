@@ -1,0 +1,160 @@
+{
+  "id": "tpl-interview",
+  "name": "Structured Interview",
+  "description": "An interview-style workflow where a Strategist conducts structured inquiry through an Analyst, with a Moderator ensuring focus and summarizing findings. Ideal for investigative analysis and information gathering.",
+  "category": "system",
+  "tags": [
+    "interview",
+    "investigation",
+    "structured-inquiry",
+    "analyst"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Interview Topic",
+        "position": {
+          "x": 100,
+          "y": 250
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Frame Questions",
+        "position": {
+          "x": 350,
+          "y": 250
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Interviewer",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 150
+        }
+      },
+      {
+        "id": "analyst-1",
+        "type": "wf-analyst",
+        "label": "Deep Analyst",
+        "agent_blueprint_id": "{{analyst_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 350
+        }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Summarizer",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": {
+          "x": 900,
+          "y": 250
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "More Questions?",
+        "config": {
+          "condition": "max_rounds_reached"
+        },
+        "position": {
+          "x": 900,
+          "y": 450
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "init-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "strategist-1",
+        "target": "analyst-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e4",
+        "source": "analyst-1",
+        "target": "moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e5",
+        "source": "moderator-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e6",
+        "source": "gate-1",
+        "target": "strategist-1",
+        "type": "feedback",
+        "label": "follow-up question round"
+      },
+      {
+        "id": "e7",
+        "source": "gate-1",
+        "target": "moderator-1",
+        "type": "conditional",
+        "condition": "max_rounds_reached",
+        "label": "complete"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": "{{max_rounds}}",
+        "description": "Maximum interview rounds"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.9,
+        "description": "Information completeness threshold"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "strategist_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Interviewer (Strategist)"
+    },
+    {
+      "key": "analyst_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Deep Analyst"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Summarizer (Moderator)"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 3,
+      "description": "Maximum number of interview rounds"
+    }
+  ],
+  "is_system": true
+}

@@ -41,6 +41,9 @@ class ResolvedAgent:
     role_type_color: str = "#8b5cf6"
     default_max_rounds: int = 5
     default_consensus_threshold: float = 0.9
+    # Argumentation & Mode
+    argumentation_pattern: str = ""
+    mode: str = ""
 
 
 @dataclass
@@ -150,6 +153,8 @@ class CompilerService:
                     role_type_color=role_type_color,
                     default_max_rounds=default_max_rounds,
                     default_consensus_threshold=default_consensus_threshold,
+                    argumentation_pattern=role_def.argumentation_pattern or "",
+                    mode=role_def.mode or "",
                 )
             )
 
@@ -263,6 +268,7 @@ class CompilerService:
                 warnings.append(f"Cycle detected in non-feedback edges: {' → '.join(cycle)}. This may be intentional if feedback edges are used.")
 
     @staticmethod
+    @staticmethod
     def _validate_tone_profile_edges(
         workflow: WorkflowDefinition,
         errors: list[str],
@@ -278,16 +284,11 @@ class CompilerService:
         5. Tone profile nodes must not be isolated (must have at least one injects_config or sequential edge).
         """
         node_type_map = {n.id: n.type for n in workflow.nodes}
-        injectable_types = {
-            "wf-strategist",
-            "wf-critic",
-            "wf-optimizer",
-            "wf-moderator",
-        }
+        injectable_types = set(AGENT_NODE_TYPES)
 
-        # Track: agent_node_id → list of source tone_profile node IDs
+        # Track: agent_node_id -> list of source tone_profile node IDs
         agent_incoming_config: dict[str, list[str]] = {}
-        # Track: tone_profile_node_id → list of target agent node IDs
+        # Track: tone_profile_node_id -> list of target agent node IDs
         tone_outgoing_config: dict[str, list[str]] = {}
         # Track all edges for isolation check
         all_edge_sources: set[str] = set()

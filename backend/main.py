@@ -18,7 +18,8 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.api.deps import get_settings  # noqa: E402
-from backend.api.routers import (  # noqa: E402
+from backend.api.routers import (
+    argumentation_patterns,  # noqa: E402
     a2a_discovery,
     audit,
     blueprint_events,
@@ -179,6 +180,7 @@ def create_app() -> FastAPI:
     app.include_router(blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"])
     app.include_router(llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"])
     app.include_router(role_definitions.router, prefix="/api/v1/blueprints", tags=["blueprints"])
+    app.include_router(argumentation_patterns.router, prefix="/api/v1/blueprints", tags=["blueprints"])
     app.include_router(workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"])
     app.include_router(canvas.router, prefix="/api/v1/canvas", tags=["canvas"])
     app.include_router(
