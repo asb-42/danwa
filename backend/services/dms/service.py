@@ -43,6 +43,7 @@ class DMS:
 
         self.db = DMSDB(db_path=self.db_path)
 
+        logger.info("DMS config: %s", self.config)
         self.document_processor = DocumentProcessor(config=self.config)
         self.text_chunker = TextChunker()
 

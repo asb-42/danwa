@@ -72,7 +72,7 @@ class TestDocumentProcessorOCR:
             asyncio.run(processor.process_file(str(img_path)))
 
     def test_image_rejected_when_paddleocr_not_installed(self, tmp_path):
-        """Image upload should raise ValueError when PaddleOCR is not installed."""
+        """Image upload should gracefully fallback when PaddleOCR is not installed."""
         from backend.services.dms.document_processor import DocumentProcessor
 
         processor = DocumentProcessor(config={"ocr_enabled": True})
@@ -83,8 +83,8 @@ class TestDocumentProcessorOCR:
 
         with patch.dict(sys.modules, {"paddleocr": None}):
             processor._ocr = None
-            with pytest.raises(ValueError, match="OCR engine unavailable"):
-                asyncio.run(processor.process_file(str(img_path)))
+            result = asyncio.run(processor.process_file(str(img_path)))
+            assert result["ocr_used"] is False
 
     def test_non_image_files_not_affected_by_ocr_check(self, tmp_path):
         """Non-image files should not be affected by ocr_enabled setting."""

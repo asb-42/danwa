@@ -15,9 +15,7 @@ class TestPaddleOCRIntegration:
         img_path.write_bytes(b"fake png content")
 
         ocr_instance = MagicMock()
-        ocr_instance.predict.return_value = [
-            types.SimpleNamespace(json={"ocr_results": [{"text": "Hello"}, {"text": "World"}]})
-        ]
+        ocr_instance.predict.return_value = [types.SimpleNamespace(json={"ocr_results": [{"text": "Hello"}, {"text": "World"}]})]
         paddle_cls = MagicMock(return_value=ocr_instance)
         paddle_module = types.SimpleNamespace(PaddleOCR=paddle_cls)
 
@@ -34,6 +32,7 @@ class TestPaddleOCRIntegration:
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             device="cpu",
+            ocr_version="PP-OCRv4",
         )
         ocr_instance.predict.assert_called_once_with(str(img_path))
         assert result["ocr_used"] is True
@@ -49,9 +48,7 @@ class TestPaddleOCRIntegration:
         with patch.dict(sys.modules, {"paddleocr": paddle_module}):
             with patch("src.dms.document_processor.DocumentParser") as parser_cls:
                 parser = parser_cls.return_value
-                parser.parse_file = AsyncMock(
-                    return_value={"text": "pdf content", "metadata": {"pages": 1}}
-                )
+                parser.parse_file = AsyncMock(return_value={"text": "pdf content", "metadata": {"pages": 1}})
                 processor = document_processor.DocumentProcessor({})
 
                 result = await processor.process_file(str(pdf_path))
@@ -69,9 +66,7 @@ class TestPaddleOCRIntegration:
         with patch.dict(sys.modules, {"paddleocr": None}):
             with patch("src.dms.document_processor.DocumentParser") as parser_cls:
                 parser = parser_cls.return_value
-                parser.parse_file = AsyncMock(
-                    return_value={"text": "fallback text", "metadata": {"pages": 0}}
-                )
+                parser.parse_file = AsyncMock(return_value={"text": "fallback text", "metadata": {"pages": 0}})
                 processor = document_processor.DocumentProcessor({})
 
                 result = await processor.process_file(str(img_path))
@@ -91,9 +86,7 @@ class TestPaddleOCRIntegration:
         with patch.dict(sys.modules, {"paddleocr": paddle_module}):
             with patch("src.dms.document_processor.DocumentParser") as parser_cls:
                 parser = parser_cls.return_value
-                parser.parse_file = AsyncMock(
-                    return_value={"text": "fallback text", "metadata": {"pages": 0}}
-                )
+                parser.parse_file = AsyncMock(return_value={"text": "fallback text", "metadata": {"pages": 0}})
                 processor = document_processor.DocumentProcessor({})
 
                 result = await processor.process_file(str(img_path))

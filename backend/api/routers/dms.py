@@ -189,8 +189,8 @@ def ocr_status():
         return {"available": True, "engine": "paddleocr"}
     except ImportError:
         return {"available": False, "engine": None}
-    except RuntimeError as e:
-        if "PDX has already been initialized" in str(e):
-            logger.warning("PaddleX already initialized - OCR may still be available")
+    except (RuntimeError, AssertionError) as e:
+        if "PDX has already been initialized" in str(e) or "paddle is unexpectedly loaded" in str(e):
+            logger.warning("PaddleX/PaddleOCR initialization conflict - OCR may still be available: %s", e)
             return {"available": True, "engine": "paddleocr"}
         return {"available": False, "engine": None, "error": str(e)}

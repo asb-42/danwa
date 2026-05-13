@@ -15,9 +15,7 @@ async def test_process_txt_uses_existing_parser(tmp_path):
 
     with patch("src.dms.document_processor.DocumentParser") as parser_cls:
         parser = parser_cls.return_value
-        parser.parse_file = AsyncMock(
-            return_value={"text": "plain text", "metadata": {"pages": 0, "extra": "value"}}
-        )
+        parser.parse_file = AsyncMock(return_value={"text": "plain text", "metadata": {"pages": 0, "extra": "value"}})
         processor = document_processor.DocumentProcessor({})
 
         result = await processor.process_file(str(file_path))
@@ -38,9 +36,7 @@ async def test_process_pdf_uses_existing_parser(tmp_path):
 
     with patch("src.dms.document_processor.DocumentParser") as parser_cls:
         parser = parser_cls.return_value
-        parser.parse_file = AsyncMock(
-            return_value={"text": "pdf body", "metadata": {"pages": 3}}
-        )
+        parser.parse_file = AsyncMock(return_value={"text": "pdf body", "metadata": {"pages": 3}})
         processor = document_processor.DocumentProcessor({})
 
         result = await processor.process_file(str(file_path))
@@ -57,9 +53,7 @@ async def test_process_image_uses_paddle(tmp_path):
     file_path = tmp_path / "scan.png"
     file_path.write_bytes(b"png")
     ocr_instance = MagicMock()
-    ocr_instance.predict.return_value = [
-        types.SimpleNamespace(json={"ocr_results": [{"text": "Hello"}, {"text": "world"}]})
-    ]
+    ocr_instance.predict.return_value = [types.SimpleNamespace(json={"ocr_results": [{"text": "Hello"}, {"text": "world"}]})]
     paddle_cls = MagicMock(return_value=ocr_instance)
     paddle_module = types.SimpleNamespace(PaddleOCR=paddle_cls)
 
@@ -76,6 +70,7 @@ async def test_process_image_uses_paddle(tmp_path):
         use_doc_orientation_classify=False,
         use_doc_unwarping=False,
         device="cpu",
+        ocr_version="PP-OCRv4",
     )
     ocr_instance.predict.assert_called_once_with(str(file_path))
     assert result == {
@@ -100,9 +95,7 @@ async def test_process_image_fallback_no_paddle(tmp_path):
     with patch.dict(sys.modules, {"paddleocr": None}):
         with patch("src.dms.document_processor.DocumentParser") as parser_cls:
             parser = parser_cls.return_value
-            parser.parse_file = AsyncMock(
-                return_value={"text": "fallback text", "metadata": {"pages": 0}}
-            )
+            parser.parse_file = AsyncMock(return_value={"text": "fallback text", "metadata": {"pages": 0}})
             processor = document_processor.DocumentProcessor({})
 
             result = await processor.process_file(str(file_path))
@@ -124,9 +117,7 @@ async def test_process_image_fallback_paddle_error(tmp_path):
     with patch.dict(sys.modules, {"paddleocr": paddle_module}):
         with patch("src.dms.document_processor.DocumentParser") as parser_cls:
             parser = parser_cls.return_value
-            parser.parse_file = AsyncMock(
-                return_value={"text": "fallback text", "metadata": {"pages": 0}}
-            )
+            parser.parse_file = AsyncMock(return_value={"text": "fallback text", "metadata": {"pages": 0}})
             processor = document_processor.DocumentProcessor({})
 
             result = await processor.process_file(str(file_path))
@@ -144,9 +135,7 @@ async def test_metadata_returned(tmp_path):
 
     with patch("src.dms.document_processor.DocumentParser") as parser_cls:
         parser = parser_cls.return_value
-        parser.parse_file = AsyncMock(
-            return_value={"text": "two words", "metadata": {"pages": 7, "truncated": True}}
-        )
+        parser.parse_file = AsyncMock(return_value={"text": "two words", "metadata": {"pages": 7, "truncated": True}})
         processor = document_processor.DocumentProcessor({})
 
         result = await processor.process_file(str(file_path))
