@@ -16,10 +16,13 @@ DEFAULT_DMS_CONFIG = {
 
 
 def load_dms_config(config_path="config/settings.yaml"):
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f) or {}
-
-    dms_config = {**DEFAULT_DMS_CONFIG, **(config.get("dms") or {})}
+    dms_config = dict(DEFAULT_DMS_CONFIG)
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f) or {}
+        dms_config.update(config.get("dms") or {})
+    except FileNotFoundError:
+        pass
 
     chunk_size = dms_config["chunk_size"]
     chunk_overlap = dms_config["chunk_overlap"]

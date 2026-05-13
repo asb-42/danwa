@@ -4,11 +4,11 @@ from datetime import datetime
 from pathlib import Path
 
 LOG_DIR = Path("logs")
-LOG_DIR.mkdir(exist_ok=True)
 
 
 class TraceLogger:
     def __init__(self, session_id: str):
+        LOG_DIR.mkdir(exist_ok=True)
         self.file = LOG_DIR / f"{session_id}.jsonl"
 
     def log(
