@@ -195,6 +195,10 @@ class BlueprintCanvasStore {
       position: { x: n.x ?? 0, y: n.y ?? 0 },
       data: {
         ...(entityDataMap[n.blueprint_id || n.id] || {}),
+
+         // Preserve layout-level fields when entity data is unavailable
+         ...(n.label && !(entityDataMap[n.blueprint_id || n.id] || {}).name ? { name: n.label } : {}),
+         ...(n.config && Object.keys(n.config).length > 0 && !(entityDataMap[n.blueprint_id || n.id] || {}).config ? { config: n.config } : {}),
         blueprint_id: n.blueprint_id || n.id,
         isDraft: false,
       },

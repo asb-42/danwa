@@ -125,6 +125,16 @@ export function getDefaultData(nodeType) {
 }
 
 /**
+ * Sanitize entity data for SvelteFlow node storage.
+ * Excludes large fields (e.g. content) that cause UI freezes when reactive.
+ */
+function sanitizeNodeData(data) {
+  if (!data) return {};
+  const { content, ...rest } = data;
+  return rest;
+}
+
+/**
  * Set up drag start data on a palette item.
  *
  * @param {DragEvent} event
@@ -188,7 +198,7 @@ export function createEntityNode(nodeType, entityId, entityData, position) {
     data: {
       isDraft: false,
       blueprint_id: entityId,
-      ...entityData,
+      ...sanitizeNodeData(entityData),
     },
   };
 }
