@@ -19,6 +19,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.deps import get_debate_store_for_project, get_project_id
 from backend.api.events import publish_async
 from backend.workflow.hitl.contracts import (
+    ExtensionDecision,
+    ExtensionDecisionModel,
+    ExtensionRequest,
     ExtensionResponse,
     HITLMode,
     HITLStatusResponse,
