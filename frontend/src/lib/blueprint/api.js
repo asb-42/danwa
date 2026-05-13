@@ -336,6 +336,16 @@ export function convertLayoutToWorkflow(layoutId, body = {}) {
   });
 }
 
+// ─── Argumentation Patterns ────────────────────────────────────
+
+/**
+ * List all available argumentation pattern names.
+ * @returns {Promise<Array<string>>}
+ */
+export function listArgumentationPatterns() {
+  return request('/api/v1/blueprints/argumentation-patterns');
+}
+
 // ─── Import ─────────────────────────────────────────────────────────
 
 /**
