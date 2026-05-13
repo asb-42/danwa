@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -519,6 +519,58 @@ _MIGRATION_V15_TABLES = [
 ]
 
 
+
+# ---------------------------------------------------------------------------
+# V19 - Module Registry: module_registry + module_translation_cache
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V19_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS module_registry (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        type TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'custom',
+        version TEXT NOT NULL DEFAULT '0.0.0',
+        author_json TEXT DEFAULT '{}',
+        license TEXT DEFAULT 'CC-BY-4.0',
+        checksum TEXT,
+        installed_at TEXT NOT NULL,
+        updated_at TEXT,
+        enabled INTEGER DEFAULT 1,
+        source_url TEXT,
+        source_schema TEXT DEFAULT '1.0.0',
+        tags_json TEXT DEFAULT '[]'
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_module_registry_type ON module_registry (type);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_module_registry_category ON module_registry (category);
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS module_translation_cache (
+        id TEXT PRIMARY KEY,
+        module_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        language TEXT NOT NULL DEFAULT 'en',
+        translated_content TEXT,
+        source_hash TEXT,
+        quality_score REAL DEFAULT 0.0,
+        generated_at TEXT,
+        generated_by TEXT,
+        approved INTEGER DEFAULT 0,
+        FOREIGN KEY (module_id) REFERENCES module_registry(id) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_module_trans ON module_translation_cache (module_id, language);
+    """,
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 
@@ -736,6 +788,14 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 18, "Seed analyst, creative, expert-reviewer role types")
             conn.commit()
             logger.info("Migration v18 applied successfully")
+
+        if current < 19:
+            logger.info("Applying migration v19: module_registry + module_translation_cache")
+            for stmt in _MIGRATION_V19_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 19, "Add module_registry + module_translation_cache tables")
+            conn.commit()
+            logger.info("Migration v19 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

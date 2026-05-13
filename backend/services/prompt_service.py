@@ -21,7 +21,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_PROMPTS_DIR = Path("profiles/prompts")
+_DEFAULT_PROMPTS_DIR = Path("modules/danwa-prompts-base/prompts")
+_LEGACY_PROMPTS_DIR = Path("profiles/prompts")
 
 
 class PromptService:
@@ -34,7 +35,8 @@ class PromptService:
         argumentation_patterns_dir: Path | str | None = None,
     ):
         self.prompts_dir = Path(prompts_dir)
-        self._argumentation_patterns_dir = Path(argumentation_patterns_dir) if argumentation_patterns_dir else None
+        self._argumentation_patterns_dir = Path(argumentation_patterns_dir) if argumentation_patterns_dir else Path("modules/danwa-prompts-base/prompts/argumentation-patterns")
+        self._legacy_prompts_dir = Path("profiles/prompts")
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
         self._profile_service = profile_service

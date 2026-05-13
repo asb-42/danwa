@@ -1,0 +1,168 @@
+{
+  "id": "tpl-streitgespraech",
+  "name": "Streitgespräch (Adversarial Debate)",
+  "description": "A confrontational debate format where an Advocate defends one position while an Adversary attacks it. A Referee ensures fair play, and the Moderator synthesizes the outcome. Based on the adversarial method of philosophical inquiry.",
+  "category": "system",
+  "tags": [
+    "streitgespräch",
+    "adversarial",
+    "advocate",
+    "adversary",
+    "referee",
+    "debate"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Debate Topic",
+        "position": {
+          "x": 100,
+          "y": 250
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Set the Stage",
+        "position": {
+          "x": 350,
+          "y": 250
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Advocate (Verteidiger)",
+        "agent_blueprint_id": "{{advocate_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 100
+        }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Adversary (Gegner)",
+        "agent_blueprint_id": "{{adversary_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 400
+        }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Referee & Synthesizer",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": {
+          "x": 900,
+          "y": 250
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Resolution Reached?",
+        "config": {
+          "condition": "rounds_exhausted"
+        },
+        "position": {
+          "x": 900,
+          "y": 450
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "init-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "init-1",
+        "target": "critic-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e4",
+        "source": "strategist-1",
+        "target": "moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e5",
+        "source": "critic-1",
+        "target": "moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e6",
+        "source": "moderator-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e7",
+        "source": "gate-1",
+        "target": "strategist-1",
+        "type": "feedback",
+        "label": "next adversarial round"
+      },
+      {
+        "id": "e8",
+        "source": "gate-1",
+        "target": "moderator-1",
+        "type": "conditional",
+        "condition": "rounds_exhausted",
+        "label": "final verdict"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": "{{max_rounds}}",
+        "description": "Maximum adversarial rounds"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.7,
+        "description": "Resolution threshold"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "advocate_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Advocate"
+    },
+    {
+      "key": "adversary_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Adversary"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Referee/Moderator"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 5,
+      "description": "Maximum number of adversarial rounds"
+    }
+  ],
+  "is_system": true
+}

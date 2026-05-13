@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_debate_store_for_project, get_project_store
@@ -89,6 +89,7 @@ async def stream_debate(
         ...,
         description="Project UUID (query param, since EventSource cannot send headers)",
     ),
+    project_store=Depends(get_project_store),
 ):
     """SSE endpoint for real-time debate updates.
 

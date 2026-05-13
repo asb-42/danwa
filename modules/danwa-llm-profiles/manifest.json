@@ -1,0 +1,148 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "danwa-llm-profiles",
+  "name": {
+    "en": "Danwa LLM Profiles",
+    "de": "Danwa LLM-Profile"
+  },
+  "version": "0.5.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "checksum": "f2a8482d17026a4fa94b77495b4ce78ef431dfbd0caa92f352c9dba66255e1ef",
+  "tags": [],
+  "language": "en",
+  "created_at": "2026-05-13T21:39:01.177315+00:00",
+  "updated_at": "2026-05-13T21:39:01.177325+00:00",
+  "files": [
+    {
+      "path": "llm/cloud-openrouter.yaml",
+      "format": "yaml",
+      "checksum": "bbaf3cdd9107a082dbd5ae4dd88bf13d536e657a15b15619c2893708353e5026",
+      "language": "en"
+    },
+    {
+      "path": "llm/cloud-qwen.yaml",
+      "format": "yaml",
+      "checksum": "e6905d06de71b3bc798bf4b1394334c504c36b295a921ec9e0f549ea366ffde2",
+      "language": "en"
+    },
+    {
+      "path": "llm/draft-d6f64175.yaml",
+      "format": "yaml",
+      "checksum": "00785c80f56b61a022fcbf71b660128b66b6eb262ae6fe945acd7ca58ae83ff4",
+      "language": "en"
+    },
+    {
+      "path": "llm/local-gemma-4-26b-a4b.yaml",
+      "format": "yaml",
+      "checksum": "4a645eda4389dcd1fcd94fa91d8e4e84fb1cf9fe2cd2d03e7347bf30594ce1a3",
+      "language": "en"
+    },
+    {
+      "path": "llm/local-gemma-4-31b-it.yaml",
+      "format": "yaml",
+      "checksum": "fb67bf6e8022a44cc7a94a79d5993fb5d9c848b754c9c52f771c6a2501da110f",
+      "language": "en"
+    },
+    {
+      "path": "llm/local-gemma.yaml",
+      "format": "yaml",
+      "checksum": "1e2655d107710f2382277315fb5f808114d3090ed9540dc34d52e057756bf254",
+      "language": "en"
+    },
+    {
+      "path": "llm/local-glm-4-32b-0414-uncensored-heretic-v1.yaml",
+      "format": "yaml",
+      "checksum": "70cf9cf842397086290b82129f796437d44af22cd64795bb644e484774c57903",
+      "language": "en"
+    },
+    {
+      "path": "llm/local-qwen3.5-27b-distilled.yaml",
+      "format": "yaml",
+      "checksum": "6ffe538a96b3a07bb614dc8dc0b9c96fd33965b6f6f18244213e1bf890204014",
+      "language": "en"
+    },
+    {
+      "path": "llm/local-qwen3.6-35b-a3b.yaml",
+      "format": "yaml",
+      "checksum": "f325911586018303d57c9474dfe6bc5d6496a1a5cb7dc4eeedd4de23628b3f4a",
+      "language": "en"
+    },
+    {
+      "path": "llm/opencodezen-minimax-m2.5-free-ry6l.yaml",
+      "format": "yaml",
+      "checksum": "c4d5dadb6893b4721b21d1a48ab41a7095c1a922df57a99fe52a3319fb3d5993",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-claude-3.6-sonnet.yaml",
+      "format": "yaml",
+      "checksum": "39f5ed2d514bc0156b1062cfbb315231fb921d57224e796a9c8fa3c29425c19a",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-claude.yaml",
+      "format": "yaml",
+      "checksum": "e7c19ff1304e8b354b1edc680d5ad6de4f10bf86e6f0cb4d471885fb217ab14a",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-glm-5-2ond.yaml",
+      "format": "yaml",
+      "checksum": "fb63b7d80a459baffac5fc10cfade23a41f49baa403cc8bb6c6ac3a142ab2824",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-gpt4.yaml",
+      "format": "yaml",
+      "checksum": "9eb2e0a54a42d70b3b44e1d467dfdbdb9e48f5c74afc1848821ab89065bb00f7",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-grok-4.2.yaml",
+      "format": "yaml",
+      "checksum": "cf99598f5209627a6cd04a50c18d3400e6bf1fb2fc282e3f5ac698dabc5e70f9",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-grok-4.20.yaml",
+      "format": "yaml",
+      "checksum": "ba502a9e0195467b36e489ce9817775c805a2ce31e87621847d3a0ab00be82e5",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-hy3-preview.yaml",
+      "format": "yaml",
+      "checksum": "983fd69521ba304dd76e9aa32825b37c2f64085f44f039cbb79208bee4b94a1e",
+      "language": "en"
+    },
+    {
+      "path": "llm/openrouter-owl-alpha.yaml",
+      "format": "yaml",
+      "checksum": "dd7eea42cd3da4dc5c4d7009b776f7715ec78e7c4427b52dee15526d564dcc2e",
+      "language": "en"
+    },
+    {
+      "path": "llm/owl-alpha-copy-u7rv.yaml",
+      "format": "yaml",
+      "checksum": "824783eb684615ccf26d8e62d97a1f43151ec1acfe9b6cf395a2a1f15011b0f4",
+      "language": "en"
+    },
+    {
+      "path": "llm/xiaomi-io-2--6btm.yaml",
+      "format": "yaml",
+      "checksum": "b0f7f90c519119335b08a13c2a6eb0414a9f5ff622327ac4fcadfc2120ed065b",
+      "language": "en"
+    },
+    {
+      "path": "llm/xiaomi-mimi-v2.5-pro.yaml",
+      "format": "yaml",
+      "checksum": "29f8687a30a125df03694bff30e0ff1f13a7fbe309f4e7d246fc8829b15b14b0",
+      "language": "en"
+    }
+  ]
+}

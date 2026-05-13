@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "danwa-workflow-templates",
+  "name": {
+    "en": "Danwa Workflow Templates",
+    "de": "Danwa Workflow-Vorlagen"
+  },
+  "version": "0.5.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "checksum": "a82463c08f173fd0b164a1e97863d1d6efc2376092fb675c9eb6a5b2e20a06dc",
+  "tags": [],
+  "language": "en",
+  "created_at": "2026-05-13T21:40:14.572322+00:00",
+  "updated_at": "2026-05-13T21:40:14.572337+00:00",
+  "files": [
+    {
+      "path": "manifest.json",
+      "format": "json",
+      "checksum": "63e4ffb9a3afa148dcc6f8e5c9b9838742bc9d155621be9a3ff7d9919f68645f"
+    },
+    {
+      "path": "workflows/dialectic_debate.json",
+      "format": "json",
+      "checksum": "22b1316dd6043c6259fb94575caaea51422683844b8d57d5a56ebb165bb3cd15"
+    },
+    {
+      "path": "workflows/interview_workflow.json",
+      "format": "json",
+      "checksum": "318c3eb0781c46122feeaddccf06eae6b423e141eeff37dd6d6716e6110cee10"
+    },
+    {
+      "path": "workflows/kantian_analysis.json",
+      "format": "json",
+      "checksum": "ab254cb984a2a68ff6e1d0c40c6ac0714e731ceff66cf15de0718cff9e12031e"
+    },
+    {
+      "path": "workflows/mediation_workflow.json",
+      "format": "json",
+      "checksum": "1f3e4e031ddfd67eb59db8684fe8ede713c5a6824c723eb10858bcfd07ba398e"
+    },
+    {
+      "path": "workflows/quick_review.json",
+      "format": "json",
+      "checksum": "77cbfb271457da867779370f579518b30a0c89c6a99dc26add52e01c4910b13b"
+    },
+    {
+      "path": "workflows/standard_debate.json",
+      "format": "json",
+      "checksum": "e27edca430fea1c7bb6093c27d7fd8b51a6e80fe10515b385aa2e0cc2e63c031"
+    },
+    {
+      "path": "workflows/streitgespraech_workflow.json",
+      "format": "json",
+      "checksum": "9c284f4a1695fddf55bf8391edfa279ead4cd3205adadb646a26d0fa607469d7"
+    }
+  ]
+}

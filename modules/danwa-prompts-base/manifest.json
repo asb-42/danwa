@@ -1,0 +1,372 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "danwa-prompts-base",
+  "name": {
+    "en": "Danwa Prompts Base (EN)",
+    "de": "Danwa Prompts Basis (EN)"
+  },
+  "version": "0.5.0",
+  "type": "argumentation-pattern",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "checksum": "f96a37976d9cb56f5af91e361927678c7cf009cb1ff0463ea92e355325399a65",
+  "tags": [],
+  "language": "en",
+  "created_at": "2026-05-13T21:39:01.173938+00:00",
+  "updated_at": "2026-05-13T21:39:01.173963+00:00",
+  "files": [
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/analyst.md",
+      "format": "markdown",
+      "checksum": "7bddd3d45072b0cb1054ed6ec4a62e7d791c6a1f19dac14d3845fa4ac65e7fd7",
+      "role_type_id": "analyst",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/creative.md",
+      "format": "markdown",
+      "checksum": "6b1268f58ad6b869f020d86882099c135afbcb09ed54f2bb5f532f5ec3c24936",
+      "role_type_id": "creative",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/critic.md",
+      "format": "markdown",
+      "checksum": "a4ae1f5b968b0a8590d5fd751f61931badd4da7c32de681086640c2deb31dffb",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/fact-checker.md",
+      "format": "markdown",
+      "checksum": "0cd80bec192311bf36ac268bc1eacade8ad59b8014b594c25c988d3b04aab315",
+      "role_type_id": "fact-checker",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/moderator.md",
+      "format": "markdown",
+      "checksum": "53ace94c536b1bacaeb7badec1e4a9a3dc6b5be4adc7ee562e7f1081422c01f1",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/optimizer.md",
+      "format": "markdown",
+      "checksum": "61e53c21ea746a8d3511b8b1d81bc6cd1df5b07dff302415985d7aeaab116e2e",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/aristotelian/strategist.md",
+      "format": "markdown",
+      "checksum": "036f6ff851428a5dc2ef9ada9527f9f124f64676e5277cdb2500378d1bf2c59a",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/analyst.md",
+      "format": "markdown",
+      "checksum": "287617fbb66db2f7093f62a50f22709664a1598533d1a168ca189dd1278e3bf2",
+      "role_type_id": "analyst",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/creative.md",
+      "format": "markdown",
+      "checksum": "929f61eee0d3dd908238b7d58d99efd3c1f85709adf67c01d7615ed24f4119ae",
+      "role_type_id": "creative",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/critic.md",
+      "format": "markdown",
+      "checksum": "d5c3dfa336533a3865ab952c7b4d2b01c1e5e232048fd9cd7e13318ac886ec33",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/fact-checker.md",
+      "format": "markdown",
+      "checksum": "2dda8a44f28989337ca4f883822d2f50efdfdd1f7ff9a0988c8445bf215d7ad8",
+      "role_type_id": "fact-checker",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/moderator.md",
+      "format": "markdown",
+      "checksum": "2f0a8d1206be565a05b1104bd992ab63bb932333dbffd16c31fd9a0d61b69f1e",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/optimizer.md",
+      "format": "markdown",
+      "checksum": "4d0ccf800036d8214f8b13e1ffe0a14dc87ff1abdfbe2db34c4f8a93c2ea1e25",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/hegelian/strategist.md",
+      "format": "markdown",
+      "checksum": "cc9a73c145a29563a91c83c49ee2d6eab169c65b3309a2c24415c2c831d70c98",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/analyst.md",
+      "format": "markdown",
+      "checksum": "6e4176e8f12af132c79f55af8b44d89bb3db2bf2d6bc648647d498d13bde7c06",
+      "role_type_id": "analyst",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/creative.md",
+      "format": "markdown",
+      "checksum": "b3557d45296554c91e86e327cd8e9201eac9a8fe4cef7da71b6710edb4a1b5f4",
+      "role_type_id": "creative",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/critic.md",
+      "format": "markdown",
+      "checksum": "64581f1333f96ae57033df3b699502ac6ecd9046cb8ccaf03c34e787268dddc3",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/fact-checker.md",
+      "format": "markdown",
+      "checksum": "889373c7246d89767ea17218b1c44f47e2a39a0c046d158462e0d6d31798c38f",
+      "role_type_id": "fact-checker",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/moderator.md",
+      "format": "markdown",
+      "checksum": "82081d4e9530e82c57f57fcc6482848a139837ca7d0f732977a0a9acac2cfd26",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/optimizer.md",
+      "format": "markdown",
+      "checksum": "127f5c97c55f914e74fb762c08da1416460a06a74db9d1f9fc46fa701f2234e7",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/kantian/strategist.md",
+      "format": "markdown",
+      "checksum": "2fc82c26f1cb38dc7a31bc6d9295aac61feaade52b749dcdea56e1b9bd81e729",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/analyst.md",
+      "format": "markdown",
+      "checksum": "b56c6de3f47265832670f11e0ae1072d23c1ea9c78169a37e4c9184725cbba3b",
+      "role_type_id": "analyst",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/creative.md",
+      "format": "markdown",
+      "checksum": "6ae3d4b044364348e5b935a7b616fa67df022e1ee8eafd43418660a4abd0ef5a",
+      "role_type_id": "creative",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/critic.md",
+      "format": "markdown",
+      "checksum": "4cabe0fd63c95f01a736a9cb7264024814bb26af89703b73172f4985139dfecc",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/fact-checker.md",
+      "format": "markdown",
+      "checksum": "24047b94bf5e1245166acba21faf335684e082cf2acbb3727da28e9a9c0e681f",
+      "role_type_id": "fact-checker",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/moderator.md",
+      "format": "markdown",
+      "checksum": "6d097a5f8ce5291eb77f2c1740442c8cf6400e0200d7cbf899e5643b216f23d3",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/optimizer.md",
+      "format": "markdown",
+      "checksum": "be06f990b27f74469afc3d0b8d6cade36a78c9c1073bcfb51a8ab569a74cb603",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/socratic/strategist.md",
+      "format": "markdown",
+      "checksum": "bf68e8385cbfbf208c8a749699fe120732c50162cd27f696413421c5f052e822",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/analyst.md",
+      "format": "markdown",
+      "checksum": "af4eda1362ae54f93b47c30b000c3d34bfdb414b11184ee864d6e4cfce1a4598",
+      "role_type_id": "analyst",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/creative.md",
+      "format": "markdown",
+      "checksum": "62d966896381628110eacf5fa6b331e9f1d9b6dfb7c934168aa71686968b6a9c",
+      "role_type_id": "creative",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/critic.md",
+      "format": "markdown",
+      "checksum": "bc84c3ab8211628a976cdd27ebecd0a5e3b1627214720f2210dbdc9d924f8e34",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/fact-checker.md",
+      "format": "markdown",
+      "checksum": "f35616f7b0f24353093293586ccd8c3feb7a7485a9e5227f7f80b0c5bf86a203",
+      "role_type_id": "fact-checker",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/moderator.md",
+      "format": "markdown",
+      "checksum": "cd725a9dcd60188b3676a625b9f63cdb0f3289eea53e0803cb2b3cdaad27afb1",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/optimizer.md",
+      "format": "markdown",
+      "checksum": "97f9dd1a82d5168a9af5d7f921b04fc0aa81281efdeedba07cf7f82b2b684c4b",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/stoic/strategist.md",
+      "format": "markdown",
+      "checksum": "84aadaa9a00ff228ef26b6d58d09cf6431512da5f3588be453b138676e8e5ed2",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/analyst.md",
+      "format": "markdown",
+      "checksum": "ae202957128e1883e47ae5290632550f40d7689a10ceac56d199f4c187f50e51",
+      "role_type_id": "analyst",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/creative.md",
+      "format": "markdown",
+      "checksum": "7f4aaf2a243d0145ded58adb8a25e87b02618f929b94c2df36544e153d3e9859",
+      "role_type_id": "creative",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/critic.md",
+      "format": "markdown",
+      "checksum": "7ab8ef7a225587586011e2ce3d866ebeb3d48cbcf2e164e9f1527f74db923328",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/fact-checker.md",
+      "format": "markdown",
+      "checksum": "0508df8c86c59750e257d384880e9ae6dbc43fbb158b76d2aac34287383b66a7",
+      "role_type_id": "fact-checker",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/moderator.md",
+      "format": "markdown",
+      "checksum": "e73629976df2d5a1b7f1a8d41d61e267e949865fc7611ffa3afdbb2c45270349",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/optimizer.md",
+      "format": "markdown",
+      "checksum": "236af95262a78724d9b0e12d190bf8d7258fe3f8555729cce9d663dac510f56e",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/argumentation-patterns/utilitarian/strategist.md",
+      "format": "markdown",
+      "checksum": "9a6ec4ed757d4fbf253f15f6f9312a1982866f57d0d8c4dc06bac771e2e8aaf8",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/default/critic.md",
+      "format": "markdown",
+      "checksum": "07f713d54bfb71abb03f30e722d31eb21e8a198ea6964681b6f590af0b630d1f",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/default/moderator.md",
+      "format": "markdown",
+      "checksum": "90aa94838e4f26857b2d11f11f82b97cc2be528312a33146c97fa2dbb8cd5e91",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/default/optimizer.md",
+      "format": "markdown",
+      "checksum": "4081d545cf842a6493aadb8c2160f4ce9622c15e0f5b0dd795cced78251f27b3",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/default/strategist.md",
+      "format": "markdown",
+      "checksum": "3c3b2d16732e2f708b075ef35c59c8d5b8d44e67550c60f4c7366913abefb1f5",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "prompts/workflows/dialectic/critic.md",
+      "format": "markdown",
+      "checksum": "a879fa15a4ddd343d91f643a63537e2e1bd82686408cbe02ec018ae57646cf33",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "prompts/workflows/dialectic/moderator.md",
+      "format": "markdown",
+      "checksum": "c8b0dbe785375ca9b687f5271da5d6c04ff4bb5add8ebb5ea689d26bf264d7a7",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "prompts/workflows/dialectic/optimizer.md",
+      "format": "markdown",
+      "checksum": "3d3d86b250a2ca213b2f91e143f6640080e75e7a60016f312f1553ec65246fc3",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "prompts/workflows/dialectic/strategist.md",
+      "format": "markdown",
+      "checksum": "13217feeabba59a0a8c418fd7e742238f66123c9e18c0e862af47bef6194e975",
+      "role_type_id": "strategist",
+      "language": "en"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "danwa-agents-base",
+  "name": {
+    "en": "Danwa Agent Personas",
+    "de": "Danwa Agent-Personas"
+  },
+  "version": "0.5.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "checksum": "e8fb06a2f9135e972b3a9a0153724b4dff9230547e7550e208606ca7eb739c4d",
+  "tags": [],
+  "language": "en",
+  "created_at": "2026-05-13T21:39:01.175359+00:00",
+  "updated_at": "2026-05-13T21:39:01.175372+00:00",
+  "files": [
+    {
+      "path": "agents/critic-default.yaml",
+      "format": "yaml",
+      "checksum": "38562f857e0edfe6b39e2ae79e03ca91114c3ec9164235c1de71c02bf52c55ba",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "agents/critic-example.yaml",
+      "format": "yaml",
+      "checksum": "c2a08f43ecd9206965310e804a620f4623127eaa1fef9f0bb05a467edb525c5d",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "agents/critic-stoic.yaml",
+      "format": "yaml",
+      "checksum": "b18be3d39ceb8ce792356a7dca031844daa96bbc34c4561886f828130be30e23",
+      "role_type_id": "critic",
+      "language": "en"
+    },
+    {
+      "path": "agents/moderator-default.yaml",
+      "format": "yaml",
+      "checksum": "770e6b16f4ed9a9362901934b33f8b737b6c4f657c8a7162d008458f5c1e41eb",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "agents/moderator-example.yaml",
+      "format": "yaml",
+      "checksum": "4613af560a421d091bdc88c088787c43856c3e89cb1533da3e549383f0220ee3",
+      "role_type_id": "moderator",
+      "language": "en"
+    },
+    {
+      "path": "agents/optimizer-default.yaml",
+      "format": "yaml",
+      "checksum": "e060a42e01a7a55c204c3b26b9d9612986b2b0fe0792f388bfeb461d7b08f4c6",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "agents/optimizer-example.yaml",
+      "format": "yaml",
+      "checksum": "f35f3ff4e25c909684f1ce3ee8cd845593b227d54e255d1ef4ddd8d7110af461",
+      "role_type_id": "optimizer",
+      "language": "en"
+    },
+    {
+      "path": "agents/strategist-default.yaml",
+      "format": "yaml",
+      "checksum": "10f3278f704f9f9cd9794bf0ea57a63b28c43bfab4751dfba59bb5305dc9f541",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "agents/strategist-example.yaml",
+      "format": "yaml",
+      "checksum": "6e8eeb7dec76e8b75aebd6d36ea49f5d6d0de7b3ff768791e2d98287471314ef",
+      "role_type_id": "strategist",
+      "language": "en"
+    },
+    {
+      "path": "agents/strategist-german-law.yaml",
+      "format": "yaml",
+      "checksum": "36756d257049b7bc024f96f667796ff89f0e636c3a67a6f6145318e7cdea3f0f",
+      "role_type_id": "strategist",
+      "language": "en"
+    }
+  ]
+}
