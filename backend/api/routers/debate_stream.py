@@ -12,10 +12,11 @@ import json
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
-from backend.api.deps import get_debate_store_for_project
+from backend.api.deps import get_debate_store_for_project, get_project_store
 from backend.api.events import subscribe, unsubscribe
 from backend.models.schemas import DebateStatus
 from backend.persistence.debate_store import DebateStore
+from backend.persistence.project_store import ProjectStore
 
 router = APIRouter()
 
@@ -94,5 +95,5 @@ async def stream_debate(
     Accepts ``project_id`` as a **query parameter** because the browser's
     ``EventSource`` API cannot send custom HTTP headers.
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     return EventSourceResponse(_sse_events(debate_id, project_id, store))

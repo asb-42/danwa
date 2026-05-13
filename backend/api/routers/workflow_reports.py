@@ -14,10 +14,11 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from backend.persistence.project_store import ProjectStore
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from backend.api.deps import get_debate_store_for_project, get_project_id
+from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.workflow.report_generator import WorkflowReportGenerator
 from backend.workflow.report_jobs import ReportJobStore
@@ -90,6 +91,7 @@ async def _generate_report_job(
     session_id: str,
     fmt: str,
     project_id: str | None = None,
+    project_store: ProjectStore | None = None,
 ) -> None:
     """Background task that generates a report and updates the job store."""
     store = _get_job_store()
@@ -111,7 +113,7 @@ async def _generate_report_job(
         debate_data = None
         if project_id:
             try:
-                debate_store = get_debate_store_for_project(project_id)
+                debate_store = get_debate_store_for_project(project_id, project_store)
                 debate_data = debate_store.get(session_id)
             except Exception as exc:
                 logger.warning(
@@ -157,6 +159,7 @@ async def create_report_job(
     body: CreateReportRequest,
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> CreateReportResponse:
     """Create an async report generation job.
 
@@ -174,7 +177,7 @@ async def create_report_job(
     store = _get_job_store()
     job_id = store.create_job(session_id, fmt)
 
-    background_tasks.add_task(_generate_report_job, job_id, session_id, fmt, project_id)
+    background_tasks.add_task(_generate_report_job, job_id, session_id, fmt, project_id, project_store)
 
     return CreateReportResponse(job_id=job_id, status="pending", format=fmt)
 

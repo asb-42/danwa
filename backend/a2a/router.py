@@ -14,9 +14,11 @@ from fastapi.responses import JSONResponse
 
 from backend.a2a.agent_card import AGENT_CARD
 from backend.a2a.config import get_a2a_config
+from backend.api.deps import get_audit_service, get_debate_store_for_project, get_project_id, get_project_store
 from backend.a2a.schemas import A2AMessage, A2ATask, A2ATextPart
 from backend.a2a.server import A2AServer
 from backend.a2a.task_manager import TaskManager
+from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +36,10 @@ def _get_task_manager() -> TaskManager:
     return _task_manager
 
 
-def _get_server() -> A2AServer:
+def _get_server(project_store: ProjectStore | None = None) -> A2AServer:
     global _server
     if _server is None:
-        _server = A2AServer(task_manager=_get_task_manager())
+        _server = A2AServer(task_manager=_get_task_manager(), project_store=project_store)
     return _server
 
 
@@ -70,7 +72,7 @@ async def get_agent_card():
 
 
 @router.post("/a2a")
-async def handle_a2a_request(request: Request):
+async def handle_a2a_request(request: Request, project_store: ProjectStore = Depends(get_project_store)):
     """A2A JSON-RPC endpoint — handles all A2A methods.
 
     Supported methods:
@@ -97,7 +99,7 @@ async def handle_a2a_request(request: Request):
     params = body.get("params", {})
     req_id = body.get("id")
 
-    server = _get_server()
+    server = _get_server(project_store)
 
     try:
         if method == "tasks/send":

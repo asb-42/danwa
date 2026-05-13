@@ -58,12 +58,7 @@ def _create_running_debate(client, text="HITL test"):
     The normal ``start_debate`` endpoint triggers ``_run_debate_workflow`` as a
     background task which fails in the test environment (no real LLM profiles).
     This helper creates the debate via the API and then directly sets the status
-    to ``running`` in the **project-scoped** DebateStore (same disk location the
-    API reads from via ``get_debate_store_for_project``).
-
-    Note: We use ``get_project_store()`` directly (the ``@lru_cache`` instance)
-    because ``get_debate_store_for_project()`` also calls it directly — the
-    FastAPI ``dependency_overrides`` only affect ``Depends()`` calls.
+    to ``running`` in the project-scoped DebateStore.
     """
     from backend.api.deps import get_project_store as _get_ps
 
@@ -71,8 +66,8 @@ def _create_running_debate(client, text="HITL test"):
     assert create_resp.status_code == 201, create_resp.text
     debate_id = create_resp.json()["debate_id"]
 
-    # Use the same project store the API uses (via @lru_cache)
-    ps = _get_ps()
+    # Use the test's project store (same instance the API uses via DI)
+    ps = client.app.state.test_project_store
     project = ps.get_or_create_default()
     project_dir = ps.get_project_dir(project.id)
     api_store = DebateStore(data_dir=project_dir / "debates")

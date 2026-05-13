@@ -11,8 +11,11 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from backend.api.deps import get_project_store
+from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +50,9 @@ def _save_settings(data: dict[str, Any]) -> None:
     logger.info("Settings saved to %s", _SETTINGS_PATH)
 
 
-def _load_project_config(project_id: str) -> dict[str, Any]:
+def _load_project_config(project_id: str, project_store) -> dict[str, Any]:
     """Load project-specific config, falling back to global settings."""
-    from backend.api.deps import get_project_store
-
-    store = get_project_store()
-    project = store.get(project_id)
+    project = project_store.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -102,9 +102,9 @@ def update_settings(body: dict[str, Any]) -> dict:
 
 
 @router.get("/settings/project/{project_id}")
-def get_project_settings(project_id: str) -> dict:
+def get_project_settings(project_id: str, project_store: ProjectStore = Depends(get_project_store)) -> dict:
     """Get settings for a specific project (merged with global defaults)."""
-    return _load_project_config(project_id)
+    return _load_project_config(project_id, project_store)
 
 
 # --- Language ---

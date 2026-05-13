@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 
 from backend.blueprints.repository import BlueprintRepository
 from backend.core.config import Settings, settings
@@ -38,22 +38,20 @@ def get_project_store() -> ProjectStore:
     return ProjectStore()
 
 
-def get_debate_store_for_project(project_id: str) -> DebateStore:
+def get_debate_store_for_project(project_id: str, project_store: ProjectStore) -> DebateStore:
     """Return a project-scoped DebateStore."""
-    store = get_project_store()
-    project = store.get(project_id)
+    project = project_store.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    project_dir = store.get_project_dir(project_id)
+    project_dir = project_store.get_project_dir(project_id)
     return DebateStore(data_dir=project_dir / "debates")
 
 
-def get_profile_service_for_project(project_id: str):
+def get_profile_service_for_project(project_id: str, project_store: ProjectStore):
     """Return a ProfileService with project-specific overrides merged."""
     from backend.services.profile_service import ProfileService
 
-    store = get_project_store()
-    project = store.get(project_id)
+    project = project_store.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return ProfileService(project_config=project.config)
@@ -76,18 +74,14 @@ def get_blueprint_repository() -> BlueprintRepository:
 
 
 async def get_project_id(
-    x_project_id: str = Header(
-        ...,
-        description="Active project UUID",
-        alias="X-Project-Id",
-    ),
-) -> str:
-    """Extract and validate project_id from request header.
+     x_project_id: str = Header(
+         ...,
+         description="Active project UUID",
+         alias="X-Project-Id",
+     ),
+ ) -> str:
+    """Extract project_id from request header.
 
     This is a required dependency for all project-scoped endpoints.
     """
-    store = get_project_store()
-    project = store.get(x_project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
     return x_project_id
