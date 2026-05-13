@@ -233,7 +233,7 @@ async def get_debate(
 
     document_ids, rag_auto_retrieve = extract_rag_info(req)
     rag_enabled = bool(document_ids) or rag_auto_retrieve
-    rag_preview = build_rag_preview(project_id, document_ids) if document_ids else ""
+    rag_preview = build_rag_preview(project_id, document_ids, project_store) if document_ids else ""
 
     from backend.workflow.hitl.api import (
         get_active_interrupt,
@@ -306,7 +306,7 @@ async def start_debate(
     debate["updated_at"] = datetime.now(UTC)
     store.put(debate_id, debate)
 
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store)
+    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
 
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
