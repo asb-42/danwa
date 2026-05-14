@@ -1,21 +1,21 @@
 """Fix TranslationDashboard.svelte structure"""
 
-with open('frontend/src/views/TranslationDashboard.svelte') as f:
+with open("frontend/src/views/TranslationDashboard.svelte") as f:
     content = f.read()
 
 # The broken section spans from {#if activeTab === 'modules'} to the start of the batch tab content
 # We need to replace the entire tab section (modules tab + batch tab + single module dialog)
 
 # Find the batch tab title marker
-batch_title = '<!-- Batch Translate Tab -->'
-single_title = '<!-- Single Module Translate Dialog -->'
+batch_title = "<!-- Batch Translate Tab -->"
+single_title = "<!-- Single Module Translate Dialog -->"
 
 # Find boundaries
 batch_idx = content.index(batch_title)
 single_idx = content.index(single_title)
 
 # The modules tab section starts at {#if activeTab === 'modules'}
-modules_start = content.index('{#if activeTab === \'modules\'}')
+modules_start = content.index("{#if activeTab === 'modules'}")
 
 # Find the line before {#if activeTab === 'modules'}
 before = content[:modules_start]
@@ -28,7 +28,7 @@ after_marker = content[batch_idx:]
 # We'll replace just the module block structure
 
 # Clean replacement for the entire tab structure
-new_tabs = '''  {#if activeTab === 'modules'}
+new_tabs = """  {#if activeTab === 'modules'}
     {#if loadingModules && languages.length === 0}
       <div class="flex items-center justify-center h-32">
         <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
@@ -70,7 +70,9 @@ new_tabs = '''  {#if activeTab === 'modules'}
               onclick={() => handleSelectModule(module.id)}
             >
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
+                <div class="w-10 h-10 rounded-lg bg-blue-100
+                   dark:bg-blue-900/30 flex items-center justify-center
+                   text-blue-600 dark:text-blue-400 font-bold text-sm">
                   {module.id.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -126,7 +128,8 @@ new_tabs = '''  {#if activeTab === 'modules'}
                             {#if file.quality_score != null}
                               <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 mt-1">
                                 <div
-                                  class="h-1.5 rounded-full transition-all duration-500 {qualityBarWidth(file.quality_score) === '0%' ? '' : 'bg-blue-600 dark:bg-blue-400'}"
+                                   class="h-1.5 rounded-full transition-all duration-500
+                                     {qualityBarWidth(file.quality_score) === '0%' ? '' : 'bg-blue-600 dark:bg-blue-400'}"
                                   style="width: {qualityBarWidth(file.quality_score)}"
                                   role="progressbar"
                                   aria-valuenow={Math.round(file.quality_score * 100)}
@@ -207,7 +210,9 @@ new_tabs = '''  {#if activeTab === 'modules'}
         {#if modules.length === 0}
           <p class="text-sm text-gray-500 dark:text-gray-400">{t('translation.noModules')}</p>
         {:else}
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3
+                 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2
+                 bg-gray-50 dark:bg-gray-700 rounded-lg">
             {#each modules as module (module.id)}
               <label class="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                 <input
@@ -286,13 +291,20 @@ new_tabs = '''  {#if activeTab === 'modules'}
 <!-- Single Module Translate Dialog -->
 {#if singleTranslateOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={() => { singleTranslateOpen = false; }} role="dialog" aria-modal="true" tabindex="-1">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6" role="presentation" onclick={(e) => e.stopPropagation()}>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onclick={() => { singleTranslateOpen = false; }}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6"
+           role="presentation"
+           onclick={(e) => e.stopPropagation()}>
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
           {t('translation.translateModule')}
         </h3>
-        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none" onclick={() => { singleTranslateOpen = false; }}>✕</button>
+        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+            onclick={() => { singleTranslateOpen = false; }}>✕</button>
       </div>
       <div class="space-y-4">
         <div>
@@ -304,7 +316,9 @@ new_tabs = '''  {#if activeTab === 'modules'}
           </label>
           <select
             bind:value={singleTargetLang}
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600
+               rounded-lg bg-white dark:bg-gray-700 text-gray-900
+               dark:text-white focus:ring-2 focus:ring-blue-500">
           >
             {#each languages as lang}
               <option value={lang}>{lang.toUpperCase()}</option>
@@ -321,7 +335,10 @@ new_tabs = '''  {#if activeTab === 'modules'}
         </label>
       </div>
       <div class="flex items-center justify-end gap-3 mt-6">
-        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={() => { singleTranslateOpen = false; }}>
+        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100
+             dark:bg-gray-700 rounded-lg hover:bg-gray-200
+             dark:hover:bg-gray-600 transition-colors"
+            onclick={() => { singleTranslateOpen = false; }}>
           {t('common.cancel')}
         </button>
         <button
@@ -335,12 +352,12 @@ new_tabs = '''  {#if activeTab === 'modules'}
     </div>
   </div>
 {/if}
-'''
+"""
 
 # Find the insertion point - the nav div ends at line 247
-nav_end = content.index('</div>\n\n  <!-- Module Translation Status Tab -->')
+nav_end = content.index("</div>\n\n  <!-- Module Translation Status Tab -->")
 # Actually find the start of the tab section
-tab_section_start = content.index('\n  {#if activeTab')
+tab_section_start = content.index("\n  {#if activeTab")
 
 # The part before the tab section
 prefix = content[:tab_section_start]
@@ -348,31 +365,31 @@ prefix = content[:tab_section_start]
 # The part after the entire broken tab section (from single module dialog onward, but we included it in new_tabs)
 # Find where the old broken single dialog section ends
 # After the single dialog, there's no more content in the original file
-suffix_start = content.index('<!-- Single Module Translate Dialog -->')
+suffix_start = content.index("<!-- Single Module Translate Dialog -->")
 suffix = content[suffix_start:]
 
 # But wait - our new_tabs already includes the single dialog section
 # So we need to find where the original single dialog section ends
 # Find the closing </div> and {/if} of the single dialog
-original_single_end = suffix.index('</div>\n{/if}\n') + len('</div>\n{/if}\n')
+original_single_end = suffix.index("</div>\n{/if}\n") + len("</div>\n{/if}\n")
 suffix = suffix[original_single_end:]
 
 result = prefix + new_tabs + suffix
 
-with open('frontend/src/views/TranslationDashboard.svelte', 'w') as f:
+with open("frontend/src/views/TranslationDashboard.svelte", "w") as f:
     f.write(result)
 
 print("Fixed!")
 
 # Verify
-with open('frontend/src/views/TranslationDashboard.svelte') as f:
+with open("frontend/src/views/TranslationDashboard.svelte") as f:
     lines = f.readlines()
 opens = 0
 closes_if = 0
 for line in lines:
     s = line.strip()
-    if s.startswith('{#if ') or s.startswith('{:else'):
+    if s.startswith("{#if ") or s.startswith("{:else"):
         opens += 1
-    if s == '{/if}':
+    if s == "{/if}":
         closes_if += 1
 print(f"If opens: {opens}, If closes: {closes_if}")
