@@ -1,4 +1,8 @@
-"""Append-only SQLite audit trail. No UPDATE, no DELETE."""
+"""Append-only SQLite audit trail. No UPDATE, no DELETE.
+
+Updated Sprint 3: Now stores full input/output content alongside
+SHA-256 hashes for complete audit trail reproducibility.
+"""
 
 from __future__ import annotations
 
@@ -27,17 +31,20 @@ class AuditService:
         with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS audit_events (
-                    id          TEXT PRIMARY KEY,
-                    debate_id   TEXT NOT NULL,
-                    project_id  TEXT NOT NULL DEFAULT '_default',
-                    round       INTEGER NOT NULL,
-                    agent       TEXT NOT NULL,
-                    action      TEXT NOT NULL,
-                    timestamp   TEXT NOT NULL,
-                    input_hash  TEXT NOT NULL DEFAULT '',
-                    output_hash TEXT NOT NULL DEFAULT '',
-                    llm_model   TEXT NOT NULL DEFAULT 'dummy',
-                    tokens_used INTEGER NOT NULL DEFAULT 0
+                    id              TEXT PRIMARY KEY,
+                    debate_id       TEXT NOT NULL,
+                    project_id      TEXT NOT NULL DEFAULT '_default',
+                    round           INTEGER NOT NULL,
+                    agent           TEXT NOT NULL,
+                    action          TEXT NOT NULL,
+                    timestamp       TEXT NOT NULL,
+                    input_hash      TEXT NOT NULL DEFAULT '',
+                    output_hash     TEXT NOT NULL DEFAULT '',
+                    input_content   TEXT DEFAULT '',
+                    output_content  TEXT DEFAULT '',
+                    llm_model       TEXT NOT NULL DEFAULT 'dummy',
+                    tokens_used     INTEGER NOT NULL DEFAULT 0,
+                    trace_log_path  TEXT DEFAULT ''
                 )
             """)
             conn.execute("""
@@ -67,8 +74,9 @@ class AuditService:
                 """
                 INSERT OR IGNORE INTO audit_events
                     (id, debate_id, project_id, round, agent, action, timestamp,
-                     input_hash, output_hash, llm_model, tokens_used)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     input_hash, output_hash, input_content, output_content,
+                     trace_log_path, llm_model, tokens_used)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.id,
@@ -80,6 +88,9 @@ class AuditService:
                     event.timestamp.isoformat(),
                     event.input_hash,
                     event.output_hash,
+                    getattr(event, "input_content", "") or "",
+                    getattr(event, "output_content", "") or "",
+                    getattr(event, "trace_log_path", "") or "",
                     event.llm_model,
                     event.tokens_used,
                 ),
