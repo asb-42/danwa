@@ -8,7 +8,6 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.modules.models import TranslationResult
 from backend.services.translation_service import (
     SUPPORTED_LANGUAGES,
     TranslationService,
@@ -36,6 +35,7 @@ def get_translation_service() -> TranslationService:
 
 class TranslateRequest(BaseModel):
     """Request body for module translation."""
+
     target_language: str = Field(..., description="Target language code (e.g. 'de')")
     force: bool = Field(False, description="Force re-translation even if cached")
     llm_profile_id: str | None = Field(None, description="Override LLM profile for translation")
@@ -46,18 +46,21 @@ class TranslateRequest(BaseModel):
 
 class ApproveTranslationRequest(BaseModel):
     """Request body for manual translation approval."""
+
     file_path: str = Field(..., description="File path of the translation")
     approved: bool = Field(True, description="Set to True to approve, False to reject")
 
 
 class InvalidateTranslationRequest(BaseModel):
     """Request body for invalidating cached translations."""
+
     file_path: str | None = Field(None, description="Specific file to invalidate (None = all files)")
     target_language: str | None = Field(None, description="Specific language to invalidate (None = all languages)")
 
 
 class BatchTranslateRequest(BaseModel):
     """Request body for batch translation of multiple modules."""
+
     module_ids: list[str] = Field(..., description="List of module IDs to translate")
     target_language: str = Field(..., description="Target language code")
     force: bool = Field(False, description="Force re-translation even if cached")
@@ -258,13 +261,15 @@ async def batch_translate(body: BatchTranslateRequest) -> dict[str, Any]:
             target_language=body.target_language,
             force=body.force,
         )
-        results.append({
-            "module_id": result.module_id,
-            "status": result.status,
-            "files_translated": result.files_translated,
-            "files_skipped": result.files_skipped,
-            "files_errored": result.files_errored,
-        })
+        results.append(
+            {
+                "module_id": result.module_id,
+                "status": result.status,
+                "files_translated": result.files_translated,
+                "files_skipped": result.files_skipped,
+                "files_errored": result.files_errored,
+            }
+        )
 
     return {
         "target_language": body.target_language,

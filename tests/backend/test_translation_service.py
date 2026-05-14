@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
 
 from backend.services.translation_service import (
-    TranslationService,
-    TranslationResult,
     SUPPORTED_LANGUAGES,
     TranslationEntry,
+    TranslationResult,
+    TranslationService,
 )
-
 
 TEST_DB_DIR = Path(tempfile.mkdtemp(prefix="test_translation_db_"))
 TEST_MODULES_DIR = Path(tempfile.mkdtemp(prefix="test_translation_modules_"))
@@ -45,8 +44,8 @@ def _make_test_module(modules_dir: Path, module_id: str) -> Path:
     (prompts_dir / "critic.md").write_text("# Critic\n\nCritique the following argument: {argument}.")
 
     # Create manifest
-    import json
     import hashlib
+    import json
 
     chksum1 = hashlib.sha256(b"# Strategist\n\nDevelop a strategy for {topic}.").hexdigest()
     chksum2 = hashlib.sha256(b"# Critic\n\nCritique the following argument: {argument}.").hexdigest()
@@ -61,10 +60,14 @@ def _make_test_module(modules_dir: Path, module_id: str) -> Path:
         "category": "prompts",
         "author": {"name": "Test"},
         "license": "CC-BY-4.0",
-        "checksum": hashlib.sha256(json.dumps([
-            {"path": "prompts/default/strategist.md", "format": "markdown", "checksum": chksum1, "language": "en"},
-            {"path": "prompts/default/critic.md", "format": "markdown", "checksum": chksum2, "language": "en"},
-        ]).encode()).hexdigest(),
+        "checksum": hashlib.sha256(
+            json.dumps(
+                [
+                    {"path": "prompts/default/strategist.md", "format": "markdown", "checksum": chksum1, "language": "en"},
+                    {"path": "prompts/default/critic.md", "format": "markdown", "checksum": chksum2, "language": "en"},
+                ]
+            ).encode()
+        ).hexdigest(),
         "files": [
             {"path": "prompts/default/strategist.md", "format": "markdown", "checksum": chksum1, "language": "en"},
             {"path": "prompts/default/critic.md", "format": "markdown", "checksum": chksum2, "language": "en"},
@@ -506,8 +509,7 @@ class TestTranslationServiceIntegration:
             db_path=TEST_DB_DIR / "test.db",
             modules_dir=TEST_MODULES_DIR,
         )
-        from backend.modules.models import TranslationResult as TR
-        # No source files → no translations
+        # No source files -> no translations
         result = svc.translate_module(
             module_id="empty-batch",
             target_language="de",
@@ -518,12 +520,13 @@ class TestTranslationServiceIntegration:
 
 # ---- API Router Tests ----
 
+
 class TestTranslationRouter:
     """Test translation API endpoints via FastAPI TestClient."""
 
     def test_supported_languages_endpoint(self):
-        from backend.api.routers.translation import router
         from backend.main import create_app
+
         app = create_app()
         from fastapi.testclient import TestClient
 
@@ -537,13 +540,17 @@ class TestTranslationRouter:
 
     def test_translate_unknown_module(self):
         from backend.main import create_app
+
         app = create_app()
         from fastapi.testclient import TestClient
 
         client = TestClient(app)
-        response = client.post("/api/v1/translation/unknown-module/translate", json={
-            "target_language": "de",
-        })
+        response = client.post(
+            "/api/v1/translation/unknown-module/translate",
+            json={
+                "target_language": "de",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["module_id"] == "unknown-module"
@@ -555,12 +562,14 @@ class TestTranslationRequestModels:
 
     def test_translate_request_valid(self):
         from backend.api.routers.translation import TranslateRequest
+
         req = TranslateRequest(target_language="de")
         assert req.target_language == "de"
         assert req.force is False
 
     def test_translate_request_with_overrides(self):
         from backend.api.routers.translation import TranslateRequest
+
         req = TranslateRequest(
             target_language="fr",
             force=True,
@@ -574,17 +583,20 @@ class TestTranslationRequestModels:
 
     def test_approve_request_valid(self):
         from backend.api.routers.translation import ApproveTranslationRequest
+
         req = ApproveTranslationRequest(file_path="test.md", approved=True)
         assert req.file_path == "test.md"
         assert req.approved is True
 
     def test_invalidate_request_valid(self):
         from backend.api.routers.translation import InvalidateTranslationRequest
+
         req = InvalidateTranslationRequest(target_language="de")
         assert req.target_language == "de"
 
     def test_batch_translate_request_valid(self):
         from backend.api.routers.translation import BatchTranslateRequest
+
         req = BatchTranslateRequest(
             module_ids=["mod1", "mod2"],
             target_language="de",
@@ -598,6 +610,7 @@ class TestTranslationResultModel:
 
     def test_result_with_errors(self):
         from backend.modules.models import TranslationResult
+
         result = TranslationResult(
             module_id="test",
             target_language="de",
@@ -608,12 +621,13 @@ class TestTranslationResultModel:
         assert result.errors == ["LLM call failed"]
         assert result.files_errored == 0  # default
 
+
 def test_result_with_back_translation_scores(self):
-        result = TranslationResult(
-            module_id="test",
-            target_language="de",
-            files_translated=2,
-            back_translation_scores={"file1.md": 0.9, "file2.md": 0.8},
-            status="ok",
-        )
-        assert result.back_translation_scores == {"file1.md": 0.9, "file2.md": 0.8}
+    result = TranslationResult(
+        module_id="test",
+        target_language="de",
+        files_translated=2,
+        back_translation_scores={"file1.md": 0.9, "file2.md": 0.8},
+        status="ok",
+    )
+    assert result.back_translation_scores == {"file1.md": 0.9, "file2.md": 0.8}

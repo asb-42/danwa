@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from pathlib import Path
 
-from backend.modules.models import ModuleCategory, ModuleType, ValidationResult
 from backend.modules.validation import ModuleValidator
 
 
@@ -35,8 +33,12 @@ class TestValidateManifest:
 
     def test_missing_module_id(self):
         """module_id is required."""
-        manifest = {"version": "1.0.0", "type": "argumentation-pattern",
-                    "category": "prompts", "files": [{"path": "f.md", "format": "markdown", "checksum": "a", "language": "en"}]}
+        manifest = {
+            "version": "1.0.0",
+            "type": "argumentation-pattern",
+            "category": "prompts",
+            "files": [{"path": "f.md", "format": "markdown", "checksum": "a", "language": "en"}],
+        }
         result = ModuleValidator().validate_manifest(manifest)
         assert result.valid is False
         assert any(i.field == "module_id" for i in result.issues)
@@ -68,8 +70,7 @@ class TestValidateManifest:
             del manifest[field]
             result = ModuleValidator().validate_manifest(manifest)
             assert result.valid is False, f"Missing '{field}' should be an error"
-            assert any(i.field == field for i in result.issues), \
-                f"Expected error on field '{field}'"
+            assert any(i.field == field for i in result.issues), f"Expected error on field '{field}'"
 
     def test_invalid_version_format(self):
         """Version must follow semver X.Y.Z."""
@@ -196,9 +197,7 @@ class TestValidateFileContent:
 
     def test_nonexistent_file(self, tmp_path):
         """Non-existent file returns error."""
-        issues = ModuleValidator().validate_file_content(
-            tmp_path / "nonexistent.md"
-        )
+        issues = ModuleValidator().validate_file_content(tmp_path / "nonexistent.md")
         assert len(issues) == 1
         assert issues[0].severity == "error"
         assert "does not exist" in issues[0].message
@@ -272,13 +271,12 @@ class TestVerifyChecksums:
     def test_checksum_match(self, tmp_path):
         """Matching checksum returns True."""
         import hashlib
+
         f = tmp_path / "file.txt"
         f.write_text("hello world")
         h = hashlib.sha256(b"hello world").hexdigest()
         validator = ModuleValidator()
-        ok, errors = validator.verify_checksums(tmp_path, {
-            "files": [{"path": "file.txt", "checksum": h}]
-        })
+        ok, errors = validator.verify_checksums(tmp_path, {"files": [{"path": "file.txt", "checksum": h}]})
         assert ok is True
         assert len(errors) == 0
 
@@ -287,9 +285,9 @@ class TestVerifyChecksums:
         f = tmp_path / "file.txt"
         f.write_text("hello world")
         validator = ModuleValidator()
-        ok, errors = validator.verify_checksums(tmp_path, {
-            "files": [{"path": "file.txt", "checksum": "0000000000000000000000000000000000000000000000000000000000000000"}]
-        })
+        ok, errors = validator.verify_checksums(
+            tmp_path, {"files": [{"path": "file.txt", "checksum": "0000000000000000000000000000000000000000000000000000000000000000"}]}
+        )
         assert ok is False
         assert len(errors) == 1
         assert "Checksum mismatch" in errors[0]
@@ -297,9 +295,7 @@ class TestVerifyChecksums:
     def test_missing_file_checksum(self, tmp_path):
         """Missing file produces error."""
         validator = ModuleValidator()
-        ok, errors = validator.verify_checksums(tmp_path, {
-            "files": [{"path": "nonexistent.txt", "checksum": "abc"}]
-        })
+        ok, errors = validator.verify_checksums(tmp_path, {"files": [{"path": "nonexistent.txt", "checksum": "abc"}]})
         assert ok is False
         assert any("missing" in e.lower() for e in errors)
 
@@ -356,7 +352,9 @@ class TestValidateWorkflowJSON:
         data = {
             "name": "Cyclic",
             "nodes": [
-                {"id": "a"}, {"id": "b"}, {"id": "c"},
+                {"id": "a"},
+                {"id": "b"},
+                {"id": "c"},
             ],
             "edges": [
                 {"source": "a", "target": "b"},
@@ -372,7 +370,7 @@ class TestValidateWorkflowJSON:
         data = {
             "name": "Linear",
             "nodes": [{"id": f"n{i}"} for i in range(5)],
-            "edges": [{"source": f"n{i}", "target": f"n{i+1}"} for i in range(4)],
+            "edges": [{"source": f"n{i}", "target": f"n{i + 1}"} for i in range(4)],
         }
         issues = self._make_validator().validate_workflow_json(data)
         cycle_issues = [i for i in issues if "cycle" in i.message.lower()]
@@ -404,24 +402,27 @@ class TestModuleIdValidation:
     def test_valid_danwa_prefixed(self):
         """Module IDs starting with 'danwa-' are accepted."""
         from backend.modules.models import ModuleManifest
+
         obj = ModuleManifest(**self._make_manifest("danwa-test-module"))
         assert obj.module_id == "danwa-test-module"
 
     def test_valid_core(self):
         """'danwa-core' is accepted."""
         from backend.modules.models import ModuleManifest
+
         obj = ModuleManifest(**self._make_manifest("danwa-core"))
         assert obj.module_id == "danwa-core"
 
     def test_third_party_module(self):
         """Non-danwa IDs with at least one hyphen are accepted."""
         from backend.modules.models import ModuleManifest
+
         obj = ModuleManifest(**self._make_manifest("my-module"))
         assert obj.module_id == "my-module"
 
     def test_invalid_short_id(self):
         """Too-short non-danwa ID is rejected by Pydantic validator."""
-        import pytest
         from backend.modules.models import ModuleManifest
+
         with pytest.raises(Exception):  # ValidationError
             ModuleManifest(**self._make_manifest("short"))

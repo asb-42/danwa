@@ -17,15 +17,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from backend.models.schemas import TranslationEntry
     from backend.services.profile_service import ProfileService
+
 
 # Lazy import to avoid circular dependency
 def _get_translation_service():
     from backend.services.translation_service import TranslationService
+
     return TranslationService()
 
+
 # Translation language preference from environment
-import os
 SUPPORTED_TARGET_LANGUAGES = {"de", "fr", "es", "it", "pt", "nl", "pl", "cs", "zh", "ja", "ko"}
 
 logger = logging.getLogger(__name__)
@@ -44,7 +47,9 @@ class PromptService:
         argumentation_patterns_dir: Path | str | None = None,
     ):
         self.prompts_dir = Path(prompts_dir)
-        self._argumentation_patterns_dir = Path(argumentation_patterns_dir) if argumentation_patterns_dir else Path("modules/prompts-base/prompts/argumentation-patterns")
+        self._argumentation_patterns_dir = (
+            Path(argumentation_patterns_dir) if argumentation_patterns_dir else Path("modules/prompts-base/prompts/argumentation-patterns")
+        )
         self._legacy_prompts_dir = Path("profiles/prompts")
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
@@ -66,7 +71,7 @@ class PromptService:
         For non-default languages (e.g. 'en'), tries ``{role}-{lang}.md``
         first, then falls back to ``{role}.md``.
 
-        Returns a dict with keys: content, hash, path (mtime for filesystem).
+        Returns a dict with keys: content, hash, mtime, path (mtime for filesystem).
         """
         # 1. Try DB content via ProfileService (SSOT)
         if self._profile_service is not None:
@@ -209,43 +214,6 @@ class PromptService:
                 return p.read_text(encoding="utf-8")
         return None
 
-    def assemble_prompt(
-        self,
-        role_type_id: str,
-        argumentation_pattern: str | None = None,
-        workflow_variant: str = "default",
-        language: str = "de",
-    ) -> str:
-        """Assemble the full system prompt from layers:
-
-        1. Argumentation pattern base (if set)
-        2. Workflow-variant prompt overlay
-        3. Fallback to default variant if workflow_variant not found
-        """
-        parts: list[str] = []
-
-        # Layer 1: Argumentation pattern
-        if argumentation_pattern:
-            ap_prompt = self.get_argumentation_pattern(argumentation_pattern, role_type_id, language)
-            if ap_prompt:
-                parts.append(ap_prompt)
-
-        # Layer 2: Workflow-variant prompt
-        try:
-            wf_prompt = self.get_prompt(workflow_variant, role_type_id, language=language)
-            if wf_prompt and wf_prompt.get("content"):
-                parts.append(wf_prompt["content"])
-        except FileNotFoundError:
-            # Fallback to default
-            try:
-                wf_prompt = self.get_prompt("default", role_type_id, language=language)
-                if wf_prompt and wf_prompt.get("content"):
-                    parts.append(wf_prompt["content"])
-            except FileNotFoundError:
-                pass
-
-        return "\n\n".join(parts)
-
     def clear_cache(self) -> None:
         """Clear the prompt cache (forces reload on next access)."""
         with self._lock:
@@ -256,36 +224,18 @@ class PromptService:
         self,
         variant: str,
         role: str,
-        target_language: str = "de",
-        language: str = "de",
+        target_language: str,
         project_dir: Path | str | None = None,
         force_translation: bool = False,
-    ) -> dict:
-        """Get a prompt template with translation support.
+    ) -> TranslationEntry:
+        """Get a prompt and translate it, returning a TranslationEntry.
 
-        Args:
-            variant: The prompt variant (e.g. "default", "kantian")
-            role: The role name (e.g. "strategist", "critic")
-            target_language: Target language code for translation (e.g. "de")
-            language: Source language (default "de" for backward compat)
-            project_dir: Optional project directory for project-specific prompts
-            force_translation: Force re-translation even if cached
-
-        Returns:
-            dict with keys: content, hash, mtime, path, translated, source_language
+        Checks translation cache first. Falls back to source content.
         """
-        # First get the source content (original language)
         source_data = self.get_prompt(variant, role, language="en", project_dir=project_dir)
-
-        # If requested language is English, return source directly
-        if target_language == "en":
-            result = dict(source_data)
-            result["translated"] = False
-            result["source_language"] = "en"
-            return result
+        cache_key = f"{variant}/{role}/{target_language}"
 
         # Check translation cache first
-        cache_key = f"{variant}/{role}/{target_language}"
         with self._lock:
             cached = self._cache.get(cache_key)
             if cached and not force_translation:
@@ -304,16 +254,15 @@ class PromptService:
             )
 
             if entry and entry.translated_content:
-                result = {
-                    "content": entry.translated_content,
-                    "hash": hashlib.sha256(entry.translated_content.encode()).hexdigest()[:16],
-                    "mtime": source_data.get("mtime", 0),
-                    "path": source_data.get("path", ""),
-                    "translated": True,
-                    "source_language": "en",
-                    "quality_score": entry.quality_score,
-                    "approved": entry.approved,
-                }
+                result = TranslationEntry(
+                    module_id="prompts-base",
+                    file_path=f"{variant}/{role}",
+                    source_language="en",
+                    target_language=target_language,
+                    translated_content=entry.translated_content,
+                    quality_score=entry.quality_score,
+                    approved=entry.approved,
+                )
                 with self._lock:
                     self._cache[cache_key] = result
                 return result
@@ -321,9 +270,15 @@ class PromptService:
             logger.exception("Translation failed, falling back to source content")
 
         # Fallback: return source content with translated=False
-        result = dict(source_data)
-        result["translated"] = False
-        result["source_language"] = "en"
+        result = TranslationEntry(
+            module_id="prompts-base",
+            file_path=f"{variant}/{role}",
+            source_language="en",
+            target_language=target_language,
+            translated_content=source_data.get("content", ""),
+            quality_score=0.0,
+            approved=False,
+        )
         return result
 
     def translate_prompt(
@@ -400,42 +355,47 @@ class PromptService:
         if argumentation_pattern:
             if translate and language != "en":
                 ap_prompt = self.get_prompt_translated(
-                    argumentation_pattern, role_type_id,
+                    argumentation_pattern,
+                    role_type_id,
                     target_language=language,
-                ).get("content")
+                ).translated_content
+                if ap_prompt:
+                    parts.append(ap_prompt)
             else:
                 ap_prompt = self.get_argumentation_pattern(
-                    argumentation_pattern, role_type_id, language
+                    argumentation_pattern,
+                    role_type_id,
+                    language,
                 )
-            if ap_prompt:
-                parts.append(ap_prompt)
+                if ap_prompt:
+                    parts.append(ap_prompt)
 
         # Layer 2: Workflow-variant prompt
         try:
             if translate and language != "en":
                 wf_data = self.get_prompt_translated(
-                    workflow_variant, role_type_id,
+                    workflow_variant,
+                    role_type_id,
                     target_language=language,
                 )
-                wf_prompt = wf_data.get("content") if wf_data else None
+                wf_prompt = wf_data.translated_content
             else:
-                wf_prompt = self.get_prompt(workflow_variant, role_type_id, language=language)
-                wf_prompt = wf_prompt.get("content") if wf_prompt else None
-
+                wf_prompt_obj = self.get_prompt(workflow_variant, role_type_id, language=language)
+                wf_prompt = wf_prompt_obj.get("content")
             if wf_prompt:
                 parts.append(wf_prompt)
         except FileNotFoundError:
             try:
                 if translate and language != "en":
                     wf_data = self.get_prompt_translated(
-                        "default", role_type_id,
+                        "default",
+                        role_type_id,
                         target_language=language,
                     )
-                    wf_prompt = wf_data.get("content") if wf_data else None
+                    wf_prompt = wf_data.translated_content
                 else:
-                    wf_prompt = self.get_prompt("default", role_type_id, language=language)
-                    wf_prompt = wf_prompt.get("content") if wf_prompt else None
-
+                    wf_prompt_obj = self.get_prompt("default", role_type_id, language=language)
+                    wf_prompt = wf_prompt_obj.get("content")
                 if wf_prompt:
                     parts.append(wf_prompt)
             except FileNotFoundError:

@@ -16,8 +16,7 @@ from backend.modules.models import TranslationResult
 from backend.modules.service import ModuleService
 
 
-def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0",
-                 num_files: int = 1) -> dict:
+def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0", num_files: int = 1) -> dict:
     """Create a minimal module directory with manifest and files."""
     mod_dir = modules_dir / module_id
     mod_dir.mkdir(parents=True, exist_ok=True)
@@ -29,10 +28,14 @@ def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0",
         content = f"# {module_id} file {i}\n\nContent for testing."
         fpath.write_text(content)
         chksum = hashlib.sha256(content.encode()).hexdigest()
-        files.append({
-            "path": fname, "format": "markdown",
-            "language": "en", "checksum": chksum,
-        })
+        files.append(
+            {
+                "path": fname,
+                "format": "markdown",
+                "language": "en",
+                "checksum": chksum,
+            }
+        )
 
     manifest = {
         "schema_version": "1.0.0",
@@ -162,19 +165,37 @@ class TestDiscoverLocalWithStatus:
         conn = sqlite3.connect(str(service.db_path))
         conn.execute("PRAGMA journal_mode=WAL")
         from backend.blueprints.migrations import run_migrations
+
         run_migrations(service.db_path)
 
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO module_registry
                 (id, name, description, type, category, version,
                  author_json, license, checksum, installed_at,
                  updated_at, enabled, source_schema, tags_json, dependencies)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, ("db-only-mod", '{"en":"DB Only"}', 'desc', 'custom', 'custom',
-              '1.0.0', '{}', 'CC-BY-4.0', '', '2024-01-01', '2024-01-01',
-              1, '1.0.0', '[]', '{}'))
+        """,
+            (
+                "db-only-mod",
+                '{"en":"DB Only"}',
+                "desc",
+                "custom",
+                "custom",
+                "1.0.0",
+                "{}",
+                "CC-BY-4.0",
+                "",
+                "2024-01-01",
+                "2024-01-01",
+                1,
+                "1.0.0",
+                "[]",
+                "{}",
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -242,8 +263,7 @@ class TestInstallUninstall:
         _make_module(src_dir, "danwa-svc-install")
 
         # service.install() expects module in modules_dir, so copy it there
-        shutil.copytree(src_dir / "danwa-svc-install",
-                        service.modules_dir / "danwa-svc-install")
+        shutil.copytree(src_dir / "danwa-svc-install", service.modules_dir / "danwa-svc-install")
 
         report = service.install("danwa-svc-install", source="local")
         shutil.rmtree(src_dir, ignore_errors=True)
@@ -259,8 +279,7 @@ class TestInstallUninstall:
     def test_uninstall_via_service(self, service):
         src_dir = Path(tempfile.mkdtemp(prefix="src_"))
         _make_module(src_dir, "danwa-svc-uninst")
-        shutil.copytree(src_dir / "danwa-svc-uninst",
-                        service.modules_dir / "danwa-svc-uninst")
+        shutil.copytree(src_dir / "danwa-svc-uninst", service.modules_dir / "danwa-svc-uninst")
         service.install("danwa-svc-uninst", source="local")
         shutil.rmtree(src_dir, ignore_errors=True)
 
@@ -271,8 +290,7 @@ class TestInstallUninstall:
         """Force uninstall skips dependency check."""
         src_dir = Path(tempfile.mkdtemp(prefix="src_"))
         _make_module(src_dir, "danwa-force")
-        shutil.copytree(src_dir / "danwa-force",
-                        service.modules_dir / "danwa-force")
+        shutil.copytree(src_dir / "danwa-force", service.modules_dir / "danwa-force")
         service.install("danwa-force", source="local")
         shutil.rmtree(src_dir, ignore_errors=True)
 
@@ -286,14 +304,12 @@ class TestUpdate:
     def test_update_existing(self, service):
         src_dir = Path(tempfile.mkdtemp(prefix="src_"))
         _make_module(src_dir, "danwa-upd", version="1.0.0")
-        shutil.copytree(src_dir / "danwa-upd",
-                        service.modules_dir / "danwa-upd")
+        shutil.copytree(src_dir / "danwa-upd", service.modules_dir / "danwa-upd")
         service.install("danwa-upd", source="local")
 
         # Update version
         _make_module(src_dir, "danwa-upd", version="2.0.0")
-        shutil.copytree(src_dir / "danwa-upd",
-                        service.modules_dir / "danwa-upd", dirs_exist_ok=True)
+        shutil.copytree(src_dir / "danwa-upd", service.modules_dir / "danwa-upd", dirs_exist_ok=True)
 
         report = service.update("danwa-upd")
         shutil.rmtree(src_dir, ignore_errors=True)

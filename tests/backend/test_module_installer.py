@@ -11,11 +11,9 @@ from pathlib import Path
 import pytest
 
 from backend.modules.installer import ModuleInstaller
-from backend.modules.models import InstallationReport, UninstallationReport
 
 
-def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0",
-                 num_files: int = 2, checksums: bool = True) -> dict:
+def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0", num_files: int = 2, checksums: bool = True) -> dict:
     """Create a minimal module directory with manifest and files."""
     mod_dir = modules_dir / module_id
     mod_dir.mkdir(parents=True, exist_ok=True)
@@ -28,12 +26,14 @@ def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0",
         fpath.write_text(content)
 
         chksum = hashlib.sha256(content.encode()).hexdigest() if checksums else ""
-        files.append({
-            "path": fname,
-            "format": "markdown",
-            "language": "en",
-            "checksum": chksum,
-        })
+        files.append(
+            {
+                "path": fname,
+                "format": "markdown",
+                "language": "en",
+                "checksum": chksum,
+            }
+        )
 
     manifest = {
         "schema_version": "1.0.0",
