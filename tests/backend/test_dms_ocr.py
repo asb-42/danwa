@@ -37,16 +37,19 @@ class TestOCRStatusEndpoint:
 
     @pytest.mark.skipif(not paddleocr_available, reason="paddleocr not installed")
     def test_ocr_status_available(self, client):
-        """When paddleocr is importable, return available=true."""
+        """When an OCR engine is available, return available=true with engine name."""
         res = client.get("/api/v1/dms/ocr-status")
         assert res.status_code == 200
         data = res.json()
-        assert data["engine"] == "paddleocr"
+        assert data["available"] is True
+        assert data["engine"] in ("paddleocr", "tesseract")
 
     def test_ocr_status_unavailable(self, client):
-        """When paddleocr is not importable, return available=false."""
-        with patch.dict(sys.modules, {"paddleocr": None}):
-            # Need to re-import to trigger the except branch
+        """When no OCR engine is importable, return available=false."""
+        with patch.dict(sys.modules, {"paddleocr": None, "pytesseract": None, "PIL": None}):
+            import importlib
+            import backend.api.routers.dms as dms_router
+            importlib.reload(dms_router)
             res = client.get("/api/v1/dms/ocr-status")
             assert res.status_code == 200
             data = res.json()

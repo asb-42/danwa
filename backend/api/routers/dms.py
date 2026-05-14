@@ -178,19 +178,30 @@ def search_rag(
 
 @router.get("/ocr-status")
 def ocr_status():
-    """Check whether PaddleOCR is available for image text extraction.
+    """Check which OCR engines are available for image text extraction.
 
     Returns:
-        Dict with ``available`` (bool) and ``engine`` (str or null).
+        Dict with ``available`` (bool) and ``engine`` (str or null)
+        indicating the available OCR engine ("paddleocr" or "tesseract").
     """
+    # Try PaddleOCR first
     try:
         import paddleocr  # noqa: F401
-
         return {"available": True, "engine": "paddleocr"}
     except ImportError:
-        return {"available": False, "engine": None}
+        pass
     except (RuntimeError, AssertionError) as e:
         if "PDX has already been initialized" in str(e) or "paddle is unexpectedly loaded" in str(e):
             logger.warning("PaddleX/PaddleOCR initialization conflict - OCR may still be available: %s", e)
             return {"available": True, "engine": "paddleocr"}
-        return {"available": False, "engine": None, "error": str(e)}
+        # Fall through to tesseract check
+
+    # Fallback: Try tesseract
+    try:
+        import pytesseract
+        pytesseract.get_tesseract_version()
+        return {"available": True, "engine": "tesseract"}
+    except Exception:
+        pass
+
+    return {"available": False, "engine": None}
