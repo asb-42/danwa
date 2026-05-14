@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 VERSION_FILE = PROJECT_ROOT / "version"
 
@@ -27,7 +26,7 @@ def read_version_file() -> str:
     assert VERSION_FILE.exists(), f"Version file not found: {VERSION_FILE}"
     content = VERSION_FILE.read_text().strip()
     # Strip comments and whitespace
-    lines = [l.strip() for l in content.splitlines() if l.strip() and not l.strip().startswith('#')]
+    lines = [line.strip() for line in content.splitlines() if line.strip() and not line.strip().startswith('#')]
     assert len(lines) >= 1, "Version file must contain at least one non-comment line"
     version = lines[-1].strip()
     assert re.match(r'^\d+\.\d+\.\d+$', version), f"Invalid version format: {version}"
@@ -53,11 +52,11 @@ class TestBackendInit:
     """Tests that backend/__init__.py exports the correct version."""
 
     def test_version_matches(self):
-        version = read_version_file()
+        read_version_file()
         init_file = PROJECT_ROOT / "backend" / "__init__.py"
         content = init_file.read_text()
         # Look for __version__ = "x.y.z"
-        match = re.search(r'__version__\s*=\s*"?([^\s"\']+)"?', content)
+        re.search(r'__version__\s*=\s*"?([^\s"\']+)"?', content)
         # Since __version__ is computed dynamically, check the _get_version function reads the file
         assert 'version' in content.lower() or 'version_file' in content.lower(), \
             "backend/__init__.py should reference version file"
@@ -133,8 +132,8 @@ class TestAPIEndpoint:
     """
 
     def test_version_endpoint_returns_consistent_version(self):
-        import urllib.request
         import json
+        import urllib.request
 
         version = read_version_file()
         try:

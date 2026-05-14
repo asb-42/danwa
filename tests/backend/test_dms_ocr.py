@@ -48,6 +48,7 @@ class TestOCRStatusEndpoint:
         """When no OCR engine is importable, return available=false."""
         with patch.dict(sys.modules, {"paddleocr": None, "pytesseract": None, "PIL": None}):
             import importlib
+
             import backend.api.routers.dms as dms_router
             importlib.reload(dms_router)
             res = client.get("/api/v1/dms/ocr-status")

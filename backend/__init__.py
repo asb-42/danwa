@@ -18,7 +18,7 @@ def _get_version() -> str:
     v = Path(__file__).resolve().parent.parent / "version"
     if not v.exists():
         return "0.0.0-dev"
-    lines = [l.strip() for l in v.read_text().splitlines() if l.strip() and not l.strip().startswith("#")]
+    lines = [line.strip() for line in v.read_text().splitlines() if line.strip() and not line.strip().startswith("#")]
     if not lines:
         return "0.0.0-dev"
     ver = lines[-1].strip()

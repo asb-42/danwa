@@ -7,7 +7,7 @@ been moved to the ``profiles`` router.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.api.deps import get_project_store, get_settings
+from backend.api.deps import get_project_store
 from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
@@ -140,5 +140,5 @@ async def get_version(settings: Settings = Depends(get_settings)):
     """Return the current application version from the single source of truth."""
     return {
         "version": settings.app_version,
-        "build": datetime.now(timezone.utc).isoformat(),
+        "build": datetime.now(UTC).isoformat(),
     }
