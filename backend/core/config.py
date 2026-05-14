@@ -1,5 +1,8 @@
 """Application settings via pydantic-settings. Reads from environment / .env file."""
 
+from __future__ import annotations
+
+import re
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,9 +14,14 @@ def _get_version() -> str:
     Falls back to ``0.0.0-dev`` if the file is missing (e.g. during development).
     """
     version_file = Path(__file__).resolve().parent.parent.parent / "version"
-    if version_file.exists():
-        return version_file.read_text().strip()
-    return "0.0.0-dev"
+    if not version_file.exists():
+        return "0.0.0-dev"
+    lines = [l.strip() for l in version_file.read_text().splitlines()
+             if l.strip() and not l.strip().startswith("#")]
+    if not lines:
+        return "0.0.0-dev"
+    ver = lines[-1].strip()
+    return ver if re.match(r"^\d+\.\d+\.\d+$", ver) else "0.0.0-dev"
 
 
 class Settings(BaseSettings):
