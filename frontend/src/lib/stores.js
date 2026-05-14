@@ -89,3 +89,21 @@ export const supportedLanguages = writable([]);
 
 /** Translation statistics { moduleId, stats } */
 export const translationStatistics = writable({});
+
+/** Toast notifications — { id, message, type, timeout?, dismissible? } */
+export const toasts = writable([]);
+
+/** Remove a toast by ID. */
+export function removeToast(id) {
+  toasts.update((current) => current.filter((t) => t.id !== id));
+}
+
+/** Add a new toast. */
+export function addToast({ message, type = 'info', timeout = 5000, dismissible = true }) {
+  const id = crypto.randomUUID();
+  toasts.update((current) => [...current, { id, message, type, timeout, dismissible }]);
+  if (timeout > 0) {
+    setTimeout(() => removeToast(id), timeout);
+  }
+  return id;
+}
