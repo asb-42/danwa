@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import sys
 import types
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+paddleocr_available = importlib.util.find_spec("paddleocr") is not None
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -32,6 +35,7 @@ def _make_text_file(name: str = "test.txt", content: str = "Hello world") -> tup
 class TestOCRStatusEndpoint:
     """GET /api/v1/dms/ocr-status"""
 
+    @pytest.mark.skipif(not paddleocr_available, reason="paddleocr not installed")
     def test_ocr_status_available(self, client):
         """When paddleocr is importable, return available=true."""
         res = client.get("/api/v1/dms/ocr-status")
