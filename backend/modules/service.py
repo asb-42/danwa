@@ -24,6 +24,7 @@ from backend.modules.models import (
     ValidationResult,
 )
 from backend.modules.validation import ModuleValidator
+from backend.services.translation_service import TranslationService as LLMTranslationService
 
 logger = logging.getLogger(__name__)
 
@@ -271,11 +272,15 @@ class ModuleService:
         module_id: str,
         target_lang: str,
         force: bool = False,
+        llm_profile_id: str | None = None,
+        skip_back_translation: bool = False,
+        auto_approve: bool = False,
+        quality_threshold: float = 0.7,
     ) -> TranslationResult:
         """Translate a module's content to a target language.
 
-        This marks entries for translation; actual LLM-based translation
-        would be triggered asynchronously (Sprint 3).
+        Marks files as pending for LLM-based translation. For actual
+        LLM translation, use the dedicated translation endpoints.
 
         Args:
             module_id: The module to translate
@@ -293,7 +298,7 @@ class ModuleService:
             # Get all files for this module
             cursor.execute(
                 "SELECT file_path, source_hash FROM module_translation_cache "
-                "WHERE module_id = ? AND language = 'en'",
+                "WHERE module_id = ? AND (source_language = 'en' OR language = 'en')",
                 (module_id,),
             )
             source_files = cursor.fetchall()
@@ -328,8 +333,7 @@ class ModuleService:
                         quality_scores[fpath] = existing["quality_score"]
                         continue
 
-                # Placeholder: mark as pending translation
-                # (Actual LLM translation happens in Sprint 3)
+                # Mark as pending translation
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO module_translation_cache

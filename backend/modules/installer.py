@@ -125,18 +125,20 @@ class ModuleInstaller:
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO module_translation_cache
-                        (id, module_id, file_path, language,
-                         translated_content, source_hash, quality_score,
-                         generated_at, approved)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (id, module_id, file_path, source_language, language,
+                         source_hash, source_content, translated_content,
+                         quality_score, generated_at, approved)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         f"{module_id}:{file_entry['path']}:{lang}",
                         module_id,
                         file_entry["path"],
+                        "en",
                         lang,
-                        content,
                         file_entry.get("checksum", ""),
+                        content,
+                        content,
                         1.0,
                         now,
                         1,

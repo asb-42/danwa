@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-llm-profiles",
+  "module_id": "llm-profiles",
   "name": {
     "en": "Danwa LLM Profiles",
     "de": "Danwa LLM-Profile"
@@ -144,5 +144,6 @@
       "checksum": "29f8687a30a125df03694bff30e0ff1f13a7fbe309f4e7d246fc8829b15b14b0",
       "language": "en"
     }
-  ]
+  ],
+  "dependencies": {}
 }

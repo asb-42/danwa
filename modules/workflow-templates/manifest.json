@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-workflow-templates",
+  "module_id": "workflow-templates",
   "name": {
     "en": "Danwa Workflow Templates",
     "de": "Danwa Workflow-Vorlagen"
@@ -58,5 +58,6 @@
       "format": "json",
       "checksum": "9c284f4a1695fddf55bf8391edfa279ead4cd3205adadb646a26d0fa607469d7"
     }
-  ]
+  ],
+  "dependencies": {}
 }

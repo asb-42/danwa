@@ -136,8 +136,8 @@ class TestListModules:
         assert isinstance(data, list)
         assert len(data) > 0
         ids = [m["module_id"] for m in data]
-        assert "danwa-prompts-base" in ids
-        assert "danwa-agents-base" in ids
+        assert "prompts-base" in ids
+        assert "agents-base" in ids
 
 
 class TestGetModule:

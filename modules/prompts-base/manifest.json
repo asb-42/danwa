@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-prompts-base",
+  "module_id": "prompts-base",
   "name": {
     "en": "Danwa Prompts Base (EN)",
     "de": "Danwa Prompts Basis (EN)"
@@ -368,5 +368,6 @@
       "role_type_id": "strategist",
       "language": "en"
     }
-  ]
+  ],
+  "dependencies": {}
 }

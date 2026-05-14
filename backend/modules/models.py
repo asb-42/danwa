@@ -155,6 +155,10 @@ class TranslationResult(BaseModel):
     target_language: str
     files_translated: int = 0
     files_skipped: int = 0
+    files_errored: int = 0
     quality_scores: dict[str, float] = Field(default_factory=dict)
+    back_translation_scores: dict[str, float] = Field(default_factory=dict)
     status: str  # "ok", "partial", "error"
     estimated_cost_usd: float = 0.0
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)

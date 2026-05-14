@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-agents-base",
+  "module_id": "agents-base",
   "name": {
     "en": "Danwa Agent Personas",
     "de": "Danwa Agent-Personas"
@@ -88,5 +88,6 @@
       "role_type_id": "strategist",
       "language": "en"
     }
-  ]
+  ],
+  "dependencies": {}
 }

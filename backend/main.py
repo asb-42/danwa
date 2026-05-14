@@ -47,6 +47,7 @@ from backend.api.routers import (
     workflow_templates,
 )
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
+from backend.api.routers.translation import router as translation_router
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -176,6 +177,9 @@ def create_app() -> FastAPI:
 
     # --- Module System ---
     app.include_router(modules.router, prefix="/api/v1/modules", tags=["modules"])
+
+    # --- Translation ---
+    app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
 
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])

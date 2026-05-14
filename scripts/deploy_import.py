@@ -114,8 +114,8 @@ def import_module_to_db(
             INSERT INTO module_registry
                 (id, name, description, type, category, version,
                  author_json, license, checksum, installed_at,
-                 updated_at, enabled, tags_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 updated_at, enabled, tags_json, dependencies)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description,
@@ -123,7 +123,8 @@ def import_module_to_db(
                 author_json = excluded.author_json,
                 checksum = excluded.checksum,
                 updated_at = excluded.updated_at,
-                tags_json = excluded.tags_json
+                tags_json = excluded.tags_json,
+                dependencies = excluded.dependencies
             """,
             (
                 module_id,
@@ -139,6 +140,7 @@ def import_module_to_db(
                 datetime.now(timezone.utc).isoformat(),
                 1,
                 json.dumps(manifest.get("tags", [])),
+                 json.dumps(manifest.get("dependencies", {})),
             ),
         )
 
