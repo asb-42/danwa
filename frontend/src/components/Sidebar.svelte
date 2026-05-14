@@ -1,6 +1,7 @@
 <script>
   import { i18n } from '../lib/i18n/index.js';
   import { currentDebate } from '../lib/stores.js';
+  import { appVersion } from '../lib/stores.js';
   import ProjectSelector from './ProjectSelector.svelte';
 
   let { navigate, currentRoute } = $props();
@@ -45,7 +46,7 @@
   <!-- Logo / Brand -->
   <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
     <span class="text-xl font-bold text-gray-800 dark:text-white">Danwa</span>
-    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v2.0</span>
+    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v{$appVersion || '2.0.0'}</span>
   </div>
 
   <!-- Project Selector -->
@@ -73,7 +74,7 @@
   <!-- Footer -->
   <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
     <p class="text-xs text-gray-500 dark:text-gray-400">
-      Debate-Agent v2.0
+      {t('app.version', { version: $appVersion || '…' })}
     </p>
   </div>
 </aside>

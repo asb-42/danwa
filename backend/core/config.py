@@ -5,6 +5,17 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _get_version() -> str:
+    """Read version from the VERSION single source of truth file.
+
+    Falls back to ``0.0.0-dev`` if the file is missing (e.g. during development).
+    """
+    version_file = Path(__file__).resolve().parent.parent.parent / "version"
+    if version_file.exists():
+        return version_file.read_text().strip()
+    return "0.0.0-dev"
+
+
 class Settings(BaseSettings):
     """Central configuration for the debate engine."""
 
@@ -17,7 +28,7 @@ class Settings(BaseSettings):
 
     # --- Application ---
     app_name: str = "Debate-Agent"
-    app_version: str = "2.0.0"
+    app_version: str = _get_version()
     debug: bool = False
 
     # --- Server ---

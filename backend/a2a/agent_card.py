@@ -7,13 +7,15 @@ supported input/output modes.
 
 from __future__ import annotations
 
+from backend import __version__
+
 AGENT_CARD: dict = {
     "name": "Danwa Debate Engine",
     "description": (
         "Multi-agent debate system that analyzes topics from multiple perspectives using AI agents (Strategist, Critic, Optimizer, Moderator)."
     ),
     "url": "",  # Set dynamically from server config
-    "version": "2.0.0",
+    "version": __version__,
     "capabilities": {
         "streaming": False,
         "pushNotifications": False,

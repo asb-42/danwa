@@ -1,0 +1,6 @@
+# Version File — Single Source of Truth
+# Format: MAJOR.MINOR.PATCH
+# Dieses File ist die EINZIGE Quelle der Wahrheit.
+# Nicht in config.py, __init__.py oder main.py ändern!
+
+1.1.0

@@ -1,4 +1,8 @@
-"""FastAPI application entry point for Debate Engine v2.0."""
+"""FastAPI application entry point for Danwa Debate Engine.
+
+Version and application metadata are loaded dynamically from
+the ``/version`` file via ``settings.app_version``.
+"""
 
 from __future__ import annotations
 
@@ -143,6 +147,7 @@ async def lifespan(app: FastAPI):
 
     # Import modules into DB on startup (idempotent)
     from scripts.deploy_import import main as deploy_import_main
+
     deploy_import_main()
 
     yield

@@ -824,4 +824,7 @@ export default {
    'config.modules': 'Modules',
    'config.modulesPlaceholder': 'No modules registered',
    'config.moduleManager': 'Manage Modules',
+    // Version
+    'app.version': 'Version {version}',
+    'app.versionLabel': 'Application Version',
 };

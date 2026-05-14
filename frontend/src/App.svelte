@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { route, routeParams } from './lib/stores.js';
   import { getHealth } from './lib/api.js';
-  import { healthStatus } from './lib/stores.js';
+  import { healthStatus, appVersion } from './lib/stores.js';
+  import { getVersion } from './lib/api.js';
   import { i18n } from './lib/i18n/index.js';
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
@@ -18,7 +19,7 @@
   import DiffView from './views/DiffView.svelte';
   import OutputComposerView from './views/OutputComposerView.svelte';
   import InputComposerView from './views/InputComposerView.svelte';
-import TranslationDashboard from './views/TranslationDashboard.svelte';
+  import TranslationDashboard from './views/TranslationDashboard.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -64,6 +65,15 @@ import TranslationDashboard from './views/TranslationDashboard.svelte';
       })
       .catch(() => {
         $healthStatus = { status: 'unreachable', version: '' };
+      });
+
+    // Load application version from API
+    getVersion()
+      .then((data) => {
+        $appVersion = data.version;
+      })
+      .catch(() => {
+        $appVersion = '';
       });
 
     return () => {

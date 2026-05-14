@@ -1,5 +1,5 @@
 <script>
-  import { healthStatus } from '../lib/stores.js';
+  import { healthStatus, appVersion } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
@@ -30,6 +30,13 @@
 
     <!-- Language switcher -->
     <LanguageSwitcher />
+
+    <!-- Version badge -->
+    {#if $appVersion}
+      <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full" title={t('app.versionLabel')}>
+        v{$appVersion}
+      </span>
+    {/if}
 
     <!-- Health indicator -->
     <div class="flex items-center space-x-2" aria-label="Backend status: {$healthStatus.status}">

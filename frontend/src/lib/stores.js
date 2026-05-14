@@ -13,6 +13,9 @@ export const routeParams = writable([]);
 /** Backend health status */
 export const healthStatus = writable({ status: 'unknown', version: '' });
 
+/** Application version loaded from the /api/v1/config/version endpoint */
+export const appVersion = writable('');
+
 /** Current debate state */
 export const currentDebate = writable(null);
 
