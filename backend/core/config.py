@@ -68,6 +68,32 @@ class Settings(BaseSettings):
     # --- Input Composer / External Plugins ---
     allow_external_plugins: bool = False
 
+    # --- Service LLM (Sprint 16) ---
+    service_llm_profile_id: str = "openrouter-claude"
+    service_llm_min_context: int = 1024
+    service_llm_blacklist: list[str] = [
+        "gpt-3.5",
+        "gpt-35",
+        "text-ada",
+        "text-babbage",
+        "text-curie",
+        "text-davinci-001",
+        "text-davinci-002",
+        "text-davinci-003",
+    ]
+
+
+def is_service_llm_eligible(profile) -> bool:
+    from backend.core.config import settings
+    if not getattr(profile, "service_eligible", True) is True:
+        return False
+    if profile.context_window is not None and profile.context_window < settings.service_llm_min_context:
+        return False
+    for pattern in settings.service_llm_blacklist:
+        if pattern.lower() in profile.model.lower():
+            return False
+    return True
+
 
 # Module-level singleton — importable as `settings`
 settings = Settings()

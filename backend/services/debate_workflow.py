@@ -12,6 +12,7 @@ import re
 from datetime import UTC, datetime
 
 from backend.api.events import publish_async
+from backend.core.config import is_service_llm_eligible, settings
 from backend.models.schemas import AuditEvent, DebateStatus
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
@@ -301,124 +302,137 @@ def resolve_rag_context(
 # ---------------------------------------------------------------------------
 
 
-async def generate_debate_title(case_text: str, llm_profile_id: str, language: str, project_id: str | None = None) -> str:
-    """Generate a concise debate title (60-150 chars) from the case description using LLM."""
+async def generate_debate_title(
+    case_text: str,
+    llm_profile_id: str,
+    language: str,
+    project_id: str | None = None,
+    use_service_llm: bool = True,
+) -> str:
+    """Generate a concise debate title (60-150 chars) using the best available LLM.
+
+    If ``use_service_llm`` is True, selects a service-eligible LLM via
+    ``_select_service_llm()`` for higher quality output.
+    """
     from backend.services.llm_service import LLMService
     from backend.services.profile_service import ProfileService
 
-    try:
-        profile_service = ProfileService()
-        llm_service = LLMService(
-            profile_id=llm_profile_id,
-            profile_service=profile_service,
-        )
+    _TITLE_SYSTEM_PROMPTS = {
+        "en": (
+            "You are an expert debate title generator. "
+            "Produce ONLY a concise, descriptive title (60-150 characters) "
+            "summarizing the core question. "
+            "No introductions, no explanations, no quotes, no trailing punctuation."
+        ),
+        "de": (
+            "Du bist ein Experte fuer Debattentitel. Erstelle AUSSCHLIESSLICH "
+            "einen praegnanten Titel (60-150 Zeichen) zur zentralen Fragestellung. "
+            "Keine Einleitungen, keine Erklaerungen, keine Anfuehrungszeichen."
+        ),
+    }
 
-        if language == "en":
-            system_prompt = (
-                "You are a debate title generator. Your task is to output ONLY a concise, "
-                "descriptive title for a legal/policy debate based on the user's case description. "
-                "CRITICAL RULES:\n"
-                "- Output ONLY the title text — no explanations, no introductions, no meta-commentary\n"
-                "- Do NOT start with phrases like 'Here is a title', 'The title is', 'I suggest', etc.\n"
-                "- Do NOT describe what you are doing or what the user wants\n"
-                "- The title MUST be between 60 and 150 characters\n"
-                "- No quotes, no punctuation at the end\n"
-                "- Example good output: 'The Role of Universal Basic Income in Reducing Social Inequality'\n"
-                "- Example bad output: 'The user wants me to generate a title for...'\n"
-                "- Just output the title directly as a single line."
-            )
+    try:
+        ps = ProfileService()
+
+        if use_service_llm:
+            service_id = _select_service_llm(ps)
+            llm_service = LLMService(profile_id=service_id, profile_service=ps)
         else:
-            system_prompt = (
-                "Du bist ein Titel-Generator für Debatten. Deine einzige Aufgabe ist es, NUR einen "
-                "prägnanten, beschreibenden Titel für eine rechtliche/politische Debatte basierend "
-                "auf der Fallbeschreibung auszugeben.\n"
-                "KRITISCHE REGELN:\n"
-                "- Gib AUSSCHLIESSLICH den Titeltext aus — keine Erklärungen, keine Einleitungen\n"
-                "- Beginne NICHT mit Sätzen wie 'Hier ist ein Titel', 'Der Titel lautet', 'Ich schlage vor' usw.\n"
-                "- Beschreibe NICHT, was du tust oder was der Benutzer möchte\n"
-                "- Der Titel MUSS zwischen 60 und 150 Zeichen lang sein\n"
-                "- Keine Anführungszeichen, kein Satzzeichen am Ende\n"
-                "- Beispiel guter Output: 'Die Rolle des bedingungslosen Grundeinkommens bei der Reduzierung sozialer Ungleichheit'\n"
-                "- Beispiel schlechter Output: 'Der Benutzer möchte, dass ich einen Titel erstelle für...'\n"
-                "- Gib den Titel direkt als einzelne Zeile aus."
-            )
+            llm_service = LLMService(profile_id=llm_profile_id, profile_service=ps)
+
+        system_prompt = _TITLE_SYSTEM_PROMPTS.get(language, _TITLE_SYSTEM_PROMPTS["de"])
 
         user_prompt = (
-            "Create ONE debate title (60-150 characters) for the following case description. "
-            "Output ONLY the title, nothing else. No quotes, no explanation.\n\n"
+            "Create ONE debate title (60-150 characters) for the following case. "
+            "Output ONLY the title, nothing else.\n\n"
             f"{case_text[:2000]}"
         )
 
         result = await llm_service.generate(
             prompt=user_prompt,
             system_prompt=system_prompt,
-            temperature=0.3,
+            temperature=0.1,
             max_tokens=100,
         )
 
-        title = result.content.strip().strip('"').strip("'").strip()
-
-        # --- Step 1: Strip known verbose prefixes ---
-        verbose_prefixes = [
-            r"^(?:Here(?:\u2019s| is) (?:a |the |an )?(?:suggested |proposed )?(?:debate )?title[:\s]*|The title is[:\s]*|Title[:\s]*|I suggest[:\s]*|I propose[:\s]*|I would suggest[:\s]*|I think[:\s]*)",
-            r"^(?:Der Titel lautet[:\s]*|Titel[:\s]*|Hier ist ein Titel[:\s]*|Ich schlage vor[:\s]*|Ich w\u00fcrde vorschlagen[:\s]*|Ich denke[:\s]*|Ein passender Titel (?:w\u00e4re|ist)[:\s]*)",
-            r"^(?:Here is my title suggestion[:\s]*|My suggested title[:\s]*|Suggested title[:\s]*|Proposed title[:\s]*)",
-            r"^(?:Mein Titelvorschlag[:\s]*|Vorgeschlagener Titel[:\s]*|Passender Titel[:\s]*)",
-        ]
-        for pattern in verbose_prefixes:
-            title = re.sub(pattern, "", title, count=1, flags=re.IGNORECASE).strip()
-        title = title.strip("\"'\u201e\u201c\u201d\u2018\u2019`-\u2013:.;, ")
-
-        # --- Step 2: Detect prompt reflection / meta-commentary ---
-        # If the LLM returned its thinking instead of a title, the output
-        # will contain phrases like "The user wants", "based on", "characters",
-        # "needs to be", bullet points, etc.  In that case we discard it.
-        reflection_indicators = [
-            r"\b(?:the user|der benutzer)\b",
-            r"\b(?:wants|needs|muss|soll)\b.*\b(?:title|titel|character|zeichen)\b",
-            r"\bbased on\b",
-            r"\bbasierend auf\b",
-            r"\bcharacters?\b.*\b(?:long|min|max)\b",
-            r"\bzeichen\b.*\b(?:lang|min|max)\b",
-            r"^-\s",  # bullet points
-            r"\b(?:description|beschreibung)\b.*\b(?:about|um)\b",
-        ]
-        is_reflection = any(re.search(p, title, re.IGNORECASE) for p in reflection_indicators)
-
-        # --- Step 3: Validate length and coherence ---
-        if is_reflection or len(title) > 200:
-            # LLM returned meta-commentary - use case text as fallback
-            logger.warning(
-                "Title generation returned prompt reflection (%d chars, reflection=%s), using case text fallback",
-                len(title),
-                is_reflection,
-            )
-            fallback = case_text[:120].strip()
-            if len(fallback) > 150:
-                fallback = fallback[:147] + "..."
-            title = fallback
-        elif len(title) > 150:
-            title = title[:147] + "..."
-        elif len(title) < 10:
-            fallback = case_text[:120].strip()
-            if len(fallback) > 150:
-                fallback = fallback[:147] + "..."
-            title = title or fallback
-
-        logger.info("Generated debate title (%d chars): %s", len(title), title)
+        title = _post_process_title(result.content.strip(), case_text)
+        logger.info("Generated debate title (%d chars, service=%s): %s",
+                     len(title), use_service_llm, title)
         return title
 
     except Exception as exc:
         logger.warning("Title generation failed (non-fatal): %s", exc)
-        fallback = case_text[:120].strip()
-        if len(fallback) > 150:
-            fallback = fallback[:147] + "..."
-        return fallback
+        return _fallback_title(case_text)
 
 
-# ---------------------------------------------------------------------------
-# Workflow execution (background task)
-# ---------------------------------------------------------------------------
+def _select_service_llm(profile_service) -> str:
+    """Select the best service LLM profile for system/background tasks.
+
+    Strategy:
+    1. Use configured settings.service_llm_profile_id if eligible.
+    2. Otherwise find first eligible profile preferring openrouter + large context.
+    3. Fall back to configured ID regardless.
+    """
+    try:
+        preferred = profile_service.get_llm_profile(settings.service_llm_profile_id)
+        if preferred and is_service_llm_eligible(preferred):
+            return settings.service_llm_profile_id
+    except Exception:
+        pass
+    try:
+        all_profiles = profile_service.list_llm_profiles()
+        eligible = [p for p in all_profiles if is_service_llm_eligible(p)]
+        if eligible:
+            eligible.sort(key=lambda p_: (0 if p_.provider.value == "openrouter" else 1, -(p_.context_window or 0)))
+            return eligible[0].id
+    except Exception:
+        pass
+    return settings.service_llm_profile_id
+
+
+def _post_process_title(raw: str, case_text: str) -> str:
+    """Clean and validate a generated title, falling back if needed."""
+    _re = __import__("re")
+    verbose = [
+        r"^Here(?:’s| is) (?:a |the |an )?(?:suggested |proposed )?(?:debate )?title[:\s]*",
+        r"^The title is[:\s]*", r"^Title[:\s]*",
+        r"^I suggest[:\s]*", r"^I propose[:\s]*", r"^I think[:\s]*",
+        r"^Der Titel lautet[:\s]*", r"^Titel[:\s]*",
+        r"^Hier ist ein Titel[:\s]*", r"^Ich schlage vor[:\s]*",
+        r"^Ein passender Titel (?:wäre|ist)[:\s]*",
+    ]
+    cleaned = raw.strip()
+    for pat in verbose:
+        cleaned = _re.sub(pat, "", cleaned, count=1, flags=_re.IGNORECASE).strip()
+    for ch in ['"', "'", '„', '“', '”', '‘', '’', '`', '-', '–', ':', '.', ',']:
+        cleaned = cleaned.strip(ch)
+    cleaned = cleaned.strip()
+
+    if not cleaned or len(cleaned) < 15 or len(cleaned) > 150:
+        return _fallback_title(case_text)
+
+    reflection = [
+        r"(?:the user|der benutzer)", r"based on", r"basierend auf",
+        r"(?:description|beschreibung).*(?:about|um)", r"^-\s",
+    ]
+    if any(_re.search(p, cleaned, _re.IGNORECASE) for p in reflection):
+        return _fallback_title(case_text)
+
+    return cleaned
+
+
+def _fallback_title(case_text: str) -> str:
+    """Fallback: use beginning of case text as title."""
+    fallback = case_text[:120].strip()
+    for sep in [".", "?", "!"]:
+        if sep in fallback:
+            fallback = fallback[:fallback.rfind(sep) + 1]
+            break
+    if len(fallback) > 150:
+        fallback = fallback[:147] + "..."
+    return fallback
+
+
 
 
 async def run_debate_workflow(
@@ -454,7 +468,7 @@ async def run_debate_workflow(
         {"type": "title_generating", "message": "Generating debate title..."},
     )
 
-    generated_title = await generate_debate_title(fields["case_text"], fields["llm_profile_id"], fields["language"], project_id)
+    generated_title = await generate_debate_title(fields["case_text"], fields["llm_profile_id"], fields["language"], project_id, use_service_llm=True)
 
     store.update(debate_id, title=generated_title)
 

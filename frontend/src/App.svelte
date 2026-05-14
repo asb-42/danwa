@@ -20,6 +20,7 @@
   import OutputComposerView from './views/OutputComposerView.svelte';
   import InputComposerView from './views/InputComposerView.svelte';
   import TranslationDashboard from './views/TranslationDashboard.svelte';
+import ToastContainer from './components/ToastContainer.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -114,4 +115,5 @@
   {:else}
     <Dashboard {navigate} />
   {/if}
+  <ToastContainer />
 </Layout>

@@ -50,6 +50,10 @@ class LLMProfile(BaseModel):
     a2a_timeout: int = 120  # Timeout for A2A calls in seconds
     fallback_llm_profile_id: str | None = None  # Fallback profile for A2A failures
 
+    # --- Service LLM (Sprint 16) ---
+    service_eligible: bool = True  # Whether this profile can be used for system/background tasks
+    min_recommended_context: int = 1024  # Min context window recommended for service use
+
     @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:

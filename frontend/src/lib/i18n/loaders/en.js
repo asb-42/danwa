@@ -827,4 +827,23 @@ export default {
     // Version
     'app.version': 'Version {version}',
     'app.versionLabel': 'Application Version',
+
+    // Service LLM
+    'service.title': 'Service LLM',
+    'service.description': 'Configure the dedicated LLM for system tasks such as title generation.',
+    'service.profile': 'Service LLM Profile',
+    'service.profileHint': 'Select an LLM for background/system tasks',
+    'service.eligible': 'Eligible',
+    'service.notEligible': 'Not eligible',
+    'service.contextWindow': 'Context Window',
+    'service.minContext': 'Min. Context',
+    'service.validationSuccess': 'Profile is eligible for service tasks',
+    'service.validationFailed': 'Profile is NOT eligible for service tasks',
+    'service.setSuccess': 'Service LLM updated successfully',
+    'service.setFailed': 'Failed to update service LLM',
+
+    // Toast notifications
+    'toast.titleChanged': 'Debate title updated via service LLM',
+    'toast.serviceLlmChanged': 'Service LLM changed to {profile}',
+    'toast.serviceLlmValidation': 'Service LLM validation: {result}',
 };

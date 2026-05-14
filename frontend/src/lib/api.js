@@ -593,6 +593,36 @@ export function batchTranslate(body) {
 }
 
 // ---------------------------------------------------------------------------
+// Service LLM (Sprint 16)
+// ---------------------------------------------------------------------------
+
+/** Get list of service-eligible LLM profiles. */
+export function getServiceEligibleProfiles() {
+  return request('/api/v1/profiles/llm/service-eligible');
+}
+
+/** Get current service LLM configuration. */
+export function getServiceLLMConfig() {
+  return request('/api/v1/config/service-llm');
+}
+
+/** Validate a profile for service LLM eligibility. */
+export function validateServiceLLM(profileId) {
+  return request('/api/v1/config/validate-service-llm', {
+    method: 'POST',
+    body: JSON.stringify({ profile_id: profileId }),
+  });
+}
+
+/** Set the active service LLM profile. */
+export function setServiceLLM(profileId) {
+  return request('/api/v1/config/service-llm', {
+    method: 'POST',
+    body: JSON.stringify({ profile_id: profileId }),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Module Registry (Sprint 4)
 // ---------------------------------------------------------------------------
 
