@@ -6,11 +6,18 @@
 import { writable, derived, get } from 'svelte/store';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './config.js';
 
+// Eagerly import the default locale to avoid race condition on first render.
+// Dynamic imports are async, so we use static imports for the default locale
+// to ensure translations are available immediately.
+import defaultDict from './loaders/de.js';
+
 /** Reactive store holding the current locale code. */
 export const locale = writable(DEFAULT_LOCALE);
 
 /** Internal map of loaded translation dictionaries. */
 const translations = new Map();
+// Preload default locale synchronously
+translations.set('de', defaultDict);
 
 /** Currently active locale (synchronous access for `t()`). */
 let currentLocale = DEFAULT_LOCALE;
@@ -21,9 +28,16 @@ let currentLocale = DEFAULT_LOCALE;
  */
 async function loadLocale(lang) {
   if (translations.has(lang)) return translations.get(lang);
-  const module = await import(`./loaders/${lang}.js`);
-  translations.set(lang, module.default);
-  return module.default;
+  // Use static import for 'de' to avoid async overhead
+  let dict;
+  if (lang === 'de') {
+    dict = defaultDict;
+  } else {
+    const module = await import(`./loaders/${lang}.js`);
+    dict = module.default;
+  }
+  translations.set(lang, dict);
+  return dict;
 }
 
 /**
@@ -31,7 +45,7 @@ async function loadLocale(lang) {
  * Subscribing gives you the current translation dictionary.
  */
 function createI18nStore() {
-  const { subscribe, set } = writable({});
+  const { subscribe, set } = writable(defaultDict);
 
   return {
     subscribe,
@@ -78,10 +92,7 @@ function createI18nStore() {
 }
 
 export const i18n = createI18nStore();
-
-// NOTE: Do NOT call i18n.setLocale() here at module level.
-// App.svelte's onMount handles initialization based on URL/localStorage.
-// Calling it here would race with the onMount call and could override the user's locale.
+// i18n is now initialized with the default locale's translations
 
 /**
  * Convenience function for translating keys.
