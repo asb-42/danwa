@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 20
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -571,6 +571,16 @@ _MIGRATION_V19_TABLES = [
 ]
 
 
+
+# ---------------------------------------------------------------------------
+# V20 — Module Registry: dependencies column
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V20_TABLES = [
+    "ALTER TABLE module_registry ADD COLUMN dependencies TEXT DEFAULT '{}'",
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 
@@ -796,6 +806,18 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 19, "Add module_registry + module_translation_cache tables")
             conn.commit()
             logger.info("Migration v19 applied successfully")
+
+
+        if current < 20:
+            logger.info("Applying migration v20: dependencies column on module_registry")
+            for stmt in _MIGRATION_V20_TABLES:
+                try:
+                    conn.execute(stmt)
+                except sqlite3.OperationalError:
+                    logger.debug("dependencies column already exists on module_registry")
+            _record_version(conn, 20, "Add dependencies column to module_registry")
+            conn.commit()
+            logger.info("Migration v20 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

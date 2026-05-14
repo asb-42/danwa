@@ -220,7 +220,7 @@ def main():
 
     # DB initialisieren (ohne DB-Engine für dry-run)
     # Im Produktivbetrieb: von der App konfigurierte DB verwenden
-    db_path = ROOT / "data" / "modules.db"
+    db_path = ROOT / "data" / "blueprints.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     import sqlite3
