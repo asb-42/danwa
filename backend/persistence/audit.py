@@ -76,7 +76,7 @@ class AuditService:
                     (id, debate_id, project_id, round, agent, action, timestamp,
                      input_hash, output_hash, input_content, output_content,
                      trace_log_path, llm_model, tokens_used)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.id,

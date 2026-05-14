@@ -622,7 +622,7 @@ class TestTranslationResultModel:
         assert result.files_errored == 0  # default
 
 
-def test_result_with_back_translation_scores(self):
+def test_result_with_back_translation_scores():
     result = TranslationResult(
         module_id="test",
         target_language="de",
