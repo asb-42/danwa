@@ -608,8 +608,7 @@ class TestTranslationResultModel:
         assert result.errors == ["LLM call failed"]
         assert result.files_errored == 0  # default
 
-    def test_result_with_back_translation_scores(self):
-        from backend.modules.models import TranslationResult
+def test_result_with_back_translation_scores(self):
         result = TranslationResult(
             module_id="test",
             target_language="de",

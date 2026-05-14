@@ -14,10 +14,10 @@ from fastapi.responses import JSONResponse
 
 from backend.a2a.agent_card import AGENT_CARD
 from backend.a2a.config import get_a2a_config
-from backend.api.deps import get_audit_service, get_debate_store_for_project, get_project_id, get_project_store
 from backend.a2a.schemas import A2AMessage, A2ATask, A2ATextPart
 from backend.a2a.server import A2AServer
 from backend.a2a.task_manager import TaskManager
+from backend.api.deps import get_audit_service, get_debate_store_for_project, get_project_id, get_project_store
 from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
