@@ -10,26 +10,19 @@ locking issues. INSERT OR REPLACE is used for idempotent writes.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import shutil
 import sqlite3
-import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
-import shutil
 from typing import Any
-
-import yaml
 
 from backend.blueprints.migrations import run_migrations
 from backend.modules.models import (
     InstallationReport,
-    ModuleInfo,
-    ModuleManifest,
     UninstallationReport,
     ValidationIssue,
 )
@@ -81,7 +74,7 @@ class ModuleInstaller:
         db_entries = 0
         conn = self._get_db()
         cursor = conn.cursor()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         checksum = manifest.get("checksum", "")
         try:
             cursor.execute(
@@ -202,9 +195,7 @@ class ModuleInstaller:
             )
 
         # Verify checksums
-        checksum_ok, checksum_errors = self.validator.verify_checksums(
-            module_dir, manifest_data
-        )
+        checksum_ok, checksum_errors = self.validator.verify_checksums(module_dir, manifest_data)
         if not checksum_ok:
             if not overwrite:
                 return InstallationReport(
@@ -214,10 +205,7 @@ class ModuleInstaller:
                     errors=checksum_errors + ["Use overwrite=True to force installation"],
                     checksum_valid=False,
                 )
-            validation.issues.extend(
-                ValidationIssue(severity="warning", field="checksum", message=e)
-                for e in checksum_errors
-            )
+            validation.issues.extend(ValidationIssue(severity="warning", field="checksum", message=e) for e in checksum_errors)
 
         module_id = manifest_data["module_id"]
         target_dir = self.modules_dir / module_id
@@ -237,10 +225,7 @@ class ModuleInstaller:
                     status="skipped",
                     module_id=module_id,
                     version=new_ver,
-                    warnings=[
-                        f"Module already installed at version {existing_ver}. "
-                        "Use overwrite=True to force."
-                    ],
+                    warnings=[f"Module already installed at version {existing_ver}. Use overwrite=True to force."],
                 )
 
         # Backup existing version (skip if source==target to avoid destruction)
@@ -265,11 +250,13 @@ class ModuleInstaller:
                 files_installed += 1
             except (OSError, shutil.Error) as e:
                 files_failed += 1
-                validation.issues.append(ValidationIssue(
-                    severity="error",
-                    field=f"files[{file_entry['path']}]",
-                    message=f"Failed to copy: {e}",
-                ))
+                validation.issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=f"files[{file_entry['path']}]",
+                        message=f"Failed to copy: {e}",
+                    )
+                )
 
         # Register in database
         db_entries_created = 0
@@ -309,7 +296,7 @@ class ModuleInstaller:
             db_entries_created=db_entries_created,
             warnings=[i.message for i in validation.issues if i.severity == "warning"],
             checksum=manifest_data.get("checksum", ""),
-            installed_at=datetime.now(timezone.utc),
+            installed_at=datetime.now(UTC),
         )
 
     def install_from_url(self, url: str) -> InstallationReport:
@@ -489,7 +476,7 @@ class ModuleInstaller:
                 manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
                 conn = self._get_db()
                 cursor = conn.cursor()
-                now = datetime.now(timezone.utc).isoformat()
+                now = datetime.now(UTC).isoformat()
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO module_registry

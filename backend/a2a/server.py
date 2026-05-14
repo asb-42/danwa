@@ -12,8 +12,8 @@ import logging
 import uuid
 
 from backend.a2a.schemas import A2AMessage, A2ATask
-from backend.api.deps import get_audit_service, get_debate_store_for_project
 from backend.a2a.task_manager import TaskManager, TaskStatus
+from backend.api.deps import get_audit_service, get_debate_store_for_project
 from backend.models.schemas import DebateRequest
 from backend.persistence.project_store import ProjectStore
 
@@ -142,7 +142,6 @@ class A2AServer:
         """Create a debate and start the workflow. Returns the debate_id."""
         import uuid as _uuid
 
-        from backend.api.deps import get_audit_service, get_debate_store_for_project
         from backend.models.schemas import DebateStatus
         from backend.services.debate_workflow import run_debate_workflow
 
@@ -178,7 +177,6 @@ class A2AServer:
         max_attempts: int = 300,
     ) -> dict:
         """Poll the debate store until the debate completes or fails."""
-        from backend.api.deps import get_debate_store_for_project
         from backend.models.schemas import DebateStatus
 
         store = get_debate_store_for_project(self.project_id, self._project_store)

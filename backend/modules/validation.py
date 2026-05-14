@@ -12,7 +12,6 @@ import yaml
 
 from backend.modules.models import (
     ModuleCategory,
-    ModuleManifest,
     ModuleType,
     ValidationIssue,
     ValidationResult,
@@ -50,88 +49,100 @@ class ModuleValidator:
 
         # --- Schema version ---
         if manifest.get("schema_version") != "1.0.0":
-            issues.append(ValidationIssue(
-                severity="warning",
-                field="schema_version",
-                message=f"Schema version '{manifest.get('schema_version')}' may not be supported. Expected '1.0.0'",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="warning",
+                    field="schema_version",
+                    message=f"Schema version '{manifest.get('schema_version')}' may not be supported. Expected '1.0.0'",
+                )
+            )
 
         # --- module_id format ---
         mid = manifest.get("module_id", "")
         if not mid:
-            issues.append(ValidationIssue(
-                severity="error", field="module_id", message="module_id is required"
-            ))
+            issues.append(ValidationIssue(severity="error", field="module_id", message="module_id is required"))
         elif not re.match(r"^[a-z][a-z0-9.-]*$", mid):
-            issues.append(ValidationIssue(
-                severity="error",
-                field="module_id",
-                message=f"Invalid module_id '{mid}': must be lowercase alphanumeric with hyphens/dots",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field="module_id",
+                    message=f"Invalid module_id '{mid}': must be lowercase alphanumeric with hyphens/dots",
+                )
+            )
 
         # --- Required fields ---
         required_fields = ["name", "version", "type", "category", "files"]
         for field in required_fields:
             if field not in manifest or manifest[field] is None:
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field=field,
-                    message=f"Required field '{field}' is missing",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=field,
+                        message=f"Required field '{field}' is missing",
+                    )
+                )
 
         # --- Version format ---
         version = manifest.get("version", "")
         if version and not re.match(r"^\d+\.\d+\.\d+$", version):
-            issues.append(ValidationIssue(
-                severity="error",
-                field="version",
-                message=f"Invalid version '{version}': must follow semver X.Y.Z",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field="version",
+                    message=f"Invalid version '{version}': must follow semver X.Y.Z",
+                )
+            )
 
         # --- Type validation ---
         valid_types = [e.value for e in ModuleType]
         if manifest.get("type") not in valid_types:
-            issues.append(ValidationIssue(
-                severity="error",
-                field="type",
-                message=f"Invalid type '{manifest.get('type')}'. Must be one of: {valid_types}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field="type",
+                    message=f"Invalid type '{manifest.get('type')}'. Must be one of: {valid_types}",
+                )
+            )
 
         # --- Category validation ---
         valid_categories = [e.value for e in ModuleCategory]
         if manifest.get("category") not in valid_categories:
-            issues.append(ValidationIssue(
-                severity="error",
-                field="category",
-                message=f"Invalid category '{manifest.get('category')}'. Must be one of: {valid_categories}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field="category",
+                    message=f"Invalid category '{manifest.get('category')}'. Must be one of: {valid_categories}",
+                )
+            )
 
         # --- Files check ---
         files = manifest.get("files", [])
         if not files:
-            issues.append(ValidationIssue(
-                severity="error", field="files", message="No files defined in manifest"
-            ))
+            issues.append(ValidationIssue(severity="error", field="files", message="No files defined in manifest"))
 
         file_paths = set()
         for f in files:
             # Check for duplicate paths
             fpath = f.get("path", "")
             if fpath in file_paths:
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field=f"files[{fpath}]",
-                    message=f"Duplicate file path: {fpath}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=f"files[{fpath}]",
+                        message=f"Duplicate file path: {fpath}",
+                    )
+                )
             file_paths.add(fpath)
 
             # Check format
             if f.get("format") not in ("markdown", "yaml", "json"):
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    field=f"files[{fpath}].format",
-                    message=f"Unusual format '{f.get('format')}' for {fpath}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        field=f"files[{fpath}].format",
+                        message=f"Unusual format '{f.get('format')}' for {fpath}",
+                    )
+                )
 
         return ValidationResult(
             module_id=module_id,
@@ -159,19 +170,23 @@ class ModuleValidator:
         issues: list[ValidationIssue] = []
 
         if not file_path.exists():
-            issues.append(ValidationIssue(
-                severity="error",
-                field=str(file_path),
-                message=f"File does not exist: {file_path}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field=str(file_path),
+                    message=f"File does not exist: {file_path}",
+                )
+            )
             return issues
 
         if file_path.stat().st_size == 0:
-            issues.append(ValidationIssue(
-                severity="error",
-                field=str(file_path),
-                message=f"File is empty: {file_path}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field=str(file_path),
+                    message=f"File is empty: {file_path}",
+                )
+            )
             return issues
 
         content = file_path.read_text(encoding="utf-8")
@@ -179,50 +194,60 @@ class ModuleValidator:
         # --- Markdown-specific checks ---
         if file_format == "markdown":
             if len(content.strip()) < 50:
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    field=str(file_path),
-                    message=f"Markdown content is very short ({len(content.strip())} chars). Minimum 50 chars recommended.",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        field=str(file_path),
+                        message=f"Markdown content is very short ({len(content.strip())} chars). Minimum 50 chars recommended.",
+                    )
+                )
 
             # Check for unresolved placeholders
             matches = PLACEHOLDER_PATTERNS.findall(content)
             if matches:
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    field=str(file_path),
-                    message=f"Possible unresolved placeholders found: {', '.join(set(matches))}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        field=str(file_path),
+                        message=f"Possible unresolved placeholders found: {', '.join(set(matches))}",
+                    )
+                )
 
             # Check for valid structure (at least a heading)
             if not content.strip().startswith("#"):
-                issues.append(ValidationIssue(
-                    severity="info",
-                    field=str(file_path),
-                    message=f"Markdown file doesn't start with a heading (#)",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="info",
+                        field=str(file_path),
+                        message="Markdown file doesn't start with a heading (#)",
+                    )
+                )
 
         # --- YAML-specific checks ---
         elif file_format in ("yaml", "yml"):
             try:
                 yaml.safe_load(content)
             except yaml.YAMLError as e:
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field=str(file_path),
-                    message=f"Invalid YAML: {e}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=str(file_path),
+                        message=f"Invalid YAML: {e}",
+                    )
+                )
 
         # --- JSON-specific checks ---
         elif file_format == "json":
             try:
                 __import__("json").loads(content)
             except ValueError as e:
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field=str(file_path),
-                    message=f"Invalid JSON: {e}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=str(file_path),
+                        message=f"Invalid JSON: {e}",
+                    )
+                )
 
         return issues
 
@@ -252,10 +277,7 @@ class ModuleValidator:
 
             actual_hash = self._compute_file_hash(fpath)
             if actual_hash != expected_hash:
-                errors.append(
-                    f"Checksum mismatch for {file_entry['path']}: "
-                    f"expected {expected_hash[:16]}… got {actual_hash[:16]}…"
-                )
+                errors.append(f"Checksum mismatch for {file_entry['path']}: expected {expected_hash[:16]}… got {actual_hash[:16]}…")
 
         return len(errors) == 0, errors
 
@@ -276,45 +298,51 @@ class ModuleValidator:
         issues: list[ValidationIssue] = []
 
         if not data.get("name"):
-            issues.append(ValidationIssue(
-                severity="error", field="name", message="Workflow name is required"
-            ))
+            issues.append(ValidationIssue(severity="error", field="name", message="Workflow name is required"))
 
         nodes = data.get("nodes", [])
         node_ids = {n.get("id") for n in nodes if n.get("id")}
 
         if not nodes:
-            issues.append(ValidationIssue(
-                severity="error",
-                field="nodes",
-                message="Workflow must define at least one node",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    field="nodes",
+                    message="Workflow must define at least one node",
+                )
+            )
 
         edges = data.get("edges", [])
         for edge in edges:
             source = edge.get("source")
             target = edge.get("target")
             if source and source not in node_ids:
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field=f"edges.{edge.get('id', '?')}.source",
-                    message=f"Edge references non-existent source node '{source}'",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=f"edges.{edge.get('id', '?')}.source",
+                        message=f"Edge references non-existent source node '{source}'",
+                    )
+                )
             if target and target not in node_ids:
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field=f"edges.{edge.get('id', '?')}.target",
-                    message=f"Edge references non-existent target node '{target}'",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field=f"edges.{edge.get('id', '?')}.target",
+                        message=f"Edge references non-existent target node '{target}'",
+                    )
+                )
 
         # Topological cycle detection
         if nodes and edges:
             if self._has_cycle(node_ids, edges):
-                issues.append(ValidationIssue(
-                    severity="error",
-                    field="edges",
-                    message="Workflow contains a circular dependency (cycle detected)",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        field="edges",
+                        message="Workflow contains a circular dependency (cycle detected)",
+                    )
+                )
 
         return issues
 

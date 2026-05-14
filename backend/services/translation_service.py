@@ -15,18 +15,15 @@ supports incremental updates when source content changes.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from backend.core.config import settings
-from backend.core.profiles import LLMProfile
-from backend.services.llm_service import LLMService, GenerationResult
+from backend.services.llm_service import LLMService
 from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
@@ -37,6 +34,7 @@ SUPPORTED_LANGUAGES = {"de", "fr", "es", "it", "pt", "nl", "pl", "cs", "zh", "ja
 
 class TranslationEntry(BaseModel):
     """A single translation cache entry."""
+
     id: str
     module_id: str
     file_path: str
@@ -54,16 +52,24 @@ class TranslationEntry(BaseModel):
 
     def to_db_tuple(self) -> tuple:
         return (
-            self.id, self.module_id, self.file_path,
-            self.source_language, self.target_language,
-            self.source_hash, self.source_content,
-            self.translated_content, self.back_translation,
-            self.quality_score, self.approved,
-            self.generated_at, self.generated_by, self.error,
+            self.id,
+            self.module_id,
+            self.file_path,
+            self.source_language,
+            self.target_language,
+            self.source_hash,
+            self.source_content,
+            self.translated_content,
+            self.back_translation,
+            self.quality_score,
+            self.approved,
+            self.generated_at,
+            self.generated_by,
+            self.error,
         )
 
     @classmethod
-    def from_db_row(cls, row: dict[str, Any]) -> "TranslationEntry":
+    def from_db_row(cls, row: dict[str, Any]) -> TranslationEntry:
         return cls(
             id=row["id"],
             module_id=row["module_id"],
@@ -84,6 +90,7 @@ class TranslationEntry(BaseModel):
 
 class TranslationRequest(BaseModel):
     """Request model for a translation operation."""
+
     module_id: str
     target_language: str = "de"
     force: bool = False
@@ -95,6 +102,7 @@ class TranslationRequest(BaseModel):
 
 class TranslationResult(BaseModel):
     """Result of a translation operation."""
+
     module_id: str
     target_language: str
     files_translated: int = 0
@@ -126,19 +134,25 @@ class TranslationService:
     """
 
     # Prompt templates for translation (can be overridden via module manifest)
-    FORWARD_TRANSLATION_PROMPT = """You are a professional technical translator. Translate the following text from English ({source_lang}) to {target_lang}. Maintain the technical meaning, tone, and structure. Do NOT translate variable placeholders like {{role}}, {{topic}}, {{context}}, etc. — keep them exactly as-is.
+    _FWD = (
+        "You are a professional technical translator. Translate the following "
+        "text from English ({source_lang}) to {target_lang}. Maintain the "
+        "technical meaning, tone, and structure. Do NOT translate variable "
+        "placeholders like {{role}}, {{topic}}, {{context}}, etc. — keep "
+        "them exactly as-is.\n\n"
+    )
+    _FWD_END = "\nSource text:\n{source_text}\n\nTranslated text in {target_lang}:"
+    FORWARD_TRANSLATION_PROMPT = _FWD + _FWD_END
 
-Source text:
-{source_text}
-
-Translated text in {target_lang}:"""
-
-    BACK_TRANSLATION_PROMPT = """You are a professional technical translator. Translate the following text from {target_lang} back to English. This is used for quality verification of a previous translation. Be as literal and faithful as possible to the translated text.
-
-Source text ({target_lang}):
-{translated_text}
-
-Back-translation in English:"""
+    BACK_TRANSLATION_PROMPT = (
+        "You are a professional technical translator. Translate the following "
+        "text from {target_lang} back to English. This is used for quality "
+        "verification of a previous translation. Be as literal and faithful "
+        "as possible to the translated text.\n\n"
+        "Source text ({target_lang}):\n"
+        "{translated_text}\n\n"
+        "Back-translation in English:"
+    )
 
     QUALITY_CHECK_PROMPT = """Compare the following two English texts and rate the semantic faithfulness of the translation on a scale of 0.0 to 1.0.
 
@@ -186,6 +200,7 @@ Respond with ONLY a valid JSON object:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         from backend.blueprints.migrations import run_migrations
+
         run_migrations(self.db_path)
         return conn
 
@@ -214,6 +229,7 @@ Respond with ONLY a valid JSON object:
                 max_tokens=256,
             )
             import re
+
             match = re.search(r'"score"\s*:\s*([\d.]+)', result.content)
             if match:
                 score = float(match.group(1))
@@ -356,7 +372,7 @@ Respond with ONLY a valid JSON object:
             back_trans_scores: dict[str, float] = {}
             errors: list[str] = []
             warnings: list[str] = []
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
 
             conn = self._get_db()
             cursor = conn.cursor()
@@ -368,10 +384,7 @@ Respond with ONLY a valid JSON object:
                 if not needs_translation:
                     skipped += 1
                     # Fetch existing quality score
-                    cursor.execute(
-                        "SELECT quality_score FROM module_translation_cache "
-                        "WHERE id = ?", (cache_id,)
-                    )
+                    cursor.execute("SELECT quality_score FROM module_translation_cache WHERE id = ?", (cache_id,))
                     row = cursor.fetchone()
                     quality_scores[fpath] = row["quality_score"] if row else 0.0
                     continue
@@ -386,7 +399,7 @@ Respond with ONLY a valid JSON object:
                     forward_result = llm.generate_sync(
                         prompt=forward_prompt,
                         system_prompt=f"You are a professional translator translating from English to {target_language}. "
-                                      f"Preserve technical terms and placeholder variables.",
+                        f"Preserve technical terms and placeholder variables.",
                         temperature=0.3,
                         max_tokens=max(512, len(source_content) // 2),
                     )
@@ -416,9 +429,7 @@ Respond with ONLY a valid JSON object:
                         back_translation = back_result.content.strip()
 
                         # Step 3: Quality scoring via LLM comparison
-                        quality_score = self._semantic_similarity_score(
-                            source_content, back_translation
-                        )
+                        quality_score = self._semantic_similarity_score(source_content, back_translation)
 
                     quality_scores[fpath] = round(quality_score, 3)
                     back_trans_scores[fpath] = round(quality_score, 3)
@@ -434,17 +445,25 @@ Respond with ONLY a valid JSON object:
                              generated_at, generated_by, approved)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
-                            cache_id, module_id, fpath,
-                            target_language, translated_content,
-                            source_hash, quality_score,
-                            now, "translation-service", 1 if approved else 0,
+                            cache_id,
+                            module_id,
+                            fpath,
+                            target_language,
+                            translated_content,
+                            source_hash,
+                            quality_score,
+                            now,
+                            "translation-service",
+                            1 if approved else 0,
                         ),
                     )
 
                     if approved:
                         logger.info(
                             "Auto-approved translation: %s/%s (score=%.3f)",
-                            module_id, fpath, quality_score,
+                            module_id,
+                            fpath,
+                            quality_score,
                         )
 
                     translated += 1
@@ -468,9 +487,17 @@ Respond with ONLY a valid JSON object:
                                  generated_at, generated_by, approved, error)
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
-                                cache_id, module_id, fpath, target_language,
-                                None, source_hash, 0.0,
-                                now, "translation-service", 0, str(e),
+                                cache_id,
+                                module_id,
+                                fpath,
+                                target_language,
+                                None,
+                                source_hash,
+                                0.0,
+                                now,
+                                "translation-service",
+                                0,
+                                str(e),
                             ),
                         )
                     except sqlite3.Error:
@@ -674,7 +701,7 @@ Respond with ONLY a valid JSON object:
         conn = self._get_db()
         cursor = conn.cursor()
         source_hash = self._compute_source_hash(content)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         try:
             # Ensure module exists in module_registry to satisfy FK constraint
@@ -685,8 +712,21 @@ Respond with ONLY a valid JSON object:
                      updated_at, enabled, source_schema, tags_json, dependencies)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    module_id, module_id, "", "custom", "prompts",
-                    "0.0.0", "{}", "CC-BY-4.0", "", now, now, 1, "1.0.0", "[]", "{}",
+                    module_id,
+                    module_id,
+                    "",
+                    "custom",
+                    "prompts",
+                    "0.0.0",
+                    "{}",
+                    "CC-BY-4.0",
+                    "",
+                    now,
+                    now,
+                    1,
+                    "1.0.0",
+                    "[]",
+                    "{}",
                 ),
             )
             cursor.execute(
@@ -697,11 +737,16 @@ Respond with ONLY a valid JSON object:
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     f"{module_id}:{file_path}:{source_language}",
-                    module_id, file_path,
-                    source_language, source_language,
-                    source_hash, content,
+                    module_id,
+                    file_path,
+                    source_language,
+                    source_language,
+                    source_hash,
+                    content,
                     content,  # Translated = original for source language
-                    now, "system", 1,
+                    now,
+                    "system",
+                    1,
                 ),
             )
             conn.commit()

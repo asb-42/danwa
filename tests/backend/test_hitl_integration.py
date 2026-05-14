@@ -60,7 +60,6 @@ def _create_running_debate(client, text="HITL test"):
     This helper creates the debate via the API and then directly sets the status
     to ``running`` in the project-scoped DebateStore.
     """
-    from backend.api.deps import get_project_store as _get_ps
 
     create_resp = client.post("/api/v1/debate", json={"case": {"text": text}})
     assert create_resp.status_code == 201, create_resp.text

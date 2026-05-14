@@ -319,13 +319,12 @@ class LLMService:
         max_tokens: int | None = None,
     ) -> GenerationResult:
         """Synchronous wrapper around async generate().
-        
+
         Uses asyncio.run() to execute the async generation in a sync context.
         """
         import asyncio
-        return asyncio.run(
-            self.generate(prompt, system_prompt, temperature, max_tokens)
-        )
+
+        return asyncio.run(self.generate(prompt, system_prompt, temperature, max_tokens))
 
     def estimate_cost(
         self,

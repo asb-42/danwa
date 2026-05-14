@@ -6,25 +6,18 @@ import json
 import logging
 import shutil
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
-import yaml
 
 from backend.modules.installer import ModuleInstaller
 from backend.modules.models import (
     InstallationReport,
     ModuleInfo,
-    ModuleManifest,
-    ModuleType,
-    ModuleCategory,
     TranslationResult,
     UninstallationReport,
-    ValidationResult,
 )
 from backend.modules.validation import ModuleValidator
-from backend.services.translation_service import TranslationService as LLMTranslationService
 
 logger = logging.getLogger(__name__)
 
@@ -89,49 +82,53 @@ class ModuleService:
         result = []
         for mod in modules:
             db_info = db_status.get(mod.module_id, {})
-            result.append({
-                "module_id": mod.module_id,
-                "name": mod.name,
-                "description": mod.description,
-                "version": mod.version,
-                "type": mod.type,
-                "category": mod.category,
-                "author": mod.author,
-                "license": mod.license,
-                "tags": mod.tags,
-                "language": mod.language,
-                "checksum": mod.checksum,
-                "installed": True,
-                "enabled": db_info.get("enabled", True),
-                "installed_at": db_info.get("installed_at"),
-                "updated_at": db_info.get("updated_at"),
-                "dependencies": mod.dependencies,
-                "file_count": mod.file_count,
-            })
-
-        # Also include DB-only modules (not on disk)
-        for mid, db_info in db_status.items():
-            if not any(m.module_id == mid for m in modules):
-                result.append({
-                    "module_id": mid,
-                    "name": db_info.get("name", {}),
-                    "description": db_info.get("description", ""),
-                    "version": db_info.get("version", "0.0.0"),
-                    "type": db_info.get("type", "custom"),
-                    "category": db_info.get("category", "custom"),
-                    "author": db_info.get("author", {}),
-                    "license": db_info.get("license", "CC-BY-4.0"),
-                    "tags": db_info.get("tags", []),
-                    "language": db_info.get("language", "en"),
-                    "checksum": db_info.get("checksum", ""),
+            result.append(
+                {
+                    "module_id": mod.module_id,
+                    "name": mod.name,
+                    "description": mod.description,
+                    "version": mod.version,
+                    "type": mod.type,
+                    "category": mod.category,
+                    "author": mod.author,
+                    "license": mod.license,
+                    "tags": mod.tags,
+                    "language": mod.language,
+                    "checksum": mod.checksum,
                     "installed": True,
                     "enabled": db_info.get("enabled", True),
                     "installed_at": db_info.get("installed_at"),
                     "updated_at": db_info.get("updated_at"),
-                    "dependencies": db_info.get("dependencies", {}),
-                    "file_count": db_info.get("file_count", 0),
-                    "on_disk": False,
-                })
+                    "dependencies": mod.dependencies,
+                    "file_count": mod.file_count,
+                }
+            )
+
+        # Also include DB-only modules (not on disk)
+        for mid, db_info in db_status.items():
+            if not any(m.module_id == mid for m in modules):
+                result.append(
+                    {
+                        "module_id": mid,
+                        "name": db_info.get("name", {}),
+                        "description": db_info.get("description", ""),
+                        "version": db_info.get("version", "0.0.0"),
+                        "type": db_info.get("type", "custom"),
+                        "category": db_info.get("category", "custom"),
+                        "author": db_info.get("author", {}),
+                        "license": db_info.get("license", "CC-BY-4.0"),
+                        "tags": db_info.get("tags", []),
+                        "language": db_info.get("language", "en"),
+                        "checksum": db_info.get("checksum", ""),
+                        "installed": True,
+                        "enabled": db_info.get("enabled", True),
+                        "installed_at": db_info.get("installed_at"),
+                        "updated_at": db_info.get("updated_at"),
+                        "dependencies": db_info.get("dependencies", {}),
+                        "file_count": db_info.get("file_count", 0),
+                        "on_disk": False,
+                    }
+                )
 
         return result
 
@@ -181,9 +178,7 @@ class ModuleService:
         else:
             module_dir = self.modules_dir / module_id
             if not module_dir.exists():
-                raise FileNotFoundError(
-                    f"Module directory not found: {module_dir}"
-                )
+                raise FileNotFoundError(f"Module directory not found: {module_dir}")
             return self.installer.install_from_directory(module_dir)
 
     def uninstall(self, module_id: str, force: bool = False) -> UninstallationReport:
@@ -297,8 +292,7 @@ class ModuleService:
 
             # Get all files for this module
             cursor.execute(
-                "SELECT file_path, source_hash FROM module_translation_cache "
-                "WHERE module_id = ? AND (source_language = 'en' OR language = 'en')",
+                "SELECT file_path, source_hash FROM module_translation_cache WHERE module_id = ? AND (source_language = 'en' OR language = 'en')",
                 (module_id,),
             )
             source_files = cursor.fetchall()
@@ -323,8 +317,7 @@ class ModuleService:
                 if not force:
                     # Check if translation already exists and is current
                     cursor.execute(
-                        "SELECT quality_score FROM module_translation_cache "
-                        "WHERE module_id = ? AND file_path = ? AND language = ?",
+                        "SELECT quality_score FROM module_translation_cache WHERE module_id = ? AND file_path = ? AND language = ?",
                         (module_id, fpath, target_lang),
                     )
                     existing = cursor.fetchone()
@@ -350,7 +343,7 @@ class ModuleService:
                         None,  # Pending
                         source_hash,
                         0.0,
-                        datetime.now(timezone.utc).isoformat(),
+                        datetime.now(UTC).isoformat(),
                         "system",
                         0,
                     ),
@@ -395,10 +388,7 @@ class ModuleService:
             return None
 
         # Count valid files
-        file_count = sum(
-            1 for f in manifest_data.get("files", [])
-            if (module_dir / f["path"]).exists()
-        )
+        file_count = sum(1 for f in manifest_data.get("files", []) if (module_dir / f["path"]).exists())
 
         # Get DB status
         db_info = self._get_db_module_info(manifest_data["module_id"])
@@ -430,8 +420,7 @@ class ModuleService:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT enabled, installed_at, updated_at, version, checksum "
-                "FROM module_registry WHERE id = ?",
+                "SELECT enabled, installed_at, updated_at, version, checksum FROM module_registry WHERE id = ?",
                 (module_id,),
             )
             row = cursor.fetchone()

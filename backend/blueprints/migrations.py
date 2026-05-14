@@ -519,7 +519,6 @@ _MIGRATION_V15_TABLES = [
 ]
 
 
-
 # ---------------------------------------------------------------------------
 # V19 - Module Registry: module_registry + module_translation_cache
 # ---------------------------------------------------------------------------
@@ -569,7 +568,6 @@ _MIGRATION_V19_TABLES = [
     CREATE INDEX IF NOT EXISTS idx_module_trans ON module_translation_cache (module_id, language);
     """,
 ]
-
 
 
 # ---------------------------------------------------------------------------
@@ -839,7 +837,6 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             conn.commit()
             logger.info("Migration v19 applied successfully")
 
-
         if current < 20:
             logger.info("Applying migration v20: dependencies column on module_registry")
             for stmt in _MIGRATION_V20_TABLES:
@@ -858,7 +855,9 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                     conn.execute(stmt)
                 except sqlite3.OperationalError:
                     logger.debug("source_language/source_content column already exists on module_translation_cache")
-            _record_version(conn, 21, "Add source_language + source_content + back_translation + generated_by + error columns to module_translation_cache")
+            _record_version(
+                conn, 21, "Add source_language + source_content + back_translation + generated_by + error columns to module_translation_cache"
+            )
             conn.commit()
             logger.info("Migration v21 applied successfully")
 

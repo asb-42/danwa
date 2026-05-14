@@ -22,10 +22,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import EventSourceResponse
 from pydantic import BaseModel, Field
 
+from backend.api.deps import get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
-from backend.api.deps import get_project_store
 from backend.persistence.project_store import ProjectStore
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.immutability import archive_session, guard_mutable, restore_session
@@ -139,11 +139,11 @@ class InterjectResponse(BaseModel):
 
 @router.post("/{workflow_id}/start", response_model=StartWorkflowResponse)
 async def start_workflow(
-     workflow_id: str,
-     body: StartWorkflowRequest,
-     background_tasks: BackgroundTasks,
-     project_store: ProjectStore = Depends(get_project_store),
- ) -> StartWorkflowResponse:
+    workflow_id: str,
+    body: StartWorkflowRequest,
+    background_tasks: BackgroundTasks,
+    project_store: ProjectStore = Depends(get_project_store),
+) -> StartWorkflowResponse:
     """Start executing a workflow definition.
 
     Loads the WorkflowDefinition from the repository, compiles it into

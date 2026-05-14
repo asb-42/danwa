@@ -48,7 +48,9 @@ class ApproveTranslationRequest(BaseModel):
     """Request body for manual translation approval."""
 
     file_path: str = Field(..., description="File path of the translation")
-    approved: bool = Field(True, description="Set to True to approve, False to reject")
+    approved: bool = Field(
+        True, description="Set to True to approve, False to reject"
+    )
 
 
 class InvalidateTranslationRequest(BaseModel):

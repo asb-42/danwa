@@ -14,7 +14,7 @@ import hashlib
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Projekt-Root ermitteln
@@ -60,10 +60,7 @@ def validate_manifest(manifest: dict, module_dir: Path) -> list[str]:
 
         actual_hash = compute_file_hash(file_path)
         if actual_hash != file_entry.get("checksum"):
-            errors.append(
-                f"Checksum-Fehler: {file_entry['path']} "
-                f"(erwartet {file_entry['checksum']}, ist {actual_hash})"
-            )
+            errors.append(f"Checksum-Fehler: {file_entry['path']} (erwartet {file_entry['checksum']}, ist {actual_hash})")
 
     return errors
 
@@ -79,7 +76,6 @@ def import_module_to_db(
     Returns:
         dict mit status ('ok' | 'skipped' | 'error'), details und stats.
     """
-    from backend.blueprints.migrations import get_db_connection
 
     module_id = manifest["module_id"]
     current_checksum = manifest.get("checksum", "")
@@ -136,11 +132,11 @@ def import_module_to_db(
                 json.dumps(manifest.get("author", {})),
                 manifest.get("license", "CC-BY-4.0"),
                 current_checksum,
-                datetime.now(timezone.utc).isoformat(),
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
+                datetime.now(UTC).isoformat(),
                 1,
                 json.dumps(manifest.get("tags", [])),
-                 json.dumps(manifest.get("dependencies", {})),
+                json.dumps(manifest.get("dependencies", {})),
             ),
         )
 
@@ -175,7 +171,7 @@ def import_module_to_db(
                     content,  # EN-Content als initialen Cache
                     file_entry.get("checksum", ""),
                     1.0,  # Manuell erstellte EN-Datei = höchster Quality-Score
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                     1,  # Approved, da EN-Quelle
                 ),
             )
@@ -209,10 +205,7 @@ def main():
         sys.exit(1)
 
     # Module finden (= Verzeichnisse mit manifest.json)
-    module_dirs = sorted(
-        d for d in modules_dir.iterdir()
-        if d.is_dir() and not d.name.startswith(".") and (d / "manifest.json").exists()
-    )
+    module_dirs = sorted(d for d in modules_dir.iterdir() if d.is_dir() and not d.name.startswith(".") and (d / "manifest.json").exists())
 
     if not module_dirs:
         logger.warning("Keine Module gefunden (benötigt manifest.json)")
@@ -226,11 +219,13 @@ def main():
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     import sqlite3
+
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
 
     # Migration v19 sicherstellen
     from backend.blueprints.migrations import run_migrations
+
     run_migrations(str(db_path))
 
     results = []
@@ -244,11 +239,13 @@ def main():
             logger.error("Validierungsfehler in %s:", module_dir.name)
             for err in errors:
                 logger.error("  - %s", err)
-            results.append({
-                "module_id": manifest["module_id"],
-                "status": "validation_error",
-                "errors": errors,
-            })
+            results.append(
+                {
+                    "module_id": manifest["module_id"],
+                    "status": "validation_error",
+                    "errors": errors,
+                }
+            )
             continue
 
         # Import

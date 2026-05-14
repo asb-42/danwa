@@ -14,12 +14,12 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from backend.persistence.project_store import ProjectStore
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe
+from backend.persistence.project_store import ProjectStore
 from backend.workflow.report_generator import WorkflowReportGenerator
 from backend.workflow.report_jobs import ReportJobStore
 

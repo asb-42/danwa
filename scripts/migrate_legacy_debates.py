@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 _DEFAULT_OLD_DB = Path("memory/debates.db")
@@ -41,9 +41,7 @@ def migrate_debates(
     conn.row_factory = sqlite3.Row
 
     cursor = conn.execute(
-        "SELECT session_id, created_at, profile, max_rounds, consensus, "
-        "context_preview, trace_path, project_id, document_ids "
-        "FROM sessions"
+        "SELECT session_id, created_at, profile, max_rounds, consensus, context_preview, trace_path, project_id, document_ids FROM sessions"
     )
     rows = cursor.fetchall()
     conn.close()
@@ -75,18 +73,16 @@ def migrate_debates(
                 try:
                     created_dt = datetime.fromisoformat(created_raw)
                 except (ValueError, TypeError):
-                    created_dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+                    created_dt = datetime(2024, 1, 1, tzinfo=UTC)
             else:
-                created_dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+                created_dt = datetime(2024, 1, 1, tzinfo=UTC)
 
             debate = {
                 "debate_id": session_id,
                 "status": "completed",
                 "title": f"Migrated: {row['profile'] or 'unknown'}",
                 "request": {
-                    "case": {
-                        "text": row["context_preview"] or "Kein Kontext verfügbar (migriert)"
-                    },
+                    "case": {"text": row["context_preview"] or "Kein Kontext verfügbar (migriert)"},
                     "max_rounds": row["max_rounds"] or 3,
                     "enable_fact_check": False,
                     "enable_memory": False,
@@ -115,7 +111,7 @@ def migrate_debates(
                 },
                 "trace_path": row["trace_path"] or "",
                 "_migrated": True,
-                "_migrated_at": datetime.now(timezone.utc).isoformat(),
+                "_migrated_at": datetime.now(UTC).isoformat(),
             }
 
             target_path = target / f"{session_id}.json"

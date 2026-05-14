@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
-from pathlib import Path
-from typing import Any
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class ModuleType(str, Enum):
+class ModuleType(StrEnum):
     ARGUMENTATION_PATTERN = "argumentation-pattern"
     AGENT_PERSONA = "agent-persona"
     LLM_PROFILE = "llm-profile"
@@ -20,7 +18,7 @@ class ModuleType(str, Enum):
     BUNDLE = "bundle"
 
 
-class ModuleCategory(str, Enum):
+class ModuleCategory(StrEnum):
     PROMPTS = "prompts"
     AGENTS = "agents"
     LLM_PROFILES = "llm-profiles"
@@ -32,6 +30,7 @@ class ModuleCategory(str, Enum):
 
 class ModuleFile(BaseModel):
     """A single file within a module."""
+
     path: str
     format: str  # "markdown", "yaml", "json"
     checksum: str = ""
@@ -43,6 +42,7 @@ class ModuleFile(BaseModel):
 
 class ModuleManifest(BaseModel):
     """Full manifest for a Danwa module."""
+
     schema_version: str = "1.0.0"
     module_id: str = Field(..., pattern=r"^[a-z][a-z0-9.-]*$")
     name: dict[str, str] = Field(default_factory=dict)
@@ -75,6 +75,7 @@ class ModuleManifest(BaseModel):
     @classmethod
     def validate_version(cls, v: str) -> str:
         import re
+
         if not re.match(r"^\d+\.\d+\.\d+$", v):
             raise ValueError(f"Version '{v}' does not follow semver (X.Y.Z)")
         return v
@@ -89,6 +90,7 @@ class ModuleManifest(BaseModel):
 
 class InstallationReport(BaseModel):
     """Result of a module installation operation."""
+
     status: str  # "ok", "skipped", "error", "partial"
     module_id: str
     version: str
@@ -103,6 +105,7 @@ class InstallationReport(BaseModel):
 
 class UninstallationReport(BaseModel):
     """Result of a module uninstallation operation."""
+
     status: str  # "ok", "error", "blocked"
     module_id: str
     files_removed: int = 0
@@ -113,6 +116,7 @@ class UninstallationReport(BaseModel):
 
 class ModuleInfo(BaseModel):
     """Summary information about an installed or available module."""
+
     module_id: str
     name: dict[str, str] = Field(default_factory=dict)
     description: dict[str, str] = Field(default_factory=dict)
@@ -134,6 +138,7 @@ class ModuleInfo(BaseModel):
 
 class ValidationIssue(BaseModel):
     """A single issue found during module validation."""
+
     severity: str  # "error", "warning", "info"
     field: str
     message: str
@@ -142,6 +147,7 @@ class ValidationIssue(BaseModel):
 
 class ValidationResult(BaseModel):
     """Complete validation result for a module."""
+
     module_id: str | None
     valid: bool
     issues: list[ValidationIssue] = Field(default_factory=list)
@@ -151,6 +157,7 @@ class ValidationResult(BaseModel):
 
 class TranslationResult(BaseModel):
     """Result of a translation operation."""
+
     module_id: str
     target_language: str
     files_translated: int = 0

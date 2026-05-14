@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.api.deps import get_settings  # noqa: E402
-from backend.api.routers import (  # noqa: E402
+from backend.api.routers import (
     a2a_discovery,
     argumentation_patterns,
     audit,
@@ -30,7 +30,6 @@ from backend.api.routers import (  # noqa: E402
     debate_stream,
     dms,
     health,
-    hitl_router,
     input_composer,
     llm_profiles,
     modules,
@@ -42,12 +41,13 @@ from backend.api.routers import (  # noqa: E402
     sessions,
     system,
     tone_profiles,
-    translation_router,
     workflow_definitions,
     workflow_exec,
     workflow_reports,
     workflow_templates,
 )
+from backend.api.routers.translation import router as translation_router  # noqa: E402
+from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"

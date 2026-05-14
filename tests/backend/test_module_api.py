@@ -10,9 +10,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.routers.modules import _module_service, get_module_service, router
+from backend.api.routers.modules import get_module_service
 from backend.main import create_app
-
 
 TEST_DB_DIR = Path(tempfile.mkdtemp(prefix="test_api_db_"))
 TEST_MODULES_DIR = Path(tempfile.mkdtemp(prefix="test_api_modules_"))
@@ -21,6 +20,7 @@ TEST_MODULES_DIR = Path(tempfile.mkdtemp(prefix="test_api_modules_"))
 def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0") -> dict:
     """Create a minimal module directory with manifest and files."""
     import hashlib
+
     mod_dir = modules_dir / module_id
     mod_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,9 +38,9 @@ def _make_module(modules_dir: Path, module_id: str, version: str = "1.0.0") -> d
         "category": "prompts",
         "author": {"name": "Test"},
         "license": "CC-BY-4.0",
-        "checksum": hashlib.sha256(json.dumps([
-            {"path": "readme.md", "format": "markdown", "checksum": chksum, "language": "en"}
-        ]).encode()).hexdigest(),
+        "checksum": hashlib.sha256(
+            json.dumps([{"path": "readme.md", "format": "markdown", "checksum": chksum, "language": "en"}]).encode()
+        ).hexdigest(),
         "files": [
             {"path": "readme.md", "format": "markdown", "checksum": chksum, "language": "en"},
         ],
@@ -68,12 +68,14 @@ def clean_env():
 
     # Reset module router function
     import backend.api.routers.modules as mod_router
+
     mod_router.get_module_service = get_module_service
 
 
 def _make_app_with_service():
     """Helper: create app with overridden module service."""
     from backend.modules.service import ModuleService
+
     test_service = ModuleService(
         modules_dir=TEST_MODULES_DIR,
         db_path=TEST_DB_DIR / "test.db",
@@ -81,7 +83,6 @@ def _make_app_with_service():
 
     # Patch the getter in the router module to return our test service
     import backend.api.routers.modules as mod_router
-    original_getter = mod_router.get_module_service
 
     # Use a closure so the lambda captures test_service
     mod_router.get_module_service = lambda svc=test_service: svc
@@ -115,7 +116,8 @@ class TestListModules:
 
         # Need to install via installer since service.install looks in modules_dir
         from backend.modules.installer import ModuleInstaller
-        installer = ModuleInstaller(TEST_MODULES_DIR, svc.db_path)
+
+        ModuleInstaller(TEST_MODULES_DIR, svc.db_path)
 
         # Remove the module dir so install finds it fresh from modules_dir
         # Actually, service.install reads from modules_dir, which is where it already is
@@ -173,10 +175,13 @@ class TestInstallModule:
         # The API's install_from_directory reads from modules_dir/module_id
         _make_module(TEST_MODULES_DIR, "danwa-install-test", version="1.0.0")
 
-        response = client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-install-test",
-            "source": "local",
-        })
+        response = client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-install-test",
+                "source": "local",
+            },
+        )
         # Should succeed since module exists in modules_dir and isn't in DB yet
         assert response.status_code == 201
         data = response.json()
@@ -185,10 +190,13 @@ class TestInstallModule:
 
     def test_install_not_found(self):
         client, _ = _make_app_with_service()
-        response = client.post("/api/v1/modules/install", json={
-            "module_id": "nonexistent-module",
-            "source": "local",
-        })
+        response = client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "nonexistent-module",
+                "source": "local",
+            },
+        )
         assert response.status_code == 404
 
     def test_install_already_installed(self):
@@ -197,17 +205,23 @@ class TestInstallModule:
         _make_module(TEST_MODULES_DIR, "danwa-dup", version="1.0.0")
 
         # First install
-        response = client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-dup",
-            "source": "local",
-        })
+        response = client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-dup",
+                "source": "local",
+            },
+        )
         assert response.status_code == 201
 
         # Second install -> skipped
-        response = client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-dup",
-            "source": "local",
-        })
+        response = client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-dup",
+                "source": "local",
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["status"] == "skipped"
@@ -221,23 +235,32 @@ class TestUninstallModule:
         _make_module(TEST_MODULES_DIR, "danwa-uninstall-test", version="1.0.0")
 
         # First install
-        client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-uninstall-test",
-            "source": "local",
-        })
+        client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-uninstall-test",
+                "source": "local",
+            },
+        )
 
-        response = client.post("/api/v1/modules/danwa-uninstall-test/uninstall", json={
-            "force": False,
-        })
+        response = client.post(
+            "/api/v1/modules/danwa-uninstall-test/uninstall",
+            json={
+                "force": False,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
 
     def test_uninstall_nonexistent(self):
         client, _ = _make_app_with_service()
-        response = client.post("/api/v1/modules/nonexistent/uninstall", json={
-            "force": False,
-        })
+        response = client.post(
+            "/api/v1/modules/nonexistent/uninstall",
+            json={
+                "force": False,
+            },
+        )
         assert response.status_code == 200
 
 
@@ -249,10 +272,13 @@ class TestUpdateModule:
 
         # Create v1.0.0 and install
         _make_module(TEST_MODULES_DIR, "danwa-update-test", version="1.0.0")
-        client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-update-test",
-            "source": "local",
-        })
+        client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-update-test",
+                "source": "local",
+            },
+        )
 
         # Overwrite with v2.0.0
         _make_module(TEST_MODULES_DIR, "danwa-update-test", version="2.0.0")
@@ -272,29 +298,35 @@ class TestValidateModule:
 
     def test_valid_manifest(self):
         client, _ = _make_app_with_service()
-        response = client.post("/api/v1/modules/validate", json={
-            "manifest": {
-                "schema_version": "1.0.0",
-                "module_id": "danwa-valid-test",
-                "name": {"en": "Test"},
-                "description": {"en": "Test desc"},
-                "version": "1.0.0",
-                "type": "argumentation-pattern",
-                "category": "prompts",
-                "files": [{"path": "test.md", "format": "markdown", "checksum": "abc", "language": "en"}],
-            }
-        })
+        response = client.post(
+            "/api/v1/modules/validate",
+            json={
+                "manifest": {
+                    "schema_version": "1.0.0",
+                    "module_id": "danwa-valid-test",
+                    "name": {"en": "Test"},
+                    "description": {"en": "Test desc"},
+                    "version": "1.0.0",
+                    "type": "argumentation-pattern",
+                    "category": "prompts",
+                    "files": [{"path": "test.md", "format": "markdown", "checksum": "abc", "language": "en"}],
+                }
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["valid"] is True
 
     def test_invalid_manifest_missing_fields(self):
         client, _ = _make_app_with_service()
-        response = client.post("/api/v1/modules/validate", json={
-            "manifest": {
-                "module_id": "danwa-invalid",
-            }
-        })
+        response = client.post(
+            "/api/v1/modules/validate",
+            json={
+                "manifest": {
+                    "module_id": "danwa-invalid",
+                }
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["valid"] is False
@@ -307,15 +339,21 @@ class TestTranslateModule:
     def test_translate_success(self):
         client, _ = _make_app_with_service()
         _make_module(TEST_MODULES_DIR, "danwa-translate-test", version="1.0.0")
-        client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-translate-test",
-            "source": "local",
-        })
+        client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-translate-test",
+                "source": "local",
+            },
+        )
 
-        response = client.post("/api/v1/modules/danwa-translate-test/translate", json={
-            "target_language": "de",
-            "force": False,
-        })
+        response = client.post(
+            "/api/v1/modules/danwa-translate-test/translate",
+            json={
+                "target_language": "de",
+                "force": False,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["module_id"] == "danwa-translate-test"
@@ -328,13 +366,19 @@ class TestTranslationStatus:
     def test_translation_status(self):
         client, _ = _make_app_with_service()
         _make_module(TEST_MODULES_DIR, "danwa-trans-status", version="1.0.0")
-        client.post("/api/v1/modules/install", json={
-            "module_id": "danwa-trans-status",
-            "source": "local",
-        })
-        client.post("/api/v1/modules/danwa-trans-status/translate", json={
-            "target_language": "de",
-        })
+        client.post(
+            "/api/v1/modules/install",
+            json={
+                "module_id": "danwa-trans-status",
+                "source": "local",
+            },
+        )
+        client.post(
+            "/api/v1/modules/danwa-trans-status/translate",
+            json={
+                "target_language": "de",
+            },
+        )
 
         response = client.get("/api/v1/modules/danwa-trans-status/translations")
         assert response.status_code == 200

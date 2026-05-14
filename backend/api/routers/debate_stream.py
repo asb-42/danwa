@@ -16,7 +16,6 @@ from backend.api.deps import get_debate_store_for_project, get_project_store
 from backend.api.events import subscribe, unsubscribe
 from backend.models.schemas import DebateStatus
 from backend.persistence.debate_store import DebateStore
-from backend.persistence.project_store import ProjectStore
 
 router = APIRouter()
 

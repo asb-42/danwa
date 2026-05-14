@@ -12,15 +12,6 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.modules.models import (
-    InstallationReport,
-    ModuleCategory,
-    ModuleInfo,
-    ModuleType,
-    TranslationResult,
-    UninstallationReport,
-    ValidationResult,
-)
 from backend.modules.service import ModuleService
 
 logger = logging.getLogger(__name__)
@@ -183,6 +174,7 @@ async def get_module(module_id: str) -> dict[str, Any]:
 
 class InstallRequest(BaseModel):
     """Request body for module installation."""
+
     module_id: str = Field(..., description="Module ID to install")
     source: str = Field("local", description="Source: 'local' or 'url'")
     source_url: str | None = Field(None, description="URL for remote installation")
@@ -218,6 +210,7 @@ async def install_module(body: InstallRequest) -> dict[str, Any]:
 
 class UninstallRequest(BaseModel):
     """Request body for module uninstallation."""
+
     force: bool = Field(False, description="Force uninstall ignoring dependencies")
 
 
@@ -277,6 +270,7 @@ async def update_module(module_id: str) -> dict[str, Any]:
 
 class ValidateRequest(BaseModel):
     """Request body for module validation."""
+
     manifest: dict[str, Any] = Field(..., description="Module manifest dict")
 
 
@@ -290,10 +284,7 @@ async def validate_module(body: ValidateRequest) -> dict[str, Any]:
         "valid": result.valid,
         "file_count": result.file_count,
         "checksum_valid": result.checksum_valid,
-        "issues": [
-            {"severity": i.severity, "field": i.field, "message": i.message}
-            for i in result.issues
-        ],
+        "issues": [{"severity": i.severity, "field": i.field, "message": i.message} for i in result.issues],
     }
 
 
@@ -304,6 +295,7 @@ async def validate_module(body: ValidateRequest) -> dict[str, Any]:
 
 class TranslateRequest(BaseModel):
     """Request body for module translation."""
+
     target_language: str = Field(..., description="Target language code (e.g. 'de')")
     force: bool = Field(False, description="Force re-translation")
 
@@ -330,25 +322,26 @@ async def get_translation_status(module_id: str) -> dict[str, Any]:
     svc = get_module_service()
     try:
         import sqlite3
+
         conn = sqlite3.connect(str(svc.db_path))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT file_path, language, source_hash, quality_score, "
-            "approved, generated_at FROM module_translation_cache "
-            "WHERE module_id = ?",
+            "SELECT file_path, language, source_hash, quality_score, approved, generated_at FROM module_translation_cache WHERE module_id = ?",
             (module_id,),
         )
         entries = []
         for row in cursor.fetchall():
-            entries.append({
-                "file_path": row["file_path"],
-                "language": row["language"],
-                "source_hash": row["source_hash"],
-                "quality_score": row["quality_score"],
-                "approved": bool(row["approved"]) if "approved" in row.keys() else False,
-                "generated_at": row["generated_at"],
-            })
+            entries.append(
+                {
+                    "file_path": row["file_path"],
+                    "language": row["language"],
+                    "source_hash": row["source_hash"],
+                    "quality_score": row["quality_score"],
+                    "approved": bool(row["approved"]) if "approved" in row.keys() else False,
+                    "generated_at": row["generated_at"],
+                }
+            )
         conn.close()
         return {"module_id": module_id, "translations": entries}
     except Exception as e:

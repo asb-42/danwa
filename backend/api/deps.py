@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Header, HTTPException
 
 from backend.blueprints.repository import BlueprintRepository
 from backend.core.config import Settings, settings
@@ -74,12 +74,12 @@ def get_blueprint_repository() -> BlueprintRepository:
 
 
 async def get_project_id(
-     x_project_id: str = Header(
-         ...,
-         description="Active project UUID",
-         alias="X-Project-Id",
-     ),
- ) -> str:
+    x_project_id: str = Header(
+        ...,
+        description="Active project UUID",
+        alias="X-Project-Id",
+    ),
+) -> str:
     """Extract project_id from request header.
 
     This is a required dependency for all project-scoped endpoints.
