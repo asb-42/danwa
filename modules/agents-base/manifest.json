@@ -12,11 +12,10 @@
     "name": "Danwa Community"
   },
   "license": "CC-BY-4.0",
-  "checksum": "e8fb06a2f9135e972b3a9a0153724b4dff9230547e7550e208606ca7eb739c4d",
   "tags": [],
   "language": "en",
   "created_at": "2026-05-13T21:39:01.175359+00:00",
-  "updated_at": "2026-05-13T21:39:01.175372+00:00",
+  "updated_at": "2026-05-14T22:04:53.093708+00:00",
   "files": [
     {
       "path": "agents/critic-default.yaml",
@@ -89,5 +88,6 @@
       "language": "en"
     }
   ],
-  "dependencies": {}
+  "dependencies": {},
+  "checksum": "9ebdca6fbf75bb9c64c5abd82998416008970472d56eda4448a9b1a377f19a19"
 }

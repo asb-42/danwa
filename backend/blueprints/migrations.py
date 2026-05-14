@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -611,6 +611,16 @@ _MIGRATION_V23_TABLES = [
 ]
 
 
+
+# ---------------------------------------------------------------------------
+# V24 — Module translation cache: UNIQUE constraint for ON CONFLICT support
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V24_TABLES = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_module_trans_cache_uniq ON module_translation_cache (module_id, file_path, language)",
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 
@@ -884,6 +894,19 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                 logger.info("Migration v23 applied successfully")
             except sqlite3.OperationalError as exc:
                 logger.debug("Migration v23 skipped: %s", exc)
+
+
+        # ── V24 — UNIQUE constraint on module_translation_cache ──
+        if current < 24:
+            logger.info("Applying migration v24: UNIQUE constraint on module_translation_cache")
+            try:
+                for stmt in _MIGRATION_V24_TABLES:
+                    conn.execute(stmt)
+                _record_version(conn, 24, "Add UNIQUE index on module_translation_cache (module_id, file_path, language)")
+                conn.commit()
+                logger.info("Migration v24 applied successfully")
+            except sqlite3.OperationalError as exc:
+                logger.debug("Migration v24 skipped: %s", exc)
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

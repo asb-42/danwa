@@ -1,0 +1,3 @@
+# DEPRECATED
+
+Dieses Verzeichnis wurde durch modules/prompts-base ersetzt.

@@ -12,11 +12,10 @@
     "name": "Danwa Community"
   },
   "license": "CC-BY-4.0",
-  "checksum": "f96a37976d9cb56f5af91e361927678c7cf009cb1ff0463ea92e355325399a65",
   "tags": [],
   "language": "en",
   "created_at": "2026-05-13T21:39:01.173938+00:00",
-  "updated_at": "2026-05-13T21:39:01.173963+00:00",
+  "updated_at": "2026-05-14T22:04:44.464981+00:00",
   "files": [
     {
       "path": "prompts/argumentation-patterns/aristotelian/analyst.md",
@@ -315,28 +314,28 @@
     {
       "path": "prompts/default/critic.md",
       "format": "markdown",
-      "checksum": "07f713d54bfb71abb03f30e722d31eb21e8a198ea6964681b6f590af0b630d1f",
+      "checksum": "eec750ed41c2bd33f526eca27e51fd4c2efd0bab36639002b170dac1efd9a9c6",
       "role_type_id": "critic",
       "language": "en"
     },
     {
       "path": "prompts/default/moderator.md",
       "format": "markdown",
-      "checksum": "90aa94838e4f26857b2d11f11f82b97cc2be528312a33146c97fa2dbb8cd5e91",
+      "checksum": "dbdb0718fb59ab9d5da8a829715edf3397043257587a9f2fc5dd74a544d272a6",
       "role_type_id": "moderator",
       "language": "en"
     },
     {
       "path": "prompts/default/optimizer.md",
       "format": "markdown",
-      "checksum": "4081d545cf842a6493aadb8c2160f4ce9622c15e0f5b0dd795cced78251f27b3",
+      "checksum": "b11b8600c8615afd299bb40b836f5ba3d6dfccaed5235bada5d52c3e98b35686",
       "role_type_id": "optimizer",
       "language": "en"
     },
     {
       "path": "prompts/default/strategist.md",
       "format": "markdown",
-      "checksum": "3c3b2d16732e2f708b075ef35c59c8d5b8d44e67550c60f4c7366913abefb1f5",
+      "checksum": "7e77e55ea7e12ad1c3a3a42c16dd9c2c78d88244fa03f74aed6ec2cf9e1969d1",
       "role_type_id": "strategist",
       "language": "en"
     },
@@ -369,5 +368,6 @@
       "language": "en"
     }
   ],
-  "dependencies": {}
+  "dependencies": {},
+  "checksum": "acf7e5abf008c3265c4940cea953ead182fdf34fb37578ccb4a6f7ac51aab47a"
 }

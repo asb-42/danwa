@@ -86,7 +86,7 @@ class PromptService:
         # 2. Fallback: filesystem with hot-reload caching
         # Build candidate file names: language-specific first, then base
         candidates = []
-        if language and language != "de":
+        if language:
             candidates.append(f"{role}-{language}.md")
         candidates.append(f"{role}.md")
 
@@ -204,7 +204,7 @@ class PromptService:
         base_dir = self._argumentation_patterns_dir or Path("profiles/argumentation-patterns")
         base = base_dir / pattern
         candidates = []
-        if language and language != "de":
+        if language:
             candidates.append(f"{role_type_id}-{language}.md")
         candidates.append(f"{role_type_id}.md")
 

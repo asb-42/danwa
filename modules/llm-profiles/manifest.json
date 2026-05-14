@@ -12,11 +12,10 @@
     "name": "Danwa Community"
   },
   "license": "CC-BY-4.0",
-  "checksum": "f2a8482d17026a4fa94b77495b4ce78ef431dfbd0caa92f352c9dba66255e1ef",
   "tags": [],
   "language": "en",
   "created_at": "2026-05-13T21:39:01.177315+00:00",
-  "updated_at": "2026-05-13T21:39:01.177325+00:00",
+  "updated_at": "2026-05-14T22:04:59.077382+00:00",
   "files": [
     {
       "path": "llm/cloud-openrouter.yaml",
@@ -145,5 +144,6 @@
       "language": "en"
     }
   ],
-  "dependencies": {}
+  "dependencies": {},
+  "checksum": "0cad0ac7f3b34f59e291bda841d2c1ba4e7704bfb1e28ce9efbc46bdba3b0fdf"
 }

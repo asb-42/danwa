@@ -786,7 +786,42 @@ export default {
   'translation.invalidate': 'Invalidate',
   'translation.progress': 'Batch Progress',
   'translation.startBatch': 'Start Batch',
-  'translation.moduleLabel': 'Module'
-};
+  'translation.moduleLabel': 'Module',
 
-   
+
+   // Module Manager
+   'modules.title': 'Modules',
+   'modules.refresh': 'Refresh Modules',
+   'modules.tabInstalled': 'Installed',
+   'modules.tabAvailable': 'Available',
+   'modules.tabInstall': 'Install',
+   'modules.noInstalled': 'No modules installed. Install modules from the "Available" or "Install" tab.',
+   'modules.available': 'Available Modules',
+   'modules.availableHint': 'Modules from the registry that are not yet installed.',
+   'modules.noAvailable': 'No additional modules available.',
+   'modules.installFromSource': 'Install from Source URL',
+   'modules.installFromSourceHint': 'Enter a module ID or Git URL to install a module.',
+   'modules.enterModuleId': 'Enter module ID or URL…',
+   'modules.installed': 'Installed',
+   'modules.install': 'Install',
+   'modules.uninstall': 'Uninstall',
+   'modules.update': 'Update',
+   'modules.validate': 'Validate',
+   'modules.installedAt': 'Installed at',
+   'modules.category': 'Category',
+   'modules.type': 'Type',
+   'modules.author': 'Author',
+   'modules.license': 'License',
+   'modules.checksum': 'Checksum',
+   'modules.validationResult': 'Validation Result',
+   'modules.valid': 'Valid',
+   'modules.confirmUninstall': 'Are you sure you want to uninstall module "{id}"?',
+   'modules.installedSuccess': 'Module "{id}" installed successfully',
+   'modules.uninstalledSuccess': 'Module "{id}" uninstalled successfully',
+   'modules.updatedSuccess': 'Module "{id}" updated successfully',
+
+   // ConfigView — Module Tab
+   'config.modules': 'Modules',
+   'config.modulesPlaceholder': 'No modules registered',
+   'config.moduleManager': 'Manage Modules',
+};

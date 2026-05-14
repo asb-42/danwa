@@ -141,6 +141,10 @@ async def lifespan(app: FastAPI):
 
     seed_system_tone_profiles()
 
+    # Import modules into DB on startup (idempotent)
+    from scripts.deploy_import import main as deploy_import_main
+    deploy_import_main()
+
     yield
     logger.info("Debate Engine shutting down.")
 

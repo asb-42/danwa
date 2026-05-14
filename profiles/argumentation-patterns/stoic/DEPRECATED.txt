@@ -1,0 +1,9 @@
+# DEPRECATED
+
+Dieses Verzeichnis wurde am 2026-05-14 22:04:34 UTC als veraltet markiert.
+Die enthaltenen Daten wurden in das neue Modulsystem migriert:
+
+  modules/prompts-base
+
+Diese Dateien werden vom System nicht mehr genutzt und können
+zu einem späteren Zeitpunkt gelöscht werden.

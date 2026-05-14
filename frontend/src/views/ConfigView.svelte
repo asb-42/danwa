@@ -29,6 +29,7 @@
     listRoleDefinitions,
   } from '../lib/blueprint/api.js';
   import ConfigModal from '../components/config/ConfigModal.svelte';
+import ModuleManager from '../components/ModuleManager.svelte';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -436,7 +437,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'roleTypes', 'agents', 'prompts', 'cost', 'settings', 'system'] as tab}
+      {#each ['llm', 'roleTypes', 'agents', 'prompts', 'modules', 'cost', 'settings', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab

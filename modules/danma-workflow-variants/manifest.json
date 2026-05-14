@@ -12,11 +12,10 @@
     "name": "Danwa Community"
   },
   "license": "CC-BY-4.0",
-  "checksum": "873a71845ebd2ac2de7c3f14c80bcc337ddc4b7b41b5bf0ac30d2d69355e9c61",
   "tags": [],
   "language": "en",
   "created_at": "2026-05-13T21:39:17.224308+00:00",
-  "updated_at": "2026-05-13T21:39:17.224313+00:00",
+  "updated_at": "2026-05-14T22:05:14.928223+00:00",
   "files": [
     {
       "path": "variants/concise/default.md",
@@ -50,5 +49,6 @@
       "language": "en",
       "role_type_id": "strategist"
     }
-  ]
+  ],
+  "checksum": "2ca1448de966b824df54209a2ced7b230f808f3af19c99832911d26faaeddd24"
 }

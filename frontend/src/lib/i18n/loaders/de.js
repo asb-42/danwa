@@ -786,7 +786,42 @@ export default {
   'translation.invalidate': 'Ungültig machen',
   'translation.progress': 'Fortschritt',
   'translation.startBatch': 'Stapel starten',
-  'translation.moduleLabel': 'Modul'
-};
+  'translation.moduleLabel': 'Modul',
 
-   
+
+   // Module Manager
+   'modules.title': 'Module',
+   'modules.refresh': 'Module aktualisieren',
+   'modules.tabInstalled': 'Installiert',
+   'modules.tabAvailable': 'Verfügbar',
+   'modules.tabInstall': 'Installieren',
+   'modules.noInstalled': 'Keine Module installiert. Installieren Sie Module über den Reiter "Verfügbar" oder "Installieren".',
+   'modules.available': 'Verfügbare Module',
+   'modules.availableHint': 'Module aus der Registry, die noch nicht installiert sind.',
+   'modules.noAvailable': 'Keine zusätzlichen Module verfügbar.',
+   'modules.installFromSource': 'Aus Quell-URL installieren',
+   'modules.installFromSourceHint': 'Geben Sie eine Modul-ID oder eine Git-URL ein, um ein Modul zu installieren.',
+   'modules.enterModuleId': 'Modul-ID oder URL eingeben…',
+   'modules.installed': 'Installiert',
+   'modules.install': 'Installieren',
+   'modules.uninstall': 'Deinstallieren',
+   'modules.update': 'Aktualisieren',
+   'modules.validate': 'Validieren',
+   'modules.installedAt': 'Installiert am',
+   'modules.category': 'Kategorie',
+   'modules.type': 'Typ',
+   'modules.author': 'Autor',
+   'modules.license': 'Lizenz',
+   'modules.checksum': 'Prüfsumme',
+   'modules.validationResult': 'Validierungsergebnis',
+   'modules.valid': 'Gültig',
+   'modules.confirmUninstall': 'Möchten Sie das Modul "{id}" wirklich deinstallieren?',
+   'modules.installedSuccess': 'Modul "{id}" erfolgreich installiert',
+   'modules.uninstalledSuccess': 'Modul "{id}" erfolgreich deinstalliert',
+   'modules.updatedSuccess': 'Modul "{id}" erfolgreich aktualisiert',
+
+   // ConfigView — Module Tab
+   'config.modules': 'Module',
+   'config.modulesPlaceholder': 'Keine Module registriert',
+   'config.moduleManager': 'Module verwalten',
+};
