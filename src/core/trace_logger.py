@@ -1,3 +1,10 @@
+"""Trace logger — persists full prompt/response pairs for reproducibility.
+
+IMPORTANT: Stores full prompt and response text (not just hashes or previews)
+so that complete debate traces can be reconstructed for debugging, auditing,
+and replay.
+"""
+
 import json
 import os
 from datetime import datetime
@@ -29,10 +36,9 @@ class TraceLogger:
             "prompt_variant": prompt_variant,
             "prompt_version": prompt_version,
             "prompt_hash": prompt_hash,
-            "prompt_preview": prompt[:200],
-            "response_preview": response[:200],
+            "prompt": prompt,
+            "response": response,
             "metadata": metadata,
-            "response_full": response,
         }
         with open(self.file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")

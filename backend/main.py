@@ -18,7 +18,8 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from backend.a2a.router import router as a2a_router  # noqa: E402
 from backend.api.deps import get_settings  # noqa: E402
-from backend.api.routers import (  # noqa: E402
+from backend.api.routers import (
+    modules,
     a2a_discovery,
     argumentation_patterns,
     audit,
@@ -46,6 +47,7 @@ from backend.api.routers import (  # noqa: E402
     workflow_templates,
 )
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
+from backend.api.routers.translation import router as translation_router
 
 # Path to built frontend assets (relative to project root)
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -172,6 +174,12 @@ def create_app() -> FastAPI:
     app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
     app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
+
+    # --- Module System ---
+    app.include_router(modules.router, prefix="/api/v1/modules", tags=["modules"])
+
+    # --- Translation ---
+    app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
 
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])

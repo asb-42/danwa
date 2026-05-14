@@ -1,0 +1,16 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://openrouter.ai/api/v1
+api_key_env: OPENROUTER_API_KEY
+context_window: 262144
+cost_per_1k_input: 0.8
+cost_per_1k_output: 4.0
+fallback_llm_profile_id: null
+id: openrouter-claude-3.6-sonnet
+max_tokens: 16400
+model: moonshotai/kimi-k2.6
+name: moonshotai/kimi-k2.6 (Openrouter)
+protocol: litellm
+provider: openrouter
+temperature: 0.7
+timeout: 600

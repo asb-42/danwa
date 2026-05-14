@@ -74,3 +74,15 @@ export const selectedPersonas = persisted('danwa.selectedPersonas', {
 
 /** When true, DebateView auto-starts the current debate on mount */
 export const autoStartDebate = writable(false);
+
+/** Currently selected module ID for translation */
+export const selectedModuleId = writable(null);
+
+/** Translation results { moduleId, results[] } */
+export const translationResults = writable({});
+
+/** Supported languages list */
+export const supportedLanguages = writable([]);
+
+/** Translation statistics { moduleId, stats } */
+export const translationStatistics = writable({});

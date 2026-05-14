@@ -2,6 +2,9 @@
 
 Records node executions, interjections, and workflow lifecycle events
 into the ``audit_log`` table created by migration v6.
+
+Updated Sprint 3: Stores full input/output content (not just hashes)
+for complete reproducibility, debugging, and replay capability.
 """
 
 from __future__ import annotations
@@ -24,9 +27,12 @@ _DEFAULT_DB_PATH = Path("data/blueprints.db")
 class AuditLogger:
     """Append-only audit logger for workflow execution events.
 
-    Uses the ``audit_log`` table (migration v6).  Thread-safe via a new
+    Uses the ``audit_log`` table (migration v6+).  Thread-safe via a new
     ``sqlite3.connect()`` per call, matching the pattern in
     :class:`backend.persistence.audit.AuditService`.
+
+    Stores both SHA-256 hashes (for integrity verification) AND full
+    content strings (for replay, debugging, and auditing).
     """
 
     def __init__(self, db_path: Path | str | None = None) -> None:
@@ -48,11 +54,7 @@ class AuditLogger:
 
     @staticmethod
     def _compute_hash(data: Any) -> str:
-        """Return the SHA-256 hex digest of *data*.
-
-        ``data`` is serialised to JSON first so that dicts, lists, etc.
-        produce a deterministic hash.
-        """
+        """Return the SHA-256 hex digest of *data*."""
         if data is None:
             return ""
         if isinstance(data, (dict, list)):
@@ -60,6 +62,17 @@ class AuditLogger:
         else:
             payload = str(data)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _sanitize_content(data: Any, max_len: int = 50000) -> str:
+        """Convert arbitrary data to a string for storage, with length cap."""
+        if data is None:
+            return ""
+        if isinstance(data, str):
+            return data[:max_len]
+        if isinstance(data, (dict, list)):
+            return json.dumps(data, ensure_ascii=False, default=str)[:max_len]
+        return str(data)[:max_len]
 
     # ------------------------------------------------------------------
     # Write helpers (append-only)
@@ -76,21 +89,26 @@ class AuditLogger:
         actor: str = "system",
         input_hash: str = "",
         output_hash: str = "",
+        input_content: str = "",
+        output_content: str = "",
+        trace_log_path: str = "",
         llm_profile_id: str = "",
         latency_ms: int = 0,
         prompt_tokens: int = 0,
         completion_tokens: int = 0,
     ) -> None:
-        """Insert a single audit log row."""
+        """Insert a single audit log row with full content."""
         now = datetime.now(UTC).isoformat()
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO audit_log
                     (session_id, workflow_id, workflow_version, timestamp,
-                     event_type, node_id, actor, input_hash, output_hash,
+                     event_type, node_id, actor,
+                     input_hash, output_hash,
+                     input_content, output_content, trace_log_path,
                      llm_profile_id, latency_ms, prompt_tokens, completion_tokens)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
@@ -102,6 +120,9 @@ class AuditLogger:
                     actor,
                     input_hash,
                     output_hash,
+                    input_content,
+                    output_content,
+                    trace_log_path,
                     llm_profile_id,
                     latency_ms,
                     prompt_tokens,
@@ -127,12 +148,9 @@ class AuditLogger:
         latency_ms: int = 0,
         prompt_tokens: int = 0,
         completion_tokens: int = 0,
+        trace_log_path: str = "",
     ) -> None:
-        """Record a node execution event.
-
-        Computes SHA-256 hashes of *input_data* and *output_data* for
-        integrity verification.
-        """
+        """Record a node execution event with full input/output content."""
         self._insert(
             session_id=session_id,
             workflow_id=workflow_id,
@@ -142,6 +160,9 @@ class AuditLogger:
             actor=actor,
             input_hash=self._compute_hash(input_data),
             output_hash=self._compute_hash(output_data),
+            input_content=self._sanitize_content(input_data),
+            output_content=self._sanitize_content(output_data),
+            trace_log_path=trace_log_path,
             llm_profile_id=llm_profile_id,
             latency_ms=latency_ms,
             prompt_tokens=prompt_tokens,
@@ -173,6 +194,7 @@ class AuditLogger:
             node_id=node_id,
             actor=actor,
             input_hash=self._compute_hash(input_data),
+            input_content=self._sanitize_content(input_data),
         )
 
     def log_node_failed(
@@ -194,6 +216,7 @@ class AuditLogger:
             node_id=node_id,
             actor=actor,
             output_hash=self._compute_hash(error) if error else "",
+            output_content=error,
         )
 
     def log_interjection(
@@ -207,7 +230,7 @@ class AuditLogger:
         content: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Record an interjection event."""
+        """Record an interjection event with full content."""
         combined = {"content": content, **(metadata or {})}
         self._insert(
             session_id=session_id,
@@ -217,6 +240,7 @@ class AuditLogger:
             node_id=node_id,
             actor=actor,
             input_hash=self._compute_hash(combined),
+            input_content=content,
         )
         logger.debug(
             "Audit: interjection_submitted session=%s actor=%s",
@@ -234,12 +258,7 @@ class AuditLogger:
         actor: str = "system",
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Record a workflow lifecycle event.
-
-        *event_type* should be one of: ``workflow_started``,
-        ``workflow_completed``, ``workflow_failed``, ``workflow_paused``,
-        ``workflow_resumed``, ``workflow_cancelled``.
-        """
+        """Record a workflow lifecycle event."""
         self._insert(
             session_id=session_id,
             workflow_id=workflow_id,
@@ -247,6 +266,7 @@ class AuditLogger:
             event_type=event_type,
             actor=actor,
             output_hash=self._compute_hash(metadata) if metadata else "",
+            output_content=self._sanitize_content(metadata),
         )
         logger.debug(
             "Audit: %s session=%s",
@@ -263,10 +283,7 @@ class AuditLogger:
         session_id: str,
         filters: AuditLogQuery | None = None,
     ) -> list[dict[str, Any]]:
-        """Query audit log entries for a session with optional filters.
-
-        Returns rows ordered by timestamp ascending.
-        """
+        """Query audit log entries for a session with optional filters."""
         clauses: list[str] = ["session_id = ?"]
         params: list[Any] = [session_id]
 
@@ -304,10 +321,7 @@ class AuditLogger:
         self,
         session_id: str,
     ) -> list[dict[str, Any]]:
-        """Return all audit log entries for *session_id* ordered by timestamp.
-
-        Used by the Replay View to step through execution chronologically.
-        """
+        """Return all audit log entries for *session_id* ordered by timestamp."""
         with self._connect() as conn:
             rows = conn.execute(
                 """
@@ -363,7 +377,7 @@ def audit_decorator(
     """Decorator that wraps an async node function with audit logging.
 
     Records ``node_started`` before execution and ``node_completed`` or
-    ``node_failed`` after execution, including SHA-256 hashes of input/output.
+    ``node_failed`` after execution, including full content and SHA-256 hashes.
 
     Usage::
 

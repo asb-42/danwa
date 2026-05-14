@@ -12,8 +12,10 @@ import logging
 import uuid
 
 from backend.a2a.schemas import A2AMessage, A2ATask
+from backend.api.deps import get_audit_service, get_debate_store_for_project
 from backend.a2a.task_manager import TaskManager, TaskStatus
 from backend.models.schemas import DebateRequest
+from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +27,11 @@ class A2AServer:
         self,
         task_manager: TaskManager | None = None,
         project_id: str = "default",
+        project_store: ProjectStore | None = None,
     ) -> None:
         self.task_manager = task_manager or TaskManager()
         self.project_id = project_id
+        self._project_store = project_store
 
     # ------------------------------------------------------------------
     # JSON-RPC method handlers
@@ -143,7 +147,7 @@ class A2AServer:
         from backend.services.debate_workflow import run_debate_workflow
 
         debate_id = str(_uuid.uuid4())
-        store = get_debate_store_for_project(self.project_id)
+        store = get_debate_store_for_project(self.project_id, self._project_store)
         audit = get_audit_service()
 
         from datetime import UTC, datetime
@@ -163,7 +167,7 @@ class A2AServer:
         store.put(debate_id, debate)
 
         # Run workflow in background
-        asyncio.create_task(run_debate_workflow(debate_id, self.project_id, audit, store))
+        asyncio.create_task(run_debate_workflow(debate_id, self.project_id, audit, store, self._project_store))
 
         return debate_id
 
@@ -177,7 +181,7 @@ class A2AServer:
         from backend.api.deps import get_debate_store_for_project
         from backend.models.schemas import DebateStatus
 
-        store = get_debate_store_for_project(self.project_id)
+        store = get_debate_store_for_project(self.project_id, self._project_store)
 
         for _ in range(max_attempts):
             debate = store.get(debate_id)

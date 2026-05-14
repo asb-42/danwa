@@ -64,6 +64,8 @@ def app(settings, audit_service, debate_store, project_store, default_project):
     application.dependency_overrides[get_debate_store] = lambda: debate_store
     application.dependency_overrides[get_project_store] = lambda: project_store
     application.dependency_overrides[get_project_id] = lambda: default_project
+    # Store for test helpers to access via client.app.state.test_project_store
+    application.state.test_project_store = project_store
     return application
 
 

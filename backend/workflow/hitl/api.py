@@ -16,8 +16,9 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.api.deps import get_debate_store_for_project, get_project_id
+from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async
+from backend.persistence.project_store import ProjectStore
 from backend.workflow.hitl.contracts import (
     ExtensionDecision,
     ExtensionDecisionModel,
@@ -259,13 +260,14 @@ async def inject_context(
     debate_id: str,
     body: InjectRequest,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> InjectResponse:
     """Inject user context into a running debate.
 
     The injected content will be available to agents in subsequent turns.
     Non-blocking — the debate continues while the injection is queued.
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -355,12 +357,13 @@ async def respond_to_query(
     debate_id: str,
     body: RespondRequest,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> RespondResponse:
     """Respond to an agent's clarification query.
 
     Resolves the active interrupt and allows the debate workflow to resume.
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -431,13 +434,14 @@ async def pause_debate(
     debate_id: str,
     body: PauseRequest,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> PauseResponse:
     """Pause or resume a running debate.
 
     When paused, the workflow will check the pause state at each node
     boundary and wait until resumed.
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -499,13 +503,14 @@ async def request_extension(
     debate_id: str,
     body: ExtensionRequest,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ):
     """Submit an extension request for additional debate rounds.
 
     Called by the workflow when consensus is not reached and extra rounds
     are enabled. Creates an interrupt that the moderator can respond to.
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -572,13 +577,14 @@ async def extension_decision(
     debate_id: str,
     body: ExtensionDecisionModel,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ):
     """Respond to an extension request — grant or deny extra rounds.
 
     Called by the moderator (or user) to decide whether additional rounds
     should be debated.
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -655,9 +661,10 @@ async def extension_decision(
 async def get_hitl_status(
     debate_id: str,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> HITLStatusResponse:
     """Get the current HITL status for a debate."""
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -716,9 +723,10 @@ async def list_interactions(
     limit: int = 50,
     interaction_type: str | None = None,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> InteractionListResponse:
     """Get interaction history for a debate (paginated)."""
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")

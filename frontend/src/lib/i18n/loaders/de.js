@@ -13,6 +13,7 @@ export default {
   'nav.documents': 'Dokumente',
   'nav.projects': 'Projekte',
   'nav.input': 'Neue Debatte',
+   'nav.translation': 'u00dcbersetzung',
 
   // Dashboard
   'dashboard.title': 'Dashboard',
@@ -763,3 +764,29 @@ export default {
   'blueprint.form.roleHint': 'Wähle den Rollentyp für diese Definition',
   'config.managedByBlueprint': 'Vom Blueprint Canvas verwaltet',
 };
+
+   // Translation Dashboard
+   'translation.title': 'Übersetzungs-Dashboard',
+   'translation.modules': 'Modul-Übersetzungen',
+   'translation.batchTranslate': 'Stapelübersetzung',
+   'translation.targetLanguage': 'Zielsprache',
+   'translation.noModules': 'Keine Module registriert. Konfigurieren Sie diese im Blueprint-Canvas.',
+   'translation.translate': 'Übersetzen',
+   'translation.translating': 'Wird übersetzt…',
+   'translation.translateModule': 'Modul übersetzen',
+   'translation.startTranslate': 'Übersetzung starten',
+   'translation.refreshModules': 'Module aktualisieren',
+   'translation.selectModules': 'Module auswählen',
+   'translation.modulesSelected': 'ausgewählt',
+   'translation.forceReTranslate': 'Erneut übersetzen',
+   'translation.skipBackTranslation': 'Rückübersetzung überspringen',
+   'translation.noTranslations': 'Noch keine Übersetzungen. Klicken Sie auf "Übersetzen" zum Starten.',
+   'translation.quality': 'Qualität',
+   'translation.approved': 'Freigegeben',
+   'translation.pending': 'Ausstehend',
+   'translation.reject': 'Ablehnen',
+   'translation.approve': 'Freigeben',
+   'translation.invalidate': 'Ungültig machen',
+   'translation.progress': 'Fortschritt',
+   'translation.startBatch': 'Stapel starten',
+   'translation.moduleLabel': 'Modul',

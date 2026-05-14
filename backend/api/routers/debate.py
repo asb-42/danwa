@@ -32,6 +32,7 @@ from backend.models.schemas import (
     RoundData,
 )
 from backend.persistence.audit import AuditService
+from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ async def list_debates(
     status: str | None = None,
     search: str | None = None,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> list[DebateListItem]:
     """List all debates (newest first) — for history panel.
 
@@ -73,10 +75,9 @@ async def list_debates(
         status: Filter by debate status (pending, running, completed, failed).
         search: Full-text search in case_preview (case-insensitive).
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debates = store.list_all(limit=limit + offset)
 
-    project_store = get_project_store()
     project = project_store.get(project_id)
     project_name = project.name if project else project_id
 
@@ -135,9 +136,10 @@ async def create_debate(
     request: DebateRequest,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateResponse:
     """Create a new debate (status = pending)."""
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
@@ -164,9 +166,10 @@ async def delete_debate(
     debate_id: str,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Delete a debate and its associated audit events."""
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -195,11 +198,12 @@ async def delete_debate(
 async def get_debate(
     debate_id: str,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateStatusResponse:
     """Get debate status and progress."""
     from backend.services.debate_workflow import build_rag_preview, extract_rag_info
 
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -224,13 +228,12 @@ async def get_debate(
     consensus = result.get("final_consensus") if isinstance(result, dict) else None
     anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
 
-    project_store = get_project_store()
     project = project_store.get(project_id)
     project_name = project.name if project else project_id
 
     document_ids, rag_auto_retrieve = extract_rag_info(req)
     rag_enabled = bool(document_ids) or rag_auto_retrieve
-    rag_preview = build_rag_preview(project_id, document_ids) if document_ids else ""
+    rag_preview = build_rag_preview(project_id, document_ids, project_store) if document_ids else ""
 
     from backend.workflow.hitl.api import (
         get_active_interrupt,
@@ -282,6 +285,7 @@ async def start_debate(
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateStatusResponse:
     """Start a pending debate — launches the workflow in a background task.
 
@@ -290,7 +294,7 @@ async def start_debate(
     """
     from backend.services.debate_workflow import extract_rag_info, run_debate_workflow
 
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -302,7 +306,7 @@ async def start_debate(
     debate["updated_at"] = datetime.now(UTC)
     store.put(debate_id, debate)
 
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store)
+    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
 
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
@@ -350,6 +354,7 @@ async def start_debate(
 async def cancel_debate(
     debate_id: str,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Cancel a running debate.
 
@@ -359,7 +364,7 @@ async def cancel_debate(
     """
     from backend.services.debate_workflow import mark_cancelled
 
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -390,6 +395,7 @@ async def submit_oob_input(
     debate_id: str,
     body: OOBInputBody,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> OOBInputResponse:
     """Submit an out-of-band input for a running debate.
 
@@ -398,7 +404,7 @@ async def submit_oob_input(
     """
     from backend.services.debate_workflow import enqueue_oob
 
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -461,13 +467,14 @@ async def assign_documents(
     debate_id: str,
     body: DocumentAssignment,
     project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Assign or update documents for a pending debate.
 
     Can be called before or after debate creation, but only while the
     debate is still pending (not yet started).
     """
-    store = get_debate_store_for_project(project_id)
+    store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")

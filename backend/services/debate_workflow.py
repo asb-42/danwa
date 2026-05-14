@@ -15,6 +15,7 @@ from backend.api.events import publish_async
 from backend.models.schemas import AuditEvent, DebateStatus
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
+from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -89,14 +90,14 @@ def extract_rag_info(req: object | dict) -> tuple[list[str], bool]:
     return [], False
 
 
-def build_rag_preview(project_id: str, document_ids: list[str]) -> str:
+def build_rag_preview(project_id: str, document_ids: list[str], project_store: ProjectStore | None = None) -> str:
     """Build a short preview of RAG context for the response."""
     if not document_ids:
         return ""
     try:
         from backend.services.dms.service import get_dms_for_project
 
-        dms = get_dms_for_project(project_id)
+        dms = get_dms_for_project(project_id, project_store)
         chunks = []
         for doc_id in document_ids:
             chunks.extend(dms.metadata_index.get_chunks_by_document(doc_id))
@@ -238,6 +239,7 @@ def resolve_rag_context(
     case_text: str,
     document_ids: list[str] | None = None,
     rag_auto_retrieve: bool = False,
+    project_store: ProjectStore | None = None,
 ) -> tuple[str, int]:
     """Resolve RAG context for a debate.
 
@@ -246,7 +248,7 @@ def resolve_rag_context(
     from backend.services.dms.service import get_dms_for_project
 
     try:
-        dms = get_dms_for_project(project_id)
+        dms = get_dms_for_project(project_id, project_store)
     except Exception as exc:
         logger.warning("Could not initialize DMS for project %s: %s", project_id, exc)
         return "", 0
@@ -419,7 +421,13 @@ async def generate_debate_title(case_text: str, llm_profile_id: str, language: s
 # ---------------------------------------------------------------------------
 
 
-async def run_debate_workflow(debate_id: str, project_id: str, audit: AuditService, store: DebateStore) -> None:
+async def run_debate_workflow(
+    debate_id: str,
+    project_id: str,
+    audit: AuditService,
+    store: DebateStore,
+    project_store: ProjectStore | None = None,
+) -> None:
     """Run the LangGraph workflow for a debate (called as background task)."""
     debate = store.get(debate_id)
     if not debate:
@@ -462,6 +470,7 @@ async def run_debate_workflow(debate_id: str, project_id: str, audit: AuditServi
         case_text=fields["case_text"],
         document_ids=fields["document_ids"],
         rag_auto_retrieve=fields["rag_auto_retrieve"],
+        project_store=project_store,
     )
     if rag_context:
         logger.info(

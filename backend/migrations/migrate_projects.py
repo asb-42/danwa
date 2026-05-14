@@ -69,16 +69,14 @@ def _migrate_debates() -> None:
         if target.exists():
             # Already migrated
             continue
-        shutil.move(str(json_file), str(target))
+        shutil.copy2(str(json_file), str(target))
         moved += 1
 
     if moved > 0:
         logger.info("Migrated %d debate files to default project", moved)
 
-    # Remove empty legacy directory
-    if _DEBATES_DIR.exists() and not any(_DEBATES_DIR.iterdir()):
-        _DEBATES_DIR.rmdir()
-        logger.info("Removed empty legacy debates directory")
+    # Preserve legacy directory structure — do NOT remove (safe copy, not move)
+    # Original files remain intact in data/debates/
 
 
 def _migrate_audit_db() -> None:

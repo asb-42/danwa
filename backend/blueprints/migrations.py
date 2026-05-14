@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 23
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -519,6 +519,100 @@ _MIGRATION_V15_TABLES = [
 ]
 
 
+
+# ---------------------------------------------------------------------------
+# V19 - Module Registry: module_registry + module_translation_cache
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V19_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS module_registry (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        type TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'custom',
+        version TEXT NOT NULL DEFAULT '0.0.0',
+        author_json TEXT DEFAULT '{}',
+        license TEXT DEFAULT 'CC-BY-4.0',
+        checksum TEXT,
+        installed_at TEXT NOT NULL,
+        updated_at TEXT,
+        enabled INTEGER DEFAULT 1,
+        source_url TEXT,
+        source_schema TEXT DEFAULT '1.0.0',
+        tags_json TEXT DEFAULT '[]'
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_module_registry_type ON module_registry (type);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_module_registry_category ON module_registry (category);
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS module_translation_cache (
+        id TEXT PRIMARY KEY,
+        module_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        language TEXT NOT NULL DEFAULT 'en',
+        translated_content TEXT,
+        source_hash TEXT,
+        quality_score REAL DEFAULT 0.0,
+        generated_at TEXT,
+        generated_by TEXT,
+        approved INTEGER DEFAULT 0,
+        FOREIGN KEY (module_id) REFERENCES module_registry(id) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_module_trans ON module_translation_cache (module_id, language);
+    """,
+]
+
+
+
+# ---------------------------------------------------------------------------
+# V20 — Module Registry: dependencies column
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V20_TABLES = [
+    "ALTER TABLE module_registry ADD COLUMN dependencies TEXT DEFAULT '{}'",
+]
+
+
+# ---------------------------------------------------------------------------
+# V21 — Translation cache: source_language + source_content columns
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V21_TABLES = [
+    "ALTER TABLE module_translation_cache ADD COLUMN source_language TEXT DEFAULT 'en'",
+    "ALTER TABLE module_translation_cache ADD COLUMN source_content TEXT DEFAULT ''",
+    "ALTER TABLE module_translation_cache ADD COLUMN back_translation TEXT",
+    "ALTER TABLE module_translation_cache ADD COLUMN generated_by TEXT DEFAULT 'system'",
+    "ALTER TABLE module_translation_cache ADD COLUMN error TEXT",
+]
+
+
+# ---------------------------------------------------------------------------
+# V22 — Audit log content columns
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V22_TABLES = [
+    "ALTER TABLE audit_log ADD COLUMN input_content TEXT",
+    "ALTER TABLE audit_log ADD COLUMN output_content TEXT",
+]
+
+
+# ---------------------------------------------------------------------------
+# V23 — Trace log path
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V23_TABLES = [
+    "ALTER TABLE audit_log ADD COLUMN trace_log_path TEXT",
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 
@@ -736,6 +830,61 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 18, "Seed analyst, creative, expert-reviewer role types")
             conn.commit()
             logger.info("Migration v18 applied successfully")
+
+        if current < 19:
+            logger.info("Applying migration v19: module_registry + module_translation_cache")
+            for stmt in _MIGRATION_V19_TABLES:
+                conn.execute(stmt)
+            _record_version(conn, 19, "Add module_registry + module_translation_cache tables")
+            conn.commit()
+            logger.info("Migration v19 applied successfully")
+
+
+        if current < 20:
+            logger.info("Applying migration v20: dependencies column on module_registry")
+            for stmt in _MIGRATION_V20_TABLES:
+                try:
+                    conn.execute(stmt)
+                except sqlite3.OperationalError:
+                    logger.debug("dependencies column already exists on module_registry")
+            _record_version(conn, 20, "Add dependencies column to module_registry")
+            conn.commit()
+            logger.info("Migration v20 applied successfully")
+
+        if current < 21:
+            logger.info("Applying migration v21: source_language + source_content on module_translation_cache")
+            for stmt in _MIGRATION_V21_TABLES:
+                try:
+                    conn.execute(stmt)
+                except sqlite3.OperationalError:
+                    logger.debug("source_language/source_content column already exists on module_translation_cache")
+            _record_version(conn, 21, "Add source_language + source_content + back_translation + generated_by + error columns to module_translation_cache")
+            conn.commit()
+            logger.info("Migration v21 applied successfully")
+
+        # ── V22 — Audit log content columns ──
+        if current < 22:
+            logger.info("Applying migration v22: input_content + output_content on audit_log")
+            try:
+                for stmt in _MIGRATION_V22_TABLES:
+                    conn.execute(stmt)
+                _record_version(conn, 22, "Add input_content + output_content columns to audit_log")
+                conn.commit()
+                logger.info("Migration v22 applied successfully")
+            except sqlite3.OperationalError as exc:
+                logger.debug("Migration v22 skipped: %s", exc)
+
+        # ── V23 — Trace log path ──
+        if current < 23:
+            logger.info("Applying migration v23: trace_log_path on audit_log")
+            try:
+                for stmt in _MIGRATION_V23_TABLES:
+                    conn.execute(stmt)
+                _record_version(conn, 23, "Add trace_log_path column to audit_log")
+                conn.commit()
+                logger.info("Migration v23 applied successfully")
+            except sqlite3.OperationalError as exc:
+                logger.debug("Migration v23 skipped: %s", exc)
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

@@ -31,6 +31,7 @@
     { id: 'audit', label: t('nav.audit'), icon: '📋' },
     { id: 'projects', label: t('nav.projects'), icon: '📁' },
     { id: 'config', label: t('nav.config'), icon: '⚙️' },
+    { id: 'translation', label: t('nav.translation'), icon: '🌐' },
   ]);
 
   function isActive(item) {
