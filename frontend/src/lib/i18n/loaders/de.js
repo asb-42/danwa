@@ -13,7 +13,7 @@ export default {
   'nav.documents': 'Dokumente',
   'nav.projects': 'Projekte',
   'nav.input': 'Neue Debatte',
-   'nav.translation': 'u00dcbersetzung',
+   'nav.translation': 'Übersetzung',
 
   // Dashboard
   'dashboard.title': 'Dashboard',
@@ -763,7 +763,6 @@ export default {
   'blueprint.form.roleTypeHint': 'Bestimmt die Verhaltenskategorie',
   'blueprint.form.roleHint': 'Wähle den Rollentyp für diese Definition',
   'config.managedByBlueprint': 'Vom Blueprint Canvas verwaltet',
-,
   'translation.title': 'Übersetzungs-Dashboard',
   'translation.modules': 'Modul-Übersetzungen',
   'translation.batchTranslate': 'Stapelübersetzung',
