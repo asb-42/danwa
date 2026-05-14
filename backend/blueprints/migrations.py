@@ -594,6 +594,25 @@ _MIGRATION_V21_TABLES = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# V22 — Audit log content columns
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V22_TABLES = [
+    "ALTER TABLE audit_log ADD COLUMN input_content TEXT",
+    "ALTER TABLE audit_log ADD COLUMN output_content TEXT",
+]
+
+
+# ---------------------------------------------------------------------------
+# V23 — Trace log path
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V23_TABLES = [
+    "ALTER TABLE audit_log ADD COLUMN trace_log_path TEXT",
+]
+
+
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
 

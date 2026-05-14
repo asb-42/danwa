@@ -18,6 +18,7 @@
   import DiffView from './views/DiffView.svelte';
   import OutputComposerView from './views/OutputComposerView.svelte';
   import InputComposerView from './views/InputComposerView.svelte';
+import TranslationDashboard from './views/TranslationDashboard.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
@@ -98,6 +99,8 @@
     <OutputComposerView />
   {:else if $route === 'input'}
     <InputComposerView />
+   {:else if $route === 'translation'}
+    <TranslationDashboard {navigate} />
   {:else}
     <Dashboard {navigate} />
   {/if}

@@ -13,6 +13,7 @@ export default {
   'nav.documents': 'Documents',
   'nav.projects': 'Projects',
   'nav.input': 'New Debate',
+   'nav.translation': 'Translation',
 
   // Dashboard
   'dashboard.title': 'Dashboard',
@@ -763,3 +764,29 @@ export default {
   'blueprint.form.roleHint': 'Select the role type for this definition',
   'config.managedByBlueprint': 'Managed by Blueprint Canvas',
 };
+
+   // Translation Dashboard
+   'translation.title': 'Translation Dashboard',
+   'translation.modules': 'Module Translations',
+   'translation.batchTranslate': 'Batch Translate',
+   'translation.targetLanguage': 'Target Language',
+   'translation.noModules': 'No modules registered. Configure them in Blueprint Canvas.',
+   'translation.translate': 'Translate',
+   'translation.translating': 'Translating…',
+   'translation.translateModule': 'Translate Module',
+   'translation.startTranslate': 'Start Translation',
+   'translation.refreshModules': 'Refresh Modules',
+   'translation.selectModules': 'Select Modules',
+   'translation.modulesSelected': 'selected',
+   'translation.forceReTranslate': 'Force re-translation',
+   'translation.skipBackTranslation': 'Skip back-translation QA',
+   'translation.noTranslations': 'No translations yet. Click "Translate" to start.',
+   'translation.quality': 'Quality',
+   'translation.approved': 'Approved',
+   'translation.pending': 'Pending',
+   'translation.reject': 'Reject',
+   'translation.approve': 'Approve',
+   'translation.invalidate': 'Invalidate',
+   'translation.progress': 'Batch Progress',
+   'translation.startBatch': 'Start Batch',
+   'translation.moduleLabel': 'Module',
