@@ -70,7 +70,7 @@ class BlueprintRepository:
                      protocol, a2a_endpoint, a2a_timeout,
                      fallback_llm_profile_id, a2a_config_json,
                       service_eligible)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     profile.id,
@@ -93,9 +93,10 @@ class BlueprintRepository:
                     profile.protocol,
                     profile.a2a_endpoint,
                     profile.a2a_timeout,
-                    profile.fallback_llm_profile_id,
-                    json.dumps(profile.a2a_config),
-                ),
+                     profile.fallback_llm_profile_id,
+                     json.dumps(profile.a2a_config),
+                     profile.service_eligible,
+                 ),
             )
         logger.debug("Saved LLM profile %s", profile.id)
 

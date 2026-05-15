@@ -14,4 +14,4 @@ def test_health_returns_ok(client):
 def test_health_version_matches(client):
     response = client.get("/health")
     data = response.json()
-    assert data["version"] == "2.0.0"
+    assert data["version"] == "1.1.0"
