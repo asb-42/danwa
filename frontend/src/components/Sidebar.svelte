@@ -25,6 +25,7 @@
     blueprint: ['blueprint'],
     config: ['config'],
     modules: ['modules'],
+    proposals: ['proposals'],
   };
 
   function isActive(route) {

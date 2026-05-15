@@ -29,6 +29,8 @@ export default {
   'nav.section.run': 'Run',
   'nav.section.build': 'Build',
   'nav.section.config': 'Configuration',
+  'nav.section.evolve': 'Evolve',
+  'nav.proposals': 'Optimization Proposals',
   'nav.section.management': 'Management',
   'dashboard.title': 'לוח בקרה',
   'dashboard.backendStatus': 'מצב שרת אחורי',

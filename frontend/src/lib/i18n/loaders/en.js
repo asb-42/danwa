@@ -30,6 +30,8 @@ export default {
   'nav.section.build': 'Build',
   'nav.section.config': 'Configuration',
   'nav.section.management': 'Management',
+  'nav.section.evolve': 'Evolve',
+  'nav.proposals': 'Optimization Proposals',
   'dashboard.title': 'Dashboard',
   'dashboard.backendStatus': 'Backend Status',
   'dashboard.totalDebates': 'Total Debates',

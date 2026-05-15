@@ -29,6 +29,8 @@ export default {
   'nav.section.run': 'Run',
   'nav.section.build': 'Build',
   'nav.section.config': 'Configuration',
+  'nav.section.evolve': 'Evolve',
+  'nav.proposals': 'Optimization Proposals',
   'nav.section.management': 'Management',
   'dashboard.title': '仪表板',
   'dashboard.backendStatus': '后端状态',
