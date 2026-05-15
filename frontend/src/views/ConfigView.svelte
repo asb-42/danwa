@@ -640,7 +640,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'service', 'roleTypes', 'agents', 'prompts', 'modules', 'cost', 'backup', 'settings', 'system'] as tab}
+      {#each ['llm', 'service', 'roleTypes', 'agents', 'prompts', 'cost', 'backup', 'settings', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab

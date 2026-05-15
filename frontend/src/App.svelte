@@ -18,8 +18,9 @@
   import ReplayView from './views/ReplayView.svelte';
   import DiffView from './views/DiffView.svelte';
   import OutputComposerView from './views/OutputComposerView.svelte';
-  import InputComposerView from './views/InputComposerView.svelte';
-  import TranslationDashboard from './views/TranslationDashboard.svelte';
+import InputComposerView from './views/InputComposerView.svelte';
+import TranslationDashboard from './views/TranslationDashboard.svelte';
+import ModulesView from './views/ModulesView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
@@ -112,6 +113,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <InputComposerView />
    {:else if $route === 'translation'}
     <TranslationDashboard {navigate} />
+  {:else if $route === 'modules'}
+    <ModulesView {navigate} />
   {:else}
     <Dashboard {navigate} />
   {/if}
