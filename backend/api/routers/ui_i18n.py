@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Any
 
@@ -17,11 +17,24 @@ from backend.services.ui_translation_service import (
 router = APIRouter(tags=["i18n"])
 
 
+# ---------------------------------------------------------------------------
+# Dependency injection
+# ---------------------------------------------------------------------------
+
+
 def _get_service() -> UITranslationService:
     """Get or create the UI translation service singleton."""
     if not hasattr(_get_service, "_instance"):
         _get_service._instance = UITranslationService()  # type: ignore[attr-defined]
     return _get_service._instance  # type: ignore[attr-defined]
+
+
+async def get_i18n_service(request: Request) -> UITranslationService:
+    """Resolve the UI translation service, preferring test override from app state."""
+    svc = getattr(request.app.state, "test_i18n_service", None)
+    if svc is not None:
+        return svc
+    return _get_service()
 
 
 # ---------------------------------------------------------------------------
@@ -31,6 +44,7 @@ def _get_service() -> UITranslationService:
 
 class TranslationSetRequest(BaseModel):
     """Set a single UI translation."""
+
     key: str
     value: str
     namespace: str = "global"
@@ -38,6 +52,7 @@ class TranslationSetRequest(BaseModel):
 
 class BulkTranslationRequest(BaseModel):
     """Bulk-set translations for a locale."""
+
     locale: str
     translations: dict[str, str]
     namespace: str = "global"
@@ -67,32 +82,61 @@ async def get_supported_locales() -> dict[str, Any]:
     }
 
 
+# --- Stats & Coverage MUST come before /{locale} to avoid route collision ---
+
+
+@router.get("/stats")
+async def get_stats(
+    namespace: str = Query("global"),
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Übersetzungsstatistiken pro Sprache."""
+    return svc.get_stats(namespace)
+
+
+@router.get("/coverage")
+async def get_coverage(
+    namespace: str = Query("global"),
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Coverage-Report für alle Sprachen."""
+    return svc.get_coverage(namespace)
+
+
+# --- Locale-specific routes ---
+
+
 @router.get("/{locale}")
 async def get_translations(
     locale: str,
     namespace: str = Query("global"),
     keys: str | None = Query(None, description="Komma-separierte Liste von Keys"),
+    svc: UITranslationService = Depends(get_i18n_service),
 ) -> dict[str, Any]:
     """Übersetzungen für eine Sprache abrufen."""
-    svc = _get_service()
     key_list = keys.split(",") if keys else None
     result = svc.resolve_bulk(locale, namespace, key_list)
     return {"locale": locale, "namespace": namespace, "translations": result}
 
 
 @router.get("/{locale}/{key}")
-async def get_single_translation(locale: str, key: str,
-                                  namespace: str = Query("global")) -> dict[str, str]:
+async def get_single_translation(
+    locale: str,
+    key: str,
+    namespace: str = Query("global"),
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, str]:
     """Einzelne Übersetzung abrufen."""
-    svc = _get_service()
     value = svc.resolve(key, locale, namespace)
     return {"locale": locale, "key": key, "value": value}
 
 
 @router.post("/{locale}")
-async def set_translations(body: BulkTranslationRequest) -> dict[str, Any]:
+async def set_translations(
+    body: BulkTranslationRequest,
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
     """Mehrere Übersetzungen für eine Sprache setzen."""
-    svc = _get_service()
     count = svc.bulk_import(
         {body.locale: body.translations},
         namespace=body.namespace,
@@ -106,35 +150,25 @@ async def update_translation(
     locale: str,
     key: str,
     body: TranslationSetRequest,
+    svc: UITranslationService = Depends(get_i18n_service),
 ) -> dict[str, str]:
     """Einzelne Übersetzung erstellen/aktualisieren."""
-    svc = _get_service()
     svc.set_translation(body.key, locale, body.value, body.namespace)
     svc.invalidate_cache(locale)
     return {"locale": locale, "key": key, "value": body.value}
 
 
 @router.delete("/{locale}/{key}")
-async def delete_translation(locale: str, key: str,
-                              namespace: str = Query("global")) -> dict[str, Any]:
+async def delete_translation(
+    locale: str,
+    key: str,
+    namespace: str = Query("global"),
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
     """Übersetzung löschen."""
-    svc = _get_service()
     deleted = svc.delete_translation(key, locale, namespace)
     if not deleted:
         raise HTTPException(status_code=404, detail="Translation not found")
     svc.invalidate_cache(locale)
     return {"deleted": True}
 
-
-@router.get("/stats")
-async def get_stats(namespace: str = Query("global")) -> dict[str, Any]:
-    """Übersetzungsstatistiken pro Sprache."""
-    svc = _get_service()
-    return svc.get_stats(namespace)
-
-
-@router.get("/coverage")
-async def get_coverage(namespace: str = Query("global")) -> dict[str, Any]:
-    """Coverage-Report für alle Sprachen."""
-    svc = _get_service()
-    return svc.get_coverage(namespace)
