@@ -295,6 +295,8 @@ class BackupSettingsBody(BaseModel):
     backup_auto_on_shutdown: bool | None = None
     backup_retention_count: int | None = None
     backup_encrypt: bool | None = None
+    backup_dir: str | None = None
+
 
 
 @router.get("/backup-settings", response_model=dict)
