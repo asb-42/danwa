@@ -428,7 +428,7 @@ class ModuleService:
             if row:
                 return dict(row)
         except sqlite3.Error as e:
-            logger.warning("Failed to read module registry for %s: %s", module_dir.name, e)
+            logger.warning("Failed to read module registry for %s: %s", module_id, e)
         return None
 
     def _get_db_status_map(self) -> dict[str, dict[str, Any]]:
