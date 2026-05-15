@@ -29,6 +29,8 @@
     getBackupFiles,
     verifyBackup as apiVerifyBackup,
     createBackup as apiCreateBackup,
+     getBackups,
+     restoreBackup,
   } from '../lib/api.js';
   import {
     listRoleTypes,
