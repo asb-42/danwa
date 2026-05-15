@@ -536,8 +536,13 @@ class ModuleInstaller:
                 except json.JSONDecodeError:
                     continue
             conn.close()
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as e:
+            logger.warning(
+                "Failed to check module blocker dependencies (module %s, version %s): %s",
+                module_id,
+                version,
+                e,
+            )
         return blockers
 
     def _read_installed_manifest(self, module_id: str) -> dict[str, Any] | None:
@@ -567,7 +572,7 @@ class ModuleInstaller:
                     "checksum": row["checksum"] or "",
                     "tags": json.loads(row["tags_json"] or "[]"),
                     "dependencies": json.loads(row["dependencies"] or "{}"),
-                }
-        except sqlite3.Error:
-            pass
+}
+        except sqlite3.Error as e:
+            logger.warning("Failed to read installed module manifest for %s: %s", module_id, e)
         return None

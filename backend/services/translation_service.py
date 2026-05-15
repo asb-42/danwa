@@ -500,8 +500,13 @@ Respond with ONLY a valid JSON object:
                                 str(e),
                             ),
                         )
-                    except sqlite3.Error:
-                        pass
+                    except sqlite3.Error as exc:
+                        logger.error(
+                            "Failed to update translation cache for %s/%s: %s",
+                            module_id,
+                            fpath,
+                            exc,
+                        )
 
             conn.commit()
             conn.close()

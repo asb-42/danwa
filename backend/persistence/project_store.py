@@ -28,8 +28,8 @@ def _normalize_project(data: dict) -> dict:
         if isinstance(value, str):
             try:
                 data[field] = datetime.fromisoformat(value)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug("Failed to parse datetime field '%s' in project store: %s", field, e)
     return data
 
 

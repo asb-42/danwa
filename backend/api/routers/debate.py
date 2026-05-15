@@ -50,8 +50,8 @@ def _resolve_llm_model(llm_profile_id: str, project_id: str) -> str:
         profile = repo.get_llm_profile(llm_profile_id)
         if profile:
             return profile.model
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to resolve LLM profile model for %s: %s", llm_profile_id, e)
     return llm_profile_id
 
 

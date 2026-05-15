@@ -95,16 +95,15 @@ def build_rag_preview(project_id: str, document_ids: list[str], project_store: P
     if not document_ids:
         return ""
     try:
-        from backend.services.dms.service import get_dms_for_project
-
         dms = get_dms_for_project(project_id, project_store)
+
         chunks = []
         for doc_id in document_ids:
             chunks.extend(dms.metadata_index.get_chunks_by_document(doc_id))
         if chunks:
             return dms.format_rag_context(chunks[:3], max_chars=500)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("build_rag_preview failed for project %s: %s", project_id, exc)
     return ""
 
 

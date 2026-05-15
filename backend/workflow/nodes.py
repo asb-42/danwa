@@ -790,8 +790,8 @@ def _select_consensus_llm(profile_service):
         pref = profile_service.get_llm_profile(settings.service_llm_profile_id)
         if pref and is_service_llm_eligible(pref):
             return settings.service_llm_profile_id
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Primary service LLM '%s' not eligible: %s", settings.service_llm_profile_id, exc)
     try:
         eligible = [
             p for p in profile_service.list_llm_profiles()
@@ -800,8 +800,8 @@ def _select_consensus_llm(profile_service):
         if eligible:
             eligible.sort(key=lambda p_: (0 if p_.provider.value == "openrouter" else 1, -(p_.context_window or 0)))
             return eligible[0].id
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not list eligible LLM profiles: %s", exc)
     return settings.service_llm_profile_id
 
 

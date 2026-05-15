@@ -398,7 +398,7 @@ class PromptService:
                     wf_prompt = wf_prompt_obj.get("content")
                 if wf_prompt:
                     parts.append(wf_prompt)
-            except FileNotFoundError:
-                pass
+            except FileNotFoundError as e:
+                logger.debug("Prompt template file not found for %s: %s", wf_key, e)
 
         return "\n\n".join(parts)

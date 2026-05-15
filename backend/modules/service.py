@@ -427,8 +427,8 @@ class ModuleService:
             conn.close()
             if row:
                 return dict(row)
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as e:
+            logger.warning("Failed to read module registry for %s: %s", module_dir.name, e)
         return None
 
     def _get_db_status_map(self) -> dict[str, dict[str, Any]]:
@@ -461,6 +461,6 @@ class ModuleService:
                     "dependencies": json.loads(row["dependencies"] or "{}"),
                 }
             conn.close()
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as e:
+            logger.error("Failed to read module registry: %s", e)
         return result

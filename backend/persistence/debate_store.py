@@ -31,8 +31,8 @@ def _normalize_debate(data: dict) -> dict:
     if isinstance(status, str):
         try:
             data["status"] = DebateStatus(status)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("Failed to normalize debate status value '%s': %s", data.get("status"), e)
 
     # Normalize datetime fields
     for field in ("created_at", "updated_at"):
@@ -40,8 +40,8 @@ def _normalize_debate(data: dict) -> dict:
         if isinstance(value, str):
             try:
                 data[field] = datetime.fromisoformat(value)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as exc:
+                logger.debug("Failed to parse datetime field '%s' in debate store: %s", field, exc)
 
     return data
 

@@ -86,8 +86,8 @@ async def upload_document(
         # Clean up temp file
         try:
             os.unlink(tmp_path)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug("Failed to clean up temp file %s: %s", tmp_path, e)
 
 
 @router.delete("/documents/{document_id}")
@@ -203,7 +203,7 @@ def ocr_status():
 
         pytesseract.get_tesseract_version()
         return {"available": True, "engine": "tesseract"}
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Tesseract check failed: %s", e)
 
     return {"available": False, "engine": None}
