@@ -792,12 +792,12 @@ async def _evaluate_consensus_with_llm(
 def _select_consensus_llm(profile_service):
     try:
         pref = profile_service.get_llm_profile(settings.service_llm_profile_id)
-        if pref and is_service_llm_eligible(pref):
+        if pref and is_service_llm_eligible(pref)[0]:
             return settings.service_llm_profile_id
     except Exception as exc:
         logger.debug("Primary service LLM '%s' not eligible: %s", settings.service_llm_profile_id, exc)
     try:
-        eligible = [p for p in profile_service.list_llm_profiles() if is_service_llm_eligible(p)]
+        eligible = [p for p in profile_service.list_llm_profiles() if is_service_llm_eligible(p)[0]]
         if eligible:
             eligible.sort(key=lambda p_: (0 if p_.provider.value == "openrouter" else 1, -(p_.context_window or 0)))
             return eligible[0].id

@@ -68,9 +68,12 @@ class Settings(BaseSettings):
     allow_external_plugins: bool = False
 
     # --- Service LLM (Sprint 16) ---
-    service_llm_profile_id: str = "openrouter-claude"
-    service_llm_min_context: int = 1024
+    service_llm_profile_id: str | None = None
+    service_llm_min_context: int = 4096
     service_llm_blacklist: list[str] = [
+        "whisper-",
+        "tts-",
+        "eleven/",
         "gpt-3.5",
         "gpt-35",
         "text-ada",
@@ -81,25 +84,27 @@ class Settings(BaseSettings):
         "text-davinci-003",
     ]
 
-    # --- Backup (Sprint 18) ---
-    backup_enabled: bool = True  # noqa: F841
-    backup_auto_on_shutdown: bool = False  # noqa: F841
-    backup_retention_count: int = 0  # 0 = unbegrenzt  # noqa: F841
-    backup_encrypt: bool = False  # noqa: F841
-    backup_dir: str = "backups"  # noqa: F841
 
+def is_service_llm_eligible(profile) -> tuple[bool, str]:
+    """Check whether an LLM profile is suitable as a service LLM.
 
-def is_service_llm_eligible(profile) -> bool:
+    Returns:
+        (eligible: bool, reason: str) — reason explains why the profile
+        is not eligible when the first element is False.
+    """
     from backend.core.config import settings
 
+    if getattr(profile, "profile_type", "text") != "text":
+        return False, f"Nur Text-LLMs geeignet (dieses: {profile.profile_type})"
     if getattr(profile, "service_eligible", True) is not True:
-        return False
-    if profile.context_window is not None and profile.context_window < settings.service_llm_min_context:
-        return False
+        return False, "Profil ist nicht als Service-LLM markiert"
+    ctx = getattr(profile, "context_window", None)
+    if ctx is not None and ctx < settings.service_llm_min_context:
+        return False, f"Kontextfenster zu klein ({ctx} < {settings.service_llm_min_context})"
     for pattern in settings.service_llm_blacklist:
         if pattern.lower() in profile.model.lower():
-            return False
-    return True
+            return False, f"Modell auf Blacklist ({profile.model})"
+    return True, "Eignung bestätigt"
 
 
 # Module-level singleton — importable as `settings`

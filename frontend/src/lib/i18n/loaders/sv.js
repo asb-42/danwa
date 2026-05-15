@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'Noder',
   'debate.runWorkflow': 'Kör arbetsflöde',
   'debate.runningWorkflow': 'Kör arbetsflöde...',
+  'toast.titleGenerated': 'Titel genererad',
+  'toast.titleError': 'Misslyckades generera titel',
 
 };

@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'צמתים',
   'debate.runWorkflow': 'הפעל זרימת עבודה',
   'debate.runningWorkflow': 'מפעיל זרימת עבודה...',
+  'toast.titleGenerated': 'הכותרת נוצרה',
+  'toast.titleError': 'יצירת הכותרת נכשלה',
 
 };

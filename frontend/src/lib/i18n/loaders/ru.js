@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'Узлы',
   'debate.runWorkflow': 'Запустить процесс',
   'debate.runningWorkflow': 'Запуск процесса...',
+  'toast.titleGenerated': 'Заголовок создан',
+  'toast.titleError': 'Ошибка создания заголовка',
 
 };

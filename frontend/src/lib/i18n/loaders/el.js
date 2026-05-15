@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'Κόμβοι',
   'debate.runWorkflow': 'Εκτέλεση ροής',
   'debate.runningWorkflow': 'Εκτέλεση ροής...',
+  'toast.titleGenerated': 'Ο τίτλος δημιουργήθηκε',
+  'toast.titleError': 'Αποτυχία δημιουργίας τίτλου',
 
 };

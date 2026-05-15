@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'العقد',
   'debate.runWorkflow': 'تشغيل سير العمل',
   'debate.runningWorkflow': 'جارٍ تشغيل سير العمل...',
+  'toast.titleGenerated': 'تم إنشاء العنوان',
+  'toast.titleError': 'فشل إنشاء العنوان',
 
 };

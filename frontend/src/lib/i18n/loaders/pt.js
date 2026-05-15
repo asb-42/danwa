@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'Nós',
   'debate.runWorkflow': 'Executar fluxo',
   'debate.runningWorkflow': 'Executando fluxo...',
+  'toast.titleGenerated': 'Título gerado',
+  'toast.titleError': 'Falha na geração do título',
 
 };

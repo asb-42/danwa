@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'Knoten',
   'debate.runWorkflow': 'Workflow starten',
   'debate.runningWorkflow': 'Workflow wird ausgeführt...',
+  'toast.titleGenerated': 'Titel generiert',
+  'toast.titleError': 'Titelgenerierung fehlgeschlagen',
 
 };

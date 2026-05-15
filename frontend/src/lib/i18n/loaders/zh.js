@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': '节点',
   'debate.runWorkflow': '运行工作流',
   'debate.runningWorkflow': '正在运行工作流...',
+  'toast.titleGenerated': '标题已生成',
+  'toast.titleError': '标题生成失败',
 
 };

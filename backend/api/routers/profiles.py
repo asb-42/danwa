@@ -194,7 +194,7 @@ async def list_service_eligible_llm_profiles() -> list[dict]:
     all_profiles = ps.list_llm_profiles()
     eligible = []
     for p in all_profiles:
-        elig = is_service_llm_eligible(p)
+        elig, reason = is_service_llm_eligible(p)
         eligible.append(
             {
                 "id": p.id,
@@ -202,6 +202,7 @@ async def list_service_eligible_llm_profiles() -> list[dict]:
                 "model": p.model,
                 "provider": p.provider.value,
                 "service_eligible": elig,
+                "eligibility_reason": reason,
                 "context_window": p.context_window,
             }
         )
@@ -232,11 +233,11 @@ async def validate_service_llm(body: ServiceLLMRequest):
     profile = ps.get_llm_profile(body.profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
-    eligible = is_service_llm_eligible(profile)
+    eligible, reason = is_service_llm_eligible(profile)
     return {
         "profile_id": body.profile_id,
         "service_eligible": eligible,
-        "reason": None if eligible else "Profile not eligible for service tasks",
+        "reason": reason,
     }
 
 
@@ -247,8 +248,9 @@ async def set_service_llm(body: ServiceLLMRequest):
     profile = ps.get_llm_profile(body.profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
-    if not is_service_llm_eligible(profile):
-        raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' is not eligible for service tasks")
+    eligible, reason = is_service_llm_eligible(profile)
+    if not eligible:
+        raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' not eligible: {reason}")
     settings.service_llm_profile_id = body.profile_id
     logger.info("Service LLM changed to %s", body.profile_id)
     return {"status": "ok", "service_llm_profile_id": body.profile_id}

@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, autoStartDebate } from '../lib/stores.js';
+  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, autoStartDebate, addToast } from '../lib/stores.js';
   import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
@@ -43,6 +43,7 @@
   let debateTitle = $state('');
   let titleGenerating = $state(false);
   let titleFadedIn = $state(false);
+  let titleError = $state('');
 
   let projectId = $derived($activeProject?.id);
 
@@ -219,16 +220,26 @@
     if (event.type === 'title_generating') {
       titleGenerating = true;
       titleFadedIn = false;
+      titleError = '';
       return;
     }
 
     if (event.type === 'title_ready' && event.title) {
       debateTitle = event.title;
       titleGenerating = false;
+      titleError = '';
       setTimeout(() => { titleFadedIn = true; }, 50);
       if ($currentDebate) {
         currentDebate.set({ ...$currentDebate, title: event.title });
       }
+      addToast({ message: t('toast.titleGenerated') || 'Titel generiert', type: 'success', timeout: 3000 });
+      return;
+    }
+
+    if (event.type === 'title_error') {
+      titleGenerating = false;
+      titleError = event.message || t('toast.titleError') || 'Titelgenerierung fehlgeschlagen';
+      addToast({ message: titleError, type: 'error', timeout: 5000 });
       return;
     }
 
@@ -579,17 +590,24 @@
   {/if}
 
   <!-- Debate title -->
-  {#if $currentDebate && (titleGenerating || debateTitle)}
+  {#if $currentDebate && (titleGenerating || debateTitle || titleError)}
     <div class="transition-all duration-500 ease-out"
-         class:opacity-0={!titleFadedIn && !titleGenerating}
-         class:opacity-100={titleFadedIn || titleGenerating}
-         class:translate-y-0={titleFadedIn || titleGenerating}
-         class:-translate-y-2={!titleFadedIn && !titleGenerating}>
+         class:opacity-0={!titleFadedIn && !titleGenerating && !titleError}
+         class:opacity-100={titleFadedIn || titleGenerating || titleError}
+         class:translate-y-0={titleFadedIn || titleGenerating || titleError}
+         class:-translate-y-2={!titleFadedIn && !titleGenerating && !titleError}>
       {#if titleGenerating}
         <div class="px-4 py-3 rounded-xl bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-700/80
                     border border-gray-200 dark:border-gray-600 shadow-sm">
           <span class="text-lg font-semibold text-gray-400 dark:text-gray-500 animate-pulse tracking-wide">
             {t('debate.titlePlaceholder')}
+          </span>
+        </div>
+      {:else if titleError}
+        <div class="px-4 py-3 rounded-xl bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-900/20 dark:to-amber-900/10
+                    border border-red-200 dark:border-red-800 shadow-sm">
+          <span class="text-lg font-semibold text-red-500 dark:text-red-400">
+            ⚠️ {titleError}
           </span>
         </div>
       {:else if debateTitle}

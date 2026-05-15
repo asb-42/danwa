@@ -823,5 +823,7 @@ export default {
   'debate.workflowNodes': 'ノード',
   'debate.runWorkflow': 'ワークフローを実行',
   'debate.runningWorkflow': 'ワークフロー実行中...',
+  'toast.titleGenerated': 'タイトルが生成されました',
+  'toast.titleError': 'タイトルの生成に失敗しました',
 
 };
