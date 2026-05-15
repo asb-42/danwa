@@ -137,28 +137,40 @@ class WebSearchTool:
     # ------------------------------------------------------------------
 
     async def _search_ddg(self, query: str) -> list[WebSearchResult]:
-        """Search via DuckDuckGo (requires ``duckduckgo-search`` package)."""
-        try:
-            from duckduckgo_search import AsyncDDGS
+        """Search via DuckDuckGo (requires ``duckduckgo-search`` package).
 
-            results: list[WebSearchResult] = []
-            async with AsyncDDGS() as ddgs:
-                async for r in ddgs.text(
-                    query,
-                    region=self.region,
-                    max_results=self.max_results,
-                    timelimit="y",
-                ):
-                    results.append(
-                        {
-                            "title": r.get("title", ""),
-                            "url": r.get("href", ""),
-                            "snippet": r.get("body", ""),
-                            "engine": "duckduckgo",
-                            "date": r.get("date", ""),
-                        }
-                    )
-            return results
+        Note: duckduckgo-search >= 8.x renamed to ``ddgs`` and removed
+        AsyncDDGS. We use the sync DDGS wrapped in asyncio.to_thread().
+        """
+        try:
+            import asyncio
+
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                from duckduckgo_search import DDGS
+
+            def _do_search() -> list[WebSearchResult]:
+                results: list[WebSearchResult] = []
+                with DDGS() as ddgs:
+                    for r in ddgs.text(
+                        query,
+                        region=self.region,
+                        max_results=self.max_results,
+                        timelimit="y",
+                    ):
+                        results.append(
+                            {
+                                "title": r.get("title", ""),
+                                "url": r.get("href", ""),
+                                "snippet": r.get("body", ""),
+                                "engine": "duckduckgo",
+                                "date": r.get("date", ""),
+                            }
+                        )
+                return results
+
+            return await asyncio.to_thread(_do_search)
         except ImportError:
             logger.debug("duckduckgo-search package not installed, skipping DDG fallback")
         except Exception as exc:
