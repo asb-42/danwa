@@ -7,7 +7,7 @@ been moved to the ``profiles`` router.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.deps import get_project_store
+from backend.core.config import Settings
 from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)

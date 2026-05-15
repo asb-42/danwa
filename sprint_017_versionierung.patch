@@ -1,0 +1,1882 @@
+diff --git a/backend/__init__.py b/backend/__init__.py
+index 87bd290..f9208d7 100644
+--- a/backend/__init__.py
++++ b/backend/__init__.py
+@@ -1,3 +1,28 @@
+-"""Debate Engine v2.0 — LangGraph-based multi-agent debate workflow."""
++"""Debate Engine — LangGraph-based multi-agent debate workflow.
+ 
+-__version__ = "2.0.0"
++Version is read dynamically from the ``version`` file (single source of truth).
++"""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++
++def _get_version() -> str:
++    """Read version from the VERSION single source of truth file.
++
++    Reads the last non-comment, non-blank line from the ``/version`` file.
++    Falls back to ``0.0.0-dev`` if the file is missing or unreadable.
++    """
++    v = Path(__file__).resolve().parent.parent / "version"
++    if not v.exists():
++        return "0.0.0-dev"
++    lines = [l.strip() for l in v.read_text().splitlines() if l.strip() and not l.strip().startswith("#")]
++    if not lines:
++        return "0.0.0-dev"
++    ver = lines[-1].strip()
++    return ver if re.match(r"^\d+\.\d+\.\d+$", ver) else "0.0.0-dev"
++
++
++__version__ = _get_version()
+diff --git a/backend/a2a/agent_card.py b/backend/a2a/agent_card.py
+index fcf3f94..ecd3325 100644
+--- a/backend/a2a/agent_card.py
++++ b/backend/a2a/agent_card.py
+@@ -7,13 +7,15 @@ supported input/output modes.
+ 
+ from __future__ import annotations
+ 
++from backend import __version__
++
+ AGENT_CARD: dict = {
+     "name": "Danwa Debate Engine",
+     "description": (
+         "Multi-agent debate system that analyzes topics from multiple perspectives using AI agents (Strategist, Critic, Optimizer, Moderator)."
+     ),
+     "url": "",  # Set dynamically from server config
+-    "version": "2.0.0",
++    "version": __version__,
+     "capabilities": {
+         "streaming": False,
+         "pushNotifications": False,
+diff --git a/backend/api/routers/config.py b/backend/api/routers/config.py
+index 7ba8132..7c327bf 100644
+--- a/backend/api/routers/config.py
++++ b/backend/api/routers/config.py
+@@ -7,6 +7,7 @@ been moved to the ``profiles`` router.
+ from __future__ import annotations
+ 
+ import logging
++from datetime import datetime, timezone
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -14,7 +15,7 @@ import yaml
+ from fastapi import APIRouter, Depends, HTTPException
+ from pydantic import BaseModel
+ 
+-from backend.api.deps import get_project_store
++from backend.api.deps import get_project_store, get_settings
+ from backend.persistence.project_store import ProjectStore
+ 
+ logger = logging.getLogger(__name__)
+@@ -129,3 +130,15 @@ def set_language(body: LanguageBody) -> dict:
+     settings["ui"]["language"] = body.language
+     _save_settings(settings)
+     return {"status": "ok", "language": body.language}
++
++
++# --- Version ---
++
++
++@router.get("/version")
++async def get_version(settings: Settings = Depends(get_settings)):
++    """Return the current application version from the single source of truth."""
++    return {
++        "version": settings.app_version,
++        "build": datetime.now(timezone.utc).isoformat(),
++    }
+diff --git a/backend/core/config.py b/backend/core/config.py
+index 188e162..25c0f79 100644
+--- a/backend/core/config.py
++++ b/backend/core/config.py
+@@ -5,6 +5,17 @@ from pathlib import Path
+ from pydantic_settings import BaseSettings, SettingsConfigDict
+ 
+ 
++def _get_version() -> str:
++    """Read version from the VERSION single source of truth file.
++
++    Falls back to ``0.0.0-dev`` if the file is missing (e.g. during development).
++    """
++    version_file = Path(__file__).resolve().parent.parent.parent / "version"
++    if version_file.exists():
++        return version_file.read_text().strip()
++    return "0.0.0-dev"
++
++
+ class Settings(BaseSettings):
+     """Central configuration for the debate engine."""
+ 
+@@ -17,7 +28,7 @@ class Settings(BaseSettings):
+ 
+     # --- Application ---
+     app_name: str = "Debate-Agent"
+-    app_version: str = "2.0.0"
++    app_version: str = _get_version()
+     debug: bool = False
+ 
+     # --- Server ---
+diff --git a/backend/main.py b/backend/main.py
+index 666b361..1f425ab 100644
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -1,4 +1,8 @@
+-"""FastAPI application entry point for Debate Engine v2.0."""
++"""FastAPI application entry point for Danwa Debate Engine.
++
++Version and application metadata are loaded dynamically from
++the ``/version`` file via ``settings.app_version``.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -143,6 +147,7 @@ async def lifespan(app: FastAPI):
+ 
+     # Import modules into DB on startup (idempotent)
+     from scripts.deploy_import import main as deploy_import_main
++
+     deploy_import_main()
+ 
+     yield
+diff --git a/frontend/package.json b/frontend/package.json
+index a8a2c61..c2f5732 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "debate-ui",
+   "private": true,
+-  "version": "2.0.0",
++  "version": "1.1.0",
+   "type": "module",
+   "scripts": {
+     "dev": "vite",
+diff --git a/frontend/src/App.svelte b/frontend/src/App.svelte
+index 25c6676..6e849f6 100644
+--- a/frontend/src/App.svelte
++++ b/frontend/src/App.svelte
+@@ -2,7 +2,8 @@
+   import { onMount } from 'svelte';
+   import { route, routeParams } from './lib/stores.js';
+   import { getHealth } from './lib/api.js';
+-  import { healthStatus } from './lib/stores.js';
++  import { healthStatus, appVersion } from './lib/stores.js';
++  import { getVersion } from './lib/api.js';
+   import { i18n } from './lib/i18n/index.js';
+   import Layout from './components/Layout.svelte';
+   import Dashboard from './views/Dashboard.svelte';
+@@ -18,7 +19,7 @@
+   import DiffView from './views/DiffView.svelte';
+   import OutputComposerView from './views/OutputComposerView.svelte';
+   import InputComposerView from './views/InputComposerView.svelte';
+-import TranslationDashboard from './views/TranslationDashboard.svelte';
++  import TranslationDashboard from './views/TranslationDashboard.svelte';
+ 
+   // Hash-based routing — supports #/route and #/route/param
+   function parseHash() {
+@@ -66,6 +67,15 @@ import TranslationDashboard from './views/TranslationDashboard.svelte';
+         $healthStatus = { status: 'unreachable', version: '' };
+       });
+ 
++    // Load application version from API
++    getVersion()
++      .then((data) => {
++        $appVersion = data.version;
++      })
++      .catch(() => {
++        $appVersion = '';
++      });
++
+     return () => {
+       window.removeEventListener('hashchange', onHashChange);
+     };
+diff --git a/frontend/src/components/Header.svelte b/frontend/src/components/Header.svelte
+index b3038fd..67c6263 100644
+--- a/frontend/src/components/Header.svelte
++++ b/frontend/src/components/Header.svelte
+@@ -1,5 +1,5 @@
+ <script>
+-  import { healthStatus } from '../lib/stores.js';
++  import { healthStatus, appVersion } from '../lib/stores.js';
+   import { i18n } from '../lib/i18n/index.js';
+   import LanguageSwitcher from './LanguageSwitcher.svelte';
+   import ProjectSelector from './ProjectSelector.svelte';
+@@ -31,6 +31,13 @@
+     <!-- Language switcher -->
+     <LanguageSwitcher />
+ 
++    <!-- Version badge -->
++    {#if $appVersion}
++      <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full" title={t('app.versionLabel')}>
++        v{$appVersion}
++      </span>
++    {/if}
++
+     <!-- Health indicator -->
+     <div class="flex items-center space-x-2" aria-label="Backend status: {$healthStatus.status}">
+       <span class="relative flex h-3 w-3">
+diff --git a/frontend/src/components/Sidebar.svelte b/frontend/src/components/Sidebar.svelte
+index ff4e7b2..9485646 100644
+--- a/frontend/src/components/Sidebar.svelte
++++ b/frontend/src/components/Sidebar.svelte
+@@ -1,6 +1,7 @@
+ <script>
+   import { i18n } from '../lib/i18n/index.js';
+   import { currentDebate } from '../lib/stores.js';
++  import { appVersion } from '../lib/stores.js';
+   import ProjectSelector from './ProjectSelector.svelte';
+ 
+   let { navigate, currentRoute } = $props();
+@@ -45,7 +46,7 @@
+   <!-- Logo / Brand -->
+   <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
+     <span class="text-xl font-bold text-gray-800 dark:text-white">Danwa</span>
+-    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v2.0</span>
++    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v{$appVersion || '2.0.0'}</span>
+   </div>
+ 
+   <!-- Project Selector -->
+@@ -73,7 +74,7 @@
+   <!-- Footer -->
+   <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+     <p class="text-xs text-gray-500 dark:text-gray-400">
+-      Debate-Agent v2.0
++      {t('app.version', { version: $appVersion || '…' })}
+     </p>
+   </div>
+ </aside>
+diff --git a/frontend/src/lib/api.js b/frontend/src/lib/api.js
+index 7ba6d17..7b18efb 100644
+--- a/frontend/src/lib/api.js
++++ b/frontend/src/lib/api.js
+@@ -83,6 +83,15 @@ export function getHealth() {
+   return request('/health');
+ }
+ 
++// ---------------------------------------------------------------------------
++// Version (Sprint 17)
++// ---------------------------------------------------------------------------
++
++/** Get the application version from the single source of truth. */
++export function getVersion() {
++  return request('/api/v1/config/version');
++}
++
+ // ---------------------------------------------------------------------------
+ // Debate
+ // ---------------------------------------------------------------------------
+diff --git a/frontend/src/lib/i18n/loaders/de.js b/frontend/src/lib/i18n/loaders/de.js
+index 259d219..ee0fc2e 100644
+--- a/frontend/src/lib/i18n/loaders/de.js
++++ b/frontend/src/lib/i18n/loaders/de.js
+@@ -2,826 +2,748 @@
+  * German (de) translations for Danwa UI.
+  */
+ export default {
+-  // Navigation
+-  'nav.dashboard': 'Dashboard',
+-  'nav.debate': 'Laufende Debatte',
+-  'nav.archive': 'Archiv',
+-  'nav.audit': 'Prüfpfad',
+-  'nav.config': 'Konfiguration',
+-  'nav.output': 'Ausgabe',
+-  'nav.blueprint': 'Blueprint',
+-  'nav.documents': 'Dokumente',
+-  'nav.projects': 'Projekte',
+-  'nav.input': 'Neue Debatte',
+-   'nav.translation': 'Übersetzung',
+-
+-  // Dashboard
+-  'dashboard.title': 'Dashboard',
+-  'dashboard.backendStatus': 'Backend-Status',
+-  'dashboard.totalDebates': 'Debatten gesamt',
+-  'dashboard.running': 'Laufend',
+-  'dashboard.completed': 'Abgeschlossen',
+-  'dashboard.failed': 'Fehlgeschlagen',
+-  'dashboard.refreshHealth': 'Status aktualisieren',
+-  'dashboard.checking': 'Prüfe...',
+-  'dashboard.workflowTitle': 'Workflow-Übersicht',
+-  'dashboard.workflowPlaceholder': 'Workflow-Graph-Visualisierung — kommt in Sprint 4',
+-  'dashboard.recentDebates': 'Letzte Debatten',
+-
+-  // Debate
+-  'debate.title': 'Debatte',
+-  'debate.newDebate': 'Neue Debatte',
+-  'debate.caseLabel': 'Fallbeschreibung',
+-  'debate.casePlaceholder': 'Beschreiben Sie den zu debattierenden Fall...',
+-  'debate.maxRounds': 'Maximale Runden',
+-  'debate.consensusThreshold': 'Konsens-Schwellenwert',
+-  'debate.createButton': 'Debatte erstellen',
+-  'debate.creating': 'Wird erstellt...',
+-  'debate.currentDebate': 'Aktuelle Debatte',
+-  'debate.sseConnected': 'SSE verbunden',
+-  'debate.id': 'ID:',
+-  'debate.status': 'Status:',
+-  'debate.round': 'Runde:',
+-  'debate.consensus': 'Konsens:',
+-  'debate.startButton': 'Debatte starten',
+-  'debate.starting': 'Wird gestartet...',
+-  'debate.refreshStatus': 'Status aktualisieren',
+-  'debate.timelineTitle': 'Debatten-Zeitachse',
+-  'debate.timelinePlaceholder': 'Debatten-Zeitachse — kommt in Sprint 4',
+-  'debate.enterCase': 'Bitte geben Sie eine Fallbeschreibung ein',
+-  'debate.backToOverview': 'Zurück zur Übersicht',
+-  'debate.archiveTitle': 'Debatte (Archiv)',
+-  'debate.noRounds': 'Keine Runden für diese Debatte vorhanden.',
+-  'debate.date': 'Datum',
+-  'debate.model': 'Modell',
+-  'debate.duration': 'Dauer',
+-  'debate.anomalies': 'Anomalien',
+-  'debate.roundInfo': 'Runde {current} von {max}',
+-  'debate.roundOverMax': 'Runde {current} (überschritt {max} — Konsens nicht erreicht)',
+-  'debate.llmFailureWarning': '⚠️ LLM-Fehler aufgetreten — Konsens konnte nicht erreicht werden',
+-  'debate.degradedConsensus': 'Die Debatte hatte LLM-Fehler. Der angezeigte Konsenswert ist möglicherweise nicht aussagekräftig.',
+-  'debate.cancelButton': 'Debatte abbrechen',
+-  'debate.cancelling': 'Wird abgebrochen...',
+-  'debate.titleGenerating': 'Titel wird generiert…',
+-  'debate.titlePlaceholder': 'Fallbeschreibung wird verarbeitet…',
+-  'debate.titleLabel': 'Titel',
+-  'debate.language': 'Sprache',
+-  'debate.enableExtraRounds': 'Zusätzliche Runden zulassen',
+-  'debate.extensionRequested': 'Verlängerung angefragt',
+-  'debate.extensionRequest': 'Die Debatte hat nach {rounds} Runden noch keinen Konsens erreicht (aktuell: {current}%, Schwellenwert: {threshold}%). Sollen weitere Runden debattiert werden?',
+-  'debate.extensionCurrentConsensus': 'Aktueller Konsens',
+-  'debate.extensionThreshold': 'Schwellenwert',
+-  'debate.round': 'Runde',
+-  'debate.maxRounds': 'Max. Runden',
+-  'debate.extensionGrant': 'Verlängerung gewähren',
+-  'debate.extensionDeny': 'Verlängerung ablehnen',
+-
+-  // Web search mode
+-  'debate.searchMode': 'Web-Suche',
+-  'debate.searchOff': 'Deaktiviert',
+-  'debate.searchOptional': 'Optional',
+-  'debate.searchRequired': 'Obligatorisch',
+-  'debate.searchModeHint.off': 'Keine Websuche während der Debatte.',
+-  'debate.searchModeHint.optional': 'Agenten können bei Bedarf eine Websuche anfordern.',
+-  'debate.searchModeHint.required': 'Agenten erhalten automatisch Websuchergebnisse vor jeder Analyse.',
+-
+-  // Search results display
+-  'search.resultsFor': 'Suchergebnisse für',
+-  'search.noResults': 'Keine Ergebnisse gefunden',
+-  'search.source': 'Quelle',
+-  'search.webResearch': 'Web-Recherche',
+-  'search.searching': '🔍 Suche…',
+-
+-  // Activity Strip (enhanced debate feedback)
+-  'feedback.analysing': '{role} analysiert…',
+-  'feedback.checking': '{role} prüft…',
+-  'feedback.optimizing': '{role} optimiert…',
+-  'feedback.evaluating': '{role} bewertet…',
+-  'feedback.completed': '{role} abgeschlossen',
+-  'feedback.waiting': 'Warte auf ersten Agent…',
+-  'feedback.roundDone': 'Runde {round} abgeschlossen — Konsens {percent}%',
+-  'feedback.tokens': 'Tokens',
+-  'feedback.duration': '{ms}ms',
+-
+-  // Workflow phase feedback (between debate start and first agent response)
+-  'feedback.workflowStarted': 'Workflow-Engine gestartet, bereite Debatte vor…',
+-  'feedback.resolvingProfile': 'Lade Profil für {role}…',
+-  'feedback.resolvingPrompts': 'Lösche Prompts für {role}…',
+-  'feedback.llmCalling': 'LLM-Aufruf ({model})…',
+-  'feedback.slowResponse': 'LLM-Antwort langsam — Verbindung prüfen',
+-
+-  // DebateTimeline 2.0
+-  'timeline.title': 'Debatten-Zeitleiste',
+-  'timeline.live': 'Live',
+-  'timeline.roundOf': 'Runde {current} von {max}',
+-  'timeline.roundsCompleted': '{count} Runde abgeschlossen',
+-  'timeline.roundsCompleted_plural': '{count} Runden abgeschlossen',
+-  'timeline.failedAfterRound': 'Fehlgeschlagen nach Runde {round}',
+-  'timeline.waiting': 'Wartend',
+-  'timeline.consensus': 'Konsens',
+-  'timeline.noOutputs': 'Noch keine Debatten-Beiträge vorhanden.',
+-  'timeline.round': 'Runde {num}',
+-  'timeline.roundConsensus': 'Konsens {percent}%',
+-  'timeline.thinking': 'denkt…',
+-  'timeline.collapse': '▲ Einklappen',
+-  'timeline.expand': '▼ Vollständige Antwort anzeigen ({count} Zeichen)',
+-  'timeline.finalConsensus': 'Endgültiger Konsens',
+-  'timeline.degraded': '(eingeschränkt)',
+-  'timeline.strongConsensus': 'Starker Konsens erreicht.',
+-  'timeline.moderateConsensus': 'Moderater Konsens — weitere Runden könnten helfen.',
+-  'timeline.lowConsensus': 'Geringer Konsens — die Agenten bleiben uneinig.',
+-  'timeline.concludedAfter': 'Die Debatte endete nach {rounds} Runde{plural} mit einem Konsens von {percent}%.',
+-
+-  // Debate status
+-  'status.pending': 'Ausstehend',
+-  'status.running': 'Laufend',
+-  'status.completed': 'Abgeschlossen',
+-  'status.failed': 'Fehlgeschlagen',
+-
+-  // Agents
+-  'agent.strategist': 'Stratege',
+-  'agent.critic': 'Kritiker',
+-  'agent.optimizer': 'Optimierer',
+-  'agent.moderator': 'Moderator',
+-
+-  // Audit
+-  'audit.title': 'Prüfpfad',
+-  'audit.debateId': 'Debatten-ID oder Titel',
+-  'audit.debateIdPlaceholder': 'Debatten-ID oder Titel eingeben...',
+-  'audit.loadEvents': 'Ereignisse laden',
+-  'audit.loading': 'Wird geladen...',
+-  'audit.noEvents': 'Keine Prüfereignisse gefunden. Starten Sie zuerst eine Debatte.',
+-  'audit.loadingEvents': 'Ereignisse werden geladen...',
+-  'audit.round': 'Runde',
+-  'audit.agent': 'Agent',
+-  'audit.action': 'Aktion',
+-  'audit.timestamp': 'Zeitstempel',
+-  'audit.model': 'Modell',
+-  'audit.tokens': 'Tokens',
+-  'audit.visualizationTitle': 'Prüfpfad-Visualisierung',
+-  'audit.visualizationPlaceholder': 'Prüfpfad-Visualisierung — kommt in Sprint 4',
+-  'audit.enterDebateId': 'Bitte geben Sie eine Debatten-ID ein oder erstellen Sie zuerst eine Debatte',
+-
+-  // Config
+-  'config.title': 'Konfiguration',
+-  'config.debateDefaults': 'Debatten-Standardwerte',
+-  'config.defaultMaxRounds': 'Standard maximale Runden',
+-  'config.defaultConsensusThreshold': 'Standard Konsens-Schwellenwert',
+-  'config.llmProfile': 'LLM-Profil',
+-  'config.agentProfile': 'Agenten-Profil',
+-  'config.saveButton': 'Konfiguration speichern',
+-  'config.saved': 'Konfiguration erfolgreich gespeichert',
+-  'config.llmProfiles': 'LLM-Profile',
+-  'config.llmProfilesPlaceholder': 'Keine LLM-Profile geladen',
+-  'config.agentProfiles': 'Agenten-Personas',
+-  'config.agentProfilesPlaceholder': 'Keine Agenten-Personas geladen',
+-  'config.promptVariants': 'Prompt-Varianten',
+-  'config.promptVariantsPlaceholder': 'Keine Prompt-Varianten geladen',
+-  'config.createPromptVariant': 'Prompt-Variante erstellen',
+-  'config.promptVariantSaved': 'Prompt-Variante erstellt',
+-  'config.select': 'Auswählen',
+-  'config.provider': 'Anbieter',
+-  'config.model': 'Modell',
+-  'config.temperature': 'Temperatur',
+-  'config.maxTokens': 'Max. Tokens',
+-  'config.contextWindow': 'Kontextfenster',
+-  'config.costInput': 'Kosten (Eingabe)',
+-  'config.costOutput': 'Kosten (Ausgabe)',
+-  'config.role': 'Rolle',
+-  'config.persona': 'Persona',
+-  'config.description': 'Beschreibung',
+-  'config.tags': 'Tags',
+-  'config.preview': 'Vorschau',
+-  'config.costEstimate': 'Kostenschätzung',
+-  'config.estimateCost': 'Kosten schätzen',
+-  'config.estimatedCost': 'Geschätzte Kosten',
+-  'config.numAgents': 'Anzahl Agenten',
+-  'config.numRounds': 'Anzahl Runden',
+-  'config.noProfiles': 'Keine Profile verfügbar',
+-  'config.selectProfile': 'Profil auswählen',
+-  'config.active': 'Aktiv',
+-  'config.inactive': 'Inaktiv',
+-  'config.type': 'Typ',
+-  'config.actions': 'Aktionen',
+-  'config.search': 'Schnellsuche',
+-  'config.duplicate': 'Duplizieren',
+-  'config.profiles': 'Profile',
+-  'config.noResults': 'Keine Treffer',
+-
+-  // Profile CRUD
+-  'config.createProfile': 'Profil erstellen',
+-  'config.editProfile': 'Profil bearbeiten',
+-  'config.deleteProfile': 'Profil löschen',
+-  'config.confirmDelete': 'Möchten Sie "{name}" wirklich löschen?',
+-  'config.profileSaved': 'Profil erfolgreich gespeichert',
+-  'config.profileDeleted': 'Profil erfolgreich gelöscht',
+-  'config.createNew': 'Neu erstellen',
+-  'config.name': 'Name',
+-  'config.id': 'ID',
+-  'config.apiBase': 'API-Basis-URL',
+-  'config.apiKeyEnv': 'API-Key-Env-Variable',
+-  'config.timeout': 'Timeout (s)',
+-  'config.systemPrompt': 'System-Prompt',
+-  'config.llmProfileRef': 'LLM-Profil',
+-  'config.maxRounds': 'Max. Runden',
+-  'config.consensusThreshold': 'Konsens-Schwellenwert',
+-  'config.basePath': 'Basis-Pfad',
+-  'config.parentVariant': 'Eltern-Variante',
+-  'config.required': 'Pflichtfeld',
+-  'config.createPersona': 'Persona erstellen',
+-  'config.editPersona': 'Persona bearbeiten',
+-  'config.deletePersona': 'Persona löschen',
+-  'config.createLLM': 'LLM-Profil erstellen',
+-  'config.editLLM': 'LLM-Profil bearbeiten',
+-  'config.deleteLLM': 'LLM-Profil löschen',
+-
+-  // Common
+-  'common.loading': 'Wird geladen...',
+-  'common.error': 'Fehler',
+-  'common.retry': 'Erneut versuchen',
+-  'common.cancel': 'Abbrechen',
+-  'common.save': 'Speichern',
+-  'common.delete': 'Löschen',
+-  'common.edit': 'Bearbeiten',
+-  'common.close': 'Schließen',
+-  'common.yes': 'Ja',
+-  'common.no': 'Nein',
+-
+-  // Errors
+-  'error.backendDisconnected': 'Backend-Verbindung verloren',
+-  'error.debateNotFound': 'Debatte nicht gefunden',
+-  'error.invalidInput': 'Ungültige Eingabe',
+-  'error.unknown': 'Unbekannter Fehler',
+-
+-  // Pluralization
+-  'debate.count.one': '{count} Debatte',
+-  'debate.count.other': '{count} Debatten',
+-
+-  // Language
+-  'lang.switch': 'Sprache wechseln',
+-
+-  // Archive
+-  'archive.title': 'Debatten-Archiv',
+-  'archive.project': 'Projekt',
+-  'archive.searchPlaceholder': 'Debatten durchsuchen...',
+-  'archive.filterAll': 'Alle Status',
+-  'archive.date': 'Datum',
+-  'archive.noResults': 'Keine Debatten gefunden.',
+-  'archive.confirmDelete': 'Debatte löschen?',
+-  'archive.showing': 'Zeige {from}–{to}',
+-  'archive.page': 'Seite',
+-  'archive.prevPage': 'Zurück',
+-  'archive.nextPage': 'Weiter',
+-
+-  // Projects
+-  'nav.projects': 'Projekte',
+-  'projects.title': 'Projektverwaltung',
+-  'projects.create': 'Projekt erstellen',
+-  'projects.name': 'Projektname',
+-  'projects.description': 'Beschreibung',
+-  'projects.createdAt': 'Erstellt',
+-  'projects.updatedAt': 'Aktualisiert',
+-  'projects.noProjects': 'Noch keine Projekte. Erstellen Sie Ihr erstes Projekt, um zu beginnen.',
+-  'projects.selectProject': 'Projekt auswählen',
+-  'projects.activeProject': 'Aktives Projekt',
+-  'projects.noActiveProject': 'Kein Projekt ausgewählt',
+-  'projects.createTitle': 'Neues Projekt erstellen',
+-  'projects.editTitle': 'Projekt bearbeiten',
+-  'projects.settings': 'Einstellungen',
+-  'projects.deleteConfirm': 'Möchten Sie das Projekt "{name}" wirklich löschen? Alle Debatten und Dokumente in diesem Projekt werden dauerhaft gelöscht.',
+-  'projects.cannotDeleteSystem': 'Systemprojekte können nicht gelöscht werden.',
+-  'projects.projectDeleted': 'Projekt erfolgreich gelöscht',
+-  'projects.projectCreated': 'Projekt erfolgreich erstellt',
+-  'projects.projectUpdated': 'Projekt erfolgreich aktualisiert',
+-  'projects.systemProject': 'System',
+-  'projects.config': 'Projektkonfiguration',
+-  'projects.configHint': 'Projektspezifische Einstellungen überschreiben globale Standardwerte. Leer lassen, um globale Werte zu verwenden.',
+-  'projects.language': 'Sprache',
+-  'projects.defaultMaxRounds': 'Standard maximale Runden',
+-  'projects.defaultConsensusThreshold': 'Standard Konsens-Schwellenwert',
+-  'projects.searchMode': 'Suchmodus',
+-  'projects.searxngUrl': 'SearXNG-URL',
+-  'projects.globalDefault': 'Globaler Standard',
+-  'projects.onboardingTitle': 'Willkommen bei Danwa',
+-  'projects.onboardingMessage': 'Erstellen Sie Ihr erstes Projekt, um Debatten, Dokumente und Konfigurationen zu organisieren.',
+-  'projects.selectToContinue': 'Bitte wählen Sie ein Projekt aus, um fortzufahren.',
+-
+-  // Documents / DMS
+-  'nav.documents': 'Dokumente',
+-  'documents.title': 'Dokumentenverwaltung',
+-  'documents.upload': 'Dokument hochladen',
+-  'documents.uploading': 'Wird hochgeladen...',
+-  'documents.uploadSuccess': 'Dokument erfolgreich hochgeladen',
+-  'documents.uploadError': 'Upload fehlgeschlagen',
+-  'documents.noDocuments': 'Noch keine Dokumente hochgeladen. Laden Sie Dateien hoch, um sie als RAG-Kontext für Debatten zu verwenden.',
+-  'documents.filename': 'Dateiname',
+-  'documents.fileSize': 'Größe',
+-  'documents.fileType': 'Typ',
+-  'documents.uploadedAt': 'Hochgeladen',
+-  'documents.ragStatus': 'RAG-Status',
+-  'documents.actions': 'Aktionen',
+-  'documents.view': 'Ansehen',
+-  'documents.delete': 'Löschen',
+-  'documents.chunks': 'Abschnitte',
+-  'documents.noContent': 'Kein Textinhalt für dieses Dokument verfügbar.',
+-  'documents.deleteConfirm': 'Dieses Dokument löschen? Alle indexierten Abschnitte werden entfernt.',
+-  'documents.deleted': 'Dokument gelöscht',
+-  'documents.addToRAG': 'Zu RAG hinzufügen',
+-  'documents.removeFromRAG': 'Aus RAG entfernen',
+-  'documents.inRAG': 'In RAG',
+-  'documents.notInRAG': 'Nicht in RAG',
+-  'documents.dragDrop': 'Dateien hierher ziehen oder klicken zum Auswählen',
+-  'documents.supportedFormats': 'Unterstützt: PDF, DOCX, ODT, TXT, MD, Bilder (OCR)',
+-  'documents.ragContext': 'RAG-Kontext',
+-  'documents.ragEnabled': 'RAG aktiviert',
+-  'documents.ragDisabled': 'RAG deaktiviert',
+-  'documents.ragAutoRetrieve': 'Relevante Abschnitte automatisch abrufen',
+-  'documents.ragAutoRetrieveHint': 'Automatisch nach Dokumentabschnitten suchen, die zum Falltext relevant sind',
+-  'documents.ragDocuments': '{count} Dokument(e) ausgewählt',
+-  'documents.selectDocuments': 'Dokumente für RAG-Kontext auswählen',
+-  'documents.noRAGContext': 'Kein RAG-Kontext verfügbar',
+-  'documents.ragPreview': 'RAG-Kontext-Vorschau',
+-  'documents.expandContext': 'Vollständigen Kontext anzeigen ({count} Zeichen)',
+-  'documents.collapseContext': 'Kontext ausblenden',
+-
+-  // Workflow-Visualisierung
+-  'workflow.emptyState': 'Der Workflow-Graph wird hier angezeigt, wenn eine Debatte startet.',
+-  'workflow.status': 'Status',
+-  'workflow.round': 'Runde',
+-  'workflow.role': 'Rolle',
+-  'workflow.summary': 'Zusammenfassung',
+-  'workflow.fullContent': 'Vollständiger Inhalt',
+-  'workflow.tokens': 'Tokens',
+-  'workflow.requestedBy': 'Angefordert von',
+-  'workflow.feedbackLoop': 'Feedback-Schleife',
+-  'workflow.executionPath': 'Ausführungspfad',
+-  'workflow.agent': 'Agent',
+-  'workflow.artifact': 'Artefakt',
+-  'workflow.userAction': 'Benutzeraktion',
+-  'workflow.decision': 'Entscheidung',
+-  'workflow.node': 'Knoten',
+-  'workflow.timeline': 'Zeitachse',
+-  'workflow.backToLive': '← Zurück zur Live-Ansicht',
+-  'workflow.noRounds': 'Noch keine Runden abgeschlossen.',
+-  'workflow.nodeEdgeCount': '{nodes} Knoten · {edges} Kanten',
+-
+-  // OOB-Eingabefeld
+-  'oob.injectContext': 'Kontext injizieren',
+-  'oob.pending': '{count} ausstehend',
+-  'oob.placeholder': 'Zusätzlicher Kontext, der berücksichtigt werden soll...',
+-  'oob.targetNext': 'Nächster Agent',
+-  'oob.targetStrategist': 'Stratege',
+-  'oob.targetCritic': 'Kritiker',
+-  'oob.targetOptimizer': 'Optimierer',
+-  'oob.targetModerator': 'Moderator',
+-  'oob.targetCurrent': 'Aktuell aktiv',
+-  'oob.urgencyAppend': 'Anhängen',
+-  'oob.urgencyInject': 'Sofort injizieren',
+-  'oob.submit': 'In Workflow einfügen',
+-  'oob.shortcut': 'Strg+Enter zum Senden',
+-  'oob.waitingWarning': 'Der Workflow wartet auf Ihre Antwort. Der Kontext wird nach Ihrer Antwort verarbeitet.',
+-
+-  // A2A (Agent-to-Agent) Konfiguration
+-  'a2a.title': 'Externe A2A-Agenten',
+-  'a2a.description': 'Fügen Sie externe A2A-Agenten als Debatten-Teilnehmer hinzu. Sie treten der Debatte bei, nachdem alle lokalen Agenten gesprochen haben.',
+-  'a2a.addAgent': 'A2A-Agent hinzufügen',
+-  'a2a.agentUrl': 'Agent-URL',
+-  'a2a.agentUrlPlaceholder': 'https://externer-agent.example.com/a2a',
+-  'a2a.role': 'Rolle',
+-  'a2a.rolePlaceholder': 'z.B. analyst, expert, reviewer',
+-  'a2a.position': 'Position',
+-  'a2a.positionPlaceholder': 'z.B. after_optimizer, after_moderator',
+-  'a2a.remove': 'Entfernen',
+-  'a2a.noAgents': 'Keine externen Agenten konfiguriert.',
+-  'a2a.urlRequired': 'Agent-URL ist erforderlich',
+-
+-  // A2A Workflow-Visualisierung
+-  'workflow.a2aAgent': 'A2A-Agent',
+-  'workflow.a2aInvoking': 'Externer Agent wird aufgerufen…',
+-  'workflow.a2aCompleted': 'Externer Agent abgeschlossen',
+-
+-  // Blueprint Canvas
+-  'nav.blueprint': 'Blueprint-Canvas',
+-  'blueprint.title': 'Blueprint-Canvas',
+-  'blueprint.palette.title': 'Palette',
+-  'blueprint.palette.agentBlueprint': 'Agent-Blueprint',
+-  'blueprint.palette.agentBlueprintDesc': 'Agent mit LLM, Rolle und Prompt definieren',
+-  'blueprint.palette.llmProfile': 'LLM-Profil',
+-  'blueprint.palette.llmProfileDesc': 'LLM-Anbieter und Modell konfigurieren',
+-  'blueprint.palette.roleDefinition': 'Rollendefinition',
+-  'blueprint.palette.roleDefinitionDesc': 'Agentenverhalten und Einschränkungen definieren',
+-  'blueprint.palette.promptTemplate': 'Prompt-Vorlage',
+-  'blueprint.palette.promptTemplateDesc': 'Wiederverwendbarer Prompt mit Variablen',
+-  'blueprint.palette.roleType': 'Rollen-Typ',
+-  'blueprint.palette.roleTypeDesc': 'Konfigurierbare Rollenkategorie (Strategist, Critic, Optimizer, Moderator)',
+-  'blueprint.palette.savedLayouts': 'Gespeicherte Layouts',
+-  'blueprint.palette.noLayouts': 'Keine gespeicherten Layouts',
+-  'blueprint.palette.load': 'Laden',
+-  'blueprint.palette.delete': 'Löschen',
+-  'blueprint.canvas.toolbar.save': 'Layout speichern',
+-  'blueprint.canvas.toolbar.autoLayout': 'Auto-Layout',
+-  'blueprint.canvas.toolbar.nodes': '{count} Knoten',
+-  'blueprint.canvas.toolbar.edges': '{count} Kanten',
+-  'blueprint.canvas.toolbar.dirty': 'Ungespeicherte Änderungen',
+-  'blueprint.canvas.toolbar.import': 'Konfigurationen importieren',
+-  'blueprint.canvas.dropHint': 'Elemente aus der Palette ziehen, um Knoten zu erstellen',
+-  'blueprint.canvas.saveDialog.title': 'Layout speichern',
+-  'blueprint.canvas.saveDialog.name': 'Layout-Name',
+-  'blueprint.canvas.saveDialog.save': 'Speichern',
+-  'blueprint.canvas.saveDialog.cancel': 'Abbrechen',
+-  'blueprint.inspector.title': 'Inspektor',
+-  'blueprint.inspector.noSelection': 'Knoten auswählen zum Bearbeiten',
+-  'blueprint.inspector.close': 'Schließen',
+-  'blueprint.form.name': 'Name',
+-  'blueprint.form.description': 'Beschreibung',
+-  'blueprint.form.save': 'Speichern',
+-  'blueprint.form.cancel': 'Abbrechen',
+-  'blueprint.form.create': 'Erstellen',
+-  'blueprint.form.update': 'Aktualisieren',
+-  'blueprint.form.llmProfile': 'LLM-Profil',
+-  'blueprint.form.roleDefinition': 'Rollendefinition',
+-  'blueprint.form.promptTemplate': 'Prompt-Vorlage',
+-  'blueprint.form.ttsVoice': 'TTS-Stimme',
+-  'blueprint.form.provider': 'Anbieter',
+-  'blueprint.form.model': 'Modell',
+-  'blueprint.form.temperature': 'Temperatur',
+-  'blueprint.form.maxTokens': 'Max. Tokens',
+-  'blueprint.form.role': 'Rolle-Typ',
+-  'blueprint.form.roleHint': 'Kategorie: Strategist, Critic, Optimizer oder Moderator',
+-  'blueprint.form.variant': 'Variante',
+-  'blueprint.form.language': 'Sprache',
+-  'blueprint.form.content': 'Inhalt',
+-  'blueprint.form.consensusThreshold': 'Konsens-Schwellenwert',
+-  'blueprint.form.maxRounds': 'Max. Runden',
+-  'blueprint.form.selectProfile': 'Profil auswählen…',
+-  'blueprint.form.selectRole': 'Rolle auswählen…',
+-  'blueprint.form.selectTemplate': 'Vorlage auswählen…',
+-  'blueprint.node.llm': 'LLM',
+-  'blueprint.node.role': 'Rolle',
+-  'blueprint.node.prompt': 'Prompt',
+-  'blueprint.edge.usesLlm': 'Verwendet LLM',
+-  'blueprint.edge.implementsRole': 'Implementiert Rolle',
+-  'blueprint.edge.promptedBy': 'Prompt von',
+-  'blueprint.edge.overridesPrompt': 'Prompt überschreiben',
+-  'blueprint.edge.definesRole': 'Definiert Rolle',
+-  'blueprint.toast.saved': 'Layout erfolgreich gespeichert',
+-  'blueprint.toast.loaded': 'Layout geladen',
+-  'blueprint.toast.deleted': 'Layout gelöscht',
+-  'blueprint.toast.imported': 'Konfigurationen erfolgreich importiert',
+-  'blueprint.toast.error': 'Ein Fehler ist aufgetreten',
+-
+-  // Blueprint Canvas — Phase 4: Workflow-Modus
+-  'blueprint.mode.blueprint': 'Blueprint',
+-  'blueprint.mode.workflow': 'Workflow',
+-  'blueprint.palette.assets': 'Assets',
+-  'blueprint.palette.workflowNodes': 'Workflow-Knoten',
+-  'blueprint.palette.wfInput': 'Eingabe',
+-  'blueprint.palette.wfInitialize': 'Initialisierung',
+-  'blueprint.palette.wfStrategist': 'Stratege',
+-  'blueprint.palette.wfCritic': 'Kritiker',
+-  'blueprint.palette.wfOptimizer': 'Optimierer',
+-  'blueprint.palette.wfModerator': 'Moderator',
+-  'blueprint.palette.wfUserInput': 'Benutzereingabe',
+-  'blueprint.palette.wfUserInjection': 'Benutzereinschub',
+-  'blueprint.palette.wfGate': 'Tor',
+-  'blueprint.palette.wfToneProfile': 'Tonprofil',
+-  'blueprint.palette.existingEntities': 'Vorhandene Entitäten',
+-  'blueprint.palette.llmProfiles': 'LLM-Profile',
+-  'blueprint.palette.roleDefinitions': 'Rollendefinitionen',
+-  'blueprint.palette.promptTemplates': 'Prompt-Vorlagen',
+-  'blueprint.palette.agentBlueprints': 'Agent-Blueprints',
+-  'blueprint.palette.roleTypes': 'Rollentypen',
+-  'blueprint.node.linked': 'Verknüpft',
+-  'blueprint.node.notLinked': 'Nicht verknüpft',
+-  'blueprint.edge.sequential': 'Sequenziell',
+-  'blueprint.edge.conditional': 'Bedingt',
+-  'blueprint.edge.interjection': 'Einschub',
+-  'blueprint.edge.feedback': 'Feedback',
+-  'blueprint.workflow.title': 'Workflow-Definition',
+-  'blueprint.workflow.name': 'Workflow-Name',
+-  'blueprint.workflow.description': 'Beschreibung',
+-  'blueprint.workflow.executionOrder': 'Ausführungsreihenfolge',
+-  'blueprint.workflow.compile': 'Kompilieren',
+-  'blueprint.workflow.compileResult': 'Kompilierungsergebnis',
+-  'blueprint.workflow.valid': 'Gültig',
+-  'blueprint.workflow.invalid': 'Ungültig',
+-  'blueprint.workflow.errors': 'Fehler',
+-  'blueprint.workflow.warnings': 'Warnungen',
+-  'blueprint.workflow.clone': 'Klonen',
+-  'blueprint.workflow.cloned': 'Workflow erfolgreich geklont',
+-  'blueprint.workflow.saveAsWorkflow': 'Als Workflow speichern',
+-  'blueprint.workflow.saveAsWorkflowHint': 'Konvertieren Sie dieses Canvas-Layout in eine ausführbare Workflow-Definition. Der Workflow kann dann kompiliert und als Debatte gestartet werden.',
+-  'blueprint.workflow.workflowCreated': 'Workflow erstellt',
+-  'blueprint.workflow.workflowName': 'Workflow-Name',
+-  'blueprint.workflow.workflowDescription': 'Beschreibung (optional)',
+-  'blueprint.workflow.workflowDescriptionPlaceholder': 'Beschreiben Sie, was dieser Workflow tut...',
+-  'blueprint.workflow.maxRounds': 'Maximale Runden',
+-  'blueprint.workflow.consensusThreshold': 'Konsens-Schwellwert',
+-  'blueprint.workflow.convert': 'Workflow erstellen',
+-  'blueprint.workflow.runDebate': 'Debatte starten',
+-  'blueprint.workflow.runDebateHint': 'Konfigurieren Sie die Debatte-Parameter und starten Sie die Workflow-Ausführung. Das Canvas wird bei Bedarf zuerst in einen Workflow konvertiert.',
+-  'blueprint.workflow.topic': 'Thema / Fallbeschreibung',
+-  'blueprint.workflow.topicPlaceholder': 'Geben Sie das Debatte-Thema oder die Fallbeschreibung ein...',
+-  'blueprint.workflow.topicRequired': 'Thema ist erforderlich',
+-  'blueprint.workflow.language': 'Sprache',
+-  'blueprint.workflow.startDebate': 'Debatte starten',
+-  'blueprint.workflow.debateStarted': 'Debatte gestartet',
+-  'blueprint.toast.compiled': 'Workflow erfolgreich kompiliert',
+-  'blueprint.toast.compileFailed': 'Workflow-Kompilierung fehlgeschlagen',
+-
+-  // Blueprint Canvas — Workflow-Knoten-Inspektor
+-  'blueprint.form.nodeType': 'Typ',
+-  'blueprint.form.label': 'Bezeichnung',
+-  'blueprint.form.agentBlueprint': 'Agent-Blueprint',
+-  'blueprint.form.agentBlueprintNone': '— Keine —',
+-  'blueprint.form.condition': 'Bedingung',
+-  'blueprint.form.conditionHint': 'z.B. round >= 3',
+-  'blueprint.form.inputType': 'Eingabetyp',
+-  'blueprint.form.inputTypeUserQuery': 'Benutzeranfrage',
+-  'blueprint.form.inputTypeOobInput': 'OOB-Eingabe',
+-  'blueprint.form.inputTypeExternalEvent': 'Externes Ereignis',
+-  'blueprint.form.loadingBlueprints': 'Blueprints werden geladen...',
+-
+-  // Blueprint Canvas — Workflow-Knoten-Ausführungsstatus
+-  'blueprint.node.running': 'Wird ausgeführt...',
+-  'blueprint.node.completed': 'Abgeschlossen',
+-  'blueprint.node.failed': 'Fehlgeschlagen',
+-  'blueprint.node.paused': 'Pausiert',
+-
+-  // Workflow-Ausführung — Panel
+-  'workflow.execution.title': 'Ausführen',
+-  'workflow.execution.close': 'Schließen',
+-  'workflow.execution.start': 'Starten',
+-  'workflow.execution.pause': 'Pausieren',
+-  'workflow.execution.resume': 'Fortsetzen',
+-  'workflow.execution.cancel': 'Abbrechen',
+-  'workflow.execution.round': 'Runde',
+-  'workflow.execution.consensus': 'Konsens',
+-  'workflow.execution.elapsed': 'Laufzeit',
+-  'workflow.execution.currentNode': 'Aktueller Knoten',
+-  'workflow.execution.interjection': 'Einschub',
+-  'workflow.execution.interjectionPlaceholder': 'Einschub eingeben...',
+-  'workflow.execution.submit': 'Absenden',
+-  'workflow.execution.nodeOutputs': 'Knotenausgaben',
+-
+-  // Workflow-Ausführung — Status
+-  'workflow.execution.status.idle': 'Bereit',
+-  'workflow.execution.status.running': 'Läuft',
+-  'workflow.execution.status.paused': 'Pausiert',
+-  'workflow.execution.status.completed': 'Abgeschlossen',
+-  'workflow.execution.status.failed': 'Fehlgeschlagen',
+-  'workflow.execution.status.cancelled': 'Abgebrochen',
+-  'workflow.execution.status.unknown': 'Unbekannt',
+-
+-  // Workflow-Ausführung — Toasts
+-  'workflow.execution.toast.started': 'Workflow-Ausführung gestartet',
+-  'workflow.execution.toast.completed': 'Workflow erfolgreich abgeschlossen',
+-  'workflow.execution.toast.failed': 'Workflow-Ausführung fehlgeschlagen',
+-  'workflow.execution.toast.paused': 'Workflow pausiert',
+-  'workflow.execution.toast.resumed': 'Workflow fortgesetzt',
+-
+-  // Replay View
+-  'replay.title': 'Wiedergabe',
+-  'replay.selectSession': 'Sitzung auswählen',
+-  'replay.play': 'Abspielen',
+-  'replay.pause': 'Pause',
+-  'replay.stepForward': 'Schritt vorwärts',
+-  'replay.stepBack': 'Schritt zurück',
+-  'replay.speed': 'Geschwindigkeit',
+-  'replay.nodeDetail.title': 'Knoten-Detail',
+-  'replay.nodeDetail.input': 'Eingabe',
+-  'replay.nodeDetail.output': 'Ausgabe',
+-  'replay.nodeDetail.latency': 'Latenz',
+-  'replay.nodeDetail.tokens': 'Tokens',
+-  'replay.nodeDetail.actor': 'Akteur',
+-  'replay.nodeDetail.timestamp': 'Zeitstempel',
+-  'replay.interjectionMarker': 'Einwurf',
+-  'replay.noData': 'Keine Audit-Daten für diese Sitzung.',
+-
+-  // Diff View
+-  'diff.title': 'Vergleichsansicht',
+-  'diff.selectSessionA': 'Sitzung A',
+-  'diff.selectSessionB': 'Sitzung B',
+-  'diff.noDifferences': 'Keine Unterschiede gefunden.',
+-  'diff.differencesFound': 'Unterschiede gefunden.',
+-  'diff.nodeDetail.sessionA': 'Sitzung A',
+-  'diff.nodeDetail.sessionB': 'Sitzung B',
+-  'diff.nodeDetail.latencyComparison': 'Latenzvergleich',
+-  'diff.nodeDetail.tokenComparison': 'Token-Vergleich',
+-
+-  // Audit Tab
+-  'audit.tab.title': 'Audit-Protokoll',
+-  'audit.columns.timestamp': 'Zeitstempel',
+-  'audit.columns.eventType': 'Ereignistyp',
+-  'audit.columns.nodeId': 'Knoten-ID',
+-  'audit.columns.actor': 'Akteur',
+-  'audit.columns.latency': 'Latenz',
+-  'audit.columns.promptTokens': 'Prompt-Tokens',
+-  'audit.columns.completionTokens': 'Completion-Tokens',
+-  'audit.columns.inputHash': 'Eingabe-Hash',
+-  'audit.columns.outputHash': 'Ausgabe-Hash',
+-  'audit.filter.eventType': 'Alle Ereignistypen',
+-  'audit.filter.actor': 'Akteur filtern',
+-  'audit.filter.search': 'Akteur/Knoten suchen...',
+-  'audit.export.csv': 'CSV exportieren',
+-  'audit.summary.totalEvents': 'Ereignisse gesamt',
+-  'audit.summary.totalTokens': 'Tokens gesamt',
+-  'audit.summary.totalLatency': 'Latenz gesamt',
+-  'audit.noEvents': 'Noch keine Audit-Ereignisse',
+-
+-  // Reports
+-  'report.title': 'Berichte',
+-  'report.generate': 'Bericht erstellen',
+-  'report.format': 'Format',
+-  'report.status.pending': 'Wird generiert...',
+-  'report.status.completed': 'Abgeschlossen',
+-  'report.status.failed': 'Fehlgeschlagen',
+-  'report.download': 'Bericht herunterladen',
+-
+-  // Session
+-  'session.softDelete': 'Archivieren',
+-  'session.restore': 'Wiederherstellen',
+-  'session.archived': 'Archiviert',
+-
+-  // Application Settings
+-  'settings.title': 'Anwendungseinstellungen',
+-  'settings.searchMode': 'Suchmodus',
+-  'settings.searchModeHint': 'Standard-Websuchmodus für neue Debatten',
+-  'settings.privacy': 'Datenschutz',
+-  'settings.privacyHint': 'Datenschutzmodus aktivieren, um sensible Informationen zu verschleiern',
+-  'settings.retention': 'Datenaufbewahrung (Tage)',
+-  'settings.retentionHint': 'Anzahl der Tage zur Aufbewahrung von Debattendaten (0 = unbegrenzt)',
+-  'settings.saved': 'Einstellungen erfolgreich gespeichert',
+-
+-  // RAG Search
+-  'rag.search': 'Dokumente durchsuchen',
+-  'rag.searchPlaceholder': 'Durchsuche indexierte Dokumente...',
+-  'rag.searchButton': 'Suchen',
+-  'rag.searching': 'Suche läuft...',
+-  'rag.noResults': 'Keine Ergebnisse gefunden.',
+-  'rag.relevance': 'Relevanz',
+-  'rag.source': 'Quelle',
+-  'rag.chunk': 'Abschnitt',
+-
+-  // A2A-Protokoll (Phase 8)
+-  'a2a.protocol.label': 'Protokoll',
+-  'a2a.protocol.litellm': 'LiteLLM',
+-  'a2a.protocol.a2a': 'A2A',
+-  'a2a.endpoint.label': 'A2A-Endpunkt-URL',
+-  'a2a.endpoint.placeholder': 'https://agent.example.com',
+-  'a2a.timeout.label': 'Timeout (Sekunden)',
+-  'a2a.fallback.label': 'Fallback-Profil',
+-  'a2a.fallback.none': 'Keins',
+-  'a2a.discover.button': 'Entdecken',
+-  'a2a.discover.loading': 'Entdecke...',
+-  'a2a.discover.success': 'Erfolgreich entdeckt',
+-  'a2a.discover.error': 'Entdeckung fehlgeschlagen',
+-  'a2a.capabilities.title': 'Agenten-Fähigkeiten',
+-  'a2a.capabilities.skills': 'Fähigkeiten',
+-  'a2a.capabilities.inputModes': 'Eingabemodi',
+-  'a2a.capabilities.outputModes': 'Ausgabemodi',
+-  'a2a.capabilities.version': 'Version',
+-  'a2a.badge.remote': 'Remote',
+-  'a2a.badge.tooltip': 'Externer A2A-Agent',
+-  'a2a.error.timeout': 'A2A-Aufruf Timeout',
+-  'a2a.error.connectionFailed': 'Verbindung zum A2A-Agenten fehlgeschlagen',
+-  'a2a.error.invalidUrl': 'Ungültige A2A-Endpunkt-URL',
+-  'a2a.error.privateIpBlocked': 'Private IP-Adressen sind blockiert',
+-  'a2a.error.protocolError': 'Ungültige A2A-Protokollantwort',
+-  'a2a.fallback.activated': 'Fallback-LLM-Profil aktiviert',
+-  'a2a.fallback.profile': 'Verwende Fallback-Profil',
+-
+-  // Workflow-Vorlagen
+-  'template.gallery.title': 'Workflow-Vorlagen',
+-  'template.gallery.searchPlaceholder': 'Vorlagen suchen...',
+-  'template.gallery.filterAll': 'Alle',
+-  'template.gallery.filterSystem': 'System',
+-  'template.gallery.filterCustom': 'Benutzerdefiniert',
+-  'template.gallery.loading': 'Vorlagen werden geladen...',
+-  'template.gallery.empty': 'Keine Vorlagen gefunden.',
+-  'template.gallery.blankCanvas': 'Leere Arbeitsfläche',
+-  'template.gallery.blankCanvasDesc': 'Von Grund auf neu beginnen.',
+-  'template.gallery.systemBadge': 'System',
+-  'template.gallery.placeholders': 'Platzhalter',
+-  'template.gallery.confirmDelete': 'Vorlage löschen?',
+-  'template.gallery.yes': 'Ja',
+-  'template.gallery.no': 'Nein',
+-
+-  'template.instantiate.title': 'Vorlage instanziieren',
+-  'template.instantiate.workflowName': 'Workflow-Name',
+-  'template.instantiate.selectBlueprint': '— Agent-Blueprint auswählen —',
+-  'template.instantiate.cancel': 'Abbrechen',
+-  'template.instantiate.create': 'Workflow erstellen',
+-  'template.instantiate.creating': 'Wird erstellt...',
+-  'template.instantiate.error': 'Vorlage konnte nicht instanziert werden',
+-
+-  'template.saveAs.title': 'Als Vorlage speichern',
+-  'template.saveAs.name': 'Vorlagenname',
+-  'template.saveAs.namePlaceholder': 'Meine benutzerdefinierte Vorlage',
+-  'template.saveAs.description': 'Beschreibung',
+-  'template.saveAs.descriptionPlaceholder': 'Beschreiben Sie, was diese Vorlage tut...',
+-  'template.saveAs.placeholders': 'Platzhalter extrahieren',
+-  'template.saveAs.placeholdersHint': 'Hier aufgeführte Felder werden zu {{Platzhaltern}} in der Vorlage.',
+-  'template.saveAs.suggested': 'Vorgeschlagen',
+-  'template.saveAs.addPlaceholder': 'Feldschlüssel hinzufügen...',
+-  'template.saveAs.cancel': 'Abbrechen',
+-  'template.saveAs.save': 'Vorlage speichern',
+-  'template.saveAs.saving': 'Wird gespeichert...',
+-  'template.saveAs.error': 'Vorlage konnte nicht gespeichert werden',
+-
+-  'template.toast.instantiated': 'Workflow aus Vorlage erstellt',
+-  'template.toast.saved': 'Vorlage erfolgreich gespeichert',
+-
+-  // Missing Links — UI additions
+-  'workflow.execution.viewState': 'Status anzeigen',
+-  'workflow.execution.currentState': 'Aktueller Workflow-Status',
+-  'blueprint.canvas.saveAs': 'Speichern unter',
+-  'config.roleTypes': 'Rollen-Typen',
+-  'config.noRoleTypes': 'Keine Rollen-Typen definiert',
+-  'config.createRoleType': 'Rollen-Typ erstellen',
+-  'config.editRoleType': 'Rollen-Typ bearbeiten',
+-  'config.roleTypeSaved': 'Rollen-Typ erfolgreich gespeichert',
+-  'config.roleTypeColor': 'Farbe',
+-  'config.roleTypeIcon': 'Symbol',
+-  'archive.viewTrace': 'Trace anzeigen',
+-  'archive.traceTitle': 'Ausführungs-Trace',
+-
+-  // Blueprint Canvas — missing keys used by components
+-  'blueprint.canvas.saveLayout': 'Layout speichern',
+-  'blueprint.canvas.autoLayout': 'Auto-Layout',
+-  'blueprint.canvas.loadLayout': 'Laden',
+-  'blueprint.canvas.deleteLayout': 'Löschen',
+-  'blueprint.inspector.save': 'Speichern',
+-  'blueprint.inspector.delete': 'Löschen',
+-  'blueprint.inspector.draft': 'Entwurf',
+-  'blueprint.inspector.cancel': 'Abbrechen',
+-  'blueprint.form.color': 'Farbe',
+-  'blueprint.form.icon': 'Symbol',
+-  'blueprint.inspector.connections': 'Verbindungen',
+-  'blueprint.inspector.effectiveConfig': 'Effektive Konfiguration',
+-  'blueprint.form.roleType': 'Rollentyp',
+-  'blueprint.form.roleTypeHint': 'Bestimmt die Verhaltenskategorie',
+-  'blueprint.form.roleHint': 'Wähle den Rollentyp für diese Definition',
+-  'config.managedByBlueprint': 'Vom Blueprint Canvas verwaltet',
+-  'translation.title': 'Übersetzungs-Dashboard',
+-  'translation.modules': 'Modul-Übersetzungen',
+-  'translation.batchTranslate': 'Stapelübersetzung',
+-  'translation.targetLanguage': 'Zielsprache',
+-  'translation.noModules': 'Keine Module registriert. Konfigurieren Sie diese im Blueprint-Canvas.',
+-  'translation.translate': 'Übersetzen',
+-  'translation.translating': 'Wird übersetzt…',
+-  'translation.translateModule': 'Modul übersetzen',
+-  'translation.startTranslate': 'Übersetzung starten',
+-  'translation.refreshModules': 'Module aktualisieren',
+-  'translation.selectModules': 'Module auswählen',
+-  'translation.modulesSelected': 'ausgewählt',
+-  'translation.forceReTranslate': 'Erneut übersetzen',
+-  'translation.skipBackTranslation': 'Rückübersetzung überspringen',
+-  'translation.noTranslations': 'Noch keine Übersetzungen. Klicken Sie auf "Übersetzen" zum Starten.',
+-  'translation.quality': 'Qualität',
+-  'translation.approved': 'Freigegeben',
+-  'translation.pending': 'Ausstehend',
+-  'translation.reject': 'Ablehnen',
+-  'translation.approve': 'Freigeben',
+-  'translation.invalidate': 'Ungültig machen',
+-  'translation.progress': 'Fortschritt',
+-  'translation.startBatch': 'Stapel starten',
+-  'translation.moduleLabel': 'Modul',
+-
+-
+-   // Module Manager
+-   'modules.title': 'Module',
+-   'modules.refresh': 'Module aktualisieren',
+-   'modules.tabInstalled': 'Installiert',
+-   'modules.tabAvailable': 'Verfügbar',
+-   'modules.tabInstall': 'Installieren',
+-   'modules.noInstalled': 'Keine Module installiert. Installieren Sie Module über den Reiter "Verfügbar" oder "Installieren".',
+-   'modules.available': 'Verfügbare Module',
+-   'modules.availableHint': 'Module aus der Registry, die noch nicht installiert sind.',
+-   'modules.noAvailable': 'Keine zusätzlichen Module verfügbar.',
+-   'modules.installFromSource': 'Aus Quell-URL installieren',
+-   'modules.installFromSourceHint': 'Geben Sie eine Modul-ID oder eine Git-URL ein, um ein Modul zu installieren.',
+-   'modules.enterModuleId': 'Modul-ID oder URL eingeben…',
+-   'modules.installed': 'Installiert',
+-   'modules.install': 'Installieren',
+-   'modules.uninstall': 'Deinstallieren',
+-   'modules.update': 'Aktualisieren',
+-   'modules.validate': 'Validieren',
+-   'modules.installedAt': 'Installiert am',
+-   'modules.category': 'Kategorie',
+-   'modules.type': 'Typ',
+-   'modules.author': 'Autor',
+-   'modules.license': 'Lizenz',
+-   'modules.checksum': 'Prüfsumme',
+-   'modules.validationResult': 'Validierungsergebnis',
+-   'modules.valid': 'Gültig',
+-   'modules.confirmUninstall': 'Möchten Sie das Modul "{id}" wirklich deinstallieren?',
+-   'modules.installedSuccess': 'Modul "{id}" erfolgreich installiert',
+-   'modules.uninstalledSuccess': 'Modul "{id}" erfolgreich deinstalliert',
+-   'modules.updatedSuccess': 'Modul "{id}" erfolgreich aktualisiert',
+-
++   // Navigation
++   'nav.dashboard': 'Dashboard',
++   'nav.debate': 'Laufende Debatte',
++   'nav.archive': 'Archiv',
++   'nav.audit': 'Prüfpfad',
++   'nav.config': 'Konfiguration',
++   'nav.output': 'Ausgabe',
++   'nav.blueprint': 'Blueprint',
++   'nav.documents': 'Dokumente',
++   'nav.projects': 'Projekte',
++   'nav.input': 'Neue Debatte',
++    'nav.translation': 'Übersetzung',
++ 
++   // Dashboard
++   'dashboard.title': 'Dashboard',
++   'dashboard.backendStatus': 'Backend-Status',
++   'dashboard.totalDebates': 'Debatten gesamt',
++   'dashboard.running': 'Laufend',
++   'dashboard.completed': 'Abgeschlossen',
++   'dashboard.failed': 'Fehlgeschlagen',
++   'dashboard.refreshHealth': 'Status aktualisieren',
++   'dashboard.checking': 'Prüfe...',
++   'dashboard.workflowTitle': 'Workflow-Übersicht',
++   'dashboard.workflowPlaceholder': 'Workflow-Graph-Visualisierung — kommt in Sprint 4',
++   'dashboard.recentDebates': 'Letzte Debatten',
++ 
++   // Debate
++   'debate.title': 'Debatte',
++   'debate.newDebate': 'Neue Debatte',
++   'debate.caseLabel': 'Fallbeschreibung',
++   'debate.casePlaceholder': 'Beschreiben Sie den zu debattierenden Fall...',
++   'debate.maxRounds': 'Maximale Runden',
++   'debate.consensusThreshold': 'Konsens-Schwellenwert',
++   'debate.createButton': 'Debatte erstellen',
++   'debate.creating': 'Wird erstellt...',
++   'debate.currentDebate': 'Aktuelle Debatte',
++   'debate.sseConnected': 'SSE verbunden',
++   'debate.id': 'ID:',
++   'debate.status': 'Status:',
++   'debate.round': 'Runde:',
++   'debate.consensus': 'Konsens:',
++   'debate.startButton': 'Debatte starten',
++   'debate.starting': 'Wird gestartet...',
++   'debate.refreshStatus': 'Status aktualisieren',
++   'debate.timelineTitle': 'Debatten-Zeitachse',
++   'debate.timelinePlaceholder': 'Debatten-Zeitachse — kommt in Sprint 4',
++   'debate.enterCase': 'Bitte geben Sie eine Fallbeschreibung ein',
++   'debate.backToOverview': 'Zurück zur Übersicht',
++   'debate.archiveTitle': 'Debatte (Archiv)',
++   'debate.noRounds': 'Keine Runden für diese Debatte vorhanden.',
++   'debate.date': 'Datum',
++   'debate.model': 'Modell',
++   'debate.duration': 'Dauer',
++   'debate.anomalies': 'Anomalien',
++   'debate.roundInfo': 'Runde {current} von {max}',
++   'debate.roundOverMax': 'Runde {current} (überschritt {max} — Konsens nicht erreicht)',
++   'debate.llmFailureWarning': '⚠️ LLM-Fehler aufgetreten — Konsens konnte nicht erreicht werden',
++   'debate.degradedConsensus': 'Die Debatte hatte LLM-Fehler. Der angezeigte Konsenswert ist möglicherweise nicht aussagekräftig.',
++   'debate.cancelButton': 'Debatte abbrechen',
++   'debate.cancelling': 'Wird abgebrochen...',
++   'debate.titleGenerating': 'Titel wird generiert…',
++   'debate.titlePlaceholder': 'Fallbeschreibung wird verarbeitet…',
++   'debate.titleLabel': 'Titel',
++   'debate.language': 'Sprache',
++   'debate.enableExtraRounds': 'Zusätzliche Runden zulassen',
++   'debate.extensionRequested': 'Verlängerung angefragt',
++   'debate.extensionRequest': 'Die Debatte hat nach {rounds} Runden noch keinen Konsens erreicht (aktuell: {current}%, Schwellenwert: {threshold}%). Sollen weitere Runden debattiert werden?',
++   'debate.extensionCurrentConsensus': 'Aktueller Konsens',
++   'debate.extensionThreshold': 'Schwellenwert',
++   'debate.extensionGrant': 'Verlängerung gewähren',
++   'debate.extensionDeny': 'Verlängerung ablehnen',
++ 
++   // Web search mode
++   'debate.searchMode': 'Web-Suche',
++   'debate.searchOff': 'Deaktiviert',
++   'debate.searchOptional': 'Optional',
++   'debate.searchRequired': 'Obligatorisch',
++   'debate.searchModeHint.off': 'Keine Websuche während der Debatte.',
++   'debate.searchModeHint.optional': 'Agenten können bei Bedarf eine Websuche anfordern.',
++   'debate.searchModeHint.required': 'Agenten erhalten automatisch Websuchergebnisse vor jeder Analyse.',
++ 
++   // Search results display
++   'search.resultsFor': 'Suchergebnisse für',
++   'search.noResults': 'Keine Ergebnisse gefunden',
++   'search.source': 'Quelle',
++   'search.webResearch': 'Web-Recherche',
++   'search.searching': '🔍 Suche…',
++ 
++   // Activity Strip
++   'feedback.analysing': '{role} analysiert…',
++   'feedback.checking': '{role} prüft…',
++   'feedback.optimizing': '{role} optimiert…',
++   'feedback.evaluating': '{role} bewertet…',
++   'feedback.completed': '{role} abgeschlossen',
++   'feedback.waiting': 'Warte auf ersten Agent…',
++   'feedback.roundDone': 'Runde {round} abgeschlossen — Konsens {percent}%',
++   'feedback.tokens': 'Tokens',
++   'feedback.duration': '{ms}ms',
++ 
++   // Workflow phase feedback
++   'feedback.workflowStarted': 'Workflow-Engine gestartet, bereite Debatte vor…',
++   'feedback.resolvingProfile': 'Lade Profil für {role}…',
++   'feedback.resolvingPrompts': 'Lösche Prompts für {role}…',
++   'feedback.llmCalling': 'LLM-Aufruf ({model})…',
++   'feedback.slowResponse': 'LLM-Antwort langsam — Verbindung prüfen',
++ 
++   // DebateTimeline 2.0
++   'timeline.title': 'Debatten-Zeitleiste',
++   'timeline.live': 'Live',
++   'timeline.roundOf': 'Runde {current} von {max}',
++   'timeline.roundsCompleted': '{count} Runde abgeschlossen',
++   'timeline.roundsCompleted_plural': '{count} Runden abgeschlossen',
++   'timeline.failedAfterRound': 'Fehlgeschlagen nach Runde {round}',
++   'timeline.waiting': 'Wartend',
++   'timeline.consensus': 'Konsens',
++   'timeline.noOutputs': 'Noch keine Debatten-Beiträge vorhanden.',
++   'timeline.round': 'Runde {num}',
++   'timeline.roundConsensus': 'Konsens {percent}%',
++   'timeline.thinking': 'denkt…',
++   'timeline.collapse': '▲ Einklappen',
++   'timeline.expand': '▼ Vollständige Antwort anzeigen ({count} Zeichen)',
++   'timeline.finalConsensus': 'Endgültiger Konsens',
++   'timeline.degraded': '(eingeschränkt)',
++   'timeline.strongConsensus': 'Starker Konsens erreicht.',
++   'timeline.moderateConsensus': 'Moderater Konsens — weitere Runden könnten helfen.',
++   'timeline.lowConsensus': 'Geringer Konsens — die Agenten bleiben uneinig.',
++   'timeline.concludedAfter': 'Die Debatte endete nach {rounds} Runde{plural} mit einem Konsens von {percent}%.',
++ 
++   // Debate status
++   'status.pending': 'Ausstehend',
++   'status.running': 'Laufend',
++   'status.completed': 'Abgeschlossen',
++   'status.failed': 'Fehlgeschlagen',
++ 
++   // Agents
++   'agent.strategist': 'Stratege',
++   'agent.critic': 'Kritiker',
++   'agent.optimizer': 'Optimierer',
++   'agent.moderator': 'Moderator',
++ 
++   // Audit
++   'audit.title': 'Prüfpfad',
++   'audit.debateId': 'Debatten-ID oder Titel',
++   'audit.debateIdPlaceholder': 'Debatten-ID oder Titel eingeben...',
++   'audit.loadEvents': 'Ereignisse laden',
++   'audit.loading': 'Wird geladen...',
++   'audit.noEvents': 'Keine Prüfereignisse gefunden. Starten Sie zuerst eine Debatte.',
++   'audit.loadingEvents': 'Ereignisse werden geladen...',
++   'audit.round': 'Runde',
++   'audit.agent': 'Agent',
++   'audit.action': 'Aktion',
++   'audit.timestamp': 'Zeitstempel',
++   'audit.model': 'Modell',
++   'audit.tokens': 'Tokens',
++   'audit.visualizationTitle': 'Prüfpfad-Visualisierung',
++   'audit.visualizationPlaceholder': 'Prüfpfad-Visualisierung — kommt in Sprint 4',
++   'audit.enterDebateId': 'Bitte geben Sie eine Debatten-ID ein oder erstellen Sie zuerst eine Debatte',
++ 
++   // Config
++   'config.title': 'Konfiguration',
++   'config.debateDefaults': 'Debatten-Standardwerte',
++   'config.defaultMaxRounds': 'Standard maximale Runden',
++   'config.defaultConsensusThreshold': 'Standard Konsens-Schwellenwert',
++   'config.llmProfile': 'LLM-Profil',
++   'config.agentProfile': 'Agenten-Profil',
++   'config.saveButton': 'Konfiguration speichern',
++   'config.saved': 'Konfiguration erfolgreich gespeichert',
++   'config.llmProfiles': 'LLM-Profile',
++   'config.llmProfilesPlaceholder': 'Keine LLM-Profile geladen',
++   'config.agentProfiles': 'Agenten-Personas',
++   'config.agentProfilesPlaceholder': 'Keine Agenten-Personas geladen',
++   'config.promptVariants': 'Prompt-Varianten',
++   'config.promptVariantsPlaceholder': 'Keine Prompt-Varianten geladen',
++   'config.createPromptVariant': 'Prompt-Variante erstellen',
++   'config.promptVariantSaved': 'Prompt-Variante erstellt',
++   'config.select': 'Auswählen',
++   'config.provider': 'Anbieter',
++   'config.model': 'Modell',
++   'config.temperature': 'Temperatur',
++   'config.maxTokens': 'Max. Tokens',
++   'config.contextWindow': 'Kontextfenster',
++   'config.costInput': 'Kosten (Eingabe)',
++   'config.costOutput': 'Kosten (Ausgabe)',
++   'config.role': 'Rolle',
++   'config.persona': 'Persona',
++   'config.description': 'Beschreibung',
++   'config.tags': 'Tags',
++   'config.preview': 'Vorschau',
++   'config.costEstimate': 'Kostenschätzung',
++   'config.estimateCost': 'Kosten schätzen',
++   'config.estimatedCost': 'Geschätzte Kosten',
++   'config.numAgents': 'Anzahl Agenten',
++   'config.numRounds': 'Anzahl Runden',
++   'config.noProfiles': 'Keine Profile verfügbar',
++   'config.selectProfile': 'Profil auswählen',
++   'config.active': 'Aktiv',
++   'config.inactive': 'Inaktiv',
++   'config.type': 'Typ',
++   'config.actions': 'Aktionen',
++   'config.search': 'Schnellsuche',
++   'config.duplicate': 'Duplizieren',
++   'config.profiles': 'Profile',
++   'config.noResults': 'Keine Treffer',
++ 
++   // Profile CRUD
++   'config.createProfile': 'Profil erstellen',
++   'config.editProfile': 'Profil bearbeiten',
++   'config.deleteProfile': 'Profil löschen',
++   'config.confirmDelete': 'Möchten Sie "{name}" wirklich löschen?',
++   'config.profileSaved': 'Profil erfolgreich gespeichert',
++   'config.profileDeleted': 'Profil erfolgreich gelöscht',
++   'config.createNew': 'Neu erstellen',
++   'config.name': 'Name',
++   'config.id': 'ID',
++   'config.apiBase': 'API-Basis-URL',
++   'config.apiKeyEnv': 'API-Key-Env-Variable',
++   'config.timeout': 'Timeout (s)',
++   'config.systemPrompt': 'System-Prompt',
++   'config.llmProfileRef': 'LLM-Profil',
++   'config.maxRounds': 'Max. Runden',
++   'config.consensusThreshold': 'Konsens-Schwellenwert',
++   'config.basePath': 'Basis-Pfad',
++   'config.parentVariant': 'Eltern-Variante',
++   'config.required': 'Pflichtfeld',
++   'config.createPersona': 'Persona erstellen',
++   'config.editPersona': 'Persona bearbeiten',
++   'config.deletePersona': 'Persona löschen',
++   'config.createLLM': 'LLM-Profil erstellen',
++   'config.editLLM': 'LLM-Profil bearbeiten',
++   'config.deleteLLM': 'LLM-Profil löschen',
++ 
++   // Common
++   'common.loading': 'Wird geladen...',
++   'common.error': 'Fehler',
++   'common.retry': 'Erneut versuchen',
++   'common.cancel': 'Abbrechen',
++   'common.save': 'Speichern',
++   'common.delete': 'Löschen',
++   'common.edit': 'Bearbeiten',
++   'common.close': 'Schließen',
++   'common.yes': 'Ja',
++   'common.no': 'Nein',
++ 
++   // Errors
++   'error.backendDisconnected': 'Backend-Verbindung verloren',
++   'error.debateNotFound': 'Debatte nicht gefunden',
++   'error.invalidInput': 'Ungültige Eingabe',
++   'error.unknown': 'Unbekannter Fehler',
++ 
++   // Pluralization
++   'debate.count.one': '{count} Debatte',
++   'debate.count.other': '{count} Debatten',
++ 
++   // Language
++   'lang.switch': 'Sprache wechseln',
++ 
++   // Archive
++   'archive.title': 'Debatten-Archiv',
++   'archive.project': 'Projekt',
++   'archive.searchPlaceholder': 'Debatten durchsuchen...',
++   'archive.filterAll': 'Alle Status',
++   'archive.date': 'Datum',
++   'archive.noResults': 'Keine Debatten gefunden.',
++   'archive.confirmDelete': 'Debatte löschen?',
++   'archive.showing': 'Zeige {from}–{to}',
++   'archive.page': 'Seite',
++   'archive.prevPage': 'Zurück',
++   'archive.nextPage': 'Weiter',
++ 
++   // Projects
++   'nav.projects': 'Projekte',
++   'projects.title': 'Projektverwaltung',
++   'projects.create': 'Projekt erstellen',
++   'projects.name': 'Projektname',
++   'projects.description': 'Beschreibung',
++   'projects.createdAt': 'Erstellt',
++   'projects.updatedAt': 'Aktualisiert',
++   'projects.noProjects': 'Noch keine Projekte. Erstellen Sie Ihr erstes Projekt, um zu beginnen.',
++   'projects.selectProject': 'Projekt auswählen',
++   'projects.activeProject': 'Aktives Projekt',
++   'projects.noActiveProject': 'Kein Projekt ausgewählt',
++   'projects.createTitle': 'Neues Projekt erstellen',
++   'projects.editTitle': 'Projekt bearbeiten',
++   'projects.settings': 'Einstellungen',
++   'projects.deleteConfirm': 'Möchten Sie das Projekt "{name}" wirklich löschen? Alle Debatten und Dokumente in diesem Projekt werden dauerhaft gelöscht.',
++   'projects.cannotDeleteSystem': 'Systemprojekte können nicht gelöscht werden.',
++   'projects.projectDeleted': 'Projekt erfolgreich gelöscht',
++   'projects.projectCreated': 'Projekt erfolgreich erstellt',
++   'projects.projectUpdated': 'Projekt erfolgreich aktualisiert',
++   'projects.systemProject': 'System',
++   'projects.config': 'Projektkonfiguration',
++   'projects.configHint': 'Projektspezifische Einstellungen überschreiben globale Standardwerte. Leer lassen, um globale Werte zu verwenden.',
++   'projects.language': 'Sprache',
++   'projects.defaultMaxRounds': 'Standard maximale Runden',
++   'projects.defaultConsensusThreshold': 'Standard Konsens-Schwellenwert',
++   'projects.searchMode': 'Suchmodus',
++   'projects.searxngUrl': 'SearXNG-URL',
++   'projects.globalDefault': 'Globaler Standard',
++   'projects.onboardingTitle': 'Willkommen bei Danwa',
++   'projects.onboardingMessage': 'Erstellen Sie Ihr erstes Projekt, um Debatten, Dokumente und Konfigurationen zu organisieren.',
++   'projects.selectToContinue': 'Bitte wählen Sie ein Projekt aus, um fortzufahren.',
++ 
++   // Documents / DMS
++   'nav.documents': 'Dokumente',
++   'documents.title': 'Dokumentenverwaltung',
++   'documents.upload': 'Dokument hochladen',
++   'documents.uploading': 'Wird hochgeladen...',
++   'documents.uploadSuccess': 'Dokument erfolgreich hochgeladen',
++   'documents.uploadError': 'Upload fehlgeschlagen',
++   'documents.noDocuments': 'Noch keine Dokumente hochgeladen. Laden Sie Dateien hoch, um sie als RAG-Kontext für Debatten zu verwenden.',
++   'documents.filename': 'Dateiname',
++   'documents.fileSize': 'Größe',
++   'documents.fileType': 'Typ',
++   'documents.uploadedAt': 'Hochgeladen',
++   'documents.ragStatus': 'RAG-Status',
++   'documents.actions': 'Aktionen',
++   'documents.view': 'Ansehen',
++   'documents.delete': 'Löschen',
++   'documents.chunks': 'Abschnitte',
++   'documents.noContent': 'Kein Textinhalt für dieses Dokument verfügbar.',
++   'documents.deleteConfirm': 'Dieses Dokument löschen? Alle indexierten Abschnitte werden entfernt.',
++   'documents.deleted': 'Dokument gelöscht',
++   'documents.addToRAG': 'Zu RAG hinzufügen',
++   'documents.removeFromRAG': 'Aus RAG entfernen',
++   'documents.inRAG': 'In RAG',
++   'documents.notInRAG': 'Nicht in RAG',
++   'documents.dragDrop': 'Dateien hierher ziehen oder klicken zum Auswählen',
++   'documents.supportedFormats': 'Unterstützt: PDF, DOCX, ODT, TXT, MD, Bilder (OCR)',
++   'documents.ragContext': 'RAG-Kontext',
++   'documents.ragEnabled': 'RAG aktiviert',
++   'documents.ragDisabled': 'RAG deaktiviert',
++   'documents.ragAutoRetrieve': 'Relevante Abschnitte automatisch abrufen',
++   'documents.ragAutoRetrieveHint': 'Automatisch nach Dokumentabschnitten suchen, die zum Falltext relevant sind',
++   'documents.ragDocuments': '{count} Dokument(e) ausgewählt',
++   'documents.selectDocuments': 'Dokumente für RAG-Kontext auswählen',
++   'documents.noRAGContext': 'Kein RAG-Kontext verfügbar',
++   'documents.ragPreview': 'RAG-Kontext-Vorschau',
++   'documents.expandContext': 'Vollständigen Kontext anzeigen ({count} Zeichen)',
++   'documents.collapseContext': 'Kontext ausblenden',
++ 
++   // Workflow-Visualisierung
++   'workflow.emptyState': 'Der Workflow-Graph wird hier angezeigt, wenn eine Debatte startet.',
++   'workflow.status': 'Status',
++   'workflow.round': 'Runde',
++   'workflow.role': 'Rolle',
++   'workflow.summary': 'Zusammenfassung',
++   'workflow.fullContent': 'Vollständiger Inhalt',
++   'workflow.tokens': 'Tokens',
++   'workflow.requestedBy': 'Angefordert von',
++   'workflow.feedbackLoop': 'Feedback-Schleife',
++   'workflow.executionPath': 'Ausführungspfad',
++   'workflow.agent': 'Agent',
++   'workflow.artifact': 'Artefakt',
++   'workflow.userAction': 'Benutzeraktion',
++   'workflow.decision': 'Entscheidung',
++   'workflow.node': 'Knoten',
++   'workflow.timeline': 'Zeitachse',
++   'workflow.backToLive': '← Zurück zur Live-Ansicht',
++   'workflow.noRounds': 'Noch keine Runden abgeschlossen.',
++   'workflow.nodeEdgeCount': '{nodes} Knoten · {edges} Kanten',
++ 
++   // OOB-Eingabefeld
++   'oob.injectContext': 'Kontext injizieren',
++   'oob.pending': '{count} ausstehend',
++   'oob.placeholder': 'Zusätzlicher Kontext, der berücksichtigt werden soll...',
++   'oob.targetNext': 'Nächster Agent',
++   'oob.targetStrategist': 'Stratege',
++   'oob.targetCritic': 'Kritiker',
++   'oob.targetOptimizer': 'Optimierer',
++   'oob.targetModerator': 'Moderator',
++   'oob.targetCurrent': 'Aktuell aktiv',
++   'oob.urgencyAppend': 'Anhängen',
++   'oob.urgencyInject': 'Sofort injizieren',
++   'oob.submit': 'In Workflow einfügen',
++   'oob.shortcut': 'Strg+Enter zum Senden',
++   'oob.waitingWarning': 'Der Workflow wartet auf Ihre Antwort. Der Kontext wird nach Ihrer Antwort verarbeitet.',
++ 
++   // A2A
++   'a2a.title': 'Externe A2A-Agenten',
++   'a2a.description': 'Fügen Sie externe A2A-Agenten als Debatten-Teilnehmer hinzu...',
++   'a2a.addAgent': 'A2A-Agent hinzufügen',
++   'a2a.agentUrl': 'Agent-URL',
++   'a2a.agentUrlPlaceholder': 'https://externer-agent.example.com/a2a',
++   'a2a.role': 'Rolle',
++   'a2a.rolePlaceholder': 'z.B. analyst, expert, reviewer',
++   'a2a.position': 'Position',
++   'a2a.positionPlaceholder': 'z.B. after_optimizer, after_moderator',
++   'a2a.remove': 'Entfernen',
++   'a2a.noAgents': 'Keine externen Agenten konfiguriert.',
++   'a2a.urlRequired': 'Agent-URL ist erforderlich',
++ 
++   // Blueprint Canvas
++   'nav.blueprint': 'Blueprint-Canvas',
++   'blueprint.title': 'Blueprint-Canvas',
++   'blueprint.palette.title': 'Palette',
++   'blueprint.palette.agentBlueprint': 'Agent-Blueprint',
++   'blueprint.palette.agentBlueprintDesc': 'Agent mit LLM, Rolle und Prompt definieren',
++   'blueprint.palette.llmProfile': 'LLM-Profil',
++   'blueprint.palette.llmProfileDesc': 'LLM-Anbieter und Modell konfigurieren',
++   'blueprint.palette.roleDefinition': 'Rollendefinition',
++   'blueprint.palette.roleDefinitionDesc': 'Agentenverhalten und Einschränkungen definieren',
++   'blueprint.palette.promptTemplate': 'Prompt-Vorlage',
++   'blueprint.palette.promptTemplateDesc': 'Wiederverwendbarer Prompt mit Variablen',
++   'blueprint.palette.roleType': 'Rollen-Typ',
++   'blueprint.palette.roleTypeDesc': 'Konfigurierbare Rollenkategorie (Strategist, Critic, Optimizer, Moderator)',
++   'blueprint.palette.savedLayouts': 'Gespeicherte Layouts',
++   'blueprint.palette.noLayouts': 'Keine gespeicherten Layouts',
++   'blueprint.palette.load': 'Laden',
++   'blueprint.palette.delete': 'Löschen',
++   'blueprint.canvas.toolbar.save': 'Layout speichern',
++   'blueprint.canvas.toolbar.autoLayout': 'Auto-Layout',
++   'blueprint.canvas.toolbar.nodes': '{count} Knoten',
++   'blueprint.canvas.toolbar.edges': '{count} Kanten',
++   'blueprint.canvas.toolbar.dirty': 'Ungespeicherte Änderungen',
++   'blueprint.canvas.toolbar.import': 'Konfigurationen importieren',
++   'blueprint.canvas.dropHint': 'Elemente aus der Palette ziehen, um Knoten zu erstellen',
++   'blueprint.canvas.saveDialog.title': 'Layout speichern',
++   'blueprint.canvas.saveDialog.name': 'Layout-Name',
++   'blueprint.canvas.saveDialog.save': 'Speichern',
++   'blueprint.canvas.saveDialog.cancel': 'Abbrechen',
++   'blueprint.inspector.title': 'Inspektor',
++   'blueprint.inspector.noSelection': 'Knoten auswählen zum Bearbeiten',
++   'blueprint.inspector.close': 'Schließen',
++   'blueprint.form.name': 'Name',
++   'blueprint.form.description': 'Beschreibung',
++   'blueprint.form.save': 'Speichern',
++   'blueprint.form.cancel': 'Abbrechen',
++   'blueprint.form.create': 'Erstellen',
++   'blueprint.form.update': 'Aktualisieren',
++   'blueprint.form.llmProfile': 'LLM-Profil',
++   'blueprint.form.roleDefinition': 'Rollendefinition',
++   'blueprint.form.promptTemplate': 'Prompt-Vorlage',
++   'blueprint.form.ttsVoice': 'TTS-Stimme',
++   'blueprint.form.provider': 'Anbieter',
++   'blueprint.form.model': 'Modell',
++   'blueprint.form.temperature': 'Temperatur',
++   'blueprint.form.maxTokens': 'Max. Tokens',
++   'blueprint.form.role': 'Rollen-Typ',
++   'blueprint.form.roleHint': 'Kategorie: Strategist, Critic, Optimizer oder Moderator',
++   'blueprint.form.variant': 'Variante',
++   'blueprint.form.language': 'Sprache',
++   'blueprint.form.content': 'Inhalt',
++   'blueprint.form.consensusThreshold': 'Konsens-Schwellenwert',
++   'blueprint.form.maxRounds': 'Max. Runden',
++   'blueprint.form.selectProfile': 'Profil auswählen…',
++   'blueprint.form.selectRole': 'Rolle auswählen…',
++   'blueprint.form.selectTemplate': 'Vorlage auswählen…',
++   'blueprint.node.llm': 'LLM',
++   'blueprint.node.role': 'Rolle',
++   'blueprint.node.prompt': 'Prompt',
++   'blueprint.edge.usesLlm': 'Verwendet LLM',
++   'blueprint.edge.implementsRole': 'Implementiert Rolle',
++   'blueprint.edge.promptedBy': 'Prompt von',
++   'blueprint.edge.overridesPrompt': 'Prompt überschreiben',
++   'blueprint.edge.definesRole': 'Definiert Rolle',
++   'blueprint.toast.saved': 'Layout erfolgreich gespeichert',
++   'blueprint.toast.loaded': 'Layout geladen',
++   'blueprint.toast.deleted': 'Layout gelöscht',
++   'blueprint.toast.imported': 'Konfigurationen erfolgreich importiert',
++   'blueprint.toast.error': 'Ein Fehler ist aufgetreten',
++   'blueprint.mode.blueprint': 'Blueprint',
++   'blueprint.mode.workflow': 'Workflow',
++   'blueprint.palette.assets': 'Assets',
++   'blueprint.palette.workflowNodes': 'Workflow-Knoten',
++   'blueprint.palette.wfInput': 'Eingabe',
++   'blueprint.palette.wfInitialize': 'Initialisierung',
++   'blueprint.palette.wfStrategist': 'Stratege',
++   'blueprint.palette.wfCritic': 'Kritiker',
++   'blueprint.palette.wfOptimizer': 'Optimierer',
++   'blueprint.palette.wfModerator': 'Moderator',
++   'blueprint.palette.wfUserInput': 'Benutzereingabe',
++   'blueprint.palette.wfUserInjection': 'Benutzereinschub',
++   'blueprint.palette.wfGate': 'Tor',
++   'blueprint.palette.wfToneProfile': 'Tonprofil',
++   'blueprint.palette.existingEntities': 'Vorhandene Entitäten',
++   'blueprint.palette.llmProfiles': 'LLM-Profile',
++   'blueprint.palette.roleDefinitions': 'Rollendefinitionen',
++   'blueprint.palette.promptTemplates': 'Prompt-Vorlagen',
++   'blueprint.palette.agentBlueprints': 'Agent-Blueprints',
++   'blueprint.palette.roleTypes': 'Rollentypen',
++   'blueprint.node.linked': 'Verknüpft',
++   'blueprint.node.notLinked': 'Nicht verknüpft',
++   'blueprint.edge.sequential': 'Sequenziell',
++   'blueprint.edge.conditional': 'Bedingt',
++   'blueprint.edge.interjection': 'Einschub',
++   'blueprint.edge.feedback': 'Feedback',
++   'blueprint.workflow.title': 'Workflow-Definition',
++   'blueprint.workflow.name': 'Workflow-Name',
++   'blueprint.workflow.description': 'Beschreibung',
++   'blueprint.workflow.executionOrder': 'Ausführungsreihenfolge',
++   'blueprint.workflow.compile': 'Kompilieren',
++   'blueprint.workflow.compileResult': 'Kompilierungsergebnis',
++   'blueprint.workflow.valid': 'Gültig',
++   'blueprint.workflow.invalid': 'Ungültig',
++   'blueprint.workflow.errors': 'Fehler',
++   'blueprint.workflow.warnings': 'Warnungen',
++   'blueprint.workflow.clone': 'Klonen',
++   'blueprint.workflow.cloned': 'Workflow erfolgreich geklont',
++   'blueprint.workflow.saveAsWorkflow': 'Als Workflow speichern',
++   'blueprint.workflow.saveAsWorkflowHint': 'Konvertieren Sie dieses Canvas-Layout in eine ausführbare Workflow-Definition. Der Workflow kann dann kompiliert und als Debatte gestartet werden.',
++   'blueprint.workflow.workflowCreated': 'Workflow erstellt',
++   'blueprint.workflow.workflowName': 'Workflow-Name',
++   'blueprint.workflow.workflowDescription': 'Beschreibung (optional)',
++   'blueprint.workflow.workflowDescriptionPlaceholder': 'Beschreiben Sie, was dieser Workflow tut...',
++   'blueprint.workflow.maxRounds': 'Maximale Runden',
++   'blueprint.workflow.consensusThreshold': 'Konsens-Schwellwert',
++   'blueprint.workflow.convert': 'Workflow erstellen',
++   'blueprint.workflow.runDebate': 'Debatte starten',
++   'blueprint.workflow.runDebateHint': 'Konfigurieren Sie die Debatte-Parameter und starten Sie die Workflow-Ausführung. Das Canvas wird bei Bedarf zuerst in einen Workflow konvertiert.',
++   'blueprint.workflow.topic': 'Thema / Fallbeschreibung',
++   'blueprint.workflow.topicPlaceholder': 'Geben Sie das Debatte-Thema oder die Fallbeschreibung ein...',
++   'blueprint.workflow.topicRequired': 'Thema ist erforderlich',
++   'blueprint.workflow.language': 'Sprache',
++   'blueprint.workflow.startDebate': 'Debatte starten',
++   'blueprint.workflow.debateStarted': 'Debatte gestartet',
++   'blueprint.toast.compiled': 'Workflow erfolgreich kompiliert',
++   'blueprint.toast.compileFailed': 'Workflow-Kompilierung fehlgeschlagen',
++   'blueprint.form.nodeType': 'Typ',
++   'blueprint.form.label': 'Bezeichnung',
++   'blueprint.form.agentBlueprint': 'Agent-Blueprint',
++   'blueprint.form.agentBlueprintNone': '— Keine —',
++   'blueprint.form.condition': 'Bedingung',
++   'blueprint.form.conditionHint': 'z.B. round >= 3',
++   'blueprint.form.inputType': 'Eingabetyp',
++   'blueprint.form.inputTypeUserQuery': 'Benutzeranfrage',
++   'blueprint.form.inputTypeOobInput': 'OOB-Eingabe',
++   'blueprint.form.inputTypeExternalEvent': 'Externes Ereignis',
++   'blueprint.form.loadingBlueprints': 'Blueprints werden geladen...',
++   'blueprint.node.running': 'Wird ausgeführt...',
++   'blueprint.node.completed': 'Abgeschlossen',
++   'blueprint.node.failed': 'Fehlgeschlagen',
++   'blueprint.node.paused': 'Pausiert',
++   'workflow.execution.title': 'Ausführen',
++   'workflow.execution.close': 'Schließen',
++   'workflow.execution.start': 'Starten',
++   'workflow.execution.pause': 'Pausieren',
++   'workflow.execution.resume': 'Fortsetzen',
++   'workflow.execution.cancel': 'Abbrechen',
++   'workflow.execution.round': 'Runde',
++   'workflow.execution.consensus': 'Konsens',
++   'workflow.execution.elapsed': 'Laufzeit',
++   'workflow.execution.currentNode': 'Aktueller Knoten',
++   'workflow.execution.interjection': 'Einschub',
++   'workflow.execution.interjectionPlaceholder': 'Einschub eingeben...',
++   'workflow.execution.submit': 'Absenden',
++   'workflow.execution.nodeOutputs': 'Knotenausgaben',
++   'workflow.execution.status.idle': 'Bereit',
++   'workflow.execution.status.running': 'Läuft',
++   'workflow.execution.status.paused': 'Pausiert',
++   'workflow.execution.status.completed': 'Abgeschlossen',
++   'workflow.execution.status.failed': 'Fehlgeschlagen',
++   'workflow.execution.status.cancelled': 'Abgebrochen',
++   'workflow.execution.status.unknown': 'Unbekannt',
++   'workflow.execution.toast.started': 'Workflow-Ausführung gestartet',
++   'workflow.execution.toast.completed': 'Workflow erfolgreich abgeschlossen',
++   'workflow.execution.toast.failed': 'Workflow-Ausführung fehlgeschlagen',
++   'workflow.execution.toast.paused': 'Workflow pausiert',
++   'workflow.execution.toast.resumed': 'Workflow fortgesetzt',
++   'replay.title': 'Wiedergabe',
++   'replay.selectSession': 'Sitzung auswählen',
++   'replay.play': 'Abspielen',
++   'replay.pause': 'Pause',
++   'replay.stepForward': 'Schritt vorwärts',
++   'replay.stepBack': 'Schritt zurück',
++   'replay.speed': 'Geschwindigkeit',
++   'replay.nodeDetail.title': 'Knoten-Detail',
++   'replay.nodeDetail.input': 'Eingabe',
++   'replay.nodeDetail.output': 'Ausgabe',
++   'replay.nodeDetail.latency': 'Latenz',
++   'replay.nodeDetail.tokens': 'Tokens',
++   'replay.nodeDetail.actor': 'Akteur',
++   'replay.nodeDetail.timestamp': 'Zeitstempel',
++   'replay.interjectionMarker': 'Einwurf',
++   'replay.noData': 'Keine Audit-Daten für diese Sitzung.',
++   'diff.title': 'Vergleichsansicht',
++   'diff.selectSessionA': 'Sitzung A',
++   'diff.selectSessionB': 'Sitzung B',
++   'diff.noDifferences': 'Keine Unterschiede gefunden.',
++   'diff.differencesFound': 'Unterschiede gefunden.',
++   'diff.nodeDetail.sessionA': 'Sitzung A',
++   'diff.nodeDetail.sessionB': 'Sitzung B',
++   'diff.nodeDetail.latencyComparison': 'Latenzvergleich',
++   'diff.nodeDetail.tokenComparison': 'Token-Vergleich',
++   'audit.tab.title': 'Audit-Protokoll',
++   'audit.columns.timestamp': 'Zeitstempel',
++   'audit.columns.eventType': 'Ereignistyp',
++   'audit.columns.nodeId': 'Knoten-ID',
++   'audit.columns.actor': 'Akteur',
++   'audit.columns.latency': 'Latenz',
++   'audit.columns.promptTokens': 'Prompt-Tokens',
++   'audit.columns.completionTokens': 'Completion-Tokens',
++   'audit.columns.inputHash': 'Eingabe-Hash',
++   'audit.columns.outputHash': 'Ausgabe-Hash',
++   'audit.filter.eventType': 'Alle Ereignistypen',
++   'audit.filter.actor': 'Akteur filtern',
++   'audit.filter.search': 'Akteur/Knoten suchen...',
++   'audit.export.csv': 'CSV exportieren',
++   'audit.summary.totalEvents': 'Ereignisse gesamt',
++   'audit.summary.totalTokens': 'Tokens gesamt',
++   'audit.summary.totalLatency': 'Latenz gesamt',
++   'audit.noEvents': 'Noch keine Audit-Ereignisse',
++   'report.title': 'Berichte',
++   'report.generate': 'Bericht erstellen',
++   'report.format': 'Format',
++   'report.status.pending': 'Wird generiert...',
++   'report.status.completed': 'Abgeschlossen',
++   'report.status.failed': 'Fehlgeschlagen',
++   'report.download': 'Bericht herunterladen',
++   'session.softDelete': 'Archivieren',
++   'session.restore': 'Wiederherstellen',
++   'session.archived': 'Archiviert',
++   'settings.title': 'Anwendungseinstellungen',
++   'settings.searchMode': 'Suchmodus',
++   'settings.searchModeHint': 'Standard-Websuchmodus für neue Debatten',
++   'settings.privacy': 'Datenschutz',
++   'settings.privacyHint': 'Datenschutzmodus aktivieren, um sensible Informationen zu verschleiern',
++   'settings.retention': 'Datenaufbewahrung (Tage)',
++   'settings.retentionHint': 'Anzahl der Tage zur Aufbewahrung von Debattendaten (0 = unbegrenzt)',
++   'settings.saved': 'Einstellungen erfolgreich gespeichert',
++   'rag.search': 'Dokumente durchsuchen',
++   'rag.searchPlaceholder': 'Durchsuche indexierte Dokumente...',
++   'rag.searchButton': 'Suchen',
++   'rag.searching': 'Suche läuft...',
++   'rag.noResults': 'Keine Ergebnisse gefunden.',
++   'rag.relevance': 'Relevanz',
++   'rag.source': 'Quelle',
++   'rag.chunk': 'Abschnitt',
++   'a2a.protocol.label': 'Protokoll',
++   'a2a.protocol.litellm': 'LiteLLM',
++   'a2a.protocol.a2a': 'A2A',
++   'a2a.endpoint.label': 'A2A-Endpunkt-URL',
++   'a2a.endpoint.placeholder': 'https://agent.example.com',
++   'a2a.timeout.label': 'Timeout (Sekunden)',
++   'a2a.fallback.label': 'Fallback-Profil',
++   'a2a.fallback.none': 'Keins',
++   'a2a.discover.button': 'Entdecken',
++   'a2a.discover.loading': 'Entdecke...',
++   'a2a.discover.success': 'Erfolgreich entdeckt',
++   'a2a.discover.error': 'Entdeckung fehlgeschlagen',
++   'a2a.capabilities.title': 'Agenten-Fähigkeiten',
++   'a2a.capabilities.skills': 'Fähigkeiten',
++   'a2a.capabilities.inputModes': 'Eingabemodi',
++   'a2a.capabilities.outputModes': 'Ausgabemodi',
++   'a2a.capabilities.version': 'Version',
++   'a2a.badge.remote': 'Remote',
++   'a2a.badge.tooltip': 'Externer A2A-Agent',
++   'a2a.error.timeout': 'A2A-Aufruf Timeout',
++   'a2a.error.connectionFailed': 'Verbindung zum A2A-Agenten fehlgeschlagen',
++   'a2a.error.invalidUrl': 'Ungültige A2A-Endpunkt-URL',
++   'a2a.error.privateIpBlocked': 'Private IP-Adressen sind blockiert',
++   'a2a.error.protocolError': 'Ungültige A2A-Protokollantwort',
++   'a2a.fallback.activated': 'Fallback-LLM-Profil aktiviert',
++   'a2a.fallback.profile': 'Verwende Fallback-Profil',
++   'template.gallery.title': 'Workflow-Vorlagen',
++   'template.gallery.searchPlaceholder': 'Vorlagen suchen...',
++   'template.gallery.filterAll': 'Alle',
++   'template.gallery.filterSystem': 'System',
++   'template.gallery.filterCustom': 'Benutzerdefiniert',
++   'template.gallery.loading': 'Vorlagen werden geladen...',
++   'template.gallery.empty': 'Keine Vorlagen gefunden.',
++   'template.gallery.blankCanvas': 'Leere Arbeitsfläche',
++   'template.gallery.blankCanvasDesc': 'Von Grund auf neu beginnen.',
++   'template.gallery.systemBadge': 'System',
++   'template.gallery.placeholders': 'Platzhalter',
++   'template.gallery.confirmDelete': 'Vorlage löschen?',
++   'template.gallery.yes': 'Ja',
++   'template.gallery.no': 'Nein',
++   'template.instantiate.title': 'Vorlage instanziieren',
++   'template.instantiate.workflowName': 'Workflow-Name',
++   'template.instantiate.selectBlueprint': '— Agent-Blueprint auswählen —',
++   'template.instantiate.cancel': 'Abbrechen',
++   'template.instantiate.create': 'Workflow erstellen',
++   'template.instantiate.creating': 'Wird erstellt...',
++   'template.instantiate.error': 'Vorlage konnte nicht instanziert werden',
++   'template.saveAs.title': 'Als Vorlage speichern',
++   'template.saveAs.name': 'Vorlagenname',
++   'template.saveAs.description': 'Beschreibung',
++   'template.saveAs.descriptionPlaceholder': 'Beschreiben Sie, was diese Vorlage tut...',
++   'template.saveAs.placeholders': 'Platzhalter extrahieren',
++   'template.saveAs.placeholdersHint': 'Hier aufgeführte Felder werden zu {{Platzhaltern}} in der Vorlage.',
++   'template.saveAs.suggested': 'Vorgeschlagen',
++   'template.saveAs.addPlaceholder': 'Feldschlüssel hinzufügen...',
++   'template.saveAs.cancel': 'Abbrechen',
++   'template.saveAs.save': 'Vorlage speichern',
++   'template.saveAs.saving': 'Wird gespeichert...',
++   'template.saveAs.error': 'Vorlage konnte nicht gespeichert werden',
++   'template.toast.instantiated': 'Workflow aus Vorlage erstellt',
++   'template.toast.saved': 'Vorlage erfolgreich gespeichert',
++   'config.roleTypes': 'Rollen-Typen',
++   'config.noRoleTypes': 'Keine Rollen-Typen definiert',
++   'config.createRoleType': 'Rollen-Typ erstellen',
++   'config.editRoleType': 'Rollen-Typ bearbeiten',
++   'config.roleTypeSaved': 'Rollen-Typ erfolgreich gespeichert',
++   'config.roleTypeColor': 'Farbe',
++   'config.roleTypeIcon': 'Symbol',
++   'archive.viewTrace': 'Trace anzeigen',
++   'archive.traceTitle': 'Ausführungs-Trace',
++   'blueprint.canvas.saveLayout': 'Layout speichern',
++   'blueprint.canvas.autoLayout': 'Auto-Layout',
++   'blueprint.canvas.loadLayout': 'Laden',
++   'blueprint.canvas.deleteLayout': 'Löschen',
++   'blueprint.inspector.save': 'Speichern',
++   'blueprint.inspector.delete': 'Löschen',
++   'blueprint.inspector.draft': 'Entwurf',
++   'blueprint.inspector.cancel': 'Abbrechen',
++   'blueprint.form.color': 'Farbe',
++   'blueprint.form.icon': 'Symbol',
++   'blueprint.inspector.connections': 'Verbindungen',
++   'blueprint.inspector.effectiveConfig': 'Effektive Konfiguration',
++   'blueprint.form.roleType': 'Rollentyp',
++   'blueprint.form.roleTypeHint': 'Bestimmt die Verhaltenskategorie',
++   'blueprint.form.roleHint': 'Wähle den Rollentyp für diese Definition',
++   'config.managedByBlueprint': 'Vom Blueprint Canvas verwaltet',
++   'translation.title': 'Übersetzungs-Dashboard',
++   'translation.modules': 'Modul-Übersetzungen',
++   'translation.batchTranslate': 'Stapelübersetzung',
++   'translation.targetLanguage': 'Zielsprache',
++   'translation.noModules': 'Keine Module registriert. Konfigurieren Sie diese im Blueprint-Canvas.',
++   'translation.translate': 'Übersetzen',
++   'translation.translating': 'Wird übersetzt…',
++   'translation.translateModule': 'Modul übersetzen',
++   'translation.startTranslate': 'Übersetzung starten',
++   'translation.refreshModules': 'Module aktualisieren',
++   'translation.selectModules': 'Module auswählen',
++   'translation.modulesSelected': 'ausgewählt',
++   'translation.forceReTranslate': 'Erneut übersetzen',
++   'translation.skipBackTranslation': 'Rückübersetzung überspringen',
++   'translation.noTranslations': 'Noch keine Übersetzungen. Klicken Sie auf "Übersetzen" zum Starten.',
++   'translation.quality': 'Qualität',
++   'translation.approved': 'Freigegeben',
++   'translation.pending': 'Ausstehend',
++   'translation.reject': 'Ablehnen',
++   'translation.approve': 'Freigeben',
++   'translation.invalidate': 'Ungültig machen',
++   'translation.progress': 'Fortschritt',
++   'translation.startBatch': 'Stapel starten',
++   'translation.moduleLabel': 'Modul',
+    // ConfigView — Module Tab
+    'config.modules': 'Module',
+    'config.modulesPlaceholder': 'Keine Module registriert',
+    'config.moduleManager': 'Module verwalten',
++   // Version
++   'app.version': 'Version {version}',
++   'app.versionLabel': 'Anwendungsversion',
+ };
+diff --git a/frontend/src/lib/i18n/loaders/en.js b/frontend/src/lib/i18n/loaders/en.js
+index ad68ec5..94881fa 100644
+--- a/frontend/src/lib/i18n/loaders/en.js
++++ b/frontend/src/lib/i18n/loaders/en.js
+@@ -824,4 +824,7 @@ export default {
+    'config.modules': 'Modules',
+    'config.modulesPlaceholder': 'No modules registered',
+    'config.moduleManager': 'Manage Modules',
++    // Version
++    'app.version': 'Version {version}',
++    'app.versionLabel': 'Application Version',
+ };
+diff --git a/frontend/src/lib/stores.js b/frontend/src/lib/stores.js
+index 57b3934..faef4b2 100644
+--- a/frontend/src/lib/stores.js
++++ b/frontend/src/lib/stores.js
+@@ -13,6 +13,9 @@ export const routeParams = writable([]);
+ /** Backend health status */
+ export const healthStatus = writable({ status: 'unknown', version: '' });
+ 
++/** Application version loaded from the /api/v1/config/version endpoint */
++export const appVersion = writable('');
++
+ /** Current debate state */
+ export const currentDebate = writable(null);
+ 
+diff --git a/pyproject.toml b/pyproject.toml
+index f2a783c..e9ad242 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "debate-agent"
+-version = "2.0.0"
++version = "1.1.0"
+ description = "Auditierbarer Multi-Agenten-Debatten-Workflow"
+ requires-python = ">=3.11"
+ dependencies = [

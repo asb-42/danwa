@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -619,6 +619,14 @@ _MIGRATION_V23_TABLES = [
 _MIGRATION_V24_TABLES = [
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_module_trans_cache_uniq ON module_translation_cache (module_id, file_path, language)",
 ]
+# ---------------------------------------------------------------------------
+# V25 — service_eligible column on blueprint_llm_profiles
+# ---------------------------------------------------------------------------
+
+_MIGRATION_V25_TABLES = [
+    "ALTER TABLE blueprint_llm_profiles ADD COLUMN service_eligible INTEGER DEFAULT 1",
+]
+
 
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
@@ -907,6 +915,19 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                 logger.info("Migration v24 applied successfully")
             except sqlite3.OperationalError as exc:
                 logger.debug("Migration v24 skipped: %s", exc)
+
+
+        # ── V25 — service_eligible column ──
+        if current < 25:
+            logger.info("Applying migration v25: service_eligible column on blueprint_llm_profiles")
+            try:
+                for stmt in _MIGRATION_V25_TABLES:
+                    conn.execute(stmt)
+                _record_version(conn, 25, "Add service_eligible column to blueprint_llm_profiles")
+                conn.commit()
+                logger.info("Migration v25 applied successfully")
+            except sqlite3.OperationalError as exc:
+                logger.debug("Migration v25 skipped: %s", exc)
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

@@ -99,9 +99,9 @@ class DocumentProcessor:
 
     async def _process_with_tesseract(self, file_path: str, ocr) -> dict[str, Any]:
         """Process with Tesseract via pytesseract."""
+        import pytesseract
+        from PIL import Image
         try:
-            from PIL import Image
-            import pytesseract
 
             img = Image.open(file_path)
             text = pytesseract.image_to_string(img)

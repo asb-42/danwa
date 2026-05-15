@@ -55,7 +55,7 @@ def migrate_templates(wf_templates: Path) -> list[dict]:
 
     json_files = list(sorted(legacy_dir.glob("*.json")))
     # templates/print/ enthält Renderer-Module, keine Workflow-Templates
-    print_dir = legacy_dir / "print"
+    # print_dir = legacy_dir  # unused
     json_files = [f for f in json_files if not f.parent.name == "print"]
 
     for json_file in json_files:

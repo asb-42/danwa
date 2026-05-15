@@ -841,6 +841,9 @@ export default {
     'service.validationFailed': 'Profile is NOT eligible for service tasks',
     'service.setSuccess': 'Service LLM updated successfully',
     'service.setFailed': 'Failed to update service LLM',
+    'service.active': 'Active',
+    'service.setAsService': 'Set as Service',
+    'service.noEligibleProfiles': 'No eligible profiles found.',
 
     // Toast notifications
     'toast.titleChanged': 'Debate title updated via service LLM',

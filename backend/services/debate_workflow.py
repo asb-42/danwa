@@ -8,7 +8,6 @@ cancellation state) from HTTP routing concerns.
 from __future__ import annotations
 
 import logging
-import re
 from datetime import UTC, datetime
 
 from backend.api.events import publish_async
@@ -317,7 +316,7 @@ async def generate_debate_title(
     from backend.services.llm_service import LLMService
     from backend.services.profile_service import ProfileService
 
-    _TITLE_SYSTEM_PROMPTS = {
+    _title_system_prompts = {
         "en": (
             "You are an expert debate title generator. "
             "Produce ONLY a concise, descriptive title (60-150 characters) "
@@ -340,7 +339,7 @@ async def generate_debate_title(
         else:
             llm_service = LLMService(profile_id=llm_profile_id, profile_service=ps)
 
-        system_prompt = _TITLE_SYSTEM_PROMPTS.get(language, _TITLE_SYSTEM_PROMPTS["de"])
+        system_prompt = _title_system_prompts.get(language, _title_system_prompts["de"])
 
         user_prompt = (
             "Create ONE debate title (60-150 characters) for the following case. "

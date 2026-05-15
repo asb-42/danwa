@@ -743,6 +743,25 @@ export default {
    'config.modules': 'Module',
    'config.modulesPlaceholder': 'Keine Module registriert',
    'config.moduleManager': 'Module verwalten',
+
+    // Service LLM
+    'service.title': 'Service LLM',
+    'service.description': 'Konfigurieren Sie das dedizierte LLM für Systemaufgaben wie Titelerstellung.',
+    'service.profile': 'Service-LLM-Profil',
+    'service.profileHint': 'Wählen Sie ein LLM für Hintergrund-/Systemaufgaben',
+    'service.eligible': 'Elegibel',
+    'service.notEligible': 'Nicht elegibel',
+    'service.contextWindow': 'Kontextfenster',
+    'service.minContext': 'Min. Kontext',
+    'service.validationSuccess': 'Profil ist für Service-Aufgaben geeignet',
+    'service.validationFailed': 'Profil ist NICHT für Service-Aufgaben geeignet',
+    'service.setSuccess': 'Service-LLM erfolgreich aktualisiert',
+    'service.setFailed': 'Service-LLM konnte nicht aktualisiert werden',
+    'service.active': 'Aktiv',
+    'service.setAsService': 'Als Service setzen',
+    'service.noEligibleProfiles': 'Keine geeigneten Profile gefunden.',
+
+   // Version
    // Version
    'app.version': 'Version {version}',
    'app.versionLabel': 'Anwendungsversion',

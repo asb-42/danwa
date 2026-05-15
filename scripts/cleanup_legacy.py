@@ -10,9 +10,8 @@ Plan: 014 §5.7
 from __future__ import annotations
 
 import logging
-import shutil
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,7 +53,7 @@ def mark_directory_as_deprecated(legacy_path: Path, new_module: str) -> bool:
         logger.info("Bereits als DEPRECATED markiert: %s", legacy_path)
         return False
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     content = DEPRECATED_CONTENT.format(
         timestamp=timestamp,
         new_module=new_module,
@@ -72,7 +71,7 @@ def mark_subdir_deprecated(legacy_path: Path, new_module: str) -> int:
             continue
         deprecated_file = subdir / "DEPRECATED.txt"
         if not deprecated_file.exists():
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            timestamp = datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
             content = DEPRECATED_CONTENT.format(
                 timestamp=timestamp,
                 new_module=new_module,

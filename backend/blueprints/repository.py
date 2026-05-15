@@ -68,7 +68,8 @@ class BlueprintRepository:
                      cost_per_1k_input, cost_per_1k_output,
                      description, tags_json, created_at, updated_at,
                      protocol, a2a_endpoint, a2a_timeout,
-                     fallback_llm_profile_id, a2a_config_json)
+                     fallback_llm_profile_id, a2a_config_json,
+                      service_eligible)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
@@ -152,6 +153,7 @@ class BlueprintRepository:
             a2a_timeout=row["a2a_timeout"] if "a2a_timeout" in row.keys() else 120,
             fallback_llm_profile_id=row["fallback_llm_profile_id"] if "fallback_llm_profile_id" in row.keys() else None,
             a2a_config=json.loads(row["a2a_config_json"]) if "a2a_config_json" in row.keys() and row["a2a_config_json"] else {},
+            service_eligible=row["service_eligible"] if "service_eligible" in row.keys() else True,
         )
 
     # ------------------------------------------------------------------

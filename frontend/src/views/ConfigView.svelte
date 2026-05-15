@@ -20,6 +20,9 @@
     getBackendLogs,
     getSettings,
     updateSettings,
+    getServiceEligibleProfiles,
+    getServiceLLMConfig,
+    setServiceLLM,
   } from '../lib/api.js';
   import {
     listRoleTypes,
@@ -72,7 +75,12 @@ import ModuleManager from '../components/ModuleManager.svelte';
   let logSearch = $state('');
   let isLoadingLogs = $state(false);
 
-  // Settings tab state
+  // Service LLM tab state
+   let serviceEligibleProfiles = $state([]);
+   let serviceLLMConfig = $state({});
+   let isLoadingServiceLLM = $state(false);
+
+   // Settings tab state
   let settingsData = $state({});
   let settingsLoaded = $state(false);
   let isLoadingSettings = $state(false);
@@ -153,7 +161,36 @@ import ModuleManager from '../components/ModuleManager.svelte';
     } catch (e) { $error = e.message; }
   }
 
-  async function refreshLists() {
+  async function loadServiceLLMData() {
+     isLoadingServiceLLM = true;
+     try {
+       const [eligible, config] = await Promise.all([
+         getServiceEligibleProfiles(),
+         getServiceLLMConfig(),
+       ]);
+       serviceEligibleProfiles = eligible || [];
+       serviceLLMConfig = config || {};
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       isLoadingServiceLLM = false;
+     }
+   }
+
+   async function setServiceProfile(profileId) {
+     isLoadingServiceLLM = true;
+     try {
+       await setServiceLLM(profileId);
+       await loadServiceLLMData();
+       statusMessage = t('service.setSuccess') || 'Service LLM updated successfully';
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       isLoadingServiceLLM = false;
+     }
+   }
+
+   async function refreshLists() {
     const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions()]);
     if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
     if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
@@ -437,7 +474,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'roleTypes', 'agents', 'prompts', 'modules', 'cost', 'settings', 'system'] as tab}
+      {#each ['llm', 'service', 'roleTypes', 'agents', 'prompts', 'modules', 'cost', 'settings', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -450,6 +487,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
           {:else if tab === 'roleTypes'}🎭 {t('config.roleTypes')}
           {:else if tab === 'prompts'}{t('config.promptVariants')}
           {:else if tab === 'cost'}{t('config.costEstimate')}
+          {:else if tab === 'service'}🔧 {t('service.title')}
           {:else if tab === 'settings'}⚙️ {t('settings.title')}
           {:else if tab === 'system'}🖥️ System
           {/if}
@@ -574,7 +612,91 @@ import ModuleManager from '../components/ModuleManager.svelte';
       </div>
     </div>
 
-  <!-- Agent Personas Tab -->
+  
+   <!-- Service LLM Tab -->
+   {:else if activeTab === 'service'}
+     <div class="space-y-4">
+       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('service.profile')}</h3>
+         <p class="text-sm text-gray-600 dark:text-gray-400">{t('service.profileHint')}</p>
+       </div>
+       {#if isLoadingServiceLLM}
+         <div class="flex items-center justify-center h-32">
+           <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+         </div>
+       {:else if serviceEligibleProfiles.length === 0}
+         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+           <p class="text-gray-500 dark:text-gray-400">{t('service.noEligibleProfiles') || 'No eligible profiles found.'}</p>
+         </div>
+       {:else}
+         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-x-auto">
+           <table class="w-full text-sm text-left">
+             <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
+               <tr>
+                 <th class="px-4 py-3">{t('config.name')}</th>
+                 <th class="px-4 py-3">{t('config.model')}</th>
+                 <th class="px-4 py-3">{t('config.provider')}</th>
+                 <th class="px-4 py-3">{t('service.contextWindow')}</th>
+                 <th class="px-4 py-3">{t('service.eligible')}</th>
+                 <th class="px-4 py-3 text-center">Aktion</th>
+               </tr>
+             </thead>
+             <tbody>
+               {#each serviceEligibleProfiles as profile}
+                 <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
+                   {serviceLLMConfig.service_llm_profile_id === profile.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
+                   <td class="px-4 py-3 font-medium">{profile.name}</td>
+                   <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
+                   <td class="px-4 py-3">{profile.provider}</td>
+                   <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
+                   <td class="px-4 py-3 text-center">
+                     {#if profile.service_eligible}
+                       <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                         ✓ {t('service.eligible')}
+                       </span>
+                     {:else}
+                       <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                         ✗ {t('service.notEligible')}
+                       </span>
+                     {/if}
+                   </td>
+                   <td class="px-4 py-3 text-center">
+                     {#if serviceLLMConfig.service_llm_profile_id === profile.id}
+                       <span class="text-xs px-2 py-1 rounded bg-green-600 text-white">
+                         ✓ {t('service.active')}
+                       </span>
+                     {:else if profile.service_eligible}
+                       <button class="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                         onclick={() => setServiceProfile(profile.id)}
+                         disabled={isLoadingServiceLLM}>
+                         {t('service.setAsService') || 'Set as Service'}
+                       </button>
+                     {:else}
+                       <span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400">
+                         {t('service.notEligible')}
+                       </span>
+                     {/if}
+                   </td>
+                 </tr>
+               {/each}
+             </tbody>
+           </table>
+         </div>
+
+         <!-- Current service LLM info -->
+         {#if serviceLLMConfig.service_llm_profile_id}
+           <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mt-4">
+             <p class="text-sm text-blue-800 dark:text-blue-200">
+               <strong>⚡ {t('service.active')}:</strong>
+               {serviceLLMConfig.service_llm_profile_id}
+               <span class="text-gray-500 dark:text-gray-400 ml-2">({t('service.profileHint')})</span>
+             </p>
+           </div>
+         {/if}
+       {/if}
+     </div>
+
+   <!-- Agent Personas Tab -->
   {:else if activeTab === 'agents'}
     <div class="space-y-4">
       {#each ['strategist', 'critic', 'optimizer', 'moderator'] as role}

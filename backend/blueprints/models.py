@@ -76,6 +76,9 @@ class BlueprintLLMProfile(BaseModel):
     fallback_llm_profile_id: str | None = None
     a2a_config: dict = Field(default_factory=dict)
 
+    # --- Service LLM (Sprint 16) ---
+    service_eligible: bool = True  # Whether this profile can be used for system/background tasks
+
     @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
@@ -131,6 +134,7 @@ class BlueprintLLMProfile(BaseModel):
             a2a_endpoint=getattr(legacy, "a2a_endpoint", None),
             a2a_timeout=getattr(legacy, "a2a_timeout", 120),
             fallback_llm_profile_id=getattr(legacy, "fallback_llm_profile_id", None),
+             service_eligible=getattr(legacy, "service_eligible", True),
         )
 
     def to_legacy(self) -> LLMProfile:
@@ -153,6 +157,7 @@ class BlueprintLLMProfile(BaseModel):
             a2a_endpoint=self.a2a_endpoint,
             a2a_timeout=self.a2a_timeout,
             fallback_llm_profile_id=self.fallback_llm_profile_id,
+             service_eligible=self.service_eligible,
         )
 
 
