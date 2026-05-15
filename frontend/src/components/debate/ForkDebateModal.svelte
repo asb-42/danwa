@@ -1,10 +1,10 @@
-<script lang="ts">
+<script>
 	import { onMount } from 'svelte';
-	import { error } from '../../lib/stores.js';
 	import {
 		getLLMProfiles,
 		getAgentPersonas,
 		createDebate,
+		getDebate,
 		updateLLMProfile,
 		deleteLLMProfile,
 		updateAgentPersona,
@@ -16,7 +16,6 @@
 		forkDebate,
 	} from '../../lib/api.js';
 	import { i18n } from '../../lib/i18n/index.js';
-	import { debounce } from 'lodash';
 
 	let { debateId, navigate = () => {} } = $props();
 
@@ -31,7 +30,7 @@
 	let isLoading = $state(false);
 	let isSaving = $state(false);
 	let statusMessage = $state('');
-	let $error = null;
+	let error = null;
 
 	let forkReasonOptions = [
 		{ value: 'consensus_breakdown', label: t('fork.reason.consensus_breakdown') },
@@ -54,7 +53,7 @@
 
 	const loadDebate = async () => {
 		isLoading = true;
-		$error = null;
+		error = null;
 		try {
 			const [debateData, profiles, personas] = await Promise.all([
 				getDebate(debateId),
@@ -74,7 +73,7 @@
 				})),
 			];
 		} catch (err) {
-			$error = err.message;
+			error = err.message;
 		} finally {
 			isLoading = false;
 		}
@@ -82,7 +81,7 @@
 
 	const handleSave = async () => {
 		isSaving = true;
-		$error = null;
+		error = null;
 		statusMessage = '';
 		try {
 			await forkDebate(debateId, {
@@ -101,7 +100,7 @@
 				navigate('debate');
 			}, 1500);
 		} catch (err) {
-			$error = err.message;
+			error = err.message;
 		} finally {
 			isSaving = false;
 		}
@@ -116,9 +115,9 @@
 	});
 </script>
 
-{#if $error}
+{#if error}
 	<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300" role="alert">
-		{$error}
+		{error}
 	</div>
 {/if}
 
@@ -241,7 +240,7 @@
 									class="flex-1 min-w-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
 											bg-white dark:bg-gray-700 text-gray-900 dark:text-white
 											focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-									on:change={(e) => {
+									onchange={(e) => {
 										const value = e.target.value;
 										if (value) {
 											form.modifiedPersonas = {
