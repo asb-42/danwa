@@ -632,10 +632,15 @@ def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> s
     return "\n\n".join(parts)
 
 
-async def check_consensus_node(state: DebateState) -> dict:
-    """Evaluate consensus (linear progression toward threshold).
 
-    TODO: Replace with LLM-based consensus evaluation in a future sprint.
+async def check_consensus_node(state: DebateState) -> dict:
+    """Evaluate consensus using LLM-based analysis of agent outputs.
+
+    The LLM evaluates the content of all agent outputs in the current round
+    and produces a consensus score between 0.0 and 1.0, along with a
+    natural-language justification.
+
+    Falls back to a weighted heuristic if the LLM call fails.
 
     If any LLM failures occurred in this round, consensus is capped at 0
     to prevent false consensus claims.
@@ -646,51 +651,54 @@ async def check_consensus_node(state: DebateState) -> dict:
     session_id = state.get("session_id", "")
     anomalies = state.get("anomalies", [])
     enable_extra_rounds = state.get("enable_extra_rounds", False)
+    project_id = state.get("project_id")
+
+    agent_outputs = state.get("agent_outputs", [])
 
     # Check if any LLM failures occurred in this round
     has_failures = any("LLM call failed" in a for a in anomalies)
 
     if has_failures:
-        # Cap consensus at 0 when LLM failures occurred — no false consensus
         consensus = 0.0
         logger.warning(
             "Round %d: LLM failures detected (%d anomalies), consensus capped at 0",
-            current_round,
-            len(anomalies),
+            current_round, len(anomalies),
+        )
+    elif agent_outputs:
+        consensus = await _evaluate_consensus_with_llm(
+            agent_outputs=agent_outputs,
+            current_round=current_round,
+            max_rounds=max_rounds,
+            threshold=threshold,
+            session_id=session_id,
+            project_id=project_id,
         )
     else:
-        # Linear consensus progression
-        consensus = min(threshold, current_round / max_rounds * threshold * 1.2)
+        consensus = 0.0
 
-    # Include agent outputs from this round in the round data
     round_data: RoundDataState = {
         "round": current_round,
         "consensus": round(consensus, 3),
-        "agent_outputs": list(state.get("agent_outputs", [])),
+        "agent_outputs": list(agent_outputs),
     }
 
-    # --- Publish: round completed ---
-    total_tokens = sum(ao.get("tokens_used", 0) for ao in state.get("agent_outputs", []))
+    total_tokens = sum(ao.get("tokens_used", 0) for ao in agent_outputs)
     await publish_async(
-        session_id,
-        "round_update",
+        session_id, "round_update",
         {
             "round": current_round,
             "consensus": round(consensus, 3),
-            "agent_count": len(state.get("agent_outputs", [])),
+            "agent_count": len(agent_outputs),
             "total_tokens": total_tokens,
         },
     )
 
-    # --- Extension logic: reset extension_granted for the new round ---
-    # When a new round starts (current_round incremented), reset the decision
     next_round = current_round + 1
-    extension_granted = None  # Reset — must be decided again for the new round
+    extension_granted = None
 
-    # If consensus is NOT reached and extra rounds are enabled,
-    # the HITL extension_request_node will decide whether to grant more rounds
     needs_extension = (
-        enable_extra_rounds and consensus < threshold and next_round <= max_rounds + 2  # Allow up to 2 extra rounds beyond max
+        enable_extra_rounds and consensus < threshold
+        and next_round <= max_rounds + 2
     )
 
     return {
@@ -703,29 +711,177 @@ async def check_consensus_node(state: DebateState) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# LLM-based Consensus: Helpers
+# ---------------------------------------------------------------------------
+
+_CONSENSUS_SYSTEM_PROMPT = (
+    "You are an expert debate moderator. Evaluate the level of consensus "
+    "among participants based on their latest responses. Return a single "
+    "valid JSON object with keys: consensus_score (0.0-1.0), reasoning, "
+    "areas_of_agreement (list), remaining_disagreements (list)."
+)
+
+
+def _build_consensus_prompt(agent_outputs, round_num, max_rounds):
+    parts = [
+        "Round {} of {}. Agent responses in this round:".format(round_num, max_rounds),
+        "",
+    ]
+    for output in agent_outputs:
+        role = output.get("role", "agent")
+        text = output.get("content", "").strip()[:2000]
+        parts.append("### " + role.capitalize())
+        parts.append(text)
+        parts.append("")
+    parts.append(
+        "Evaluate consensus: are agents converging on shared conclusions? "
+        "Consider overlap in positions and acknowledgment of each other's points."
+    )
+    return "\n".join(parts)
+
+
+async def _evaluate_consensus_with_llm(
+    agent_outputs, current_round, max_rounds, threshold,
+    session_id, project_id=None,
+):
+    from backend.services.llm_service import LLMService
+    from backend.services.profile_service import ProfileService
+
+    prompt_text = _build_consensus_prompt(agent_outputs, current_round, max_rounds)
+    try:
+        ps = ProfileService()
+        service_id = _select_consensus_llm(ps)
+        svc = LLMService(profile_id=service_id, profile_service=ps)
+        result = await svc.generate(
+            prompt=prompt_text,
+            system_prompt=_CONSENSUS_SYSTEM_PROMPT,
+            temperature=0.2,
+            max_tokens=512,
+        )
+        score = _parse_consensus_score(result.content.strip())
+        if score is not None:
+            logger.info(
+                "Round %d: LLM consensus=%.3f (model=%s)",
+                current_round, score, service_id,
+            )
+            return _apply_consensus_floor(score, agent_outputs, threshold)
+    except Exception as exc:
+        logger.warning(
+            "LLM consensus failed (round %d): %s - using heuristic",
+            current_round, exc,
+        )
+    return _heuristic_consensus(agent_outputs, current_round, max_rounds, threshold)
+
+
+def _select_consensus_llm(profile_service):
+    try:
+        pref = profile_service.get_llm_profile(settings.service_llm_profile_id)
+        if pref and is_service_llm_eligible(pref):
+            return settings.service_llm_profile_id
+    except Exception:
+        pass
+    try:
+        eligible = [
+            p for p in profile_service.list_llm_profiles()
+            if is_service_llm_eligible(p)
+        ]
+        if eligible:
+            eligible.sort(key=lambda p_: (0 if p_.provider.value == "openrouter" else 1, -(p_.context_window or 0)))
+            return eligible[0].id
+    except Exception:
+        pass
+    return settings.service_llm_profile_id
+
+
+def _parse_consensus_score(text):
+    import json, re as _re
+    m = _re.search(r"\{[^{}]*\}", text, _re.DOTALL)
+    if m:
+        try:
+            data = json.loads(m.group())
+            s = data.get("consensus_score")
+            if isinstance(s, (int, float)) and 0.0 <= s <= 1.0:
+                return float(s)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    m = _re.search(r"consensus.score[\s:=]+([\d.]+)", text, _re.IGNORECASE)
+    if m:
+        try:
+            v = float(m.group(1))
+            if 0.0 <= v <= 1.0:
+                return v
+        except ValueError:
+            pass
+    m = _re.search(r"\b(0\.\d+|1\.0)\b", text)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    return None
+
+
+def _apply_consensus_floor(score, agent_outputs, threshold):
+    avg_len = sum(len(o.get("content", "").strip()) for o in agent_outputs) / max(len(agent_outputs), 1)
+    if avg_len < 50:
+        score = min(score, 0.3)
+    if threshold <= score < threshold + 0.05:
+        score = threshold - 0.01
+    return max(0.0, min(1.0, score))
+
+
+def _heuristic_consensus(agent_outputs, current_round, max_rounds, threshold):
+    import re as _re
+    progression = min(current_round / max_rounds, 1.0)
+    if agent_outputs:
+        avg_len = sum(len(o.get("content", "").strip()) for o in agent_outputs) / len(agent_outputs)
+        length_score = min(avg_len / 300.0, 1.0)
+    else:
+        length_score = 0.0
+    if len(agent_outputs) >= 2:
+        wsets = [_re.findall(r"\w{4,}", o.get("content", "").lower()) for o in agent_outputs]
+        wsets = [set(w) for w in wsets]
+        overlaps = []
+        for i in range(len(wsets)):
+            for j in range(i + 1, len(wsets)):
+                inter = len(wsets[i] & wsets[j])
+                uni = len(wsets[i] | wsets[j])
+                if uni > 0:
+                    overlaps.append(inter / uni)
+        overlap_score = sum(overlaps) / len(overlaps) if overlaps else 0.0
+    else:
+        overlap_score = 0.0
+    c = (0.40 * progression) + (0.30 * length_score) + (0.30 * overlap_score)
+    return round(min(threshold, c * threshold * 1.2), 3)
+
+
+
+
 async def complete_node(state: DebateState) -> dict:
     """Finalize the debate."""
-    session_id = state.get("session_id", "")
-    anomalies = state.get("anomalies", [])
+    session_id = state.get('session_id', '')
+    anomalies = state.get('anomalies', [])
 
     # --- Publish: debate completed ---
     await publish_async(
         session_id,
-        "status_change",
+        'status_change',
         {
-            "status": "completed",
-            "final_consensus": state.get("final_consensus", 0.0),
-            "total_rounds": state.get("current_round", 1) - 1,
+            'status': 'completed',
+            'final_consensus': state.get('final_consensus', 0.0),
+            'total_rounds': state.get('current_round', 1) - 1,
         },
     )
 
     return {
-        "output": state.get("current_draft", "No output generated."),
-        "anomalies": anomalies,
+        'output': state.get('current_draft', 'No output generated.'),
+        'anomalies': anomalies,
     }
 
 
 # ---------------------------------------------------------------------------
+# Conditional edge functions# ---------------------------------------------------------------------------
 # Conditional edge functions
 # ---------------------------------------------------------------------------
 
