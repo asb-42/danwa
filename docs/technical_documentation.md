@@ -49,7 +49,7 @@
 - **PaddleOCR Integration**: OCR for scanned PDFs and images
 - **Hybrid Retrieval**: BM25 + Vector search + Re-ranking for optimal document retrieval
 - **Real-time Updates**: Server-Sent Events (SSE) for live debate progress
-- **Internationalization**: Full i18n support (German/English)
+- **Internationalization**: Full i18n support for 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) with RTL support
 - **A2A Protocol**: Agent-to-Agent communication via JSON-RPC 2.0 for multi-agent workflows
 
 ---
@@ -143,7 +143,7 @@ Danwa follows a **decoupled frontend-backend architecture** with clear separatio
 | **Linting** | ruff 0.4+ | Fast Python linting and formatting |
 | **Validation** | Pydantic 2.7+ | Type validation for API and configs |
 | **SSE Support** | sse-starlette | Server-Sent Events for real-time updates |
-| **i18n (Frontend)** | Custom loaders | German/English translation support |
+| **i18n (Frontend)** | Custom loaders + Backend Translation API | 14 languages + RTL (Arabic, Hebrew) |
 | **State Management** | Svelte stores | Reactive state for UI |
 | **HTTP Client** | httpx | Async HTTP for LLM calls and web search |
 | **Environment** | python-dotenv | .env file loading |
@@ -336,8 +336,9 @@ danwa/
 │   │   │   │   ├── index.js
 │   │   │   │   ├── config.js
 │   │   │   │   └── loaders/
-│   │   │   │       ├── en.js
-│   │   │   │       └── de.js
+│   │   │   │       ├── en.js, de.js, fr.js, es.js, it.js
+│   │   │   │       ├── pt.js, ru.js, zh.js, ja.js, ko.js
+│   │   │   │       └── sv.js, el.js, ar.js, he.js
 │   │   │   └── workflow/     # Workflow state management
 │   │   │       ├── store.js  # Graph/runtime/history stores
 │   │   │       ├── events.js # Event types and dispatch
@@ -1010,14 +1011,15 @@ export async function layoutGraph(nodes, edges) {
 
 ### 6.6 Internationalization (`frontend/src/lib/i18n/`)
 
-Custom i18n system with language loaders:
+Custom i18n system with language loaders and backend translation API:
 
 ```javascript
 // i18n/index.js
 import { en } from './loaders/en.js';
 import { de } from './loaders/de.js';
+// ... 12 more language loaders
 
-const translations = { en, de };
+const translations = { en, de, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he };
 
 export function t(key, params = {}) {
     let text = translations[locale][key] || key;
@@ -1026,14 +1028,61 @@ export function t(key, params = {}) {
 }
 ```
 
-**Language files**:
+**Supported Languages** (14 total):
+
+| Code | Language | Script | Direction |
+|------|----------|--------|-----------|
+| de | German | Latin | LTR |
+| en | English | Latin | LTR |
+| fr | French | Latin | LTR |
+| es | Spanish | Latin | LTR |
+| it | Italian | Latin | LTR |
+| pt | Portuguese (BR) | Latin | LTR |
+| ru | Russian | Cyrillic | LTR |
+| zh | Chinese (Simplified) | CJK | LTR |
+| ja | Japanese | CJK | LTR |
+| ko | Korean | Hangul | LTR |
+| sv | Swedish | Latin | LTR |
+| el | Greek | Greek | LTR |
+| ar | Arabic | Arabic | RTL |
+| he | Hebrew | Hebrew | RTL |
+
+**Language files** (808 keys each):
 - `loaders/en.js`: English translations
 - `loaders/de.js`: German translations
+- `loaders/fr.js`: French translations
+- `loaders/es.js`: Spanish translations
+- `loaders/it.js`: Italian translations
+- `loaders/pt.js`: Portuguese (Brazilian) translations
+- `loaders/ru.js`: Russian translations
+- `loaders/zh.js`: Chinese (Simplified) translations
+- `loaders/ja.js`: Japanese translations
+- `loaders/ko.js`: Korean translations
+- `loaders/sv.js`: Swedish translations
+- `loaders/el.js`: Greek translations
+- `loaders/ar.js`: Arabic translations (RTL)
+- `loaders/he.js`: Hebrew translations (RTL)
+
+**Backend Translation API** (`/api/v1/i18n/`):
+- `GET /locales` — List supported languages
+- `GET /{locale}` — Get all translations for a language
+- `GET /{locale}/{key}` — Get single translation
+- `POST /{locale}` — Create/update translation
+- `POST /translate` — LLM ad-hoc translation
+- `POST /bulk-translate` — Batch LLM translation
+- `DELETE /{locale}/{key}` — Delete translation
+
+**RTL Support**:
+- CSS Logical Properties for layout mirroring
+- Dynamic `dir` attribute on `<html>` element
+- `rtl.css` for RTL-specific styles
+- BiDi text handling for mixed LTR/RTL content
 
 **Language switching**:
-- UI toggle via `LanguageSwitcher.svelte`
+- UI toggle via `LanguageSwitcher.svelte` with search
 - Persisted to `localStorage`
 - Sent to backend via `Accept-Language` header
+- Per-project default language setting
 
 ---
 

@@ -83,7 +83,7 @@ Danwa (formerly Debate-Agent) is an auditable multi-agent debate workflow system
 | **Linting** | ruff 0.4+ |
 | **Validation** | Pydantic 2.7+ |
 | **SSE Support** | sse-starlette |
-| **i18n** | Custom loaders (German/English) |
+| **i18n** | Custom loaders + Backend API (14 languages + RTL) |
 
 ---
 
@@ -259,7 +259,7 @@ The A2A (Agent-to-Agent) protocol enables Danwa to participate in multi-agent wo
 
 ```yaml
 ui:
-  language: en                   # Default UI language (en | de)
+  language: en                   # Default UI language (de | en | fr | es | it | pt | ru | zh | ja | ko | sv | el | ar | he)
 
 search:
   engine: duckduckgo             # searxng | duckduckgo (default: duckduckgo)
@@ -377,7 +377,7 @@ Access via the Config navigation item:
 | **Web Validation** | Enable fact-checking | off / optional / required |
 | **Precedent Memory** | Enable semantic memory | true |
 | **Prompt Variant** | Prompt strategy | `default` |
-| **Language** | UI & debate language | English / German |
+| **Language** | UI & debate language | 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) |
 
 ### Audit View
 
@@ -1349,14 +1349,34 @@ The debate process is visualized as an interactive graph using @xyflow/svelte an
 
 ### Supported Languages
 
-- **English** (`en`) - Default for UI and debates
-- **German** (`de`) - Full translation available
+Danwa supports **14 languages** with full UI translation:
+
+| Code | Language | Script | Direction |
+|------|----------|--------|-----------|
+| de | Deutsch | Latin | LTR |
+| en | English | Latin | LTR |
+| fr | Français | Latin | LTR |
+| es | Español | Latin | LTR |
+| it | Italiano | Latin | LTR |
+| pt | Português (BR) | Latin | LTR |
+| ru | Русский | Cyrillic | LTR |
+| zh | 中文 (简体) | CJK | LTR |
+| ja | 日本語 | CJK | LTR |
+| ko | 한국어 | Hangul | LTR |
+| sv | Svenska | Latin | LTR |
+| el | Ελληνικά | Greek | LTR |
+| ar | العربية | Arabic | RTL |
+| he | עברית | Hebrew | RTL |
 
 ### Switching Languages
 
 #### UI Language
 
-Use the **Language Switcher** in the header to toggle between English and German UI.
+Use the **Language Switcher** in the header to toggle between all 14 supported languages. The Language Switcher includes:
+- Search field for quick language finding
+- Display format: "Language Name (code)" e.g., "Deutsch (de)", "中文 (zh)"
+- RTL languages are clearly marked
+- Selection is persisted to `localStorage`
 
 #### Debate Language
 
@@ -1364,13 +1384,47 @@ Set the debate language in the **Debate View** or **Config View**:
 - Affects prompt templates used (e.g., `strategist.md` vs `strategist-en.md`)
 - Affects LLM response language (instructed via prompt)
 
+#### Per-Project Language
+
+Each project can have its own default language setting:
+- Go to **Projects** → Select project → **Settings**
+- Set the default language for new debates in this project
+
 ### Translation Files
 
 ```
 frontend/src/lib/i18n/loaders/
-├── en.js           # English translations
-└── de.js           # German translations
+├── en.js           # English translations (808 keys)
+├── de.js           # German translations (808 keys)
+├── fr.js           # French translations (808 keys)
+├── es.js           # Spanish translations (808 keys)
+├── it.js           # Italian translations (808 keys)
+├── pt.js           # Portuguese (BR) translations (808 keys)
+├── ru.js           # Russian translations (808 keys)
+├── zh.js           # Chinese (Simplified) translations (808 keys)
+├── ja.js           # Japanese translations (808 keys)
+├── ko.js           # Korean translations (808 keys)
+├── sv.js           # Swedish translations (808 keys)
+├── el.js           # Greek translations (808 keys)
+├── ar.js           # Arabic translations (808 keys, RTL)
+└── he.js           # Hebrew translations (808 keys, RTL)
 ```
+
+### RTL (Right-to-Left) Support
+
+Arabic (ar) and Hebrew (he) are RTL languages. The UI automatically:
+- Mirrors the layout direction
+- Uses CSS Logical Properties for proper spacing
+- Adjusts text alignment
+- Handles bidirectional text (BiDi) for mixed content
+
+### Backend Translation Management
+
+Danwa includes a backend translation API for managing translations:
+- View translation coverage per language
+- Add or edit translations manually
+- Use LLM for bulk translation of missing keys
+- Track translation source (manual, LLM-generated, reviewed)
 
 ---
 
