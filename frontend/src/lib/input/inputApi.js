@@ -78,6 +78,7 @@ export async function listInputJobs({ status, pluginKey, limit = 50, offset = 0 
  * @param {string} jobId - The completed InputJob ID.
  * @param {object} [options] - Launch options.
  * @param {string} [options.workflow_id] - Specific workflow ID (optional).
+ * @param {string} [options.workflow_template_id] - Workflow template ID to instantiate (optional).
  * @param {number} [options.max_rounds] - Max debate rounds.
  * @param {number} [options.consensus_threshold] - Consensus threshold.
  * @param {string} [options.language] - Language code.

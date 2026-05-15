@@ -194,9 +194,9 @@
       const options = {
         language: 'de',
       };
-      // Note: selectedTemplateId is a WorkflowTemplate ID, not a WorkflowDefinition ID.
-      // For now, let the backend auto-select the first active workflow.
-      // Phase 4 will wire template instantiation → workflow_id.
+      if (selectedTemplateId) {
+        options.workflow_template_id = selectedTemplateId;
+      }
       const result = await launchWorkflow(jobId, options);
       executionSessionId = result.session_id;
       showExecutionPanel = true;

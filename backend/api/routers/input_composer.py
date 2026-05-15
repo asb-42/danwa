@@ -382,7 +382,11 @@ class LaunchWorkflowRequest(BaseModel):
     job_id: str = Field(..., description="InputJob ID (must have status=completed)")
     workflow_id: str | None = Field(
         default=None,
-        description="WorkflowDefinition ID to execute. If omitted, uses the first available active workflow.",
+        description="WorkflowDefinition ID to execute. If omitted, uses workflow_template_id or first available active workflow.",
+    )
+    workflow_template_id: str | None = Field(
+        default=None,
+        description="WorkflowTemplate ID to instantiate into a WorkflowDefinition. Ignored if workflow_id is provided.",
     )
     max_rounds: int = Field(default=5, ge=1, le=50)
     consensus_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
@@ -438,6 +442,69 @@ async def launch_workflow_from_input(
 
     # 2. Resolve workflow definition
     workflow_id = body.workflow_id
+    if workflow_id is None and body.workflow_template_id is not None:
+        # Instantiate template into a WorkflowDefinition
+        from backend.api.routers.workflow_templates import InstantiateRequest
+
+        template = repo.get_workflow_template(body.workflow_template_id)
+        if template is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"WorkflowTemplate '{body.workflow_template_id}' not found",
+            )
+
+        # Use debate topic as name if no specific name is provided
+        topic_name = topic[:80] if topic else f"Workflow from {body.job_id}"
+        inst_req = InstantiateRequest(
+            name=f"{topic_name} ({template.name})",
+            placeholder_values={},
+        )
+
+        # Instantiate the template
+        required_keys = {p.key for p in template.placeholders if p.default is None}
+        if required_keys:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "missing_placeholders",
+                    "missing": sorted(required_keys),
+                    "message": f"Template '{template.name}' requires placeholder values: {', '.join(sorted(required_keys))}",
+                },
+            )
+
+        resolved_data = template.instantiate(inst_req.placeholder_values)
+
+        # Build WorkflowDefinition
+        from datetime import UTC, datetime
+
+        wf_id = f"wf-{uuid.uuid4().hex[:8]}"
+        from backend.blueprints.workflow_models import WorkflowDefinition
+
+        try:
+            workflow_def = WorkflowDefinition(
+                id=wf_id,
+                name=inst_req.name or template.name,
+                description=f"Instantiated from template '{template.name}' via Input Composer",
+                nodes=resolved_data.get("nodes", []),
+                edges=resolved_data.get("edges", []),
+                entry_point=resolved_data.get("entry_point"),
+                termination_conditions=resolved_data.get("termination_conditions", []),
+                template_id=body.workflow_template_id,
+                is_active=True,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Instantiated template produces invalid workflow: {exc}",
+            )
+        repo.save_workflow_definition(workflow_def)
+        workflow_id = wf_id
+        logger.info(
+            "Instantiated WorkflowTemplate '%s' into WorkflowDefinition '%s'",
+            body.workflow_template_id,
+            workflow_id,
+        )
+
     if workflow_id is None:
         # Use the first available active workflow
         workflows = repo.list_workflow_definitions(limit=10)
