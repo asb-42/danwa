@@ -1,5 +1,5 @@
 /**
- * Português (pt) translations for Danwa UI.
+ * עברית (he) translations for Danwa UI.
  *
  * Auto-generated — translate via LLM batch or LanguageSwitcher.
  * 808 keys total.

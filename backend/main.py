@@ -51,6 +51,7 @@ from backend.api.routers import (  # noqa: E402
     workflow_templates,
 )
 from backend.api.routers.translation import router as translation_router  # noqa: E402
+from backend.api.routers.ui_i18n import router as ui_i18n_router  # noqa: E402
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
 # Path to built frontend assets (relative to project root)
@@ -207,6 +208,7 @@ def create_app() -> FastAPI:
 
     # --- Translation ---
     app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
+    app.include_router(ui_i18n_router, prefix="/api/v1/i18n", tags=["i18n"])
 
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])

@@ -293,3 +293,97 @@ class UITranslationService:
                 "coverage_pct": round(coverage, 1),
             }
         return result
+
+    # ------------------------------------------------------------------
+    # LLM-basierte Übersetzung
+    # ------------------------------------------------------------------
+
+    def translate_via_llm(self, key: str, source_text: str,
+                           target_locale: str,
+                           llm_profile_id: str | None = None) -> str:
+        """Übersetze einen UI-String per LLM.
+        
+        Speichert das Ergebnis automatisch in der Datenbank.
+        """
+        from backend.services.llm_service import LLMService
+        from backend.services.profile_service import ProfileService
+
+        ps = ProfileService()
+        if llm_profile_id is None:
+            llm_profile_id = self._select_llm_for_locale(target_locale, ps)
+
+        llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
+
+        system_prompt = (
+            f"You are a professional UI/UX translator. "
+            f"Translate the following English UI string to {self._locale_name(target_locale)}. "
+            f"Keep it concise, precise, and consistent with UI conventions. "
+            f"Do NOT translate placeholder variables like {{param}}. "
+            f"Output ONLY the translation, nothing else."
+        )
+
+        try:
+            result = llm.generate(
+                prompt=source_text,
+                system_prompt=system_prompt,
+                temperature=0.2,
+                max_tokens=max(30, len(source_text) // 4),
+            )
+            translated = result.content.strip()
+            self.set_translation(key, target_locale, translated, source="llm_generated")
+            logger.info("LLM-Übersetzung gespeichert: %s → %s", key, target_locale)
+            return translated
+        except Exception as exc:
+            logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s",
+                         key, target_locale, exc)
+            return source_text
+
+    def bulk_translate(self, target_locales: list[str] | None = None,
+                       namespace: str = "global") -> dict[str, Any]:
+        """Übersetze alle fehlenden Strings per LLM.
+        
+        Liest alle bekannten Keys aus der englischen Datei und übersetzt
+        fehlende Strings in die Zielsprachen.
+        """
+        if target_locales is None:
+            target_locales = [l for l in DEFAULT_LOCALES if l not in ("de", "en")]
+
+        all_keys = self.get_all_keys(namespace)
+        results = {}
+
+        for locale in target_locales:
+            existing = self.get_translations_bulk(locale, namespace)
+            missing = [k for k in all_keys if k not in existing or not existing[k]]
+
+            if not missing:
+                results[locale] = {"status": "complete", "translated": 0}
+                continue
+
+            translated_count = 0
+            for key in missing:
+                # Use English value as source
+                en_val = self.get_translation(key, "en", namespace)
+                if en_val:
+                    self.translate_via_llm(key, en_val, locale)
+                    translated_count += 1
+
+            results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
+
+        return results
+
+    def _select_llm_for_locale(self, locale: str, ps) -> str:
+        """Wählt ein geeignetes LLM basierend auf der Zielsprache."""
+        locale_map = {
+            "zh": "openrouter-deepseek/deepseek-chat",
+            "ja": "openrouter-deepseek/deepseek-chat",
+            "ko": "openrouter-deepseek/deepseek-chat",
+            "hi": "openrouter/google/gemini-2.5-flash",
+            "ar": "openrouter/meta-llama/llama-3.1-8b-instruct",
+            "ru": "openrouter/meta-llama/llama-3.1-8b-instruct",
+            "uk": "openrouter/meta-llama/llama-3.1-8b-instruct",
+        }
+        return locale_map.get(locale, "openrouter-claude")
+
+    @staticmethod
+    def _locale_name(code: str) -> str:
+        return LOCALE_NAMES.get(code, code)

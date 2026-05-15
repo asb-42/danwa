@@ -1,21 +1,23 @@
 /**
  * English (en) translations for Danwa UI.
+ *
+ * Auto-generated — translate via LLM batch or LanguageSwitcher.
+ * 808 keys total.
  */
+
 export default {
-  // Navigation
+
   'nav.dashboard': 'Dashboard',
   'nav.debate': 'Active Debate',
   'nav.archive': 'Archive',
   'nav.audit': 'Audit Trail',
   'nav.config': 'Configuration',
   'nav.output': 'Output',
-  'nav.blueprint': 'Blueprint',
+  'nav.blueprint': 'Blueprint Canvas',
   'nav.documents': 'Documents',
   'nav.projects': 'Projects',
   'nav.input': 'New Debate',
-   'nav.translation': 'Translation',
-
-  // Dashboard
+  'nav.translation': 'Translation',
   'dashboard.title': 'Dashboard',
   'dashboard.backendStatus': 'Backend Status',
   'dashboard.totalDebates': 'Total Debates',
@@ -27,13 +29,11 @@ export default {
   'dashboard.workflowTitle': 'Workflow Overview',
   'dashboard.workflowPlaceholder': 'Workflow graph visualization — coming in Sprint 4',
   'dashboard.recentDebates': 'Recent Debates',
-
-  // Debate
   'debate.title': 'Debate',
   'debate.newDebate': 'New Debate',
   'debate.caseLabel': 'Case Description',
   'debate.casePlaceholder': 'Describe the case to be debated...',
-  'debate.maxRounds': 'Max Rounds',
+  'debate.maxRounds': 'Max rounds',
   'debate.consensusThreshold': 'Consensus Threshold',
   'debate.createButton': 'Create Debate',
   'debate.creating': 'Creating...',
@@ -41,7 +41,7 @@ export default {
   'debate.sseConnected': 'SSE Connected',
   'debate.id': 'ID:',
   'debate.status': 'Status:',
-  'debate.round': 'Round:',
+  'debate.round': 'Round',
   'debate.consensus': 'Consensus:',
   'debate.startButton': 'Start Debate',
   'debate.starting': 'Starting...',
@@ -66,17 +66,15 @@ export default {
   'debate.titlePlaceholder': 'Processing case description…',
   'debate.titleLabel': 'Title',
   'debate.language': 'Language',
-   'debate.enableExtraRounds': 'Allow additional rounds',
-   'debate.extensionRequested': 'Extension requested',
-   'debate.extensionRequest': 'The debate has not reached consensus after {rounds} rounds (current: {current}%, threshold: {threshold}%). Should additional rounds be debated?',
-   'debate.extensionCurrentConsensus': 'Current consensus',
-   'debate.extensionThreshold': 'Threshold',
-   'debate.round': 'Round',
-   'debate.maxRounds': 'Max rounds',
-   'debate.extensionGrant': 'Grant extension',
-   'debate.extensionDeny': 'Deny extension',
-
-  // Web search mode
+  'debate.enableExtraRounds': 'Allow additional rounds',
+  'debate.extensionRequested': 'Extension requested',
+  'debate.extensionRequest': 'The debate has not reached consensus after {rounds} rounds (current: {current}%, threshold: {threshold}%). Should additional rounds be debated?',
+  'debate.extensionCurrentConsensus': 'Current consensus',
+  'debate.extensionThreshold': 'Threshold',
+  'debate.round': 'Round',
+  'debate.maxRounds': 'Max rounds',
+  'debate.extensionGrant': 'Grant extension',
+  'debate.extensionDeny': 'Deny extension',
   'debate.searchMode': 'Web Search',
   'debate.searchOff': 'Disabled',
   'debate.searchOptional': 'Optional',
@@ -84,15 +82,11 @@ export default {
   'debate.searchModeHint.off': 'No web search during the debate.',
   'debate.searchModeHint.optional': 'Agents can request web search if needed.',
   'debate.searchModeHint.required': 'Agents automatically receive web research before each analysis.',
-
-  // Search results display
   'search.resultsFor': 'Search results for',
   'search.noResults': 'No results found',
   'search.source': 'Source',
   'search.webResearch': 'Web Research',
   'search.searching': '🔍 Searching…',
-
-  // Activity Strip (enhanced debate feedback)
   'feedback.analysing': '{role} analysing…',
   'feedback.checking': '{role} checking…',
   'feedback.optimizing': '{role} optimizing…',
@@ -102,15 +96,11 @@ export default {
   'feedback.roundDone': 'Round {round} completed — Consensus {percent}%',
   'feedback.tokens': 'Tokens',
   'feedback.duration': '{ms}ms',
-
-  // Workflow phase feedback (between debate start and first agent response)
   'feedback.workflowStarted': 'Workflow engine started, preparing debate…',
   'feedback.resolvingProfile': 'Loading profile for {role}…',
   'feedback.resolvingPrompts': 'Resolving prompts for {role}…',
   'feedback.llmCalling': 'Calling LLM ({model})…',
   'feedback.slowResponse': 'LLM response slow — check connection',
-
-  // DebateTimeline 2.0
   'timeline.title': 'Debate Timeline',
   'timeline.live': 'Live',
   'timeline.roundOf': 'Round {current} of {max}',
@@ -131,26 +121,20 @@ export default {
   'timeline.moderateConsensus': 'Moderate consensus — further rounds may help.',
   'timeline.lowConsensus': 'Low consensus — agents remain divided.',
   'timeline.concludedAfter': 'The debate concluded after {rounds} round{plural} with a consensus score of {percent}%.',
-
-  // Debate status
   'status.pending': 'Pending',
   'status.running': 'Running',
   'status.completed': 'Completed',
   'status.failed': 'Failed',
-
-  // Agents
   'agent.strategist': 'Strategist',
   'agent.critic': 'Critic',
   'agent.optimizer': 'Optimizer',
   'agent.moderator': 'Moderator',
-
-  // Audit
   'audit.title': 'Audit Trail',
   'audit.debateId': 'Debate ID or Title',
   'audit.debateIdPlaceholder': 'Enter debate ID or title...',
   'audit.loadEvents': 'Load Events',
   'audit.loading': 'Loading...',
-  'audit.noEvents': 'No audit events found. Run a debate first.',
+  'audit.noEvents': 'No audit events yet',
   'audit.loadingEvents': 'Loading events...',
   'audit.round': 'Round',
   'audit.agent': 'Agent',
@@ -161,8 +145,6 @@ export default {
   'audit.visualizationTitle': 'Audit Visualization',
   'audit.visualizationPlaceholder': 'Audit trail visualization — coming in Sprint 4',
   'audit.enterDebateId': 'Please enter a debate ID or create a debate first',
-
-  // Config
   'config.title': 'Configuration',
   'config.debateDefaults': 'Debate Defaults',
   'config.defaultMaxRounds': 'Default Max Rounds',
@@ -207,8 +189,6 @@ export default {
   'config.duplicate': 'Duplicate',
   'config.profiles': 'profiles',
   'config.noResults': 'No results',
-
-  // Profile CRUD
   'config.createProfile': 'Create Profile',
   'config.editProfile': 'Edit Profile',
   'config.deleteProfile': 'Delete Profile',
@@ -234,8 +214,6 @@ export default {
   'config.createLLM': 'Create LLM Profile',
   'config.editLLM': 'Edit LLM Profile',
   'config.deleteLLM': 'Delete LLM Profile',
-
-  // Common
   'common.loading': 'Loading...',
   'common.error': 'Error',
   'common.retry': 'Retry',
@@ -245,23 +223,15 @@ export default {
   'common.edit': 'Edit',
   'common.close': 'Close',
   'common.yes': 'Yes',
-    'common.optional': 'Optional',
+  'common.optional': 'Optional',
   'common.no': 'No',
-
-  // Errors
   'error.backendDisconnected': 'Backend connection lost',
   'error.debateNotFound': 'Debate not found',
   'error.invalidInput': 'Invalid input',
   'error.unknown': 'Unknown error',
-
-  // Pluralization
   'debate.count.one': '{count} debate',
   'debate.count.other': '{count} debates',
-
-  // Language
   'lang.switch': 'Switch language',
-
-  // Archive
   'archive.title': 'Debate Archive',
   'archive.project': 'Project',
   'archive.searchPlaceholder': 'Search debates...',
@@ -273,8 +243,6 @@ export default {
   'archive.page': 'Page',
   'archive.prevPage': 'Previous',
   'archive.nextPage': 'Next',
-
-  // Projects
   'nav.projects': 'Projects',
   'projects.title': 'Project Management',
   'projects.create': 'Create Project',
@@ -306,8 +274,6 @@ export default {
   'projects.onboardingTitle': 'Welcome to Danwa',
   'projects.onboardingMessage': 'Create your first project to start organizing debates, documents, and configurations.',
   'projects.selectToContinue': 'Please select a project to continue.',
-
-  // Documents / DMS
   'nav.documents': 'Documents',
   'documents.title': 'Document Management',
   'documents.upload': 'Upload Document',
@@ -344,8 +310,6 @@ export default {
   'documents.ragPreview': 'RAG Context Preview',
   'documents.expandContext': 'Show full context ({count} chars)',
   'documents.collapseContext': 'Hide context',
-
-  // Workflow Visualization
   'workflow.emptyState': 'Workflow graph will appear here when a debate starts.',
   'workflow.status': 'Status',
   'workflow.round': 'Round',
@@ -365,8 +329,6 @@ export default {
   'workflow.backToLive': '← Back to live',
   'workflow.noRounds': 'No rounds completed yet.',
   'workflow.nodeEdgeCount': '{nodes} nodes · {edges} edges',
-
-  // OOB Input Panel
   'oob.injectContext': 'Inject Context',
   'oob.pending': '{count} pending',
   'oob.placeholder': 'Additional context to be considered...',
@@ -381,8 +343,6 @@ export default {
   'oob.submit': 'Insert into workflow',
   'oob.shortcut': 'Ctrl+Enter to send',
   'oob.waitingWarning': 'Workflow is waiting for your response. Context will be processed after you respond.',
-
-  // A2A (Agent-to-Agent) Configuration
   'a2a.title': 'External A2A Agents',
   'a2a.description': 'Add external A2A agents as debate participants. They will join the debate after all local agents have spoken.',
   'a2a.addAgent': 'Add A2A Agent',
@@ -395,13 +355,9 @@ export default {
   'a2a.remove': 'Remove',
   'a2a.noAgents': 'No external agents configured.',
   'a2a.urlRequired': 'Agent URL is required',
-
-  // A2A Workflow Visualization
   'workflow.a2aAgent': 'A2A Agent',
   'workflow.a2aInvoking': 'Invoking external agent…',
   'workflow.a2aCompleted': 'External agent completed',
-
-  // Blueprint Canvas
   'nav.blueprint': 'Blueprint Canvas',
   'blueprint.title': 'Blueprint Canvas',
   'blueprint.palette.title': 'Palette',
@@ -448,7 +404,7 @@ export default {
   'blueprint.form.temperature': 'Temperature',
   'blueprint.form.maxTokens': 'Max Tokens',
   'blueprint.form.role': 'Role Type',
-  'blueprint.form.roleHint': 'Category: strategist, critic, optimizer, or moderator',
+  'blueprint.form.roleHint': 'Select the role type for this definition',
   'blueprint.form.variant': 'Variant',
   'blueprint.form.language': 'Language',
   'blueprint.form.content': 'Content',
@@ -470,8 +426,6 @@ export default {
   'blueprint.toast.deleted': 'Layout deleted',
   'blueprint.toast.imported': 'Configs imported successfully',
   'blueprint.toast.error': 'An error occurred',
-
-  // Blueprint Canvas — Phase 4: Workflow Mode
   'blueprint.mode.blueprint': 'Blueprint',
   'blueprint.mode.workflow': 'Workflow',
   'blueprint.palette.assets': 'Assets',
@@ -529,8 +483,6 @@ export default {
   'blueprint.workflow.debateStarted': 'Debate started',
   'blueprint.toast.compiled': 'Workflow compiled successfully',
   'blueprint.toast.compileFailed': 'Workflow compilation failed',
-
-  // Blueprint Canvas — Workflow Node Inspector
   'blueprint.form.nodeType': 'Type',
   'blueprint.form.label': 'Label',
   'blueprint.form.agentBlueprint': 'Agent Blueprint',
@@ -542,14 +494,10 @@ export default {
   'blueprint.form.inputTypeOobInput': 'OOB Input',
   'blueprint.form.inputTypeExternalEvent': 'External Event',
   'blueprint.form.loadingBlueprints': 'Loading blueprints...',
-
-  // Blueprint Canvas — Workflow Node Execution Status
   'blueprint.node.running': 'Running...',
   'blueprint.node.completed': 'Completed',
   'blueprint.node.failed': 'Failed',
   'blueprint.node.paused': 'Paused',
-
-  // Workflow Execution — Panel
   'workflow.execution.title': 'Execute',
   'workflow.execution.close': 'Close',
   'workflow.execution.start': 'Start',
@@ -564,8 +512,6 @@ export default {
   'workflow.execution.interjectionPlaceholder': 'Type your interjection...',
   'workflow.execution.submit': 'Submit',
   'workflow.execution.nodeOutputs': 'Node Outputs',
-
-  // Workflow Execution — Status
   'workflow.execution.status.idle': 'Idle',
   'workflow.execution.status.running': 'Running',
   'workflow.execution.status.paused': 'Paused',
@@ -573,15 +519,11 @@ export default {
   'workflow.execution.status.failed': 'Failed',
   'workflow.execution.status.cancelled': 'Cancelled',
   'workflow.execution.status.unknown': 'Unknown',
-
-  // Workflow Execution — Toasts
   'workflow.execution.toast.started': 'Workflow execution started',
   'workflow.execution.toast.completed': 'Workflow completed successfully',
   'workflow.execution.toast.failed': 'Workflow execution failed',
   'workflow.execution.toast.paused': 'Workflow paused',
   'workflow.execution.toast.resumed': 'Workflow resumed',
-
-  // Replay View
   'replay.title': 'Replay',
   'replay.selectSession': 'Select Session',
   'replay.play': 'Play',
@@ -598,8 +540,6 @@ export default {
   'replay.nodeDetail.timestamp': 'Timestamp',
   'replay.interjectionMarker': 'Interjection',
   'replay.noData': 'No audit data for this session.',
-
-  // Diff View
   'diff.title': 'Diff View',
   'diff.selectSessionA': 'Session A',
   'diff.selectSessionB': 'Session B',
@@ -609,8 +549,6 @@ export default {
   'diff.nodeDetail.sessionB': 'Session B',
   'diff.nodeDetail.latencyComparison': 'Latency Comparison',
   'diff.nodeDetail.tokenComparison': 'Token Comparison',
-
-  // Audit Tab
   'audit.tab.title': 'Audit Trail',
   'audit.columns.timestamp': 'Timestamp',
   'audit.columns.eventType': 'Event Type',
@@ -629,8 +567,6 @@ export default {
   'audit.summary.totalTokens': 'Total Tokens',
   'audit.summary.totalLatency': 'Total Latency',
   'audit.noEvents': 'No audit events yet',
-
-  // Reports
   'report.title': 'Reports',
   'report.generate': 'Generate Report',
   'report.format': 'Format',
@@ -638,13 +574,9 @@ export default {
   'report.status.completed': 'Completed',
   'report.status.failed': 'Failed',
   'report.download': 'Download Report',
-
-  // Session
   'session.softDelete': 'Archive',
   'session.restore': 'Restore',
   'session.archived': 'Archived',
-
-  // Application Settings
   'settings.title': 'Application Settings',
   'settings.searchMode': 'Search Mode',
   'settings.searchModeHint': 'Default web search mode for new debates',
@@ -653,8 +585,6 @@ export default {
   'settings.retention': 'Data Retention (days)',
   'settings.retentionHint': 'Number of days to retain debate data (0 = forever)',
   'settings.saved': 'Settings saved successfully',
-
-  // RAG Search
   'rag.search': 'Search Documents',
   'rag.searchPlaceholder': 'Search through indexed documents...',
   'rag.searchButton': 'Search',
@@ -663,8 +593,6 @@ export default {
   'rag.relevance': 'Relevance',
   'rag.source': 'Source',
   'rag.chunk': 'Chunk',
-
-  // A2A Protocol (Phase 8)
   'a2a.protocol.label': 'Protocol',
   'a2a.protocol.litellm': 'LiteLLM',
   'a2a.protocol.a2a': 'A2A',
@@ -691,8 +619,6 @@ export default {
   'a2a.error.protocolError': 'Invalid A2A protocol response',
   'a2a.fallback.activated': 'Fallback LLM profile activated',
   'a2a.fallback.profile': 'Using fallback profile',
-
-  // Workflow Templates
   'template.gallery.title': 'Workflow Templates',
   'template.gallery.searchPlaceholder': 'Search templates...',
   'template.gallery.filterAll': 'All',
@@ -707,7 +633,6 @@ export default {
   'template.gallery.confirmDelete': 'Delete this template?',
   'template.gallery.yes': 'Yes',
   'template.gallery.no': 'No',
-
   'template.instantiate.title': 'Instantiate Template',
   'template.instantiate.workflowName': 'Workflow Name',
   'template.instantiate.selectBlueprint': '— Select Agent Blueprint —',
@@ -715,7 +640,6 @@ export default {
   'template.instantiate.create': 'Create Workflow',
   'template.instantiate.creating': 'Creating...',
   'template.instantiate.error': 'Failed to instantiate template',
-
   'template.saveAs.title': 'Save as Template',
   'template.saveAs.name': 'Template Name',
   'template.saveAs.namePlaceholder': 'My Custom Template',
@@ -729,11 +653,8 @@ export default {
   'template.saveAs.save': 'Save Template',
   'template.saveAs.saving': 'Saving...',
   'template.saveAs.error': 'Failed to save template',
-
   'template.toast.instantiated': 'Workflow created from template',
   'template.toast.saved': 'Template saved successfully',
-
-  // Missing Links — UI additions
   'workflow.execution.viewState': 'View State',
   'workflow.execution.currentState': 'Current Workflow State',
   'blueprint.canvas.saveAs': 'Save As',
@@ -746,8 +667,6 @@ export default {
   'config.roleTypeIcon': 'Icon',
   'archive.viewTrace': 'View Trace',
   'archive.traceTitle': 'Execution Trace',
-
-  // Blueprint Canvas — missing keys used by components
   'blueprint.canvas.saveLayout': 'Save Layout',
   'blueprint.canvas.autoLayout': 'Auto Layout',
   'blueprint.canvas.loadLayout': 'Load',
@@ -788,130 +707,113 @@ export default {
   'translation.progress': 'Batch Progress',
   'translation.startBatch': 'Start Batch',
   'translation.moduleLabel': 'Module',
-
-
-   // Module Manager
-   'modules.title': 'Modules',
-   'modules.refresh': 'Refresh Modules',
-   'modules.tabInstalled': 'Installed',
-   'modules.tabAvailable': 'Available',
-   'modules.tabInstall': 'Install',
-   'modules.noInstalled': 'No modules installed. Install modules from the "Available" or "Install" tab.',
-   'modules.available': 'Available Modules',
-   'modules.availableHint': 'Modules from the registry that are not yet installed.',
-   'modules.noAvailable': 'No additional modules available.',
-   'modules.installFromSource': 'Install from Source URL',
-   'modules.installFromSourceHint': 'Enter a module ID or Git URL to install a module.',
-   'modules.enterModuleId': 'Enter module ID or URL…',
-   'modules.installed': 'Installed',
-   'modules.install': 'Install',
-   'modules.uninstall': 'Uninstall',
-   'modules.update': 'Update',
-   'modules.validate': 'Validate',
-   'modules.installedAt': 'Installed at',
-   'modules.category': 'Category',
-   'modules.type': 'Type',
-   'modules.author': 'Author',
-   'modules.license': 'License',
-   'modules.checksum': 'Checksum',
-   'modules.validationResult': 'Validation Result',
-   'modules.valid': 'Valid',
-   'modules.confirmUninstall': 'Are you sure you want to uninstall module "{id}"?',
-   'modules.installedSuccess': 'Module "{id}" installed successfully',
-   'modules.uninstalledSuccess': 'Module "{id}" uninstalled successfully',
-   'modules.updatedSuccess': 'Module "{id}" updated successfully',
-
-   // ConfigView — Module Tab
-   'config.modules': 'Modules',
-   'config.modulesPlaceholder': 'No modules registered',
-   'config.moduleManager': 'Manage Modules',
-    // Version
-    'app.version': 'Version {version}',
-    'app.versionLabel': 'Application Version',
-
-    // Service LLM
-    'service.title': 'Service LLM',
-    'service.description': 'Configure the dedicated LLM for system tasks such as title generation.',
-    'service.profile': 'Service LLM Profile',
-    'service.profileHint': 'Select an LLM for background/system tasks',
-    'service.eligible': 'Eligible',
-    'service.notEligible': 'Not eligible',
-    'service.contextWindow': 'Context Window',
-    'service.minContext': 'Min. Context',
-    'service.validationSuccess': 'Profile is eligible for service tasks',
-    'service.validationFailed': 'Profile is NOT eligible for service tasks',
-    'service.setSuccess': 'Service LLM updated successfully',
-    'service.setFailed': 'Failed to update service LLM',
-    'service.active': 'Active',
-    'service.setAsService': 'Set as Service',
-    'service.noEligibleProfiles': 'No eligible profiles found.',
-
-    // Backup (Sprint 18)
-    'backup.title': 'Backup',
-    'backup.description': 'Create, manage, and restore backups of all project data.',
-    'backup.create': 'Create Backup',
-    'backup.created': 'Backup created: {id}',
-    'backup.createError': 'Failed to create backup',
-    'backup.list': 'Backup Archives',
-    'backup.noBackups': 'No backups available.',
-    'backup.date': 'Date',
-    'backup.size': 'Size',
-    'backup.files': 'Files',
-    'backup.trigger': 'Trigger',
-    'backup.showFiles': 'Show files',
-    'backup.verify': 'Verify',
-    'backup.verifySuccess': 'Backup integrity verified successfully.',
-    'backup.verifyFailed': 'Backup verification failed.',
-    'backup.restoreDisabled': 'Not yet implemented',
-    'backup.fileList': 'Files in Backup',
-    'backup.noFiles': 'No files listed.',
-    'backup.autoOnShutdown': 'Create backup on shutdown',
-    'backup.autoOnShutdownHint': 'Automatically creates a backup when the application shuts down.',
-    'backup.retention': 'Retention',
-    'backup.retentionHint': 'Maximum number of backups to keep (0 = unlimited).',
-    'backup.enabled': 'Backups enabled',
-    'backup.enabledHint': 'Enable or disable backup functionality',
-    'backup.encrypt': 'Encrypt backup',
-    'backup.encryptHint': 'This feature is not yet implemented.',
-    'backup.settings': 'Backup Settings',
-    'backup.settingsSaved': 'Backup settings saved successfully',
-    'backup.deleted': 'Backup deleted successfully',
-
-    // Toast notifications
-    'toast.titleChanged': 'Debate title updated via service LLM',
-    'toast.serviceLlmChanged': 'Service LLM changed to {profile}',
-    'toast.serviceLlmValidation': 'Service LLM validation: {result}',
-
-    // Follow-up / Fork (Plan 19)
-    'followup.title': 'Continue Debate',
-    'followup.description': 'Creates a new debate building on the results of this one.',
-    'followup.focusTopic': 'Focus topic (optional)',
-    'followup.focusTopicPlaceholder': 'E.g. Deepening consensus point X...',
-    'followup.submit': 'Continue Debate',
-    'followup.submitting': 'Creating...',
-    'followup.newTitle': 'New title (optional)',
-    'followup.newTitlePlaceholder': 'Continuation: ...',
-
-    'fork.title': 'Fork Debate',
-    'fork.description': 'Creates a copy of this debate with optional modifications.',
-    'fork.forkFromRound': 'Fork from round',
-    'fork.forkReason': 'Reason for fork',
-    'fork.reason.consensus_breakdown': 'Consensus breakdown',
-    'fork.reason.new_perspective': 'New perspective',
-    'fork.reason.branching': 'Branching',
-    'fork.modifiedPersonas': 'Modify personas',
-    'fork.modifiedPersonasHint': 'Optionally customize agent personas for the fork',
-    'fork.modifiedPromptVariant': 'Modify prompt variant',
-    'fork.submit': 'Fork Debate',
-    'fork.submitting': 'Creating...',
-    'fork.newTitle': 'New title',
-
-    'debate.continueButton': 'Continue',
-    'debate.forkButton': 'Fork',
-    'debate.forkedFrom': 'Fork of',
-    'debate.forks': 'Forks',
-
-    'archive.forks': 'Forks',
-    'archive.parentDebate': 'Parent debate',
+  'modules.title': 'Modules',
+  'modules.refresh': 'Refresh Modules',
+  'modules.tabInstalled': 'Installed',
+  'modules.tabAvailable': 'Available',
+  'modules.tabInstall': 'Install',
+  'modules.noInstalled': 'No modules installed. Install modules from the "Available" or "Install" tab.',
+  'modules.available': 'Available Modules',
+  'modules.availableHint': 'Modules from the registry that are not yet installed.',
+  'modules.noAvailable': 'No additional modules available.',
+  'modules.installFromSource': 'Install from Source URL',
+  'modules.installFromSourceHint': 'Enter a module ID or Git URL to install a module.',
+  'modules.enterModuleId': 'Enter module ID or URL…',
+  'modules.installed': 'Installed',
+  'modules.install': 'Install',
+  'modules.uninstall': 'Uninstall',
+  'modules.update': 'Update',
+  'modules.validate': 'Validate',
+  'modules.installedAt': 'Installed at',
+  'modules.category': 'Category',
+  'modules.type': 'Type',
+  'modules.author': 'Author',
+  'modules.license': 'License',
+  'modules.checksum': 'Checksum',
+  'modules.validationResult': 'Validation Result',
+  'modules.valid': 'Valid',
+  'modules.confirmUninstall': 'Are you sure you want to uninstall module "{id}"?',
+  'modules.installedSuccess': 'Module "{id}" installed successfully',
+  'modules.uninstalledSuccess': 'Module "{id}" uninstalled successfully',
+  'modules.updatedSuccess': 'Module "{id}" updated successfully',
+  'config.modules': 'Modules',
+  'config.modulesPlaceholder': 'No modules registered',
+  'config.moduleManager': 'Manage Modules',
+  'app.version': 'Version {version}',
+  'app.versionLabel': 'Application Version',
+  'service.title': 'Service LLM',
+  'service.description': 'Configure the dedicated LLM for system tasks such as title generation.',
+  'service.profile': 'Service LLM Profile',
+  'service.profileHint': 'Select an LLM for background/system tasks',
+  'service.eligible': 'Eligible',
+  'service.notEligible': 'Not eligible',
+  'service.contextWindow': 'Context Window',
+  'service.minContext': 'Min. Context',
+  'service.validationSuccess': 'Profile is eligible for service tasks',
+  'service.validationFailed': 'Profile is NOT eligible for service tasks',
+  'service.setSuccess': 'Service LLM updated successfully',
+  'service.setFailed': 'Failed to update service LLM',
+  'service.active': 'Active',
+  'service.setAsService': 'Set as Service',
+  'service.noEligibleProfiles': 'No eligible profiles found.',
+  'backup.title': 'Backup',
+  'backup.description': 'Create, manage, and restore backups of all project data.',
+  'backup.create': 'Create Backup',
+  'backup.created': 'Backup created: {id}',
+  'backup.createError': 'Failed to create backup',
+  'backup.list': 'Backup Archives',
+  'backup.noBackups': 'No backups available.',
+  'backup.date': 'Date',
+  'backup.size': 'Size',
+  'backup.files': 'Files',
+  'backup.trigger': 'Trigger',
+  'backup.showFiles': 'Show files',
+  'backup.verify': 'Verify',
+  'backup.verifySuccess': 'Backup integrity verified successfully.',
+  'backup.verifyFailed': 'Backup verification failed.',
+  'backup.restoreDisabled': 'Not yet implemented',
+  'backup.fileList': 'Files in Backup',
+  'backup.noFiles': 'No files listed.',
+  'backup.autoOnShutdown': 'Create backup on shutdown',
+  'backup.autoOnShutdownHint': 'Automatically creates a backup when the application shuts down.',
+  'backup.retention': 'Retention',
+  'backup.retentionHint': 'Maximum number of backups to keep (0 = unlimited).',
+  'backup.enabled': 'Backups enabled',
+  'backup.enabledHint': 'Enable or disable backup functionality',
+  'backup.encrypt': 'Encrypt backup',
+  'backup.encryptHint': 'This feature is not yet implemented.',
+  'backup.settings': 'Backup Settings',
+  'backup.settingsSaved': 'Backup settings saved successfully',
+  'backup.deleted': 'Backup deleted successfully',
+  'toast.titleChanged': 'Debate title updated via service LLM',
+  'toast.serviceLlmChanged': 'Service LLM changed to {profile}',
+  'toast.serviceLlmValidation': 'Service LLM validation: {result}',
+  'followup.title': 'Continue Debate',
+  'followup.description': 'Creates a new debate building on the results of this one.',
+  'followup.focusTopic': 'Focus topic (optional)',
+  'followup.focusTopicPlaceholder': 'E.g. Deepening consensus point X...',
+  'followup.submit': 'Continue Debate',
+  'followup.submitting': 'Creating...',
+  'followup.newTitle': 'New title (optional)',
+  'followup.newTitlePlaceholder': 'Continuation: ...',
+  'fork.title': 'Fork Debate',
+  'fork.description': 'Creates a copy of this debate with optional modifications.',
+  'fork.forkFromRound': 'Fork from round',
+  'fork.forkReason': 'Reason for fork',
+  'fork.reason.consensus_breakdown': 'Consensus breakdown',
+  'fork.reason.new_perspective': 'New perspective',
+  'fork.reason.branching': 'Branching',
+  'fork.modifiedPersonas': 'Modify personas',
+  'fork.modifiedPersonasHint': 'Optionally customize agent personas for the fork',
+  'fork.modifiedPromptVariant': 'Modify prompt variant',
+  'fork.submit': 'Fork Debate',
+  'fork.submitting': 'Creating...',
+  'fork.newTitle': 'New title',
+  'debate.continueButton': 'Continue',
+  'debate.forkButton': 'Fork',
+  'debate.forkedFrom': 'Fork of',
+  'debate.forks': 'Forks',
+  'archive.forks': 'Forks',
+  'archive.parentDebate': 'Parent debate',
 
 };
