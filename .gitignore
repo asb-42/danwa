@@ -136,6 +136,7 @@ memory/
 memory/debates.db
 
 # Runtime data (databases, audit logs)
+backups/
 data/
 
 # Profile configurations (may contain API keys, private IPs, user-specific settings)
