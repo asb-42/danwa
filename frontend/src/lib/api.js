@@ -750,3 +750,57 @@ export function listDebateForks(debateId, limit = 50, offset = 0) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   return request(`/api/v1/debate/${debateId}/forks?${params.toString()}`);
 }
+
+// ---------------------------------------------------------------------------
+// i18n API (Plan 20: Multi-Language Support)
+// ---------------------------------------------------------------------------
+
+/** Get list of supported locales with metadata. */
+export function getSupportedLocales() {
+  return request('/api/v1/i18n/locales');
+}
+
+/** Get translations for a locale (optionally filtered by keys). */
+export function getTranslations(locale, keys = null) {
+  const params = new URLSearchParams();
+  if (keys) params.set('keys', keys.join(','));
+  return request(`/api/v1/i18n/${locale}?${params.toString()}`);
+}
+
+/** Get a single translation by key. */
+export function getTranslation(locale, key) {
+  return request(`/api/v1/i18n/${locale}/${encodeURIComponent(key)}`);
+}
+
+/** Set a single translation. */
+export function setTranslation(locale, key, value, namespace = 'global') {
+  return request(`/api/v1/i18n/${locale}/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ key, value, namespace }),
+  });
+}
+
+/** Bulk-set translations for a locale. */
+export function bulkSetTranslations(locale, translations, namespace = 'global') {
+  return request(`/api/v1/i18n/${locale}`, {
+    method: 'POST',
+    body: JSON.stringify({ locale, translations, namespace }),
+  });
+}
+
+/** Delete a translation. */
+export function deleteTranslation(locale, key, namespace = 'global') {
+  return request(`/api/v1/i18n/${locale}/${encodeURIComponent(key)}?namespace=${namespace}`, {
+    method: 'DELETE',
+  });
+}
+
+/** Get translation coverage statistics. */
+export function getTranslationStats(namespace = 'global') {
+  return request(`/api/v1/i18n/stats?namespace=${namespace}`);
+}
+
+/** Get translation coverage report. */
+export function getTranslationCoverage(namespace = 'global') {
+  return request(`/api/v1/i18n/coverage?namespace=${namespace}`);
+}

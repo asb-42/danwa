@@ -27,3 +27,151 @@
     background-color: rgba(55, 65, 81, 0.5); /* gray-700/50 */
   }
 }
+/* RTL-Layout-Support (Plan 20) */
+
+/* RTL-Layout-Support für Danwa (Plan 20)
+ * 
+ * CSS Logical Properties statt physischer verwenden:
+ * - margin-inline-start statt margin-left
+ * - padding-inline-end statt padding-right
+ * - border-start-start-radius statt border-top-left-radius
+ * - text-align: start statt text-align: left
+ *
+ * Diese Datei wird dynamisch geladen, wenn eine RTL-Sprache aktiv ist.
+ */
+
+/* ============================================================
+   Globale RTL-Anpassungen
+   ============================================================ */
+
+[dir="rtl"] {
+  /* Text-Ausrichtung */
+  text-align: start;
+}
+
+[dir="rtl"] * {
+  /* Font-Unterstützung für RTL-Skripte */
+  unicode-bidi: bidi-override;
+}
+
+/* ============================================================
+   Layout-Komponenten
+   ============================================================ */
+
+/* Sidebar */
+[dir="rtl"] .sidebar {
+  border-left: none;
+  border-right: 3px solid var(--accent, #3b82f6);
+}
+
+/* Cards */
+[dir="rtl"] .card {
+  /* Logical properties funktionieren automatisch */
+}
+
+/* Buttons mit Icons */
+[dir="rtl"] .btn-icon-left svg {
+  transform: scaleX(-1);
+}
+
+/* ============================================================
+   Debatte-spezifisch
+   ============================================================ */
+
+[dir="rtl"] .debate-timeline {
+  direction: rtl;
+}
+
+[dir="rtl"] .debate-feed .feed-entry {
+  border-right: none;
+  border-left: 3px solid var(--border-color);
+}
+
+/* Agent-Bubble-Ausrichtung */
+[dir="rtl"] .agent-output {
+  text-align: right;
+}
+
+[dir="rtl"] .agent-label {
+  margin-inline-end: 0;
+  margin-inline-start: 0.5rem;
+}
+
+/* ============================================================
+   Formulare
+   ============================================================ */
+
+[dir="rtl"] label {
+  text-align: right;
+}
+
+[dir="rtl"] .form-group {
+  text-align: right;
+}
+
+[dir="rtl"] .checkbox-label {
+  flex-direction: row-reverse;
+}
+
+/* ============================================================
+   Tabellen
+   ============================================================ */
+
+[dir="rtl"] table th:first-child,
+[dir="rtl"] table td:first-child {
+  text-align: right;
+}
+
+[dir="rtl"] table th:last-child,
+[dir="rtl"] table td:last-child {
+  text-align: left;
+}
+
+/* ============================================================
+   Icons spiegeln (Pfeile, etc.)
+   ============================================================ */
+
+[dir="rtl"] .icon-flip {
+  transform: scaleX(-1);
+}
+
+/* Chevron-Icons */
+[dir="rtl"] .chevron-left {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .chevron-right {
+  transform: scaleX(-1);
+}
+
+/* Navigation-Pfeile */
+[dir="rtl"] .nav-back {
+  transform: scaleX(-1);
+}
+
+/* ============================================================
+   Utility-Klassen
+   ============================================================ */
+
+.margin-inline-start {
+  margin-inline-start: var(--spacing, 1rem);
+}
+
+.margin-inline-end {
+  margin-inline-end: var(--spacing, 1rem);
+}
+
+.padding-inline-start {
+  padding-inline-start: var(--spacing, 1rem);
+}
+
+.padding-inline-end {
+  padding-inline-end: var(--spacing, 1rem);
+}
+
+/* Für Tailwind-Kompatibilität (benutzerdefinierte Utility) */
+@layer utilities {
+  .text-end {
+    text-align: end;
+  }
+}
