@@ -611,7 +611,6 @@ _MIGRATION_V23_TABLES = [
 ]
 
 
-
 # ---------------------------------------------------------------------------
 # V24 — Module translation cache: UNIQUE constraint for ON CONFLICT support
 # ---------------------------------------------------------------------------
@@ -626,7 +625,6 @@ _MIGRATION_V24_TABLES = [
 _MIGRATION_V25_TABLES = [
     "ALTER TABLE blueprint_llm_profiles ADD COLUMN service_eligible INTEGER DEFAULT 1",
 ]
-
 
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
@@ -903,7 +901,6 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             except sqlite3.OperationalError as exc:
                 logger.debug("Migration v23 skipped: %s", exc)
 
-
         # ── V24 — UNIQUE constraint on module_translation_cache ──
         if current < 24:
             logger.info("Applying migration v24: UNIQUE constraint on module_translation_cache")
@@ -915,7 +912,6 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                 logger.info("Migration v24 applied successfully")
             except sqlite3.OperationalError as exc:
                 logger.debug("Migration v24 skipped: %s", exc)
-
 
         # ── V25 — service_eligible column ──
         if current < 25:

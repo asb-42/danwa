@@ -65,13 +65,15 @@ def migrate_variants(variants_dir: Path) -> list[dict]:
             target_path.write_text(content, encoding="utf-8")
 
             rel_path = str(target_path.relative_to(variants_dir)).replace("\\", "/")
-            files.append({
-                "path": rel_path,
-                "format": "markdown",
-                "checksum": compute_hash(content),
-                "role_type_id": md_file.stem,
-                "language": "de",
-            })
+            files.append(
+                {
+                    "path": rel_path,
+                    "format": "markdown",
+                    "checksum": compute_hash(content),
+                    "role_type_id": md_file.stem,
+                    "language": "de",
+                }
+            )
             logger.info("  Migriert: %s/%s", variant_name, md_file.name)
 
     return files

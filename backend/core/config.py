@@ -16,8 +16,7 @@ def _get_version() -> str:
     version_file = Path(__file__).resolve().parent.parent.parent / "version"
     if not version_file.exists():
         return "0.0.0-dev"
-    lines = [line.strip() for line in version_file.read_text().splitlines()
-             if line.strip() and not line.strip().startswith("#")]
+    lines = [line.strip() for line in version_file.read_text().splitlines() if line.strip() and not line.strip().startswith("#")]
     if not lines:
         return "0.0.0-dev"
     ver = lines[-1].strip()
@@ -85,6 +84,7 @@ class Settings(BaseSettings):
 
 def is_service_llm_eligible(profile) -> bool:
     from backend.core.config import settings
+
     if getattr(profile, "service_eligible", True) is not True:
         return False
     if profile.context_window is not None and profile.context_window < settings.service_llm_min_context:

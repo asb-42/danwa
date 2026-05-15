@@ -58,13 +58,15 @@ def migrate_default_prompts(prompts_base: Path) -> list[dict]:
         target_path = target_dir / md_file.name
         target_path.write_text(content, encoding="utf-8")
 
-        files.append({
-            "path": str(target_path.relative_to(prompts_base)).replace("\\", "/"),
-            "format": "markdown",
-            "checksum": compute_hash(content),
-            "role_type_id": md_file.stem,
-            "language": "de",
-        })
+        files.append(
+            {
+                "path": str(target_path.relative_to(prompts_base)).replace("\\", "/"),
+                "format": "markdown",
+                "checksum": compute_hash(content),
+                "role_type_id": md_file.stem,
+                "language": "de",
+            }
+        )
         logger.info("  Migriert: %s", md_file.name)
 
     # Englische Übersetzungen mit -en Suffix
@@ -74,13 +76,15 @@ def migrate_default_prompts(prompts_base: Path) -> list[dict]:
         target_path = target_dir / md_file.name
         target_path.write_text(content, encoding="utf-8")
 
-        files.append({
-            "path": str(target_path.relative_to(prompts_base)).replace("\\", "/"),
-            "format": "markdown",
-            "checksum": compute_hash(content),
-            "role_type_id": md_file.stem.replace("-en", ""),
-            "language": "en",
-        })
+        files.append(
+            {
+                "path": str(target_path.relative_to(prompts_base)).replace("\\", "/"),
+                "format": "markdown",
+                "checksum": compute_hash(content),
+                "role_type_id": md_file.stem.replace("-en", ""),
+                "language": "en",
+            }
+        )
         logger.info("  Migriert: %s", md_file.name)
 
     return files
@@ -113,13 +117,15 @@ def migrate_variant_prompts(prompts_base: Path) -> list[dict]:
             is_en = md_file.stem.endswith("-en")
             base_name = md_file.stem.replace("-en", "")
 
-            files.append({
-                "path": rel_path,
-                "format": "markdown",
-                "checksum": compute_hash(content),
-                "role_type_id": base_name,
-                "language": "en" if is_en else "de",
-            })
+            files.append(
+                {
+                    "path": rel_path,
+                    "format": "markdown",
+                    "checksum": compute_hash(content),
+                    "role_type_id": base_name,
+                    "language": "en" if is_en else "de",
+                }
+            )
             logger.info("  Migriert: variants/%s/%s", variant_name, md_file.name)
 
         # DEPRECATED.txt erstellen
@@ -172,8 +178,7 @@ def main():
     variant_files = migrate_variant_prompts(prompts_base)
     all_files = default_files + variant_files
 
-    logger.info("%d Dateien migriert (%d default, %d varianten)",
-                 len(all_files), len(default_files), len(variant_files))
+    logger.info("%d Dateien migriert (%d default, %d varianten)", len(all_files), len(default_files), len(variant_files))
 
     # Manifest aktualisieren
     update_manifest(prompts_base, all_files)

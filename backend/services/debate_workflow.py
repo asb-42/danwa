@@ -342,9 +342,7 @@ async def generate_debate_title(
         system_prompt = _title_system_prompts.get(language, _title_system_prompts["de"])
 
         user_prompt = (
-            "Create ONE debate title (60-150 characters) for the following case. "
-            "Output ONLY the title, nothing else.\n\n"
-            f"{case_text[:2000]}"
+            f"Create ONE debate title (60-150 characters) for the following case. Output ONLY the title, nothing else.\n\n{case_text[:2000]}"
         )
 
         result = await llm_service.generate(
@@ -355,8 +353,7 @@ async def generate_debate_title(
         )
 
         title = _post_process_title(result.content.strip(), case_text)
-        logger.info("Generated debate title (%d chars, service=%s): %s",
-                     len(title), use_service_llm, title)
+        logger.info("Generated debate title (%d chars, service=%s): %s", len(title), use_service_llm, title)
         return title
 
     except Exception as exc:
@@ -394,16 +391,21 @@ def _post_process_title(raw: str, case_text: str) -> str:
     _re = __import__("re")
     verbose = [
         r"^Here(?:’s| is) (?:a |the |an )?(?:suggested |proposed )?(?:debate )?title[:\s]*",
-        r"^The title is[:\s]*", r"^Title[:\s]*",
-        r"^I suggest[:\s]*", r"^I propose[:\s]*", r"^I think[:\s]*",
-        r"^Der Titel lautet[:\s]*", r"^Titel[:\s]*",
-        r"^Hier ist ein Titel[:\s]*", r"^Ich schlage vor[:\s]*",
+        r"^The title is[:\s]*",
+        r"^Title[:\s]*",
+        r"^I suggest[:\s]*",
+        r"^I propose[:\s]*",
+        r"^I think[:\s]*",
+        r"^Der Titel lautet[:\s]*",
+        r"^Titel[:\s]*",
+        r"^Hier ist ein Titel[:\s]*",
+        r"^Ich schlage vor[:\s]*",
         r"^Ein passender Titel (?:wäre|ist)[:\s]*",
     ]
     cleaned = raw.strip()
     for pat in verbose:
         cleaned = _re.sub(pat, "", cleaned, count=1, flags=_re.IGNORECASE).strip()
-    for ch in ['"', "'", '„', '“', '”', '‘', '’', '`', '-', '–', ':', '.', ',']:
+    for ch in ['"', "'", "„", "“", "”", "‘", "’", "`", "-", "–", ":", ".", ","]:
         cleaned = cleaned.strip(ch)
     cleaned = cleaned.strip()
 
@@ -411,8 +413,11 @@ def _post_process_title(raw: str, case_text: str) -> str:
         return _fallback_title(case_text)
 
     reflection = [
-        r"(?:the user|der benutzer)", r"based on", r"basierend auf",
-        r"(?:description|beschreibung).*(?:about|um)", r"^-\s",
+        r"(?:the user|der benutzer)",
+        r"based on",
+        r"basierend auf",
+        r"(?:description|beschreibung).*(?:about|um)",
+        r"^-\s",
     ]
     if any(_re.search(p, cleaned, _re.IGNORECASE) for p in reflection):
         return _fallback_title(case_text)
@@ -425,13 +430,11 @@ def _fallback_title(case_text: str) -> str:
     fallback = case_text[:120].strip()
     for sep in [".", "?", "!"]:
         if sep in fallback:
-            fallback = fallback[:fallback.rfind(sep) + 1]
+            fallback = fallback[: fallback.rfind(sep) + 1]
             break
     if len(fallback) > 150:
         fallback = fallback[:147] + "..."
     return fallback
-
-
 
 
 async def run_debate_workflow(

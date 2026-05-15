@@ -187,6 +187,7 @@ def ocr_status():
     # Try PaddleOCR first
     try:
         import paddleocr  # noqa: F401
+
         return {"available": True, "engine": "paddleocr"}
     except ImportError:
         pass
@@ -199,6 +200,7 @@ def ocr_status():
     # Fallback: Try tesseract
     try:
         import pytesseract
+
         pytesseract.get_tesseract_version()
         return {"available": True, "engine": "tesseract"}
     except Exception:

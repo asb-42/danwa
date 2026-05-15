@@ -50,6 +50,7 @@ class TestOCRStatusEndpoint:
             import importlib
 
             import backend.api.routers.dms as dms_router
+
             importlib.reload(dms_router)
             res = client.get("/api/v1/dms/ocr-status")
             assert res.status_code == 200

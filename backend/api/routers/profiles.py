@@ -187,7 +187,7 @@ async def delete_prompt_variant(variant_id: str) -> dict:
 # ------------------------------------------------------------------
 
 
-@router.get('/llm/service-eligible')
+@router.get("/llm/service-eligible")
 async def list_service_eligible_llm_profiles() -> list[dict]:
     """List all LLM profiles eligible for service/background tasks."""
     ps = get_profile_service()
@@ -195,34 +195,37 @@ async def list_service_eligible_llm_profiles() -> list[dict]:
     eligible = []
     for p in all_profiles:
         elig = is_service_llm_eligible(p)
-        eligible.append({
-            'id': p.id,
-            'name': p.name,
-            'model': p.model,
-            'provider': p.provider.value,
-            'service_eligible': elig,
-            'context_window': p.context_window,
-        })
-    eligible.sort(key=lambda x: (0 if x['service_eligible'] else 1, -(x['context_window'] or 0)))
+        eligible.append(
+            {
+                "id": p.id,
+                "name": p.name,
+                "model": p.model,
+                "provider": p.provider.value,
+                "service_eligible": elig,
+                "context_window": p.context_window,
+            }
+        )
+    eligible.sort(key=lambda x: (0 if x["service_eligible"] else 1, -(x["context_window"] or 0)))
     return eligible
 
 
-@router.get('/config/service-llm')
+@router.get("/config/service-llm")
 async def get_service_llm_config():
     """Get the current service LLM configuration."""
     return {
-        'service_llm_profile_id': settings.service_llm_profile_id,
-        'service_llm_min_context': settings.service_llm_min_context,
-        'service_llm_blacklist': settings.service_llm_blacklist,
+        "service_llm_profile_id": settings.service_llm_profile_id,
+        "service_llm_min_context": settings.service_llm_min_context,
+        "service_llm_blacklist": settings.service_llm_blacklist,
     }
 
 
 class ServiceLLMRequest(BaseModel):
     """Request body for validating/changing service LLM."""
+
     profile_id: str
 
 
-@router.post('/config/validate-service-llm')
+@router.post("/config/validate-service-llm")
 async def validate_service_llm(body: ServiceLLMRequest):
     """Validate whether a given profile is suitable as service LLM."""
     ps = get_profile_service()
@@ -231,13 +234,13 @@ async def validate_service_llm(body: ServiceLLMRequest):
         raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
     eligible = is_service_llm_eligible(profile)
     return {
-        'profile_id': body.profile_id,
-        'service_eligible': eligible,
-        'reason': None if eligible else 'Profile not eligible for service tasks',
+        "profile_id": body.profile_id,
+        "service_eligible": eligible,
+        "reason": None if eligible else "Profile not eligible for service tasks",
     }
 
 
-@router.post('/config/service-llm')
+@router.post("/config/service-llm")
 async def set_service_llm(body: ServiceLLMRequest):
     """Set the service LLM profile (validated first)."""
     ps = get_profile_service()
@@ -247,8 +250,8 @@ async def set_service_llm(body: ServiceLLMRequest):
     if not is_service_llm_eligible(profile):
         raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' is not eligible for service tasks")
     settings.service_llm_profile_id = body.profile_id
-    logger.info('Service LLM changed to %s', body.profile_id)
-    return {'status': 'ok', 'service_llm_profile_id': body.profile_id}
+    logger.info("Service LLM changed to %s", body.profile_id)
+    return {"status": "ok", "service_llm_profile_id": body.profile_id}
 
 
 # ------------------------------------------------------------------

@@ -61,19 +61,22 @@ def migrate_llm_profiles(llm_profiles: Path) -> list[dict]:
         rel_path = str(target_path.relative_to(llm_profiles)).replace("\\", "/")
         # Extrahiere provider/model aus YAML für role_type_id
         import yaml as yaml_lib
+
         try:
             data = yaml_lib.safe_load(content)
             profile_type = data.get("profile_type", "text")
         except Exception:
             profile_type = "text"
 
-        files.append({
-            "path": rel_path,
-            "format": "yaml",
-            "checksum": compute_hash(content),
-            "role_type_id": profile_type,
-            "language": "en",
-        })
+        files.append(
+            {
+                "path": rel_path,
+                "format": "yaml",
+                "checksum": compute_hash(content),
+                "role_type_id": profile_type,
+                "language": "en",
+            }
+        )
         logger.info("  Migriert: %s", yaml_file.name)
 
     return files

@@ -101,8 +101,8 @@ class DocumentProcessor:
         """Process with Tesseract via pytesseract."""
         import pytesseract
         from PIL import Image
-        try:
 
+        try:
             img = Image.open(file_path)
             text = pytesseract.image_to_string(img)
             metadata = self._build_metadata(file_path, text, ocr_used=True)
@@ -185,6 +185,7 @@ class DocumentProcessor:
         """Attempt to initialize Tesseract via pytesseract."""
         try:
             import pytesseract
+
             pytesseract.get_tesseract_version()
             logger.info("Tesseract OCR available via pytesseract: %s", pytesseract.get_tesseract_version())
             return True
@@ -250,6 +251,7 @@ class DocumentProcessor:
         """Check for known PaddlePaddle version compatibility issues."""
         try:
             import paddle
+
             version_str = getattr(paddle, "__version__", "0.0.0")
             parts = version_str.split(".")
             major = parts[0]

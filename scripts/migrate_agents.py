@@ -59,13 +59,15 @@ def migrate_agents(agents_base: Path) -> list[dict]:
         target_path.write_text(content, encoding="utf-8")
 
         rel_path = str(target_path.relative_to(agents_base)).replace("\\", "/")
-        files.append({
-            "path": rel_path,
-            "format": "yaml",
-            "checksum": compute_hash(content),
-            "role_type_id": yaml_file.stem.split("-")[0],
-            "language": "en",
-        })
+        files.append(
+            {
+                "path": rel_path,
+                "format": "yaml",
+                "checksum": compute_hash(content),
+                "role_type_id": yaml_file.stem.split("-")[0],
+                "language": "en",
+            }
+        )
         logger.info("  Migriert: %s", yaml_file.name)
 
     return files

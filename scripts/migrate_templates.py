@@ -72,13 +72,15 @@ def migrate_templates(wf_templates: Path) -> list[dict]:
         except json.JSONDecodeError:
             placeholders = []
 
-        files.append({
-            "path": rel_path,
-            "format": "json",
-            "checksum": compute_hash(content),
-            "placeholders_json": json.dumps(placeholders),
-            "template_data_json": content,
-        })
+        files.append(
+            {
+                "path": rel_path,
+                "format": "json",
+                "checksum": compute_hash(content),
+                "placeholders_json": json.dumps(placeholders),
+                "template_data_json": content,
+            }
+        )
         logger.info("  Migriert: %s", json_file.name)
 
     return files
@@ -97,7 +99,8 @@ def get_placeholders(template_data: dict) -> list[str]:
                 _extract(item)
         elif isinstance(obj, str):
             import re
-            found = re.findall(r'\{\{(\w+)\}\}', obj)
+
+            found = re.findall(r"\{\{(\w+)\}\}", obj)
             placeholders.extend(found)
 
     _extract(template_data)
@@ -126,19 +129,18 @@ def update_manifest(wf_templates: Path, files: list[dict]) -> None:
         if f["path"] not in existing_paths:
             # Neue Einträge für migrierte Templates
             rel_path = f["path"]
-            manifest["files"].append({
-                "path": rel_path,
-                "format": "json",
-                "checksum": f["checksum"],
-                "placeholders_json": f.get("placeholders_json", "[]"),
-                "template_data_json": f.get("template_data_json", ""),
-            })
+            manifest["files"].append(
+                {
+                    "path": rel_path,
+                    "format": "json",
+                    "checksum": f["checksum"],
+                    "placeholders_json": f.get("placeholders_json", "[]"),
+                    "template_data_json": f.get("template_data_json", ""),
+                }
+            )
 
     # Alte Einträge entfernen (z.B. self-reference fix)
-    manifest["files"] = [
-        f for f in manifest["files"]
-        if not f.get("path", "").endswith("manifest.json")
-    ]
+    manifest["files"] = [f for f in manifest["files"] if not f.get("path", "").endswith("manifest.json")]
 
     manifest["checksum"] = compute_module_checksum(wf_templates)
     manifest["updated_at"] = datetime.now(UTC).isoformat()

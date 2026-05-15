@@ -134,7 +134,7 @@ class BlueprintLLMProfile(BaseModel):
             a2a_endpoint=getattr(legacy, "a2a_endpoint", None),
             a2a_timeout=getattr(legacy, "a2a_timeout", 120),
             fallback_llm_profile_id=getattr(legacy, "fallback_llm_profile_id", None),
-             service_eligible=getattr(legacy, "service_eligible", True),
+            service_eligible=getattr(legacy, "service_eligible", True),
         )
 
     def to_legacy(self) -> LLMProfile:
@@ -157,7 +157,7 @@ class BlueprintLLMProfile(BaseModel):
             a2a_endpoint=self.a2a_endpoint,
             a2a_timeout=self.a2a_timeout,
             fallback_llm_profile_id=self.fallback_llm_profile_id,
-             service_eligible=self.service_eligible,
+            service_eligible=self.service_eligible,
         )
 
 
