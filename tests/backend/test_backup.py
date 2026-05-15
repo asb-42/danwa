@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 
 import pytest
@@ -329,6 +328,7 @@ class TestListBackups:
 
             service.create_backup(trigger="manual")
             import time
+
             time.sleep(1.1)
             service.create_backup(trigger="shutdown")
 

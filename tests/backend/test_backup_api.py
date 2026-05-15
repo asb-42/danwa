@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import os
-import zipfile
 from pathlib import Path
 
 import pytest
-
-from backend.core.config import Settings
 
 
 @pytest.fixture()
@@ -160,6 +156,7 @@ class TestRestoreBackupAPI:
             backup_id = create_resp.json()["backup_id"]
 
             import shutil
+
             shutil.rmtree(tmp_path / "data")
             shutil.rmtree(tmp_path / "config")
 

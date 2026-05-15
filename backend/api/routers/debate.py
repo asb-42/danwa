@@ -120,9 +120,9 @@ async def list_debates(
         # Forks dieses Debatts zählen
         debate_id_current = d["debate_id"]
         forks_count = sum(
-            1 for other_d in debates
-            if isinstance(other_d.get("fork_info"), dict)
-            and other_d["fork_info"].get("parent_debate_id") == debate_id_current
+            1
+            for other_d in debates
+            if isinstance(other_d.get("fork_info"), dict) and other_d["fork_info"].get("parent_debate_id") == debate_id_current
         )
 
         items.append(
@@ -383,7 +383,6 @@ async def continue_debate(
 
     The previous debate's results are used as context for the new case text.
     """
-    from backend.persistence.debate_store import DebateStore
     from backend.services.debate_workflow import build_followup_case
 
     # Find the debate in the project's store
@@ -425,7 +424,14 @@ async def continue_debate(
         inherit_language = getattr(req, "language", "de")
         inherit_enable_extra_rounds = getattr(req, "enable_extra_rounds", False)
 
-    from backend.models.schemas import DebateRequest as ReqModel, CaseInput, AgentConfig, AgentRole
+    from backend.models.schemas import (
+        AgentConfig,
+        AgentRole,
+        CaseInput,
+    )
+    from backend.models.schemas import (
+        DebateRequest as ReqModel,
+    )
 
     new_request = ReqModel(
         case=CaseInput(text=followup_prompt),
@@ -486,7 +492,6 @@ async def fork_from_consensus(
 
     The consensus summary is used as the starting context.
     """
-    from backend.persistence.debate_store import DebateStore
 
     store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
@@ -530,6 +535,7 @@ async def fork_from_consensus(
 
     # Extract top-3 arguments per role for context
     from backend.workflow.report_generator import WorkflowReportGenerator
+
     transcript = WorkflowReportGenerator._build_transcript(debate)
     summaries = []
     role_summaries: dict[str, list[str]] = {}
@@ -554,7 +560,8 @@ async def fork_from_consensus(
         f"Original-Falltext:\n{original_case}"
     )
 
-    from backend.models.schemas import DebateRequest as ReqModel, CaseInput, AgentConfig, AgentRole
+    from backend.models.schemas import AgentConfig, AgentRole, CaseInput
+    from backend.models.schemas import DebateRequest as ReqModel
 
     new_request = ReqModel(
         case=CaseInput(text=fork_case_text),
@@ -612,7 +619,6 @@ async def fork_debate(
 
     Creates a deep copy with configurable fork point and persona/prompt changes.
     """
-    from backend.persistence.debate_store import DebateStore
     from backend.services.debate_workflow import create_fork_debate
 
     store = get_debate_store_for_project(project_id, project_store)

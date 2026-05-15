@@ -1,13 +1,13 @@
 """Integrationstests für die i18n REST-API (Plan 20)."""
+
 from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.services.ui_translation_service import UITranslationService
+from backend.api.deps import get_project_store
 from backend.main import create_app
-from backend.persistence.project_store import ProjectStore
-from backend.api.deps import get_project_store, get_project_id
+from backend.services.ui_translation_service import UITranslationService
 
 
 @pytest.fixture()
@@ -29,15 +29,14 @@ def app_with_i18n(client_with_i18n):
 @pytest.fixture()
 def client_with_i18n(svc, settings, debate_store, project_store, default_project):
     """FastAPI client with i18n router."""
-    from backend.api.deps import get_settings, get_debate_store, get_project_id
+    from backend.api.deps import get_debate_store, get_settings
     from backend.api.routers.ui_i18n import router as ui_i18n_router
 
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
     application.dependency_overrides[get_debate_store] = lambda: debate_store
     application.dependency_overrides[get_project_store] = lambda: project_store
-    application.dependency_overrides[get_project_id] = lambda: default_project
-    application.state.test_i18n_service = svc
+    application.include_router(ui_i18n_router, prefix="/api/v1/i18n")
     return TestClient(application)
 
 
@@ -47,6 +46,7 @@ def client_with_i18n(svc, settings, debate_store, project_store, default_project
 @pytest.fixture()
 def settings(tmp_path) -> pytest.Settings:  # type: ignore
     from backend.core.config import Settings
+
     return Settings(
         db_path=tmp_path / "test_audit.db",
         cors_origins=["http://testserver"],
@@ -57,12 +57,14 @@ def settings(tmp_path) -> pytest.Settings:  # type: ignore
 @pytest.fixture()
 def debate_store(tmp_path):
     from backend.persistence.debate_store import DebateStore
+
     return DebateStore(data_dir=tmp_path / "test_debates")
 
 
 @pytest.fixture()
 def project_store(tmp_path):
     from backend.persistence.project_store import ProjectStore
+
     return ProjectStore(base_dir=tmp_path / "test_projects")
 
 
@@ -169,7 +171,7 @@ class TestSetTranslations:
             "translations": {
                 "nav.dashboard": "Tableau de bord",
                 "nav.debate": "Débat en cours",
-            }
+            },
         }
         response = client_with_i18n.post("/api/v1/i18n/fr", json=payload)
         assert response.status_code == 200
@@ -219,10 +221,12 @@ class TestStatsAndCoverage:
     """GET /api/v1/i18n/stats und /api/v1/i18n/coverage"""
 
     def test_stats(self, svc, client_with_i18n):
-        svc.bulk_import({
-            "de": {"k1": "Eins", "k2": "Zwei"},
-            "en": {"k1": "One", "k2": "Two"},
-        })
+        svc.bulk_import(
+            {
+                "de": {"k1": "Eins", "k2": "Zwei"},
+                "en": {"k1": "One", "k2": "Two"},
+            }
+        )
         response = client_with_i18n.get("/api/v1/i18n/stats?namespace=global")
         assert response.status_code == 200
         data = response.json()
@@ -231,10 +235,12 @@ class TestStatsAndCoverage:
         assert data["de"]["total"] >= 2
 
     def test_coverage(self, svc, client_with_i18n):
-        svc.bulk_import({
-            "de": {"k1": "Eins", "k2": "Zwei"},
-            "fr": {},
-        })
+        svc.bulk_import(
+            {
+                "de": {"k1": "Eins", "k2": "Zwei"},
+                "fr": {},
+            }
+        )
         response = client_with_i18n.get("/api/v1/i18n/coverage?namespace=global")
         assert response.status_code == 200
         data = response.json()

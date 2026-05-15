@@ -475,7 +475,6 @@ async def launch_workflow_from_input(
         resolved_data = template.instantiate(inst_req.placeholder_values)
 
         # Build WorkflowDefinition
-        from datetime import UTC, datetime
 
         wf_id = f"wf-{uuid.uuid4().hex[:8]}"
         from backend.blueprints.workflow_models import WorkflowDefinition

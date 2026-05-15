@@ -9,30 +9,47 @@ handelt dieser Service ausschließlich UI-Strings wie Menüs, Buttons, Labels et
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
-from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_DIR = Path("data/i18n")
 DEFAULT_LOCALES = [
-    "de", "en", "fr", "es", "it", "pt", "ru", "zh", "ja", "ko", "sv", "el",
+    "de",
+    "en",
+    "fr",
+    "es",
+    "it",
+    "pt",
+    "ru",
+    "zh",
+    "ja",
+    "ko",
+    "sv",
+    "el",
     # Optionale RTL-Sprachen:
     # "ar", "he",
 ]
 
 LOCALE_NAMES: dict[str, str] = {
-    "de": "Deutsch", "en": "English", "fr": "Français",
-    "es": "Español", "it": "Italiano", "pt": "Português",
-    "ru": "Русский", "zh": "中文", "ja": "日本語",
-    "ko": "한국어", "sv": "Svenska", "el": "Ελληνικά",
-    "ar": "العربية", "he": "עברית",
+    "de": "Deutsch",
+    "en": "English",
+    "fr": "Français",
+    "es": "Español",
+    "it": "Italiano",
+    "pt": "Português",
+    "ru": "Русский",
+    "zh": "中文",
+    "ja": "日本語",
+    "ko": "한국어",
+    "sv": "Svenska",
+    "el": "Ελληνικά",
+    "ar": "العربية",
+    "he": "עברית",
 }
 
 RTL_LOCALES = {"ar", "he", "fa"}
@@ -101,6 +118,7 @@ class UITranslationService:
     def _get_conn(self):
         """Erstelle eine neue Datenbankverbindung."""
         import sqlite3
+
         conn = sqlite3.connect(str(self.db_path), timeout=10.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
@@ -110,13 +128,13 @@ class UITranslationService:
     # CRUD
     # ------------------------------------------------------------------
 
-    def set_translation(self, key: str, locale: str, value: str,
-                        namespace: str = "global", source: str = "manual") -> None:
+    def set_translation(self, key: str, locale: str, value: str, namespace: str = "global", source: str = "manual") -> None:
         """Speichere oder aktualisiere eine Übersetzung."""
         now = datetime.now(UTC).isoformat()
         conn = self._get_conn()
         try:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO ui_translations (key, locale, value, namespace, source,
                                              confidence, version, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?)
@@ -125,7 +143,9 @@ class UITranslationService:
                     source = excluded.source,
                     version = ui_translations.version + 1,
                     updated_at = excluded.updated_at
-            """, (key, locale, value, namespace, source, now, now))
+            """,
+                (key, locale, value, namespace, source, now, now),
+            )
             conn.commit()
             # Cache invalidieren
             self._locales_cache.pop(locale, None)
@@ -133,19 +153,14 @@ class UITranslationService:
         finally:
             conn.close()
 
-    def get_translation(self, key: str, locale: str,
-                        namespace: str = "global") -> str | None:
+    def get_translation(self, key: str, locale: str, namespace: str = "global") -> str | None:
         """Hole eine einzelne Übersetzung."""
         conn = self._get_conn()
-        row = conn.execute(
-            "SELECT value FROM ui_translations WHERE key = ? AND locale = ? AND namespace = ?",
-            (key, locale, namespace)
-        ).fetchone()
+        row = conn.execute("SELECT value FROM ui_translations WHERE key = ? AND locale = ? AND namespace = ?", (key, locale, namespace)).fetchone()
         conn.close()
         return row["value"] if row else None
 
-    def get_translations_bulk(self, locale: str, namespace: str = "global",
-                               keys: list[str] | None = None) -> dict[str, str]:
+    def get_translations_bulk(self, locale: str, namespace: str = "global", keys: list[str] | None = None) -> dict[str, str]:
         """Hole mehrere Übersetzungen auf einmal. Befüllt den lokalen Cache."""
         conn = self._get_conn()
         if keys:
@@ -171,29 +186,21 @@ class UITranslationService:
     def get_all_keys(self, namespace: str = "global") -> list[str]:
         """Liste aller bekannten Keys."""
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT DISTINCT key FROM ui_translations WHERE namespace = ?",
-            (namespace,)
-        ).fetchall()
+        rows = conn.execute("SELECT DISTINCT key FROM ui_translations WHERE namespace = ?", (namespace,)).fetchall()
         conn.close()
         return [r["key"] for r in rows]
 
-    def delete_translation(self, key: str, locale: str,
-                            namespace: str = "global") -> bool:
+    def delete_translation(self, key: str, locale: str, namespace: str = "global") -> bool:
         """Lösche eine Übersetzung."""
         conn = self._get_conn()
-        conn.execute(
-            "DELETE FROM ui_translations WHERE key = ? AND locale = ? AND namespace = ?",
-            (key, locale, namespace)
-        )
+        conn.execute("DELETE FROM ui_translations WHERE key = ? AND locale = ? AND namespace = ?", (key, locale, namespace))
         conn.commit()
         affected = conn.total_changes
         conn.close()
         self._locales_cache.pop(locale, None)
         return affected > 0
 
-    def bulk_import(self, translations: dict[str, dict[str, str]],
-                    namespace: str = "global", source: str = "bulk_imported") -> int:
+    def bulk_import(self, translations: dict[str, dict[str, str]], namespace: str = "global", source: str = "bulk_imported") -> int:
         """
         Importiere mehrere Übersetzungen auf einmal.
         Format: { locale: { key: value, ... }, ... }
@@ -209,8 +216,7 @@ class UITranslationService:
     # Fallback-Resolution
     # ------------------------------------------------------------------
 
-    def resolve(self, key: str, locale: str,
-                namespace: str = "global") -> str:
+    def resolve(self, key: str, locale: str, namespace: str = "global") -> str:
         """
         Resolviere eine Übersetzung mit Fallback-Kette:
         locale → DEFAULT_LOCALE → en → key
@@ -222,18 +228,15 @@ class UITranslationService:
                 return val
         return key  # Letzter Fallback
 
-    def resolve_bulk(self, locale: str, namespace: str = "global",
-                      keys: list[str] | None = None) -> dict[str, str]:
+    def resolve_bulk(self, locale: str, namespace: str = "global", keys: list[str] | None = None) -> dict[str, str]:
         """Bulk-Resolution mit Fallback-Kette."""
         if keys is None:
             keys = self.get_all_keys(namespace)
 
         result = {}
         primary = self.get_translations_bulk(locale, namespace, keys)
-        fallback_de = self.get_translations_bulk("de", namespace,
-                                                [k for k in keys if k not in primary]) if locale != "de" else {}
-        fallback_en = self.get_translations_bulk("en", namespace,
-                                                [k for k in keys if k not in primary and k not in fallback_de])
+        fallback_de = self.get_translations_bulk("de", namespace, [k for k in keys if k not in primary]) if locale != "de" else {}
+        fallback_en = self.get_translations_bulk("en", namespace, [k for k in keys if k not in primary and k not in fallback_de])
 
         result.update(primary)
         result.update(fallback_de)
@@ -270,7 +273,8 @@ class UITranslationService:
     def get_stats(self, namespace: str = "global") -> dict[str, Any]:
         """Übersetzungsstatistiken pro Sprache."""
         conn = self._get_conn()
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT locale, COUNT(*) as total,
                     SUM(CASE WHEN source = 'manual' THEN 1 ELSE 0 END) as manual,
                     SUM(CASE WHEN source = 'bulk_imported' THEN 1 ELSE 0 END) as bulk,
@@ -278,7 +282,9 @@ class UITranslationService:
             FROM ui_translations
             WHERE namespace = ?
             GROUP BY locale
-        """, (namespace,)).fetchall()
+        """,
+            (namespace,),
+        ).fetchall()
         conn.close()
         return {r["locale"]: dict(r) for r in rows}
 
@@ -306,11 +312,9 @@ class UITranslationService:
     # LLM-basierte Übersetzung
     # ------------------------------------------------------------------
 
-    def translate_via_llm(self, key: str, source_text: str,
-                           target_locale: str,
-                           llm_profile_id: str | None = None) -> str:
+    def translate_via_llm(self, key: str, source_text: str, target_locale: str, llm_profile_id: str | None = None) -> str:
         """Übersetze einen UI-String per LLM.
-        
+
         Speichert das Ergebnis automatisch in der Datenbank.
         """
         from backend.services.llm_service import LLMService
@@ -342,19 +346,17 @@ class UITranslationService:
             logger.info("LLM-Übersetzung gespeichert: %s → %s", key, target_locale)
             return translated
         except Exception as exc:
-            logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s",
-                        key, target_locale, exc)
+            logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s", key, target_locale, exc)
             return source_text
 
-    def bulk_translate(self, target_locales: list[str] | None = None,
-                        namespace: str = "global") -> dict[str, Any]:
+    def bulk_translate(self, target_locales: list[str] | None = None, namespace: str = "global") -> dict[str, Any]:
         """Übersetze alle fehlenden Strings per LLM.
-        
+
         Liest alle bekannten Keys aus der englischen Datei und übersetzt
         fehlende Strings in die Zielsprachen.
         """
         if target_locales is None:
-            target_locales = [l for l in DEFAULT_LOCALES if l not in ("de", "en")]
+            target_locales = [loc for loc in DEFAULT_LOCALES if loc not in ("de", "en")]
 
         all_keys = self.get_all_keys(namespace)
         results = {}

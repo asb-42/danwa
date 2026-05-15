@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
 
 from backend.api.events import publish_async
 from backend.core.config import is_service_llm_eligible, settings
@@ -290,6 +289,7 @@ def resolve_rag_context(
                     transcript = _build_transcript_for_followup(d)
                     summary = _generate_rag_friendly_summary(transcript)
                     from backend.services.dms.chunker import TextChunker
+
                     chunker = TextChunker()
                     chunks = chunker.chunk_text(summary, f"debate_result_{d.get('debate_id', '')[:8]}")
                     all_chunks.extend(chunks[:3])
@@ -720,6 +720,7 @@ async def run_debate_workflow(
 # Follow-up debate helpers (Plan 19, P0 + P1)
 # ---------------------------------------------------------------------------
 
+
 def build_followup_case(debate_id: str, focus_topic: str | None = None, store: DebateStore | None = None) -> str:
     """Baut einen neuen case_text aus den Ergebnissen der Vordebatte (P0)."""
     debate = store.get(debate_id) if store else None
@@ -746,9 +747,7 @@ def build_followup_case(debate_id: str, focus_topic: str | None = None, store: D
         f"Die Debatte '{title}' wurde nach "
         f"{current_round} Runden mit einem "
         f"Konsensgrad von {consensus * 100:.0f}% abgeschlossen.\n\n"
-        f"Wichtigste Argumente:\n"
-        + "\n\n".join(summaries[-10:])
-        + f"\n\nNeuer Fokus: {focus_topic or 'Vertiefung des Themas'}\n\n"
+        f"Wichtigste Argumente:\n" + "\n\n".join(summaries[-10:]) + f"\n\nNeuer Fokus: {focus_topic or 'Vertiefung des Themas'}\n\n"
         "Führe diese Debatte fort und baue auf den vorherigen Ergebnissen auf."
     )
     return prompt
@@ -771,9 +770,9 @@ def build_followup_prompt(previous_debate: dict, new_topic: str) -> str:
         f"""Du bist Teil eines Multi-Agenten-Debattensystems.
 
 ## Kontext
-Eine vorherige Debatte zum Thema "{previous_debate.get('title', '')}"
-wurde nach {previous_debate.get('current_round', '?')} Runden mit einem
-Konsensgrad von {previous_debate.get('final_consensus', 0) * 100:.0f}% abgeschlossen.
+Eine vorherige Debatte zum Thema "{previous_debate.get("title", "")}"
+wurde nach {previous_debate.get("current_round", "?")} Runden mit einem
+Konsensgrad von {previous_debate.get("final_consensus", 0) * 100:.0f}% abgeschlossen.
 """,
     ]
 
@@ -782,17 +781,19 @@ Konsensgrad von {previous_debate.get('final_consensus', 0) * 100:.0f}% abgeschlo
         for c in contents[-3:]:
             prompt_parts.append(f"- {c}")
 
-    prompt_parts.extend([
-        f"\n## Neue Aufgabe",
-        f"Diskutiere nun: **{new_topic}**",
-        "",
-        "Richtlinien:",
-        "1. Baue auf den vorherigen Erkenntnissen auf",
-        "2. Widerlege oder bestätige frühere Schlussfolgerungen",
-        "3. Bringe neue Perspektiven ein, die in der Origin-Debatte fehlten",
-        "",
-        "Halte den Prompt unter 4.000 Tokens.",
-    ])
+    prompt_parts.extend(
+        [
+            "\n## Neue Aufgabe",
+            f"Diskutiere nun: **{new_topic}**",
+            "",
+            "Richtlinien:",
+            "1. Baue auf den vorherigen Erkenntnissen auf",
+            "2. Widerlege oder bestätige frühere Schlussfolgerungen",
+            "3. Bringe neue Perspektiven ein, die in der Origin-Debatte fehlten",
+            "",
+            "Halte den Prompt unter 4.000 Tokens.",
+        ]
+    )
 
     return "\n".join(prompt_parts)
 
@@ -813,6 +814,7 @@ def _build_transcript_for_followup(debate: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Fork debate helper (Plan 19, P4)
 # ---------------------------------------------------------------------------
+
 
 def create_fork_debate(
     original_debate_id: str,
@@ -887,11 +889,13 @@ def create_fork_debate(
 
     # Fork-Historie im debate_json pflegen
     existing_forks = original.get("fork_history", [])
-    fork["fork_history"] = existing_forks + [{
-        "parent_id": original_debate_id,
-        "fork_round": fork_from_round,
-        "reason": fork_reason,
-    }]
+    fork["fork_history"] = existing_forks + [
+        {
+            "parent_id": original_debate_id,
+            "fork_round": fork_from_round,
+            "reason": fork_reason,
+        }
+    ]
 
     store.put(new_id, fork)
     return {
@@ -906,21 +910,23 @@ def create_fork_debate(
 # RAG integration for follow-up debates (Plan 19, P3)
 # ---------------------------------------------------------------------------
 
+
 async def on_debate_completed(debate_id: str, project_id: str):
     """Erzeugt automatisch ein DMS-Dokument mit den Debattenergebnissen (P3)."""
-    from backend.services.dms.service import get_dms_for_project
     from backend.persistence.project_store import ProjectStore
+    from backend.services.dms.service import get_dms_for_project
+    from backend.workflow.report_generator import WorkflowReportGenerator
 
-    store = DebateStore(data_dir=Path("data/debates"))
+    # Use project store to get correct DMS for the project
 
     # Use project store to get correct DMS for the project
     ps = ProjectStore()
     original_project_id = project_id
     try:
-        dms = get_dms_for_project(project_id, ps)
+        get_dms_for_project(project_id, ps)
     except Exception:
         # Fallback to default project
-        dms = get_dms_for_project("_default", ps)
+        get_dms_for_project("_default", ps)
 
     try:
         ps_for_debate = ProjectStore()
@@ -966,7 +972,7 @@ async def on_debate_completed(debate_id: str, project_id: str):
             logger.warning("Could not initialize DMS for debate completion callback")
             return None
 
-    transcript = report_generator._build_transcript(debate_data)
+    transcript = WorkflowReportGenerator._build_transcript(debate_data)
     document_text = _generate_rag_friendly_summary(transcript)
 
     try:
@@ -983,6 +989,7 @@ async def on_debate_completed(debate_id: str, project_id: str):
         doc_entry = dms2.db.get_document(doc_id)
         if doc_entry and doc_entry.get("file_path"):
             from pathlib import Path as PLPath
+
             PLPath(doc_entry["file_path"]).parent.mkdir(parents=True, exist_ok=True)
             PLPath(doc_entry["file_path"]).write_text(document_text, encoding="utf-8")
             # Process the file for RAG indexing
@@ -991,6 +998,7 @@ async def on_debate_completed(debate_id: str, project_id: str):
         else:
             # Direct chunk creation if no file path
             from backend.services.dms.chunker import TextChunker
+
             chunker = TextChunker()
             chunks = chunker.chunk_text(document_text, doc_id)
             dms2.metadata_index.add_chunks(chunks)
@@ -1090,6 +1098,7 @@ def resolve_rag_context_with_debate_results(
 
             # Suche im Projektverzeichnis
             from backend.persistence.project_store import ProjectStore
+
             ps = ProjectStore()
             project_dir = ps.get_project_dir(project_id)
             project_store = DebateStore(data_dir=project_dir / "debates")
@@ -1101,7 +1110,7 @@ def resolve_rag_context_with_debate_results(
                 if d.get("status") in ("completed",) and d.get("debate_id") != "":
                     debate_json = d
                     # Extrahiere Transcript-Text
-                    req = debate_json.get("request", {})
+                    debate_json.get("request", {})
                     transcript = _build_transcript_for_followup(debate_json)
 
                     # Baue Zusammenfassung
@@ -1109,6 +1118,7 @@ def resolve_rag_context_with_debate_results(
 
                     # Chunke die Zusammenfassung
                     from backend.services.dms.chunker import TextChunker
+
                     chunker = TextChunker()
                     chunks = chunker.chunk_text(summary, f"debate_result_{d.get('debate_id', '')[:8]}")
                     all_chunks.extend(chunks[:3])  # Max 3 Chunks pro Debatte
@@ -1133,5 +1143,3 @@ def resolve_rag_context_with_debate_results(
 
     rag_context = dms.format_rag_context(unique_chunks)
     return rag_context, len(unique_chunks)
-
-

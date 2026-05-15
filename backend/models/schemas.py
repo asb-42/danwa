@@ -369,6 +369,7 @@ class ReportJobStatus(BaseModel):
 # Follow-up / Fork models (Plan 19)
 # ---------------------------------------------------------------------------
 
+
 class DebateContinueBody(BaseModel):
     """POST /api/v1/debate/{id}/continue request body."""
 
@@ -403,4 +404,3 @@ class DebateForkInfo(BaseModel):
     parent_debate_id: str
     fork_round: int | None = None
     fork_reason: str | None = None
-

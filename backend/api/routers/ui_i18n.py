@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
 from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
+
 from backend.services.ui_translation_service import (
-    UITranslationService,
     DEFAULT_LOCALES,
     LOCALE_NAMES,
-    RTL_LOCALES,
     PLURAL_TAGS,
+    RTL_LOCALES,
+    UITranslationService,
 )
 
 router = APIRouter(tags=["i18n"])
@@ -198,4 +199,3 @@ async def bulk_translate(
     for locale in results.keys():
         svc.invalidate_cache(locale)
     return {"results": results}
-
