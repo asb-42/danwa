@@ -93,10 +93,10 @@ class BlueprintRepository:
                     profile.protocol,
                     profile.a2a_endpoint,
                     profile.a2a_timeout,
-                     profile.fallback_llm_profile_id,
-                     json.dumps(profile.a2a_config),
-                     profile.service_eligible,
-                 ),
+                    profile.fallback_llm_profile_id,
+                    json.dumps(profile.a2a_config),
+                    profile.service_eligible,
+                ),
             )
         logger.debug("Saved LLM profile %s", profile.id)
 

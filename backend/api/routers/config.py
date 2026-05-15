@@ -298,7 +298,6 @@ class BackupSettingsBody(BaseModel):
     backup_dir: str | None = None
 
 
-
 @router.get("/backup-settings", response_model=dict)
 def get_backup_settings():
     """Get current backup settings."""
