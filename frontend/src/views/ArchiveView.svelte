@@ -258,16 +258,16 @@
       </div>
     {:else}
       <!-- Table header -->
-      <div class="hidden md:grid md:grid-cols-16 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      <div class="hidden md:grid md:grid-cols-12 gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         <div class="col-span-2">{t('debate.titleLabel')}</div>
         <div class="col-span-2">{t('archive.project')}</div>
-        <div class="col-span-2">{t('archive.date')}</div>
+        <div class="col-span-1">{t('archive.date')}</div>
         <div class="col-span-1">{t('debate.round')}</div>
-        <div class="col-span-2">{t('debate.consensus')}</div>
+        <div class="col-span-1">{t('debate.consensus')}</div>
         <div class="col-span-1">{t('archive.forks')}</div>
         <div class="col-span-1">{t('archive.parentDebate')}</div>
-        <div class="col-span-2">{t('debate.status')}</div>
-        <div class="col-span-1"></div>
+        <div class="col-span-1">{t('debate.status')}</div>
+        <div class="col-span-2"></div>
       </div>
 
       <!-- Table rows -->
@@ -275,7 +275,7 @@
         {#each debates as debate}
           <div
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-                   md:grid md:grid-cols-16 md:gap-4 md:items-center"
+                   md:grid md:grid-cols-12 md:gap-2 md:items-center"
           >
             <!-- Title / Case preview (clickable) -->
             <button
@@ -299,22 +299,6 @@
               </p>
             </button>
 
-            <!-- Forks / Parent info -->
-            <div class="md:col-span-2 flex items-center gap-1">
-              {#if debate.forks_count > 0}
-                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" title="{debate.forks_count} Forks">
-                  🍴 {debate.forks_count}
-                </span>
-              {:else}
-                <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
-              {/if}
-              {#if debate.parent_debate_id}
-                  <a href={'/debate/' + debate.parent_debate_id} class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" title="Parent-Debatte" onclick={() => event.stopPropagation()}>
-                  🔗
-                </a>
-              {/if}
-            </div>
-
             <!-- Project (clickable) -->
             <button
               class="md:col-span-2 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 md:mb-0 text-left cursor-pointer"
@@ -329,7 +313,7 @@
 
             <!-- Date (clickable) -->
             <button
-              class="md:col-span-2 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0 text-left cursor-pointer"
+              class="md:col-span-1 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0 text-left cursor-pointer"
               onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {formatDate(debate.created_at)}
@@ -345,12 +329,12 @@
 
             <!-- Consensus (clickable) -->
             <button
-              class="md:col-span-2 mb-1 md:mb-0 text-left cursor-pointer"
+              class="md:col-span-1 mb-1 md:mb-0 text-left cursor-pointer"
               onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {#if debate.consensus_score !== null && debate.consensus_score !== undefined}
                 <div class="flex items-center gap-2">
-                  <div class="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 hidden md:block">
+                  <div class="w-10 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 hidden md:block">
                     <div
                       class="bg-blue-600 h-1.5 rounded-full"
                       style="width: {(debate.consensus_score * 100)}%"
@@ -365,9 +349,31 @@
               {/if}
             </button>
 
+            <!-- Forks -->
+            <div class="md:col-span-1 flex items-center gap-1">
+              {#if debate.forks_count > 0}
+                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" title="{debate.forks_count} Forks">
+                  🍴 {debate.forks_count}
+                </span>
+              {:else}
+                <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
+              {/if}
+            </div>
+
+            <!-- Parent info -->
+            <div class="md:col-span-1 flex items-center gap-1">
+              {#if debate.parent_debate_id}
+                <a href={'/debate/' + debate.parent_debate_id} class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" title="Parent-Debatte" onclick={() => event.stopPropagation()}>
+                  🔗
+                </a>
+              {:else}
+                <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
+              {/if}
+            </div>
+
             <!-- Status (clickable) -->
             <button
-              class="md:col-span-2 text-left cursor-pointer"
+              class="md:col-span-1 text-left cursor-pointer"
               onclick={() => navigate('debate/' + debate.debate_id)}
             >
               <div class="flex items-center gap-2">
@@ -379,9 +385,6 @@
                     📦 {t('session.archived')}
                   </span>
                 {/if}
-                <span class="text-xs text-gray-400 dark:text-gray-500 uppercase hidden md:inline">
-                  {debate.language}
-                </span>
               </div>
             </button>
 
