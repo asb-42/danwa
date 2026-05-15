@@ -153,6 +153,24 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Debate Engine shutting down.")
 
+    # --- Shutdown-Backup (Sprint 18) ---
+    try:
+        from backend.core.config import settings as s
+
+        if s.backup_auto_on_shutdown:
+            from backend.persistence.backup import BackupService
+
+            service = BackupService()
+            result = service.create_backup(trigger="shutdown")
+            logger.info(
+                "Shutdown-Backup erstellt: %s (%d Dateien, %d Bytes)",
+                result.path,
+                result.file_count,
+                result.size_bytes,
+            )
+    except Exception as exc:
+        logger.error("Shutdown-Backup fehlgeschlagen: %s", exc)
+
 
 def create_app() -> FastAPI:
     """Application factory."""

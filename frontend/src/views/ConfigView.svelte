@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
+  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas, backups, backupDetails, isLoadingBackups, backupConfig } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import {
     getLLMProfiles,
@@ -23,6 +23,12 @@
     getServiceEligibleProfiles,
     getServiceLLMConfig,
     setServiceLLM,
+    getBackupSettings,
+    updateBackupSettings,
+    deleteBackup,
+    getBackupFiles,
+    verifyBackup as apiVerifyBackup,
+    createBackup as apiCreateBackup,
   } from '../lib/api.js';
   import {
     listRoleTypes,
@@ -474,7 +480,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['llm', 'service', 'roleTypes', 'agents', 'prompts', 'modules', 'cost', 'settings', 'system'] as tab}
+      {#each ['llm', 'service', 'roleTypes', 'agents', 'prompts', 'modules', 'cost', 'backup', 'settings', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -488,7 +494,8 @@ import ModuleManager from '../components/ModuleManager.svelte';
           {:else if tab === 'prompts'}{t('config.promptVariants')}
           {:else if tab === 'cost'}{t('config.costEstimate')}
           {:else if tab === 'service'}🔧 {t('service.title')}
-          {:else if tab === 'settings'}⚙️ {t('settings.title')}
+          {:else if tab === 'backup'}📦 {t('backup.title')}
+           {:else if tab === 'settings'}⚙️ {t('settings.title')}
           {:else if tab === 'system'}🖥️ System
           {/if}
         </button>
@@ -696,9 +703,154 @@ import ModuleManager from '../components/ModuleManager.svelte';
        {/if}
      </div>
 
-   <!-- Agent Personas Tab -->
-  {:else if activeTab === 'agents'}
-    <div class="space-y-4">
+   <!-- Backup Tab -->
+    {:else if activeTab === 'backup'}
+      <div class="space-y-4">
+        <!-- Backup Settings -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('backup.settings') || 'Backup Settings'}</h3>
+          {#if isLoadingBackupSettings}
+            <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+          {:else}
+            <div class="space-y-4">
+              <div>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" bind:checked={backupSettings.backup_enabled} class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                  <div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('backup.enabled') || 'Backups enabled'}</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{t('backup.enabledHint') || 'Enable or disable backup functionality'}</p>
+                  </div>
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" bind:checked={backupSettings.backup_auto_on_shutdown} class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                  <div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('backup.autoOnShutdown')}</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{t('backup.autoOnShutdownHint')}</p>
+                  </div>
+                </label>
+              </div>
+              <div>
+                <label for="backup-retention" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('backup.retention')}</label>
+                <input id="backup-retention" type="number" bind:value={backupSettings.backup_retention_count} min="0" max="999" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('backup.retentionHint')}</p>
+              </div>
+              <div>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" bind:checked={backupSettings.backup_encrypt} class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" disabled />
+                  <div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('backup.encrypt')}</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{t('backup.encryptHint')}</p>
+                  </div>
+                </label>
+              </div>
+              {#if backupMessage}
+                <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-green-700 dark:text-green-300 text-sm">
+                  {backupMessage}
+                </div>
+              {/if}
+              <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveBackupSettings} disabled={isSavingBackupSettings}>
+                {isSavingBackupSettings ? '...' : (t('common.save') || 'Save')}
+              </button>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Create Backup -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('backup.create') || 'Create Backup'}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('backup.description') || 'Create a backup of all project data and settings.'}</p>
+          <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={createBackup} disabled={isCreatingBackup}>
+            {isCreatingBackup ? '...' : (t('common.create') || 'Create')}
+          </button>
+          {#if backupCreateMessage}
+            <p class="mt-2 text-sm text-green-600 dark:text-green-400">{backupCreateMessage}</p>
+          {/if}
+        </div>
+
+        <!-- Backup List -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white p-6 pb-3">{t('backup.list') || 'Backup Archives'}</h3>
+          {#if $backups.length === 0}
+            <div class="p-6">
+              <p class="text-gray-500 dark:text-gray-400">{t('backup.noBackups') || 'No backups available.'}</p>
+            </div>
+          {:else}
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-4 py-3">{t('backup.date') || 'Date'}</th>
+                  <th class="px-4 py-3">{t('backup.size') || 'Size'}</th>
+                  <th class="px-4 py-3">{t('backup.files') || 'Files'}</th>
+                  <th class="px-4 py-3">{t('backup.trigger') || 'Trigger'}</th>
+                  <th class="px-4 py-3 text-right">{t('config.actions') || 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each $backups as backup (backup.backup_id)}
+                  <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td class="px-4 py-3">{new Date(backup.created_at).toLocaleString()}</td>
+                    <td class="px-4 py-3">{(backup.size_bytes / (1024 * 1024)).toFixed(1)} MB</td>
+                    <td class="px-4 py-3">{backup.file_count}</td>
+                    <td class="px-4 py-3">
+                      <span class="text-xs px-2 py-0.5 rounded-full {backup.trigger === 'manual' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'}">
+                        {backup.trigger}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right space-x-1">
+                      <button class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={() => showBackupFiles(backup.backup_id)}>
+                        {t('backup.showFiles') || 'Files'}
+                      </button>
+                      <button class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800/40 transition-colors" onclick={() => verifyBackup(backup.backup_id)}>
+                        {t('backup.verify') || 'Verify'}
+                      </button>
+                      <button class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors" disabled>
+                        {t('backup.restoreDisabled') || 'Restore (soon)'}
+                      </button>
+                      <button class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/40 transition-colors" onclick={() => handleDeleteBackup(backup.backup_id)}>
+                        {t('common.delete') || 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          {/if}
+        </div>
+
+        <!-- File List Overlay -->
+        {#if showBackupFileList}
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeFileList} role="dialog" aria-modal="true" tabindex="-1">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto mx-4" role="presentation" onclick={(e) => e.stopPropagation()}>
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{t('backup.fileList') || 'Files in Backup'}</h3>
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none" onclick={closeFileList}>✕</button>
+              </div>
+              <div class="px-6 py-4">
+                {#if backupDetails}
+                  <ul class="space-y-1">
+                    {#each backupDetails as file}
+                      <li class="text-sm text-gray-700 dark:text-gray-300 py-1 border-b border-gray-100 dark:border-gray-700">{file}</li>
+                    {/each}
+                  </ul>
+                {:else}
+                  <p class="text-gray-500 dark:text-gray-400">{t('backup.noFiles') || 'No files listed.'}</p>
+                {/if}
+              </div>
+              <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closeFileList}>
+                  {t('common.close') || 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+
+    <!-- Agent Personas Tab -->
+   {:else if activeTab === 'agents'}
+     <div class="space-y-4">
       {#each ['strategist', 'critic', 'optimizer', 'moderator'] as role}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-between mb-3">

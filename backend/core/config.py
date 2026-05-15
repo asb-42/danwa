@@ -81,6 +81,13 @@ class Settings(BaseSettings):
         "text-davinci-003",
     ]
 
+    # --- Backup (Sprint 18) ---
+    backup_enabled: bool = True  # noqa: F841
+    backup_auto_on_shutdown: bool = False  # noqa: F841
+    backup_retention_count: int = 0  # 0 = unbegrenzt  # noqa: F841
+    backup_encrypt: bool = False  # noqa: F841
+    backup_dir: str = "backups"  # noqa: F841
+
 
 def is_service_llm_eligible(profile) -> bool:
     from backend.core.config import settings

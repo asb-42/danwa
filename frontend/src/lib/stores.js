@@ -107,3 +107,19 @@ export function addToast({ message, type = 'info', timeout = 5000, dismissible =
   }
   return id;
 }
+
+/** Backup-Stores (Sprint 18) */
+export const backupConfig = persisted('danwa.backupConfig', {
+	autoOnShutdown: false,
+	retentionCount: 0,
+	encrypt: false
+});
+
+/** Liste der verfügbaren Backups */
+export const backups = writable([]);
+
+/** Aktuell geladene Backup-Details (Dateiliste) */
+export const backupDetails = writable(null);
+
+/** Ladezustand für Backups */
+export const isLoadingBackups = writable(false);
