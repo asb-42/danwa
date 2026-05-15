@@ -804,3 +804,15 @@ export function getTranslationStats(namespace = 'global') {
 export function getTranslationCoverage(namespace = 'global') {
   return request(`/api/v1/i18n/coverage?namespace=${namespace}`);
 }
+
+// ---------------------------------------------------------------------------
+// i18n API (Plan 20: Multi-Language Support)
+// ---------------------------------------------------------------------------
+
+/** Batch translate missing strings via LLM. */
+export function bulkTranslate(targetLocales = null, namespace = 'global', force = false) {
+  return request('/api/v1/i18n/bulk-translate', {
+    method: 'POST',
+    body: JSON.stringify({ target_locales: targetLocales, namespace, force }),
+  });
+}

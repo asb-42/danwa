@@ -118,7 +118,7 @@ class UITranslationService:
         try:
             conn.execute("""
                 INSERT INTO ui_translations (key, locale, value, namespace, source,
-                                            confidence, version, created_at, updated_at)
+                                             confidence, version, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?)
                 ON CONFLICT(key, locale, namespace) DO UPDATE SET
                     value = excluded.value,
@@ -146,7 +146,7 @@ class UITranslationService:
 
     def get_translations_bulk(self, locale: str, namespace: str = "global",
                                keys: list[str] | None = None) -> dict[str, str]:
-        """Hole mehrere Übersetzungen auf einmal."""
+        """Hole mehrere Übersetzungen auf einmal. Befüllt den lokalen Cache."""
         conn = self._get_conn()
         if keys:
             placeholders = ",".join("?" for _ in keys)
@@ -158,7 +158,15 @@ class UITranslationService:
 
         rows = conn.execute(query, params).fetchall()
         conn.close()
-        return {r["key"]: r["value"] for r in rows}
+        result = {r["key"]: r["value"] for r in rows}
+        # Cache befüllen
+        if locale not in self._locales_cache:
+            self._locales_cache[locale] = {}
+        if keys is None:
+            self._locales_cache[locale] = dict(result)
+        else:
+            self._locales_cache[locale].update(result)
+        return result
 
     def get_all_keys(self, namespace: str = "global") -> list[str]:
         """Liste aller bekannten Keys."""
@@ -171,7 +179,7 @@ class UITranslationService:
         return [r["key"] for r in rows]
 
     def delete_translation(self, key: str, locale: str,
-                           namespace: str = "global") -> bool:
+                            namespace: str = "global") -> bool:
         """Lösche eine Übersetzung."""
         conn = self._get_conn()
         conn.execute(
@@ -215,7 +223,7 @@ class UITranslationService:
         return key  # Letzter Fallback
 
     def resolve_bulk(self, locale: str, namespace: str = "global",
-                     keys: list[str] | None = None) -> dict[str, str]:
+                      keys: list[str] | None = None) -> dict[str, str]:
         """Bulk-Resolution mit Fallback-Kette."""
         if keys is None:
             keys = self.get_all_keys(namespace)
@@ -223,9 +231,9 @@ class UITranslationService:
         result = {}
         primary = self.get_translations_bulk(locale, namespace, keys)
         fallback_de = self.get_translations_bulk("de", namespace,
-                                                  [k for k in keys if k not in primary]) if locale != "de" else {}
+                                                [k for k in keys if k not in primary]) if locale != "de" else {}
         fallback_en = self.get_translations_bulk("en", namespace,
-                                                  [k for k in keys if k not in primary and k not in fallback_de])
+                                                [k for k in keys if k not in primary and k not in fallback_de])
 
         result.update(primary)
         result.update(fallback_de)
@@ -264,9 +272,9 @@ class UITranslationService:
         conn = self._get_conn()
         rows = conn.execute("""
             SELECT locale, COUNT(*) as total,
-                   SUM(CASE WHEN source = 'manual' THEN 1 ELSE 0 END) as manual,
-                   SUM(CASE WHEN source = 'bulk_imported' THEN 1 ELSE 0 END) as bulk,
-                   SUM(CASE WHEN source = 'llm_generated' THEN 1 ELSE 0 END) as llm
+                    SUM(CASE WHEN source = 'manual' THEN 1 ELSE 0 END) as manual,
+                    SUM(CASE WHEN source = 'bulk_imported' THEN 1 ELSE 0 END) as bulk,
+                    SUM(CASE WHEN source = 'llm_generated' THEN 1 ELSE 0 END) as llm
             FROM ui_translations
             WHERE namespace = ?
             GROUP BY locale
@@ -335,11 +343,11 @@ class UITranslationService:
             return translated
         except Exception as exc:
             logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s",
-                         key, target_locale, exc)
+                        key, target_locale, exc)
             return source_text
 
     def bulk_translate(self, target_locales: list[str] | None = None,
-                       namespace: str = "global") -> dict[str, Any]:
+                        namespace: str = "global") -> dict[str, Any]:
         """Übersetze alle fehlenden Strings per LLM.
         
         Liest alle bekannten Keys aus der englischen Datei und übersetzt

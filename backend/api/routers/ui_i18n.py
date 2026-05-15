@@ -58,6 +58,14 @@ class BulkTranslationRequest(BaseModel):
     namespace: str = "global"
 
 
+class BulkTranslateRequest(BaseModel):
+    """Request for batch LLM translation."""
+
+    target_locales: list[str] | None = None
+    namespace: str = "global"
+    force: bool = False
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -171,4 +179,23 @@ async def delete_translation(
         raise HTTPException(status_code=404, detail="Translation not found")
     svc.invalidate_cache(locale)
     return {"deleted": True}
+
+
+# --- NEW: Batch translation endpoint ---
+
+
+@router.post("/bulk-translate")
+async def bulk_translate(
+    body: BulkTranslateRequest,
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Batch LLM-Übersetzung für fehlende Strings."""
+    results = svc.bulk_translate(
+        target_locales=body.target_locales,
+        namespace=body.namespace,
+    )
+    # Invalidate cache for all affected locales
+    for locale in results.keys():
+        svc.invalidate_cache(locale)
+    return {"results": results}
 
