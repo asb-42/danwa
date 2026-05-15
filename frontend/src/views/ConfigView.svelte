@@ -157,13 +157,13 @@ import ModuleManager from '../components/ModuleManager.svelte';
     } finally {
       isLoading = false;
     }
-  });
 
     // Load backup settings and list on mount
     await loadBackupSettings();
     await loadBackups();
+  });
 
-   // --- Actions ---
+  // --- Actions ---
   async function handleEstimateCost() {
     try {
       costEstimate = await estimateCost($selectedLLMProfile, costNumAgents, costNumRounds);
