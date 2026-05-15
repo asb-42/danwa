@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG Απενεργοποιημένο',
   'documents.ragAutoRetrieve': 'Αυτόματη ανάκτηση σχετικών κομματιών',
   'documents.ragAutoRetrieveHint': 'Αυτόματη αναζήτηση για κομμάτια εγγράφων σχετικά με το κείμενο της υπόθεσης',
+  'documents.includeDebateResults': 'Συμπερίληψη αποτελεσμάτων προηγούμενων συζητήσεων ως πλαίσιο',
+  'documents.includeDebateResultsHint': 'Συμπερίληψη έως 5 ολοκληρωμένων συζητήσεων του έργου ως πλαίσιο RAG',
   'documents.ragDocuments': '{count} έγγραφο(α) επιλεγμένα',
   'documents.selectDocuments': 'Επιλέξτε έγγραφα για πλαίσιο RAG',
   'documents.noRAGContext': 'Δεν υπάρχει διαθέσιμο πλαίσιο RAG',

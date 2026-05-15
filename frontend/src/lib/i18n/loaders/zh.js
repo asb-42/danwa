@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG 已禁用',
   'documents.ragAutoRetrieve': '自动检索相关分块',
   'documents.ragAutoRetrieveHint': '自动搜索与案例文本相关的文档分块',
+  'documents.includeDebateResults': '将之前的辩论结果作为上下文包含',
+  'documents.includeDebateResultsHint': '将项目中最多5个已完成的辩论作为RAG上下文',
   'documents.ragDocuments': '已选择 {count} 个文档',
   'documents.selectDocuments': '选择文档作为 RAG 上下文',
   'documents.noRAGContext': '无可用 RAG 上下文',

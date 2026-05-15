@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG 비활성화됨',
   'documents.ragAutoRetrieve': '관련 청크 자동 검색',
   'documents.ragAutoRetrieveHint': '사례 텍스트와 관련된 문서 청크를 자동으로 검색합니다',
+  'documents.includeDebateResults': '이전 토론 결과를 컨텍스트로 포함',
+  'documents.includeDebateResultsHint': '프로젝트의 완료된 토론을 최대 5개까지 RAG 컨텍스트로 포함',
   'documents.ragDocuments': '{count}개의 문서 선택됨',
   'documents.selectDocuments': 'RAG 컨텍스트에 사용할 문서 선택',
   'documents.noRAGContext': '사용 가능한 RAG 컨텍스트가 없습니다',

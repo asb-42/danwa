@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG Disabilitato',
   'documents.ragAutoRetrieve': 'Recupera automaticamente i frammenti pertinenti',
   'documents.ragAutoRetrieveHint': 'Cercare automaticamente i frammenti di documento pertinenti al testo del caso',
+  'documents.includeDebateResults': 'Includere i risultati dei dibattiti precedenti come contesto',
+  'documents.includeDebateResultsHint': 'Includere fino a 5 dibattiti completati del progetto come contesto RAG',
   'documents.ragDocuments': '{count} documento(i) selezionato(i)',
   'documents.selectDocuments': 'Selezionare documenti per il contesto RAG',
   'documents.noRAGContext': 'Nessun contesto RAG disponibile',

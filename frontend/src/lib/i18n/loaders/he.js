@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG מושבת',
   'documents.ragAutoRetrieve': 'אחזור אוטומטי של מקטעים רלוונטיים',
   'documents.ragAutoRetrieveHint': 'חפש אוטומטית מקטעי מסמכים הרלוונטיים לטקסט המקרה',
+  'documents.includeDebateResults': 'כלול תוצאות דיונים קודמים כהקשר',
+  'documents.includeDebateResultsHint': 'כלול עד 5 דיונים שהושלמו מהפרויקט כהקשר RAG',
   'documents.ragDocuments': '{count} מסמך(ים) נבחרו',
   'documents.selectDocuments': 'בחר מסמכים להקשר RAG',
   'documents.noRAGContext': 'אין הקשר RAG זמין',

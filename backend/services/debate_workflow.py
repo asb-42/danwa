@@ -129,6 +129,7 @@ def extract_request_fields(req: object | dict) -> dict:
         language = getattr(req, "language", "de")
         document_ids = getattr(req, "document_ids", [])
         rag_auto_retrieve = getattr(req, "rag_auto_retrieve", False)
+        include_debate_results = getattr(req, "include_debate_results", False)
         a2a_agents_raw = getattr(req, "a2a_agents", [])
         raw_search_mode = getattr(req, "search_mode", None)
         if raw_search_mode is not None:
@@ -151,6 +152,7 @@ def extract_request_fields(req: object | dict) -> dict:
         language = req.get("language", "de")
         document_ids = req.get("document_ids", [])
         rag_auto_retrieve = req.get("rag_auto_retrieve", False)
+        include_debate_results = req.get("include_debate_results", False)
         a2a_agents_raw = req.get("a2a_agents", [])
         raw_search_mode = req.get("search_mode")
         if raw_search_mode:
@@ -182,6 +184,7 @@ def extract_request_fields(req: object | dict) -> dict:
         "language": language,
         "document_ids": document_ids,
         "rag_auto_retrieve": rag_auto_retrieve,
+        "include_debate_results": include_debate_results,
         "a2a_agents_raw": a2a_agents_raw,
         "search_mode": search_mode,
         "agent_profile_list": agent_profile_list,
@@ -240,7 +243,9 @@ def resolve_rag_context(
     case_text: str,
     document_ids: list[str] | None = None,
     rag_auto_retrieve: bool = False,
+    include_debate_results: bool = False,
     project_store: ProjectStore | None = None,
+    store: DebateStore | None = None,
 ) -> tuple[str, int]:
     """Resolve RAG context for a debate.
 
@@ -270,6 +275,30 @@ def resolve_rag_context(
             all_chunks.extend(auto_chunks)
         except Exception as exc:
             logger.warning("Auto-retrieve failed for project %s: %s", project_id, exc)
+
+    if include_debate_results:
+        try:
+            ps = project_store or ProjectStore()
+            project_dir = ps.get_project_dir(project_id)
+            proj_store = DebateStore(data_dir=project_dir / "debates")
+
+            debates = proj_store.list_all(limit=50)
+            debate_count = 0
+
+            for d in debates:
+                if d.get("status") in ("completed",) and d.get("debate_id"):
+                    transcript = _build_transcript_for_followup(d)
+                    summary = _generate_rag_friendly_summary(transcript)
+                    from backend.services.dms.chunker import TextChunker
+                    chunker = TextChunker()
+                    chunks = chunker.chunk_text(summary, f"debate_result_{d.get('debate_id', '')[:8]}")
+                    all_chunks.extend(chunks[:3])
+
+                    debate_count += 1
+                    if debate_count >= 5:
+                        break
+        except Exception as exc:
+            logger.warning("Failed to include debate results in RAG context: %s", exc)
 
     if not all_chunks:
         return "", 0
@@ -487,7 +516,9 @@ async def run_debate_workflow(
         case_text=fields["case_text"],
         document_ids=fields["document_ids"],
         rag_auto_retrieve=fields["rag_auto_retrieve"],
+        include_debate_results=fields.get("include_debate_results", False),
         project_store=project_store,
+        store=store,
     )
     if rag_context:
         logger.info(

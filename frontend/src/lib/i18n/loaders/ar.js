@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG معطّل',
   'documents.ragAutoRetrieve': 'استرداد تلقائي للأجزاء ذات الصلة',
   'documents.ragAutoRetrieveHint': 'البحث تلقائيًا عن أجزاء المستندات ذات الصلة بنص القضية',
+  'documents.includeDebateResults': 'تضمين نتائج المناقشات السابقة كسياق',
+  'documents.includeDebateResultsHint': 'تضمين ما يصل إلى 5 مناقشات مكتملة من المشروع كسياق RAG',
   'documents.ragDocuments': 'تم اختيار {count} مستند(ات)',
   'documents.selectDocuments': 'اختر مستندات لسياق RAG',
   'documents.noRAGContext': 'لا يوجد سياق RAG متاح',

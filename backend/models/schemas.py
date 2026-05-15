@@ -115,6 +115,11 @@ class DebateRequest(BaseModel):
         description="If true, automatically retrieve relevant document chunks based on the case text",
     )
 
+    include_debate_results: bool = Field(
+        default=False,
+        description="If true, include results from previous completed debates as RAG context",
+    )
+
     # --- Extension / Extra Rounds (Sprint 9) ---
     enable_extra_rounds: bool = Field(
         default=False,

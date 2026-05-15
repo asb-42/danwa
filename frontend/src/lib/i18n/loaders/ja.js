@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG無効',
   'documents.ragAutoRetrieve': '関連チャンクを自動取得',
   'documents.ragAutoRetrieveHint': 'ケーステキストに関連するドキュメントチャンクを自動的に検索します',
+  'documents.includeDebateResults': '以前の討論結果をコンテキストに含める',
+  'documents.includeDebateResultsHint': 'プロジェクトの完了した討論を最大5件RAGコンテキストとして含める',
   'documents.ragDocuments': '{count} 件のドキュメントが選択されました',
   'documents.selectDocuments': 'RAGコンテキスト用のドキュメントを選択',
   'documents.noRAGContext': 'RAGコンテキストは利用できません',

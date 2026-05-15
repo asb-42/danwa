@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG Disabled',
   'documents.ragAutoRetrieve': 'Auto-retrieve relevant chunks',
   'documents.ragAutoRetrieveHint': 'Automatically search for document chunks relevant to the case text',
+  'documents.includeDebateResults': 'Include previous debate results as context',
+  'documents.includeDebateResultsHint': 'Include up to 5 completed debates from the project as RAG context',
   'documents.ragDocuments': '{count} document(s) selected',
   'documents.selectDocuments': 'Select documents for RAG context',
   'documents.noRAGContext': 'No RAG context available',

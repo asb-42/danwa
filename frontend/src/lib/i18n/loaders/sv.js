@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG inaktiverad',
   'documents.ragAutoRetrieve': 'Hämta automatiskt relevanta segment',
   'documents.ragAutoRetrieveHint': 'Sök automatiskt efter dokumentsegment relevanta för ärendetexten',
+  'documents.includeDebateResults': 'Inkludera tidigare debattresultat som kontext',
+  'documents.includeDebateResultsHint': 'Inkludera upp till 5 avslutade debatter från projektet som RAG-kontext',
   'documents.ragDocuments': '{count} dokument valda',
   'documents.selectDocuments': 'Välj dokument för RAG-kontext',
   'documents.noRAGContext': 'Ingen RAG-kontext tillgänglig',

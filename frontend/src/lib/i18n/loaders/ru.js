@@ -304,6 +304,8 @@ export default {
   'documents.ragDisabled': 'RAG отключён',
   'documents.ragAutoRetrieve': 'Автоматический поиск релевантных фрагментов',
   'documents.ragAutoRetrieveHint': 'Автоматически искать фрагменты документов, релевантные тексту темы',
+  'documents.includeDebateResults': 'Включить результаты предыдущих дебатов как контекст',
+  'documents.includeDebateResultsHint': 'Включить до 5 завершённых дебатов проекта как RAG-контекст',
   'documents.ragDocuments': 'Выбрано документов: {count}',
   'documents.selectDocuments': 'Выберите документы для контекста RAG',
   'documents.noRAGContext': 'Контекст RAG недоступен',

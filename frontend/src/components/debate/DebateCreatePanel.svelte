@@ -34,6 +34,7 @@
   let availableDocuments = $state([]);
   let selectedDocumentIds = $state([]);
   let ragAutoRetrieve = $state(false);
+  let includeDebateResults = $state(false);
 
   // A2A external agent configuration
   let a2aAgents = $state([]);
@@ -132,6 +133,7 @@
         language: $locale || 'de',
         document_ids: selectedDocumentIds,
         rag_auto_retrieve: ragAutoRetrieve,
+        include_debate_results: includeDebateResults,
         enable_extra_rounds: enableExtraRounds,
         a2a_agents: validA2AAgents,
       });
@@ -263,6 +265,22 @@
           </label>
           <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
             {t('documents.ragAutoRetrieveHint')}
+          </p>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              bind:checked={includeDebateResults}
+              class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              🔄 {t('documents.includeDebateResults')}
+            </span>
+          </label>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
+            {t('documents.includeDebateResultsHint')}
           </p>
         </div>
       </div>
