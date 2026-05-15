@@ -47,11 +47,15 @@
 - **Beschreibung:** Die Script-Engine für TTS wurde als Stub angelegt. STT-Plugins funktionieren, aber die Skriptverarbeitung fehlt.
 - **Aufwand:** Mittel — muss implementiert werden für komplexe TTS-Produktionen
 
-### 7. HITL-Workflow-Graph — strukturell vorhanden, aber teilweise Stub-Funktionen
+### 7. HITL-Workflow-Graph — ✅ implementiert
 - **Datei:** `backend/workflow/hitl/graph.py` und `backend/workflow/hitl/nodes.py`
-- **Status:** Der HITL-Graph existiert, enthält aber Platzhalter-Funktionen (`interjection_node`, `extension_request_node`) die möglicherweise nicht vollständig implementiert sind
-- **Beschreibung:** Human-in-the-Loop ist als Feature geplant, aber die Integrationstiefe ist unklar.
-- **Aufwand:** Mittel — Testen und vervollständigen
+- **Status:** `extension_request_node` und `initialize_node` wurden implementiert und ausgerollt. `extension_request_node` wartet jetzt auf User-Antwort, wertet sie aus, und setzt `extension_granted` im State, damit die Routing-Funktion korrekt weiterläuft oder beendet.
+- **Änderungen:**
+  - `extension_request_node`: Wartet auf User-Antwort, erkennt Grant/Deny anhand von Schlüsselwörtern, setzt `extension_granted` im State
+  - `initialize_node`: HITL-Felder (`hitl_enabled`, `hitl_mode`, `round_interrupt_count`, etc.) mit sicheren Defaults befüllt
+  - `debate_id`-Inkonsistenz behoben: `session_id` wird einheitlich als `debate_id` verwendet
+  - Timeout-Fallback: Extension wird bei Timeout verweigert
+- **Verbleibend:** Integrationstest, Frontend-Anbindung für Extension-Antworten
 
 ### 8. AuthContext / Authentifizierungssystem
 - **Datei:** `backend/api/routers/optimization_proposals.py`, diverse Stellen
