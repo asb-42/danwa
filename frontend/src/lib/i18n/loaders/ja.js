@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'フォーク',
   'archive.forks': 'フォーク',
   'archive.parentDebate': '親ディベート',
+  'debate.workflowTemplate': 'ワークフローテンプレート',
+  'debate.workflowTemplateHint': '保存されたワークフローを選択して、デフォルトの4エージェントディベートの代わりにカスタムエージェント構成と実行フローを使用します。',
+  'debate.useDefaultWorkflow': 'デフォルトのディベートを使用（4エージェント）',
+  'debate.workflowNodes': 'ノード',
+  'debate.runWorkflow': 'ワークフローを実行',
+  'debate.runningWorkflow': 'ワークフロー実行中...',
 
 };

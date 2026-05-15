@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'פיצולים',
   'archive.forks': 'פיצולים',
   'archive.parentDebate': 'דיון הורה',
+  'debate.workflowTemplate': 'תבנית זרימת עבודה',
+  'debate.workflowTemplateHint': 'בחר זרימת עבודה שמורה לשימוש בתצורות סוכן מותאמות אישית וזרימת ביצוע במקום הדיון המוגדר כברירת מחדל של 4 סוכנים.',
+  'debate.useDefaultWorkflow': 'השתמש בדיון ברירת מחדל (4 סוכנים)',
+  'debate.workflowNodes': 'צמתים',
+  'debate.runWorkflow': 'הפעל זרימת עבודה',
+  'debate.runningWorkflow': 'מפעיל זרימת עבודה...',
 
 };

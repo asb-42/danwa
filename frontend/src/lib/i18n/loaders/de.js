@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Forks',
   'archive.forks': 'Forks',
   'archive.parentDebate': 'Übergeordnete Debatte',
+  'debate.workflowTemplate': 'Workflow-Vorlage',
+  'debate.workflowTemplateHint': 'Wählen Sie einen gespeicherten Workflow, um benutzerdefinierte Agentenkonfigurationen und Ausführungsabläufe statt der Standard-4-Agenten-Debatte zu verwenden.',
+  'debate.useDefaultWorkflow': 'Standard-Debatte verwenden (4 Agenten)',
+  'debate.workflowNodes': 'Knoten',
+  'debate.runWorkflow': 'Workflow starten',
+  'debate.runningWorkflow': 'Workflow wird ausgeführt...',
 
 };

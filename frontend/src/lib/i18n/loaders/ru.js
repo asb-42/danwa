@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Ответвления',
   'archive.forks': 'Ответвления',
   'archive.parentDebate': 'Родительские дебаты',
+  'debate.workflowTemplate': 'Шаблон рабочего процесса',
+  'debate.workflowTemplateHint': 'Выберите сохранённый рабочий процесс для использования пользовательских конфигураций агентов и потока выполнения вместо стандартных дебатов с 4 агентами.',
+  'debate.useDefaultWorkflow': 'Использовать стандартные дебаты (4 агента)',
+  'debate.workflowNodes': 'Узлы',
+  'debate.runWorkflow': 'Запустить процесс',
+  'debate.runningWorkflow': 'Запуск процесса...',
 
 };

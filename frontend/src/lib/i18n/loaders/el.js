@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Διακλαδώσεις',
   'archive.forks': 'Διακλαδώσεις',
   'archive.parentDebate': 'Γονική συζήτηση',
+  'debate.workflowTemplate': 'Πρότυπο ροής εργασίας',
+  'debate.workflowTemplateHint': 'Επιλέξτε μια αποθηκευμένη ροή εργασίας για να χρησιμοποιήσετε προσαρμοσμένες διαμορφώσεις πρακτόρων και ροή εκτέλεσης αντί για την προεπιλεγμένη συζήτηση 4 πρακτόρων.',
+  'debate.useDefaultWorkflow': 'Χρήση προεπιλεγμένης συζήτησης (4 πράκτορες)',
+  'debate.workflowNodes': 'Κόμβοι',
+  'debate.runWorkflow': 'Εκτέλεση ροής',
+  'debate.runningWorkflow': 'Εκτέλεση ροής...',
 
 };

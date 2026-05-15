@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Bifurcations',
   'archive.forks': 'Bifurcations',
   'archive.parentDebate': 'Débat parent',
+  'debate.workflowTemplate': 'Modèle de flux de travail',
+  'debate.workflowTemplateHint': 'Sélectionnez un flux de travail enregistré pour utiliser des configurations d\'agent personnalisées et un flux d\'exécution au lieu du débat par défaut à 4 agents.',
+  'debate.useDefaultWorkflow': 'Utiliser le débat par défaut (4 agents)',
+  'debate.workflowNodes': 'Nœuds',
+  'debate.runWorkflow': 'Exécuter le flux',
+  'debate.runningWorkflow': 'Exécution du flux...',
 
 };

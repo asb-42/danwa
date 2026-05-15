@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Forks',
   'archive.forks': 'Forks',
   'archive.parentDebate': 'Parent debate',
+  'debate.workflowTemplate': 'Workflow Template',
+  'debate.workflowTemplateHint': 'Select a saved workflow to use custom agent configurations and execution flow instead of the default 4-agent debate.',
+  'debate.useDefaultWorkflow': 'Use default debate (4 agents)',
+  'debate.workflowNodes': 'Nodes',
+  'debate.runWorkflow': 'Run Workflow',
+  'debate.runningWorkflow': 'Running workflow...',
 
 };

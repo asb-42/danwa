@@ -7,6 +7,8 @@
   import { onMount } from 'svelte';
   import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject } from '../../lib/stores.js';
   import { createDebate, getDocuments } from '../../lib/api.js';
+  import { startWorkflow } from '../../lib/workflowExec.js';
+  import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
   import { discoverA2A } from '../../lib/a2aApi.js';
   import { i18n, locale } from '../../lib/i18n/index.js';
   import A2ACapabilities from '../blueprint/A2ACapabilities.svelte';
@@ -43,19 +45,30 @@
   let a2aDiscoverError = $state('');
   let a2aCapabilities = $state({});
 
+  // Workflow selection (Phase 5)
+  let availableWorkflows = $state([]);
+  let selectedWorkflowId = $state('');
+  let showWorkflowSection = $state(false);
+
+  let selectedWorkflow = $derived(
+    availableWorkflows.find(w => w.id === selectedWorkflowId) || null
+  );
+
   let validA2AAgents = $derived(
     a2aAgents.filter(a => a.url.trim() !== '')
   );
 
-  // Load documents on mount
+  // Load documents and workflows on mount
   onMount(() => {
     loadAvailableDocuments();
+    loadAvailableWorkflows();
   });
 
   // Reload documents when project changes
   $effect(() => {
     if (projectId) {
       loadAvailableDocuments();
+      loadAvailableWorkflows();
     }
   });
 
@@ -67,12 +80,32 @@
     }
   }
 
+  async function loadAvailableWorkflows() {
+    try {
+      availableWorkflows = await listWorkflowDefinitions();
+    } catch {
+      availableWorkflows = [];
+    }
+  }
+
   function toggleDocumentSelection(docId) {
     const idx = selectedDocumentIds.indexOf(docId);
     if (idx >= 0) {
       selectedDocumentIds = selectedDocumentIds.filter(id => id !== docId);
     } else {
       selectedDocumentIds = [...selectedDocumentIds, docId];
+    }
+  }
+
+  // Phase 5: Handle workflow selection — pre-fill settings from workflow
+  function handleWorkflowSelect(wfId) {
+    selectedWorkflowId = wfId;
+    if (wfId) {
+      const wf = availableWorkflows.find(w => w.id === wfId);
+      if (wf) {
+        if (wf.max_rounds) maxRounds = wf.max_rounds;
+        if (wf.consensus_threshold) consensusThreshold = wf.consensus_threshold;
+      }
     }
   }
 
@@ -123,25 +156,41 @@
     error.set(null);
 
     try {
-      const response = await createDebate(caseText, {
-        max_rounds: maxRounds,
-        consensus_threshold: consensusThreshold,
-        search_mode: searchMode,
-        llm_profile_id: $selectedLLMProfile,
-        prompt_variant: $selectedPromptVariant,
-        agent_persona_ids: $selectedPersonas,
-        language: $locale || 'de',
-        document_ids: selectedDocumentIds,
-        rag_auto_retrieve: ragAutoRetrieve,
-        include_debate_results: includeDebateResults,
-        enable_extra_rounds: enableExtraRounds,
-        a2a_agents: validA2AAgents,
-      });
-      caseText = '';
-      selectedDocumentIds = [];
-      ragAutoRetrieve = false;
-      a2aAgents = [];
-      onCreated(response);
+      if (selectedWorkflowId && selectedWorkflow) {
+        // Phase 5: Use workflow-exec endpoint for selected workflow
+        const response = await startWorkflow(selectedWorkflowId, caseText, {
+          language: $locale || 'de',
+          projectId: projectId || 'default',
+          maxRounds: maxRounds,
+          threshold: consensusThreshold,
+        });
+        caseText = '';
+        selectedDocumentIds = [];
+        ragAutoRetrieve = false;
+        a2aAgents = [];
+        onCreated(response);
+      } else {
+        // Legacy debate path
+        const response = await createDebate(caseText, {
+          max_rounds: maxRounds,
+          consensus_threshold: consensusThreshold,
+          search_mode: searchMode,
+          llm_profile_id: $selectedLLMProfile,
+          prompt_variant: $selectedPromptVariant,
+          agent_persona_ids: $selectedPersonas,
+          language: $locale || 'de',
+          document_ids: selectedDocumentIds,
+          rag_auto_retrieve: ragAutoRetrieve,
+          include_debate_results: includeDebateResults,
+          enable_extra_rounds: enableExtraRounds,
+          a2a_agents: validA2AAgents,
+        });
+        caseText = '';
+        selectedDocumentIds = [];
+        ragAutoRetrieve = false;
+        a2aAgents = [];
+        onCreated(response);
+      }
     } catch (err) {
       error.set(err.message);
     } finally {
@@ -152,6 +201,54 @@
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
   <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('debate.newDebate')}</h3>
+
+  <!-- Phase 5: Workflow Selection -->
+  {#if availableWorkflows.length > 0}
+    <div class="mb-4 p-4 border border-indigo-200 dark:border-indigo-700 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+      <div class="flex items-center justify-between mb-2">
+        <button
+          type="button"
+          class="flex items-center gap-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-100 transition-colors"
+          onclick={() => showWorkflowSection = !showWorkflowSection}
+        >
+          <span class="transition-transform" class:rotate-90={showWorkflowSection}>▶</span>
+          🧩 {t('debate.workflowTemplate')}
+        </button>
+        {#if selectedWorkflow}
+          <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 truncate max-w-40">
+            {selectedWorkflow.name}
+          </span>
+        {/if}
+      </div>
+
+      {#if showWorkflowSection}
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          {t('debate.workflowTemplateHint')}
+        </p>
+
+        <select
+          bind:value={selectedWorkflowId}
+          onchange={(e) => handleWorkflowSelect(e.target.value)}
+          class="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 rounded-lg
+                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        >
+          <option value="">— {t('debate.useDefaultWorkflow')} —</option>
+          {#each availableWorkflows as wf (wf.id)}
+            <option value={wf.id}>{wf.name}{wf.description ? ` — ${wf.description}` : ''}</option>
+          {/each}
+        </select>
+
+        {#if selectedWorkflow}
+          <div class="mt-3 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+            <span>🔄 {t('debate.maxRounds')}: {selectedWorkflow.max_rounds || '—'}</span>
+            <span>🎯 {t('debate.consensusThreshold')}: {selectedWorkflow.consensus_threshold ? Math.round(selectedWorkflow.consensus_threshold * 100) + '%' : '—'}</span>
+            <span>📐 {t('debate.workflowNodes')}: {selectedWorkflow.nodes?.length || 0}</span>
+          </div>
+        {/if}
+      {/if}
+    </div>
+  {/if}
 
   <form onsubmit={(e) => { e.preventDefault(); handleCreateDebate(); }} class="space-y-4">
     <div>
@@ -435,11 +532,17 @@
 
     <button
       type="submit"
-      class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+      class="px-6 py-2 rounded-lg text-white transition-colors
              disabled:opacity-50 disabled:cursor-not-allowed"
+      class:bg-blue-600={!selectedWorkflowId}
+      class:hover:bg-blue-700={!selectedWorkflowId}
+      class:bg-indigo-600={selectedWorkflowId}
+      class:hover:bg-indigo-700={selectedWorkflowId}
       disabled={$loading || !caseText.trim()}
     >
-      {$loading ? t('debate.creating') : t('debate.createButton')}
+      {$loading
+        ? (selectedWorkflowId ? t('debate.runningWorkflow') : t('debate.creating'))
+        : (selectedWorkflowId ? t('debate.runWorkflow') : t('debate.createButton'))}
     </button>
   </form>
 </div>

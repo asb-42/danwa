@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Förgreningar',
   'archive.forks': 'Förgreningar',
   'archive.parentDebate': 'Överordnad debatt',
+  'debate.workflowTemplate': 'Arbetsflödesmall',
+  'debate.workflowTemplateHint': 'Välj ett sparat arbetsflöde för att använda anpassade agentkonfigurationer och exekveringsflöde istället för standarddebatten med 4 agenter.',
+  'debate.useDefaultWorkflow': 'Använd standarddebatt (4 agenter)',
+  'debate.workflowNodes': 'Noder',
+  'debate.runWorkflow': 'Kör arbetsflöde',
+  'debate.runningWorkflow': 'Kör arbetsflöde...',
 
 };

@@ -817,5 +817,11 @@ export default {
   'debate.forks': '分叉',
   'archive.forks': '分叉',
   'archive.parentDebate': '父辩论',
+  'debate.workflowTemplate': '工作流模板',
+  'debate.workflowTemplateHint': '选择一个已保存的工作流，使用自定义智能体配置和执行流程，而不是默认的4智能体辩论。',
+  'debate.useDefaultWorkflow': '使用默认辩论（4个智能体）',
+  'debate.workflowNodes': '节点',
+  'debate.runWorkflow': '运行工作流',
+  'debate.runningWorkflow': '正在运行工作流...',
 
 };

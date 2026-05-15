@@ -817,5 +817,11 @@ export default {
   'debate.forks': '포크',
   'archive.forks': '포크',
   'archive.parentDebate': '상위 토론',
+  'debate.workflowTemplate': '워크플로우 템플릿',
+  'debate.workflowTemplateHint': '저장된 워크플로우를 선택하여 기본 4 에이전트 토론 대신 사용자 정의 에이전트 구성 및 실행 흐름을 사용하십시오.',
+  'debate.useDefaultWorkflow': '기본 토론 사용 (4 에이전트)',
+  'debate.workflowNodes': '노드',
+  'debate.runWorkflow': '워크플로우 실행',
+  'debate.runningWorkflow': '워크플로우 실행 중...',
 
 };

@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'التفرعات',
   'archive.forks': 'التفرعات',
   'archive.parentDebate': 'النقاش الأصلي',
+  'debate.workflowTemplate': 'قالب سير العمل',
+  'debate.workflowTemplateHint': 'حدد سير عمل محفوظ لاستخدام تكوينات وكيل مخصصة وتدفق التنفيذ بدلاً من النقاش الافتراضي المكون من 4 وكلاء.',
+  'debate.useDefaultWorkflow': 'استخدام النقاش الافتراضي (4 وكلاء)',
+  'debate.workflowNodes': 'العقد',
+  'debate.runWorkflow': 'تشغيل سير العمل',
+  'debate.runningWorkflow': 'جارٍ تشغيل سير العمل...',
 
 };

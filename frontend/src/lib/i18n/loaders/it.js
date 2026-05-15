@@ -817,5 +817,11 @@ export default {
   'debate.forks': 'Duplicazioni',
   'archive.forks': 'Duplicazioni',
   'archive.parentDebate': 'Dibattito genitore',
+  'debate.workflowTemplate': 'Modello di flusso di lavoro',
+  'debate.workflowTemplateHint': 'Seleziona un flusso di lavoro salvato per utilizzare configurazioni agente personalizzate e flusso di esecuzione invece del dibattito predefinito a 4 agenti.',
+  'debate.useDefaultWorkflow': 'Usa dibattito predefinito (4 agenti)',
+  'debate.workflowNodes': 'Nodi',
+  'debate.runWorkflow': 'Esegui flusso',
+  'debate.runningWorkflow': 'Esecuzione del flusso...',
 
 };
