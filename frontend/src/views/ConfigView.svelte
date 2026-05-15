@@ -93,6 +93,15 @@ import ModuleManager from '../components/ModuleManager.svelte';
   let isSavingSettings = $state(false);
   let settingsMessage = $state('');
 
+  // Backup tab state
+  let backupSettings = $state({});
+  let isLoadingBackupSettings = $state(false);
+  let isSavingBackupSettings = $state(false);
+  let backupMessage = $state('');
+  let isCreatingBackup = $state(false);
+  let backupCreateMessage = $state('');
+  let showBackupFileList = $state(false);
+
   // Modal state
   let showModal = $state(false);
   let modalMode = $state('create');
@@ -150,7 +159,11 @@ import ModuleManager from '../components/ModuleManager.svelte';
     }
   });
 
-  // --- Actions ---
+    // Load backup settings and list on mount
+    await loadBackupSettings();
+    await loadBackups();
+
+   // --- Actions ---
   async function handleEstimateCost() {
     try {
       costEstimate = await estimateCost($selectedLLMProfile, costNumAgents, costNumRounds);
@@ -217,6 +230,112 @@ import ModuleManager from '../components/ModuleManager.svelte';
     if (cost === null || cost === undefined) return '—';
     return `$${cost.toFixed(4)}`;
   }
+
+
+   // --- Backup Handlers ---
+
+   async function loadBackupSettings() {
+     isLoadingBackupSettings = true;
+     try {
+       backupSettings = await getBackupSettings();
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       isLoadingBackupSettings = false;
+     }
+   }
+
+   async function handleSaveBackupSettings() {
+     isSavingBackupSettings = true;
+     backupMessage = '';
+     try {
+       await updateBackupSettings(backupSettings);
+       backupMessage = t('backup.settingsSaved') || 'Backup settings saved';
+       await loadBackupSettings();
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       isSavingBackupSettings = false;
+     }
+   }
+
+   async function handleCreateBackup() {
+     isCreatingBackup = true;
+     backupCreateMessage = '';
+     try {
+       const result = await apiCreateBackup();
+       backupCreateMessage = t('backup.created') || 'Backup created: ' + result.backup_id;
+       await loadBackups();
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       isCreatingBackup = false;
+     }
+   }
+
+   async function loadBackups() {
+     $isLoadingBackups = true;
+     try {
+       const result = await getBackups();
+       $backups = result.backups || [];
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       $isLoadingBackups = false;
+     }
+   }
+
+   async function handleDeleteBackup(backupId) {
+     if (!confirm(t('backup.confirmDelete') || 'Are you sure you want to delete this backup?')) return;
+     try {
+       await deleteBackup(backupId);
+       await loadBackups();
+     } catch (e) {
+       $error = e.message;
+     }
+   }
+
+   async function showBackupFiles(backupId) {
+     showBackupFileList = true;
+     $isLoadingBackups = true;
+     try {
+       const result = await getBackupFiles(backupId);
+       $backupDetails = result.files;
+     } catch (e) {
+       $error = e.message;
+     } finally {
+       $isLoadingBackups = false;
+     }
+   }
+
+   function closeFileList() {
+     showBackupFileList = false;
+     $backupDetails = null;
+   }
+
+   async function verifyBackupById(backupId) {
+     try {
+       const result = await apiVerifyBackup(backupId);
+       if (result.valid) {
+         backupCreateMessage = t('backup.verifySuccess') || 'Backup verified successfully';
+       } else {
+         backupCreateMessage = t('backup.verifyFailed') || 'Verification failed: ' + (result.errors?.join(', ') || 'Unknown error');
+       }
+     } catch (e) {
+       $error = e.message;
+     }
+   }
+
+   async function handleRestoreBackup(backupId) {
+     if (!confirm(t('backup.confirmRestore') || 'This will overwrite existing data. Continue?')) return;
+     try {
+       const result = await restoreBackup(backupId);
+       backupCreateMessage = result.message || t('backup.restoreSuccess') || 'Restore completed';
+       await loadBackups();
+     } catch (e) {
+       $error = e.message;
+     }
+   }
 
   // --- LLM Profile filtering, sorting, duplicate ---
   const PROFILE_TYPE_LABELS = { text: 'Text', tts: 'TTS', stt: 'STT' };
@@ -802,12 +921,13 @@ import ModuleManager from '../components/ModuleManager.svelte';
                       <button class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={() => showBackupFiles(backup.backup_id)}>
                         {t('backup.showFiles') || 'Files'}
                       </button>
-                      <button class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800/40 transition-colors" onclick={() => verifyBackup(backup.backup_id)}>
+                      <button class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800/40 transition-colors" onclick={() => verifyBackupById(backup.backup_id)}>
                         {t('backup.verify') || 'Verify'}
                       </button>
                       <button class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors" disabled>
-                        {t('backup.restoreDisabled') || 'Restore (soon)'}
-                      </button>
+                       <button class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors" onclick={() => handleRestoreBackup(backup.backup_id)}>
+                         {t('backup.restore') || 'Restore'}
+                       </button>
                       <button class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/40 transition-colors" onclick={() => handleDeleteBackup(backup.backup_id)}>
                         {t('common.delete') || 'Delete'}
                       </button>
