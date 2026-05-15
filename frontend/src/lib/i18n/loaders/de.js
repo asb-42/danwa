@@ -825,5 +825,11 @@ export default {
   'debate.runningWorkflow': 'Workflow wird ausgeführt...',
   'toast.titleGenerated': 'Titel generiert',
   'toast.titleError': 'Titelgenerierung fehlgeschlagen',
+  'config.translate': 'Übersetzen',
+  'config.translatePrompt': 'Prompt übersetzen',
+  'config.translatePromptHint': 'Alle Rollen dieser Prompt-Variante mit LLM in die Zielsprache übersetzen.',
+  'config.targetLanguage': 'Zielsprache',
+  'config.translationComplete': 'Übersetzung abgeschlossen',
+  'config.promptTranslated': 'Prompt übersetzt',
 
 };

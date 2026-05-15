@@ -825,5 +825,11 @@ export default {
   'debate.runningWorkflow': 'Running workflow...',
   'toast.titleGenerated': 'Title generated',
   'toast.titleError': 'Title generation failed',
+  'config.translate': 'Translate',
+  'config.translatePrompt': 'Translate Prompt',
+  'config.translatePromptHint': 'Translate all roles of this prompt variant to the target language using LLM.',
+  'config.targetLanguage': 'Target Language',
+  'config.translationComplete': 'Translation complete',
+  'config.promptTranslated': 'Prompt translated',
 
 };

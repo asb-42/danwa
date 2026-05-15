@@ -243,6 +243,17 @@ export function deletePromptVariant(variantId) {
   });
 }
 
+export function translatePromptVariant(variantId, options = {}) {
+  return request(`/api/v1/profiles/prompts/${variantId}/translate`, {
+    method: 'POST',
+    body: JSON.stringify({
+      target_language: options.targetLanguage || 'de',
+      force: options.force || false,
+      auto_approve: options.autoApprove !== false,
+    }),
+  });
+}
+
 export function estimateCost(llmProfileId, numAgents = 4, numRounds = 3) {
   return request(`/api/v1/profiles/cost-estimate?llm_profile_id=${encodeURIComponent(llmProfileId)}&num_agents=${numAgents}&num_rounds=${numRounds}`);
 }

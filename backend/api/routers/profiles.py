@@ -182,6 +182,37 @@ async def delete_prompt_variant(variant_id: str) -> dict:
     return {"status": "ok", "deleted": variant_id}
 
 
+class TranslatePromptRequest(BaseModel):
+    """Request body for translating a prompt variant."""
+
+    target_language: str = Field(..., description="Target language code (e.g. 'de')")
+    force: bool = Field(default=False, description="Force re-translation")
+    auto_approve: bool = Field(default=True, description="Auto-approve if quality meets threshold")
+
+
+@router.post("/prompts/{variant_id}/translate")
+async def translate_prompt_variant(variant_id: str, body: TranslatePromptRequest) -> dict:
+    """Translate a prompt variant to a target language."""
+    from backend.services.prompt_service import PromptService
+
+    ps = PromptService()
+    roles = ["strategist", "critic", "optimizer", "moderator"]
+    results = []
+    for role in roles:
+        try:
+            result = ps.translate_prompt(
+                variant=variant_id,
+                role=role,
+                target_language=body.target_language,
+                force=body.force,
+                auto_approve=body.auto_approve,
+            )
+            results.append({"role": role, "status": result.get("status", "ok")})
+        except Exception as exc:
+            results.append({"role": role, "status": "error", "error": str(exc)})
+    return {"variant_id": variant_id, "target_language": body.target_language, "results": results}
+
+
 # ------------------------------------------------------------------
 # Service LLM (Sprint 16)
 # ------------------------------------------------------------------

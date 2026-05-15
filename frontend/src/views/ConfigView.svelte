@@ -14,6 +14,7 @@
     getPromptVariants,
     createPromptVariant,
     deletePromptVariant,
+    translatePromptVariant,
     estimateCost,
     previewPromptVariant,
     reloadProfiles,
@@ -131,6 +132,13 @@ import ModuleManager from '../components/ModuleManager.svelte';
   let promptCreateErrors = $state({});
   let isSavingPrompt = $state(false);
   let showPromptCreateModal = $state(false);
+
+  // Prompt translation modal state
+  let showPromptTranslateModal = $state(false);
+  let promptTranslateVariantId = $state('');
+  let promptTranslateTargetLang = $state('de');
+  let promptTranslateResult = $state(null);
+  let isTranslatingPrompt = $state(false);
 
   // --- Lifecycle ---
   onMount(async () => {
@@ -488,6 +496,37 @@ import ModuleManager from '../components/ModuleManager.svelte';
       await refreshLists();
     } catch (e) { error.set(e.message); }
     finally { isSavingPrompt = false; }
+  }
+
+  // --- Prompt Translation ---
+  function openPromptTranslate(variantId) {
+    promptTranslateVariantId = variantId;
+    promptTranslateTargetLang = 'de';
+    promptTranslateResult = null;
+    showPromptTranslateModal = true;
+  }
+
+  function closePromptTranslate() {
+    showPromptTranslateModal = false;
+    promptTranslateResult = null;
+  }
+
+  async function handleTranslatePrompt() {
+    isTranslatingPrompt = true;
+    promptTranslateResult = null;
+    try {
+      const result = await translatePromptVariant(promptTranslateVariantId, {
+        targetLanguage: promptTranslateTargetLang,
+        autoApprove: true,
+      });
+      promptTranslateResult = result;
+      statusMessage = `✓ ${t('config.promptTranslated') || 'Prompt translated'}`;
+    } catch (e) {
+      error.set(e.message);
+      promptTranslateResult = { error: e.message };
+    } finally {
+      isTranslatingPrompt = false;
+    }
   }
 
   // --- Role Type CRUD ---
@@ -964,9 +1003,69 @@ import ModuleManager from '../components/ModuleManager.svelte';
                   {t('common.close') || 'Close'}
                 </button>
               </div>
-            </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Prompt Translation Modal -->
+{#if showPromptTranslateModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closePromptTranslate} role="dialog" aria-modal="true" tabindex="-1">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" role="presentation" onclick={(e) => e.stopPropagation()}>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">🌐 {t('config.translatePrompt') || 'Translate Prompt'}</h3>
+        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={closePromptTranslate}>✕</button>
+      </div>
+      <div class="p-6 space-y-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          {t('config.translatePromptHint') || 'Translate all roles of this prompt variant to the target language using LLM.'}
+        </p>
+        <div>
+          <label for="translate-lang" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.targetLanguage') || 'Target Language'}</label>
+          <select id="translate-lang" bind:value={promptTranslateTargetLang}
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <option value="de">Deutsch (de)</option>
+            <option value="en">English (en)</option>
+            <option value="fr">Français (fr)</option>
+            <option value="es">Español (es)</option>
+            <option value="it">Italiano (it)</option>
+            <option value="pt">Português (pt)</option>
+            <option value="ru">Русский (ru)</option>
+            <option value="zh">中文 (zh)</option>
+            <option value="ja">日本語 (ja)</option>
+            <option value="ko">한국어 (ko)</option>
+            <option value="ar">العربية (ar)</option>
+            <option value="he">עברית (he)</option>
+          </select>
+        </div>
+        {#if promptTranslateResult}
+          <div class="p-3 rounded-lg {promptTranslateResult.error ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'}">
+            {#if promptTranslateResult.error}
+              <p class="text-sm font-medium">{promptTranslateResult.error}</p>
+            {:else}
+              <p class="text-sm font-medium">{t('config.translationComplete') || 'Translation complete'}</p>
+              {#if promptTranslateResult.results}
+                <ul class="text-xs mt-2 space-y-1">
+                  {#each promptTranslateResult.results as r}
+                    <li>{r.role}: {r.status === 'ok' ? '✅' : '❌'} {r.error || ''}</li>
+                  {/each}
+                </ul>
+              {/if}
+            {/if}
           </div>
         {/if}
+      </div>
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closePromptTranslate} disabled={isTranslatingPrompt}>
+          {t('common.close')}
+        </button>
+        <button class="px-4 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleTranslatePrompt} disabled={isTranslatingPrompt}>
+          {isTranslatingPrompt ? '...' : (t('config.translate') || 'Translate')}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
       </div>
 
     <!-- Agent Personas Tab -->
@@ -1101,6 +1200,9 @@ onclick={() => { selectedPersonas.set({ ...$selectedPersonas, [role]: persona.id
             <div class="flex items-center gap-2">
               <button class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors" onclick={() => { selectedPromptVariant.set(variant.id); }}>
                 {$selectedPromptVariant === variant.id ? t('config.active') : t('config.select') || 'Select'}
+              </button>
+              <button class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800/40 transition-colors" onclick={() => openPromptTranslate(variant.id)} title={t('config.translatePrompt') || 'Translate'}>
+                🌐 {t('config.translate') || 'Translate'}
               </button>
               {#if variant.id !== 'default'}
                 <button class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors" onclick={() => confirmDelete('prompt', variant.id, variant.id)}>
