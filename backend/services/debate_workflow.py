@@ -16,6 +16,7 @@ from backend.models.schemas import AuditEvent, DebateStatus
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
+from backend.services.dms.service import get_dms_for_project
 
 logger = logging.getLogger(__name__)
 

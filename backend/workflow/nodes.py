@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from backend.api.events import publish_async
-from backend.core.config import settings
+from backend.core.config import is_service_llm_eligible, settings
 from backend.models.project import ProjectConfig
 from backend.services.llm_service import GenerationResult, LLMService
 from backend.services.profile_service import ProfileService
@@ -113,28 +113,28 @@ def _get_search_tool() -> WebSearchTool:
 
 
 def initialize_node(state: DebateState) -> dict:
-     """Set up initial runtime state."""
-     return {
-         "current_round": 1,
-         "current_agent_index": 0,
-         "current_draft": "",
-         "final_consensus": 0.0,
-         "output": "",
-         "validation_report": [],
-         "used_variant": state.get("prompt_variant", "default"),
-         "anomalies": [],
-         # --- HITL fields (safe defaults when HITL is not enabled) ---
-         "interactions": [],
-         "active_interrupt": None,
-         "hitl_enabled": state.get("hitl_enabled", False),
-         "hitl_mode": state.get("hitl_mode", "off"),
-         "auto_query_threshold": state.get("auto_query_threshold", 0.4),
-         "max_interrupts_per_round": state.get("max_interrupts_per_round", 3),
-         "interrupt_timeout_seconds": state.get("interrupt_timeout_seconds", 300),
-         "pending_injects": [],
-         "round_interrupt_count": 0,
-         "is_paused": False,
-     }
+    """Set up initial runtime state."""
+    return {
+        "current_round": 1,
+        "current_agent_index": 0,
+        "current_draft": "",
+        "final_consensus": 0.0,
+        "output": "",
+        "validation_report": [],
+        "used_variant": state.get("prompt_variant", "default"),
+        "anomalies": [],
+        # --- HITL fields (safe defaults when HITL is not enabled) ---
+        "interactions": [],
+        "active_interrupt": None,
+        "hitl_enabled": state.get("hitl_enabled", False),
+        "hitl_mode": state.get("hitl_mode", "off"),
+        "auto_query_threshold": state.get("auto_query_threshold", 0.4),
+        "max_interrupts_per_round": state.get("max_interrupts_per_round", 3),
+        "interrupt_timeout_seconds": state.get("interrupt_timeout_seconds", 300),
+        "pending_injects": [],
+        "round_interrupt_count": 0,
+        "is_paused": False,
+    }
 
 
 async def run_agent_node(state: DebateState) -> dict:
@@ -643,7 +643,6 @@ def _build_user_prompt(state: DebateState, role: str, language: str = "de") -> s
     return "\n\n".join(parts)
 
 
-
 async def check_consensus_node(state: DebateState) -> dict:
     """Evaluate consensus using LLM-based analysis of agent outputs.
 
@@ -673,7 +672,8 @@ async def check_consensus_node(state: DebateState) -> dict:
         consensus = 0.0
         logger.warning(
             "Round %d: LLM failures detected (%d anomalies), consensus capped at 0",
-            current_round, len(anomalies),
+            current_round,
+            len(anomalies),
         )
     elif agent_outputs:
         consensus = await _evaluate_consensus_with_llm(
@@ -695,7 +695,8 @@ async def check_consensus_node(state: DebateState) -> dict:
 
     total_tokens = sum(ao.get("tokens_used", 0) for ao in agent_outputs)
     await publish_async(
-        session_id, "round_update",
+        session_id,
+        "round_update",
         {
             "round": current_round,
             "consensus": round(consensus, 3),
@@ -707,10 +708,7 @@ async def check_consensus_node(state: DebateState) -> dict:
     next_round = current_round + 1
     extension_granted = None
 
-    needs_extension = (
-        enable_extra_rounds and consensus < threshold
-        and next_round <= max_rounds + 2
-    )
+    needs_extension = enable_extra_rounds and consensus < threshold and next_round <= max_rounds + 2
 
     return {
         "rounds": [round_data],
@@ -736,7 +734,7 @@ _CONSENSUS_SYSTEM_PROMPT = (
 
 def _build_consensus_prompt(agent_outputs, round_num, max_rounds):
     parts = [
-        "Round {} of {}. Agent responses in this round:".format(round_num, max_rounds),
+        f"Round {round_num} of {max_rounds}. Agent responses in this round:",
         "",
     ]
     for output in agent_outputs:
@@ -746,15 +744,18 @@ def _build_consensus_prompt(agent_outputs, round_num, max_rounds):
         parts.append(text)
         parts.append("")
     parts.append(
-        "Evaluate consensus: are agents converging on shared conclusions? "
-        "Consider overlap in positions and acknowledgment of each other's points."
+        "Evaluate consensus: are agents converging on shared conclusions? Consider overlap in positions and acknowledgment of each other's points."
     )
     return "\n".join(parts)
 
 
 async def _evaluate_consensus_with_llm(
-    agent_outputs, current_round, max_rounds, threshold,
-    session_id, project_id=None,
+    agent_outputs,
+    current_round,
+    max_rounds,
+    threshold,
+    session_id,
+    project_id=None,
 ):
     from backend.services.llm_service import LLMService
     from backend.services.profile_service import ProfileService
@@ -774,13 +775,16 @@ async def _evaluate_consensus_with_llm(
         if score is not None:
             logger.info(
                 "Round %d: LLM consensus=%.3f (model=%s)",
-                current_round, score, service_id,
+                current_round,
+                score,
+                service_id,
             )
             return _apply_consensus_floor(score, agent_outputs, threshold)
     except Exception as exc:
         logger.warning(
             "LLM consensus failed (round %d): %s - using heuristic",
-            current_round, exc,
+            current_round,
+            exc,
         )
     return _heuristic_consensus(agent_outputs, current_round, max_rounds, threshold)
 
@@ -793,10 +797,7 @@ def _select_consensus_llm(profile_service):
     except Exception as exc:
         logger.debug("Primary service LLM '%s' not eligible: %s", settings.service_llm_profile_id, exc)
     try:
-        eligible = [
-            p for p in profile_service.list_llm_profiles()
-            if is_service_llm_eligible(p)
-        ]
+        eligible = [p for p in profile_service.list_llm_profiles() if is_service_llm_eligible(p)]
         if eligible:
             eligible.sort(key=lambda p_: (0 if p_.provider.value == "openrouter" else 1, -(p_.context_window or 0)))
             return eligible[0].id
@@ -806,7 +807,9 @@ def _select_consensus_llm(profile_service):
 
 
 def _parse_consensus_score(text):
-    import json, re as _re
+    import json
+    import re as _re
+
     m = _re.search(r"\{[^{}]*\}", text, _re.DOTALL)
     if m:
         try:
@@ -844,6 +847,7 @@ def _apply_consensus_floor(score, agent_outputs, threshold):
 
 def _heuristic_consensus(agent_outputs, current_round, max_rounds, threshold):
     import re as _re
+
     progression = min(current_round / max_rounds, 1.0)
     if agent_outputs:
         avg_len = sum(len(o.get("content", "").strip()) for o in agent_outputs) / len(agent_outputs)
@@ -867,27 +871,25 @@ def _heuristic_consensus(agent_outputs, current_round, max_rounds, threshold):
     return round(min(threshold, c * threshold * 1.2), 3)
 
 
-
-
 async def complete_node(state: DebateState) -> dict:
     """Finalize the debate."""
-    session_id = state.get('session_id', '')
-    anomalies = state.get('anomalies', [])
+    session_id = state.get("session_id", "")
+    anomalies = state.get("anomalies", [])
 
     # --- Publish: debate completed ---
     await publish_async(
         session_id,
-        'status_change',
+        "status_change",
         {
-            'status': 'completed',
-            'final_consensus': state.get('final_consensus', 0.0),
-            'total_rounds': state.get('current_round', 1) - 1,
+            "status": "completed",
+            "final_consensus": state.get("final_consensus", 0.0),
+            "total_rounds": state.get("current_round", 1) - 1,
         },
     )
 
     return {
-        'output': state.get('current_draft', 'No output generated.'),
-        'anomalies': anomalies,
+        "output": state.get("current_draft", "No output generated."),
+        "anomalies": anomalies,
     }
 
 

@@ -538,9 +538,8 @@ class ModuleInstaller:
             conn.close()
         except sqlite3.Error as e:
             logger.warning(
-                "Failed to check module blocker dependencies (module %s, version %s): %s",
+                "Failed to check module blocker dependencies (module %s): %s",
                 module_id,
-                version,
                 e,
             )
         return blockers
@@ -572,7 +571,7 @@ class ModuleInstaller:
                     "checksum": row["checksum"] or "",
                     "tags": json.loads(row["tags_json"] or "[]"),
                     "dependencies": json.loads(row["dependencies"] or "{}"),
-}
+                }
         except sqlite3.Error as e:
             logger.warning("Failed to read installed module manifest for %s: %s", module_id, e)
         return None

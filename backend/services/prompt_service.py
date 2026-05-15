@@ -399,6 +399,6 @@ class PromptService:
                 if wf_prompt:
                     parts.append(wf_prompt)
             except FileNotFoundError as e:
-                logger.debug("Prompt template file not found for %s: %s", wf_key, e)
+                logger.debug("Prompt template file not found for %s: %s", workflow_variant, e)
 
         return "\n\n".join(parts)
