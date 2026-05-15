@@ -63,8 +63,8 @@
   });
 
   async function loadDebates() {
-    $loading = true;
-    $error = null;
+    loading.set(true);
+    error.set(null);
     try {
       const result = await getDebates(PAGE_SIZE, {
         status: statusFilter || null,
@@ -77,10 +77,10 @@
         ? currentPage * PAGE_SIZE + result.length
         : (currentPage + 1) * PAGE_SIZE + 1;
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
       debates = [];
     } finally {
-      $loading = false;
+      loading.set(false);
     }
   }
 
@@ -140,7 +140,7 @@
       );
       archiveConfirmId = null;
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isArchiving = false;
     }
@@ -155,7 +155,7 @@
         d.debate_id === debateId ? { ...d, archived: false } : d
       );
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       restoringId = null;
     }
@@ -188,7 +188,7 @@
       debates = debates.filter(d => d.debate_id !== debateId);
       deleteConfirmId = null;
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isDeleting = false;
     }
@@ -309,7 +309,7 @@
                 <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
               {/if}
               {#if debate.parent_debate_id}
-                <a href={'/debate/' + debate.parent_debate_id} class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" title="Parent-Debatte" onclick="event.stopPropagation()">
+                  <a href={'/debate/' + debate.parent_debate_id} class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" title="Parent-Debatte" onclick={() => event.stopPropagation()}>
                   🔗
                 </a>
               {/if}

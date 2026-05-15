@@ -22,8 +22,8 @@
     open = false;
   }
 
-  $: currentFlag = FLAGS[$locale] || '🌐';
-  $: isRTL = RTL_LOCALES.has($locale);
+  let currentFlag = $derived(FLAGS[$locale] || '🌐');
+  let isRTL = $derived(RTL_LOCALES.has($locale));
 </script>
 
 <div class="relative inline-block text-left">

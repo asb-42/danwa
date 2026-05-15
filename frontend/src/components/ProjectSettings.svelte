@@ -36,7 +36,7 @@
 
   async function loadAll() {
     isLoading = true;
-    $error = null;
+    error.set(null);
     try {
       const [proj, cfg, settings] = await Promise.all([
         getProject(projectId),
@@ -54,7 +54,7 @@
         searxng_url: cfg.searxng_url ?? null,
       };
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isLoading = false;
     }
@@ -68,7 +68,7 @@
 
   async function handleSave() {
     isSaving = true;
-    $error = null;
+    error.set(null);
     statusMessage = '';
     try {
       // Build config payload — only include non-null/non-empty values
@@ -87,10 +87,10 @@
       statusMessage = `✓ ${t('projects.projectUpdated')}`;
       // Update active project name if needed
       if ($activeProject?.id === projectId && project) {
-        $activeProject = { id: project.id, name: project.name };
+        activeProject.set({ id: project.id, name: project.name });
       }
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isSaving = false;
     }

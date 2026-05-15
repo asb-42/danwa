@@ -52,17 +52,17 @@
   }
 
   async function refreshHealth() {
-    $loading = true;
-    $error = null;
+    loading.set(true);
+    error.set(null);
     try {
       const data = await getHealth();
-      $healthStatus = { status: data.status, version: data.version };
+      healthStatus.set({ status: data.status, version: data.version });
       await loadDebateStats();
     } catch (err) {
-      $healthStatus = { status: 'unreachable', version: '' };
-      $error = err.message;
+      healthStatus.set({ status: 'unreachable', version: '' });
+      error.set(err.message);
     } finally {
-      $loading = false;
+      loading.set(false);
     }
   }
 

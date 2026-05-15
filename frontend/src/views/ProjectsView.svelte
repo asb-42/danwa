@@ -36,11 +36,11 @@
 
   async function loadProjects() {
     isLoading = true;
-    $error = null;
+    error.set(null);
     try {
       projects = await getProjects();
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
       projects = [];
     } finally {
       isLoading = false;
@@ -82,7 +82,7 @@
         const project = await createProject(formData.name.trim(), formData.description.trim());
         statusMessage = `✓ ${t('projects.projectCreated')}`;
         // Auto-select newly created project
-        $activeProject = { id: project.id, name: project.name };
+        activeProject.set({ id: project.id, name: project.name });
       } else {
         await updateProject(formData.id, {
           name: formData.name.trim(),
@@ -91,13 +91,13 @@
         statusMessage = `✓ ${t('projects.projectUpdated')}`;
         // Update active project name if it was renamed
         if ($activeProject?.id === formData.id) {
-          $activeProject = { id: formData.id, name: formData.name.trim() };
+          activeProject.set({ id: formData.id, name: formData.name.trim() });
         }
       }
       showModal = false;
       await loadProjects();
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isSaving = false;
     }
@@ -121,21 +121,21 @@
       await deleteProject(deleteTarget.id);
       // If deleted project was active, clear selection
       if ($activeProject?.id === deleteTarget.id) {
-        $activeProject = null;
+        activeProject.set(null);
       }
       showDeleteConfirm = false;
       deleteTarget = null;
       statusMessage = `✓ ${t('projects.projectDeleted')}`;
       await loadProjects();
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isDeleting = false;
     }
   }
 
   function selectProject(project) {
-    $activeProject = { id: project.id, name: project.name };
+    activeProject.set({ id: project.id, name: project.name });
   }
 </script>
 

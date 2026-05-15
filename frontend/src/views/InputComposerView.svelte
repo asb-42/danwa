@@ -233,9 +233,9 @@
 
   function handleCreated(response) {
     // Set the current debate and trigger auto-start on the debate page
-    $currentDebate = response;
-    $debates = [...$debates, response];
-    $autoStartDebate = true;
+    currentDebate.set(response);
+    debates.set([...$debates, response]);
+    autoStartDebate.set(true);
     // Navigate to the active debate page
     navigate('debate');
   }

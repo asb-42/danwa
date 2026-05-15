@@ -45,7 +45,7 @@
     if (!debateId) return;
 
     isSubmitting = true;
-    $error = null;
+    error.set(null);
 
     try {
       const body = {
@@ -54,11 +54,11 @@
       };
 
       const result = await continueDebate(debateId, body);
-      $autoStartDebate = true;
+      autoStartDebate.set(true);
       onCreated(result);
       onClose();
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isSubmitting = false;
     }

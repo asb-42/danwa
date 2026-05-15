@@ -29,13 +29,13 @@
       // Auto-select default project if nothing is selected
       if (!$activeProject && projects.length > 0) {
         const defaultProject = projects.find(p => p.is_system) || projects[0];
-        $activeProject = { id: defaultProject.id, name: defaultProject.name };
+        activeProject.set({ id: defaultProject.id, name: defaultProject.name });
       }
       // Validate that active project still exists
       if ($activeProject && !projects.find(p => p.id === $activeProject.id)) {
-        $activeProject = projects.length > 0
+        activeProject.set(projects.length > 0
           ? { id: projects[0].id, name: projects[0].name }
-          : null;
+          : null);
       }
     } catch (err) {
       console.warn('Could not load projects:', err);
@@ -45,7 +45,7 @@
   }
 
   function selectProject(project) {
-    $activeProject = { id: project.id, name: project.name };
+    activeProject.set({ id: project.id, name: project.name });
     isOpen = false;
   }
 

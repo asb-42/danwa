@@ -80,16 +80,16 @@
   onMount(async () => {
     if (debateId) {
       archiveLoading = true;
-      $error = null;
+      error.set(null);
       try {
         const debate = await getDebate(debateId);
-        $currentDebate = debate;
+        currentDebate.set(debate);
         if (debate.title) {
           debateTitle = debate.title;
           titleFadedIn = true;
         }
       } catch (err) {
-        $error = err.message || t('error.debateNotFound');
+        error.set(err.message || t('error.debateNotFound'));
       } finally {
         archiveLoading = false;
       }
@@ -99,7 +99,7 @@
   // Auto-start debate when navigated from "Neue Debatte" page
   $effect(() => {
     if ($autoStartDebate && $currentDebate && $currentDebate.status === 'pending') {
-      $autoStartDebate = false;
+      autoStartDebate.set(false);
       setTimeout(() => {
         handleStartDebate();
       }, 200);
@@ -111,8 +111,8 @@
     if ($currentDebate && $currentDebate.status === 'running' && !sseConnection) {
       sseConnection = createSSE($currentDebate.debate_id, {
         onEvent: (event) => { handleSSEEvent(event); },
-        onOpen: () => { $sseConnected = true; },
-        onClose: () => { $sseConnected = false; },
+        onOpen: () => { sseConnected.set(true); },
+        onClose: () => { sseConnected.set(false); },
         onError: (err) => { console.error('SSE error:', err); },
       });
     }
@@ -123,7 +123,7 @@
   $effect(() => {
     if (projectId && projectId !== lastProjectId) {
       if (lastProjectId !== null) {
-        $currentDebate = null;
+        currentDebate.set(null);
         liveOutputs = [];
         liveSearchResults = [];
         currentActivity = null;
@@ -146,8 +146,8 @@
   async function handleStartDebate() {
     if (!$currentDebate) return;
 
-    $loading = true;
-    $error = null;
+    loading.set(true);
+    error.set(null);
     liveOutputs = [];
     liveSearchResults = [];
     currentActivity = null;
@@ -168,18 +168,18 @@
 
     sseConnection = createSSE($currentDebate.debate_id, {
       onEvent: (event) => { handleSSEEvent(event); },
-      onOpen: () => { $sseConnected = true; },
-      onClose: () => { $sseConnected = false; },
+      onOpen: () => { sseConnected.set(true); },
+      onClose: () => { sseConnected.set(false); },
       onError: (err) => { console.error('SSE error:', err); },
     });
 
     try {
       const result = await startDebate($currentDebate.debate_id);
-      $currentDebate = { ...$currentDebate, ...result };
+      currentDebate.set({ ...$currentDebate, ...result });
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
-      $loading = false;
+      loading.set(false);
     }
   }
 
@@ -227,13 +227,13 @@
       titleGenerating = false;
       setTimeout(() => { titleFadedIn = true; }, 50);
       if ($currentDebate) {
-        $currentDebate = { ...$currentDebate, title: event.title };
+        currentDebate.set({ ...$currentDebate, title: event.title });
       }
       return;
     }
 
     if (event.status === 'completed' || event.status === 'failed') {
-      $currentDebate = { ...$currentDebate, status: event.status };
+      currentDebate.set({ ...$currentDebate, status: event.status });
       currentActivity = null;
       workflowPhase = null;
       stopProcessingTimer();
@@ -243,11 +243,11 @@
     }
 
     if (event.round !== undefined && event.consensus !== undefined) {
-      $currentDebate = {
+      currentDebate.set({
         ...$currentDebate,
         current_round: event.round + 1,
         consensus_score: event.consensus,
-      };
+      });
       if (event.total_tokens) lastRoundTokens = event.total_tokens;
       currentActivity = null;
       workflowPhase = null;
@@ -395,14 +395,14 @@
     if (!$currentDebate) return;
     try {
       const status = await getDebate($currentDebate.debate_id);
-      $currentDebate = { ...$currentDebate, ...status };
+      currentDebate.set({ ...$currentDebate, ...status });
       if (status.title && !debateTitle) {
         debateTitle = status.title;
         titleGenerating = false;
         titleFadedIn = true;
       }
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     }
   }
 
@@ -413,7 +413,7 @@
     try {
       const result = await cancelDebate($currentDebate.debate_id);
       if (result.status === 'completed' || result.status === 'failed') {
-        $currentDebate = { ...$currentDebate, status: result.status };
+        currentDebate.set({ ...$currentDebate, status: result.status });
         currentActivity = null;
         workflowPhase = null;
         stopProcessingTimer();
@@ -421,7 +421,7 @@
         handleRefreshStatus();
       }
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
       isCancelling = false;
     }
@@ -511,7 +511,7 @@
       debateTitle={debateTitle}
       onClose={() => showContinueModal = false}
       onCreated={(result) => {
-        $currentDebate = result;
+        currentDebate.set(result);
         showContinueModal = false;
         navigate(`debate/${result.debate_id}`);
       }}

@@ -43,7 +43,7 @@
 		newTitle: '',
 		forkFromRound: null,
 		forkReason: '',
-		modifiedPersonas: {} as Record<string, string>,
+		modifiedPersonas: {},
 		modifiedPromptVariant: '',
 	});
 

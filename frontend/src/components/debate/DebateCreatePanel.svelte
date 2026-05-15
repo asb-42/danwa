@@ -114,12 +114,12 @@
 
   async function handleCreateDebate() {
     if (!caseText.trim()) {
-      $error = t('debate.enterCase');
+      error.set(t('debate.enterCase'));
       return;
     }
 
-    $loading = true;
-    $error = null;
+    loading.set(true);
+    error.set(null);
 
     try {
       const response = await createDebate(caseText, {
@@ -141,9 +141,9 @@
       a2aAgents = [];
       onCreated(response);
     } catch (err) {
-      $error = err.message;
+      error.set(err.message);
     } finally {
-      $loading = false;
+      loading.set(false);
     }
   }
 </script>

@@ -134,7 +134,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
 
   // --- Lifecycle ---
   onMount(async () => {
-    $error = null;
+    error.set(null);
     isLoading = true;
     try {
       const results = await Promise.allSettled([
@@ -153,9 +153,9 @@ import ModuleManager from '../components/ModuleManager.svelte';
       else errors.push(`Prompt Variants: ${results[2].reason?.message || results[2].reason}`);
       if (results[3].status === 'fulfilled') roleTypes = results[3].value;
 
-      if (errors.length > 0) $error = errors.join('; ');
+      if (errors.length > 0) error.set(errors.join('; '));
     } catch (e) {
-      $error = e.message;
+      error.set(e.message);
     } finally {
       isLoading = false;
     }
@@ -169,7 +169,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
   async function handleEstimateCost() {
     try {
       costEstimate = await estimateCost($selectedLLMProfile, costNumAgents, costNumRounds);
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
   }
 
   async function handlePreview(variantId, role) {
@@ -179,7 +179,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
       previewContent = result.content;
       previewVariantId = variantId;
       previewRole = r;
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
   }
 
   async function loadServiceLLMData() {
@@ -192,7 +192,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
        serviceEligibleProfiles = eligible || [];
        serviceLLMConfig = config || {};
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
        isLoadingServiceLLM = false;
      }
@@ -205,7 +205,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
        await loadServiceLLMData();
        statusMessage = t('service.setSuccess') || 'Service LLM updated successfully';
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
        isLoadingServiceLLM = false;
      }
@@ -241,7 +241,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
      try {
        backupSettings = await getBackupSettings();
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
        isLoadingBackupSettings = false;
      }
@@ -255,7 +255,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
        backupMessage = t('backup.settingsSaved') || 'Backup settings saved';
        await loadBackupSettings();
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
        isSavingBackupSettings = false;
      }
@@ -269,21 +269,21 @@ import ModuleManager from '../components/ModuleManager.svelte';
        backupCreateMessage = t('backup.created') || 'Backup created: ' + result.backup_id;
        await loadBackups();
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
        isCreatingBackup = false;
      }
    }
 
    async function loadBackups() {
-     $isLoadingBackups = true;
+     isLoadingBackups.set(true);
      try {
        const result = await getBackups();
-       $backups = result.backups || [];
+       backups.set(result.backups || []);
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
-       $isLoadingBackups = false;
+       isLoadingBackups.set(false);
      }
    }
 
@@ -293,26 +293,26 @@ import ModuleManager from '../components/ModuleManager.svelte';
        await deleteBackup(backupId);
        await loadBackups();
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      }
    }
 
    async function showBackupFiles(backupId) {
      showBackupFileList = true;
-     $isLoadingBackups = true;
+     isLoadingBackups.set(true);
      try {
        const result = await getBackupFiles(backupId);
-       $backupDetails = result.files;
+       backupDetails.set(result.files);
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      } finally {
-       $isLoadingBackups = false;
+       isLoadingBackups.set(false);
      }
    }
 
    function closeFileList() {
      showBackupFileList = false;
-     $backupDetails = null;
+     backupDetails.set(null);
    }
 
    async function verifyBackupById(backupId) {
@@ -324,7 +324,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
          backupCreateMessage = t('backup.verifyFailed') || 'Verification failed: ' + (result.errors?.join(', ') || 'Unknown error');
        }
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      }
    }
 
@@ -335,7 +335,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
        backupCreateMessage = result.message || t('backup.restoreSuccess') || 'Restore completed';
        await loadBackups();
      } catch (e) {
-       $error = e.message;
+       error.set(e.message);
      }
    }
 
@@ -455,7 +455,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
       deleteTarget = null;
       statusMessage = `✓ ${t('config.profileDeleted')}`;
       await refreshLists();
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
   }
 
   function closeDeleteConfirm() {
@@ -486,7 +486,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
       showPromptCreateModal = false;
       statusMessage = `✓ ${t('config.promptVariantSaved') || 'Prompt variant created'}`;
       await refreshLists();
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
     finally { isSavingPrompt = false; }
   }
 
@@ -528,7 +528,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
       showRoleTypeModal = false;
       statusMessage = `✓ ${t('config.roleTypeSaved')}`;
       roleTypes = await listRoleTypes();
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
     finally { isSavingRoleType = false; }
   }
 
@@ -545,7 +545,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
       reloadResult = await reloadProfiles();
       statusMessage = `✓ ${reloadResult.message} — ${reloadResult.llm_profiles} LLM, ${reloadResult.agent_personas} Agenten, ${reloadResult.prompt_variants} Prompts`;
       await refreshLists();
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
     finally { isReloading = false; }
   }
 
@@ -554,7 +554,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
     try {
       const result = await getBackendLogs(200, logSearch || null);
       logLines = result.lines || [];
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
     finally { isLoadingLogs = false; }
   }
 
@@ -563,7 +563,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
     try {
       settingsData = await getSettings() || {};
       settingsLoaded = true;
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
     finally { isLoadingSettings = false; }
   }
 
@@ -573,7 +573,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
     try {
       await updateSettings(settingsData);
       settingsMessage = `✓ ${t('settings.saved')}`;
-    } catch (e) { $error = e.message; }
+    } catch (e) { error.set(e.message); }
     finally { isSavingSettings = false; }
   }
 
@@ -681,7 +681,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
                   <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
                     {$selectedLLMProfile === profile.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
                     <td class="px-4 py-3 font-medium">
-                      <button class="text-blue-600 dark:text-blue-400 hover:underline" onclick={() => { $selectedLLMProfile = profile.id; }}>
+                      <button class="text-blue-600 dark:text-blue-400 hover:underline" onclick={() => { selectedLLMProfile.set(profile.id); }}>
                         {profile.name}
                       </button>
                       {#if $selectedLLMProfile === profile.id}
@@ -882,7 +882,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
           <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('backup.create') || 'Create Backup'}</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('backup.description') || 'Create a backup of all project data and settings.'}</p>
-          <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={createBackup} disabled={isCreatingBackup}>
+           <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleCreateBackup} disabled={isCreatingBackup}>
             {isCreatingBackup ? '...' : (t('common.create') || 'Create')}
           </button>
           {#if backupCreateMessage}
@@ -988,8 +988,8 @@ import ModuleManager from '../components/ModuleManager.svelte';
                   : 'border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}">
                 <div
                   class="cursor-pointer"
-                  onclick={() => { $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
-                  onkeydown={(e) => { if (e.key === 'Enter') $selectedPersonas = { ...$selectedPersonas, [role]: persona.id }; }}
+onclick={() => { selectedPersonas.set({ ...$selectedPersonas, [role]: persona.id }); }}
+          onkeydown={(e) => { if (e.key === 'Enter') selectedPersonas.set({ ...$selectedPersonas, [role]: persona.id }); }}
                   role="button"
                   tabindex="0"
                 >
@@ -1099,7 +1099,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
               {/if}
             </div>
             <div class="flex items-center gap-2">
-              <button class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors" onclick={() => { $selectedPromptVariant = variant.id; }}>
+              <button class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors" onclick={() => { selectedPromptVariant.set(variant.id); }}>
                 {$selectedPromptVariant === variant.id ? t('config.active') : t('config.select') || 'Select'}
               </button>
               {#if variant.id !== 'default'}

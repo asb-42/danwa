@@ -38,8 +38,8 @@ import ToastContainer from './components/ToastContainer.svelte';
 
   function applyRoute() {
     const parsed = parseHash();
-    $route = parsed.route;
-    $routeParams = parsed.params;
+    route.set(parsed.route);
+    routeParams.set(parsed.params);
   }
 
   onMount(() => {
@@ -62,19 +62,19 @@ import ToastContainer from './components/ToastContainer.svelte';
     // Health check on mount
     getHealth()
       .then((data) => {
-        $healthStatus = { status: data.status, version: data.version };
+        healthStatus.set({ status: data.status, version: data.version });
       })
       .catch(() => {
-        $healthStatus = { status: 'unreachable', version: '' };
+        healthStatus.set({ status: 'unreachable', version: '' });
       });
 
     // Load application version from API
     getVersion()
       .then((data) => {
-        $appVersion = data.version;
+        appVersion.set(data.version);
       })
       .catch(() => {
-        $appVersion = '';
+        appVersion.set('');
       });
 
     return () => {

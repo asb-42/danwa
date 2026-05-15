@@ -18,17 +18,17 @@
   async function loadAuditEvents() {
     const id = debateIdInput.trim() || $currentDebate?.debate_id;
     if (!id) {
-      $error = t('audit.enterDebateId');
+      error.set(t('audit.enterDebateId'));
       return;
     }
 
-    $loading = true;
-    $error = null;
+    loading.set(true);
+    error.set(null);
     resolvedTitle = '';
 
     try {
       const events = await getAuditEvents(id);
-      $auditEvents = events;
+      auditEvents.set(events);
       // Try to resolve the debate title for display
       try {
         const { getDebates } = await import('../lib/api.js');
@@ -45,10 +45,10 @@
         // Title resolution is best-effort
       }
     } catch (err) {
-      $error = err.message;
-      $auditEvents = [];
+      error.set(err.message);
+      auditEvents.set([]);
     } finally {
-      $loading = false;
+      loading.set(false);
     }
   }
 
