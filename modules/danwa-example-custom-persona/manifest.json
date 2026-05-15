@@ -1,0 +1,29 @@
+{
+  "module_id": "danwa-example-custom-persona",
+  "name": {
+    "en": "Example: Custom Agent Persona",
+    "de": "Beispiel: Eigene Agenten-Persona"
+  },
+  "description": {
+    "en": "Minimal example showing how to create a custom agent persona. Includes 1 YAML definition and a manifest.",
+    "de": "Minimalbeispiel zur Erstellung einer eigenen Agenten-Persona. Enthält 1 YAML-Definition und ein Manifest."
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Team",
+    "email": "team@danwa.example"
+  },
+  "license": "MIT",
+  "language": "en",
+  "tags": ["example", "tutorial", "persona"],
+  "dependencies": {},
+  "files": [
+    {
+      "path": "personas/custom-moderator.yaml",
+      "type": "agent-persona",
+      "checksum": "sha256:placeholder"
+    }
+  ]
+}

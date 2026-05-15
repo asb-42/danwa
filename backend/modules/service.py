@@ -6,6 +6,7 @@ import json
 import logging
 import shutil
 import sqlite3
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,9 @@ class ModuleService:
         self.db_path = Path(db_path)
         self.validator = ModuleValidator(self.modules_dir)
         self.installer = ModuleInstaller(self.modules_dir, self.db_path)
+        self._registry_cache: dict | None = None
+        self._registry_cache_time: float = 0
+        self._registry_cache_ttl: int = 86400  # 24 hours
 
     # ------------------------------------------------------------------
     # Discovery
@@ -152,6 +156,70 @@ class ModuleService:
         if category:
             modules = [m for m in modules if m.category.value == category]
         return modules
+
+    # ------------------------------------------------------------------
+    # Remote Discovery
+    # ------------------------------------------------------------------
+
+    def discover_remote(
+        self,
+        registry_url: str = "https://raw.githubusercontent.com/danwa/modules/main/registry.json",
+        force_refresh: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Discover available remote modules from a registry.
+
+        Args:
+            registry_url: URL to registry.json
+            force_refresh: Bypass cache and fetch fresh
+
+        Returns:
+            List of module dicts from the remote registry
+        """
+        import time
+
+        now = time.time()
+        if not force_refresh and self._registry_cache and (now - self._registry_cache_time) < self._registry_cache_ttl:
+            return self._registry_cache.get("modules", [])
+
+        try:
+            with urllib.request.urlopen(registry_url, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            self._registry_cache = data
+            self._registry_cache_time = now
+            return data.get("modules", [])
+        except Exception as exc:
+            logger.warning("Remote registry not reachable: %s", exc)
+            return []
+
+    def check_updates(self, registry_url: str | None = None) -> list[dict[str, Any]]:
+        """Check for available updates for installed modules.
+
+        Args:
+            registry_url: Optional custom registry URL
+
+        Returns:
+            List of modules with available updates
+        """
+        remote = self.discover_remote(registry_url or "https://raw.githubusercontent.com/danwa/modules/main/registry.json")
+        installed = {m["module_id"]: m for m in self.discover_local()}
+
+        updates = []
+        for remote_mod in remote:
+            mod_id = remote_mod["module_id"]
+            if mod_id in installed:
+                local_version = installed[mod_id].version
+                remote_version = remote_mod.get("version", "0.0.0")
+                if remote_version != local_version:
+                    updates.append(
+                        {
+                            "module_id": mod_id,
+                            "current_version": local_version,
+                            "available_version": remote_version,
+                            "download_url": remote_mod.get("download_url", ""),
+                            "checksum": remote_mod.get("checksum", ""),
+                        }
+                    )
+        return updates
 
     # ------------------------------------------------------------------
     # Installation

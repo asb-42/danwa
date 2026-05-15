@@ -1,0 +1,31 @@
+{
+  "module_id": "danwa-example-custom-pattern",
+  "name": {
+    "en": "Example: Custom Argumentation Pattern",
+    "de": "Beispiel: Eigene Argumentationsmuster"
+  },
+  "description": {
+    "en": "Minimal example showing how to create a custom argumentation pattern. Includes 7 prompt files and a manifest.",
+    "de": "Minimalbeispiel zur Erstellung eines eigenen Argumentationsmusters. Enthält 7 Prompt-Dateien und ein Manifest."
+  },
+  "version": "1.0.0",
+  "type": "argumentation-pattern",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Team",
+    "email": "team@danwa.example"
+  },
+  "license": "MIT",
+  "language": "en",
+  "tags": ["example", "tutorial", "pattern"],
+  "dependencies": {},
+  "files": [
+    {"path": "prompts/strategist.md", "type": "prompt", "checksum": "sha256:placeholder"},
+    {"path": "prompts/critic.md", "type": "prompt", "checksum": "sha256:placeholder"},
+    {"path": "prompts/optimizer.md", "type": "prompt", "checksum": "sha256:placeholder"},
+    {"path": "prompts/moderator.md", "type": "prompt", "checksum": "sha256:placeholder"},
+    {"path": "prompts/strategist-en.md", "type": "prompt", "checksum": "sha256:placeholder"},
+    {"path": "prompts/critic-en.md", "type": "prompt", "checksum": "sha256:placeholder"},
+    {"path": "prompts/optimizer-en.md", "type": "prompt", "checksum": "sha256:placeholder"}
+  ]
+}
