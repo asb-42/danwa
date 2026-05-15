@@ -313,13 +313,13 @@ def get_backup_settings():
 @router.put("/backup-settings", response_model=dict)
 def update_backup_settings(body: BackupSettingsBody):
     """Update backup settings."""
-    from backend.core.config import Settings
-
-    current = Settings()
+    settings = _load_settings()
+    if "backup" not in settings:
+        settings["backup"] = {}
     update_data = body.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        setattr(current, key, value)
-    current.save()
+        settings["backup"][key] = value
+    _save_settings(settings)
     return {"status": "ok", "settings": get_backup_settings()}
 
 

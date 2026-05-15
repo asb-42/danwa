@@ -15,19 +15,20 @@
 11. [Report Generation](#report-generation)
 12. [Project Management](#project-management)
 13. [Document Management System (DMS)](#document-management-system-dms)
-14. [Blueprint System](#blueprint-system)
-15. [HITL (Human-in-the-Loop) System](#hitl-human-in-the-loop-system)
-16. [Input/Output Composer](#inputoutput-composer)
-17. [Real-Time Updates (SSE)](#real-time-updates-sse)
-18. [Out-of-Band Inputs](#out-of-band-inputs)
-19. [A2A Protocol Integration](#a2a-protocol-integration)
-20. [Workflow Visualization](#workflow-visualization)
-21. [Internationalization (i18n)](#internationalization-i18n)
-22. [Privacy & Data Protection](#privacy--data-protection)
-23. [Audit & Reproducibility](#audit--reproducibility)
-24. [Advanced Configuration](#advanced-configuration)
-25. [Development](#development)
-26. [Troubleshooting](#troubleshooting)
+14. [Backup System](#backup-system)
+15. [Blueprint System](#blueprint-system)
+16. [HITL (Human-in-the-Loop) System](#hitl-human-in-the-loop-system)
+17. [Input/Output Composer](#inputoutput-composer)
+18. [Real-Time Updates (SSE)](#real-time-updates-sse)
+19. [Out-of-Band Inputs](#out-of-band-inputs)
+20. [A2A Protocol Integration](#a2a-protocol-integration)
+21. [Workflow Visualization](#workflow-visualization)
+22. [Internationalization (i18n)](#internationalization-i18n)
+23. [Privacy & Data Protection](#privacy--data-protection)
+24. [Audit & Reproducibility](#audit--reproducibility)
+25. [Advanced Configuration](#advanced-configuration)
+26. [Development](#development)
+27. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -819,6 +820,115 @@ Combines three retrieval methods:
 - **BM25**: Keyword-based search
 - **Vector Search**: Semantic similarity search
 - **Re-ranking**: RRF (Reciprocal Rank Fusion) to merge results
+
+---
+
+## Backup System
+
+### What is the Backup System?
+
+The Backup System protects your data by creating complete archives of all debates, projects, audit trails, and configuration files. It was introduced after a data loss incident to ensure you never lose your work.
+
+### Key Features
+
+- **ZIP Archives**: All data compressed into a single file with integrity verification
+- **Manual Backups**: Create backups on demand with one click
+- **Automatic Shutdown Backups**: Optional backup when you stop the application
+- **Backup Verification**: Check that your backup is complete and uncorrupted
+- **Full Restoration**: Recover all data from a backup (app must be stopped)
+- **Configurable Retention**: Automatically delete old backups to save space
+
+### Using the Backup System
+
+#### Creating a Backup
+
+1. Navigate to **Configuration** → **Backup** tab
+2. Click **Create Backup**
+3. The system creates a ZIP archive in the `backups/` directory
+4. You'll see confirmation with the backup name and file count
+
+#### Viewing Existing Backups
+
+The Backup tab shows a table of all backups:
+- **Date**: When the backup was created
+- **Size**: Archive size in MB
+- **Files**: Number of files included
+- **Trigger**: `manual` or `shutdown`
+- **Actions**: Files, Verify, Restore, Delete
+
+#### Verifying a Backup
+
+Click **Verify** next to any backup to check its integrity:
+- Validates the ZIP archive structure
+- Verifies SHA-256 checksums for all files
+- Confirms metadata.json is present and valid
+
+#### Restoring from a Backup
+
+⚠️ **Warning**: Restoration overwrites existing data. Stop the application first.
+
+1. Click **Restore** next to the backup you want to restore
+2. Confirm the action when prompted
+3. The system extracts all files to their original locations
+4. Restart the application
+
+#### Backup Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Backups enabled** | Enable/disable backup functionality | Yes |
+| **Automatic backup on shutdown** | Create backup when app stops | No (opt-in) |
+| **Retention count** | Number of backups to keep (0 = unlimited) | 0 |
+| **Encrypt backup** | Not yet implemented | No |
+
+### What Gets Backed Up
+
+| Path | Content |
+|------|---------|
+| `data/projects/*/debates/*.json` | All debate data |
+| `data/projects/*/project.json` | Project definitions |
+| `data/audit.db` | Audit trail |
+| `data/projects/*/dms/dms.db` | DMS databases |
+| `data/projects/*/dms/chroma_db/` | Vector embeddings |
+| `data/a2a_tasks.db` | A2A task data |
+| `data/blueprints.db` | Blueprint data |
+| `config/settings.yaml` | App configuration |
+| `config/a2a.json` | A2A configuration |
+| `config/llm_profiles.yaml` | LLM profiles |
+
+### What is NOT Backed Up
+
+| Path | Reason |
+|------|--------|
+| `.env` | Contains secrets (backup separately) |
+| `logs/` | Trace logs (not critical for recovery) |
+| `memory/` | Runtime data (transient) |
+| `.git/` | Version controlled |
+| `frontend/dist/` | Build artifact (regenerable) |
+| `backups/` | Backup files themselves (prevents recursion) |
+
+### Backup File Format
+
+Each backup is a ZIP file named: `danwa-backup-YYYY-MM-DDTHH-MM-SSZ.zip`
+
+Contents:
+- All backed-up files with their original directory structure
+- `metadata.json`: Backup metadata (version, app version, commit hash, trigger)
+- `SHA-256SUMS`: Checksums for all files (used for verification)
+
+### API Endpoints
+
+```
+POST   /api/v1/config/backup              # Create backup
+GET    /api/v1/config/backups             # List all backups
+GET    /api/v1/config/backups/{id}        # Get backup metadata
+GET    /api/v1/config/backups/{id}/files  # List files in backup
+POST   /api/v1/config/backups/{id}/verify # Verify backup integrity
+POST   /api/v1/config/backups/{id}/restore # Restore from backup
+DELETE /api/v1/config/backups/{id}        # Delete a backup
+GET    /api/v1/config/backup-settings     # Get backup settings
+PUT    /api/v1/config/backup-settings     # Update backup settings
+```
 
 ---
 

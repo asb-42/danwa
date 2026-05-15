@@ -17,15 +17,16 @@
 7. [Core Features](#7-core-features)
 8. [Profile System](#8-profile-system)
 9. [Document Management System (DMS)](#9-document-management-system-dms)
-10. [Blueprint System](#10-blueprint-system)
-11. [HITL (Human-in-the-Loop) System](#11-hitl-human-in-the-loop-system)
-12. [Input/Output Plugin System](#12-inputoutput-plugin-system)
-13. [Data Models & Schemas](#13-data-models--schemas)
-14. [API Reference](#14-api-reference)
-15. [Configuration](#15-configuration)
-16. [A2A Protocol Integration](#16-a2a-protocol-integration)
-17. [Development Guide](#17-development-guide)
-18. [Deployment](#18-deployment)
+10. [Backup System](#10-backup-system)
+11. [Blueprint System](#11-blueprint-system)
+12. [HITL (Human-in-the-Loop) System](#12-hitl-human-in-the-loop-system)
+13. [Input/Output Plugin System](#13-inputoutput-plugin-system)
+14. [Data Models & Schemas](#14-data-models--schemas)
+15. [API Reference](#15-api-reference)
+16. [Configuration](#16-configuration)
+17. [A2A Protocol Integration](#17-a2a-protocol-integration)
+18. [Development Guide](#18-development-guide)
+19. [Deployment](#19-deployment)
 
 ---
 
@@ -1304,9 +1305,261 @@ class HybridRetriever:
 
 ---
 
-## 10. Blueprint System
+## 10. Backup System
 
 ### 10.1 Overview
+
+The Backup System provides automated and manual backup creation, verification, and restoration of all user data. It was introduced in response to a data loss incident where all debate data, audit trails, and DMS vector stores were accidentally deleted during a migration.
+
+**Key Features**:
+- ZIP archives with SHA-256 integrity verification
+- Automatic shutdown backups (opt-in)
+- Configurable retention policy
+- Full data restoration with path safety checks
+- UI integration for management
+
+---
+
+### 10.2 BackupService (`backend/persistence/backup.py`)
+
+```python
+class BackupService:
+    """Erstellt, verwaltet und validiert Backup-Archive."""
+
+    BACKUP_DIR = Path("backups")
+
+    def create_backup(self, trigger: str = "manual") -> BackupResult:
+        """Creates a ZIP archive with timestamp and checksums."""
+
+    def list_backups(self) -> list[BackupMetadata]:
+        """Lists all available backups sorted by date (newest first)."""
+
+    def get_backup_file_list(self, backup_id: str) -> list[str]:
+        """Returns the list of files contained in a backup."""
+
+    def verify_backup(self, backup_id: str) -> VerificationResult:
+        """Verifies integrity (ZIP checksum + SHA-256SUMS)."""
+
+    @staticmethod
+    def restore(backup_path: Path) -> RestoreResult:
+        """Extracts and restores data from a backup.
+        ⚠️ Overwrites existing data! App must be stopped."""
+```
+
+**Data Classes**:
+- `BackupResult`: backup_id, path, size_bytes, file_count, created_at, sha256, duration_seconds
+- `BackupMetadata`: backup_id, created_at, app_version, commit_hash, file_count, size_bytes, trigger, sha256
+- `VerificationResult`: valid, errors, file_count_verified
+- `RestoreResult`: success, message, restored_files
+
+---
+
+### 10.3 Backup Creation Process
+
+1. **Timestamp**: UTC ISO format → `2026-05-15T02-30-00Z`
+2. **Filename**: `danwa-backup-2026-05-15T02-30-00Z.zip`
+3. **File Discovery**: Recursively walk include paths, skip exclude patterns
+4. **SHA-256 Calculation**: Per-file hash → `SHA-256SUMS` file
+5. **Metadata Generation**: JSON with app version, commit hash, trigger type
+6. **ZIP Packaging**: ZIP64 for >4GB support
+7. **ZIP Checksum**: SHA-256 of the entire archive
+8. **Retention Cleanup**: Delete oldest backups if configured
+
+**Include Paths** (default):
+```python
+INCLUDE_PATHS = [
+    "data/projects",          # All project data
+    "data/audit.db",          # Audit trail
+    "data/a2a_tasks.db",      # A2A task manager
+    "data/blueprints.db",     # Blueprint repository
+    "config/settings.yaml",   # App configuration
+    "config/a2a.json",        # A2A server config
+    "config/llm_profiles.yaml", # LLM profiles with API keys
+]
+```
+
+**Exclude Patterns**:
+```python
+EXCLUDE_PATTERNS = [
+    ".git/", ".venv/", "node_modules/", "__pycache__/",
+    "*.pyc", "logs/", "memory/", ".env", "frontend/dist/",
+    "backups/", ".idea/", ".vscode/", "*.tmp", "*.bak",
+    "*.swp", ".DS_Store", "Thumbs.db",
+]
+```
+
+---
+
+### 10.4 Backup Metadata
+
+Each backup contains a `metadata.json` file:
+
+```json
+{
+    "version": 1,
+    "app_version": "2.0.0",
+    "commit_hash": "7e40355...",
+    "created_at": "2026-05-15T02:30:00Z",
+    "created_by": "api-endpoint",
+    "trigger": "manual",
+    "file_count": 342,
+    "total_bytes": 83886080,
+    "paths_included": ["data/", "config/"],
+    "db_schema_versions": {
+        "audit.db": "v25",
+        "blueprints.db": "v1"
+    },
+    "settings": {
+        "backup_auto_on_shutdown": false,
+        "backup_retention_count": 0,
+        "backup_encrypt": false
+    }
+}
+```
+
+---
+
+### 10.5 Backup Verification
+
+Verification checks:
+1. **ZIP Integrity**: `zf.testzip()` for corrupted files
+2. **SHA-256SUMS**: Verify each file's hash matches the stored checksum
+3. **Metadata Validation**: Ensure `metadata.json` exists and is valid JSON
+
+```python
+result = service.verify_backup("danwa-backup-2026-05-15T02-30-00Z.zip")
+# VerificationResult(valid=True, errors=[], file_count_verified=342)
+```
+
+---
+
+### 10.6 Backup Restoration
+
+Restoration process:
+1. **Integrity Check**: Verify ZIP before extraction
+2. **Path Safety**: Ensure all extracted paths stay within project root
+3. **Extraction**: Write files to their original locations
+4. **Error Handling**: Report any files that failed to restore
+
+```python
+result = BackupService.restore(Path("backups/danwa-backup-2026-05-15T02-30-00Z.zip"))
+# RestoreResult(success=True, message="Restore completed: 342 files restored", restored_files=342)
+```
+
+⚠️ **Warning**: Restoration overwrites existing data. The application should be stopped before restoring.
+
+---
+
+### 10.7 Backup Configuration
+
+Settings in `backend/core/config.py`:
+
+```python
+class Settings(BaseSettings):
+    # Backup settings
+    backup_enabled: bool = True
+    backup_auto_on_shutdown: bool = False     # Default: opt-in
+    backup_retention_count: int = 0            # 0 = unlimited
+    backup_encrypt: bool = False               # Not yet implemented
+    backup_dir: str = "backups"
+```
+
+---
+
+### 10.8 Shutdown Auto-Backup
+
+Integrated into `backend/main.py` lifespan:
+
+```python
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ... startup logic ...
+    yield
+
+    # Shutdown backup (opt-in)
+    if settings.backup_auto_on_shutdown:
+        from backend.persistence.backup import BackupService
+        service = BackupService()
+        result = service.create_backup(trigger="shutdown")
+        logger.info("Shutdown backup created: %s", result.path)
+```
+
+---
+
+### 10.9 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/config/backup` | Create backup (`{"trigger": "manual|shutdown"}`) |
+| `GET` | `/api/v1/config/backups` | List all backups with metadata |
+| `GET` | `/api/v1/config/backups/{id}` | Get backup metadata |
+| `GET` | `/api/v1/config/backups/{id}/files` | List files in backup |
+| `POST` | `/api/v1/config/backups/{id}/verify` | Verify backup integrity |
+| `POST` | `/api/v1/config/backups/{id}/restore` | Restore from backup |
+| `DELETE` | `/api/v1/config/backups/{id}` | Delete a backup |
+| `GET` | `/api/v1/config/backup-settings` | Get backup settings |
+| `PUT` | `/api/v1/config/backup-settings` | Update backup settings |
+
+---
+
+### 10.10 Frontend Integration
+
+**Stores** (`frontend/src/lib/stores.js`):
+```javascript
+export const backupConfig = persisted('danwa.backupConfig', {
+    autoOnShutdown: false,
+    retentionCount: 0,
+    encrypt: false
+});
+export const backups = writable([]);
+export const backupDetails = writable(null);
+export const isLoadingBackups = writable(false);
+```
+
+**API Functions** (`frontend/src/lib/api.js`):
+- `createBackup(trigger)`
+- `getBackups()`
+- `getBackup(backupId)`
+- `getBackupFiles(backupId)`
+- `verifyBackup(backupId)`
+- `restoreBackup(backupId)`
+- `deleteBackup(backupId)`
+- `getBackupSettings()`
+- `updateBackupSettings(settings)`
+
+**UI** (`frontend/src/views/ConfigView.svelte`):
+- Backup settings tab with checkboxes and number inputs
+- Backup creation button with progress feedback
+- Backup list table with actions (verify, restore, delete, view files)
+- File list panel for backup contents
+
+---
+
+### 10.11 Testing
+
+**Unit Tests** (`tests/backend/test_backup.py`):
+- `TestBackupResult`, `TestBackupMetadata`, `TestVerificationResult`, `TestRestoreResult`
+- `TestCreateBackup`: ZIP creation, metadata.json, SHA-256SUMS, project data, exclusions, triggers
+- `TestListBackups`: Empty directory, sorted listing
+- `TestVerifyBackup`: Valid backup, non-existent backup, invalid ZIP
+- `TestRestore`: Restore from backup, non-existent file, invalid ZIP
+- `TestGetBackupFileList`: File list, non-existent backup
+
+**Integration Tests** (`tests/backend/test_backup_api.py`):
+- `TestCreateBackupAPI`: Create backup with manual/shutdown triggers
+- `TestListBackupsAPI`: Empty list, list after creation
+- `TestGetBackupAPI`: Metadata retrieval, 404 handling
+- `TestListBackupFilesAPI`: File listing
+- `TestVerifyBackupAPI`: Valid backup verification
+- `TestRestoreBackupAPI`: Full restore workflow
+- `TestDeleteBackupAPI`: Backup deletion
+- `TestBackupSettingsAPI`: Get/update settings
+
+---
+
+## 11. Blueprint System
+
+### 11.1 Overview
 
 The Blueprint System is a visual workflow editor that allows users to create, manage, and execute custom multi-agent workflows through a graphical interface. It provides a canvas-based editor for designing workflows with nodes and edges, which can then be compiled into executable LangGraph workflows.
 
@@ -1431,9 +1684,9 @@ SQLite-backed storage for blueprints:
 
 ---
 
-## 11. HITL (Human-in-the-Loop) System
+## 12. HITL (Human-in-the-Loop) System
 
-### 11.1 Overview
+### 12.1 Overview
 
 The HITL system enables human interaction with running workflows, allowing users to:
 - Query agents for clarification
@@ -1499,9 +1752,9 @@ HITL security features:
 
 ---
 
-## 12. Input/Output Plugin System
+## 13. Input/Output Plugin System
 
-### 12.1 Overview
+### 13.1 Overview
 
 The Input/Output plugin system provides extensible architecture for:
 - **Input plugins**: Process various input sources (audio, text, files)
@@ -1625,9 +1878,9 @@ class RenderJob:
 
 ---
 
-## 13. Data Models & Schemas
+## 14. Data Models & Schemas
 
-### 13.1 Pydantic Schemas (`backend/models/schemas.py`)
+### 14.1 Pydantic Schemas (`backend/models/schemas.py`)
 
 #### 13.1.1 Enums
 
@@ -1769,9 +2022,9 @@ class PromptVariant(BaseModel):
 
 ---
 
-## 14. API Reference
+## 15. API Reference
 
-### 14.1 Debate Endpoints
+### 15.1 Debate Endpoints
 
 #### POST /api/v1/debate
 Create a new debate.
@@ -1989,9 +2242,9 @@ JSON-RPC 2.0 endpoint for A2A protocol methods.
 
 ---
 
-## 15. Configuration
+## 16. Configuration
 
-### 15.1 Environment Variables
+### 16.1 Environment Variables
 
 Prefix: `DANWA_` (configured in `backend/core/config.py`)
 
@@ -2079,9 +2332,9 @@ tags: [default, balanced]
 
 ---
 
-## 16. A2A Protocol Integration
+## 17. A2A Protocol Integration
 
-### 16.1 Overview
+### 17.1 Overview
 
 Danwa implements the [A2A (Agent-to-Agent) protocol](https://github.com/google/A2A) for interoperability with external AI agents. The integration supports two modes:
 
@@ -2189,9 +2442,9 @@ A2A integration has comprehensive test coverage:
 
 ---
 
-## 17. Development Guide
+## 18. Development Guide
 
-### 17.1 Prerequisites
+### 18.1 Prerequisites
 
 - **Python 3.11+**
 - **uv** (Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
@@ -2384,9 +2637,9 @@ testpaths = ["tests/backend"]
 
 ---
 
-## 18. Deployment
+## 19. Deployment
 
-### 18.1 Production Build
+### 19.1 Production Build
 
 ```bash
 # Build frontend
