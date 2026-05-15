@@ -19,8 +19,8 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.responses import EventSourceResponse
 from pydantic import BaseModel, Field
+from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe

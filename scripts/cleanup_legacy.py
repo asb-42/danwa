@@ -19,7 +19,7 @@ import argparse
 import json
 import logging
 import shutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 logging.basicConfig(
@@ -86,7 +86,7 @@ def mark_directory_as_deprecated(legacy_path: Path, new_module: str) -> bool:
     deprecated_file = legacy_path / "DEPRECATED.txt"
     if deprecated_file.exists():
         return False
-    timestamp = datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     content = DEPRECATED_CONTENT.format(timestamp=timestamp, new_module=new_module)
     deprecated_file.write_text(content, encoding="utf-8")
     logger.info("Markiert als DEPRECATED: %s → %s", legacy_path, new_module)
@@ -101,7 +101,7 @@ def mark_subdir_deprecated(legacy_path: Path, new_module: str) -> int:
             continue
         deprecated_file = subdir / "DEPRECATED.txt"
         if not deprecated_file.exists():
-            timestamp = datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+            timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
             content = DEPRECATED_CONTENT.format(timestamp=timestamp, new_module=new_module)
             deprecated_file.write_text(content, encoding="utf-8")
             logger.info("  Markiert: %s", subdir)
@@ -157,7 +157,7 @@ def do_remove():
         return
 
     # Backup erstellen
-    backup_dir = ROOT / "backups" / "legacy-cleanup" / datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S")
+    backup_dir = ROOT / "backups" / "legacy-cleanup" / datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     safe = [f for f in files if f["is_safe"]]
@@ -185,7 +185,7 @@ def do_remove():
 
     # Manifest schreiben
     manifest = {
-        "timestamp": datetime.now(datetime.UTC).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "removed_count": removed,
         "skipped_count": len(unsafe),
         "backup_dir": str(backup_dir.relative_to(ROOT)),

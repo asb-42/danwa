@@ -245,7 +245,7 @@ async def stream_report_progress(session_id: str):
     Yields ``report.progress`` events for all report jobs belonging to
     the given session.
     """
-    from fastapi.responses import EventSourceResponse
+    from sse_starlette.sse import EventSourceResponse
 
     async def event_generator():
         queue = subscribe(session_id)
