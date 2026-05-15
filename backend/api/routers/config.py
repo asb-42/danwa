@@ -274,7 +274,7 @@ def list_backup_files(backup_id: str):
 
 
 @router.post("/backups/{backup_id}/verify", response_model=dict)
-def verify_backup(body: BackupVerifyBody):
+def verify_backup(backup_id: str):
     """Verify the integrity of a backup.
 
     Checks the ZIP structure and validates SHA-256 checksums.
@@ -283,7 +283,7 @@ def verify_backup(body: BackupVerifyBody):
         raise HTTPException(status_code=403, detail="Backup is disabled in settings")
 
     service = _get_backup_service()
-    result: VerificationResult = service.verify_backup(body.backup_id)
+    result: VerificationResult = service.verify_backup(backup_id)
     return result.to_dict()
 
 

@@ -266,7 +266,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
      backupCreateMessage = '';
      try {
        const result = await apiCreateBackup();
-       backupCreateMessage = t('backup.created') || 'Backup created: ' + result.backup_id;
+        backupCreateMessage = t('backup.created', { id: result.backup_id });
        await loadBackups();
      } catch (e) {
        error.set(e.message);
@@ -883,7 +883,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
           <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('backup.create') || 'Create Backup'}</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('backup.description') || 'Create a backup of all project data and settings.'}</p>
            <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleCreateBackup} disabled={isCreatingBackup}>
-            {isCreatingBackup ? '...' : (t('common.create') || 'Create')}
+             {isCreatingBackup ? '...' : (t('backup.create') || 'Create Backup')}
           </button>
           {#if backupCreateMessage}
             <p class="mt-2 text-sm text-green-600 dark:text-green-400">{backupCreateMessage}</p>
@@ -949,9 +949,9 @@ import ModuleManager from '../components/ModuleManager.svelte';
                 <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none" onclick={closeFileList}>✕</button>
               </div>
               <div class="px-6 py-4">
-                {#if backupDetails}
+                {#if $backupDetails}
                   <ul class="space-y-1">
-                    {#each backupDetails as file}
+                    {#each $backupDetails as file}
                       <li class="text-sm text-gray-700 dark:text-gray-300 py-1 border-b border-gray-100 dark:border-gray-700">{file}</li>
                     {/each}
                   </ul>
