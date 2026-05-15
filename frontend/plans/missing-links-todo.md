@@ -1,223 +1,225 @@
-# Missing Links - Implementation TODO
+# Missing Links – Unimplemented UI Elements
 
-This document aggregates all features that exist in the backend API or codebase but are not yet fully exposed in the UI. Each item represents a potential implementation project.
-
----
-
-## Priority 1: High Impact / Low Effort
-
-### 1. Reports Generation UI
-| Attribute | Value |
-|-----------|-------|
-| **Status** | API Implemented, UI Not Implemented |
-| **Priority** | High |
-| **Effort** | Low-Medium |
-
-**API Functions** (already exist in `src/lib/api.js` lines 385-398):
-- `generateReport(sessionId, format)` - POST `/api/v1/sessions/{id}/report`
-- `getReportStatus(jobId)` - GET `/api/v1/reports/{job_id}/status`
-- `downloadReport(jobId)` - GET `/api/v1/reports/{job_id}/download`
-
-**Required Work**:
-- Create new view: `ReportsView.svelte`
-- Add route: `#/reports`
-- Add navigation entry in Sidebar
-- UI components:
-  - Report generation form (select session, format: JSON/PDF/CSV)
-  - Job status indicator (pending/completed/failed)
-  - Download button for completed reports
+Dieses Dokument listet alle UI-Elemente auf, die im Code vorhanden sind (Backend-API, Translation-Keys, Komponenten), aber noch nicht vollständig in die Benutzeroberfläche integriert sind.
 
 ---
 
-### 2. Backend Logs View (Standalone)
-| Attribute | Value |
-|-----------|-------|
-| **Status** | API Implemented, UI Partial |
-| **Priority** | High |
-| **Effort** | Low |
+## Priorität 1: Hoher Nutzen / Geringer Aufwand
 
-**Current State**: Logs accessible only via Config > System tab
+### 1. Reports-Generierung: Eigenständige Seite
+| Attribut | Wert |
+|----------|------|
+| **Status** | API implementiert, UI fehlt |
+| **Priorität** | Hoch |
+| **Aufwand** | Mittel |
 
-**Required Work**:
-- Create new view: `LogsView.svelte`
-- Add route: `#/logs`
-- Add navigation entry in Sidebar
-- Enhanced features:
-  - Auto-refresh toggle
-  - Log level filtering (ERROR, WARN, INFO, DEBUG)
-  - Search with regex support
-  - Download logs as file
+**Vorhanden:**
+- API: `generateReport()`, `getReportStatus()`, `downloadReport()`, SSE-Progress-Stream (`src/lib/api.js:424-448`)
+- Translation-Keys: `report.title`, `report.generate`, `report.format`, `report.status.*`, `report.download` (en.js + de.js)
+- `DebateReportPanel`-Komponente existiert in `DebateView.svelte` (Zeile 1006)
 
----
-
-## Priority 2: Medium Impact / Medium Effort
-
-### 3. A2A Agent Management Page
-| Attribute | Value |
-|-----------|-------|
-| **Status** | Component Exists, No Navigation |
-| **Priority** | Medium |
-| **Effort** | Medium |
-
-**Existing Component**: `src/components/blueprint/A2ACapabilities.svelte`
-
-**Required Work**:
-- Create new view: `A2AAgentsView.svelte`
-- Add route: `#/a2a-agents`
-- Add navigation entry in Sidebar
-- UI components:
-  - List of configured external agents
-  - Add/Edit/Remove agent forms
-  - Agent capability display (skills, input/output modes)
-  - Test connection button
-  - Discovery feature (fetch `/.well-known/agent.json`)
+**Fehlt:**
+- `ReportsView.svelte` (eigene Seite)
+- Route `#/reports` in `App.svelte`
+- Navigations-Eintrag in `Sidebar.svelte`
+- Report-Generierungsformular (Sitzung + Format auswählen)
+- Job-Status-Anzeige (pending/completed/failed)
+- Download-Button für fertige Berichte
 
 ---
 
-### 4. Session Archive Management UI
-| Attribute | Value |
-|-----------|-------|
-| **Status** | API Implemented, UI Partial |
-| **Priority** | Medium |
-| **Effort** | Medium |
+### 2. Backend-Logs: Eigenständige Seite
+| Attribut | Wert |
+|----------|------|
+| **Status** | API implementiert, UI teilweise vorhanden |
+| **Priorität** | Hoch |
+| **Aufwand** | Gering |
 
-**API Functions** (in `src/lib/api.js` lines 404-410):
-- `softDeleteSession(sessionId)` - Soft-delete (archive)
-- `restoreSession(sessionId)` - Restore archived session
+**Vorhanden:**
+- API: `getBackendLogs()` (`src/lib/api.js:386-390`)
+- UI-Teil existiert inline in `ConfigView.svelte` (System-Tab, Zeilen 977-994)
 
-**Current State**: Accessible only via Replay/Diff views
-
-**Required Work**:
-- Create new view: `ArchiveManagerView.svelte`
-- Add route: `#/archive-manager`
-- Add navigation entry in Sidebar
-- UI components:
-  - List of archived sessions with filters (date, project)
-  - Restore button per session
-  - Permanent delete option
-  - Bulk actions (restore multiple, delete multiple)
+**Fehlt:**
+- `LogsView.svelte` (eigene Seite)
+- Route `#/logs` in `App.svelte`
+- Navigations-Eintrag in `Sidebar.svelte`
+- Auto-Refresh-Toggle
+- Log-Level-Filterung (ERROR, WARN, INFO, DEBUG)
+- Regex-Suche
+- Download als Datei
 
 ---
 
-### 5. Profile Hot-Reload with UI Feedback
-| Attribute | Value |
-|-----------|-------|
-| **Status** | API Implemented, UI Partial |
-| **Priority** | Medium |
-| **Effort** | Low |
+## Priorität 2: Mittlerer Nutzen / Mittlerer Aufwand
 
-**API Function** (in `src/lib/api.js` line 344):
-- `reloadProfiles()` - POST `/api/v1/system/reload-profiles`
+### 3. A2A Agenten-Verwaltung
+| Attribut | Wert |
+|----------|------|
+| **Status** | Komponente existiert, keine Navigation |
+| **Priorität** | Mittel |
+| **Aufwand** | Mittel |
 
-**Current State**: Only accessible via Config > System tab
+**Vorhanden:**
+- `A2ACapabilities.svelte`-Komponente (`src/components/blueprint/A2ACapabilities.svelte`)
+- `A2AApprovalCard.svelte` wird in `InputComposerView.svelte` verwendet (Zeilen 348-363)
+- Translation-Keys vollständig vorhanden (en.js Zeilen 384-394, de.js Zeilen 382-394)
+- Discovery-Feature (`.well-known/agent.json`)
 
-**Required Work**:
-- Add to existing Config view or create dedicated panel
-- Enhanced features:
-  - Live progress indicator during reload
-  - Summary of changes (profiles added/updated/removed)
-  - Error reporting with details
-
----
-
-## Priority 3: Lower Impact / Higher Effort
-
-### 6. Blueprint Layout Persistence
-| Attribute | Value |
-|-----------|-------|
-| **Status** | ELKjs Implemented, Persistence Partial |
-| **Priority** | Low-Medium |
-| **Effort** | Medium |
-
-**Existing Code**: `src/lib/blueprint/layout.js`
-
-**Required Work**:
-- Implement full persistence to backend:
-  - Save layout to `/api/v1/blueprints` or localStorage
-  - Load layout on app start
-  - Version/history support
-- UI enhancements:
-  - Rename layouts
-  - Duplicate layouts
-  - Export/import layouts as JSON
+**Fehlt:**
+- `A2AAgentsView.svelte` (eigene Seite)
+- Route `#/a2a-agents` in `App.svelte`
+- Navigations-Eintrag in `Sidebar.svelte`
+- Liste konfigurierter externer Agenten
+- Add/Edit/Remove-Formulare
+- Capabilities-Anzeige (Skills, Input/Output-Modi)
+- Test-Connection-Button
+- Discovery-Feature ("Entdecken"-Button)
 
 ---
 
-### 7. Multi-Profile Cost Comparison View
-| Attribute | Value |
-|-----------|-------|
-| **Status** | API Implemented, UI Basic |
-| **Priority** | Low |
-| **Effort** | Medium |
+### 4. Sitzungs-Archiv-Verwaltung
+| Attribut | Wert |
+|----------|------|
+| **Status** | API implementiert, UI teilweise vorhanden |
+| **Priorität** | Mittel |
+| **Aufwand** | Mittel |
 
-**API Function** (in `src/lib/api.js` line 212):
-- `estimateCost(llmProfileId, numAgents, numRounds)`
+**Vorhanden:**
+- API: `softDeleteSession()`, `restoreSession()` (`src/lib/api.js:469-475`)
+- Archivieren/Wiederherstellen-Buttons sind inline in `ArchiveView.svelte` vorhanden
+- Translation-Keys: `session.softDelete`, `session.restore`, `session.archived`
 
-**Current State**: Basic form in Config > Cost tab, no comparison
-
-**Required Work**:
-- Enhance existing Cost tab or create new comparison view
-- UI components:
-  - Select multiple LLM profiles to compare
-  - Fixed parameters (agents, rounds) or allow variation
-  - Visual comparison chart (bar chart)
-  - Summary recommendation (best cost/efficiency)
-
----
-
-### 8. Standalone Workflow Execution Panel
-| Attribute | Value |
-|-----------|-------|
-| **Status** | API + Components Implemented |
-| **Priority** | Low |
-| **Effort** | High |
-
-**Existing Component**: `src/components/workflow/ExecutionPanel.svelte`
-
-**Current State**: Only integrated into DebateView
-
-**Required Work**:
-- Extract as standalone view: `WorkflowExecutionView.svelte`
-- Add route: `#/execution`
-- Add navigation entry (or floating button)
-- Enhanced features:
-  - Multiple concurrent executions view
-  - Execution queue management
-  - Pause/Resume/Cancel controls
-  - Execution history per workflow
+**Fehlt:**
+- `ArchiveManagerView.svelte` (eigene Seite)
+- Route `#/archive-manager` in `App.svelte`
+- Navigations-Eintrag in `Sidebar.svelte`
+- Gefilterte Liste (Datum, Projekt)
+- Bulk-Aktionen (mehrere wiederherstellen/löschen)
+- Option für endgültiges Löschen
 
 ---
 
-## Implementation Order Recommendation
+### 5. Profil-Hot-Reload mit UI-Feedback
+| Attribut | Wert |
+|----------|------|
+| **Status** | API implementiert, UI minimal |
+| **Priorität** | Mittel |
+| **Aufwand** | Gering |
 
-```
-Phase 1 (Quick Wins):
-├── 1. Backend Logs View (Standalone)
-└── 5. Profile Hot-Reload UI
+**Vorhanden:**
+- API: `reloadProfiles()` (`src/lib/api.js:382-384`)
+- Button existiert in ConfigView > System-Tab (Zeile 961)
 
-Phase 2 (Core Features):
-├── 2. Reports Generation UI
-├── 3. A2A Agent Management Page
-└── 4. Session Archive Management UI
-
-Phase 3 (Enhancements):
-├── 6. Blueprint Layout Persistence
-├── 7. Multi-Profile Cost Comparison
-└── 8. Standalone Workflow Execution Panel
-```
+**Fehlt:**
+- Live-Fortschrittsindikator während des Reloads
+- Zusammenfassung der Änderungen (hinzugefügte/aktualisierte/entfernte Profile)
+- Detaillierte Fehlerberichterstattung
 
 ---
 
-## Source References
+## Priorität 3: Geringerer Nutzen / Höherer Aufwand
 
-- Technical Documentation: `docs/technical_documentation.md`
-- User Manual: `docs/user_manual.md`
-- README: `README.md`
-- API Code: `src/lib/api.js`
-- Blueprint Layout: `src/lib/blueprint/layout.js`
-- Existing Components: `src/components/blueprint/A2ACapabilities.svelte`, `src/components/workflow/ExecutionPanel.svelte`
+### 6. Blueprint-Layout-Persistenz (Backend-Anbindung)
+| Attribut | Wert |
+|----------|------|
+| **Status** | Teilweise implementiert |
+| **Priorität** | Mittel-Niedrig |
+| **Aufwand** | Mittel |
+
+**Vorhanden:**
+- API: `getCanvasLayout()`, `createCanvasLayout()`, `updateCanvasLayout()` (`src/lib/blueprint/api.js`)
+- Save/Load/Delete-Dialoge existieren in `BlueprintCanvasView.svelte`
+- Palette zeigt "No saved layouts" an
+
+**Fehlt:**
+- `listCanvasLayouts()` wird nie aufgerufen → Layouts werden nicht in der Palette angezeigt
+- Auto-Laden beim App-Start
+- Versions-/Historienunterstützung
+- Layout-Umbenennung, Duplizierung, Export/Import als JSON
 
 ---
 
-*Generated: 2025-05-09*
-*Source: Aggregated from technical_documentation.md, user_manual.md, README.md*
+### 7. Multi-Profil-Kostenvergleich
+| Attribut | Wert |
+|----------|------|
+| **Status** | API implementiert, UI-Basis vorhanden |
+| **Priorität** | Niedrig |
+| **Aufwand** | Mittel |
+
+**Vorhanden:**
+- API: `estimateCost()` (`src/lib/api.js:246-248`)
+- Basisformular im Config-Tab "Cost" (Zeilen 868-902)
+- Translation-Keys: `config.costEstimate`, `config.estimatedCost`
+
+**Fehlt:**
+- Auswahl mehrerer LLM-Profile zum Vergleich
+- Visuelles Balkendiagramm für den Vergleich
+- Zusammenfassungsempfehlung (bestes Kosten-Nutzen-Verhältnis)
+
+---
+
+### 8. Eigenständige Workflow-Ausführungs-Seite
+| Attribut | Wert |
+|----------|------|
+| **Status** | Komponente implementiert, nicht eigenständig nutzbar |
+| **Priorität** | Niedrig |
+| **Aufwand** | Hoch |
+
+**Vorhanden:**
+- `ExecutionPanel.svelte` (`src/components/blueprint/ExecutionPanel.svelte`) ist voll funktionsfähig
+- Übersetzungs-Keys vollständig vorhanden (`workflow.execution.*`)
+
+**Fehlt:**
+- `WorkflowExecutionView.svelte` (eigene Seite)
+- Route `#/execution` in `App.svelte`
+- Navigations-Eintrag oder Floating-Action-Button
+- Mehrere gleichzeitige Ausführungen (Multi-Session-Ansicht)
+- Ausführungswarteschlange-Management
+- Pause/Fortsetzen/Abbruch-Steuerung
+- Ausführungsverlauf pro Workflow
+
+---
+
+## Zusätzliche fehlende Integrationen
+
+### 9. Übersetzungs-Dashboard: Keine Navigation
+- **Status**: `TranslationDashboard.svelte` existiert, Route `#/translation` ist in `App.svelte` eingerichtet
+- **Fehlt**: Navigations-Eintrag in `Sidebar.svelte` (Key `nav.translation` existiert in en.js/de.js, aber wird nicht verwendet)
+
+### 10. Optimierungs-Vorschläge: Unbenutzte Komponente
+- **Status**: `ProposalsPanel.svelte` existiert mit voller Funktionalität (Approve/Reject über `/api/v1/optimization-proposals/*`)
+- **Fehlt**: Wird nirgends importiert oder eingebunden; `workflow.reflect.proposals`-Translation-Key existiert, hat aber kein UI
+
+### 11. Modul-Manager: Keine eigene Seite
+- **Status**: `ModuleManager.svelte` existiert, ist in `ConfigView.svelte` eingebunden (`modules`-Tab)
+- **Fehlt**:Eigenständige Seite, Sidebar-Navigation, direkte Module-Registrierung/Deinstallation außerhalb der Config
+
+### 12. Dashboard Workflow-Graph: Platzhalter
+- **Status**: Platzhalter-Box in `Dashboard.svelte` (Zeile 183-188)
+- **Text**: "Workflow graph visualization — coming in Sprint 4" / "Workflow-Graph-Visualisierung — kommt in Sprint 4"
+- **Fehlt**: ELK.js-Graphvisualisierung
+
+### 13. Audit Trail Visualisierung: Platzhalter
+- **Status**: Platzhalter-Box in `AuditView.svelte` (Zeile 182-187)
+- **Text**: "Audit trail visualization — coming in Sprint 4" / "Prüfpfad-Visualisierung — kommt in Sprint 4"
+- **Fehlt**: Graphische Visualisierung des Audit-Trails
+
+---
+
+## Zusammenfassung
+
+| Kategorie | Anzahl | Wesentliche Punkte |
+|-----------|--------|-------------------|
+| Neue Seiten + Routen + Sidebar-Navigation | 4 | Reports, Logs, A2A-Agenten, Archiv-Manager |
+| Vorhandene Komponenten erweitern | 3 | Hot-Reload-Feedback, Kostenvergleich, Execution-Panel eigenständig |
+| Layout-Persistenz (Backend ↔ UI) | 1 | Blueprint-Layout-Listen/-Laden/-Speichern |
+| Fehlende Navigations-Einträge | 2 | Übersetzungs-Dashboard, Modul-Manager |
+| Unbenutzte Komponenten integrieren | 1 | Optimierungs-Vorschläge |
+| Platzhalter-Visualisierungen | 2 | Dashboard-Workflow-Graph, Audit-Trail |
+
+**Gesamt: 13 nicht implementierte UI-Elemente**
+
+---
+
+*Erstellt: 2026-05-15*
+*Quellen: App.svelte, Sidebar.svelte, ConfigView.svelte, Dashboard.svelte, BlueprintCanvasView.svelte, AuditView.svelte, ArchiveView.svelte, DebateView.svelte, TranslationDashboard.svelte, OutputComposerView.svelte, InputComposerView.svelte, DocumentsView.svelte, ExecutionPanel.svelte, ProposalsPanel.svelte, api.js, en.js, de.js, missing-links-todo.md (ursprünglich)*
