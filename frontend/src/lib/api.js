@@ -1,5 +1,5 @@
 /**
- * API client for Debate Engine v2.0 backend.
+ * API client for Danwa backend.
  * All communication in English (Accept-Language: en).
  */
 

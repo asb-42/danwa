@@ -46,7 +46,7 @@
   <!-- Logo / Brand -->
   <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
     <span class="text-xl font-bold text-gray-800 dark:text-white">Danwa</span>
-    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v{$appVersion || '2.0.0'}</span>
+    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v{$appVersion || '…'}</span>
   </div>
 
   <!-- Project Selector -->

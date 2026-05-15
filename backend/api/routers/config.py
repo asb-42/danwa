@@ -7,6 +7,8 @@ been moved to the ``profiles`` router.
 from __future__ import annotations
 
 import logging
+import os
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -164,9 +166,23 @@ def set_language(body: LanguageBody) -> dict:
 @router.get("/version")
 async def get_version(settings: Settings = Depends(get_settings)):
     """Return the current application version from the single source of truth."""
+    commit = ""
+    try:
+        commit = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        commit = os.environ.get("GIT_COMMIT_HASH", "")
+
     return {
         "version": settings.app_version,
         "build": datetime.now(UTC).isoformat(),
+        "commit": commit,
     }
 
 
