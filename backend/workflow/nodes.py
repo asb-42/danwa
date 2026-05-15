@@ -113,17 +113,28 @@ def _get_search_tool() -> WebSearchTool:
 
 
 def initialize_node(state: DebateState) -> dict:
-    """Set up initial runtime state."""
-    return {
-        "current_round": 1,
-        "current_agent_index": 0,
-        "current_draft": "",
-        "final_consensus": 0.0,
-        "output": "",
-        "validation_report": [],
-        "used_variant": state.get("prompt_variant", "default"),
-        "anomalies": [],
-    }
+     """Set up initial runtime state."""
+     return {
+         "current_round": 1,
+         "current_agent_index": 0,
+         "current_draft": "",
+         "final_consensus": 0.0,
+         "output": "",
+         "validation_report": [],
+         "used_variant": state.get("prompt_variant", "default"),
+         "anomalies": [],
+         # --- HITL fields (safe defaults when HITL is not enabled) ---
+         "interactions": [],
+         "active_interrupt": None,
+         "hitl_enabled": state.get("hitl_enabled", False),
+         "hitl_mode": state.get("hitl_mode", "off"),
+         "auto_query_threshold": state.get("auto_query_threshold", 0.4),
+         "max_interrupts_per_round": state.get("max_interrupts_per_round", 3),
+         "interrupt_timeout_seconds": state.get("interrupt_timeout_seconds", 300),
+         "pending_injects": [],
+         "round_interrupt_count": 0,
+         "is_paused": False,
+     }
 
 
 async def run_agent_node(state: DebateState) -> dict:
