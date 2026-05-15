@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 
 from backend.api.events import publish_async
 from backend.core.config import is_service_llm_eligible, settings
@@ -672,6 +673,8 @@ async def run_debate_workflow(
 
     from backend.workflow.hitl.api import cleanup_hitl_state
 
+    # Auto-create DMS document for RAG retrieval (Plan 19, P3)
+    await on_debate_completed(debate_id, project_id)
     cleanup_hitl_state(debate_id)
 
     logger.info(
@@ -680,3 +683,424 @@ async def run_debate_workflow(
         result.get("current_round", 0),
         result.get("final_consensus", 0.0),
     )
+
+
+# ---------------------------------------------------------------------------
+# Follow-up debate helpers (Plan 19, P0 + P1)
+# ---------------------------------------------------------------------------
+
+def build_followup_case(debate_id: str, focus_topic: str | None = None, store: DebateStore | None = None) -> str:
+    """Baut einen neuen case_text aus den Ergebnissen der Vordebatte (P0)."""
+    debate = store.get(debate_id) if store else None
+    if not debate:
+        return focus_topic or "Fortsetzung einer vorherigen Debatte."
+
+    transcript = _build_transcript_for_followup(debate)
+
+    # Die stärksten Argumente pro Rolle extrahieren
+    summaries = []
+    for round_data in transcript.get("rounds", []):
+        for output in round_data.get("agent_outputs", []):
+            if output.get("role") in ("strategist", "moderator", "critic", "optimizer"):
+                content = output.get("content", "")
+                if content:
+                    summaries.append(f"[{output['role']}]: {content[:250]}")
+
+    consensus = transcript.get("final_consensus", 0.0)
+    current_round = transcript.get("current_round", 0)
+    title = debate.get("title", "unbenannte Debatte")
+
+    prompt = (
+        f"Kontext aus der vorherigen Debatte (ID: {debate_id}):\n\n"
+        f"Die Debatte '{title}' wurde nach "
+        f"{current_round} Runden mit einem "
+        f"Konsensgrad von {consensus * 100:.0f}% abgeschlossen.\n\n"
+        f"Wichtigste Argumente:\n"
+        + "\n\n".join(summaries[-10:])
+        + f"\n\nNeuer Fokus: {focus_topic or 'Vertiefung des Themas'}\n\n"
+        "Führe diese Debatte fort und baue auf den vorherigen Ergebnissen auf."
+    )
+    return prompt
+
+
+def build_followup_prompt(previous_debate: dict, new_topic: str) -> str:
+    """Erstellt einen strukturierten Prompt mit Rollen-Anweisungen (P1)."""
+
+    strongest: dict[str, list[str]] = {}
+    for round_data in previous_debate.get("rounds", []):
+        for output in round_data.get("agent_outputs", []):
+            role = output.get("role", "unknown")
+            if role not in strongest:
+                strongest[role] = []
+            content = output.get("content", "")
+            if content:
+                strongest[role].append(content[:200])
+
+    prompt_parts = [
+        f"""Du bist Teil eines Multi-Agenten-Debattensystems.
+
+## Kontext
+Eine vorherige Debatte zum Thema "{previous_debate.get('title', '')}"
+wurde nach {previous_debate.get('current_round', '?')} Runden mit einem
+Konsensgrad von {previous_debate.get('final_consensus', 0) * 100:.0f}% abgeschlossen.
+""",
+    ]
+
+    for role, contents in strongest.items():
+        prompt_parts.append(f"\n### {role.upper()} — Wichtigste Argumente:\n")
+        for c in contents[-3:]:
+            prompt_parts.append(f"- {c}")
+
+    prompt_parts.extend([
+        f"\n## Neue Aufgabe",
+        f"Diskutiere nun: **{new_topic}**",
+        "",
+        "Richtlinien:",
+        "1. Baue auf den vorherigen Erkenntnissen auf",
+        "2. Widerlege oder bestätige frühere Schlussfolgerungen",
+        "3. Bringe neue Perspektiven ein, die in der Origin-Debatte fehlten",
+        "",
+        "Halte den Prompt unter 4.000 Tokens.",
+    ])
+
+    return "\n".join(prompt_parts)
+
+
+def _build_transcript_for_followup(debate: dict) -> dict:
+    """Hilfsfunktion: Erzeugt Transcript-Dict aus roher Debate-Daten."""
+    result = debate.get("result", {})
+    rounds = debate.get("rounds", [])
+    if not rounds and result:
+        rounds = result.get("rounds", [])
+    return {
+        "current_round": debate.get("current_round", result.get("current_round", 0)),
+        "final_consensus": result.get("final_consensus", debate.get("final_consensus", 0.0)),
+        "rounds": rounds,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Fork debate helper (Plan 19, P4)
+# ---------------------------------------------------------------------------
+
+def create_fork_debate(
+    original_debate_id: str,
+    new_title: str,
+    fork_from_round: int | None,
+    fork_reason: str | None,
+    modified_personas: dict[str, str] | None,
+    modified_prompt_variant: str | None,
+    store: DebateStore,
+    inherit_personas: bool = True,
+    inherit_llm_profile: bool = True,
+) -> dict:
+    """Erstellt eine Deep-Copy einer Debatte als Fork (P4)."""
+    import copy
+    import uuid
+    from datetime import UTC, datetime
+
+    original = store.get(original_debate_id)
+    if not original:
+        raise ValueError(f"Original debate {original_debate_id} not found")
+
+    new_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+
+    # Deep-Copy des Original-Debatte-Dicts
+    fork = copy.deepcopy(original)
+    fork["debate_id"] = new_id
+    fork["title"] = new_title
+    fork["status"] = "pending"
+    fork["created_at"] = now
+    fork["updated_at"] = now
+    fork["current_round"] = 0
+
+    # Fork-Metadaten setzen
+    fork["fork_info"] = {
+        "parent_debate_id": original_debate_id,
+        "fork_round": fork_from_round,
+        "fork_reason": fork_reason,
+    }
+
+    # Runden nach fork_from_round abschneiden
+    if fork_from_round is not None and fork_from_round >= 0:
+        fork["rounds"] = [r for r in fork.get("rounds", []) if r.get("round", 0) <= fork_from_round]
+
+    # Agent-Personas anpassen
+    if modified_personas and isinstance(fork.get("request"), dict):
+        original_personas = fork["request"].get("agent_persona_ids", {})
+        original_personas.update(modified_personas)
+        fork["request"]["agent_persona_ids"] = original_personas
+    elif modified_personas and hasattr(fork.get("request", None), "agent_persona_ids"):
+        req = fork["request"]
+        for role, persona_id in modified_personas.items():
+            setattr(req, "agent_persona_ids", {**req.agent_persona_ids, role: persona_id})
+
+    # Prompt-Variante anpassen
+    if modified_prompt_variant and isinstance(fork.get("request"), dict):
+        fork["request"]["prompt_variant"] = modified_prompt_variant
+    elif modified_prompt_variant and hasattr(fork.get("request", None), "prompt_variant"):
+        fork["request"].prompt_variant = modified_prompt_variant
+
+    # Vorbefüllung des case_text mit Kontext aus der Original-Debatte
+    if isinstance(fork.get("request"), dict):
+        original_case = fork["request"].get("case", {})
+        if isinstance(original_case, dict):
+            original_text = original_case.get("text", "")
+        else:
+            original_text = str(original_case)
+        fork["request"]["case"] = {"text": original_text}
+    elif hasattr(fork.get("request", None), "case"):
+        # Fallback: bereits vorhanden
+        pass
+
+    # Fork-Historie im debate_json pflegen
+    existing_forks = original.get("fork_history", [])
+    fork["fork_history"] = existing_forks + [{
+        "parent_id": original_debate_id,
+        "fork_round": fork_from_round,
+        "reason": fork_reason,
+    }]
+
+    store.put(new_id, fork)
+    return {
+        "debate_id": new_id,
+        "title": new_title,
+        "status": "pending",
+        "created_at": now.isoformat(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# RAG integration for follow-up debates (Plan 19, P3)
+# ---------------------------------------------------------------------------
+
+async def on_debate_completed(debate_id: str, project_id: str):
+    """Erzeugt automatisch ein DMS-Dokument mit den Debattenergebnissen (P3)."""
+    from backend.services.dms.service import get_dms_for_project
+    from backend.persistence.project_store import ProjectStore
+
+    store = DebateStore(data_dir=Path("data/debates"))
+
+    # Use project store to get correct DMS for the project
+    ps = ProjectStore()
+    original_project_id = project_id
+    try:
+        dms = get_dms_for_project(project_id, ps)
+    except Exception:
+        # Fallback to default project
+        dms = get_dms_for_project("_default", ps)
+
+    try:
+        ps_for_debate = ProjectStore()
+        for proj in ps_for_debate.list_all():
+            pdir = ps_for_debate.get_project_dir(proj.id)
+            store_check = DebateStore(data_dir=pdir / "debates")
+            debate = store_check.get(debate_id)
+            if debate:
+                original_project_id = proj.id
+                break
+    except Exception:
+        pass
+
+    debate_data = None
+    try:
+        ps2 = ProjectStore()
+        for proj in ps2.list_all():
+            pdir = ps2.get_project_dir(proj.id)
+            s = DebateStore(data_dir=pdir / "debates")
+            d = s.get(debate_id)
+            if d:
+                debate_data = d
+                original_project_id = proj.id
+                break
+    except Exception:
+        pass
+
+    if not debate_data:
+        # Try default project
+        default_store = DebateStore()
+        debate_data = default_store.get(debate_id)
+
+    if not debate_data:
+        logger.warning("Debate %s not found for RAG document creation", debate_id)
+        return None
+
+    try:
+        dms2 = get_dms_for_project(original_project_id)
+    except Exception:
+        try:
+            dms2 = get_dms_for_project("_default")
+        except Exception:
+            logger.warning("Could not initialize DMS for debate completion callback")
+            return None
+
+    transcript = report_generator._build_transcript(debate_data)
+    document_text = _generate_rag_friendly_summary(transcript)
+
+    try:
+        doc_id = await dms2.db.add_document(
+            project_id=original_project_id,
+            filename=f"debate_{debate_id[:8]}.md",
+            file_path="",
+            file_type="md",
+            file_size=len(document_text),
+            original_filename=f"Debatte: {debate_data.get('title', 'unbenannt')}",
+        )
+
+        # Write content to the document file path if available
+        doc_entry = dms2.db.get_document(doc_id)
+        if doc_entry and doc_entry.get("file_path"):
+            from pathlib import Path as PLPath
+            PLPath(doc_entry["file_path"]).parent.mkdir(parents=True, exist_ok=True)
+            PLPath(doc_entry["file_path"]).write_text(document_text, encoding="utf-8")
+            # Process the file for RAG indexing
+            chunk_ids = await dms2.rag_pipeline.process_file(doc_id, doc_entry["file_path"])
+            logger.info("Created DMS document %s for debate %s (%d chunks)", doc_id, debate_id, len(chunk_ids))
+        else:
+            # Direct chunk creation if no file path
+            from backend.services.dms.chunker import TextChunker
+            chunker = TextChunker()
+            chunks = chunker.chunk_text(document_text, doc_id)
+            dms2.metadata_index.add_chunks(chunks)
+            logger.info("Created %d RAG chunks for debate %s", len(chunks), debate_id)
+
+        return doc_id
+    except Exception as exc:
+        logger.error("Failed to create DMS document for debate %s: %s", debate_id, exc)
+        return None
+
+
+def _generate_rag_friendly_summary(transcript: dict) -> str:
+    """Generiert eine RAG-freundliche Zusammenfassung des Debattentranskripts."""
+    title = transcript.get("title", "Debatte")
+    case_text = transcript.get("case_text", "")
+    status = transcript.get("status", "unknown")
+    consensus = transcript.get("final_consensus", 0.0)
+    current_round = transcript.get("current_round", 0)
+
+    lines = [
+        f"# Debatte: {title}",
+        "",
+        f"**Status:** {status}",
+        f"**Runden:** {current_round}",
+        f"**Konsensgrad:** {consensus * 100:.1f}%",
+        "",
+        "## Fallbeschreibung",
+        case_text,
+        "",
+        "## Zusammenfassung der Argumente",
+        "",
+    ]
+
+    role_names = {"strategist": "Stratege", "critic": "Kritiker", "optimizer": "Optimierer", "moderator": "Moderator"}
+
+    for round_data in transcript.get("rounds", []):
+        round_num = round_data.get("round", "?")
+        round_consensus = round_data.get("consensus", 0.0)
+        lines.append(f"### Runde {round_num} (Konsens: {round_consensus * 100:.1f}%)")
+        for output in round_data.get("agent_outputs", []):
+            role = output.get("role", "unknown")
+            role_label = role_names.get(role, role.capitalize())
+            content = output.get("content", "").strip()
+            if content:
+                lines.append(f"\n**{role_label}:**\n{content}\n")
+
+    final_output = transcript.get("output", "")
+    if final_output:
+        lines.extend(["## Endergebnis", final_output, ""])
+
+    lines.append("---")
+    lines.append(f"*Dies ist eine automatisch generierte Zusammenfassung der Debatte '{title}' für die RAG-Wiederverwendung.*")
+
+    return "\n".join(lines)
+
+
+def resolve_rag_context_with_debate_results(
+    project_id: str,
+    case_text: str,
+    document_ids: list[str] | None = None,
+    rag_auto_retrieve: bool = False,
+    include_debate_results: bool = True,
+    store: DebateStore | None = None,
+) -> tuple[str, int]:
+    """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3)."""
+    from backend.services.dms.service import get_dms_for_project
+
+    try:
+        dms = get_dms_for_project(project_id)
+    except Exception:
+        return "", 0
+
+    all_chunks = []
+
+    # Standard-DMS-RAG
+    if document_ids:
+        for doc_id in document_ids:
+            try:
+                chunks = dms.metadata_index.get_chunks_by_document(doc_id)
+                all_chunks.extend(chunks)
+            except Exception as exc:
+                logger.warning("Failed to get chunks for document %s: %s", doc_id, exc)
+
+    if rag_auto_retrieve and case_text:
+        try:
+            auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
+            all_chunks.extend(auto_chunks)
+        except Exception as exc:
+            logger.warning("Auto-retrieve failed for project %s: %s", project_id, exc)
+
+    # Zusätzlich: Debattenergebnisse als Kontext einbeziehen
+    if include_debate_results:
+        try:
+            # Finde alle abgeschlossenen Debatten des Projekts
+            if store is None:
+                store = DebateStore()
+
+            # Suche im Projektverzeichnis
+            from backend.persistence.project_store import ProjectStore
+            ps = ProjectStore()
+            project_dir = ps.get_project_dir(project_id)
+            project_store = DebateStore(data_dir=project_dir / "debates")
+
+            debates = project_store.list_all(limit=50)
+            debate_count = 0
+
+            for d in debates:
+                if d.get("status") in ("completed",) and d.get("debate_id") != "":
+                    debate_json = d
+                    # Extrahiere Transcript-Text
+                    req = debate_json.get("request", {})
+                    transcript = _build_transcript_for_followup(debate_json)
+
+                    # Baue Zusammenfassung
+                    summary = _generate_rag_friendly_summary(transcript)
+
+                    # Chunke die Zusammenfassung
+                    from backend.services.dms.chunker import TextChunker
+                    chunker = TextChunker()
+                    chunks = chunker.chunk_text(summary, f"debate_result_{d.get('debate_id', '')[:8]}")
+                    all_chunks.extend(chunks[:3])  # Max 3 Chunks pro Debatte
+
+                    debate_count += 1
+                    if debate_count >= 5:  # Max. 5 vorherige Ergebnisse
+                        break
+        except Exception as exc:
+            logger.warning("Failed to include debate results in RAG context: %s", exc)
+
+    if not all_chunks:
+        return "", 0
+
+    # Deduplizierung
+    seen_texts: set[str] = set()
+    unique_chunks: list[dict] = []
+    for chunk in all_chunks:
+        text = chunk.get("text", "")
+        if text and text not in seen_texts:
+            seen_texts.add(text)
+            unique_chunks.append(chunk)
+
+    rag_context = dms.format_rag_context(unique_chunks)
+    return rag_context, len(unique_chunks)
+
+

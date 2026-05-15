@@ -243,6 +243,7 @@ export default {
    'common.edit': 'Bearbeiten',
    'common.close': 'Schließen',
    'common.yes': 'Ja',
+    'common.optional': 'Optional',
    'common.no': 'Nein',
  
    // Errors
@@ -796,4 +797,37 @@ export default {
    // Version
    'app.version': 'Version {version}',
    'app.versionLabel': 'Anwendungsversion',
+
+    // Follow-up / Fork (Plan 19)
+    'followup.title': 'Debatte fortsetzen',
+    'followup.description': 'Erstellt eine neue Debatte, die auf den Ergebnissen dieser aufbaut.',
+    'followup.focusTopic': 'Fokusthema (optional)',
+    'followup.focusTopicPlaceholder': 'Z.B. Vertiefung des Konsenspunkts X...',
+    'followup.submit': 'Debatte fortsetzen',
+    'followup.submitting': 'Wird erstellt...',
+    'followup.newTitle': 'Neuer Titel (optional)',
+    'followup.newTitlePlaceholder': 'Fortsetzung: ...',
+
+    'fork.title': 'Debatte forken',
+    'fork.description': 'Erstellt eine Kopie dieser Debatte mit optionalen Änderungen.',
+    'fork.forkFromRound': 'Ab Runde forken',
+    'fork.forkReason': 'Grund für den Fork',
+    'fork.reason.consensus_breakdown': 'Konsensbruch',
+    'fork.reason.new_perspective': 'Neue Perspektive',
+    'fork.reason.branching': 'Verzweigung',
+    'fork.modifiedPersonas': 'Personas ändern',
+    'fork.modifiedPersonasHint': 'Optional: Agenten-Personas für den Fork anpassen',
+    'fork.modifiedPromptVariant': 'Prompt-Variante ändern',
+    'fork.submit': 'Debatte forken',
+    'fork.submitting': 'Wird erstellt...',
+    'fork.newTitle': 'Neuer Titel',
+
+    'debate.continueButton': 'Fortsetzen',
+    'debate.forkButton': 'Fork',
+    'debate.forkedFrom': 'Fork von',
+    'debate.forks': 'Forks',
+
+    'archive.forks': 'Forks',
+    'archive.parentDebate': 'Übergeordnete Debatte',
+
 };

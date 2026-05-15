@@ -716,3 +716,37 @@ export function rollbackModule(moduleId) {
 export function validateModule(moduleId) {
   return request(`/api/v1/modules/${moduleId}/validate`);
 }
+
+// ---------------------------------------------------------------------------
+// Follow-up / Fork (Plan 19)
+// ---------------------------------------------------------------------------
+
+/** Continue a completed debate with optional focus topic. */
+export function continueDebate(debateId, body) {
+  return request(`/api/v1/debate/${debateId}/continue`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/** Fork a debate from consensus with new topic. */
+export function forkFromConsensus(debateId, body) {
+  return request(`/api/v1/debate/${debateId}/fork-from-consensus`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/** Fork a debate with optional modifications. */
+export function forkDebate(debateId, body) {
+  return request(`/api/v1/debate/${debateId}/fork`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/** List all forks of a given debate. */
+export function listDebateForks(debateId, limit = 50, offset = 0) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  return request(`/api/v1/debate/${debateId}/forks?${params.toString()}`);
+}

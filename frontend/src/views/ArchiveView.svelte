@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error, activeProject } from '../lib/stores.js';
-  import { getDebates, deleteDebate, softDeleteSession, restoreSession, getTrace } from '../lib/api.js';
+  import { getDebates, listDebateForks, deleteDebate, softDeleteSession, restoreSession, getTrace } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
@@ -35,6 +35,9 @@
   // Trace state
   let traceData = $state(null);
   let traceSessionId = $state(null);
+  
+  // Fork state
+  let forksByDebate = $state({});
   let isLoadingTrace = $state(false);
   let showTraceModal = $state(false);
 
@@ -255,14 +258,16 @@
       </div>
     {:else}
       <!-- Table header -->
-      <div class="hidden md:grid md:grid-cols-14 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        <div class="col-span-3">{t('debate.titleLabel')}</div>
+      <div class="hidden md:grid md:grid-cols-16 gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        <div class="col-span-2">{t('debate.titleLabel')}</div>
         <div class="col-span-2">{t('archive.project')}</div>
         <div class="col-span-2">{t('archive.date')}</div>
         <div class="col-span-1">{t('debate.round')}</div>
         <div class="col-span-2">{t('debate.consensus')}</div>
+        <div class="col-span-1">{t('archive.forks')}</div>
+        <div class="col-span-1">{t('archive.parentDebate')}</div>
         <div class="col-span-2">{t('debate.status')}</div>
-        <div class="col-span-2"></div>
+        <div class="col-span-1"></div>
       </div>
 
       <!-- Table rows -->
@@ -270,11 +275,11 @@
         {#each debates as debate}
           <div
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-                   md:grid md:grid-cols-14 md:gap-4 md:items-center"
+                   md:grid md:grid-cols-16 md:gap-4 md:items-center"
           >
             <!-- Title / Case preview (clickable) -->
             <button
-              class="md:col-span-3 mb-2 md:mb-0 text-left cursor-pointer"
+              class="md:col-span-2 mb-2 md:mb-0 text-left cursor-pointer"
               onclick={() => navigate('debate/' + debate.debate_id)}
             >
               {#if debate.title}
@@ -293,6 +298,22 @@
                 {debate.debate_id.substring(0, 8)}…
               </p>
             </button>
+
+            <!-- Forks / Parent info -->
+            <div class="md:col-span-2 flex items-center gap-1">
+              {#if debate.forks_count > 0}
+                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" title="{debate.forks_count} Forks">
+                  🍴 {debate.forks_count}
+                </span>
+              {:else}
+                <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
+              {/if}
+              {#if debate.parent_debate_id}
+                <a href={'/debate/' + debate.parent_debate_id} class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" title="Parent-Debatte" onclick="event.stopPropagation()">
+                  🔗
+                </a>
+              {/if}
+            </div>
 
             <!-- Project (clickable) -->
             <button

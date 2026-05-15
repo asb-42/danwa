@@ -245,6 +245,7 @@ export default {
   'common.edit': 'Edit',
   'common.close': 'Close',
   'common.yes': 'Yes',
+    'common.optional': 'Optional',
   'common.no': 'No',
 
   // Errors
@@ -880,4 +881,37 @@ export default {
     'toast.titleChanged': 'Debate title updated via service LLM',
     'toast.serviceLlmChanged': 'Service LLM changed to {profile}',
     'toast.serviceLlmValidation': 'Service LLM validation: {result}',
+
+    // Follow-up / Fork (Plan 19)
+    'followup.title': 'Continue Debate',
+    'followup.description': 'Creates a new debate building on the results of this one.',
+    'followup.focusTopic': 'Focus topic (optional)',
+    'followup.focusTopicPlaceholder': 'E.g. Deepening consensus point X...',
+    'followup.submit': 'Continue Debate',
+    'followup.submitting': 'Creating...',
+    'followup.newTitle': 'New title (optional)',
+    'followup.newTitlePlaceholder': 'Continuation: ...',
+
+    'fork.title': 'Fork Debate',
+    'fork.description': 'Creates a copy of this debate with optional modifications.',
+    'fork.forkFromRound': 'Fork from round',
+    'fork.forkReason': 'Reason for fork',
+    'fork.reason.consensus_breakdown': 'Consensus breakdown',
+    'fork.reason.new_perspective': 'New perspective',
+    'fork.reason.branching': 'Branching',
+    'fork.modifiedPersonas': 'Modify personas',
+    'fork.modifiedPersonasHint': 'Optionally customize agent personas for the fork',
+    'fork.modifiedPromptVariant': 'Modify prompt variant',
+    'fork.submit': 'Fork Debate',
+    'fork.submitting': 'Creating...',
+    'fork.newTitle': 'New title',
+
+    'debate.continueButton': 'Continue',
+    'debate.forkButton': 'Fork',
+    'debate.forkedFrom': 'Fork of',
+    'debate.forks': 'Forks',
+
+    'archive.forks': 'Forks',
+    'archive.parentDebate': 'Parent debate',
+
 };

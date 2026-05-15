@@ -18,6 +18,9 @@
   // Extracted sub-components
   import DebateActivityStrip from '../components/debate/DebateActivityStrip.svelte';
   import DebateReportPanel from '../components/debate/DebateReportPanel.svelte';
+  // Plan 19: Follow-up / Fork Modals
+  import ContinueDebateModal from '../components/debate/ContinueDebateModal.svelte';
+  import ForkDebateModal from '../components/debate/ForkDebateModal.svelte';
 
   /** @type {function} Navigation helper from App.svelte */
   let { debateId = null, navigate = () => {} } = $props();
@@ -67,6 +70,12 @@
   // RAG context preview toggle
   let showRAGContextPreview = $state(false);
 
+  // Plan 19: Modals state
+  let showContinueModal = $state(false);
+  let showForkModal = $state(false);
+  let isContinueSubmitting = $state(false);
+  let isForkSubmitting = $state(false);
+
   // Load debate from archive when debateId is provided
   onMount(async () => {
     if (debateId) {
@@ -91,14 +100,13 @@
   $effect(() => {
     if ($autoStartDebate && $currentDebate && $currentDebate.status === 'pending') {
       $autoStartDebate = false;
-      // Small delay to ensure the component is fully mounted and SSE can connect
       setTimeout(() => {
         handleStartDebate();
       }, 200);
     }
   });
 
-  // Reconnect SSE for running debates (e.g., after page refresh)
+  // Reconnect SSE for running debates
   $effect(() => {
     if ($currentDebate && $currentDebate.status === 'running' && !sseConnection) {
       sseConnection = createSSE($currentDebate.debate_id, {
@@ -489,9 +497,40 @@
   let completedInRound = $derived(liveOutputs.filter(o => o.round === ($currentDebate?.current_round || 0)).length);
   let isProcessing = $derived($currentDebate?.status === 'running' && currentActivity !== null);
   let isBetweenAgents = $derived($currentDebate?.status === 'running' && currentActivity === null && liveOutputs.length > 0);
+
+  // Plan 19: Check for parent debate (fork info)
+  let parentDebateId = $derived($currentDebate?.parent_debate_id || $currentDebate?.fork_info?.parent_debate_id || null);
+  let isCompleted = $derived($currentDebate?.status === 'completed' || $currentDebate?.status === 'failed');
 </script>
 
 <div class="space-y-6">
+  <!-- Plan 19: Continue Debate Modal -->
+  {#if showContinueModal}
+    <ContinueDebateModal
+      debateId={$currentDebate?.debate_id}
+      debateTitle={debateTitle}
+      onClose={() => showContinueModal = false}
+      onCreated={(result) => {
+        $currentDebate = result;
+        showContinueModal = false;
+        navigate(`debate/${result.debate_id}`);
+      }}
+    />
+  {/if}
+
+  <!-- Plan 19: Fork Debate Modal -->
+  {#if showForkModal}
+    <ForkDebateModal
+      debateId={$currentDebate?.debate_id}
+      debateTitle={debateTitle}
+      onClose={() => showForkModal = false}
+      onCreated={(result) => {
+        showForkModal = false;
+        navigate(`debate/${result.debate_id}`);
+      }}
+    />
+  {/if}
+
   <!-- Agent Query Modal (overlay) -->
   <AgentQueryModal debateId={$currentDebate?.debate_id} />
 
@@ -539,7 +578,7 @@
     </div>
   {/if}
 
-  <!-- Debate title — prominent, above the status card -->
+  <!-- Debate title -->
   {#if $currentDebate && (titleGenerating || debateTitle)}
     <div class="transition-all duration-500 ease-out"
          class:opacity-0={!titleFadedIn && !titleGenerating}
@@ -561,6 +600,18 @@
           </h3>
         </div>
       {/if}
+    </div>
+  {/if}
+
+  <!-- Plan 19: Parent debate link -->
+  {#if parentDebateId}
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 text-sm">
+      <span class="text-blue-700 dark:text-blue-300">
+        🔗 {t('debate.forkedFrom')}:
+        <a href="#/debate/{parentDebateId}" class="font-medium underline hover:text-blue-800 dark:hover:text-blue-200">
+          {parentDebateId.slice(0, 8)}...
+        </a>
+      </span>
     </div>
   {/if}
 
@@ -611,7 +662,7 @@
         {#if $currentDebate.rag_enabled}
           <div>
             <span class="text-gray-500 dark:text-gray-400">{t('documents.ragContext')}: </span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
               📚 {$currentDebate.rag_document_count} {t('documents.ragEnabled')}
             </span>
           </div>
@@ -684,6 +735,7 @@
         </div>
       {/if}
 
+      <!-- Plan 19: Action buttons for completed debates -->
       {#if !isArchiveMode}
       <div class="mt-4 flex space-x-3">
         {#if $currentDebate.status === 'pending'}
@@ -703,6 +755,21 @@
             disabled={isCancelling}
           >
             {isCancelling ? t('debate.cancelling') : t('debate.cancelButton')}
+          </button>
+        {/if}
+        {#if isCompleted}
+          <!-- Plan 19: Continue & Fork buttons for completed debates -->
+          <button
+            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+            onclick={() => showContinueModal = true}
+          >
+            🔄 {t('debate.continueButton')}
+          </button>
+          <button
+            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 text-sm"
+            onclick={() => showForkModal = true}
+          >
+            🍴 {t('debate.forkButton')}
           </button>
         {/if}
         <button
@@ -741,7 +808,7 @@
       <InjectPanel debateId={$currentDebate.debate_id} />
     {/if}
 
-    <!-- Live debate view (during running) -->
+    <!-- Live debate view -->
     {#if $currentDebate.status === 'running'}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -1011,7 +1078,7 @@
       </div>
     {/if}
 
-    <!-- No rounds fallback (archive mode) -->
+    <!-- No rounds fallback -->
     {#if isArchiveMode && ($currentDebate.status === 'completed' || $currentDebate.status === 'failed') && !displayRounds}
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700 text-center">
         <p class="text-gray-500 dark:text-gray-400">{t('debate.noRounds')}</p>

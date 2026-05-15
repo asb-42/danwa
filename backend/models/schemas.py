@@ -180,6 +180,8 @@ class DebateStatusResponse(BaseModel):
     # --- Project context ---
     project_id: str = ""
     project_name: str = ""
+    parent_debate_id: str | None = None
+    forks_count: int = 0
     # --- RAG / DMS ---
     rag_enabled: bool = False
     rag_document_count: int = 0
@@ -208,6 +210,8 @@ class DebateListItem(BaseModel):
     updated_at: datetime
     project_id: str = ""
     project_name: str = ""
+    parent_debate_id: str | None = None
+    forks_count: int = 0
 
 
 class HealthResponse(BaseModel):
@@ -354,3 +358,44 @@ class ReportJobStatus(BaseModel):
     error: str | None = None
     created_at: str
     completed_at: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Follow-up / Fork models (Plan 19)
+# ---------------------------------------------------------------------------
+
+class DebateContinueBody(BaseModel):
+    """POST /api/v1/debate/{id}/continue request body."""
+
+    new_title: str | None = None
+    focus_topic: str | None = None
+
+
+class ForkFromConsensusBody(BaseModel):
+    """POST /api/v1/debate/{id}/fork-from-consensus request body."""
+
+    new_title: str
+    new_topic: str
+    max_rounds: int = Field(default=3, ge=1, le=20)
+    consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
+    inherit_personas: bool = True
+    inherit_llm_profile: bool = True
+
+
+class ForkDebateBody(BaseModel):
+    """POST /api/v1/debate/{id}/fork request body."""
+
+    new_title: str
+    fork_from_round: int | None = None
+    fork_reason: str | None = None  # consensus_breakdown | new_perspective | branching
+    modified_personas: dict[str, str] | None = None  # role -> persona_id
+    modified_prompt_variant: str | None = None
+
+
+class DebateForkInfo(BaseModel):
+    """Fork metadata embedded in the debate JSON."""
+
+    parent_debate_id: str
+    fork_round: int | None = None
+    fork_reason: str | None = None
+
