@@ -924,8 +924,7 @@ import ModuleManager from '../components/ModuleManager.svelte';
                       <button class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800/40 transition-colors" onclick={() => verifyBackupById(backup.backup_id)}>
                         {t('backup.verify') || 'Verify'}
                       </button>
-                      <button class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors" disabled>
-                       <button class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors" onclick={() => handleRestoreBackup(backup.backup_id)}>
+                      <button class="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors" onclick={() => handleRestoreBackup(backup.backup_id)}>
                          {t('backup.restore') || 'Restore'}
                        </button>
                       <button class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/40 transition-colors" onclick={() => handleDeleteBackup(backup.backup_id)}>
