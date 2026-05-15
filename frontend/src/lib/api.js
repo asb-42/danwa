@@ -599,7 +599,7 @@ export function batchTranslate(body) {
 
 /** Create a new backup archive. */
 export function createBackup(trigger = "manual") {
-  return request("/api/v1/config/backup", { method: "POST", body: { trigger } });
+  return request("/api/v1/config/backup", { method: "POST", body: JSON.stringify({ trigger }) });
 }
 
 /** Get list of all available backups with metadata. */
@@ -639,7 +639,7 @@ export function getBackupSettings() {
 export function updateBackupSettings(settings) {
   return request("/api/v1/config/backup-settings", {
     method: "PUT",
-    body: settings,
+    body: JSON.stringify(settings),
   });
 }
 
