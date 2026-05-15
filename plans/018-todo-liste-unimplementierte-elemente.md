@@ -73,11 +73,20 @@
 - **Beschreibung:** Legacy-Code der entfernt werden kann, nachdem bestätigt wurde, dass keine Abhängigkeiten mehr bestehen.
 - **Aufwand:** Gering — Entfernen nach Verifikation
 
-### 10. Zahlreiche `pass`-Anweisungen im Produktionscode
-- **Dateien:** Verschiedene Stellen in `backend/services/`, `backend/persistence/`, `backend/a2a/`
-- **Status:** Leere `except`-Blöcke und `pass`-Statements können verdeckte Fehler verbergen
-- **Beschreibung:** Mindestens 15 Stellen mit `pass` in Exception-Handlern, die möglicherweise Logging oder Fehlerbehandlung benötigen.
-- **Aufwand:** Gering — Review und gegebenenfalls Logging ergänzen
+### 10. pass-Anweisungen in Exception-Handlern — ✅ korrigiert (12 Stellen)
+- **Dateien:** 10 Dateien im `backend/`-Verzeichnis
+- **Status:** Alle `pass`-Statements in Exception-Handlern wurden durch sinnvolles Logging ersetzt. Einrückungsfehler in 5 Dateien korrigiert.
+- **Details:**
+  - `backend/services/debate_workflow.py` — `build_rag_preview` Fehler geloggt
+  - `backend/services/translation_service.py` — SQLite-Cache-Update Fehler geloggt
+  - `backend/modules/installer.py` — Dependency-Check + Manifest-Lese Fehler geloggt
+  - `backend/modules/service.py` — Modul-Registry Fehler geloggt
+  - `backend/api/routers/debate.py` — LLM-Profil-Auflösung gewarnt
+  - `backend/api/routers/dms.py` — OCR-Engine-Fallback debug-geloggt
+  - `backend/persistence/project_store.py` — Datetime-Parsing debug-geloggt
+  - `backend/persistence/debate_store.py` — Status-Normalisierung debug-geloggt
+  - `backend/services/prompt_service.py` — Prompt-Template-Fallback debug-geloggt
+  - `backend/workflow/nodes.py` — LLM-Profil-Auswahl debug-geloggt
 
 ### 11. Frontend: MCP-Info-Box ist statisch
 - **Datei:** `frontend/src/views/InputComposerView.svelte`, Zeile ~377
