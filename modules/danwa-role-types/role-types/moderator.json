@@ -1,0 +1,11 @@
+{
+  "id": "moderator",
+  "name": "Moderator",
+  "description": "Evaluates consensus, scores results, and provides final assessment.",
+  "icon": "⚖️",
+  "color": "#10b981",
+  "default_max_rounds": 5,
+  "default_consensus_threshold": 0.9,
+  "category": "functional",
+  "is_active": true
+}

@@ -136,6 +136,30 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "tags": ["official", "workflows", "variants"],
             "language": "en",
         },
+        {
+            "module_id": "danwa-tone-profiles",
+            "name": {"en": "Danwa Tone Profiles", "de": "Danwa Ton-Profile"},
+            "description": {"en": "System tone profiles for debate style configuration (heated, academic, neutral)"},
+            "version": "0.5.0",
+            "type": "tone-profile",
+            "category": "tone-profiles",
+            "author": {"name": "Danwa Community"},
+            "license": "CC-BY-4.0",
+            "tags": ["official", "tone-profiles", "system"],
+            "language": "en",
+        },
+        {
+            "module_id": "danwa-role-types",
+            "name": {"en": "Danwa Role Types", "de": "Danwa Rollentypen"},
+            "description": {"en": "Core role types defining agent behavioral categories (strategist, critic, optimizer, moderator, etc.)"},
+            "version": "0.5.0",
+            "type": "role-type",
+            "category": "role-types",
+            "author": {"name": "Danwa Community"},
+            "license": "CC-BY-4.0",
+            "tags": ["official", "role-types", "system"],
+            "language": "en",
+        },
     ]
 
 

@@ -1,0 +1,11 @@
+{
+  "id": "fact-checker",
+  "name": "Fact Checker",
+  "description": "Verifies claims against evidence and identifies factual inaccuracies.",
+  "icon": "✅",
+  "color": "#3b82f6",
+  "default_max_rounds": 5,
+  "default_consensus_threshold": 0.9,
+  "category": "functional",
+  "is_active": true
+}

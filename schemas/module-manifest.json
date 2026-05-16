@@ -50,6 +50,7 @@
         "workflow-template",
         "tone-profile",
         "workflow-variant",
+        "role-type",
         "bundle"
       ]
     },
@@ -63,6 +64,7 @@
         "workflows",
         "workflow-variants",
         "tone-profiles",
+        "role-types",
         "bundles"
       ]
     },

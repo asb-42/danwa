@@ -15,6 +15,7 @@ class ModuleType(StrEnum):
     WORKFLOW_TEMPLATE = "workflow-template"
     TONE_PROFILE = "tone-profile"
     WORKFLOW_VARIANT = "workflow-variant"
+    ROLE_TYPE = "role-type"
     BUNDLE = "bundle"
 
 
@@ -25,6 +26,7 @@ class ModuleCategory(StrEnum):
     WORKFLOWS = "workflows"
     WORKFLOW_VARIANTS = "workflow-variants"
     TONE_PROFILES = "tone-profiles"
+    ROLE_TYPES = "role-types"
     BUNDLES = "bundles"
 
 

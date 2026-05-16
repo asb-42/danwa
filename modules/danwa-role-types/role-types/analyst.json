@@ -1,0 +1,11 @@
+{
+  "id": "analyst",
+  "name": "Analyst",
+  "description": "Conducts in-depth data analysis and identifies key patterns.",
+  "icon": "📊",
+  "color": "#06b6d4",
+  "default_max_rounds": 5,
+  "default_consensus_threshold": 0.9,
+  "category": "functional",
+  "is_active": true
+}

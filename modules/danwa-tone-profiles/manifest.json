@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "danwa-tone-profiles",
+  "name": {
+    "en": "Danwa Tone Profiles",
+    "de": "Danwa Ton-Profile"
+  },
+  "description": {
+    "en": "System tone profiles for debate style configuration (heated, academic, neutral)",
+    "de": "System-Tonprofile für Debattenstil-Konfiguration (hitzig, akademisch, neutral)"
+  },
+  "version": "0.5.0",
+  "type": "tone-profile",
+  "category": "tone-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": ["official", "tone-profiles", "system"],
+  "language": "en",
+  "created_at": "2026-05-16T12:00:00.000000+00:00",
+  "updated_at": "2026-05-16T12:00:00.000000+00:00",
+  "files": [
+    {
+      "path": "tone-profiles/heated.json",
+      "format": "json",
+      "checksum": "108641eb0618f912ebb1ab3001e45f9fe6bcf4a3dbf62aafc3f8eb4960284cce"
+    },
+    {
+      "path": "tone-profiles/academic.json",
+      "format": "json",
+      "checksum": "e9628c21125a78c3e6ed7e5232626c099a98d942a880def19327e5057b083e33"
+    },
+    {
+      "path": "tone-profiles/neutral.json",
+      "format": "json",
+      "checksum": "993ee6be1b46cac855d8aef0dc8821befbd8c48b7a63da0ad41e50b58cb75d53"
+    }
+  ],
+  "dependencies": {},
+  "checksum": "5deec7fd319f6bd1d262a98c9231c3399adeafc12ec69c3266b9e4438183129b"
+}
