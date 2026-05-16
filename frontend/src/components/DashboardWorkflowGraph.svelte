@@ -223,6 +223,7 @@
         {#each NODES as node}
           {@const pos = getNodePos(node.id)}
           {@const isActive = activeNodeId === node.id}
+          {@const isCompleted = status === 'completed'}
           {#if pos}
             <g transform={`translate(${pos.x}, ${pos.y})`} class:active-node={isActive}>
               {#if isActive}
@@ -238,6 +239,20 @@
                   filter="url(#glow)"
                 >
                   <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
+                </rect>
+              {/if}
+              {#if isCompleted && node.id === 'result'}
+                <rect
+                  x="-4" y="-4"
+                  width={node.width + 8}
+                  height={node.height + 8}
+                  rx="12"
+                  fill="none"
+                  stroke="#10b981"
+                  stroke-width="2.5"
+                  filter="url(#glow)"
+                >
+                  <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2s" repeatCount="indefinite" />
                 </rect>
               {/if}
               <rect
@@ -262,6 +277,14 @@
                 class="fill-gray-700 dark:fill-gray-200"
                 text-anchor="middle"
               >{node.label}</text>
+              {#if isCompleted && node.id === 'result'}
+                <text
+                  x={node.width - 8}
+                  y="-6"
+                  font-size="14"
+                  text-anchor="middle"
+                >✓</text>
+              {/if}
             </g>
           {/if}
         {/each}

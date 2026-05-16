@@ -114,18 +114,31 @@ export function applyEventToGraph(event) {
             });
           }
         } else if (currentIdx === 0) {
-          // First agent (strategist) → connect to input node
-          for (const [, node] of nodes) {
-            if (node.type === 'input') {
-              const edgeId = `${node.id}->${agentId}`;
-              copy.set(edgeId, {
-                id: edgeId,
-                source: node.id,
-                target: agentId,
-                type: 'flow',
-                data: { type: 'flow', isActive: true },
-              });
-              break;
+          // First agent (strategist) — connect to decision node of previous round if it exists
+          const prevDecisionId = `decision_r${round - 1}`;
+          if (round > 1 && nodes.has(prevDecisionId)) {
+            const edgeId = `${prevDecisionId}->${agentId}`;
+            copy.set(edgeId, {
+              id: edgeId,
+              source: prevDecisionId,
+              target: agentId,
+              type: 'flow',
+              data: { type: 'flow', isActive: true },
+            });
+          } else {
+            // Round 1 — connect to input node
+            for (const [, node] of nodes) {
+              if (node.type === 'input') {
+                const edgeId = `${node.id}->${agentId}`;
+                copy.set(edgeId, {
+                  id: edgeId,
+                  source: node.id,
+                  target: agentId,
+                  type: 'flow',
+                  data: { type: 'flow', isActive: true },
+                });
+                break;
+              }
             }
           }
         } else if (!pipelineOrder.includes(role)) {
@@ -505,6 +518,20 @@ export function applyEventToGraph(event) {
         }
         return copy;
       });
+
+      // Clear activity from all other agents to prevent stale "Thinking…" display
+      graphNodes.update(nodes => {
+        const copy = new Map(nodes);
+        for (const [id, node] of copy) {
+          if (id !== agentId && node.data?.activity) {
+            copy.set(id, {
+              ...node,
+              data: { ...node.data, activity: null, activityDetail: null },
+            });
+          }
+        }
+        return copy;
+      });
       break;
     }
 
@@ -512,12 +539,14 @@ export function applyEventToGraph(event) {
     // WORKFLOW_COMPLETED
     // ═══════════════════════════════════════════
     case 'WORKFLOW_COMPLETED': {
-      // Mark all remaining active nodes as completed
       graphNodes.update(nodes => {
         const copy = new Map(nodes);
         for (const [id, node] of copy) {
-          if (node.data?.status === 'active') {
-            copy.set(id, { ...node, data: { ...node.data, status: 'completed', isActive: false } });
+          if (node.data?.status === 'active' || node.data?.status === 'running') {
+            copy.set(id, {
+              ...node,
+              data: { ...node.data, status: 'completed', isActive: false, activity: null, activityDetail: null },
+            });
           }
         }
         return copy;
@@ -526,8 +555,11 @@ export function applyEventToGraph(event) {
       graphEdges.update(edges => {
         const copy = new Map(edges);
         for (const [id, edge] of copy) {
-          if (edge.data?.isActive) {
-            copy.set(id, { ...edge, data: { ...edge.data, isActive: false } });
+          if (edge.data?.isActive || edge.type === 'flow') {
+            copy.set(id, {
+              ...edge,
+              data: { ...edge.data, isActive: false, status: 'completed' },
+            });
           }
         }
         return copy;
