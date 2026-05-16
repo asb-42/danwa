@@ -251,6 +251,7 @@ export default {
   'common.yes': 'Ναι',
   'common.optional': 'Προαιρετικό',
   'common.no': 'Όχι',
+  'common.dismiss': 'Κλείσιμο',
   'error.backendDisconnected': 'Απώλεια σύνδεσης με το backend',
   'error.debateNotFound': 'Η συζήτηση δεν βρέθηκε',
   'error.invalidInput': 'Μη έγκυρη είσοδος',

@@ -251,6 +251,7 @@ export default {
   'common.yes': 'はい',
   'common.optional': 'オプション',
   'common.no': 'いいえ',
+  'common.dismiss': '閉じる',
   'error.backendDisconnected': 'バックエンド接続が切断されました',
   'error.debateNotFound': 'ディベートが見つかりませんでした',
   'error.invalidInput': '無効な入力',

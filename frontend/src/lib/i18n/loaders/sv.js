@@ -251,6 +251,7 @@ export default {
   'common.yes': 'Ja',
   'common.optional': 'Valfri',
   'common.no': 'Nej',
+  'common.dismiss': 'Stäng',
   'error.backendDisconnected': 'Backend-anslutning förlorad',
   'error.debateNotFound': 'Debatten hittades inte',
   'error.invalidInput': 'Ogiltig inmatning',

@@ -251,6 +251,7 @@ export default {
   'common.yes': 'Sim',
   'common.optional': 'Opcional',
   'common.no': 'Não',
+  'common.dismiss': 'Fechar',
   'error.backendDisconnected': 'Conexão com o backend perdida',
   'error.debateNotFound': 'Debate não encontrado',
   'error.invalidInput': 'Entrada inválida',

@@ -251,6 +251,7 @@ export default {
   'common.yes': '예',
   'common.optional': '선택 사항',
   'common.no': '아니요',
+  'common.dismiss': '닫기',
   'error.backendDisconnected': '백엔드 연결이 끊어졌습니다',
   'error.debateNotFound': '토론을 찾을 수 없습니다',
   'error.invalidInput': '잘못된 입력',

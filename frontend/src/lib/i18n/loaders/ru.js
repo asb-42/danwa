@@ -251,6 +251,7 @@ export default {
   'common.yes': 'Да',
   'common.optional': 'Опционально',
   'common.no': 'Нет',
+  'common.dismiss': 'Закрыть',
   'error.backendDisconnected': 'Соединение с бэкендом потеряно',
   'error.debateNotFound': 'Дебаты не найдены',
   'error.invalidInput': 'Неверный ввод',

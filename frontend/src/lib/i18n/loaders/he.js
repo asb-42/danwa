@@ -251,6 +251,7 @@ export default {
   'common.yes': 'כן',
   'common.optional': 'אופציונלי',
   'common.no': 'לא',
+  'common.dismiss': 'סגור',
   'error.backendDisconnected': 'החיבור לשרת האחורי אבד',
   'error.debateNotFound': 'הדיון לא נמצא',
   'error.invalidInput': 'קלט לא תקין',

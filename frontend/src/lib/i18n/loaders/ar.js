@@ -251,6 +251,7 @@ export default {
   'common.yes': 'نعم',
   'common.optional': 'اختياري',
   'common.no': 'لا',
+  'common.dismiss': 'إغلاق',
   'error.backendDisconnected': 'فُقد اتصال الخادم الخلفي',
   'error.debateNotFound': 'لم يتم العثور على النقاش',
   'error.invalidInput': 'إدخال غير صالح',

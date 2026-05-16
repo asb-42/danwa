@@ -251,6 +251,7 @@ export default {
   'common.yes': '是',
   'common.optional': '可选',
   'common.no': '否',
+  'common.dismiss': '关闭',
   'error.backendDisconnected': '后端连接已断开',
   'error.debateNotFound': '未找到辩论',
   'error.invalidInput': '输入无效',
