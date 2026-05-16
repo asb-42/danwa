@@ -3,6 +3,7 @@
   import { auditEvents, currentDebate, loading, error } from '../lib/stores.js';
   import { getAuditEvents } from '../lib/api.js';
   import { i18n, formatDate } from '../lib/i18n/index.js';
+  import AuditTrailVisualization from '../components/AuditTrailVisualization.svelte';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -178,11 +179,6 @@
     {/if}
   </div>
 
-  <!-- Placeholder: Audit trail visualization -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('audit.visualizationTitle')}</h3>
-    <div class="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">{t('audit.visualizationPlaceholder')}</p>
-    </div>
-  </div>
+  <!-- Audit trail visualization -->
+  <AuditTrailVisualization events={$auditEvents} />
 </div>
