@@ -14,10 +14,60 @@ import uuid
 from backend.a2a.schemas import A2AMessage, A2ATask
 from backend.a2a.task_manager import TaskManager, TaskStatus
 from backend.api.deps import get_audit_service, get_debate_store_for_project
+from backend.core.config import is_service_llm_eligible
 from backend.models.schemas import DebateRequest
 from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_a2a_llm_profile(project_id: str | None = None) -> str | None:
+    """Resolve the best LLM profile for A2A-initiated debates."""
+    try:
+        from backend.core.config import settings
+        from backend.services.profile_service import ProfileService
+
+        svc = ProfileService()
+
+        # 1. Use the active (service) LLM profile if eligible
+        if settings.service_llm_profile_id:
+            active = svc.get_llm_profile(settings.service_llm_profile_id)
+            if active:
+                ok, reason = is_service_llm_eligible(active)
+                if ok:
+                    logger.info("A2A debate: using active LLM profile '%s'", active.id)
+                    return active.id
+                logger.debug("Active profile '%s' not eligible: %s", settings.service_llm_profile_id, reason)
+
+        all_profiles = svc.list_llm_profiles()
+        if not all_profiles:
+            logger.warning("No LLM profiles available for A2A debate")
+            return None
+
+        eligible = []
+        local_profiles = []
+        for p in all_profiles:
+            ok, _reason = is_service_llm_eligible(p)
+            if ok:
+                eligible.append(p)
+                if p.provider.value in ("local", "ollama"):
+                    local_profiles.append(p)
+
+        if local_profiles:
+            chosen = local_profiles[0]
+            logger.info("A2A debate: using local LLM profile '%s' (provider=%s)", chosen.id, chosen.provider.value)
+            return chosen.id
+
+        if eligible:
+            chosen = eligible[0]
+            logger.info("A2A debate: using eligible LLM profile '%s' (provider=%s)", chosen.id, chosen.provider.value)
+            return chosen.id
+
+        logger.warning("A2A debate: no eligible profiles, using first available '%s'", all_profiles[0].id)
+        return all_profiles[0].id
+    except Exception as exc:
+        logger.error("Failed to resolve LLM profile for A2A debate: %s", exc)
+        return None
 
 
 class A2AServer:
@@ -110,9 +160,12 @@ class A2AServer:
             # Import here to avoid circular imports at module level
             from backend.models.schemas import CaseInput, DebateRequest
 
+            llm_profile_id = _resolve_a2a_llm_profile(self.project_id)
+
             request = DebateRequest(
                 case=CaseInput(text=topic),
                 language="de",
+                llm_profile_id=llm_profile_id or "local-qwen",
             )
 
             # Create and start debate via internal helpers

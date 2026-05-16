@@ -175,6 +175,31 @@ async def run_agent_node(state: DebateState) -> dict:
 
     # --- Resolve LLM profile info ---
     llm_profile_obj = _get_profile_service(project_id).get_llm_profile(llm_profile_id)
+
+    # Fallback: if configured profile doesn't exist, try to find an eligible local profile
+    if llm_profile_obj is None:
+        logger.warning(
+            "LLM profile '%s' not found, attempting fallback to available profile",
+            llm_profile_id,
+        )
+        try:
+            all_profiles = _get_profile_service(project_id).list_llm_profiles()
+            local_profiles = [
+                p for p in all_profiles
+                if is_service_llm_eligible(p)[0] and p.provider.value in ("local", "ollama")
+            ]
+            if local_profiles:
+                llm_profile_obj = local_profiles[0]
+                llm_profile_id = llm_profile_obj.id
+                logger.info("Fallback: using local profile '%s'", llm_profile_id)
+            elif all_profiles:
+                eligible = [p for p in all_profiles if is_service_llm_eligible(p)[0]]
+                llm_profile_obj = (eligible or all_profiles)[0]
+                llm_profile_id = llm_profile_obj.id
+                logger.info("Fallback: using profile '%s'", llm_profile_id)
+        except Exception as exc:
+            logger.error("Profile fallback resolution failed: %s", exc)
+
     model_name = llm_profile_obj.model if llm_profile_obj else "N/A"
     provider_name = llm_profile_obj.provider.value if llm_profile_obj else "N/A"
 
