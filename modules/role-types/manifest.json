@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-role-types",
+  "module_id": "role-types",
   "name": {
-    "en": "Danwa Role Types",
-    "de": "Danwa Rollentypen"
+    "en": "Role Types",
+    "de": "Rollentypen"
   },
   "description": {
     "en": "Core role types defining agent behavioral categories (strategist, critic, optimizer, moderator, etc.)",
