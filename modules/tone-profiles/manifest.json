@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-tone-profiles",
+  "module_id": "tone-profiles",
   "name": {
-    "en": "Danwa Tone Profiles",
-    "de": "Danwa Ton-Profile"
+    "en": "Tone Profiles",
+    "de": "Ton-Profile"
   },
   "description": {
     "en": "System tone profiles for debate style configuration (heated, academic, neutral)",
