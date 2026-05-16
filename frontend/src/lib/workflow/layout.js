@@ -5,6 +5,8 @@
  * Uses the layered algorithm with round containers as ELK parent nodes.
  *
  * Key design decisions:
+ * - Incremental layout: only positions NEW nodes that lack a position.
+ *   Existing nodes keep their initial positions (set by graphReducer).
  * - hierarchyHandling: INCLUDE_CHILDREN ensures ELK respects the round subgraph
  *   hierarchy and lays out the ENTIRE graph, not just top-level nodes.
  * - Both agent AND artifact nodes are grouped into round containers.
@@ -23,7 +25,6 @@ const elkOptions = {
   'elk.spacing.nodeNode': '40',
   'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
   'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-  'elk.partitioning.activate': 'true',
   'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
 };
 
@@ -35,7 +36,8 @@ let lastEdgeCount = 0;
 /**
  * Apply ELK layout to the given nodes and edges.
  * Only recalculates when topology changes (node/edge count differs).
- * Updates node positions in the graphNodes store.
+ * Updates node positions in the graphNodes store — but ONLY for nodes
+ * that don't already have a position (incremental layout).
  *
  * @param {Array} nodes - Svelte Flow compatible nodes
  * @param {Array} edges - Svelte Flow compatible edges
@@ -162,6 +164,11 @@ async function calculateLayout(nodes, edges) {
 /**
  * Apply calculated positions back to the graphNodes store.
  * Uses a direct import (not dynamic) to avoid race conditions.
+ *
+ * INCREMENTAL: Only updates nodes that don't already have a position.
+ * This prevents ELK from overwriting the good initial positions set by
+ * graphReducer's getInitialPosition() — fixing the "node stacking" bug.
+ *
  * @param {Map<string, {x: number, y: number}>} positions
  */
 function applyPositions(positions) {
@@ -169,7 +176,8 @@ function applyPositions(positions) {
     const copy = new Map(nodes);
     for (const [id, pos] of positions) {
       const node = copy.get(id);
-      if (node) {
+      // Only apply ELK position if node doesn't already have one
+      if (node && !node.position) {
         copy.set(id, { ...node, position: pos });
       }
     }

@@ -93,16 +93,65 @@ export function applyEventToGraph(event) {
       // Create edges from input artifacts to this agent
       graphEdges.update(edges => {
         const copy = new Map(edges);
-        inputArtifactIds.forEach((artifactId, idx) => {
-          const edgeId = `${artifactId}->${agentId}_${idx}`;
-          copy.set(edgeId, {
-            id: edgeId,
-            source: artifactId,
-            target: agentId,
-            type: 'flow',
-            data: { type: 'flow', isActive: true },
+        if (inputArtifactIds && inputArtifactIds.length > 0) {
+          inputArtifactIds.forEach((artifactId, idx) => {
+            const edgeId = `${artifactId}->${agentId}_${idx}`;
+            copy.set(edgeId, {
+              id: edgeId,
+              source: artifactId,
+              target: agentId,
+              type: 'flow',
+              data: { type: 'flow', isActive: true },
+            });
           });
-        });
+        } else {
+          // Fallback: find the most recent artifact from the previous agent in the pipeline
+          const pipelineOrder = ['strategist', 'critic', 'optimizer', 'moderator'];
+          const currentIdx = pipelineOrder.indexOf(role);
+          if (currentIdx > 0) {
+            const prevRole = pipelineOrder[currentIdx - 1];
+            // Find the latest artifact from the previous role in this round
+            const nodes = get(graphNodes);
+            let bestArtifact = null;
+            let bestRound = -1;
+            for (const [, node] of nodes) {
+              if (node.type === 'artifact' && node.data?.artifactType === prevRole) {
+                const artifactRound = node.data?.round || 0;
+                if (artifactRound <= round && artifactRound > bestRound) {
+                  bestArtifact = node.id;
+                  bestRound = artifactRound;
+                }
+              }
+            }
+            if (bestArtifact) {
+              const edgeId = `${bestArtifact}->${agentId}`;
+              copy.set(edgeId, {
+                id: edgeId,
+                source: bestArtifact,
+                target: agentId,
+                type: 'flow',
+                data: { type: 'flow', isActive: true },
+              });
+            }
+          }
+          // For the first agent (strategist), connect to input node
+          if (currentIdx === 0) {
+            const nodes = get(graphNodes);
+            for (const [, node] of nodes) {
+              if (node.type === 'input') {
+                const edgeId = `${node.id}->${agentId}`;
+                copy.set(edgeId, {
+                  id: edgeId,
+                  source: node.id,
+                  target: agentId,
+                  type: 'flow',
+                  data: { type: 'flow', isActive: true },
+                });
+                break;
+              }
+            }
+          }
+        }
         return copy;
       });
       break;
