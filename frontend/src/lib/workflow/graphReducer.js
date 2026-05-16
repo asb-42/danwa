@@ -90,66 +90,56 @@ export function applyEventToGraph(event) {
         return copy;
       });
 
-      // Create edges from input artifacts to this agent
+      // Create edges: previous agent/input → this agent
+      // We connect agent-to-agent immediately because artifact nodes may not
+      // exist yet (they're created by ARTIFACT_PRODUCED which fires later).
       graphEdges.update(edges => {
         const copy = new Map(edges);
-        if (inputArtifactIds && inputArtifactIds.length > 0) {
-          inputArtifactIds.forEach((artifactId, idx) => {
-            const edgeId = `${artifactId}->${agentId}_${idx}`;
+        const nodes = get(graphNodes);
+        const pipelineOrder = ['strategist', 'critic', 'optimizer', 'moderator'];
+        const currentIdx = pipelineOrder.indexOf(role);
+
+        if (currentIdx > 0) {
+          // Find the previous agent node in this round
+          const prevRole = pipelineOrder[currentIdx - 1];
+          const prevAgentId = `${prevRole}_r${round}`;
+          if (nodes.has(prevAgentId)) {
+            const edgeId = `${prevAgentId}->${agentId}`;
             copy.set(edgeId, {
               id: edgeId,
-              source: artifactId,
+              source: prevAgentId,
               target: agentId,
               type: 'flow',
               data: { type: 'flow', isActive: true },
             });
-          });
-        } else {
-          // Fallback: find the most recent artifact from the previous agent in the pipeline
-          const pipelineOrder = ['strategist', 'critic', 'optimizer', 'moderator'];
-          const currentIdx = pipelineOrder.indexOf(role);
-          if (currentIdx > 0) {
-            const prevRole = pipelineOrder[currentIdx - 1];
-            // Find the latest artifact from the previous role in this round
-            const nodes = get(graphNodes);
-            let bestArtifact = null;
-            let bestRound = -1;
-            for (const [, node] of nodes) {
-              if (node.type === 'artifact' && node.data?.artifactType === prevRole) {
-                const artifactRound = node.data?.round || 0;
-                if (artifactRound <= round && artifactRound > bestRound) {
-                  bestArtifact = node.id;
-                  bestRound = artifactRound;
-                }
-              }
-            }
-            if (bestArtifact) {
-              const edgeId = `${bestArtifact}->${agentId}`;
+          }
+        } else if (currentIdx === 0) {
+          // First agent (strategist) → connect to input node
+          for (const [, node] of nodes) {
+            if (node.type === 'input') {
+              const edgeId = `${node.id}->${agentId}`;
               copy.set(edgeId, {
                 id: edgeId,
-                source: bestArtifact,
+                source: node.id,
                 target: agentId,
                 type: 'flow',
                 data: { type: 'flow', isActive: true },
               });
+              break;
             }
           }
-          // For the first agent (strategist), connect to input node
-          if (currentIdx === 0) {
-            const nodes = get(graphNodes);
-            for (const [, node] of nodes) {
-              if (node.type === 'input') {
-                const edgeId = `${node.id}->${agentId}`;
-                copy.set(edgeId, {
-                  id: edgeId,
-                  source: node.id,
-                  target: agentId,
-                  type: 'flow',
-                  data: { type: 'flow', isActive: true },
-                });
-                break;
-              }
-            }
+        } else if (!pipelineOrder.includes(role)) {
+          // A2A or custom agent → connect to moderator of this round
+          const modAgentId = `moderator_r${round}`;
+          if (nodes.has(modAgentId)) {
+            const edgeId = `${modAgentId}->${agentId}`;
+            copy.set(edgeId, {
+              id: edgeId,
+              source: modAgentId,
+              target: agentId,
+              type: 'flow',
+              data: { type: 'flow', isActive: true },
+            });
           }
         }
         return copy;
