@@ -26,6 +26,7 @@
     config: ['config'],
     modules: ['modules'],
     proposals: ['proposals'],
+    manage: ['manage'],
   };
 
   function isActive(route) {
@@ -67,13 +68,18 @@
           ],
         },
         {
-          id: 'management',
-          label: t('nav.section.management'),
-          isSubHeader: true,
+          id: 'manage',
+          label: t('nav.section.manage') || 'Manage',
+          icon: '🔧',
+          route: 'manage',
+          children: [
+            { id: 'llm-profiles', label: t('nav.llmProfiles'), route: 'manage' },
+            { id: 'role-types', label: t('nav.roleTypes') || 'Role Types', route: 'manage' },
+            { id: 'agent-personas', label: t('nav.agentPersonas') || 'Agent Personas', route: 'manage' },
+            { id: 'prompt-variants', label: t('nav.promptVariants') || 'Prompt Variants', route: 'manage' },
+            { id: 'cost-estimate', label: t('nav.costEstimate') || 'Cost Estimate', route: 'manage' },
+          ],
         },
-        { id: 'llm-profiles', label: t('nav.llmProfiles'), icon: '🤖', route: 'config' },
-        { id: 'service-llm', label: t('nav.serviceLlm'), icon: '🔧', route: 'config' },
-        { id: 'roles-personas', label: t('nav.rolesPersonas'), icon: '👤', route: 'config' },
         { id: 'modules', label: t('nav.modules'), icon: '🧩', route: 'modules' },
         { id: 'translation', label: t('nav.translation'), icon: '🌐', route: 'translation' },
       ],
@@ -84,7 +90,17 @@
       items: [
         { id: 'projects', label: t('nav.projects'), icon: '📁', route: 'projects' },
         { id: 'audit', label: t('nav.audit'), icon: '📋', route: 'audit' },
-        { id: 'backup', label: t('nav.backup'), icon: '💾', route: 'config' },
+        {
+          id: 'configure',
+          label: t('nav.section.configure') || 'Configure',
+          icon: '⚙️',
+          route: 'config',
+          children: [
+            { id: 'backup', label: t('nav.backup'), route: 'config' },
+            { id: 'settings', label: t('nav.settings') || 'Application Settings', route: 'config' },
+            { id: 'system', label: t('nav.system') || 'System', route: 'config' },
+          ],
+        },
       ],
     },
     {

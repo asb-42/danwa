@@ -22,6 +22,7 @@ import InputComposerView from './views/InputComposerView.svelte';
 import TranslationDashboard from './views/TranslationDashboard.svelte';
 import ModulesView from './views/ModulesView.svelte';
 import ProposalsView from './views/ProposalsView.svelte';
+import ManageView from './views/ManageView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
@@ -102,6 +103,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <ProjectsView {navigate} />
   {:else if $route === 'config'}
     <ConfigView />
+  {:else if $route === 'manage'}
+    <ManageView />
   {:else if $route === 'blueprint'}
     <BlueprintCanvasView layoutId={$routeParams[0] || null} {navigate} />
   {:else if $route === 'replay'}
