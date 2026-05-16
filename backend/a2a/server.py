@@ -92,19 +92,24 @@ class A2AServer:
 
         Returns immediately with a task acknowledgment.  The debate
         runs in a background coroutine.
+
+        Metadata keys supported:
+        - ``project_id``: Target project (defaults to ``_default``)
+        - ``language``: Debate language code (defaults to ``de``)
         """
         task_id = task.id or str(uuid.uuid4())
 
-        # Extract debate topic from message
         topic = self._extract_topic(task.message)
         if not topic:
             return self._error_response(task_id, "No text content in message")
 
-        # Create task record
         self.task_manager.create_task(task_id, status=TaskStatus.SUBMITTED)
 
-        # Start debate asynchronously
-        asyncio.create_task(self._run_debate(task_id, topic))
+        meta = task.metadata or {}
+        project_id = meta.get("project_id", self.project_id)
+        language = meta.get("language", "de")
+
+        asyncio.create_task(self._run_debate(task_id, topic, project_id, language))
 
         result = {
             "id": task_id,
@@ -132,6 +137,13 @@ class A2AServer:
             result["artifacts"] = [{"parts": [{"type": "text", "text": task["result"]}]}]
         elif task["status"] == TaskStatus.FAILED:
             result["status"]["message"] = task.get("error", "Unknown error")
+        elif task["status"] == TaskStatus.WORKING:
+            debate_id = task.get("debate_id")
+            if debate_id:
+                progress = self._get_debate_progress(debate_id)
+                if progress:
+                    result["status"]["message"] = progress.get("status_message", "working")
+                    result["progress"] = progress
 
         return result
 
@@ -148,34 +160,37 @@ class A2AServer:
     # Background debate execution
     # ------------------------------------------------------------------
 
-    async def _run_debate(self, task_id: str, topic: str) -> None:
+    async def _run_debate(
+        self,
+        task_id: str,
+        topic: str,
+        project_id: str | None = None,
+        language: str = "de",
+    ) -> None:
         """Run a debate for an A2A task (background coroutine).
 
         Creates a debate via the internal API, starts the workflow,
         and polls for completion.
         """
+        effective_project = project_id or self.project_id
         try:
             self.task_manager.update_task(task_id, status=TaskStatus.WORKING)
 
-            # Import here to avoid circular imports at module level
             from backend.models.schemas import CaseInput, DebateRequest
 
-            llm_profile_id = _resolve_a2a_llm_profile(self.project_id)
+            llm_profile_id = _resolve_a2a_llm_profile(effective_project)
 
             request = DebateRequest(
                 case=CaseInput(text=topic),
-                language="de",
+                language=language,
                 llm_profile_id=llm_profile_id or "local-qwen",
             )
 
-            # Create and start debate via internal helpers
-            debate_id = await self._create_and_start_debate(request)
+            debate_id = await self._create_and_start_debate(request, effective_project)
             self.task_manager.update_task(task_id, debate_id=debate_id)
 
-            # Poll for completion
-            result = await self._wait_for_completion(debate_id)
+            result = await self._wait_for_completion(debate_id, effective_project)
 
-            # Format result as A2A response
             output_text = self._format_debate_result(result)
             self.task_manager.update_task(
                 task_id,
@@ -191,15 +206,20 @@ class A2AServer:
                 error=str(exc),
             )
 
-    async def _create_and_start_debate(self, request: DebateRequest) -> str:
+    async def _create_and_start_debate(
+        self,
+        request: DebateRequest,
+        project_id: str | None = None,
+    ) -> str:
         """Create a debate and start the workflow. Returns the debate_id."""
         import uuid as _uuid
 
         from backend.models.schemas import DebateStatus
         from backend.services.debate_workflow import run_debate_workflow
 
+        effective_project = project_id or self.project_id
         debate_id = str(_uuid.uuid4())
-        store = get_debate_store_for_project(self.project_id, self._project_store)
+        store = get_debate_store_for_project(effective_project, self._project_store)
         audit = get_audit_service()
 
         from datetime import UTC, datetime
@@ -218,21 +238,22 @@ class A2AServer:
         }
         store.put(debate_id, debate)
 
-        # Run workflow in background
-        asyncio.create_task(run_debate_workflow(debate_id, self.project_id, audit, store, self._project_store))
+        asyncio.create_task(run_debate_workflow(debate_id, effective_project, audit, store, self._project_store))
 
         return debate_id
 
     async def _wait_for_completion(
         self,
         debate_id: str,
+        project_id: str | None = None,
         poll_interval: float = 2.0,
         max_attempts: int = 300,
     ) -> dict:
         """Poll the debate store until the debate completes or fails."""
         from backend.models.schemas import DebateStatus
 
-        store = get_debate_store_for_project(self.project_id, self._project_store)
+        effective_project = project_id or self.project_id
+        store = get_debate_store_for_project(effective_project, self._project_store)
 
         for _ in range(max_attempts):
             debate = store.get(debate_id)
@@ -289,4 +310,62 @@ class A2AServer:
         return {
             "id": task_id,
             "status": {"state": "failed", "message": message},
+        }
+
+    def _get_debate_progress(self, debate_id: str) -> dict | None:
+        """Return detailed debate progress for a running debate."""
+        from backend.models.schemas import DebateStatus
+
+        for project in (self._project_store.list_all() if self._project_store else []):
+            try:
+                store = get_debate_store_for_project(project.id, self._project_store)
+                debate = store.get(debate_id)
+                if debate:
+                    break
+            except Exception:
+                continue
+        else:
+            return None
+
+        status = debate.get("status")
+        status_value = status.value if hasattr(status, "value") else status
+
+        current_round = debate.get("current_round", 0)
+        max_rounds = debate.get("max_rounds", 3)
+        rounds = debate.get("rounds", [])
+        request = debate.get("request", {})
+
+        agent_count = 4
+        if hasattr(request, "agent_profile"):
+            agent_count = len(request.agent_profile)
+        elif isinstance(request, dict):
+            agent_count = len(request.get("agent_profile", [])) or 4
+
+        current_agent_index = 0
+        if rounds:
+            last_round = rounds[-1]
+            agent_outputs = last_round.get("agent_outputs", [])
+            current_agent_index = len(agent_outputs)
+
+        role_order = ["strategist", "critic", "optimizer", "moderator"]
+        current_agent = role_order[current_agent_index % agent_count] if current_agent_index < agent_count else role_order[-1]
+
+        if status_value == DebateStatus.PENDING.value:
+            if current_round > 0:
+                status_message = f"Agent {current_agent_index + 1} of {agent_count} ({current_agent.title()}) in round {current_round} of {max_rounds}"
+            else:
+                status_message = "Debate pending, preparing agents..."
+        elif status_value in (DebateStatus.RUNNING.value, "running"):
+            status_message = f"Agent {current_agent_index + 1} of {agent_count} ({current_agent.title()}) in round {current_round} of {max_rounds}"
+        else:
+            status_message = status_value
+
+        return {
+            "status_message": status_message,
+            "current_round": current_round,
+            "max_rounds": max_rounds,
+            "current_agent_index": current_agent_index,
+            "agent_count": agent_count,
+            "current_agent_role": current_agent,
+            "rounds_completed": len(rounds),
         }
