@@ -77,8 +77,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
     """
     return [
         {
-            "module_id": "danwa-prompts-base",
-            "name": {"en": "Danwa Prompts Base (EN)", "de": "Danwa Prompts Basis (EN)"},
+            "module_id": "prompts-base",
+            "name": {"en": "Prompts Base (EN)", "de": "Prompts Basis (EN)"},
             "description": {"en": "Core English prompt templates and argumentation patterns"},
             "version": "0.5.0",
             "type": "argumentation-pattern",
@@ -89,8 +89,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danwa-agents-base",
-            "name": {"en": "Danwa Agent Personas", "de": "Danwa Agent-Personas"},
+            "module_id": "agents-base",
+            "name": {"en": "Agent Personas", "de": "Agent-Personas"},
             "description": {"en": "Default agent personas for debate roles"},
             "version": "0.5.0",
             "type": "agent-persona",
@@ -101,8 +101,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danwa-llm-profiles",
-            "name": {"en": "Danwa LLM Profiles", "de": "Danwa LLM-Profile"},
+            "module_id": "llm-profiles",
+            "name": {"en": "LLM Profiles", "de": "LLM-Profile"},
             "description": {"en": "LLM configuration profiles for various providers"},
             "version": "0.5.0",
             "type": "llm-profile",
@@ -113,8 +113,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danwa-workflow-templates",
-            "name": {"en": "Danwa Workflow Templates", "de": "Danwa Workflow-Vorlagen"},
+            "module_id": "workflow-templates",
+            "name": {"en": "Workflow Templates", "de": "Workflow-Vorlagen"},
             "description": {"en": "Pre-built workflow templates for various debate formats"},
             "version": "0.5.0",
             "type": "workflow-template",
@@ -125,8 +125,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danwa-workflow-variants",
-            "name": {"en": "Danwa Workflow Variants", "de": "Danwa Workflow-Varianten"},
+            "module_id": "workflow-variants",
+            "name": {"en": "Workflow Variants", "de": "Workflow-Varianten"},
             "description": {"en": "Workflow execution variants (concise, formal, etc.)"},
             "version": "0.5.0",
             "type": "workflow-variant",
@@ -137,8 +137,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danwa-tone-profiles",
-            "name": {"en": "Danwa Tone Profiles", "de": "Danwa Ton-Profile"},
+            "module_id": "tone-profiles",
+            "name": {"en": "Tone Profiles", "de": "Ton-Profile"},
             "description": {"en": "System tone profiles for debate style configuration (heated, academic, neutral)"},
             "version": "0.5.0",
             "type": "tone-profile",
@@ -149,8 +149,8 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danwa-role-types",
-            "name": {"en": "Danwa Role Types", "de": "Danwa Rollentypen"},
+            "module_id": "role-types",
+            "name": {"en": "Role Types", "de": "Rollentypen"},
             "description": {"en": "Core role types defining agent behavioral categories (strategist, critic, optimizer, moderator, etc.)"},
             "version": "0.5.0",
             "type": "role-type",
