@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Danwa Module Manifest",
-  "description": "Manifest-Datei für Danwa-Module (Prompts, Agenten, LLM-Profile, Workflows, Tone-Profiles)",
+  "title": "Module Manifest",
+  "description": "Manifest-Datei für Module (Prompts, Agenten, LLM-Profile, Workflows, Tone-Profiles)",
   "type": "object",
   "required": [
     "schema_version",
@@ -82,7 +82,7 @@
     },
     "dependencies": {
       "type": "object",
-      "description": "Abhängigkeiten zu anderen Modulen oder Danwa-Core",
+      "description": "Abhängigkeiten zu anderen Modulen oder Core",
       "propertyNames": {
         "type": "string",
         "pattern": "^danwa-[a-z0-9][a-z0-9.-]*$|^danwa-core$"
