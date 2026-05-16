@@ -141,12 +141,30 @@
     }
   }
 
+  async function toggleServiceProfile(profileId, isChecked) {
+    isLoadingServiceLLM = true;
+    try {
+      if (isChecked) {
+        await setServiceLLM(profileId);
+        statusMessage = t('service.setSuccess') || 'Utility LLM set';
+      } else {
+        await setServiceLLM('');
+        statusMessage = t('service.cleared') || 'Utility LLM cleared';
+      }
+      await loadServiceLLMData();
+    } catch (e) {
+      error.set(e.message);
+    } finally {
+      isLoadingServiceLLM = false;
+    }
+  }
+
   async function setServiceProfile(profileId) {
     isLoadingServiceLLM = true;
     try {
       await setServiceLLM(profileId);
       await loadServiceLLMData();
-      statusMessage = t('service.setSuccess') || 'Service LLM updated successfully';
+      statusMessage = t('service.setSuccess') || 'Utility LLM updated successfully';
     } catch (e) {
       error.set(e.message);
     } finally {
@@ -503,7 +521,7 @@
                   <th class="px-4 py-3">{t('config.temperature')}</th>
                   <th class="px-4 py-3">{t('config.maxTokens')}</th>
                   <th class="px-4 py-3">{t('config.contextWindow')}</th>
-                  <th class="px-4 py-3 text-center">🔧 {t('service.title') || 'Service'}</th>
+                  <th class="px-4 py-3 text-center">🔧 {t('service.utility') || 'Utility'}</th>
                   <th class="px-4 py-3 text-right">{t('config.actions') || 'Aktionen'}</th>
                 </tr>
               </thead>
@@ -533,7 +551,7 @@
                       {#if serviceEligibleProfiles.some(p => p.id === profile.id && p.service_eligible)}
                         <input type="checkbox"
                           checked={serviceLLMConfig.service_llm_profile_id === profile.id}
-                          onchange={() => setServiceProfile(profile.id)}
+                          onchange={(e) => toggleServiceProfile(profile.id, e.target.checked)}
                           class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
                       {:else}
                         <span class="text-xs text-gray-400">—</span>
