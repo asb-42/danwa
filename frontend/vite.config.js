@@ -27,6 +27,14 @@ export default defineConfig(({ mode }) => ({
         target: 'http://localhost:7860',
         changeOrigin: true,
       },
+      '/a2a': {
+        target: 'http://localhost:7860',
+        changeOrigin: true,
+      },
+      '/.well-known': {
+        target: 'http://localhost:7860',
+        changeOrigin: true,
+      },
     },
   },
   build: {
