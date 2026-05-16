@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { healthStatus, loading, error, activeProject } from '../lib/stores.js';
+  import { healthStatus, loading, error, activeProject, currentDebate, sseConnected } from '../lib/stores.js';
   import { getHealth, getDebates } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
@@ -76,6 +76,8 @@
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   }
+
+  let graphStatus = $derived($currentDebate?.status === 'running' ? 'running' : $currentDebate?.status === 'completed' ? 'completed' : 'idle');
 </script>
 
 <div class="space-y-6">
@@ -181,5 +183,5 @@
   {/if}
 
   <!-- Workflow graph -->
-  <DashboardWorkflowGraph />
+  <DashboardWorkflowGraph status={graphStatus} />
 </div>

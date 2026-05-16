@@ -1,11 +1,17 @@
 <script>
   /**
-   * DashboardWorkflowGraph — Static ELK.js visualization of the standard debate pipeline.
-   * Renders an SVG-based flow diagram: Input → Strategist → Critic → Optimizer → Moderator → Result
+   * DashboardWorkflowGraph — Animated ELK.js visualization of the debate pipeline.
+   * Renders an SVG-based flow diagram with:
+   * - Forward flow: Input → Strategist → Critic → Optimizer → Moderator → Result
+   * - Feedback loop: Moderator → Strategist (retry when consensus below threshold)
+   * - Animated flow particles when status === 'running'
+   * - Active node highlighting via activeNodeId prop
    */
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import ELK from 'elkjs/lib/elk.bundled.js';
+
+  let { activeNodeId = null, status = 'idle' } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -24,7 +30,7 @@
     { id: 'result', label: 'Result', icon: '📋', color: '#10b981', width: 100, height: 48 },
   ];
 
-  const EDGES = [
+  const FORWARD_EDGES = [
     { id: 'e1', source: 'input', target: 'strategist' },
     { id: 'e2', source: 'strategist', target: 'critic' },
     { id: 'e3', source: 'critic', target: 'optimizer' },
@@ -32,9 +38,16 @@
     { id: 'e5', source: 'moderator', target: 'result' },
   ];
 
+  const FEEDBACK_EDGES = [
+    { id: 'fb1', source: 'moderator', target: 'strategist', label: 'Retry' },
+  ];
+
+  const ALL_EDGES = [...FORWARD_EDGES, ...FEEDBACK_EDGES];
+
   let layoutResult = $state(null);
   let svgWidth = $state(700);
-  let svgHeight = $state(120);
+  let svgHeight = $state(160);
+  let isLayoutReady = $state(false);
 
   onMount(async () => {
     try {
@@ -46,15 +59,17 @@
           'elk.direction': 'RIGHT',
           'elk.layered.spacing.nodeNodeBetweenLayers': '60',
           'elk.spacing.nodeNode': '30',
+          'elk.layered.feedbackEdges': 'true',
+          'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
         },
         children: NODES.map(n => ({ id: n.id, width: n.width, height: n.height })),
-        edges: EDGES.map(e => ({ id: e.id, sources: [e.source], targets: [e.target] })),
+        edges: ALL_EDGES.map(e => ({ id: e.id, sources: [e.source], targets: [e.target] })),
       };
 
       const result = await elk.layout(graph);
       layoutResult = result;
+      isLayoutReady = true;
 
-      // Calculate SVG bounds
       let maxX = 0, maxY = 0;
       function calcBounds(node) {
         if (node.x != null) maxX = Math.max(maxX, node.x + (node.width || 0));
@@ -62,8 +77,8 @@
         if (node.children) node.children.forEach(calcBounds);
       }
       if (result.children) result.children.forEach(calcBounds);
-      svgWidth = maxX + 40;
-      svgHeight = maxY + 40;
+      svgWidth = maxX + 60;
+      svgHeight = maxY + 80;
     } catch (err) {
       console.warn('[DashboardWorkflowGraph] ELK layout failed:', err);
     }
@@ -94,6 +109,18 @@
     const srcNode = NODES.find(n => n.id === edge.source);
     const tgtNode = NODES.find(n => n.id === edge.target);
     if (!src || !tgt || !srcNode || !tgtNode) return '';
+
+    const isFeedback = edge.source === 'moderator' && edge.target === 'strategist';
+
+    if (isFeedback) {
+      const x1 = src.x + srcNode.width / 2;
+      const y1 = src.y + srcNode.height;
+      const x2 = tgt.x + tgtNode.width / 2;
+      const y2 = tgt.y + tgtNode.height;
+      const midY = Math.max(y1, y2) + 40;
+      return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+    }
+
     const x1 = src.x + srcNode.width;
     const y1 = src.y + srcNode.height / 2;
     const x2 = tgt.x;
@@ -101,39 +128,118 @@
     const cx = (x1 + x2) / 2;
     return `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
   }
+
+  function getEdgeLabelPos(edge) {
+    const src = getNodePos(edge.source);
+    const tgt = getNodePos(edge.target);
+    const srcNode = NODES.find(n => n.id === edge.source);
+    const tgtNode = NODES.find(n => n.id === edge.target);
+    if (!src || !tgt || !srcNode || !tgtNode) return null;
+
+    const x1 = src.x + srcNode.width / 2;
+    const y1 = src.y + srcNode.height;
+    const x2 = tgt.x + tgtNode.width / 2;
+    const y2 = tgt.y + tgtNode.height;
+    const midY = Math.max(y1, y2) + 40;
+    return { x: (x1 + x2) / 2, y: midY - 6 };
+  }
 </script>
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
   <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.workflowTitle')}</h3>
 
-  {#if layoutResult}
+  {#if isLayoutReady && layoutResult}
     <div class="overflow-x-auto">
       <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} class="mx-auto">
-        <!-- Edges -->
-        {#each EDGES as edge}
-          <path
-            d={getEdgePath(edge)}
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            class="text-gray-300 dark:text-gray-600"
-            marker-end="url(#arrowhead)"
-          />
-        {/each}
-
-        <!-- Arrow marker -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" class="fill-gray-400 dark:fill-gray-500" />
           </marker>
+          <marker id="arrowhead-feedback" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="fill-amber-500" />
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
+
+        <!-- Forward edges -->
+        {#each FORWARD_EDGES as edge}
+          {@const path = getEdgePath(edge)}
+          {#if path}
+            <path
+              d={path}
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="text-gray-300 dark:text-gray-600"
+              marker-end="url(#arrowhead)"
+            />
+            {#if status === 'running'}
+              <circle r="3" class="fill-blue-500" opacity="0.8">
+                <animateMotion dur="2s" repeatCount="indefinite" path={path} />
+              </circle>
+            {/if}
+          {/if}
+        {/each}
+
+        <!-- Feedback edges -->
+        {#each FEEDBACK_EDGES as edge}
+          {@const path = getEdgePath(edge)}
+          {@const labelPos = getEdgeLabelPos(edge)}
+          {#if path}
+            <path
+              d={path}
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-dasharray="4,3"
+              class="text-amber-500 dark:text-amber-400"
+              marker-end="url(#arrowhead-feedback)"
+            />
+            {#if labelPos}
+              <text
+                x={labelPos.x}
+                y={labelPos.y}
+                font-size="9"
+                font-weight="500"
+                class="fill-amber-600 dark:fill-amber-400"
+                text-anchor="middle"
+              >{edge.label || 'Retry'}</text>
+            {/if}
+            {#if status === 'running'}
+              <circle r="3" class="fill-amber-500" opacity="0.8">
+                <animateMotion dur="3s" repeatCount="indefinite" path={path} />
+              </circle>
+            {/if}
+          {/if}
+        {/each}
 
         <!-- Nodes -->
         {#each NODES as node}
           {@const pos = getNodePos(node.id)}
+          {@const isActive = activeNodeId === node.id}
           {#if pos}
-            <g transform={`translate(${pos.x}, ${pos.y})`}>
-              <!-- Node background -->
+            <g transform={`translate(${pos.x}, ${pos.y})`} class:active-node={isActive}>
+              {#if isActive}
+                <rect
+                  x="-3" y="-3"
+                  width={node.width + 6}
+                  height={node.height + 6}
+                  rx="10"
+                  fill="none"
+                  stroke={node.color}
+                  stroke-width="2"
+                  opacity="0.6"
+                  filter="url(#glow)"
+                >
+                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
+                </rect>
+              {/if}
               <rect
                 width={node.width}
                 height={node.height}
@@ -141,16 +247,13 @@
                 class="fill-gray-50 dark:fill-gray-700 stroke-gray-200 dark:stroke-gray-600"
                 stroke-width="1.5"
               />
-              <!-- Color accent bar -->
               <rect
                 width="4"
                 height={node.height}
                 rx="2"
                 fill={node.color}
               />
-              <!-- Icon -->
               <text x="16" y={node.height / 2 + 5} font-size="16" text-anchor="middle">{node.icon}</text>
-              <!-- Label -->
               <text
                 x={node.width / 2 + 8}
                 y={node.height / 2 + 5}
@@ -184,6 +287,10 @@
           <span class="w-2.5 h-2.5 rounded-full" style="background:#6366f1"></span>
           {t('dashboard.workflowLegend.moderator') || 'Consensus'}
         </span>
+        <span class="flex items-center gap-1.5">
+          <span class="w-4 h-0.5 bg-amber-500" style="border-top: 1.5px dashed currentColor; height: 0;"></span>
+          {t('dashboard.workflowLegend.retry') || 'Retry loop'}
+        </span>
       </div>
     </div>
   {:else}
@@ -198,3 +305,13 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .active-node {
+    animation: node-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes node-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+</style>
