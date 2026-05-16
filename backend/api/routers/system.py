@@ -23,10 +23,13 @@ def reload_profiles() -> dict:
     """Reload all profiles from YAML files.
 
     Forces ProfileService and PromptService singletons to re-read
-    their YAML/markdown files from disk.
+    their YAML/markdown files from disk. Also clears the workflow
+    nodes' cached ProfileService instances so running debates pick
+    up the updated profiles immediately.
     """
     from backend.api.routers.profiles import get_profile_service
-    from backend.workflow.nodes import _get_prompt_service
+    from backend.workflow import nodes as workflow_nodes
+    from backend.workflow import node_functions
 
     try:
         ps = get_profile_service()
@@ -34,9 +37,19 @@ def reload_profiles() -> dict:
         logger.info("Profiles reloaded successfully")
 
         # Also clear prompt cache
-        prompt_svc = _get_prompt_service()
+        prompt_svc = workflow_nodes._get_prompt_service()
         prompt_svc.clear_cache()
         logger.info("Prompt cache cleared")
+
+        # Clear workflow nodes' cached ProfileService/PromptService instances
+        # so that running debates pick up updated profiles immediately
+        workflow_nodes._profile_service_cache.clear()
+        workflow_nodes._prompt_service_cache.clear()
+        workflow_nodes._profile_service = None
+        workflow_nodes._prompt_service = None
+        node_functions._profile_service = None
+        node_functions._prompt_service = None
+        logger.info("Workflow nodes' profile/prompt service caches cleared")
 
         return {
             "status": "ok",
