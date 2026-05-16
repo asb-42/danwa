@@ -709,7 +709,10 @@ export function getModule(moduleId) {
 
 /** Install a module. */
 export function installModule(moduleId) {
-  return request(`/api/v1/modules/${moduleId}/install`, { method: 'POST' });
+  return request('/api/v1/modules/install', {
+    method: 'POST',
+    body: JSON.stringify({ module_id: moduleId, source: 'local' }),
+  });
 }
 
 /** Uninstall a module. */
