@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-example-custom-workflow",
+  "module_id": "example-custom-workflow",
   "name": {
     "en": "Example: Custom Workflow",
     "de": "Beispiel: Eigener Workflow"
@@ -20,7 +20,7 @@
   "language": "en",
   "tags": ["example", "tutorial", "workflow"],
   "dependencies": {
-    "danwa-prompts-base": ">=1.0.0"
+    "prompts-base": ">=1.0.0"
   },
   "files": [
     {"path": "workflows/socratic-debate.json", "format": "json", "checksum": ""}

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-example-custom-persona",
+  "module_id": "example-custom-persona",
   "name": {
     "en": "Example: Custom Agent Persona",
     "de": "Beispiel: Eigene Agenten-Persona"

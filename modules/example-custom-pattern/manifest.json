@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-example-custom-pattern",
+  "module_id": "example-custom-pattern",
   "name": {
     "en": "Example: Custom Argumentation Pattern",
     "de": "Beispiel: Eigene Argumentationsmuster"
