@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danwa-prompts-base",
+  "module_id": "prompts-base",
   "name": {
-    "en": "Danwa Prompts Base (EN)",
-    "de": "Danwa Prompts Basis (EN)"
+    "en": "Prompts Base (EN)",
+    "de": "Prompts Basis (EN)"
   },
   "version": "0.5.0",
   "type": "argumentation-pattern",
