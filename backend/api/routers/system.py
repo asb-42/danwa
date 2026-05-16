@@ -28,8 +28,8 @@ def reload_profiles() -> dict:
     up the updated profiles immediately.
     """
     from backend.api.routers.profiles import get_profile_service
-    from backend.workflow import nodes as workflow_nodes
     from backend.workflow import node_functions
+    from backend.workflow import nodes as workflow_nodes
 
     try:
         ps = get_profile_service()

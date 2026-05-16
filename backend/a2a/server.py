@@ -316,7 +316,7 @@ class A2AServer:
         """Return detailed debate progress for a running debate."""
         from backend.models.schemas import DebateStatus
 
-        for project in (self._project_store.list_all() if self._project_store else []):
+        for project in self._project_store.list_all() if self._project_store else []:
             try:
                 store = get_debate_store_for_project(project.id, self._project_store)
                 debate = store.get(debate_id)
@@ -352,7 +352,9 @@ class A2AServer:
 
         if status_value == DebateStatus.PENDING.value:
             if current_round > 0:
-                status_message = f"Agent {current_agent_index + 1} of {agent_count} ({current_agent.title()}) in round {current_round} of {max_rounds}"
+                status_message = (
+                    f"Agent {current_agent_index + 1} of {agent_count} ({current_agent.title()}) in round {current_round} of {max_rounds}"
+                )
             else:
                 status_message = "Debate pending, preparing agents..."
         elif status_value in (DebateStatus.RUNNING.value, "running"):

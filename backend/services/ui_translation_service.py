@@ -399,8 +399,7 @@ class UITranslationService:
 
         # Get translations for the target locale
         target_rows = conn.execute(
-            "SELECT key, value, source, confidence, version, created_at, updated_at "
-            "FROM ui_translations WHERE locale = ? AND namespace = ?",
+            "SELECT key, value, source, confidence, version, created_at, updated_at FROM ui_translations WHERE locale = ? AND namespace = ?",
             (locale, namespace),
         ).fetchall()
         target_map = {r["key"]: dict(r) for r in target_rows}
@@ -422,30 +421,34 @@ class UITranslationService:
                     llm_generated += 1
                 elif t["source"] == "manual":
                     manual += 1
-                strings.append({
-                    "key": key,
-                    "source_value": en_value,
-                    "translated_value": t["value"],
-                    "status": "translated",
-                    "source": t["source"],
-                    "confidence": t["confidence"],
-                    "version": t["version"],
-                    "created_at": t["created_at"],
-                    "updated_at": t["updated_at"],
-                })
+                strings.append(
+                    {
+                        "key": key,
+                        "source_value": en_value,
+                        "translated_value": t["value"],
+                        "status": "translated",
+                        "source": t["source"],
+                        "confidence": t["confidence"],
+                        "version": t["version"],
+                        "created_at": t["created_at"],
+                        "updated_at": t["updated_at"],
+                    }
+                )
             else:
                 missing += 1
-                strings.append({
-                    "key": key,
-                    "source_value": en_value,
-                    "translated_value": None,
-                    "status": "missing",
-                    "source": None,
-                    "confidence": None,
-                    "version": None,
-                    "created_at": None,
-                    "updated_at": None,
-                })
+                strings.append(
+                    {
+                        "key": key,
+                        "source_value": en_value,
+                        "translated_value": None,
+                        "status": "missing",
+                        "source": None,
+                        "confidence": None,
+                        "version": None,
+                        "created_at": None,
+                        "updated_at": None,
+                    }
+                )
 
         return {
             "locale": locale,
@@ -480,9 +483,7 @@ class UITranslationService:
         import json
 
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT key, value FROM ui_translation_metadata WHERE key LIKE 'custom_locale:%'"
-        ).fetchall()
+        rows = conn.execute("SELECT key, value FROM ui_translation_metadata WHERE key LIKE 'custom_locale:%'").fetchall()
         conn.close()
         result = []
         for row in rows:

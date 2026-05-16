@@ -184,10 +184,7 @@ async def run_agent_node(state: DebateState) -> dict:
         )
         try:
             all_profiles = _get_profile_service(project_id).list_llm_profiles()
-            local_profiles = [
-                p for p in all_profiles
-                if is_service_llm_eligible(p)[0] and p.provider.value in ("local", "ollama")
-            ]
+            local_profiles = [p for p in all_profiles if is_service_llm_eligible(p)[0] and p.provider.value in ("local", "ollama")]
             if local_profiles:
                 llm_profile_obj = local_profiles[0]
                 llm_profile_id = llm_profile_obj.id

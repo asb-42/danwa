@@ -63,10 +63,7 @@ async def get_agent_card(project_store: ProjectStore = Depends(get_project_store
         card["url"] = server_cfg["path"]
 
     projects = project_store.list_all()
-    card["projects"] = [
-        {"id": p.id, "name": p.name, "description": p.description or ""}
-        for p in projects
-    ]
+    card["projects"] = [{"id": p.id, "name": p.name, "description": p.description or ""} for p in projects]
 
     card["languages"] = [
         {"code": "de", "name": "Deutsch"},
@@ -92,7 +89,7 @@ async def get_agent_card(project_store: ProjectStore = Depends(get_project_store
     for skill in card.get("skills", []):
         if skill.get("id") == "debate":
             project_ids = [p["id"] for p in card["projects"]]
-            lang_codes = [l["code"] for l in card["languages"]]
+            lang_codes = [lang["code"] for lang in card["languages"]]
             skill["usage"] = {
                 "project_id": project_ids,
                 "language": lang_codes,
