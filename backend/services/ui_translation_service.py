@@ -9,6 +9,7 @@ handelt dieser Service ausschließlich UI-Strings wie Menüs, Buttons, Labels et
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from datetime import UTC, datetime
@@ -380,6 +381,115 @@ class UITranslationService:
             results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
 
         return results
+
+    def get_locale_details(self, locale: str, namespace: str = "global") -> dict[str, Any]:
+        """Return all known keys with translation status for a specific locale.
+
+        Returns per-string details including value, source, created_at, updated_at.
+        Also includes untranslated keys (from English source) with status='missing'.
+        """
+        conn = self._get_conn()
+
+        # Get all English source keys as the master key set
+        en_rows = conn.execute(
+            "SELECT key, value FROM ui_translations WHERE locale = 'en' AND namespace = ?",
+            (namespace,),
+        ).fetchall()
+        en_keys = {r["key"]: r["value"] for r in en_rows}
+
+        # Get translations for the target locale
+        target_rows = conn.execute(
+            "SELECT key, value, source, confidence, version, created_at, updated_at "
+            "FROM ui_translations WHERE locale = ? AND namespace = ?",
+            (locale, namespace),
+        ).fetchall()
+        target_map = {r["key"]: dict(r) for r in target_rows}
+
+        conn.close()
+
+        total_keys = len(en_keys)
+        translated = 0
+        missing = 0
+        llm_generated = 0
+        manual = 0
+        strings = []
+
+        for key, en_value in sorted(en_keys.items()):
+            if key in target_map:
+                t = target_map[key]
+                translated += 1
+                if t["source"] == "llm_generated":
+                    llm_generated += 1
+                elif t["source"] == "manual":
+                    manual += 1
+                strings.append({
+                    "key": key,
+                    "source_value": en_value,
+                    "translated_value": t["value"],
+                    "status": "translated",
+                    "source": t["source"],
+                    "confidence": t["confidence"],
+                    "version": t["version"],
+                    "created_at": t["created_at"],
+                    "updated_at": t["updated_at"],
+                })
+            else:
+                missing += 1
+                strings.append({
+                    "key": key,
+                    "source_value": en_value,
+                    "translated_value": None,
+                    "status": "missing",
+                    "source": None,
+                    "confidence": None,
+                    "version": None,
+                    "created_at": None,
+                    "updated_at": None,
+                })
+
+        return {
+            "locale": locale,
+            "namespace": namespace,
+            "total_keys": total_keys,
+            "translated": translated,
+            "missing": missing,
+            "coverage_pct": round(translated / total_keys * 100, 1) if total_keys > 0 else 0.0,
+            "llm_generated": llm_generated,
+            "manual": manual,
+            "strings": strings,
+        }
+
+    def register_custom_locale(self, locale: str, name: str | None = None, is_rtl: bool = False) -> dict[str, Any]:
+        """Register a new custom locale that is not in DEFAULT_LOCALES.
+
+        Adds the locale to the metadata table so it appears in the locales list.
+        """
+        conn = self._get_conn()
+        now = datetime.now(UTC).isoformat()
+        conn.execute(
+            "INSERT OR REPLACE INTO ui_translation_metadata (key, value) VALUES (?, ?)",
+            (f"custom_locale:{locale}", json.dumps({"name": name or locale, "is_rtl": is_rtl, "registered_at": now})),
+        )
+        conn.commit()
+        conn.close()
+        logger.info("Custom locale registered: %s", locale)
+        return {"locale": locale, "name": name or locale, "is_rtl": is_rtl, "registered_at": now}
+
+    def get_custom_locales(self) -> list[dict[str, Any]]:
+        """Return all custom-registered locales."""
+        import json
+
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT key, value FROM ui_translation_metadata WHERE key LIKE 'custom_locale:%'"
+        ).fetchall()
+        conn.close()
+        result = []
+        for row in rows:
+            locale = row["key"].replace("custom_locale:", "")
+            data = json.loads(row["value"])
+            result.append({"locale": locale, **data})
+        return result
 
     def _select_llm_for_locale(self, locale: str, ps) -> str:
         """Wählt ein geeignetes LLM basierend auf der Zielsprache."""

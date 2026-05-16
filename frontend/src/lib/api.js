@@ -831,3 +831,21 @@ export function bulkTranslate(targetLocales = null, namespace = 'global', force 
     body: JSON.stringify({ target_locales: targetLocales, namespace, force }),
   });
 }
+
+/** Get per-locale string details with translation status, source, dates. */
+export function getLocaleDetails(locale, namespace = 'global') {
+  return request(`/api/v1/i18n/strings/${encodeURIComponent(locale)}?namespace=${namespace}`);
+}
+
+/** Register a new custom locale. */
+export function registerLocale(locale, name = null, isRtl = false) {
+  return request('/api/v1/i18n/locales', {
+    method: 'POST',
+    body: JSON.stringify({ locale, name, is_rtl: isRtl }),
+  });
+}
+
+/** List custom-registered locales. */
+export function getCustomLocales() {
+  return request('/api/v1/i18n/custom-locales');
+}
