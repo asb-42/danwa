@@ -41,6 +41,8 @@
   let newLocaleCode = $state('');
   let newLocaleName = $state('');
   let newLocaleRtl = $state(false);
+  let addingLocale = $state(false);
+  let addLocaleError = $state('');
 
   onMount(async () => {
     await loadOverview();
@@ -139,6 +141,8 @@
 
   async function addLocale() {
     if (!newLocaleCode) return;
+    addingLocale = true;
+    addLocaleError = '';
     try {
       await registerLocale(newLocaleCode, newLocaleName || null, newLocaleRtl);
       addLocaleOpen = false;
@@ -147,7 +151,10 @@
       newLocaleRtl = false;
       await loadOverview();
     } catch (e) {
+      addLocaleError = e.message || 'Failed to add language';
       console.error('Failed to register locale:', e);
+    } finally {
+      addingLocale = false;
     }
   }
 
@@ -193,21 +200,21 @@
 <div class="space-y-6" onclick={() => {}} onkeydown={() => {}}>
   <div class="flex items-center justify-between">
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
-      {t('translation.title') || 'Translation Management'}
+      {t('translation.title')}
     </h2>
     <div class="flex gap-2">
       <button
         class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
         onclick={() => addLocaleOpen = true}
       >
-        + {t('translation.addLanguage') || 'Add Language'}
+        + {t('translation.addLanguage')}
       </button>
       <button
         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
         onclick={loadOverview}
         disabled={loading}
       >
-        {loading ? t('common.loading') : '🔄 ' + (t('translation.refreshModules') || 'Refresh')}
+        {loading ? t('common.loading') : '🔄 ' + t('translation.refreshModules')}
       </button>
     </div>
   </div>
@@ -220,13 +227,13 @@
   {:else if locales.length === 0}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 text-center">
       <p class="text-gray-500 dark:text-gray-400 mb-4">
-        {t('translation.noLocales') || 'No languages configured.'}
+        {t('translation.noLocales')}
       </p>
       <button
         class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
         onclick={() => addLocaleOpen = true}
       >
-        + {t('translation.addLanguage') || 'Add Language'}
+        + {t('translation.addLanguage')}
       </button>
     </div>
   {:else}
@@ -234,15 +241,15 @@
       <table class="w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
           <tr>
-            <th class="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.language') || 'Language'}</th>
-            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.totalStrings') || 'Total'}</th>
-            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.translated') || 'Translated'}</th>
-            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.missing') || 'Missing'}</th>
-            <th class="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 w-48">{t('translation.coverage') || 'Coverage'}</th>
-            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">LLM</th>
-            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">Manual</th>
-            <th class="text-left px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.lastUpdated') || 'Last Updated'}</th>
-            <th class="text-right px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('common.actions') || 'Actions'}</th>
+            <th class="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.language')}</th>
+            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.totalStrings')}</th>
+            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.translated')}</th>
+            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.missing')}</th>
+            <th class="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 w-48">{t('translation.coverage')}</th>
+            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.llm')}</th>
+            <th class="text-center px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.manual')}</th>
+            <th class="text-left px-3 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('translation.lastUpdated')}</th>
+            <th class="text-right px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">{t('common.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -277,14 +284,14 @@
                     class="px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     onclick={() => loadDetail(locale.code)}
                   >
-                    {expandedLocale === locale.code ? 'Close' : 'Details'}
+                    {expandedLocale === locale.code ? t('translation.close') : t('translation.details')}
                   </button>
                   <button
                     class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors disabled:opacity-50"
                     disabled={translatingLocale === locale.code}
                     onclick={() => translateLocale(locale.code)}
                   >
-                    {translatingLocale === locale.code ? '⏳ Translating...' : '🤖 LLM'}
+                    {translatingLocale === locale.code ? '⏳ ' + t('translation.translating') : '🤖 ' + t('translation.llm')}
                   </button>
                 </div>
               </td>
@@ -300,17 +307,17 @@
                         <p class="text-gray-400">{t('common.loading')}</p>
                       </div>
                     {:else if detailStrings.length === 0}
-                      <p class="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">{t('translation.noStrings') || 'No strings found.'}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">        {t('translation.noStrings')}</p>
                     {:else}
                       <div class="overflow-x-auto">
                         <table class="w-full text-xs">
                           <thead class="border-b border-gray-200 dark:border-gray-700">
                             <tr>
-                              <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400">Key</th>
-                              <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400 w-1/4">English</th>
+                              <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400">{t('translation.key')}</th>
+                              <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400 w-1/4">{t('translation.english')}</th>
                               <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400 w-1/4">{locale.name}</th>
-                              <th class="text-center py-2 px-2 font-medium text-gray-600 dark:text-gray-400">Source</th>
-                              <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Updated</th>
+                              <th class="text-center py-2 px-2 font-medium text-gray-600 dark:text-gray-400">{t('translation.source')}</th>
+                              <th class="text-left py-2 px-2 font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">{t('translation.updated')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -339,8 +346,8 @@
                                       <button class="text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0" onclick={() => startEdit(str.key, str.translated_value)}>✎</button>
                                     </div>
                                   {:else}
-                                    <span class="text-gray-400 dark:text-gray-500 italic">Missing</span>
-                                    <button class="ml-1 text-gray-400 hover:text-blue-500 transition-colors" onclick={() => startEdit(str.key, '')}>+ Add</button>
+                                    <span class="text-gray-400 dark:text-gray-500 italic">{t('translation.missingTranslation')}</span>
+                                    <button class="ml-1 text-gray-400 hover:text-blue-500 transition-colors" onclick={() => startEdit(str.key, '')}>+ {t('translation.add')}</button>
                                   {/if}
                                 </td>
                                 <td class="text-center py-1.5 px-2">
@@ -386,12 +393,17 @@
       onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-        {t('translation.addLanguage') || 'Add Language'}
+        {t('translation.addLanguage')}
       </h3>
       <div class="space-y-4">
+        {#if addLocaleError}
+          <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+            {addLocaleError}
+          </div>
+        {/if}
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('translation.localeCode') || 'Locale Code'} <span class="text-red-500">*</span>
+            {t('translation.localeCode')} <span class="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -403,7 +415,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('translation.localeName') || 'Display Name'}
+            {t('translation.localeName')}
           </label>
           <input
             type="text"
@@ -419,7 +431,7 @@
             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span class="text-sm text-gray-700 dark:text-gray-300">
-            {t('translation.isRtl') || 'Right-to-left (RTL) language'}
+            {t('translation.isRtl')}
           </span>
         </label>
       </div>
@@ -428,14 +440,14 @@
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           onclick={() => { addLocaleOpen = false; }}
         >
-          {t('common.cancel') || 'Cancel'}
+          {t('common.cancel')}
         </button>
         <button
           class="px-4 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-          disabled={!newLocaleCode}
+          disabled={!newLocaleCode || addingLocale}
           onclick={addLocale}
         >
-          {t('translation.addLanguage') || 'Add Language'}
+          {addingLocale ? '⏳ ' + t('common.loading') : t('translation.addLanguage')}
         </button>
       </div>
     </div>
