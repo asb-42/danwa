@@ -56,7 +56,8 @@ def service(tmp_path: Path, data_dir: Path, config_dir: Path, backup_dir: Path) 
         app_version="2.0.0",
         backup_dir=str(backup_dir),
     )
-    service = BackupService(project_root=tmp_path, 
+    service = BackupService(
+        project_root=tmp_path,
         include_paths=[
             "data/projects",
             "data/audit.db",
@@ -148,7 +149,8 @@ class TestCreateBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -172,7 +174,8 @@ class TestCreateBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -198,7 +201,8 @@ class TestCreateBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -222,7 +226,8 @@ class TestCreateBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -250,7 +255,8 @@ class TestCreateBackup:
             (tmp_path / ".env").write_text("SECRET=123")
 
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml", "logs", ".env"],
                 settings=settings,
             )
@@ -273,7 +279,8 @@ class TestCreateBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -294,7 +301,8 @@ class TestCreateBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["nonexistent/path", "also/missing"],
                 settings=settings,
             )
@@ -320,7 +328,8 @@ class TestListBackups:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -347,7 +356,8 @@ class TestVerifyBackup:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -387,7 +397,8 @@ class TestRestore:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
@@ -425,7 +436,8 @@ class TestGetBackupFileList:
         try:
             os.chdir(tmp_path)
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
-            service = BackupService(project_root=tmp_path, 
+            service = BackupService(
+                project_root=tmp_path,
                 include_paths=["data/projects", "data/audit.db", "config/settings.yaml"],
                 settings=settings,
             )
