@@ -21,6 +21,7 @@
 import InputComposerView from './views/InputComposerView.svelte';
 import TranslationDashboard from './views/TranslationDashboard.svelte';
 import ModulesView from './views/ModulesView.svelte';
+import ProposalsView from './views/ProposalsView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Hash-based routing — supports #/route and #/route/param
@@ -115,6 +116,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <TranslationDashboard {navigate} />
   {:else if $route === 'modules'}
     <ModulesView {navigate} />
+  {:else if $route === 'proposals'}
+    <ProposalsView />
   {:else}
     <Dashboard {navigate} />
   {/if}

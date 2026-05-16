@@ -87,6 +87,13 @@
         { id: 'backup', label: t('nav.backup'), icon: '💾', route: 'config' },
       ],
     },
+    {
+      id: 'evolve',
+      label: t('nav.section.evolve'),
+      items: [
+        { id: 'proposals', label: t('nav.proposals'), icon: '🔍', route: 'proposals' },
+      ],
+    },
   ]);
 </script>
 
