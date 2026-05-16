@@ -3,6 +3,7 @@
   import { healthStatus, loading, error, activeProject } from '../lib/stores.js';
   import { getHealth, getDebates } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
+  import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
 
   let { navigate = () => {} } = $props();
 
@@ -179,11 +180,6 @@
     </div>
   {/if}
 
-  <!-- Placeholder for future workflow graph -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.workflowTitle')}</h3>
-    <div class="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">{t('dashboard.workflowPlaceholder')}</p>
-    </div>
-  </div>
+  <!-- Workflow graph -->
+  <DashboardWorkflowGraph />
 </div>
