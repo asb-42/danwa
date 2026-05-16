@@ -721,7 +721,9 @@ async def run_debate_workflow(
         audit.record(event, project_id=project_id)
 
     # --- Build and save DebateArtifact for Output Composer ---
-    if not has_failures:
+    # Save artifact whenever we have rounds completed, even with anomalies
+    rounds_completed = result.get("rounds", [])
+    if rounds_completed:
         try:
             from backend.models.artifact import DebateArtifact, Turn
             from backend.services.artifact_store import ArtifactStore

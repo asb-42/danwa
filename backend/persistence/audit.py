@@ -40,13 +40,20 @@ class AuditService:
                     timestamp       TEXT NOT NULL,
                     input_hash      TEXT NOT NULL DEFAULT '',
                     output_hash     TEXT NOT NULL DEFAULT '',
-                    input_content   TEXT DEFAULT '',
-                    output_content  TEXT DEFAULT '',
                     llm_model       TEXT NOT NULL DEFAULT 'dummy',
-                    tokens_used     INTEGER NOT NULL DEFAULT 0,
-                    trace_log_path  TEXT DEFAULT ''
+                    tokens_used     INTEGER NOT NULL DEFAULT 0
                 )
             """)
+            # Add missing columns for existing databases (migration)
+            for col, col_def in [
+                ("input_content", "TEXT DEFAULT ''"),
+                ("output_content", "TEXT DEFAULT ''"),
+                ("trace_log_path", "TEXT DEFAULT ''"),
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE audit_events ADD COLUMN {col} {col_def}")
+                except sqlite3.OperationalError:
+                    pass  # Column already exists
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_audit_debate
                 ON audit_events (debate_id)

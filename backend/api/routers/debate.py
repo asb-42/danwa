@@ -148,6 +148,57 @@ async def list_debates(
     return items[offset : offset + limit]
 
 
+@router.get("/cross-project/running")
+async def find_running_debate_across_projects(
+    project_store: ProjectStore = Depends(get_project_store),
+) -> DebateListItem | None:
+    """Find the first running debate across ALL projects.
+
+    Used by the Dashboard to detect externally-started debates (e.g. via A2A)
+    that may live in a different project than the active one.
+    """
+    for project in project_store.list_all():
+        try:
+            store = get_debate_store_for_project(project.id, project_store)
+            debates = store.list_all(limit=20)
+            for d in debates:
+                if d.get("status") == DebateStatus.RUNNING:
+                    req = d.get("request", {})
+                    if hasattr(req, "case"):
+                        case_text = req.case.text
+                        language = getattr(req, "language", "de")
+                    elif isinstance(req, dict):
+                        case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
+                        language = req.get("language", "de")
+                    else:
+                        case_text = ""
+                        language = "de"
+
+                    result = d.get("result")
+                    consensus = result.get("final_consensus") if isinstance(result, dict) else None
+
+                    return DebateListItem(
+                        debate_id=d["debate_id"],
+                        status=d["status"],
+                        title=d.get("title", ""),
+                        current_round=d.get("current_round", 0),
+                        max_rounds=d.get("max_rounds", 3),
+                        consensus_score=consensus,
+                        case_preview=case_text[:120],
+                        case_text=case_text,
+                        language=language,
+                        created_at=d.get("created_at", datetime.now(UTC)),
+                        updated_at=d.get("updated_at", datetime.now(UTC)),
+                        project_id=project.id,
+                        project_name=project.name,
+                        parent_debate_id=None,
+                        forks_count=0,
+                    )
+        except Exception:
+            continue
+    return None
+
+
 @router.post("", response_model=DebateResponse, status_code=201)
 async def create_debate(
     request: DebateRequest,

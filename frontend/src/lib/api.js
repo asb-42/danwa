@@ -103,6 +103,10 @@ export function getDebates(limit = 50, { status = null, search = null, offset = 
   return request(`/api/v1/debate?${params.toString()}`);
 }
 
+export function findRunningDebateAcrossProjects() {
+  return request('/api/v1/debate/cross-project/running');
+}
+
 export function createDebate(caseText, options = {}) {
   return request('/api/v1/debate', {
     method: 'POST',

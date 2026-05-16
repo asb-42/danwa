@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { healthStatus, loading, error, activeProject, currentDebate, sseConnected } from '../lib/stores.js';
-  import { getHealth, getDebates } from '../lib/api.js';
+  import { getHealth, getDebates, findRunningDebateAcrossProjects } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
 
@@ -56,8 +56,7 @@
   async function checkForRunningDebates() {
     if ($currentDebate?.status === 'running') return;
     try {
-      const debates = await getDebates(20);
-      const running = debates.find(d => d.status === 'running');
+      const running = await findRunningDebateAcrossProjects();
       if (running && (!$currentDebate || $currentDebate.status !== 'running')) {
         currentDebate.set(running);
       }
