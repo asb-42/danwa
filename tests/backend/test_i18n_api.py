@@ -36,6 +36,7 @@ def client_with_i18n(svc, settings, debate_store, project_store, default_project
     application.dependency_overrides[get_settings] = lambda: settings
     application.dependency_overrides[get_debate_store] = lambda: debate_store
     application.dependency_overrides[get_project_store] = lambda: project_store
+    application.state.test_i18n_service = svc
     application.include_router(ui_i18n_router, prefix="/api/v1/i18n")
     return TestClient(application)
 

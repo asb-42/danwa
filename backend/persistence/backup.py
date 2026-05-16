@@ -148,9 +148,10 @@ class BackupService:
 
     BACKUP_DIR = Path("backups")
 
-    def __init__(self, *, include_paths: list[str] | None = None, settings: Settings | None = None):
+    def __init__(self, *, include_paths: list[str] | None = None, settings: Settings | None = None, project_root: Path | None = None):
         self.include_paths = include_paths or INCLUDE_PATHS
         self.settings = settings or app_settings
+        self._project_root = project_root
 
     def _should_exclude(self, rel_path: str) -> bool:
         """Prüft, ob ein relativer Pfad ausgeschlossen werden soll."""
@@ -228,7 +229,7 @@ class BackupService:
         import time
 
         start_time = time.monotonic()
-        project_root = Path(__file__).resolve().parent.parent.parent
+        project_root = self._project_root or Path(__file__).resolve().parent.parent.parent
         self.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now(UTC)

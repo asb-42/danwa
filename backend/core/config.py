@@ -84,6 +84,13 @@ class Settings(BaseSettings):
         "text-davinci-003",
     ]
 
+    # --- Backup ---
+    backup_enabled: bool = True
+    backup_auto_on_shutdown: bool = True
+    backup_retention_count: int = 10
+    backup_encrypt: bool = False
+    backup_dir: Path = Path("data/backups")
+
 
 def is_service_llm_eligible(profile) -> tuple[bool, str]:
     """Check whether an LLM profile is suitable as a service LLM.
