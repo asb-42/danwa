@@ -26,7 +26,7 @@ class A2AServer:
     def __init__(
         self,
         task_manager: TaskManager | None = None,
-        project_id: str = "default",
+        project_id: str = "_default",
         project_store: ProjectStore | None = None,
     ) -> None:
         self.task_manager = task_manager or TaskManager()

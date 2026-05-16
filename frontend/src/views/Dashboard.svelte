@@ -25,9 +25,12 @@
   let recentDebates = $state([]);
 
   let projectId = $derived($activeProject?.id);
+  let runningDebatePoller = $state(null);
 
   onMount(async () => {
     await loadDebateStats();
+    startRunningDebatePoller();
+    return () => stopRunningDebatePoller();
   });
 
   // Reload when project changes
@@ -36,6 +39,30 @@
       loadDebateStats();
     }
   });
+
+  // Poll for externally-started debates (e.g. via A2A)
+  function startRunningDebatePoller() {
+    if (runningDebatePoller) clearInterval(runningDebatePoller);
+    runningDebatePoller = setInterval(checkForRunningDebates, 5000);
+  }
+
+  function stopRunningDebatePoller() {
+    if (runningDebatePoller) {
+      clearInterval(runningDebatePoller);
+      runningDebatePoller = null;
+    }
+  }
+
+  async function checkForRunningDebates() {
+    if ($currentDebate?.status === 'running') return;
+    try {
+      const debates = await getDebates(20);
+      const running = debates.find(d => d.status === 'running');
+      if (running && (!$currentDebate || $currentDebate.status !== 'running')) {
+        currentDebate.set(running);
+      }
+    } catch { /* ignore */ }
+  }
 
   async function loadDebateStats() {
     try {
@@ -119,6 +146,17 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
       <p class="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.running')}</p>
       <p class="mt-1 text-2xl font-semibold text-blue-600 dark:text-blue-400">{formatNumber(stats.running)}</p>
+      {#if stats.running > 0 && $currentDebate?.status !== 'running'}
+        <button
+          class="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          onclick={() => {
+            const running = recentDebates.find(d => d.status === 'running');
+            if (running) navigate('debate/' + running.debate_id);
+          }}
+        >
+          → {t('dashboard.viewRunning') || 'View running debate'}
+        </button>
+      {/if}
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
