@@ -118,6 +118,36 @@ async def get_coverage(
     return svc.get_coverage(namespace)
 
 
+@router.get("/strings/{locale}")
+async def get_locale_strings(
+    locale: str,
+    namespace: str = Query("global"),
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Per-locale string details with translation status, source, dates."""
+    return svc.get_locale_details(locale, namespace)
+
+
+# --- Locale registration MUST come before /{locale} to avoid route collision ---
+
+
+@router.get("/custom-locales")
+async def list_custom_locales(
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """List all custom-registered locales."""
+    return {"custom_locales": svc.get_custom_locales()}
+
+
+@router.post("/locales", status_code=201)
+async def register_locale(
+    body: RegisterLocaleRequest,
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Register a new custom locale not in the default set."""
+    return svc.register_custom_locale(body.locale, body.name, body.is_rtl)
+
+
 # --- Locale-specific routes ---
 
 
@@ -205,30 +235,3 @@ async def bulk_translate(
     for locale in results.keys():
         svc.invalidate_cache(locale)
     return {"results": results}
-
-
-@router.get("/strings/{locale}")
-async def get_locale_strings(
-    locale: str,
-    namespace: str = Query("global"),
-    svc: UITranslationService = Depends(get_i18n_service),
-) -> dict[str, Any]:
-    """Per-locale string details with translation status, source, dates."""
-    return svc.get_locale_details(locale, namespace)
-
-
-@router.get("/custom-locales")
-async def list_custom_locales(
-    svc: UITranslationService = Depends(get_i18n_service),
-) -> dict[str, Any]:
-    """List all custom-registered locales."""
-    return {"custom_locales": svc.get_custom_locales()}
-
-
-@router.post("/locales", status_code=201)
-async def register_locale(
-    body: RegisterLocaleRequest,
-    svc: UITranslationService = Depends(get_i18n_service),
-) -> dict[str, Any]:
-    """Register a new custom locale not in the default set."""
-    return svc.register_custom_locale(body.locale, body.name, body.is_rtl)
