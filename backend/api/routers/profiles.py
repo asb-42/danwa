@@ -274,7 +274,11 @@ async def validate_service_llm(body: ServiceLLMRequest):
 
 @router.post("/config/service-llm")
 async def set_service_llm(body: ServiceLLMRequest):
-    """Set the service LLM profile (validated first)."""
+    """Set or clear the service LLM profile."""
+    if not body.profile_id:
+        settings.service_llm_profile_id = None
+        logger.info("Service LLM cleared")
+        return {"status": "ok", "service_llm_profile_id": None}
     ps = get_profile_service()
     profile = ps.get_llm_profile(body.profile_id)
     if not profile:
