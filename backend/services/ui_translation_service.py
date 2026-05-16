@@ -271,8 +271,25 @@ class UITranslationService:
     # Statistiken
     # ------------------------------------------------------------------
 
+    def _scan_bundled_loaders(self) -> dict[str, dict[str, str]]:
+        """Scan frontend loader JS files and extract key→value dicts."""
+        root = Path(__file__).resolve().parent.parent.parent
+        loader_dir = root / "frontend" / "src" / "lib" / "i18n" / "loaders"
+        if not loader_dir.exists():
+            return {}
+
+        result = {}
+        for js_file in loader_dir.glob("*.js"):
+            locale = js_file.stem
+            content = js_file.read_text(encoding="utf-8")
+            keys = {}
+            for match in __import__("re").finditer(r"^\s*['\"]([^'\"]+)['\"]\s*:\s*['\"]((?:[^'\"\\]|\\.)*)['\"]", content, __import__("re").MULTILINE):
+                keys[match.group(1)] = match.group(2)
+            if keys:
+                result[locale] = keys
+        return result
+
     def get_stats(self, namespace: str = "global") -> dict[str, Any]:
-        """Übersetzungsstatistiken pro Sprache."""
         conn = self._get_conn()
         rows = conn.execute(
             """
@@ -286,25 +303,44 @@ class UITranslationService:
         """,
             (namespace,),
         ).fetchall()
+        db_stats = {r["locale"]: dict(r) for r in rows}
         conn.close()
-        return {r["locale"]: dict(r) for r in rows}
+
+        bundled = self._scan_bundled_loaders()
+        for locale, keys in bundled.items():
+            if locale not in db_stats:
+                db_stats[locale] = {
+                    "locale": locale,
+                    "total": len(keys),
+                    "manual": 0,
+                    "bulk": 0,
+                    "llm": 0,
+                }
+            else:
+                db_stats[locale]["total"] = max(db_stats[locale]["total"], len(keys))
+
+        return db_stats
 
     def get_coverage(self, namespace: str = "global") -> dict[str, Any]:
-        """Coverage-Report: Welche Sprachen wie vollständig sind."""
-        all_keys = set(self.get_all_keys(namespace))
-        if not all_keys:
+        bundled = self._scan_bundled_loaders()
+        en_keys = set(bundled.get("en", {}).keys())
+        if not en_keys:
+            en_keys = set(self.get_all_keys(namespace))
+        if not en_keys:
             return {}
 
         result = {}
         for locale in DEFAULT_LOCALES:
-            translated = set()
-            for kv in self.get_translations_bulk(locale, namespace).values():
-                if kv:
-                    translated.add(kv)
-            coverage = len(translated & all_keys) / len(all_keys) * 100
+            if locale in bundled:
+                bundle_keys = set(bundled[locale].keys())
+                translated = len(bundle_keys & en_keys)
+            else:
+                db_keys = set(self.get_translations_bulk(locale, namespace).keys())
+                translated = len(db_keys & en_keys)
+            coverage = translated / len(en_keys) * 100
             result[locale] = {
-                "total_keys": len(all_keys),
-                "translated": len(translated & all_keys),
+                "total_keys": len(en_keys),
+                "translated": translated,
                 "coverage_pct": round(coverage, 1),
             }
         return result
@@ -383,28 +419,32 @@ class UITranslationService:
         return results
 
     def get_locale_details(self, locale: str, namespace: str = "global") -> dict[str, Any]:
-        """Return all known keys with translation status for a specific locale.
-
-        Returns per-string details including value, source, created_at, updated_at.
-        Also includes untranslated keys (from English source) with status='missing'.
-        """
         conn = self._get_conn()
-
-        # Get all English source keys as the master key set
         en_rows = conn.execute(
             "SELECT key, value FROM ui_translations WHERE locale = 'en' AND namespace = ?",
             (namespace,),
         ).fetchall()
         en_keys = {r["key"]: r["value"] for r in en_rows}
 
-        # Get translations for the target locale
+        bundled = self._scan_bundled_loaders()
+        if not en_keys and "en" in bundled:
+            en_keys = bundled["en"]
+
         target_rows = conn.execute(
             "SELECT key, value, source, confidence, version, created_at, updated_at FROM ui_translations WHERE locale = ? AND namespace = ?",
             (locale, namespace),
         ).fetchall()
         target_map = {r["key"]: dict(r) for r in target_rows}
-
         conn.close()
+
+        if locale in bundled:
+            for key, val in bundled[locale].items():
+                if key not in target_map:
+                    target_map[key] = {
+                        "key": key, "value": val, "source": "bundled",
+                        "confidence": None, "version": None,
+                        "created_at": None, "updated_at": None,
+                    }
 
         total_keys = len(en_keys)
         translated = 0
@@ -420,6 +460,8 @@ class UITranslationService:
                 if t["source"] == "llm_generated":
                     llm_generated += 1
                 elif t["source"] == "manual":
+                    manual += 1
+                elif t["source"] == "bundled":
                     manual += 1
                 strings.append(
                     {
