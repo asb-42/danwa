@@ -224,6 +224,18 @@ class RenderEngineService:
         except Exception as exc:
             logger.warning("Failed to build artifact from global debate store for %s: %s", session_id, exc)
 
+        # Third fallback: resolve A2A task_id → debate_id
+        try:
+            from backend.a2a.task_manager import TaskManager
+
+            tm = TaskManager()
+            task = tm.get_task(session_id)
+            if task and task.get("debate_id"):
+                debate_id = task["debate_id"]
+                return self._build_artifact_from_debate_store(debate_id)
+        except Exception as exc:
+            logger.debug("A2A task resolution for %s failed: %s", session_id, exc)
+
         return None
 
 
