@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0.0",
   "module_id": "danwa-example-custom-workflow",
   "name": {
     "en": "Example: Custom Workflow",
@@ -22,6 +23,6 @@
     "danwa-prompts-base": ">=1.0.0"
   },
   "files": [
-    {"path": "workflows/socratic-debate.json", "type": "workflow-template", "checksum": "sha256:placeholder"}
+    {"path": "workflows/socratic-debate.json", "format": "json", "checksum": ""}
   ]
 }

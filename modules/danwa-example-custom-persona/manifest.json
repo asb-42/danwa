@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0.0",
   "module_id": "danwa-example-custom-persona",
   "name": {
     "en": "Example: Custom Agent Persona",
@@ -20,10 +21,6 @@
   "tags": ["example", "tutorial", "persona"],
   "dependencies": {},
   "files": [
-    {
-      "path": "personas/custom-moderator.yaml",
-      "type": "agent-persona",
-      "checksum": "sha256:placeholder"
-    }
+    {"path": "personas/custom-moderator.yaml", "format": "yaml", "checksum": ""}
   ]
 }

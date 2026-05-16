@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "danma-workflow-variants",
+  "module_id": "danwa-workflow-variants",
   "name": {
     "en": "Danwa Workflow Variants",
     "de": "Danwa Workflow-Varianten"

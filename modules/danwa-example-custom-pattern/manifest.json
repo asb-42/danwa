@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0.0",
   "module_id": "danwa-example-custom-pattern",
   "name": {
     "en": "Example: Custom Argumentation Pattern",
@@ -20,12 +21,12 @@
   "tags": ["example", "tutorial", "pattern"],
   "dependencies": {},
   "files": [
-    {"path": "prompts/strategist.md", "type": "prompt", "checksum": "sha256:placeholder"},
-    {"path": "prompts/critic.md", "type": "prompt", "checksum": "sha256:placeholder"},
-    {"path": "prompts/optimizer.md", "type": "prompt", "checksum": "sha256:placeholder"},
-    {"path": "prompts/moderator.md", "type": "prompt", "checksum": "sha256:placeholder"},
-    {"path": "prompts/strategist-en.md", "type": "prompt", "checksum": "sha256:placeholder"},
-    {"path": "prompts/critic-en.md", "type": "prompt", "checksum": "sha256:placeholder"},
-    {"path": "prompts/optimizer-en.md", "type": "prompt", "checksum": "sha256:placeholder"}
+    {"path": "prompts/strategist.md", "format": "markdown", "checksum": ""},
+    {"path": "prompts/critic.md", "format": "markdown", "checksum": ""},
+    {"path": "prompts/optimizer.md", "format": "markdown", "checksum": ""},
+    {"path": "prompts/moderator.md", "format": "markdown", "checksum": ""},
+    {"path": "prompts/strategist-en.md", "format": "markdown", "checksum": ""},
+    {"path": "prompts/critic-en.md", "format": "markdown", "checksum": ""},
+    {"path": "prompts/optimizer-en.md", "format": "markdown", "checksum": ""}
   ]
 }

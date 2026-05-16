@@ -4,10 +4,14 @@
   import {
     getModules,
     getModule,
+    getAvailableModules,
     installModule,
     uninstallModule,
     updateModule,
     validateModule,
+    enableModule,
+    disableModule,
+    exportModule,
   } from '../lib/api.js';
 
   let t = $derived((key, params = {}) => {
@@ -41,12 +45,52 @@
     isLoading = true;
     error = null;
     try {
-      const data = await getModules();
-      modules = data.modules || [];
+      const [installed, available] = await Promise.allSettled([
+        getModules(),
+        getAvailableModules(),
+      ]);
+      if (installed.status === 'fulfilled') modules = installed.value || [];
+      if (available.status === 'fulfilled') availableModules = available.value || [];
     } catch (e) {
       error = e.message;
     } finally {
       isLoading = false;
+    }
+  }
+
+  async function handleEnable(moduleId) {
+    try {
+      await enableModule(moduleId);
+      statusMessage = t('modules.enabled', { id: moduleId });
+      await loadModules();
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
+  async function handleDisable(moduleId) {
+    try {
+      await disableModule(moduleId);
+      statusMessage = t('modules.disabled', { id: moduleId });
+      await loadModules();
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
+  async function handleExport(moduleId) {
+    try {
+      const url = await exportModule(moduleId);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${moduleId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      statusMessage = t('modules.exported', { id: moduleId });
+    } catch (e) {
+      error = e.message;
     }
   }
 
@@ -105,7 +149,7 @@
   }
 
   function selectModule(moduleId) {
-    selectedModule = modules.find(m => m.id === moduleId) || null;
+    selectedModule = modules.find(m => m.module_id === moduleId) || null;
     validationResult = null;
   }
 
@@ -118,8 +162,8 @@
     }
   }
 
-  const installedModules = $derived.by(() => modules.filter(m => m.enabled));
-  const disabledModules = $derived.by(() => modules.filter(m => !m.enabled));
+  const installedModules = $derived.by(() => modules.filter(m => m.enabled !== false));
+  const disabledModulesList = $derived.by(() => modules.filter(m => m.enabled === false));
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -195,12 +239,12 @@
       </div>
     {:else}
       <div class="space-y-4">
-        {#each installedModules as module (module.id)}
+        {#each installedModules as module (module.module_id)}
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div
               class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              onclick={() => selectModule(module.id)}
-              onkeydown={(e) => { if (e.key === 'Enter') selectModule(module.id); }}
+              onclick={() => selectModule(module.module_id)}
+              onkeydown={(e) => { if (e.key === 'Enter') selectModule(module.module_id); }}
               role="button"
               tabindex="0"
             >
@@ -208,14 +252,14 @@
                 <div
                   class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm"
                 >
-                  {module.id.charAt(0).toUpperCase()}
+                  {(module.name?.en || module.module_id).charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <h3 class="text-sm font-semibold text-gray-800 dark:text-white">
-                    {module.id}
+                    {module.name?.en || module.module_id}
                   </h3>
                   <p class="text-xs text-gray-500 dark:text-gray-400">
-                    v{module.version || '0.0.0'} · {module.manifest?.name || ''}
+                    v{module.version || '0.0.0'} · {module.type || '—'}
                   </p>
                 </div>
               </div>
@@ -229,24 +273,24 @@
             </div>
 
             <!-- Expanded detail -->
-            {#if selectedModule?.id === module.id}
+            {#if selectedModule?.module_id === module.module_id}
               <div class="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
                     <p class="text-xs text-gray-500">{t('modules.category')}</p>
-                    <p class="text-sm font-medium">{module.manifest?.category || '—'}</p>
+                    <p class="text-sm font-medium">{module.category || '—'}</p>
                   </div>
                   <div>
                     <p class="text-xs text-gray-500">{t('modules.type')}</p>
-                    <p class="text-sm font-medium">{module.manifest?.type || '—'}</p>
+                    <p class="text-sm font-medium">{module.type || '—'}</p>
                   </div>
                   <div>
                     <p class="text-xs text-gray-500">{t('modules.author')}</p>
-                    <p class="text-sm font-medium">{module.manifest?.author?.name || '—'}</p>
+                    <p class="text-sm font-medium">{module.author?.name || '—'}</p>
                   </div>
                   <div>
                     <p class="text-xs text-gray-500">{t('modules.license')}</p>
-                    <p class="text-sm font-medium">{module.manifest?.license || '—'}</p>
+                    <p class="text-sm font-medium">{module.license || '—'}</p>
                   </div>
                   <div>
                     <p class="text-xs text-gray-500">{t('modules.installedAt')}</p>
@@ -255,27 +299,39 @@
                   <div>
                     <p class="text-xs text-gray-500">{t('modules.checksum')}</p>
                     <code class="text-xs font-mono text-gray-600 dark:text-gray-400 break-all">
-                      {module.checksum?.slice(0, 32)}…
+                      {module.checksum?.slice(0, 32) || '—'}
                     </code>
                   </div>
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex gap-2 flex-wrap">
                   <button
                     class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                    onclick={() => handleValidate(module.id)}
+                    onclick={() => handleValidate(module.module_id)}
                   >
                     {t('modules.validate')}
                   </button>
                   <button
                     class="px-3 py-1.5 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
-                    onclick={() => handleUpdate(module.id)}
+                    onclick={() => handleUpdate(module.module_id)}
                   >
                     {t('modules.update')}
                   </button>
                   <button
+                    class="px-3 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                    onclick={() => handleExport(module.module_id)}
+                  >
+                    📦 {t('modules.export') || 'Export'}
+                  </button>
+                  <button
+                    class="px-3 py-1.5 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+                    onclick={() => handleDisable(module.module_id)}
+                  >
+                    ⏸️ {t('modules.disable') || 'Disable'}
+                  </button>
+                  <button
                     class="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                    onclick={() => handleUninstall(module.id)}
+                    onclick={() => handleUninstall(module.module_id)}
                   >
                     {t('modules.uninstall')}
                   </button>
@@ -322,12 +378,12 @@
           {#each availableModules as module}
             <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
               <div>
-                <p class="text-sm font-medium text-gray-800 dark:text-white">{module.id}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">v{module.version || '0.0.0'}</p>
+                <p class="text-sm font-medium text-gray-800 dark:text-white">{module.name?.en || module.module_id}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">v{module.version || '0.0.0'} · {module.type || '—'}</p>
               </div>
               <button
                 class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                onclick={() => handleInstall(module.id)}
+                onclick={() => handleInstall(module.module_id)}
               >
                 {t('modules.install')}
               </button>

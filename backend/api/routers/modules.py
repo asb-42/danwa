@@ -77,7 +77,7 @@ async def list_available_modules() -> list[dict[str, Any]]:
     """
     return [
         {
-            "module_id": "prompts-base",
+            "module_id": "danwa-prompts-base",
             "name": {"en": "Danwa Prompts Base (EN)", "de": "Danwa Prompts Basis (EN)"},
             "description": {"en": "Core English prompt templates and argumentation patterns"},
             "version": "0.5.0",
@@ -89,7 +89,7 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "agents-base",
+            "module_id": "danwa-agents-base",
             "name": {"en": "Danwa Agent Personas", "de": "Danwa Agent-Personas"},
             "description": {"en": "Default agent personas for debate roles"},
             "version": "0.5.0",
@@ -101,7 +101,7 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "llm-profiles",
+            "module_id": "danwa-llm-profiles",
             "name": {"en": "Danwa LLM Profiles", "de": "Danwa LLM-Profile"},
             "description": {"en": "LLM configuration profiles for various providers"},
             "version": "0.5.0",
@@ -113,7 +113,7 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "workflow-templates",
+            "module_id": "danwa-workflow-templates",
             "name": {"en": "Danwa Workflow Templates", "de": "Danwa Workflow-Vorlagen"},
             "description": {"en": "Pre-built workflow templates for various debate formats"},
             "version": "0.5.0",
@@ -125,7 +125,7 @@ async def list_available_modules() -> list[dict[str, Any]]:
             "language": "en",
         },
         {
-            "module_id": "danma-workflow-variants",
+            "module_id": "danwa-workflow-variants",
             "name": {"en": "Danwa Workflow Variants", "de": "Danwa Workflow-Varianten"},
             "description": {"en": "Workflow execution variants (concise, formal, etc.)"},
             "version": "0.5.0",
@@ -346,3 +346,100 @@ async def get_translation_status(module_id: str) -> dict[str, Any]:
         return {"module_id": module_id, "translations": entries}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------------
+# Enable / Disable (Activation)
+# ------------------------------------------------------------------
+
+
+@router.post("/{module_id}/enable", response_model=dict[str, Any])
+async def enable_module(module_id: str) -> dict[str, Any]:
+    """Enable (activate) a module."""
+    svc = get_module_service()
+    try:
+        import sqlite3
+
+        conn = sqlite3.connect(str(svc.db_path))
+        cursor = conn.cursor()
+        cursor.execute("UPDATE module_registry SET enabled = 1 WHERE id = ?", (module_id,))
+        if cursor.rowcount == 0:
+            conn.close()
+            raise HTTPException(status_code=404, detail=f"Module '{module_id}' not found in registry")
+        conn.commit()
+        conn.close()
+        logger.info("Enabled module %s", module_id)
+        return {"status": "ok", "module_id": module_id, "enabled": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{module_id}/disable", response_model=dict[str, Any])
+async def disable_module(module_id: str) -> dict[str, Any]:
+    """Disable (deactivate) a module."""
+    svc = get_module_service()
+    try:
+        import sqlite3
+
+        conn = sqlite3.connect(str(svc.db_path))
+        cursor = conn.cursor()
+        cursor.execute("UPDATE module_registry SET enabled = 0 WHERE id = ?", (module_id,))
+        if cursor.rowcount == 0:
+            conn.close()
+            raise HTTPException(status_code=404, detail=f"Module '{module_id}' not found in registry")
+        conn.commit()
+        conn.close()
+        logger.info("Disabled module %s", module_id)
+        return {"status": "ok", "module_id": module_id, "enabled": False}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------------
+# Export (ZIP for sharing)
+# ------------------------------------------------------------------
+
+
+@router.post("/{module_id}/export")
+async def export_module(module_id: str) -> Any:
+    """Export a module as a ZIP archive for sharing/uploading to GitHub."""
+    from fastapi.responses import StreamingResponse
+    import io
+    import zipfile
+
+    svc = get_module_service()
+    module_dir = svc.modules_dir / module_id
+    if not module_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Module directory not found: {module_dir}")
+
+    manifest_path = module_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail=f"Manifest not found for module '{module_id}'")
+
+    # Load manifest to get file list
+    import json
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    # Create ZIP in memory
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        # Add manifest
+        zf.write(str(manifest_path), f"{module_id}/manifest.json")
+
+        # Add all module files
+        for file_entry in manifest_data.get("files", []):
+            fpath = module_dir / file_entry["path"]
+            if fpath.exists():
+                zf.write(str(fpath), f"{module_id}/{file_entry['path']}")
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={module_id}.zip"},
+    )

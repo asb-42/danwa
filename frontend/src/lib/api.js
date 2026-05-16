@@ -732,6 +732,32 @@ export function validateModule(moduleId) {
   return request(`/api/v1/modules/${moduleId}/validate`);
 }
 
+/** Enable (activate) a module. */
+export function enableModule(moduleId) {
+  return request(`/api/v1/modules/${moduleId}/enable`, { method: 'POST' });
+}
+
+/** Disable (deactivate) a module. */
+export function disableModule(moduleId) {
+  return request(`/api/v1/modules/${moduleId}/disable`, { method: 'POST' });
+}
+
+/** Export a module as ZIP. Returns blob URL for download. */
+export async function exportModule(moduleId) {
+  const resp = await fetch(`/api/v1/modules/${moduleId}/export`, { method: 'POST' });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: 'Export failed' }));
+    throw new Error(err.detail || 'Export failed');
+  }
+  const blob = await resp.blob();
+  return URL.createObjectURL(blob);
+}
+
+/** Get available modules from registry. */
+export function getAvailableModules() {
+  return request('/api/v1/modules/available');
+}
+
 // ---------------------------------------------------------------------------
 // Follow-up / Fork (Plan 19)
 // ---------------------------------------------------------------------------

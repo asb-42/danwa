@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "module_id": "agents-base",
+  "module_id": "danwa-agents-base",
   "name": {
     "en": "Danwa Agent Personas",
     "de": "Danwa Agent-Personas"
