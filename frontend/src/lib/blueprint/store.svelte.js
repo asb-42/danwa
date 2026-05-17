@@ -190,6 +190,7 @@ class BlueprintCanvasStore {
       'wf-user-injection': 'wf-user-injection',
       'wf-gate': 'wf-gate',
       'wf-tone-profile': 'wf-tone-profile',
+      'tone-profile': 'tone-profile',
     };
 
     this.nodes = (layoutJson.nodes || []).map((n) => ({

@@ -135,6 +135,22 @@ export function registerAllNodeTypes() {
     active: true,
   });
 
+  registerNode({
+    type: 'tone-profile',
+    component: ToneProfileNode,
+    category: 'asset',
+    schemaRef: 'ToneProfile',
+    icon: '🎵',
+    labelKey: 'blueprint.palette.toneProfile',
+    defaultData: () => ({
+      isDraft: true,
+      label: '',
+      tone_profile_id: null,
+      inline_profile: null,
+    }),
+    active: true,
+  });
+
   // ── Workflow nodes (Phase 1 — specialized components) ──────────────
 
   registerNode({

@@ -17,6 +17,7 @@
   import { listPromptTemplates } from '../../lib/blueprint/api.js';
   import { listAgentBlueprints } from '../../lib/blueprint/api.js';
   import { listRoleTypes } from '../../lib/blueprint/api.js';
+  import { listToneProfiles } from '../../lib/blueprint/api.js';
   import PaletteCategory from './PaletteCategory.svelte';
   import PaletteEntityList from './PaletteEntityList.svelte';
 
@@ -40,6 +41,7 @@
   let promptTemplates = $state([]);
   let agentBlueprints = $state([]);
   let roleTypes = $state([]);
+  let toneProfiles = $state([]);
   let entitiesLoading = $state(false);
 
   // Ensure registry is populated before reading categories
@@ -62,18 +64,20 @@
   async function loadEntities() {
     entitiesLoading = true;
     try {
-      const [lp, rd, pt, ab, rt] = await Promise.all([
+      const [lp, rd, pt, ab, rt, tp] = await Promise.all([
         listBlueprintLLMProfiles().catch(() => []),
         listRoleDefinitions().catch(() => []),
         listPromptTemplates().catch(() => []),
         listAgentBlueprints().catch(() => []),
         listRoleTypes().catch(() => []),
+        listToneProfiles().catch(() => []),
       ]);
       llmProfiles = lp;
       roleDefinitions = rd;
       promptTemplates = pt;
       agentBlueprints = ab;
       roleTypes = rt;
+      toneProfiles = tp;
     } catch (err) {
       console.warn('[Palette] Failed to load entities:', err);
     } finally {
@@ -145,6 +149,12 @@
       icon="🏷️"
       nodeType="role-type"
       entities={roleTypes}
+    />
+    <PaletteEntityList
+      label={t('blueprint.palette.toneProfiles')}
+      icon="🎵"
+      nodeType="tone-profile"
+      entities={toneProfiles}
     />
   </div>
 

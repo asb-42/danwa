@@ -18,6 +18,7 @@
     getRoleDefinition,
     getPromptTemplate,
     getRoleType,
+    getToneProfile,
   } from '../../lib/blueprint/api.js';
   import { applyBlueprintLayout } from '../../lib/blueprint/layout.js';
   import { getNodeTypes, getEdgeTypes } from '../../lib/blueprint/registry.js';
@@ -154,6 +155,9 @@
             break;
           case 'role-type':
             entityData = await getRoleType(entityId);
+            break;
+          case 'tone-profile':
+            entityData = await getToneProfile(entityId);
             break;
         }
         if (entityData) {
