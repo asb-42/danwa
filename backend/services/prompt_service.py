@@ -47,9 +47,7 @@ class PromptService:
         argumentation_patterns_dir: Path | str | None = None,
     ):
         self.prompts_dir = Path(prompts_dir)
-        self._argumentation_patterns_dir = (
-            Path(argumentation_patterns_dir) if argumentation_patterns_dir else Path("modules/prompts-base/prompts/argumentation-patterns")
-        )
+        self._argumentation_patterns_dir = Path(argumentation_patterns_dir) if argumentation_patterns_dir else Path("profiles/argumentation-patterns")
         self._legacy_prompts_dir = Path("profiles/prompts")
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()

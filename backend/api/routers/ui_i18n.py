@@ -196,6 +196,10 @@ async def get_translations(
     svc: UITranslationService = Depends(get_i18n_service),
 ) -> dict[str, Any]:
     """Übersetzungen für eine Sprache abrufen."""
+    if locale not in DEFAULT_LOCALES:
+        custom = svc.get_custom_locales()
+        if not any(c["locale"] == locale for c in custom):
+            return {"locale": locale, "namespace": namespace, "translations": {}}
     key_list = keys.split(",") if keys else None
     result = svc.resolve_bulk(locale, namespace, key_list)
     return {"locale": locale, "namespace": namespace, "translations": result}

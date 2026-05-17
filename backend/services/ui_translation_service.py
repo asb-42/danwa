@@ -254,19 +254,21 @@ class UITranslationService:
         return result
 
     def get_all_keys(self, namespace: str = "global") -> list[str]:
-        """Liste aller bekannten Keys aus englischer Referenz (DB + bundled)."""
+        """Liste aller bekannten Keys aus DB (alle Locales) + bundled."""
         conn = self._get_conn()
         rows = conn.execute(
-            "SELECT DISTINCT key FROM ui_translations WHERE locale = 'en' AND namespace = ?",
+            "SELECT DISTINCT key FROM ui_translations WHERE namespace = ?",
             (namespace,),
         ).fetchall()
         conn.close()
         db_keys = {r["key"] for r in rows}
 
         bundled = self._scan_bundled_loaders()
-        en_bundled = set(bundled.get("en", {}).keys())
+        all_bundled = set()
+        for locale_keys in bundled.values():
+            all_bundled.update(locale_keys.keys())
 
-        return sorted(db_keys | en_bundled)
+        return sorted(db_keys | all_bundled)
 
     def delete_translation(self, key: str, locale: str, namespace: str = "global") -> bool:
         """Lösche eine Übersetzung."""
