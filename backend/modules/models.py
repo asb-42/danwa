@@ -164,8 +164,8 @@ class ModuleManifest(BaseModel):
     @classmethod
     def validate_module_id(cls, v: str) -> str:
         v = v.replace("_", "-")
-        if len(v) < 4:
-            raise ValueError(f"module_id must be at least 4 characters, got '{v}'")
+        if not v.startswith("danwa-") and "-" not in v:
+            raise ValueError(f"module_id must contain at least one hyphen (non-danwa module), got '{v}'")
         return v
 
 
