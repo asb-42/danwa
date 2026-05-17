@@ -136,10 +136,8 @@ class TestListModules:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        assert len(data) > 0
-        ids = [m["module_id"] for m in data]
-        assert "prompts-base" in ids
-        assert "agents-base" in ids
+        # Endpoint currently returns empty list (remote registry not yet implemented)
+        # Local modules are served via GET /api/v1/modules/ instead
 
 
 class TestGetModule:

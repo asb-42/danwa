@@ -163,7 +163,10 @@ class ModuleManifest(BaseModel):
     @field_validator("module_id")
     @classmethod
     def validate_module_id(cls, v: str) -> str:
-        return v.replace("_", "-")
+        v = v.replace("_", "-")
+        if len(v) < 4:
+            raise ValueError(f"module_id must be at least 4 characters, got '{v}'")
+        return v
 
 
 class InstallationReport(BaseModel):
