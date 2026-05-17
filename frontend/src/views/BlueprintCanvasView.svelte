@@ -50,7 +50,7 @@
   let showTemplateGallery = $state(false);
   let showInstantiateModal = $state(false);
   let showSaveAsTemplate = $state(false);
-  let selectedTemplate = $state(null);
+  let selectedTemplateId = $state(null);
 
   // Compile/Clone state
   let isCompiling = $state(false);
@@ -207,13 +207,13 @@
       // Blank canvas — do nothing special
       return;
     }
-    selectedTemplate = template;
+    selectedTemplateId = template.id;
     showInstantiateModal = true;
   }
 
   function handleInstantiated(wf) {
     showInstantiateModal = false;
-    selectedTemplate = null;
+    selectedTemplateId = null;
     // Navigate to the new workflow
     if (wf && wf.id) {
       navigate(`blueprint/workflow/${wf.id}`);
@@ -504,10 +504,10 @@
 
 <!-- Template Instantiate Modal -->
 <TemplateInstantiateModal
-  template={selectedTemplate}
+  templateId={selectedTemplateId}
   visible={showInstantiateModal}
   onSuccess={handleInstantiated}
-  onClose={() => { showInstantiateModal = false; selectedTemplate = null; }}
+  onClose={() => { showInstantiateModal = false; selectedTemplateId = null; }}
 />
 
 <!-- Save as Template Dialog -->

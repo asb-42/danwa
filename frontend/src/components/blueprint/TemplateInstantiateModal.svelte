@@ -9,10 +9,11 @@
   import {
     instantiateWorkflowTemplate,
     listAgentBlueprints,
+    getWorkflowTemplate,
   } from '../../lib/blueprint/api.js';
 
-  /** @type {{ template?: Object|null, visible?: boolean, onSuccess?: Function, onClose?: Function }} */
-  let { template = null, visible = false, onSuccess = () => {}, onClose = () => {} } = $props();
+  /** @type {{ templateId?: string|null, visible?: boolean, onSuccess?: Function, onClose?: Function }} */
+  let { templateId = null, visible = false, onSuccess = () => {}, onClose = () => {} } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -28,22 +29,33 @@
   let loading = $state(false);
   let error = $state(null);
 
-  // Reset form when template changes
+  // Load template data on demand — avoids reactivity on large template_data
+  let templateName = $state('');
+  let templatePlaceholders = $state([]);
+
   $effect(() => {
-    if (template) {
+    if (templateId && visible) {
       workflowName = '';
       placeholderValues = {};
       error = null;
-      // Set defaults
-      for (const ph of template.placeholders) {
-        if (ph.default !== null && ph.default !== undefined) {
-          placeholderValues[ph.key] = ph.default;
+      templateName = '';
+      templatePlaceholders = [];
+      getWorkflowTemplate(templateId).then((tmpl) => {
+        templateName = tmpl.name;
+        templatePlaceholders = tmpl.placeholders || [];
+        // Set defaults
+        for (const ph of templatePlaceholders) {
+          if (ph.default !== null && ph.default !== undefined) {
+            placeholderValues[ph.key] = ph.default;
+          }
         }
-      }
-      // Load blueprints if any placeholder is blueprint_ref
-      if (template.placeholders.some((p) => p.type === 'blueprint_ref')) {
-        loadBlueprints();
-      }
+        // Load blueprints if any placeholder is blueprint_ref
+        if (templatePlaceholders.some((p) => p.type === 'blueprint_ref')) {
+          loadBlueprints();
+        }
+      }).catch(() => {
+        error = 'Failed to load template';
+      });
     }
   });
 
@@ -56,11 +68,11 @@
   }
 
   async function handleInstantiate() {
-    if (!template) return;
+    if (!templateId) return;
     loading = true;
     error = null;
     try {
-      const wf = await instantiateWorkflowTemplate(template.id, {
+      const wf = await instantiateWorkflowTemplate(templateId, {
         name: workflowName || undefined,
         placeholder_values: placeholderValues,
       });
@@ -83,14 +95,14 @@
   }
 </script>
 
-{#if visible && template}
+{#if visible && templateId}
   <div class="modal-overlay" role="button" tabindex="0" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}>
     <div class="modal-container" role="document">
       <!-- Header -->
       <div class="modal-header">
         <div>
           <h2 class="modal-title">{t('template.instantiate.title')}</h2>
-          <p class="modal-subtitle">{template.name}</p>
+          <p class="modal-subtitle">{templateName}</p>
         </div>
         <button class="close-btn" onclick={onClose} aria-label="Close">✕</button>
       </div>
@@ -104,14 +116,14 @@
             id="wf-name"
             type="text"
             class="field-input"
-            placeholder="{template.name} – {new Date().toISOString().slice(0, 16)}"
+            placeholder="{templateName} – {new Date().toISOString().slice(0, 16)}"
             bind:value={workflowName}
             data-testid="instantiate-name"
           />
         </div>
 
         <!-- Dynamic Placeholder Fields -->
-        {#each template.placeholders as ph (ph.key)}
+        {#each templatePlaceholders as ph (ph.key)}
           <div class="form-field">
             <label class="field-label" for="ph-{ph.key}">
               {ph.key}
