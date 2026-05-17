@@ -17,6 +17,7 @@
     getBlueprintLLMProfile,
     getRoleDefinition,
     getPromptTemplate,
+    getRoleType,
   } from '../../lib/blueprint/api.js';
   import { applyBlueprintLayout } from '../../lib/blueprint/layout.js';
   import { getNodeTypes, getEdgeTypes } from '../../lib/blueprint/registry.js';
@@ -152,7 +153,7 @@
             entityData = await getPromptTemplate(entityId);
             break;
           case 'role-type':
-            entityData = { id: entityId };
+            entityData = await getRoleType(entityId);
             break;
         }
         if (entityData) {
