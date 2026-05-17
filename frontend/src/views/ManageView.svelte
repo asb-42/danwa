@@ -145,11 +145,19 @@
     isLoadingServiceLLM = true;
     try {
       if (isChecked) {
+        // Validate first
+        const elig = serviceEligibleProfiles.find(p => p.id === profileId);
+        if (elig && !elig.service_eligible) {
+          error.set(`"${elig.name}" is not suitable as Utility LLM: ${elig.eligibility_reason}`);
+          isLoadingServiceLLM = false;
+          return;
+        }
         await setServiceLLM(profileId);
-        statusMessage = t('service.setSuccess') || 'Utility LLM set';
+        const prof = llmProfiles.find(p => p.id === profileId);
+        statusMessage = `Utility LLM set to "${prof?.name || profileId}"`;
       } else {
         await setServiceLLM('');
-        statusMessage = t('service.cleared') || 'Utility LLM cleared';
+        statusMessage = 'Utility LLM cleared';
       }
       await loadServiceLLMData();
     } catch (e) {
@@ -183,6 +191,10 @@
 
   function isBlueprintManaged(personaId) {
     return blueprintRoleDefIds.has(personaId);
+  }
+
+  function getServiceElig(profileId) {
+    return serviceEligibleProfiles.find(p => p.id === profileId) || null;
   }
 
   function getPersonasByRole(role) {
@@ -548,11 +560,21 @@
                     <td class="px-4 py-3">{profile.max_tokens}</td>
                     <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
                     <td class="px-4 py-3 text-center">
-                      {#if serviceEligibleProfiles.some(p => p.id === profile.id && p.service_eligible)}
-                        <input type="checkbox"
-                          checked={serviceLLMConfig.service_llm_profile_id === profile.id}
-                          onchange={(e) => toggleServiceProfile(profile.id, e.target.checked)}
-                          class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                      {#if getServiceElig(profile.id)}
+                        {#if getServiceElig(profile.id).service_eligible || serviceLLMConfig.service_llm_profile_id === profile.id}
+                          <div class="flex flex-col items-center gap-0.5">
+                            <input type="checkbox"
+                              checked={serviceLLMConfig.service_llm_profile_id === profile.id}
+                              onchange={(e) => toggleServiceProfile(profile.id, e.target.checked)}
+                              disabled={isLoadingServiceLLM}
+                              class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                            {#if !getServiceElig(profile.id).service_eligible}
+                              <span class="text-[10px] text-amber-500 dark:text-amber-400" title={getServiceElig(profile.id).eligibility_reason}>⚠️</span>
+                            {/if}
+                          </div>
+                        {:else}
+                          <span class="text-[10px] text-gray-400" title={getServiceElig(profile.id).eligibility_reason}>⚠️</span>
+                        {/if}
                       {:else}
                         <span class="text-xs text-gray-400">—</span>
                       {/if}

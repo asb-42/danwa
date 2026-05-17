@@ -32,6 +32,85 @@ def get_profile_service() -> ProfileService:
 
 
 # ------------------------------------------------------------------
+# Service LLM / Utility LLM (Sprint 16)
+# MUST be before /llm/{profile_id} to avoid route shadowing
+# ------------------------------------------------------------------
+
+
+@router.get("/llm/service-eligible")
+async def list_service_eligible_llm_profiles() -> list[dict]:
+    """List all LLM profiles eligible for utility/background tasks."""
+    ps = get_profile_service()
+    all_profiles = ps.list_llm_profiles()
+    eligible = []
+    for p in all_profiles:
+        elig, reason = is_service_llm_eligible(p)
+        eligible.append(
+            {
+                "id": p.id,
+                "name": p.name,
+                "model": p.model,
+                "provider": p.provider.value,
+                "service_eligible": elig,
+                "eligibility_reason": reason,
+                "context_window": p.context_window,
+            }
+        )
+    eligible.sort(key=lambda x: (0 if x["service_eligible"] else 1, -(x["context_window"] or 0)))
+    return eligible
+
+
+@router.get("/config/service-llm")
+async def get_service_llm_config():
+    """Get the current utility LLM configuration."""
+    return {
+        "service_llm_profile_id": settings.service_llm_profile_id,
+        "service_llm_min_context": settings.service_llm_min_context,
+        "service_llm_blacklist": settings.service_llm_blacklist,
+    }
+
+
+class ServiceLLMRequest(BaseModel):
+    """Request body for validating/changing utility LLM."""
+
+    profile_id: str
+
+
+@router.post("/config/validate-service-llm")
+async def validate_service_llm(body: ServiceLLMRequest):
+    """Validate whether a given profile is suitable as utility LLM."""
+    ps = get_profile_service()
+    profile = ps.get_llm_profile(body.profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
+    eligible, reason = is_service_llm_eligible(profile)
+    return {
+        "profile_id": body.profile_id,
+        "service_eligible": eligible,
+        "reason": reason,
+    }
+
+
+@router.post("/config/service-llm")
+async def set_service_llm(body: ServiceLLMRequest):
+    """Set or clear the utility LLM profile."""
+    if not body.profile_id:
+        settings.service_llm_profile_id = None
+        logger.info("Utility LLM cleared")
+        return {"status": "ok", "service_llm_profile_id": None}
+    ps = get_profile_service()
+    profile = ps.get_llm_profile(body.profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
+    eligible, reason = is_service_llm_eligible(profile)
+    if not eligible:
+        raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' not eligible: {reason}")
+    settings.service_llm_profile_id = body.profile_id
+    logger.info("Utility LLM changed to %s", body.profile_id)
+    return {"status": "ok", "service_llm_profile_id": body.profile_id}
+
+
+# ------------------------------------------------------------------
 # LLM Profiles
 # ------------------------------------------------------------------
 
@@ -214,86 +293,7 @@ async def translate_prompt_variant(variant_id: str, body: TranslatePromptRequest
 
 
 # ------------------------------------------------------------------
-# Service LLM (Sprint 16)
-# ------------------------------------------------------------------
-
-
-@router.get("/llm/service-eligible")
-async def list_service_eligible_llm_profiles() -> list[dict]:
-    """List all LLM profiles eligible for service/background tasks."""
-    ps = get_profile_service()
-    all_profiles = ps.list_llm_profiles()
-    eligible = []
-    for p in all_profiles:
-        elig, reason = is_service_llm_eligible(p)
-        eligible.append(
-            {
-                "id": p.id,
-                "name": p.name,
-                "model": p.model,
-                "provider": p.provider.value,
-                "service_eligible": elig,
-                "eligibility_reason": reason,
-                "context_window": p.context_window,
-            }
-        )
-    eligible.sort(key=lambda x: (0 if x["service_eligible"] else 1, -(x["context_window"] or 0)))
-    return eligible
-
-
-@router.get("/config/service-llm")
-async def get_service_llm_config():
-    """Get the current service LLM configuration."""
-    return {
-        "service_llm_profile_id": settings.service_llm_profile_id,
-        "service_llm_min_context": settings.service_llm_min_context,
-        "service_llm_blacklist": settings.service_llm_blacklist,
-    }
-
-
-class ServiceLLMRequest(BaseModel):
-    """Request body for validating/changing service LLM."""
-
-    profile_id: str
-
-
-@router.post("/config/validate-service-llm")
-async def validate_service_llm(body: ServiceLLMRequest):
-    """Validate whether a given profile is suitable as service LLM."""
-    ps = get_profile_service()
-    profile = ps.get_llm_profile(body.profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
-    eligible, reason = is_service_llm_eligible(profile)
-    return {
-        "profile_id": body.profile_id,
-        "service_eligible": eligible,
-        "reason": reason,
-    }
-
-
-@router.post("/config/service-llm")
-async def set_service_llm(body: ServiceLLMRequest):
-    """Set or clear the service LLM profile."""
-    if not body.profile_id:
-        settings.service_llm_profile_id = None
-        logger.info("Service LLM cleared")
-        return {"status": "ok", "service_llm_profile_id": None}
-    ps = get_profile_service()
-    profile = ps.get_llm_profile(body.profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
-    eligible, reason = is_service_llm_eligible(profile)
-    if not eligible:
-        raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' not eligible: {reason}")
-    settings.service_llm_profile_id = body.profile_id
-    logger.info("Service LLM changed to %s", body.profile_id)
-    return {"status": "ok", "service_llm_profile_id": body.profile_id}
-
-
-# ------------------------------------------------------------------
 # Cost Estimation
-
 # ------------------------------------------------------------------
 
 
