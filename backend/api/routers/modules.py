@@ -72,95 +72,10 @@ async def list_modules(
 async def list_available_modules() -> list[dict[str, Any]]:
     """List modules available for installation from the official registry.
 
-    Currently returns a static list of known official modules.
-    In the future, this will query a remote registry URL.
+    Currently returns an empty list — all modules are discovered from the
+    local `modules/` directory. A remote registry may be added later.
     """
-    return [
-        {
-            "module_id": "prompts-base",
-            "name": {"en": "Prompts Base (EN)", "de": "Prompts Basis (EN)"},
-            "description": {"en": "Core English prompt templates and argumentation patterns"},
-            "version": "0.5.0",
-            "type": "argumentation-pattern",
-            "category": "prompts",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "prompts", "en"],
-            "language": "en",
-        },
-        {
-            "module_id": "agents-base",
-            "name": {"en": "Agent Personas", "de": "Agent-Personas"},
-            "description": {"en": "Default agent personas for debate roles"},
-            "version": "0.5.0",
-            "type": "agent-persona",
-            "category": "agents",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "agents", "en"],
-            "language": "en",
-        },
-        {
-            "module_id": "llm-profiles",
-            "name": {"en": "LLM Profiles", "de": "LLM-Profile"},
-            "description": {"en": "LLM configuration profiles for various providers"},
-            "version": "0.5.0",
-            "type": "llm-profile",
-            "category": "llm-profiles",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "llm"],
-            "language": "en",
-        },
-        {
-            "module_id": "workflow-templates",
-            "name": {"en": "Workflow Templates", "de": "Workflow-Vorlagen"},
-            "description": {"en": "Pre-built workflow templates for various debate formats"},
-            "version": "0.5.0",
-            "type": "workflow-template",
-            "category": "workflows",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "workflows"],
-            "language": "en",
-        },
-        {
-            "module_id": "workflow-variants",
-            "name": {"en": "Workflow Variants", "de": "Workflow-Varianten"},
-            "description": {"en": "Workflow execution variants (concise, formal, etc.)"},
-            "version": "0.5.0",
-            "type": "workflow-variant",
-            "category": "workflow-variants",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "workflows", "variants"],
-            "language": "en",
-        },
-        {
-            "module_id": "tone-profiles",
-            "name": {"en": "Tone Profiles", "de": "Ton-Profile"},
-            "description": {"en": "System tone profiles for debate style configuration (heated, academic, neutral)"},
-            "version": "0.5.0",
-            "type": "tone-profile",
-            "category": "tone-profiles",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "tone-profiles", "system"],
-            "language": "en",
-        },
-        {
-            "module_id": "role-types",
-            "name": {"en": "Role Types", "de": "Rollentypen"},
-            "description": {"en": "Core role types defining agent behavioral categories (strategist, critic, optimizer, moderator, etc.)"},
-            "version": "0.5.0",
-            "type": "role-type",
-            "category": "role-types",
-            "author": {"name": "Danwa Community"},
-            "license": "CC-BY-4.0",
-            "tags": ["official", "role-types", "system"],
-            "language": "en",
-        },
-    ]
+    return []
 
 
 @router.get("/{module_id}", response_model=dict[str, Any])
@@ -188,6 +103,55 @@ async def get_module(module_id: str) -> dict[str, Any]:
         "updated_at": str(info.updated_at) if info.updated_at else None,
         "dependencies": info.dependencies,
         "file_count": info.file_count,
+        "profile_preview": info.profile_preview,
+    }
+
+
+@router.get("/{module_id}/profile", response_model=dict[str, Any])
+async def get_module_profile(module_id: str) -> dict[str, Any]:
+    """Get the parsed profile data for a module."""
+    svc = get_module_service()
+    profile = svc.get_profile(module_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail=f"Profile not found for module '{module_id}'")
+    return profile
+
+
+class ProfileUpdateRequest(BaseModel):
+    data: dict[str, Any]
+
+
+@router.put("/{module_id}/profile", response_model=dict[str, Any])
+async def update_module_profile(module_id: str, body: ProfileUpdateRequest) -> dict[str, Any]:
+    """Update a module's profile data."""
+    svc = get_module_service()
+    success = svc.update_profile(module_id, body.data)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Cannot update profile for module '{module_id}'")
+    info = svc.get(module_id)
+    return {
+        "status": "ok",
+        "module_id": module_id,
+        "profile": info.profile_preview if info else None,
+    }
+
+
+class DuplicateRequest(BaseModel):
+    new_id: str = Field(..., description="New module ID")
+    new_name: str | None = Field(None, description="Optional new display name")
+
+
+@router.post("/{module_id}/duplicate", response_model=dict[str, Any], status_code=201)
+async def duplicate_module(module_id: str, body: DuplicateRequest) -> dict[str, Any]:
+    """Duplicate a module with a new ID."""
+    svc = get_module_service()
+    result = svc.duplicate_module(module_id, body.new_id, body.new_name)
+    if result is None:
+        raise HTTPException(status_code=400, detail=f"Cannot duplicate '{module_id}' to '{body.new_id}' (source missing or target exists)")
+    return {
+        "status": "ok",
+        "module_id": result.module_id,
+        "name": result.name,
     }
 
 
@@ -451,14 +415,18 @@ async def export_module(module_id: str) -> Any:
     # Create ZIP in memory
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        # Add manifest
         zf.write(str(manifest_path), f"{module_id}/manifest.json")
 
-        # Add all module files
-        for file_entry in manifest_data.get("files", []):
-            fpath = module_dir / file_entry["path"]
+        profile_file = manifest_data.get("profile_file")
+        if profile_file:
+            fpath = module_dir / profile_file
             if fpath.exists():
-                zf.write(str(fpath), f"{module_id}/{file_entry['path']}")
+                zf.write(str(fpath), f"{module_id}/{profile_file}")
+        else:
+            for file_entry in manifest_data.get("files", []):
+                fpath = module_dir / file_entry["path"]
+                if fpath.exists():
+                    zf.write(str(fpath), f"{module_id}/{file_entry['path']}")
 
     zip_buffer.seek(0)
 

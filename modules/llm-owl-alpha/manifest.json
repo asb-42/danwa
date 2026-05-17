@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-owl-alpha",
+  "name": {
+    "en": "owl-alpha via OpenRouter"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "c48306158d67df98d07b8230b4e2d09adcbe8fd6a08d222e4afb9b1c468a2045"
+}

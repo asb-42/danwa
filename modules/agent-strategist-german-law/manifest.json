@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-strategist-german-law",
+  "name": {
+    "en": "German Law Strategist"
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "legal",
+    "german"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Strategist specialized in German legal analysis"
+  },
+  "checksum": "345f9cf8e7874966e2a44e60bcabdaa87672ed469dbe938528302fb7d973fb94"
+}

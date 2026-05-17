@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "role-strategist",
+  "name": {
+    "en": "Strategist"
+  },
+  "version": "1.0.0",
+  "type": "role-type",
+  "category": "role-types",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "Develops logical argumentation structure and identifies key strategic points."
+  },
+  "checksum": "8da1502b781411d516177540542cc5ffdea30224eff4ef49f475c47173930827"
+}

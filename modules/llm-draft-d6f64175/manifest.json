@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-draft-d6f64175",
+  "name": {
+    "en": "gemma-4-31b-it (Openrouter)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "00785c80f56b61a022fcbf71b660128b66b6eb262ae6fe945acd7ca58ae83ff4"
+}

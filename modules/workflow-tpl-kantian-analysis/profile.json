@@ -1,0 +1,152 @@
+{
+  "id": "tpl-kantian-analysis",
+  "name": "Kantian Analysis",
+  "description": "A structured ethical analysis using Kantian principles. The strategist proposes, the critic applies the categorical imperative, and the moderator synthesizes.",
+  "category": "system",
+  "tags": [
+    "ethics",
+    "kantian",
+    "structured",
+    "analysis"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Ethical Question",
+        "position": {
+          "x": 100,
+          "y": 200
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Frame Ethical Context",
+        "position": {
+          "x": 350,
+          "y": 200
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Principled Analysis",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 120
+        }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Categorical Imperative Check",
+        "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 280
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Consensus?",
+        "condition": "consensus_reached",
+        "position": {
+          "x": 850,
+          "y": 200
+        }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Synthesis",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": {
+          "x": 1100,
+          "y": 200
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "init-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "init-1",
+        "target": "critic-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e4",
+        "source": "strategist-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e5",
+        "source": "critic-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e6",
+        "source": "gate-1",
+        "target": "moderator-1",
+        "type": "conditional",
+        "condition": "consensus_reached"
+      },
+      {
+        "id": "e7",
+        "source": "gate-1",
+        "target": "strategist-1",
+        "type": "feedback",
+        "label": "refine"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": "{{max_rounds}}",
+        "description": "Maximum analysis rounds"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "strategist_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for principled ethical analysis"
+    },
+    {
+      "key": "critic_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for categorical imperative critique"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for synthesis and conclusion"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 3,
+      "description": "Maximum number of analysis rounds"
+    }
+  ],
+  "is_system": true
+}

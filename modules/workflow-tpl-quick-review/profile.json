@@ -1,0 +1,96 @@
+{
+  "id": "tpl-quick-review",
+  "name": "Quick Review",
+  "description": "A lightweight single-agent review with optional user injection. Fast turnaround for simple tasks.",
+  "category": "system",
+  "tags": [
+    "quick",
+    "lightweight",
+    "single-agent",
+    "review"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Review Input",
+        "position": {
+          "x": 100,
+          "y": 200
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Reviewer",
+        "agent_blueprint_id": "{{reviewer_blueprint_id}}",
+        "position": {
+          "x": 400,
+          "y": 200
+        }
+      },
+      {
+        "id": "user-1",
+        "type": "wf-user-injection",
+        "label": "User Feedback",
+        "input_type": "user_query",
+        "position": {
+          "x": 700,
+          "y": 200
+        }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Reviser",
+        "agent_blueprint_id": "{{reviser_blueprint_id}}",
+        "position": {
+          "x": 1000,
+          "y": 200
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "strategist-1",
+        "target": "user-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "user-1",
+        "target": "critic-1",
+        "type": "sequential"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": 1,
+        "description": "Single review round"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "reviewer_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the initial review"
+    },
+    {
+      "key": "reviser_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for revision based on user feedback"
+    }
+  ],
+  "is_system": true
+}

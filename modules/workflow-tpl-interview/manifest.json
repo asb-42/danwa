@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "workflow-tpl-interview",
+  "name": {
+    "en": "Structured Interview"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "interview",
+    "investigation",
+    "structured-inquiry",
+    "analyst"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "An interview-style workflow where a Strategist conducts structured inquiry through an Analyst, with a Moderator ensuring focus and summarizing findings. Ideal for investigative analysis and information gathering."
+  },
+  "checksum": "318c3eb0781c46122feeaddccf06eae6b423e141eeff37dd6d6716e6110cee10"
+}

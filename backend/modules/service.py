@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from backend.modules.installer import ModuleInstaller
 from backend.modules.models import (
     InstallationReport,
@@ -28,8 +30,6 @@ DEFAULT_DB = ROOT / "data" / "blueprints.db"
 
 
 class ModuleService:
-    """Main service for discovering, listing, and managing Danwa modules."""
-
     def __init__(
         self,
         modules_dir: Path | str = MODULES_DIR,
@@ -41,30 +41,18 @@ class ModuleService:
         self.installer = ModuleInstaller(self.modules_dir, self.db_path)
         self._registry_cache: dict | None = None
         self._registry_cache_time: float = 0
-        self._registry_cache_ttl: int = 86400  # 24 hours
-
-    # ------------------------------------------------------------------
-    # Discovery
-    # ------------------------------------------------------------------
+        self._registry_cache_ttl: int = 86400
 
     def discover_local(self) -> list[ModuleInfo]:
-        """Scan the modules directory for installed modules.
-
-        Returns:
-            List of ModuleInfo for all discovered modules
-        """
         modules: list[ModuleInfo] = []
         if not self.modules_dir.exists():
             return modules
 
         for module_dir in sorted(self.modules_dir.iterdir()):
-            if not module_dir.is_dir():
-                continue
-            if module_dir.name.startswith("."):
+            if not module_dir.is_dir() or module_dir.name.startswith("."):
                 continue
             if not (module_dir / "manifest.json").exists():
                 continue
-
             try:
                 info = self._dir_to_info(module_dir)
                 if info:
@@ -75,11 +63,6 @@ class ModuleService:
         return modules
 
     def discover_local_with_status(self) -> list[dict[str, Any]]:
-        """Discover modules with DB status enrichment.
-
-        Returns:
-            List of dicts with module info + DB status
-        """
         modules = self.discover_local()
         db_status = self._get_db_status_map()
 
@@ -105,10 +88,10 @@ class ModuleService:
                     "updated_at": db_info.get("updated_at"),
                     "dependencies": mod.dependencies,
                     "file_count": mod.file_count,
+                    "profile_preview": mod.profile_preview,
                 }
             )
 
-        # Also include DB-only modules (not on disk)
         for mid, db_info in db_status.items():
             if not any(m.module_id == mid for m in modules):
                 result.append(
@@ -137,44 +120,22 @@ class ModuleService:
         return result
 
     def get(self, module_id: str) -> ModuleInfo | None:
-        """Get info for a single module by ID."""
         module_dir = self.modules_dir / module_id
         if module_dir.exists():
             return self._dir_to_info(module_dir)
         return None
 
     def list_all(self, category: str | None = None) -> list[ModuleInfo]:
-        """List all installed modules, optionally filtered by category.
-
-        Args:
-            category: Filter by category (e.g. 'prompts', 'agents')
-
-        Returns:
-            List of ModuleInfo
-        """
         modules = self.discover_local()
         if category:
             modules = [m for m in modules if m.category.value == category]
         return modules
-
-    # ------------------------------------------------------------------
-    # Remote Discovery
-    # ------------------------------------------------------------------
 
     def discover_remote(
         self,
         registry_url: str = "https://raw.githubusercontent.com/danwa/modules/main/registry.json",
         force_refresh: bool = False,
     ) -> list[dict[str, Any]]:
-        """Discover available remote modules from a registry.
-
-        Args:
-            registry_url: URL to registry.json
-            force_refresh: Bypass cache and fetch fresh
-
-        Returns:
-            List of module dicts from the remote registry
-        """
         import time
 
         now = time.time()
@@ -192,14 +153,6 @@ class ModuleService:
             return []
 
     def check_updates(self, registry_url: str | None = None) -> list[dict[str, Any]]:
-        """Check for available updates for installed modules.
-
-        Args:
-            registry_url: Optional custom registry URL
-
-        Returns:
-            List of modules with available updates
-        """
         remote = self.discover_remote(registry_url or "https://raw.githubusercontent.com/danwa/modules/main/registry.json")
         installed = {m["module_id"]: m for m in self.discover_local()}
 
@@ -221,26 +174,12 @@ class ModuleService:
                     )
         return updates
 
-    # ------------------------------------------------------------------
-    # Installation
-    # ------------------------------------------------------------------
-
     def install(
         self,
         module_id: str,
         source: str = "local",
         source_url: str | None = None,
     ) -> InstallationReport:
-        """Install a module.
-
-        Args:
-            module_id: The module ID to install
-            source: "local" (from modules_dir) or "url"
-            source_url: URL for remote installation (when source="url")
-
-        Returns:
-            InstallationReport
-        """
         if source == "url" and source_url:
             return self.installer.install_from_url(source_url)
         else:
@@ -250,41 +189,15 @@ class ModuleService:
             return self.installer.install_from_directory(module_dir)
 
     def uninstall(self, module_id: str, force: bool = False) -> UninstallationReport:
-        """Uninstall a module.
-
-        Args:
-            module_id: The module ID to uninstall
-            force: If True, ignore dependency checks
-
-        Returns:
-            UninstallationReport
-        """
         if not force:
             return self.installer.uninstall(module_id)
         else:
-            # Force: skip dependency check by directly removing
             return self._force_uninstall(module_id)
 
     def update(self, module_id: str) -> InstallationReport:
-        """Update a module to the latest version.
-
-        Args:
-            module_id: The module ID to update
-
-        Returns:
-            InstallationReport
-        """
         return self.installer.update(module_id)
 
     def _force_uninstall(self, module_id: str) -> UninstallationReport:
-        """Force-uninstall a module, skipping dependency checks.
-
-        Args:
-            module_id: The module ID to uninstall
-
-        Returns:
-            UninstallationReport with status and details
-        """
         target_dir = self.modules_dir / module_id
         files_removed = 0
         if target_dir.exists():
@@ -293,12 +206,10 @@ class ModuleService:
                     files_removed += 1
             shutil.rmtree(target_dir)
 
-        # Remove backup directories for this module
         for bak in self.modules_dir.glob(f"{module_id}.bak.*"):
             if bak.is_dir():
                 shutil.rmtree(bak)
 
-        # Remove from database
         db_entries_removed = 0
         try:
             conn = self.installer._get_db()
@@ -326,9 +237,92 @@ class ModuleService:
             db_entries_removed=db_entries_removed,
         )
 
-    # ------------------------------------------------------------------
-    # Translation
-    # ------------------------------------------------------------------
+    def get_profile(self, module_id: str) -> dict[str, Any] | None:
+        module_dir = self.modules_dir / module_id
+        manifest_path = module_dir / "manifest.json"
+        if not manifest_path.exists():
+            return None
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        profile_file = manifest.get("profile_file")
+        profile_format = manifest.get("profile_format")
+
+        if not profile_file:
+            return None
+
+        profile_path = module_dir / profile_file
+        if not profile_path.exists():
+            return None
+
+        content = profile_path.read_text(encoding="utf-8")
+        if profile_format == "yaml":
+            return yaml.safe_load(content)
+        elif profile_format == "json":
+            return json.loads(content)
+        return None
+
+    def update_profile(self, module_id: str, profile_data: dict[str, Any]) -> bool:
+        module_dir = self.modules_dir / module_id
+        manifest_path = module_dir / "manifest.json"
+        if not manifest_path.exists():
+            return False
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        profile_file = manifest.get("profile_file")
+        profile_format = manifest.get("profile_format")
+
+        if not profile_file:
+            return False
+
+        profile_path = module_dir / profile_file
+        if profile_format == "yaml":
+            profile_path.write_text(yaml.dump(profile_data, default_flow_style=False, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        elif profile_format == "json":
+            profile_path.write_text(json.dumps(profile_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        else:
+            return False
+
+        self._update_manifest_checksum(module_dir, manifest)
+        return True
+
+    def duplicate_module(self, module_id: str, new_id: str, new_name: str | None = None) -> dict[str, Any] | None:
+        src_dir = self.modules_dir / module_id
+        dst_dir = self.modules_dir / new_id
+
+        if not src_dir.exists() or dst_dir.exists():
+            return None
+
+        shutil.copytree(src_dir, dst_dir)
+
+        manifest_path = dst_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["module_id"] = new_id
+        if new_name:
+            manifest["name"]["en"] = new_name
+            manifest["name"]["de"] = new_name
+
+        profile_file = manifest.get("profile_file")
+        if profile_file:
+            profile_path = dst_dir / profile_file
+            if profile_path.exists():
+                profile_format = manifest.get("profile_format")
+                if profile_format == "yaml":
+                    data = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
+                    data["id"] = new_id
+                    if new_name:
+                        data["name"] = new_name
+                    profile_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True), encoding="utf-8")
+                elif profile_format == "json":
+                    data = json.loads(profile_path.read_text(encoding="utf-8"))
+                    data["id"] = new_id
+                    if new_name:
+                        data["name"] = new_name
+                    profile_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        self.installer.install_from_directory(dst_dir)
+        return self._dir_to_info(dst_dir)
 
     def translate(
         self,
@@ -340,25 +334,11 @@ class ModuleService:
         auto_approve: bool = False,
         quality_threshold: float = 0.7,
     ) -> TranslationResult:
-        """Translate a module's content to a target language.
-
-        Marks files as pending for LLM-based translation. For actual
-        LLM translation, use the dedicated translation endpoints.
-
-        Args:
-            module_id: The module to translate
-            target_lang: Target language code (e.g. "de")
-            force: Force re-translation even if cache exists
-
-        Returns:
-            TranslationResult with status
-        """
         try:
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            # Get all files for this module
             cursor.execute(
                 "SELECT file_path, source_hash FROM module_translation_cache WHERE module_id = ? AND (source_language = 'en' OR language = 'en')",
                 (module_id,),
@@ -383,7 +363,6 @@ class ModuleService:
                 source_hash = row["source_hash"]
 
                 if not force:
-                    # Check if translation already exists and is current
                     cursor.execute(
                         "SELECT quality_score FROM module_translation_cache WHERE module_id = ? AND file_path = ? AND language = ?",
                         (module_id, fpath, target_lang),
@@ -394,7 +373,6 @@ class ModuleService:
                         quality_scores[fpath] = existing["quality_score"]
                         continue
 
-                # Mark as pending translation
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO module_translation_cache
@@ -408,7 +386,7 @@ class ModuleService:
                         module_id,
                         fpath,
                         target_lang,
-                        None,  # Pending
+                        None,
                         source_hash,
                         0.0,
                         datetime.now(UTC).isoformat(),
@@ -440,12 +418,7 @@ class ModuleService:
                 errors=[str(e)],
             )
 
-    # ------------------------------------------------------------------
-    # Internal Helpers
-    # ------------------------------------------------------------------
-
     def _dir_to_info(self, module_dir: Path) -> ModuleInfo | None:
-        """Convert a module directory to ModuleInfo."""
         manifest_path = module_dir / "manifest.json"
         if not manifest_path.exists():
             return None
@@ -455,10 +428,26 @@ class ModuleService:
         except json.JSONDecodeError:
             return None
 
-        # Count valid files
-        file_count = sum(1 for f in manifest_data.get("files", []) if (module_dir / f["path"]).exists())
+        file_count = 0
+        profile_preview = None
 
-        # Get DB status
+        profile_file = manifest_data.get("profile_file")
+        profile_format = manifest_data.get("profile_format")
+        if profile_file:
+            profile_path = module_dir / profile_file
+            if profile_path.exists():
+                file_count = 1
+                try:
+                    content = profile_path.read_text(encoding="utf-8")
+                    if profile_format == "yaml":
+                        profile_preview = yaml.safe_load(content)
+                    elif profile_format == "json":
+                        profile_preview = json.loads(content)
+                except Exception:
+                    pass
+        else:
+            file_count = sum(1 for f in manifest_data.get("files", []) if (module_dir / f["path"]).exists())
+
         db_info = self._get_db_module_info(manifest_data["module_id"])
 
         return ModuleInfo(
@@ -479,10 +468,24 @@ class ModuleService:
             updated_at=db_info.get("updated_at") if db_info else None,
             dependencies=manifest_data.get("dependencies", {}),
             file_count=file_count,
+            profile_preview=profile_preview,
         )
 
+    def _update_manifest_checksum(self, module_dir: Path, manifest: dict) -> None:
+        import hashlib
+
+        manifest_path = module_dir / "manifest.json"
+        profile_file = manifest.get("profile_file")
+        if profile_file:
+            profile_path = module_dir / profile_file
+            if profile_path.exists():
+                content = profile_path.read_bytes()
+                manifest["checksum"] = hashlib.sha256(content).hexdigest()
+
+        manifest["updated_at"] = datetime.now(UTC).isoformat()
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
     def _get_db_module_info(self, module_id: str) -> dict[str, Any] | None:
-        """Fetch module metadata from the database."""
         try:
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
@@ -500,7 +503,6 @@ class ModuleService:
         return None
 
     def _get_db_status_map(self) -> dict[str, dict[str, Any]]:
-        """Get all module registry entries as a dict keyed by module_id."""
         result: dict[str, dict[str, Any]] = {}
         try:
             conn = sqlite3.connect(str(self.db_path))

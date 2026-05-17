@@ -1,0 +1,160 @@
+{
+  "id": "tpl-standard-debate",
+  "name": "Standard Debate",
+  "description": "A classic multi-agent debate with strategist, critic, optimizer, and moderator. Suitable for most analytical tasks.",
+  "category": "system",
+  "tags": [
+    "debate",
+    "multi-agent",
+    "classic"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Topic Input",
+        "position": {
+          "x": 100,
+          "y": 200
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Initialize Context",
+        "position": {
+          "x": 350,
+          "y": 200
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Strategist",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 100
+        }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Critic",
+        "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 300
+        }
+      },
+      {
+        "id": "optimizer-1",
+        "type": "wf-optimizer",
+        "label": "Optimizer",
+        "agent_blueprint_id": "{{optimizer_blueprint_id}}",
+        "position": {
+          "x": 850,
+          "y": 200
+        }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Moderator",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": {
+          "x": 1100,
+          "y": 200
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "init-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "init-1",
+        "target": "critic-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e4",
+        "source": "strategist-1",
+        "target": "optimizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e5",
+        "source": "critic-1",
+        "target": "optimizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e6",
+        "source": "optimizer-1",
+        "target": "moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e7",
+        "source": "moderator-1",
+        "target": "strategist-1",
+        "type": "feedback",
+        "label": "next round"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": "{{max_rounds}}",
+        "description": "Maximum debate rounds"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.9,
+        "description": "Consensus threshold"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "strategist_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Strategist role"
+    },
+    {
+      "key": "critic_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Critic role"
+    },
+    {
+      "key": "optimizer_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Optimizer role"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Moderator role"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 5,
+      "description": "Maximum number of debate rounds"
+    }
+  ],
+  "is_system": true
+}

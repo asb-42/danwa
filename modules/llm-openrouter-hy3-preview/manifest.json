@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-openrouter-hy3-preview",
+  "name": {
+    "en": "deepseek-v4-pro (Openrouter)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "983fd69521ba304dd76e9aa32825b37c2f64085f44f039cbb79208bee4b94a1e"
+}

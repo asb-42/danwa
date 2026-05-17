@@ -1,3 +1,0 @@
-# DEPRECATED
-
-Dieses Verzeichnis wurde durch das Modulsystem prompts-base ersetzt.

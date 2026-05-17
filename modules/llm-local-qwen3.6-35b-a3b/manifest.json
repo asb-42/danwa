@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-local-qwen3.6-35b-a3b",
+  "name": {
+    "en": "qwen3.6-35b-a3b (LM Studio)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "f325911586018303d57c9474dfe6bc5d6496a1a5cb7dc4eeedd4de23628b3f4a"
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-strategist-example",
+  "name": {
+    "en": "Example Strategist"
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "balanced"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Example strategist with balanced analysis approach"
+  },
+  "checksum": "674f2779081f75756119597b638bc8449488808686827f850fbdfb28c54743f2"
+}

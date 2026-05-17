@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "role-hitl-user",
+  "name": {
+    "en": "Human-in-the-Loop"
+  },
+  "version": "1.0.0",
+  "type": "role-type",
+  "category": "role-types",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "Represents a human participant providing feedback during HITL interactions."
+  },
+  "checksum": "ce2ad5697979ab14f78e63e6920fb775d06ef7d9e3d684388da896b4fc626f8e"
+}

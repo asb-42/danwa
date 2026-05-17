@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "workflow-tpl-mediation",
+  "name": {
+    "en": "Mediation"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "mediation",
+    "conflict-resolution",
+    "facilitation",
+    "consensus"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A conflict resolution workflow where a Mediator facilitates dialogue between opposing parties (represented by Strategist and Critic perspectives). The Mediator guides toward common ground and a mutually acceptable resolution."
+  },
+  "checksum": "1f3e4e031ddfd67eb59db8684fe8ede713c5a6824c723eb10858bcfd07ba398e"
+}

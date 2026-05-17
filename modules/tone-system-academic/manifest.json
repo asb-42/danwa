@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "tone-system-academic",
+  "name": {
+    "en": "Academic Debate"
+  },
+  "version": "1.0.0",
+  "type": "tone-profile",
+  "category": "tone-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A formal, evidence-based debate style. Agents cite sources, use precise language, and maintain scholarly decorum."
+  },
+  "checksum": "fc4a711cbcc898f832885f3c7e371d3b1d73363e9537f23f1e780e8967464349"
+}

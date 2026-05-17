@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "role-fact-checker",
+  "name": {
+    "en": "Fact Checker"
+  },
+  "version": "1.0.0",
+  "type": "role-type",
+  "category": "role-types",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "Verifies claims against evidence and identifies factual inaccuracies."
+  },
+  "checksum": "a6780a241a09aaf56508aeae035ddf33ac8e2d050bfcd98e7f25d00ef8374f07"
+}

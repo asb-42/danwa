@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "tone-system-neutral",
+  "name": {
+    "en": "Neutral / Sachlich"
+  },
+  "version": "1.0.0",
+  "type": "tone-profile",
+  "category": "tone-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring."
+  },
+  "checksum": "e71bdf6c6238ccca031557970252e3aee7d13ca0db2eb4db60fb1de3a0ed76f9"
+}

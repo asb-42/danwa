@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-openrouter-glm-5-2ond",
+  "name": {
+    "en": "glm-5 (Openrouter)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "fb63b7d80a459baffac5fc10cfade23a41f49baa403cc8bb6c6ac3a142ab2824"
+}

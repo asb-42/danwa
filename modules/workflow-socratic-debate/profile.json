@@ -1,0 +1,56 @@
+{
+  "name": "Socratic Debate",
+  "description": "A debate workflow using the Socratic method for deep examination of claims.",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "strategist",
+      "type": "agent",
+      "label": "Socratic Strategist",
+      "agent_blueprint_id": null,
+      "config": {
+        "role": "strategist",
+        "pattern": "socratic"
+      }
+    },
+    {
+      "id": "critic",
+      "type": "agent",
+      "label": "Critical Examiner",
+      "agent_blueprint_id": null,
+      "config": {
+        "role": "critic",
+        "pattern": "socratic"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "strategist",
+      "target": "critic",
+      "type": "sequential"
+    },
+    {
+      "id": "e2",
+      "source": "critic",
+      "target": "strategist",
+      "type": "sequential"
+    }
+  ],
+  "entry_point": "strategist",
+  "termination_conditions": [
+    {
+      "type": "max_rounds",
+      "value": 4
+    },
+    {
+      "type": "consensus",
+      "threshold": 0.8
+    }
+  ],
+  "input_config": {
+    "case_text": true,
+    "documents": false
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-openrouter-grok-4.20",
+  "name": {
+    "en": "xAI Grok 4.20 (OpenRouter)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "cf99598f5209627a6cd04a50c18d3400e6bf1fb2fc282e3f5ac698dabc5e70f9"
+}

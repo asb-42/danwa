@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "tone-system-heated",
+  "name": {
+    "en": "Heated Debate"
+  },
+  "version": "1.0.0",
+  "type": "tone-profile",
+  "category": "tone-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A confrontational, emotionally charged debate style. Agents challenge each other aggressively and use rhetorical devices."
+  },
+  "checksum": "8f4b88e9042acdda2ad8a27ad9f5af80aa8183f0818e15176b71e0d7f871c8e6"
+}

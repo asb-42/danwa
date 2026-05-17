@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-optimizer-default",
+  "name": {
+    "en": "Default Optimizer"
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "refinement"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Default optimizer for argument refinement"
+  },
+  "checksum": "822e4d6ec94712e7ed8541b016ac79da15f5d042c2e0457af6b5e5ab2719315c"
+}

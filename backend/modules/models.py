@@ -1,9 +1,17 @@
-"""Pydantic models for the Danwa Module System."""
+"""Pydantic models for the Danwa Module System v2.
+
+v2 changes:
+- 1 module = 1 profile (not a bundle)
+- `profile_file` + `profile_format` replace `files[]` for single-profile modules
+- Legacy `files[]` still supported during migration
+- New typed models for RoleType, ToneProfile
+"""
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -31,7 +39,7 @@ class ModuleCategory(StrEnum):
 
 
 class ModuleFile(BaseModel):
-    """A single file within a module."""
+    """A single file within a module (legacy bundle format)."""
 
     path: str
     format: str  # "markdown", "yaml", "json"
@@ -42,14 +50,96 @@ class ModuleFile(BaseModel):
     subtype: str | None = None
 
 
-class ModuleManifest(BaseModel):
-    """Full manifest for a Danwa module."""
+class RoleTypeProfile(BaseModel):
+    """Profile data for a role-type module."""
 
-    schema_version: str = "1.0.0"
+    id: str
+    name: str
+    description: str = ""
+    icon: str = ""
+    color: str = ""
+    default_max_rounds: int = 5
+    default_consensus_threshold: float = 0.9
+    category: str = "functional"
+    is_active: bool = True
+
+
+class ToneProfileData(BaseModel):
+    """Profile data for a tone-profile module."""
+
+    id: str
+    name: str
+    description: str = ""
+    style: str = "neutral"
+    formality: float = 0.5
+    verbosity: str = "medium"
+    emotional_valence: float = 0.5
+    rhetorical_mode: str = "balanced"
+    custom_instructions: str | None = None
+
+
+class LLMProfileData(BaseModel):
+    """Profile data for an LLM-profile module (mirrors backend.core.profiles.LLMProfile)."""
+
+    id: str
+    name: str
+    provider: str
+    model: str
+    api_base: str | None = None
+    api_key_env: str = "OPENROUTER_API_KEY"
+    max_tokens: int = 4096
+    context_window: int | None = None
+    temperature: float = 0.7
+    timeout: int = 600
+    cost_per_1k_input: float | None = None
+    cost_per_1k_output: float | None = None
+    protocol: str = "litellm"
+    a2a_endpoint: str | None = None
+    a2a_timeout: int = 120
+    fallback_llm_profile_id: str | None = None
+    service_eligible: bool = True
+    min_recommended_context: int = 1024
+
+
+class AgentPersonaData(BaseModel):
+    """Profile data for an agent-persona module."""
+
+    id: str
+    name: str
+    role: str
+    system_prompt: str
+    llm_profile_id: str
+    max_rounds: int = 5
+    consensus_threshold: float = 0.9
+    argumentation_pattern: str | None = None
+    mode: str | None = None
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
+class WorkflowTemplateData(BaseModel):
+    """Profile data for a workflow-template module."""
+
+    id: str
+    name: str
+    description: str = ""
+    category: str = "system"
+    tags: list[str] = Field(default_factory=list)
+    template_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ModuleManifest(BaseModel):
+    """Manifest for a Danwa module.
+
+    v2 (single-profile): uses `profile_file` + `profile_format`
+    v1 (legacy bundle): uses `files[]`
+    """
+
+    schema_version: str = "2.0.0"
     module_id: str = Field(..., pattern=r"^[a-z][a-z0-9.-]*$")
     name: dict[str, str] = Field(default_factory=dict)
     description: dict[str, str] = Field(default_factory=dict)
-    version: str = "0.0.0"
+    version: str = "1.0.0"
     type: ModuleType
     category: ModuleCategory
     author: dict[str, str] = Field(default_factory=dict)
@@ -58,42 +148,27 @@ class ModuleManifest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     language: str = "en"
     checksum: str = ""
+
+    # v2: single profile file
+    profile_file: str | None = None  # e.g. "profile.yaml"
+    profile_format: Literal["yaml", "json"] | None = None
+
+    # v1: legacy bundle files (migration compat)
     files: list[ModuleFile] = Field(default_factory=list)
+
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
     @field_validator("module_id")
     @classmethod
     def validate_module_id(cls, v: str) -> str:
-        if not v.startswith("danwa-") and v != "danwa-core":
-            # Allow non-danwa-prefixed IDs for third-party modules
-            pass
-        parts = v.replace("_", "-").split("-")
-        if len(parts) < 2 and not v.startswith("danwa-"):
-            raise ValueError("module_id should follow pattern 'danwa-{{category}}-{{name}}'")
         return v.replace("_", "-")
-
-    @field_validator("version")
-    @classmethod
-    def validate_version(cls, v: str) -> str:
-        import re
-
-        if not re.match(r"^\d+\.\d+\.\d+$", v):
-            raise ValueError(f"Version '{v}' does not follow semver (X.Y.Z)")
-        return v
-
-    @field_validator("files")
-    @classmethod
-    def validate_files_non_empty(cls, v: list[ModuleFile]) -> list[ModuleFile]:
-        if not v:
-            raise ValueError("Module must contain at least one file")
-        return v
 
 
 class InstallationReport(BaseModel):
     """Result of a module installation operation."""
 
-    status: str  # "ok", "skipped", "error", "partial"
+    status: str
     module_id: str
     version: str
     files_installed: int = 0
@@ -108,7 +183,7 @@ class InstallationReport(BaseModel):
 class UninstallationReport(BaseModel):
     """Result of a module uninstallation operation."""
 
-    status: str  # "ok", "error", "blocked"
+    status: str
     module_id: str
     files_removed: int = 0
     db_entries_removed: int = 0
@@ -137,11 +212,14 @@ class ModuleInfo(BaseModel):
     dependencies: dict[str, str] = Field(default_factory=dict)
     file_count: int = 0
 
+    # v2: profile preview data (parsed from profile file)
+    profile_preview: dict[str, Any] | None = None
+
 
 class ValidationIssue(BaseModel):
     """A single issue found during module validation."""
 
-    severity: str  # "error", "warning", "info"
+    severity: str
     field: str
     message: str
     file_path: str | None = None
@@ -167,7 +245,7 @@ class TranslationResult(BaseModel):
     files_errored: int = 0
     quality_scores: dict[str, float] = Field(default_factory=dict)
     back_translation_scores: dict[str, float] = Field(default_factory=dict)
-    status: str  # "ok", "partial", "error"
+    status: str
     estimated_cost_usd: float = 0.0
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)

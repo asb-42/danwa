@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-opencodezen-minimax-m2.5-free-ry6l",
+  "name": {
+    "en": "minimax-m2.5 (Opencode Zen)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "c4d5dadb6893b4721b21d1a48ab41a7095c1a922df57a99fe52a3319fb3d5993"
+}

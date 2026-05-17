@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-moderator-default",
+  "name": {
+    "en": "Default Moderator"
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "neutral"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Default moderator for balanced debate facilitation"
+  },
+  "checksum": "d52725f28cfb1441b6d08fdff6f02994c4379baad1cdbd7e42ea40186864ff73"
+}

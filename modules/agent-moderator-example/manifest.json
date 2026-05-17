@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-moderator-example",
+  "name": {
+    "en": "Example Moderator"
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "neutral"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Example moderator for balanced debate facilitation"
+  },
+  "checksum": "591a074649d4bc83e68eb2a1352f71bbf554d59902fd6a6536fa36d4cdf13807"
+}

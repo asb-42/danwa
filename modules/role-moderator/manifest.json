@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "role-moderator",
+  "name": {
+    "en": "Moderator"
+  },
+  "version": "1.0.0",
+  "type": "role-type",
+  "category": "role-types",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "Evaluates consensus, scores results, and provides final assessment."
+  },
+  "checksum": "4c4101897fb7471859aff16c3af945ea06a9864c095130663ad59ebb537643da"
+}

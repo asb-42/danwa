@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-local-gemma-4-26b-a4b",
+  "name": {
+    "en": "google/gemma-4-26b-a4b (LM Studio)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "checksum": "4a645eda4389dcd1fcd94fa91d8e4e84fb1cf9fe2cd2d03e7347bf30594ce1a3"
+}

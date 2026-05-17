@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-critic-example",
+  "name": {
+    "en": "Example Critic"
+  },
+  "version": "1.0.0",
+  "type": "agent-persona",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "rigorous"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Example critic with rigorous evaluation approach"
+  },
+  "checksum": "ec745aef9971ecd5f22843034b28901a786380e51eeeeb1f906ab9c4bfbe4a89"
+}

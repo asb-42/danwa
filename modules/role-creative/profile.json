@@ -1,0 +1,11 @@
+{
+  "id": "creative",
+  "name": "Creative Thinker",
+  "description": "Generates unconventional ideas and new perspectives.",
+  "icon": "💡",
+  "color": "#ec4899",
+  "default_max_rounds": 5,
+  "default_consensus_threshold": 0.9,
+  "category": "formative",
+  "is_active": true
+}

@@ -1,0 +1,188 @@
+{
+  "id": "tpl-dialectic-debate",
+  "name": "Hegelian Dialectic Debate",
+  "description": "A three-stage dialectical workflow following Hegel's method. The Strategist formulates the thesis (These), the Critic develops the antithesis (Antithese), and the Optimizer synthesizes both into a higher unity (synthesis/Aufhebung). Supports multiple rounds of dialectical refinement.",
+  "category": "system",
+  "tags": [
+    "dialectic",
+    "hegel",
+    "thesis-antithesis-synthesis",
+    "structured",
+    "philosophy"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Thesis / Topic",
+        "position": {
+          "x": 100,
+          "y": 200
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Frame the Question",
+        "position": {
+          "x": 350,
+          "y": 200
+        }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Thesis (These)",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 100
+        }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Antithesis (Antithese)",
+        "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "position": {
+          "x": 600,
+          "y": 300
+        }
+      },
+      {
+        "id": "optimizer-1",
+        "type": "wf-optimizer",
+        "label": "Synthesis (Aufhebung)",
+        "agent_blueprint_id": "{{optimizer_blueprint_id}}",
+        "position": {
+          "x": 850,
+          "y": 200
+        }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Dialectical Consensus",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": {
+          "x": 1100,
+          "y": 200
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Consensus Reached?",
+        "config": {
+          "condition": "consensus_reached"
+        },
+        "position": {
+          "x": 1100,
+          "y": 400
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e2",
+        "source": "init-1",
+        "target": "strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e3",
+        "source": "init-1",
+        "target": "critic-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e4",
+        "source": "strategist-1",
+        "target": "optimizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e5",
+        "source": "critic-1",
+        "target": "optimizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e6",
+        "source": "optimizer-1",
+        "target": "moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e7",
+        "source": "moderator-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e8",
+        "source": "gate-1",
+        "target": "strategist-1",
+        "type": "feedback",
+        "label": "dialectical refinement round"
+      },
+      {
+        "id": "e9",
+        "source": "gate-1",
+        "target": "moderator-1",
+        "type": "conditional",
+        "condition": "consensus_reached",
+        "label": "final consensus reached"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": "{{max_rounds}}",
+        "description": "Maximum dialectical rounds"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.85,
+        "description": "Consensus threshold for synthesis"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "strategist_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Thesis strategist"
+    },
+    {
+      "key": "critic_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Antithesis critic"
+    },
+    {
+      "key": "optimizer_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Synthesis optimizer"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Dialectical moderator"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 5,
+      "description": "Maximum number of dialectical refinement rounds"
+    }
+  ],
+  "is_system": true
+}

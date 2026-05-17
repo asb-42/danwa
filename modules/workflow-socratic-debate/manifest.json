@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "workflow-socratic-debate",
+  "name": {
+    "en": "Socratic Debate"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Team",
+    "email": "team@danwa.example"
+  },
+  "license": "MIT",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A debate workflow using the Socratic method for deep examination of claims."
+  },
+  "checksum": "7387e2a048956c68353e798633101adf6b57259b33ad686863346f4865fee252"
+}
