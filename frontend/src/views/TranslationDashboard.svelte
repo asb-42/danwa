@@ -357,7 +357,7 @@
               </td>
               <td class="text-center px-3 py-3 text-gray-500 dark:text-gray-400">{row.st.llm || 0}</td>
               <td class="text-center px-3 py-3 text-gray-500 dark:text-gray-400">{row.st.manual || 0}</td>
-              <td class="text-left px-3 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">—</td>
+              <td class="text-left px-3 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDate(row.st.last_updated)}</td>
               <td class="text-right px-4 py-3">
                 <div class="flex items-center justify-end gap-1">
                   <button

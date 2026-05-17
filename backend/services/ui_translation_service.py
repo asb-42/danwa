@@ -253,11 +253,19 @@ class UITranslationService:
         return result
 
     def get_all_keys(self, namespace: str = "global") -> list[str]:
-        """Liste aller bekannten Keys."""
+        """Liste aller bekannten Keys aus englischer Referenz (DB + bundled)."""
         conn = self._get_conn()
-        rows = conn.execute("SELECT DISTINCT key FROM ui_translations WHERE namespace = ?", (namespace,)).fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT key FROM ui_translations WHERE locale = 'en' AND namespace = ?",
+            (namespace,),
+        ).fetchall()
         conn.close()
-        return [r["key"] for r in rows]
+        db_keys = {r["key"] for r in rows}
+
+        bundled = self._scan_bundled_loaders()
+        en_bundled = set(bundled.get("en", {}).keys())
+
+        return sorted(db_keys | en_bundled)
 
     def delete_translation(self, key: str, locale: str, namespace: str = "global") -> bool:
         """Lösche eine Übersetzung."""
@@ -364,7 +372,8 @@ class UITranslationService:
             SELECT locale, COUNT(*) as total,
                     SUM(CASE WHEN source = 'manual' THEN 1 ELSE 0 END) as manual,
                     SUM(CASE WHEN source = 'bulk_imported' THEN 1 ELSE 0 END) as bulk,
-                    SUM(CASE WHEN source = 'llm_generated' THEN 1 ELSE 0 END) as llm
+                    SUM(CASE WHEN source = 'llm_generated' THEN 1 ELSE 0 END) as llm,
+                    MAX(updated_at) as last_updated
             FROM ui_translations
             WHERE namespace = ?
             GROUP BY locale
@@ -383,6 +392,7 @@ class UITranslationService:
                     "manual": 0,
                     "bulk": 0,
                     "llm": 0,
+                    "last_updated": None,
                 }
             else:
                 db_stats[locale]["total"] = max(db_stats[locale]["total"], len(keys))
@@ -394,9 +404,9 @@ class UITranslationService:
 
     def get_coverage(self, namespace: str = "global") -> dict[str, Any]:
         bundled = self._scan_bundled_loaders()
-        en_keys = set(bundled.get("en", {}).keys())
+        en_keys = set(self.get_all_keys(namespace))
         if not en_keys:
-            en_keys = set(self.get_all_keys(namespace))
+            en_keys = set(bundled.get("en", {}).keys())
         if not en_keys:
             return {}
 
