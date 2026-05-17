@@ -108,6 +108,8 @@
         getAgentPersonas(),
         getPromptVariants(),
         listRoleTypes(),
+        getServiceEligibleProfiles(),
+        getServiceLLMConfig(),
       ]);
       const errors = [];
       if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
@@ -117,6 +119,8 @@
       if (results[2].status === 'fulfilled') promptVariants = results[2].value;
       else errors.push(`Prompt Variants: ${results[2].reason?.message || results[2].reason}`);
       if (results[3].status === 'fulfilled') roleTypes = results[3].value;
+      if (results[4].status === 'fulfilled') serviceEligibleProfiles = results[4].value || [];
+      if (results[5].status === 'fulfilled') serviceLLMConfig = results[5].value || {};
       if (errors.length > 0) error.set(errors.join('; '));
     } catch (e) {
       error.set(e.message);
@@ -450,10 +454,6 @@
       await refreshLists();
     } catch (e) { error.set(e.message); }
   }
-
-  $effect(() => {
-    if (activeTab === 'llm' && serviceEligibleProfiles.length === 0) loadServiceLLMData();
-  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
