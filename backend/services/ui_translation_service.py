@@ -321,6 +321,9 @@ class UITranslationService:
             else:
                 db_stats[locale]["total"] = max(db_stats[locale]["total"], len(keys))
 
+        for locale, s in db_stats.items():
+            s["translated"] = (s.get("llm") or 0) + (s.get("manual") or 0) + (s.get("bulk") or 0)
+
         return db_stats
 
     def get_coverage(self, namespace: str = "global") -> dict[str, Any]:
@@ -345,6 +348,26 @@ class UITranslationService:
                 "translated": translated,
                 "coverage_pct": round(coverage, 1),
             }
+
+        conn = self._get_conn()
+        custom_rows = conn.execute(
+            "SELECT DISTINCT locale FROM ui_translations WHERE locale NOT IN ({}) AND namespace = ?".format(
+                ",".join("?" for _ in DEFAULT_LOCALES)
+            ),
+            (*DEFAULT_LOCALES, namespace),
+        ).fetchall()
+        for row in custom_rows:
+            locale = row["locale"]
+            db_keys = set(self.get_translations_bulk(locale, namespace).keys())
+            translated = len(db_keys & en_keys)
+            coverage = translated / len(en_keys) * 100
+            result[locale] = {
+                "total_keys": len(en_keys),
+                "translated": translated,
+                "coverage_pct": round(coverage, 1),
+            }
+        conn.close()
+
         return result
 
     # ------------------------------------------------------------------
