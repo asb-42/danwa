@@ -13,6 +13,8 @@ import json
 import logging
 import threading
 from datetime import UTC, datetime
+
+from backend.core.config import settings
 from pathlib import Path
 from typing import Any
 
@@ -536,6 +538,8 @@ class UITranslationService:
 
     def _select_llm_for_locale(self, locale: str, ps) -> str:
         """Wählt ein geeignetes LLM basierend auf der Zielsprache."""
+        if settings.service_llm_profile_id:
+            return settings.service_llm_profile_id
         locale_map = {
             "zh": "openrouter-deepseek/deepseek-chat",
             "ja": "openrouter-deepseek/deepseek-chat",

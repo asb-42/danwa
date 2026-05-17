@@ -361,3 +361,57 @@ def _apply_retention(service: BackupService) -> None:
                 logger.info("Old backup removed: %s", b.backup_id)
         except OSError as exc:
             logger.warning("Could not delete backup %s: %s", b.backup_id, exc)
+
+
+# --- Utility LLM (Sprint 16) ---
+
+from backend.core.config import is_service_llm_eligible
+from backend.services.profile_service import ProfileService
+
+
+class UtilityLLMRequest(BaseModel):
+    profile_id: str
+
+
+@router.get("/service-llm")
+async def get_utility_llm_config():
+    """Get the current utility LLM configuration."""
+    return {
+        "service_llm_profile_id": app_settings.service_llm_profile_id,
+        "service_llm_min_context": app_settings.service_llm_min_context,
+        "service_llm_blacklist": app_settings.service_llm_blacklist,
+    }
+
+
+@router.post("/validate-service-llm")
+async def validate_utility_llm(body: UtilityLLMRequest):
+    """Validate whether a given profile is suitable as utility LLM."""
+    ps = ProfileService()
+    profile = ps.get_llm_profile(body.profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
+    eligible, reason = is_service_llm_eligible(profile)
+    return {
+        "profile_id": body.profile_id,
+        "service_eligible": eligible,
+        "reason": reason,
+    }
+
+
+@router.post("/service-llm")
+async def set_utility_llm(body: UtilityLLMRequest):
+    """Set or clear the utility LLM profile."""
+    if not body.profile_id:
+        app_settings.service_llm_profile_id = None
+        logger.info("Utility LLM cleared")
+        return {"status": "ok", "service_llm_profile_id": None}
+    ps = ProfileService()
+    profile = ps.get_llm_profile(body.profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"LLM profile '{body.profile_id}' not found")
+    eligible, reason = is_service_llm_eligible(profile)
+    if not eligible:
+        raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' not eligible: {reason}")
+    app_settings.service_llm_profile_id = body.profile_id
+    logger.info("Utility LLM changed to %s", body.profile_id)
+    return {"status": "ok", "service_llm_profile_id": body.profile_id}
