@@ -31,6 +31,7 @@
         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
     onclick={() => canvasStore.setMode('blueprint')}
     data-testid="mode-blueprint"
+    title={t('blueprint.mode.blueprintHint') || 'Asset relationships only — workflow nodes will be removed'}
   >
     🧩 {t('blueprint.mode.blueprint')}
   </button>
@@ -41,6 +42,7 @@
         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
     onclick={() => canvasStore.setMode('workflow')}
     data-testid="mode-workflow"
+    title={t('blueprint.mode.workflowHint') || 'Full canvas — includes workflow steps, gates, and control flow'}
   >
     ⚙️ {t('blueprint.mode.workflow')}
   </button>
