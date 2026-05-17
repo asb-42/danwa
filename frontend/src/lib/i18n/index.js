@@ -10,7 +10,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, RTL_LOCALES } from './config.js';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, RTL_LOCALES, customLocales, getLocaleName } from './config.js';
 
 // Eagerly import the default locale to avoid race condition on first render.
 import defaultDict from './loaders/de.js';
@@ -106,12 +106,18 @@ function createI18nStore() {
 
     /**
      * Switch to a new locale.
-     * Attempts dynamic import first, then HTTP backend, then falls back.
+     * Supports bundled locales and dynamically registered custom locales.
      */
     async setLocale(lang) {
-      if (!SUPPORTED_LOCALES.includes(lang)) {
-        console.warn(`[i18n] Unsupported locale: ${lang}, falling back to ${DEFAULT_LOCALE}`);
-        lang = DEFAULT_LOCALE;
+      const isBundled = SUPPORTED_LOCALES.includes(lang);
+      const isCustom = customLocales.has(lang);
+
+      if (!isBundled && !isCustom) {
+        const probe = await fetchTranslationsFromBackend(lang);
+        if (!probe) {
+          console.warn(`[i18n] Locale ${lang} not available, falling back to ${DEFAULT_LOCALE}`);
+          lang = DEFAULT_LOCALE;
+        }
       }
 
       currentLocale = lang;
@@ -120,17 +126,8 @@ function createI18nStore() {
       // Persist user preference
       try { localStorage.setItem('locale', lang); } catch {}
 
-      // Preload adjacent locales for faster switching
-      const idx = SUPPORTED_LOCALES.indexOf(lang);
-      const toPreload = [];
-      if (idx > 0) toPreload.push(SUPPORTED_LOCALES[idx - 1]);
-      if (idx < SUPPORTED_LOCALES.length - 1) toPreload.push(SUPPORTED_LOCALES[idx + 1]);
-
       const dict = await loadLocale(lang);
       set(dict);
-
-      // Preload neighbours in background
-      toPreload.forEach(l => loadLocale(l));
 
       // Update HTML attributes
       document.documentElement.lang = lang;

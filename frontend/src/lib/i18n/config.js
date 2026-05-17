@@ -1,8 +1,10 @@
 /**
  * Locale configuration for i18n.
- * 
+ *
  * 12 Standard languages: de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el
  * 2 optional RTL languages: ar, he (not loaded by default)
+ *
+ * Custom locales (registered via backend) are added dynamically at runtime.
  */
 
 export const SUPPORTED_LOCALES = [
@@ -42,6 +44,34 @@ export const LOCALE_NAMES = {
 };
 
 export const RTL_LOCALES = new Set(['ar', 'he', 'fa']);
+
+/** Runtime-registered custom locales. Populated by LanguageSwitcher on mount. */
+export const customLocales = new Map();
+
+/**
+ * Register a custom locale discovered from the backend.
+ * @param {{ locale: string, name: string, is_rtl: boolean }} info
+ */
+export function registerCustomLocale(info) {
+  customLocales.set(info.locale, { name: info.name, isRtl: info.is_rtl });
+  if (info.is_rtl) RTL_LOCALES.add(info.locale);
+}
+
+/**
+ * Get the display name for any locale (bundled or custom).
+ */
+export function getLocaleName(code) {
+  return customLocales.get(code)?.name || LOCALE_NAMES[code] || code;
+}
+
+/**
+ * Get the combined list of all available locales (bundled + custom).
+ */
+export function getAllLocales() {
+  const bundled = SUPPORTED_LOCALES.filter(l => !customLocales.has(l));
+  const custom = [...customLocales.keys()];
+  return [...bundled, ...custom];
+}
 
 // Plural tags per locale (based on Intl.PluralRules)
 export const PLURAL_TAGS = {

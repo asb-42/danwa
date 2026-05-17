@@ -1,7 +1,8 @@
 <script>
+  import { onMount } from 'svelte';
   import { locale, i18n } from '../lib/i18n/index.js';
-  import { SUPPORTED_LOCALES, LOCALE_NAMES, RTL_LOCALES } from '../lib/i18n/config.js';
-  import { setLanguage } from '../lib/api.js';
+  import { SUPPORTED_LOCALES, LOCALE_NAMES, RTL_LOCALES, customLocales, registerCustomLocale, getAllLocales } from '../lib/i18n/config.js';
+  import { setLanguage, getCustomLocales } from '../lib/api.js';
 
   let open = $state(false);
   let persisting = $state(false);
@@ -13,6 +14,17 @@
     sv: '🇸🇪', el: '🇬🇷', ar: '🇸🇦', he: '🇮🇱',
   };
 
+  onMount(async () => {
+    try {
+      const res = await getCustomLocales();
+      for (const info of res.custom_locales || []) {
+        registerCustomLocale(info);
+      }
+    } catch {
+      // Backend unreachable — use bundled locales only
+    }
+  });
+
   async function switchLanguage(lang) {
     await i18n.setLocale(lang);
     // Persist to backend (non-critical)
@@ -23,7 +35,7 @@
   }
 
   let currentFlag = $derived(FLAGS[$locale] || '🌐');
-  let isRTL = $derived(RTL_LOCALES.has($locale));
+  let allLocales = $derived(getAllLocales());
 </script>
 
 <div class="relative inline-block text-left">
@@ -55,9 +67,11 @@
                 ring-1 ring-black ring-opacity-5"
          onclick={(e) => e.stopPropagation()}>
       <div class="py-1" role="menu">
-        {#each SUPPORTED_LOCALES as lang}
+        {#each allLocales as lang}
           {@const isRTL = RTL_LOCALES.has(lang)}
           {@const dir = isRTL ? 'rtl' : 'ltr'}
+          {@const name = customLocales.get(lang)?.name || LOCALE_NAMES[lang] || lang}
+          {@const isCustom = customLocales.has(lang)}
           <button
             onclick={() => switchLanguage(lang)}
             class="w-full text-left px-4 py-2 text-sm flex items-center gap-2
@@ -68,8 +82,9 @@
             class:font-serif={isRTL}
           >
             <span class="text-lg leading-none">{FLAGS[lang] || '🌐'}</span>
-            <span dir={dir}>{LOCALE_NAMES[lang] || lang}</span>
-            {#if isRTL}
+            <span dir={dir}>{name}</span>
+            {#if isCustom}<span class="ml-auto text-xs text-gray-400 dark:text-gray-500">Custom</span>{/if}
+            {#if isRTL && !isCustom}
               <span class="ml-auto text-xs text-gray-400 dark:text-gray-500" dir="ltr">RTL</span>
             {/if}
             {#if lang === $locale}
@@ -85,7 +100,6 @@
   {/if}
 </div>
 
-<!-- Close dropdown on outside click -->
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="fixed inset-0 z-40" onclick={() => open = false}></div>
