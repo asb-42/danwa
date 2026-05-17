@@ -374,7 +374,7 @@ class UITranslationService:
         )
 
         try:
-            result = llm.generate(
+            result = llm.generate_sync(
                 prompt=source_text,
                 system_prompt=system_prompt,
                 temperature=0.2,
@@ -400,6 +400,9 @@ class UITranslationService:
         all_keys = self.get_all_keys(namespace)
         results = {}
 
+        llm_profile = settings.service_llm_profile_id or "(not set — using fallback)"
+        logger.info("Bulk-Translation gestartet: locales=%s, LLM=%s", target_locales, llm_profile)
+
         for locale in target_locales:
             existing = self.get_translations_bulk(locale, namespace)
             missing = [k for k in all_keys if k not in existing or not existing[k]]
@@ -408,6 +411,7 @@ class UITranslationService:
                 results[locale] = {"status": "complete", "translated": 0}
                 continue
 
+            logger.info("Übersetze %d Strings nach %s …", len(missing), locale)
             translated_count = 0
             for key in missing:
                 # Use English value as source
@@ -416,6 +420,7 @@ class UITranslationService:
                     self.translate_via_llm(key, en_val, locale)
                     translated_count += 1
 
+            logger.info("Fertig für %s: %d Strings übersetzt", locale, translated_count)
             results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
 
         return results

@@ -320,11 +320,25 @@ class LLMService:
     ) -> GenerationResult:
         """Synchronous wrapper around async generate().
 
-        Uses asyncio.run() to execute the async generation in a sync context.
+        Runs the async generation in a dedicated thread to avoid
+        event-loop conflicts when called from FastAPI handlers.
         """
         import asyncio
+        import concurrent.futures
 
-        return asyncio.run(self.generate(prompt, system_prompt, temperature, max_tokens))
+        def _run_in_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(
+                    self.generate(prompt, system_prompt, temperature, max_tokens)
+                )
+            finally:
+                loop.close()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_run_in_thread)
+            return future.result(timeout=120)
 
     def estimate_cost(
         self,

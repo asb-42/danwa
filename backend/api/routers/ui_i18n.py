@@ -148,6 +148,25 @@ async def register_locale(
     return svc.register_custom_locale(body.locale, body.name, body.is_rtl)
 
 
+# --- Batch translation endpoint (MUST be before /{locale} to avoid shadowing) ---
+
+
+@router.post("/bulk-translate")
+async def bulk_translate(
+    body: BulkTranslateRequest,
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Batch LLM-Übersetzung für fehlende Strings."""
+    results = svc.bulk_translate(
+        target_locales=body.target_locales,
+        namespace=body.namespace,
+    )
+    # Invalidate cache for all affected locales
+    for locale in results.keys():
+        svc.invalidate_cache(locale)
+    return {"results": results}
+
+
 # --- Locale-specific routes ---
 
 
@@ -216,22 +235,3 @@ async def delete_translation(
         raise HTTPException(status_code=404, detail="Translation not found")
     svc.invalidate_cache(locale)
     return {"deleted": True}
-
-
-# --- NEW: Batch translation endpoint ---
-
-
-@router.post("/bulk-translate")
-async def bulk_translate(
-    body: BulkTranslateRequest,
-    svc: UITranslationService = Depends(get_i18n_service),
-) -> dict[str, Any]:
-    """Batch LLM-Übersetzung für fehlende Strings."""
-    results = svc.bulk_translate(
-        target_locales=body.target_locales,
-        namespace=body.namespace,
-    )
-    # Invalidate cache for all affected locales
-    for locale in results.keys():
-        svc.invalidate_cache(locale)
-    return {"results": results}

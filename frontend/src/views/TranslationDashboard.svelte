@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { LOCALE_NAMES } from '../lib/i18n/config.js';
+  import { addToast } from '../lib/stores.js';
   import {
     getSupportedLocales,
     getTranslationStats,
@@ -127,12 +128,20 @@
   async function translateLocale(localeCode) {
     translatingLocale = localeCode;
     try {
-      await bulkTranslate([localeCode]);
+      const result = await bulkTranslate([localeCode]);
+      const localeResult = result.results?.[localeCode] || {};
+      const count = localeResult.translated || 0;
+      addToast({
+        message: `${count} UI strings translated to ${LOCALE_NAMES[localeCode] || localeCode}`,
+        type: 'success',
+        timeout: 5000,
+      });
       await loadOverview();
       if (expandedLocale === localeCode) {
         await loadDetail(localeCode);
       }
     } catch (e) {
+      addToast({ message: `Translation failed: ${e.message}`, type: 'error', timeout: 8000 });
       console.error('LLM translation failed:', e);
     } finally {
       translatingLocale = null;
