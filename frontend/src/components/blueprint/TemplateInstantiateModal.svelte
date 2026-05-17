@@ -26,6 +26,7 @@
   let workflowName = $state('');
   let placeholderValues = $state({});
   let blueprints = $state([]);
+  let blueprintsLoading = $state(false);
   let loading = $state(false);
   let error = $state(null);
 
@@ -60,10 +61,14 @@
   });
 
   async function loadBlueprints() {
+    blueprintsLoading = true;
     try {
-      blueprints = await listAgentBlueprints();
-    } catch {
+      blueprints = await listAgentBlueprints({ active_only: false });
+    } catch (err) {
+      console.warn('[TemplateInstantiateModal] Failed to load blueprints:', err);
       blueprints = [];
+    } finally {
+      blueprintsLoading = false;
     }
   }
 
@@ -144,11 +149,18 @@
                 value={placeholderValues[ph.key] || ''}
                 onchange={(e) => handleValueChange(ph.key, e.target.value, ph.type)}
                 data-testid="instantiate-ph-{ph.key}"
+                disabled={blueprintsLoading}
               >
-                <option value="">{t('template.instantiate.selectBlueprint')}</option>
-                {#each blueprints as bp}
-                  <option value={bp.id}>{bp.name} ({bp.id})</option>
-                {/each}
+                {#if blueprintsLoading}
+                  <option value="">Loading blueprints…</option>
+                {:else if blueprints.length === 0}
+                  <option value="">— No agent blueprints found —</option>
+                {:else}
+                  <option value="">{t('template.instantiate.selectBlueprint')}</option>
+                  {#each blueprints as bp}
+                    <option value={bp.id}>{bp.name} ({bp.id})</option>
+                  {/each}
+                {/if}
               </select>
             {:else if ph.type === 'integer'}
               <input
