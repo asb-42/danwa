@@ -767,7 +767,7 @@ export default {
   'translation.updated': 'Aktualisiert',
   'translation.missingTranslation': 'Fehlend',
   'common.actions': 'Aktionen',
-  'manage.title': 'LLM-Profile',
+  'manage.title': 'Manage',
   'modules.title': 'Modules',
   'modules.refresh': 'Refresh Modules',
   'modules.tabInstalled': 'Installed',

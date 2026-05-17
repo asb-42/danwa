@@ -528,12 +528,12 @@
                 <tr>
                   <th class="px-4 py-3">{t('config.name')}</th>
                   <th class="px-4 py-3">{t('config.type') || 'Typ'}</th>
+                  <th class="px-4 py-3 text-center">🔧 {t('service.utility') || 'Utility'}</th>
                   <th class="px-4 py-3">{t('config.provider')}</th>
                   <th class="px-4 py-3">{t('config.model')}</th>
                   <th class="px-4 py-3">{t('config.temperature')}</th>
                   <th class="px-4 py-3">{t('config.maxTokens')}</th>
                   <th class="px-4 py-3">{t('config.contextWindow')}</th>
-                  <th class="px-4 py-3 text-center">🔧 {t('service.utility') || 'Utility'}</th>
                   <th class="px-4 py-3 text-right">{t('config.actions') || 'Aktionen'}</th>
                 </tr>
               </thead>
@@ -554,11 +554,6 @@
                         {PROFILE_TYPE_LABELS[profile.profile_type || 'text']}
                       </span>
                     </td>
-                    <td class="px-4 py-3">{profile.provider}</td>
-                    <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
-                    <td class="px-4 py-3">{profile.temperature}</td>
-                    <td class="px-4 py-3">{profile.max_tokens}</td>
-                    <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
                     <td class="px-4 py-3 text-center">
                       {#if getServiceElig(profile.id)}
                         {#if getServiceElig(profile.id).service_eligible || serviceLLMConfig.service_llm_profile_id === profile.id}
@@ -579,6 +574,11 @@
                         <span class="text-xs text-gray-400">—</span>
                       {/if}
                     </td>
+                    <td class="px-4 py-3">{profile.provider}</td>
+                    <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
+                    <td class="px-4 py-3">{profile.temperature}</td>
+                    <td class="px-4 py-3">{profile.max_tokens}</td>
+                    <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
                     <td class="px-4 py-3 text-right">
                       <div class="relative inline-block">
                         <button
