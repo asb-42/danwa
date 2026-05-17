@@ -259,6 +259,8 @@ class ModuleService:
             return yaml.safe_load(content)
         elif profile_format == "json":
             return json.loads(content)
+        elif profile_format == "markdown":
+            return {"content": content}
         return None
 
     def update_profile(self, module_id: str, profile_data: dict[str, Any]) -> bool:
@@ -279,6 +281,8 @@ class ModuleService:
             profile_path.write_text(yaml.dump(profile_data, default_flow_style=False, sort_keys=False, allow_unicode=True), encoding="utf-8")
         elif profile_format == "json":
             profile_path.write_text(json.dumps(profile_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        elif profile_format == "markdown":
+            profile_path.write_text(profile_data.get("content", ""), encoding="utf-8")
         else:
             return False
 
@@ -318,6 +322,8 @@ class ModuleService:
                     if new_name:
                         data["name"] = new_name
                     profile_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                elif profile_format == "markdown":
+                    pass
 
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -443,6 +449,8 @@ class ModuleService:
                         profile_preview = yaml.safe_load(content)
                     elif profile_format == "json":
                         profile_preview = json.loads(content)
+                    elif profile_format == "markdown":
+                        profile_preview = {"content": content[:500]}
                 except Exception:
                     pass
         else:

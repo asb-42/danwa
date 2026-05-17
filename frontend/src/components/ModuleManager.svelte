@@ -7,6 +7,8 @@
     updateModuleProfile,
     duplicateModule,
     uninstallModule,
+    exportModule,
+    translateModule,
   } from '../lib/api.js';
 
   let t = $derived((key, params = {}) => {
@@ -29,12 +31,14 @@
   let editSaving = $state(false);
   let editError = $state(null);
 
-  const CATEGORY_ORDER = ['agents', 'llm-profiles', 'role-types', 'tone-profiles', 'workflows'];
+  const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
+  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'tone-profiles', 'workflows'];
   const CATEGORY_LABELS = {
     'agents': 'Agent Personas',
     'llm-profiles': 'LLM Profiles',
     'role-types': 'Role Types',
     'tone-profiles': 'Tone Profiles',
+    'prompts': 'Prompt Variants',
     'workflows': 'Workflows',
   };
 
@@ -135,6 +139,33 @@
     }
   }
 
+  async function handleExport(mod) {
+    try {
+      const url = await exportModule(mod.module_id);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${mod.module_id}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      statusMessage = `Exported ${mod.module_id}`;
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
+  async function handleTranslate(mod) {
+    const targetLang = prompt('Target language code (e.g. de, fr, es):', 'de');
+    if (!targetLang || !targetLang.trim()) return;
+    try {
+      await translateModule(mod.module_id, { target_language: targetLang.trim(), force: false, auto_approve: true });
+      statusMessage = `Translation queued for ${mod.module_id} → ${targetLang.trim()}`;
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
   function updateField(field, value) {
     editForm = { ...editForm, [field]: value };
   }
@@ -206,6 +237,11 @@
         { key: 'description', label: 'Description', type: 'textarea' },
         { key: 'category', label: 'Category', type: 'text' },
         { key: 'is_system', label: 'System Template', type: 'checkbox' },
+      ];
+    }
+    if (type === 'prompt-variant') {
+      return [
+        { key: 'content', label: 'Prompt Content (Markdown)', type: 'markdown' },
       ];
     }
     return [];
@@ -310,6 +346,20 @@
                           Duplicate
                         </button>
                         <button
+                          class="px-2.5 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                          onclick={() => handleExport(mod)}
+                        >
+                          Export
+                        </button>
+                        {#if TRANSLATABLE_TYPES.includes(mod.type)}
+                          <button
+                            class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+                            onclick={() => handleTranslate(mod)}
+                          >
+                            Translate
+                          </button>
+                        {/if}
+                        <button
                           class="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                           onclick={() => handleDelete(mod)}
                         >
@@ -365,12 +415,12 @@
           {#each formFields() as field}
             <div>
               <label class={labelClass()}>{field.label}</label>
-              {#if field.type === 'textarea'}
+              {#if field.type === 'textarea' || field.type === 'markdown'}
                 <textarea
                   value={editForm[field.key] ?? ''}
                   oninput={(e) => updateField(field.key, e.currentTarget.value)}
-                  class={inputClass() + ' min-h-[100px] font-mono text-xs'}
-                  rows={5}
+                  class={inputClass() + ' min-h-[200px] font-mono text-xs'}
+                  rows={12}
                 ></textarea>
               {:else if field.type === 'checkbox'}
                 <input

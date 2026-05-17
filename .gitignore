@@ -157,6 +157,9 @@ reports/
 *.docx
 *.pdf
 
+# Module exports (user-generated ZIP files)
+exports/
+
 # Environment specific / User config (never commit real credentials)
 settings.yaml
 config/settings.yaml
