@@ -59,7 +59,8 @@ bash scripts/stop.sh
 - **混合检索** — BM25 + 向量搜索 + 重排序，实现最佳检索效果
 - **实时更新** — 服务器推送事件（SSE）实现实时辩论进度可视化
 - **现代 Web UI** — Svelte 5 + Tailwind CSS + @xyflow/svelte 工作流图
-- **国际化** — 完整的 i18n 支持（德语/英语）
+- **国际化** — 完整的 i18n 支持（14 种语言：德语、英语、法语、西班牙语、意大利语、葡萄牙语、俄语、中文、日语、韩语、瑞典语、希腊语、阿拉伯语、希伯来语），支持 RTL 和翻译仪表板
+- **模块系统** — 可扩展的模块架构，支持智能体、提示词、角色、LLM 配置文件和工作流模板
 - **带外输入** — 在辩论运行期间注入额外上下文
 - **A2A 协议** — 通过 JSON-RPC 2.0 实现智能体到智能体通信（服务端 + 客户端）
 - **外部智能体集成** — 将外部 AI 智能体作为辩论参与者
@@ -97,7 +98,7 @@ bash scripts/stop.sh
 | 代码检查 | [ruff](https://github.com/astral-sh/ruff) 0.4+ |
 | 数据验证 | [Pydantic](https://docs.pydantic.dev) 2.7+ |
 | SSE 支持 | [sse-starlette](https://github.com/syroegkin/sse-starlette) |
-| 前端 i18n | 自定义加载器（德语/英语） |
+| 前端 i18n | 自定义加载器（14 种语言 + RTL） |
 | A2A 协议 | [Google A2A](https://github.com/google/A2A)（JSON-RPC 2.0 over HTTP） |
 | A2A HTTP 客户端 | [httpx](https://www.python-httpx.org) |
 
@@ -279,7 +280,14 @@ danwa/
 │   ├── vite.config.js        # Vite 配置
 │   ├── tailwind.config.js    # Tailwind CSS 配置
 │   └── postcss.config.js     # PostCSS 配置
-├── profiles/                    # 配置文件（YAML + Markdown）
+├── modules/                     # 可扩展模块系统（每个模块独立目录）
+│   ├── agent-*/                # 智能体模块（manifest.json + profile.yaml）
+│   ├── prompt-*/               # 提示词模块（manifest.json + profile.md）
+│   ├── role-*/                 # 角色定义模块（manifest.json + profile.json）
+│   ├── tone-system-*/          # 语气配置模块（manifest.json + profile.json）
+│   ├── workflow-tpl-*/         # 工作流模板模块（manifest.json + profile.json）
+│   └── llm-*/                  # LLM 配置文件模块（manifest.json + profile.yaml）
+├── profiles/                    # 配置文件（YAML + Markdown，正在迁移到模块系统）
 │   ├── llm/                     # LLM 配置文件定义
 │   │   ├── openrouter-claude.yaml
 │   │   ├── openrouter-gpt4.yaml
@@ -679,7 +687,7 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 > **什么是"缺失环节"？** 这些是在后端中完全实现但**尚未通过用户界面访问**的功能。
 >
-> **最后审计时间**：2026-05-12 — 全面代码库扫描。
+> **最后审计时间**：2026-05-17 — 全面代码库扫描。
 >
 > **近期已暴露（此前迭代中已接线）**：
 > - 报告生成 — 下载 500 错误已修复
@@ -696,6 +704,11 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 > - HITL 系统 — 已在 ExecutionPanel 中完全暴露
 > - 输入/输出编排器 — 已在 InputComposerView 和 OutputComposerView 中完全暴露
 > - 回放和对比视图 — 已在 ReplayView 和 DiffView 中完全暴露
+> - **模块管理** — 已在 ModulesView 中完全暴露
+> - **优化提案** — 已在 ProposalsView 中完全暴露（HITL 批准/拒绝）
+> - **翻译仪表板** — 已完全暴露，支持 LLM 批量翻译
+> - **系统管理** — 已在 ManageView 中完全暴露
+> - **侧边栏重组** — 已组织为 RUN、BUILD、Configuration、Evolve 四个部分
 
 ### 历史会话管理 — 低影响
 - **后端**：旧版 `backend/api/routers/sessions.py` 路由（已被新路由替代）
@@ -738,4 +751,4 @@ dms = ["paddlepaddle>=3.0", "paddleocr>=3.5.0"]
 
 ---
 
-*Danwa v2.0.0 | 基于 FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte 构建*
+*Danwa v2.1.0 | 基于 FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte 构建*

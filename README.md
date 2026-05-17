@@ -59,7 +59,8 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 - **Hybrid Retrieval** - BM25 + Vector search + Re-ranking for optimal results
 - **Real-Time Updates** - Server-Sent Events (SSE) for live debate progress visualization
 - **Modern Web UI** - Svelte 5 + Tailwind CSS + @xyflow/svelte workflow graph
-- **Internationalization** - Full i18n support (German/English)
+- **Internationalization** - Full i18n support for 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) with RTL support and Translation Dashboard
+- **Module System** - Extensible module architecture for agents, prompts, roles, LLM profiles, and workflow templates
 - **Out-of-Band Inputs** - Inject additional context during running debates
 - **A2A Protocol** - Agent-to-Agent communication via JSON-RPC 2.0 (server + client)
 - **External Agent Integration** - Include external AI agents as debate participants
@@ -97,7 +98,7 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 | Linting | [ruff](https://github.com/astral-sh/ruff) 0.4+ |
 | Validation | [Pydantic](https://docs.pydantic.dev) 2.7+ |
 | SSE Support | [sse-starlette](https://github.com/syroegkin/sse-starlette) |
-| i18n (Frontend) | Custom loaders (German/English) |
+| i18n (Frontend) | Custom loaders (14 languages + RTL) |
 | A2A Protocol | [Google A2A](https://github.com/google/A2A) (JSON-RPC 2.0 over HTTP) |
 | A2A HTTP Client | [httpx](https://www.python-httpx.org) |
 
@@ -280,7 +281,14 @@ danwa/
 │   ├── vite.config.js        # Vite configuration
 │   ├── tailwind.config.js    # Tailwind CSS config
 │   └── postcss.config.js     # PostCSS config
-├── profiles/                    # Profile configuration (YAML + Markdown)
+├── modules/                     # Extensible module system (per-module directories)
+│   ├── agent-*/                # Agent modules (manifest.json + profile.yaml)
+│   ├── prompt-*/               # Prompt modules (manifest.json + profile.md)
+│   ├── role-*/                 # Role definition modules (manifest.json + profile.json)
+│   ├── tone-system-*/          # Tone profile modules (manifest.json + profile.json)
+│   ├── workflow-tpl-*/         # Workflow template modules (manifest.json + profile.json)
+│   └── llm-*/                  # LLM profile modules (manifest.json + profile.yaml)
+├── profiles/                    # Profile configuration (YAML + Markdown, being migrated to modules)
 │   ├── llm/                     # LLM profile definitions
 │   │   ├── openrouter-claude.yaml
 │   │   ├── openrouter-gpt4.yaml
@@ -682,7 +690,7 @@ dms = ["paddlepaddle>=3.0,<3.3.0", "paddleocr>=3.5.0"]
 
 > **What are "Missing Links"?** These are features fully implemented in the backend but **not yet accessible through the user interface**.
 >
-> **Last audited**: 2026-05-12 — full codebase scan.
+> **Last audited**: 2026-05-17 — full codebase scan.
 >
 > **Recently exposed (wired up in prior sprints)**:
 > - Report Generation — download 500 error fixed, now functional
@@ -699,6 +707,11 @@ dms = ["paddlepaddle>=3.0,<3.3.0", "paddleocr>=3.5.0"]
 > - HITL System — fully exposed in ExecutionPanel
 > - Input/Output Composer — fully exposed in InputComposerView and OutputComposerView
 > - Replay & Diff Views — fully exposed in ReplayView and DiffView
+> - **Modules Management** — fully exposed in ModulesView
+> - **Optimization Proposals** — fully exposed in ProposalsView (HITL approve/reject)
+> - **Translation Dashboard** — fully exposed with LLM bulk translation support
+> - **System Management** — fully exposed in ManageView
+> - **Sidebar Restructuring** — organized into RUN, BUILD, Configuration, Evolve sections
 
 ### Legacy Session History — LOW IMPACT
 - **Backend**: Legacy `backend/api/routers/sessions.py` router (superseded by newer routers)
@@ -741,4 +754,4 @@ See the [LICENSE](LICENSE) file for details.
 
 ---
 
-*Danwa v2.0.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte*
+*Danwa v2.1.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte*

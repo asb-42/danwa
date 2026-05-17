@@ -1,7 +1,7 @@
 # Danwa (Debate-Agent) — Technical Documentation
 
-> **Version**: 2.0.0  
-> **Last Updated**: 2026-05-12  
+> **Version**: 2.1.0  
+> **Last Updated**: 2026-05-17  
 > **Authors**: Development Team  
 
 ---
@@ -49,7 +49,8 @@
 - **PaddleOCR Integration**: OCR for scanned PDFs and images
 - **Hybrid Retrieval**: BM25 + Vector search + Re-ranking for optimal document retrieval
 - **Real-time Updates**: Server-Sent Events (SSE) for live debate progress
-- **Internationalization**: Full i18n support for 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) with RTL support
+- **Internationalization**: Full i18n support for 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) with RTL support and Translation Dashboard for managing translations
+- **Module System**: Extensible module architecture with per-module directories (manifest.json + profile), supporting agents, prompts, roles, tone systems, workflow templates, and LLM profiles
 - **A2A Protocol**: Agent-to-Agent communication via JSON-RPC 2.0 for multi-agent workflows
 
 ---
@@ -63,7 +64,8 @@ Danwa follows a **decoupled frontend-backend architecture** with clear separatio
 │                         User Browser                              │
 │  ┌─────────────────────────────────────────────────────────────┐  │
 │  │  Svelte 5 SPA + Tailwind CSS + @xyflow/svelte          │  │
-│  │  - Dashboard, Debate, Audit, Config, Projects Views      │  │
+│  │  - Dashboard, Debate, Audit, Config, Projects, Modules,    │  │
+│  │    Proposals, Translation, Manage, Blueprint Views         │  │
 │  │  - Workflow Graph Visualization (ELK layout)              │  │
 │  │  - SSE Client for Real-time Updates                     │  │
 │  └──────────────────────┬──────────────────────────────────┘  │
@@ -303,7 +305,11 @@ danwa/
 │   │   │   ├── InputComposerView.svelte  # Input composer
 │   │   │   ├── OutputComposerView.svelte  # Output composer
 │   │   │   ├── DiffView.svelte  # Diff view
-│   │   │   └── ReplayView.svelte  # Replay view
+│   │   │   ├── ReplayView.svelte  # Replay view
+│   │   │   ├── ModulesView.svelte  # Module management
+│   │   │   ├── ProposalsView.svelte  # Optimization proposals (HITL)
+│   │   │   ├── ManageView.svelte  # System management
+│   │   │   └── TranslationDashboard.svelte  # Translation management
 │   │   ├── components/       # Reusable UI components
 │   │   │   ├── Layout.svelte
 │   │   │   ├── Sidebar.svelte
@@ -376,7 +382,15 @@ danwa/
 │   │   └── web_search.py   # SearXNG search
 │   └── dms/                 # Legacy DMS (migrated to backend/services/dms/)
 │
-├── profiles/                    # Profile configuration (YAML + Markdown)
+├── modules/                     # Extensible module system (per-module directories)
+│   ├── agent-*/                # Agent modules (manifest.json + profile.yaml)
+│   ├── prompt-*/               # Prompt modules (manifest.json + profile.md)
+│   ├── role-*/                 # Role definition modules (manifest.json + profile.json)
+│   ├── tone-system-*/          # Tone profile modules (manifest.json + profile.json)
+│   ├── workflow-tpl-*/         # Workflow template modules (manifest.json + profile.json)
+│   └── llm-*/                  # LLM profile modules (manifest.json + profile.yaml)
+│
+├── profiles/                    # Legacy profile configuration (being migrated to modules)
 │   ├── llm/                     # LLM profile definitions
 │   │   ├── openrouter-claude.yaml
 │   │   ├── openrouter-gpt4.yaml
@@ -1047,7 +1061,7 @@ export function t(key, params = {}) {
 | ar | Arabic | Arabic | RTL |
 | he | Hebrew | Hebrew | RTL |
 
-**Language files** (808 keys each):
+**Language files** (850+ keys each):
 - `loaders/en.js`: English translations
 - `loaders/de.js`: German translations
 - `loaders/fr.js`: French translations
@@ -1062,6 +1076,14 @@ export function t(key, params = {}) {
 - `loaders/el.js`: Greek translations
 - `loaders/ar.js`: Arabic translations (RTL)
 - `loaders/he.js`: Hebrew translations (RTL)
+
+**Translation Dashboard** (`frontend/src/views/TranslationDashboard.svelte`):
+- Full-page UI for managing translations across all 14 languages
+- Shows translation coverage statistics per language
+- Supports LLM-powered bulk translation of missing keys
+- Manual editing of individual translations
+- Add new languages dynamically via "Add Language" dialog
+- Real-time coverage visualization with progress bars
 
 **Backend Translation API** (`/api/v1/i18n/`):
 - `GET /locales` — List supported languages
@@ -1730,6 +1752,85 @@ SQLite-backed storage for blueprints:
 | POST | `/api/v1/blueprints/{id}/compile` | Compile blueprint |
 | GET | `/api/v1/canvas/{id}` | Get canvas layout |
 | PUT | `/api/v1/canvas/{id}` | Save canvas layout |
+
+---
+
+## 11b. Module System
+
+### 11b.1 Overview
+
+Danwa uses an **extensible module system** that allows packaging and distributing agents, prompts, roles, tone systems, workflow templates, and LLM profiles as self-contained modules. Each module is a directory with a `manifest.json` metadata file and a profile file (YAML, JSON, or Markdown depending on module type).
+
+### 11b.2 Module Structure
+
+Each module follows this structure:
+
+```
+modules/<module-id>/
+├── manifest.json      # Module metadata (id, name, version, type, dependencies)
+└── profile.yaml       # or profile.json / profile.md (module-specific content)
+```
+
+**Manifest Schema** (`schemas/module-manifest.json`):
+```json
+{
+  "id": "agent-critic-default",
+  "name": "Critic Agent (Default)",
+  "version": "1.0.0",
+  "type": "agent",
+  "description": "Default critic agent persona for debate workflows",
+  "author": "Danwa Team",
+  "license": "AGPL-3.0",
+  "dependencies": [],
+  "tags": ["agent", "critic", "default"]
+}
+```
+
+### 11b.3 Module Types
+
+| Type | Directory Pattern | Profile Format | Purpose |
+|------|------------------|----------------|---------|
+| **Agent** | `agent-*/` | `profile.yaml` | Agent persona definitions (role, system prompt, LLM profile) |
+| **Prompt** | `prompt-*/` | `profile.md` | Prompt templates for specific agent roles |
+| **Role** | `role-*/` | `profile.json` | Role definitions with behavior constraints |
+| **Tone System** | `tone-system-*/` | `profile.json` | Tone/style profiles for debates |
+| **Workflow Template** | `workflow-tpl-*/` | `profile.json` | Pre-built workflow definitions |
+| **LLM Profile** | `llm-*/` | `profile.yaml` | LLM endpoint configurations |
+
+### 11b.4 Module Service (`backend/modules/service.py`)
+
+The module service handles:
+- **Discovery**: Scans `modules/` directory for valid modules
+- **Validation**: Validates manifest schema and profile content
+- **Installation**: Copies module files to the modules directory
+- **Uninstallation**: Removes module files safely
+- **Updates**: Checks for module updates and applies them
+
+**Key methods**:
+- `list_modules(type=None)`: List all modules, optionally filtered by type
+- `get_module(module_id)`: Get module details
+- `install_module(source_path)`: Install a module from a directory or archive
+- `uninstall_module(module_id)`: Remove an installed module
+- `validate_module(module_path)`: Validate module structure and content
+
+### 11b.5 Module API (`backend/api/routers/modules.py`)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/modules` | List all installed modules |
+| GET | `/api/v1/modules/{id}` | Get module details |
+| POST | `/api/v1/modules` | Install a new module |
+| DELETE | `/api/v1/modules/{id}` | Uninstall a module |
+| POST | `/api/v1/modules/{id}/validate` | Validate module |
+| GET | `/api/v1/modules/types` | List available module types |
+
+### 11b.6 Migration
+
+The `scripts/migrate_modules.py` script migrates legacy profile files (`profiles/llm/`, `profiles/agents/`, `profiles/prompts/`) to the new module format. Run it once to convert existing profiles:
+
+```bash
+uv run scripts/migrate_modules.py
+```
 
 ---
 
@@ -2781,7 +2882,7 @@ uv pip install ".[dms]"
 
 > **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client, but **not yet accessible through the user interface**. Users cannot use these features without direct API calls or code changes.
 >
-> **Last audited**: 2026-05-10 — full codebase scan of all backend routers, frontend API clients, and UI views.
+> **Last audited**: 2026-05-17 — full codebase scan of all backend routers, frontend API clients, and UI views.
 >
 > **Recently exposed (wired up in prior sprints)**: The following features were previously listed as missing but have since been wired into the UI:
 > - **Report Generation (async DOCX/PDF/ODF)** — download 500 error fixed. Now functional via "Bericht erstellen" in debate view.
@@ -2797,6 +2898,11 @@ uv pip install ".[dms]"
 > - **Canvas Layout CRUD** — `loadLayout()`/`saveLayout()`/`deleteLayout()` wired in Palette + BlueprintCanvas
 > - **Role Types CRUD** — `createRoleType()`/`updateRoleType()`/`deleteRoleType()`/`listRoleTypes()` wired in `RoleTypeForm.svelte`, `RoleDefinitionForm.svelte`, and `ConfigView.svelte`
 > - **Language API** — `setLanguage()` wired in `LanguageSwitcher.svelte`
+> - **Modules Management** — `ModulesView.svelte` with full install/uninstall/validate UI
+> - **Optimization Proposals** — `ProposalsView.svelte` with approve/reject HITL workflow
+> - **Translation Dashboard** — Full i18n management UI with LLM bulk translation
+> - **System Management** — `ManageView.svelte` for system-level operations
+> - **Sidebar Restructuring** — Organized into RUN, BUILD, Configuration, Evolve sections
 
 ### 16.1 Legacy Session History — LOW IMPACT
 
@@ -2924,4 +3030,4 @@ The legacy code is still present in `src/` but is being phased out.
 
 ---
 
-*Documentation generated for Danwa (Debate-Agent) v2.0.0 | Last updated: 2026-05-09*
+*Documentation generated for Danwa (Debate-Agent) v2.1.0 | Last updated: 2026-05-17*

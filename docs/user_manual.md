@@ -1004,6 +1004,52 @@ PUT    /api/v1/canvas/{id}             # Save canvas layout
 
 ---
 
+## Module System
+
+### What is the Module System?
+
+Danwa's module system allows you to extend the system with packaged agents, prompts, roles, tone systems, workflow templates, and LLM profiles. Each module is a self-contained directory with a `manifest.json` metadata file and a profile file.
+
+### Module Types
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **Agent Modules** | Agent personas with role, system prompt, and LLM profile | `agent-critic-default`, `agent-strategist-german-law` |
+| **Prompt Modules** | Prompt templates for specific agent roles | `prompt-critic`, `prompt-moderator-en` |
+| **Role Modules** | Role definitions with behavior constraints | `role-strategist`, `role-critic`, `role-moderator` |
+| **Tone System Modules** | Debate tone/style profiles | `tone-system-academic`, `tone-system-neutral` |
+| **Workflow Template Modules** | Pre-built workflow definitions | `workflow-tpl-dialectic-debate`, `workflow-tpl-kantian-analysis` |
+| **LLM Profile Modules** | LLM endpoint configurations | `llm-cloud-openrouter`, `llm-local-qwen3.6-35b-a3b` |
+
+### Managing Modules
+
+Access via the **Modules** view in the sidebar (BUILD → Management → Modules):
+
+1. **View Installed Modules** — See all currently installed modules with details
+2. **Install New Modules** — Install from a module directory or URL
+3. **Uninstall Modules** — Remove modules you no longer need
+4. **Validate Modules** — Check module integrity and compatibility
+
+### Module Structure
+
+```
+modules/<module-id>/
+├── manifest.json      # Module metadata (id, name, version, type)
+└── profile.yaml       # or profile.json / profile.md
+```
+
+### Migration from Legacy Profiles
+
+If you have existing profiles in `profiles/llm/`, `profiles/agents/`, or `profiles/prompts/`, run the migration script:
+
+```bash
+uv run scripts/migrate_modules.py
+```
+
+This converts legacy profile files to the new module format.
+
+---
+
 ## HITL (Human-in-the-Loop) System
 
 ### What is HITL?
@@ -1580,7 +1626,7 @@ make check
 
 > **Note**: These are features fully implemented in the backend but **not yet accessible through the user interface**.
 >
-> **Last audited**: 2026-05-12 — full codebase scan.
+> **Last audited**: 2026-05-17 — full codebase scan.
 >
 > **Recently exposed (wired up in prior sprints)**:
 > - Report Generation — download 500 error fixed, now functional
@@ -1597,6 +1643,11 @@ make check
 > - HITL System — fully exposed in ExecutionPanel
 > - Input/Output Composer — fully exposed in InputComposerView and OutputComposerView
 > - Replay & Diff Views — fully exposed in ReplayView and DiffView
+> - **Modules Management** — fully exposed in ModulesView
+> - **Optimization Proposals** — fully exposed in ProposalsView (HITL approve/reject)
+> - **Translation Dashboard** — fully exposed with LLM bulk translation support
+> - **System Management** — fully exposed in ManageView
+> - **Sidebar Restructuring** — organized into RUN, BUILD, Configuration, Evolve sections
 
 ### Legacy Session History
 
@@ -1721,4 +1772,4 @@ danwa/
 
 ---
 
-*Documentation generated for Danwa v2.0.0*
+*Documentation generated for Danwa v2.1.0*
