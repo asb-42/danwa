@@ -874,12 +874,22 @@ export function getTranslationCoverage(namespace = 'global') {
 // i18n API (Plan 20: Multi-Language Support)
 // ---------------------------------------------------------------------------
 
-/** Batch translate missing strings via LLM. */
+/** Start an async bulk translation job. Returns job_id for polling. */
 export function bulkTranslate(targetLocales = null, namespace = 'global', force = false) {
   return request('/api/v1/i18n/bulk-translate', {
     method: 'POST',
     body: JSON.stringify({ target_locales: targetLocales, namespace, force }),
   });
+}
+
+/** Get the status and progress of a translation job. */
+export function getTranslationJobStatus(jobId) {
+  return request(`/api/v1/i18n/bulk-translate/${jobId}/status`);
+}
+
+/** List all translation jobs. */
+export function listTranslationJobs() {
+  return request('/api/v1/i18n/bulk-translate');
 }
 
 /** Get per-locale string details with translation status, source, dates. */

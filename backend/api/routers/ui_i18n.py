@@ -148,7 +148,7 @@ async def register_locale(
     return svc.register_custom_locale(body.locale, body.name, body.is_rtl)
 
 
-# --- Batch translation endpoint (MUST be before /{locale} to avoid shadowing) ---
+# --- Batch translation endpoints (MUST be before /{locale} to avoid shadowing) ---
 
 
 @router.post("/bulk-translate")
@@ -156,15 +156,33 @@ async def bulk_translate(
     body: BulkTranslateRequest,
     svc: UITranslationService = Depends(get_i18n_service),
 ) -> dict[str, Any]:
-    """Batch LLM-Übersetzung für fehlende Strings."""
-    results = svc.bulk_translate(
+    """Start an async bulk translation job. Returns job_id for polling."""
+    job_id = svc.bulk_translate_async(
         target_locales=body.target_locales,
         namespace=body.namespace,
     )
-    # Invalidate cache for all affected locales
-    for locale in results.keys():
-        svc.invalidate_cache(locale)
-    return {"results": results}
+    return {"job_id": job_id}
+
+
+@router.get("/bulk-translate/{job_id}/status")
+async def get_translation_job_status(
+    job_id: str,
+) -> dict[str, Any]:
+    """Get the status and progress of a translation job."""
+    from backend.services.ui_translation_service import TranslationJobRegistry
+
+    job = TranslationJobRegistry.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    return job.to_dict()
+
+
+@router.get("/bulk-translate")
+async def list_translation_jobs() -> dict[str, Any]:
+    """List all translation jobs."""
+    from backend.services.ui_translation_service import TranslationJobRegistry
+
+    return {"jobs": TranslationJobRegistry.list_all()}
 
 
 # --- Locale-specific routes ---

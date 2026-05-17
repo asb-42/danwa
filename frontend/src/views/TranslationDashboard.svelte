@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { LOCALE_NAMES } from '../lib/i18n/config.js';
   import { addToast } from '../lib/stores.js';
@@ -9,6 +9,7 @@
     getTranslationCoverage,
     getLocaleDetails,
     bulkTranslate,
+    getTranslationJobStatus,
     setTranslation,
     registerLocale,
     getCustomLocales,
@@ -30,6 +31,16 @@
   let loading = $state(false);
   let translatingLocale = $state(null);
 
+  // Async job state
+  let activeJobId = $state(null);
+  let jobProgress = $state(0);
+  let jobTotal = $state(0);
+  let jobCompleted = $state(0);
+  let jobCurrentKey = $state('');
+  let jobCurrentLocale = $state('');
+  let jobStatus = $state('');
+  let pollInterval = $state(null);
+
   // Detail view state
   let expandedLocale = $state(null);
   let detailStrings = $state([]);
@@ -47,6 +58,10 @@
 
   onMount(async () => {
     await loadOverview();
+  });
+
+  onDestroy(() => {
+    cancelPolling();
   });
 
   async function loadOverview() {
@@ -128,23 +143,58 @@
   async function translateLocale(localeCode) {
     translatingLocale = localeCode;
     try {
-      const result = await bulkTranslate([localeCode]);
-      const localeResult = result.results?.[localeCode] || {};
-      const count = localeResult.translated || 0;
-      addToast({
-        message: `${count} UI strings translated to ${LOCALE_NAMES[localeCode] || localeCode}`,
-        type: 'success',
-        timeout: 5000,
-      });
-      await loadOverview();
-      if (expandedLocale === localeCode) {
-        await loadDetail(localeCode);
-      }
+      const { job_id } = await bulkTranslate([localeCode]);
+      activeJobId = job_id;
+      jobStatus = 'running';
+      jobProgress = 0;
+
+      pollInterval = setInterval(async () => {
+        try {
+          const status = await getTranslationJobStatus(job_id);
+          jobProgress = status.progress_pct || 0;
+          jobTotal = status.total_strings || 0;
+          jobCompleted = status.completed_strings || 0;
+          jobCurrentKey = status.current_key || '';
+          jobCurrentLocale = status.current_locale || '';
+          jobStatus = status.status;
+
+          if (status.status === 'completed' || status.status === 'failed') {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            activeJobId = null;
+
+            if (status.status === 'completed') {
+              const localeResult = status.results?.[localeCode] || {};
+              const count = localeResult.translated || 0;
+              addToast({
+                message: `${count} UI strings translated to ${LOCALE_NAMES[localeCode] || localeCode}`,
+                type: 'success',
+                timeout: 5000,
+              });
+              await loadOverview();
+              if (expandedLocale === localeCode) {
+                await loadDetail(localeCode);
+              }
+            } else {
+              addToast({ message: `Translation failed: ${status.error}`, type: 'error', timeout: 8000 });
+            }
+          }
+        } catch (e) {
+          console.error('Poll error:', e);
+        }
+      }, 800);
     } catch (e) {
       addToast({ message: `Translation failed: ${e.message}`, type: 'error', timeout: 8000 });
       console.error('LLM translation failed:', e);
     } finally {
       translatingLocale = null;
+    }
+  }
+
+  function cancelPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
     }
   }
 
@@ -228,6 +278,27 @@
     </div>
   </div>
 
+  <!-- Active Translation Job Progress -->
+  {#if activeJobId}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-200 dark:border-blue-800 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
+          Translating to {jobCurrentLocale}… ({jobCompleted}/{jobTotal})
+        </span>
+        <span class="text-sm font-bold text-blue-700 dark:text-blue-300">{jobProgress}%</span>
+      </div>
+      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+        <div
+          class="h-3 rounded-full bg-blue-600 transition-all duration-500"
+          style="width: {jobProgress}%"
+        ></div>
+      </div>
+      {#if jobCurrentKey}
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 truncate">{jobCurrentKey}</p>
+      {/if}
+    </div>
+  {/if}
+
   <!-- Overview Table -->
   {#if loading && locales.length === 0}
     <div class="flex items-center justify-center h-32">
@@ -297,7 +368,7 @@
                   </button>
                   <button
                     class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors disabled:opacity-50"
-                    disabled={translatingLocale === locale.code}
+                    disabled={translatingLocale === locale.code || activeJobId !== null}
                     onclick={() => translateLocale(locale.code)}
                   >
                     {translatingLocale === locale.code ? '⏳ ' + t('translation.translating') : '🤖 ' + t('translation.llm')}

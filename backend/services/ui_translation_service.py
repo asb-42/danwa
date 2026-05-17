@@ -12,11 +12,77 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from backend.core.config import settings
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TranslationJob:
+    job_id: str
+    target_locales: list[str]
+    namespace: str
+    status: str = "pending"  # pending | running | completed | failed
+    total_strings: int = 0
+    completed_strings: int = 0
+    current_key: str = ""
+    current_locale: str = ""
+    results: dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+
+    def progress(self) -> float:
+        if self.total_strings == 0:
+            return 0.0
+        return round(self.completed_strings / self.total_strings * 100, 1)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "job_id": self.job_id,
+            "status": self.status,
+            "target_locales": self.target_locales,
+            "namespace": self.namespace,
+            "total_strings": self.total_strings,
+            "completed_strings": self.completed_strings,
+            "current_key": self.current_key,
+            "current_locale": self.current_locale,
+            "progress_pct": self.progress(),
+            "results": self.results,
+            "error": self.error,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+        }
+
+
+class TranslationJobRegistry:
+    _jobs: dict[str, TranslationJob] = {}
+    _lock = threading.Lock()
+    _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="i18n-translate")
+
+    @classmethod
+    def submit(cls, job: TranslationJob, fn) -> str:
+        with cls._lock:
+            cls._jobs[job.job_id] = job
+        cls._executor.submit(fn)
+        return job.job_id
+
+    @classmethod
+    def get(cls, job_id: str) -> TranslationJob | None:
+        with cls._lock:
+            return cls._jobs.get(job_id)
+
+    @classmethod
+    def list_all(cls) -> list[dict[str, Any]]:
+        with cls._lock:
+            return [j.to_dict() for j in cls._jobs.values()]
 
 logger = logging.getLogger(__name__)
 
@@ -374,19 +440,23 @@ class UITranslationService:
     # LLM-basierte Übersetzung
     # ------------------------------------------------------------------
 
-    def translate_via_llm(self, key: str, source_text: str, target_locale: str, llm_profile_id: str | None = None) -> str:
-        """Übersetze einen UI-String per LLM.
-
-        Speichert das Ergebnis automatisch in der Datenbank.
-        """
+    def translate_via_llm(
+        self,
+        key: str,
+        source_text: str,
+        target_locale: str,
+        llm_profile_id: str | None = None,
+        llm=None,
+        job: TranslationJob | None = None,
+    ) -> str:
         from backend.services.llm_service import LLMService
         from backend.services.profile_service import ProfileService
 
-        ps = ProfileService()
-        if llm_profile_id is None:
-            llm_profile_id = self._select_llm_for_locale(target_locale, ps)
-
-        llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
+        if llm is None:
+            ps = ProfileService()
+            if llm_profile_id is None:
+                llm_profile_id = self._select_llm_for_locale(target_locale, ps)
+            llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
 
         system_prompt = (
             f"You are a professional UI/UX translator. "
@@ -405,7 +475,10 @@ class UITranslationService:
             )
             translated = result.content.strip()
             self.set_translation(key, target_locale, translated, source="llm_generated")
-            logger.info("LLM-Übersetzung gespeichert: %s → %s", key, target_locale)
+            if job:
+                job.completed_strings += 1
+                job.current_key = key
+                job.current_locale = target_locale
             return translated
         except Exception as exc:
             logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s", key, target_locale, exc)
@@ -437,7 +510,6 @@ class UITranslationService:
             logger.info("Übersetze %d Strings nach %s …", len(missing), locale)
             translated_count = 0
             for key in missing:
-                # Use English value as source
                 en_val = self.get_translation(key, "en", namespace)
                 if en_val:
                     self.translate_via_llm(key, en_val, locale)
@@ -447,6 +519,75 @@ class UITranslationService:
             results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
 
         return results
+
+    def bulk_translate_async(
+        self,
+        target_locales: list[str] | None = None,
+        namespace: str = "global",
+    ) -> str:
+        """Start an async bulk translation job. Returns job_id immediately."""
+        from backend.services.llm_service import LLMService
+        from backend.services.profile_service import ProfileService
+
+        if target_locales is None:
+            target_locales = [loc for loc in DEFAULT_LOCALES if loc not in ("de", "en")]
+
+        job = TranslationJob(
+            job_id=str(uuid.uuid4())[:8],
+            target_locales=target_locales,
+            namespace=namespace,
+        )
+
+        def _run():
+            job.status = "running"
+            job.started_at = datetime.now(UTC).isoformat()
+            try:
+                ps = ProfileService()
+                llm_profile_id = settings.service_llm_profile_id
+                if not llm_profile_id:
+                    llm_profile_id = self._select_llm_for_locale(target_locales[0], ps)
+                llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
+
+                all_keys = self.get_all_keys(namespace)
+                total = 0
+                for locale in target_locales:
+                    existing = self.get_translations_bulk(locale, namespace)
+                    missing = [k for k in all_keys if k not in existing or not existing[k]]
+                    total += len(missing)
+
+                job.total_strings = total
+                logger.info("Async bulk-translation: job=%s, total=%d, locales=%s, LLM=%s",
+                            job.job_id, total, target_locales, llm_profile_id)
+
+                for locale in target_locales:
+                    existing = self.get_translations_bulk(locale, namespace)
+                    missing = [k for k in all_keys if k not in existing or not existing[k]]
+
+                    if not missing:
+                        job.results[locale] = {"status": "complete", "translated": 0}
+                        continue
+
+                    translated_count = 0
+                    for key in missing:
+                        en_val = self.get_translation(key, "en", namespace)
+                        if en_val:
+                            self.translate_via_llm(key, en_val, locale, llm=llm, job=job)
+                            translated_count += 1
+
+                    job.results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
+                    logger.info("Locale %s done: %d/%d translated", locale, translated_count, len(missing))
+
+                job.status = "completed"
+                job.finished_at = datetime.now(UTC).isoformat()
+                logger.info("Async bulk-translation completed: job=%s", job.job_id)
+            except Exception as exc:
+                job.status = "failed"
+                job.error = str(exc)
+                job.finished_at = datetime.now(UTC).isoformat()
+                logger.error("Async bulk-translation failed: job=%s, error=%s", job.job_id, exc)
+
+        TranslationJobRegistry.submit(job, _run)
+        return job.job_id
 
     def get_locale_details(self, locale: str, namespace: str = "global") -> dict[str, Any]:
         conn = self._get_conn()
