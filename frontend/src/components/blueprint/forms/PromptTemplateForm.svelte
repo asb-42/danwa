@@ -38,18 +38,6 @@
     }
   });
 
-  // Real-time sync: push draft changes back to canvas store
-  $effect(() => {
-    if (node?.id && draft.name !== undefined) {
-      canvasStore.updateNodeData(node.id, {
-        name: draft.name,
-        role: draft.role,
-        variant: draft.variant,
-        language: draft.language,
-      });
-    }
-  });
-
   async function handleSave() {
     saving = true;
     error = null;

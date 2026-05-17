@@ -8,15 +8,20 @@
    * Shows label, AgentBlueprint name if linked, linked status.
    */
   import { Handle, Position } from '@xyflow/svelte';
+  import { canvasStore } from '../../../lib/blueprint/store.svelte.js';
 
-  /** @type {{ data: any, selected?: boolean }} */
-  let { data, selected = false } = $props();
+  /** @type {{ id: string, data: any, selected?: boolean }} */
+  let { id, data, selected = false } = $props();
 
   let isLinked = $derived(!!data?.agent_blueprint_id);
   let blueprintName = $derived(data?.blueprintName || data?.agent_blueprint_id || '');
-  let hasIncomingEdge = $derived((data?._incomingEdges || []).length > 0);
-  let hasOutgoingEdge = $derived((data?._outgoingEdges || []).length > 0);
-  let incomingEdgeTypes = $derived((data?._incomingEdges || []).map(e => e.type));
+
+  // Compute edge info locally from the store (avoids parent-derived reactivity loop)
+  let hasIncomingEdge = $derived(canvasStore.edges.some((e) => e.target === id));
+  let hasOutgoingEdge = $derived(canvasStore.edges.some((e) => e.source === id));
+  let incomingEdgeTypes = $derived(
+    canvasStore.edges.filter((e) => e.target === id).map((e) => e.type)
+  );
 </script>
 
 <div

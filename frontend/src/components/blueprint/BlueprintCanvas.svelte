@@ -11,7 +11,7 @@
   import { i18n } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
   import { validateConnection } from '../../lib/blueprint/validation.js';
-  import { screenToFlowPosition, createDraftNode, getNodeTypeFromDrop, getEntityIdFromDrop, createEntityNode } from '../../lib/blueprint/dnd.js';
+  import { createDraftNode, getNodeTypeFromDrop, getEntityIdFromDrop, createEntityNode } from '../../lib/blueprint/dnd.js';
   import {
     getAgentBlueprint,
     getBlueprintLLMProfile,
@@ -25,6 +25,7 @@
   import ModeSwitcher from './ModeSwitcher.svelte';
   import ExecutionPanel from './ExecutionPanel.svelte';
   import ProposalsPanel from './ProposalsPanel.svelte';
+  import SvelteFlowInstanceBridge from './SvelteFlowInstanceBridge.svelte';
 
   // Initialize registry (idempotent — safe to call multiple times)
   registerAllNodeTypes();
@@ -42,31 +43,16 @@
   /** @type {HTMLElement|null} */
   let flowContainer = $state(null);
 
-  /** @type {import('@xyflow/svelte').SvelteFlowInstance|null} */
-  let flowInstance = $state(null);
+  /** @type {import('@xyflow/svelte').SvelteFlowInstance | null} */
+  let svelteFlow = $state(null);
 
   // Build node/edge type maps from registry
   const nodeTypes = getNodeTypes();
   const edgeTypes = getEdgeTypes();
 
-  // Reactive nodes/edges for Svelte Flow — stable references to avoid re-render loops
+  // Pass store arrays directly — no derived wrapping to avoid reactivity loops with SvelteFlow
+  let nodes = $derived(canvasStore.nodes);
   let edges = $derived(canvasStore.edges);
-  let nodes = $derived.by(() => {
-    const storeNodes = canvasStore.nodes;
-    const storeEdges = canvasStore.edges;
-    return storeNodes.map((n) => {
-      const incomingEdges = storeEdges.filter((e) => e.target === n.id);
-      const outgoingEdges = storeEdges.filter((e) => e.source === n.id);
-      return {
-        ...n,
-        data: {
-          ...n.data,
-          _incomingEdges: incomingEdges.map((e) => ({ type: e.type, source: e.source })),
-          _outgoingEdges: outgoingEdges.map((e) => ({ type: e.type, target: e.target })),
-        },
-      };
-    });
-  });
 
   // ─── Event handlers ───────────────────────────────────────────────
 
@@ -139,12 +125,12 @@
   async function handleDrop(event) {
     event.preventDefault();
     const nodeType = getNodeTypeFromDrop(event);
-    if (!nodeType || !flowContainer) return;
+    if (!nodeType || !flowContainer || !svelteFlow) return;
 
-    // Get actual viewport from SvelteFlow instance
-    const bounds = flowContainer.getBoundingClientRect();
-    const viewport = flowInstance?.getViewport() ?? { x: 0, y: 0, zoom: 1 };
-    const position = screenToFlowPosition(event, viewport, bounds);
+    const position = svelteFlow.screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
 
     const entityId = getEntityIdFromDrop(event);
 
@@ -345,7 +331,6 @@
     {nodeTypes}
     {edgeTypes}
     fitView
-    oninit={({ svelteFlowInstance }) => { flowInstance = svelteFlowInstance; }}
     onnodeclick={handleNodeClick}
     onpaneclick={handlePaneClick}
     onconnect={handleConnect}
@@ -353,6 +338,8 @@
     onnodedragstop={handleNodeDragStop}
     class="blueprint-flow"
   >
+    <!-- Bridge to expose SvelteFlow instance to parent -->
+    <SvelteFlowInstanceBridge onready={(flow) => { svelteFlow = flow; }} />
     <Background />
     <Controls />
     <MiniMap

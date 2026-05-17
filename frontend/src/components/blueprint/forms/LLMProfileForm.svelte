@@ -52,19 +52,6 @@
     }
   });
 
-  // Real-time sync: push draft changes back to canvas store
-  $effect(() => {
-    if (node?.id && draft.name !== undefined) {
-      canvasStore.updateNodeData(node.id, {
-        name: draft.name,
-        provider: draft.provider,
-        model: draft.model,
-        temperature: draft.temperature,
-        max_tokens: draft.max_tokens,
-      });
-    }
-  });
-
   async function handleSave() {
     saving = true;
     error = null;
@@ -120,7 +107,7 @@
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.profileType') || 'Type'}</span>
+    <span class="field-label">{t('blueprint.form.profileType')}</span>
     <select bind:value={draft.profile_type} class="field-select" data-testid="form-lp-profile-type">
       {#each profileTypes as pt}
         <option value={pt}>{pt}</option>
@@ -143,12 +130,12 @@
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.apiBase') || 'API Base URL'}</span>
+    <span class="field-label">{t('blueprint.form.apiBase')}</span>
     <input type="text" bind:value={draft.api_base} class="field-input" placeholder="https://api.openrouter.ai" data-testid="form-lp-api-base" />
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.apiKeyEnv') || 'API Key Env Var'}</span>
+    <span class="field-label">{t('blueprint.form.apiKeyEnv')}</span>
     <input type="text" bind:value={draft.api_key_env} class="field-input" placeholder="OPENROUTER_API_KEY" data-testid="form-lp-api-key-env" />
   </label>
 
@@ -163,17 +150,17 @@
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.contextWindow') || 'Context Window'}</span>
+    <span class="field-label">{t('blueprint.form.contextWindow')}</span>
     <input type="number" bind:value={draft.context_window} min="0" step="1" class="field-input" placeholder="128000" data-testid="form-lp-context-window" />
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.timeout') || 'Timeout (s)'}</span>
+    <span class="field-label">{t('blueprint.form.timeout')}</span>
     <input type="number" bind:value={draft.timeout} min="1" step="1" class="field-input" data-testid="form-lp-timeout" />
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.protocol') || 'Protocol'}</span>
+    <span class="field-label">{t('blueprint.form.protocol')}</span>
     <select bind:value={draft.protocol} class="field-select" data-testid="form-lp-protocol">
       {#each protocols as p}
         <option value={p}>{p}</option>
@@ -183,7 +170,7 @@
 
   {#if draft.protocol === 'a2a'}
     <label class="form-field">
-      <span class="field-label">{t('blueprint.form.a2aEndpoint') || 'A2A Endpoint'}</span>
+      <span class="field-label">{t('blueprint.form.a2aEndpoint')}</span>
       <input type="text" bind:value={draft.a2a_endpoint} class="field-input" placeholder="http://agent.example.com" data-testid="form-lp-a2a-endpoint" />
     </label>
   {/if}

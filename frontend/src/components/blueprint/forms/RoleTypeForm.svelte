@@ -51,21 +51,6 @@
     }
   });
 
-  // Real-time sync: push draft changes back to canvas store
-  // so the node preview updates as the user types
-  $effect(() => {
-    if (node?.id && draft.name !== undefined) {
-      canvasStore.updateNodeData(node.id, {
-        name: draft.name,
-        description: draft.description,
-        icon: draft.icon,
-        color: draft.color,
-        default_max_rounds: draft.default_max_rounds,
-        default_consensus_threshold: draft.default_consensus_threshold,
-      });
-    }
-  });
-
   async function handleSave() {
     saving = true;
     error = null;
@@ -158,7 +143,7 @@
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.icon') || 'Icon'}</span>
+    <span class="field-label">{t('blueprint.form.icon')}</span>
     <div class="icon-grid">
       {#each presetIcons as icon}
         <button
@@ -172,7 +157,7 @@
   </label>
 
   <label class="form-field">
-    <span class="field-label">{t('blueprint.form.color') || 'Color'}</span>
+    <span class="field-label">{t('blueprint.form.color')}</span>
     <div class="color-grid">
       {#each presetColors as c}
         <button
