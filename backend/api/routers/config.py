@@ -336,6 +336,9 @@ def update_backup_settings(body: BackupSettingsBody):
     for key, value in update_data.items():
         settings["backup"][key] = value
     _save_settings(settings)
+    for key, value in update_data.items():
+        if hasattr(app_settings, key):
+            setattr(app_settings, key, value)
     return {"status": "ok", "settings": get_backup_settings()}
 
 
