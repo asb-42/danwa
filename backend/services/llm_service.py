@@ -330,9 +330,7 @@ class LLMService:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(
-                    self.generate(prompt, system_prompt, temperature, max_tokens)
-                )
+                return loop.run_until_complete(self.generate(prompt, system_prompt, temperature, max_tokens))
             finally:
                 loop.close()
 

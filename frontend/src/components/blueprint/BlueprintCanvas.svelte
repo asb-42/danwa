@@ -42,24 +42,31 @@
   /** @type {HTMLElement|null} */
   let flowContainer = $state(null);
 
+  /** @type {import('@xyflow/svelte').SvelteFlowInstance|null} */
+  let flowInstance = $state(null);
+
   // Build node/edge type maps from registry
   const nodeTypes = getNodeTypes();
   const edgeTypes = getEdgeTypes();
 
-  // Reactive nodes/edges for Svelte Flow — enriched with edge connection info
+  // Reactive nodes/edges for Svelte Flow — stable references to avoid re-render loops
   let edges = $derived(canvasStore.edges);
-  let nodes = $derived(canvasStore.nodes.map((n) => {
-    const incomingEdges = edges.filter((e) => e.target === n.id);
-    const outgoingEdges = edges.filter((e) => e.source === n.id);
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        _incomingEdges: incomingEdges.map((e) => ({ type: e.type, source: e.source })),
-        _outgoingEdges: outgoingEdges.map((e) => ({ type: e.type, target: e.target })),
-      },
-    };
-  }));
+  let nodes = $derived.by(() => {
+    const storeNodes = canvasStore.nodes;
+    const storeEdges = canvasStore.edges;
+    return storeNodes.map((n) => {
+      const incomingEdges = storeEdges.filter((e) => e.target === n.id);
+      const outgoingEdges = storeEdges.filter((e) => e.source === n.id);
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          _incomingEdges: incomingEdges.map((e) => ({ type: e.type, source: e.source })),
+          _outgoingEdges: outgoingEdges.map((e) => ({ type: e.type, target: e.target })),
+        },
+      };
+    });
+  });
 
   // ─── Event handlers ───────────────────────────────────────────────
 
@@ -134,9 +141,9 @@
     const nodeType = getNodeTypeFromDrop(event);
     if (!nodeType || !flowContainer) return;
 
-    // Get viewport from the Svelte Flow instance
+    // Get actual viewport from SvelteFlow instance
     const bounds = flowContainer.getBoundingClientRect();
-    const viewport = { x: 0, y: 0, zoom: 1 };
+    const viewport = flowInstance?.getViewport() ?? { x: 0, y: 0, zoom: 1 };
     const position = screenToFlowPosition(event, viewport, bounds);
 
     const entityId = getEntityIdFromDrop(event);
@@ -331,40 +338,43 @@
     </span>
   </div>
 
+  <!-- SvelteFlow always rendered to accept drops -->
+  <SvelteFlow
+    {nodes}
+    {edges}
+    {nodeTypes}
+    {edgeTypes}
+    fitView
+    oninit={({ svelteFlowInstance }) => { flowInstance = svelteFlowInstance; }}
+    onnodeclick={handleNodeClick}
+    onpaneclick={handlePaneClick}
+    onconnect={handleConnect}
+    ondelete={handleDelete}
+    onnodedragstop={handleNodeDragStop}
+    class="blueprint-flow"
+  >
+    <Background />
+    <Controls />
+    <MiniMap
+      nodeColor={(node) => {
+        switch (node.type) {
+          case 'agent-blueprint': return '#6b7280';
+          case 'llm-profile': return '#3b82f6';
+          case 'role-definition': return '#8b5cf6';
+          case 'prompt-template': return '#10b981';
+          default: return '#9ca3af';
+        }
+      }}
+      maskColor="rgba(0,0,0,0.1)"
+    />
+  </SvelteFlow>
+
+  <!-- Empty state overlay (shown when no nodes exist) -->
   {#if nodes.length === 0}
     <div class="empty-state">
       <span class="empty-icon">🧩</span>
       <p class="empty-text">Drag assets from the palette to start building</p>
     </div>
-  {:else}
-    <SvelteFlow
-      {nodes}
-      {edges}
-      {nodeTypes}
-      {edgeTypes}
-      fitView
-      onnodeclick={handleNodeClick}
-      onpaneclick={handlePaneClick}
-      onconnect={handleConnect}
-      ondelete={handleDelete}
-      onnodedragstop={handleNodeDragStop}
-      class="blueprint-flow"
-    >
-      <Background />
-      <Controls />
-      <MiniMap
-        nodeColor={(node) => {
-          switch (node.type) {
-            case 'agent-blueprint': return '#6b7280';
-            case 'llm-profile': return '#3b82f6';
-            case 'role-definition': return '#8b5cf6';
-            case 'prompt-template': return '#10b981';
-            default: return '#9ca3af';
-          }
-        }}
-        maskColor="rgba(0,0,0,0.1)"
-      />
-    </SvelteFlow>
   {/if}
 
   <!-- Execution Panel -->
@@ -506,13 +516,18 @@
     margin-left: 4px;
   }
   .empty-state {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    min-height: 300px;
     color: #9ca3af;
+    pointer-events: none;
+    z-index: 5;
   }
   .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
   .empty-text { font-size: 14px; }

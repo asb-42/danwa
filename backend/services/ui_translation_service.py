@@ -16,10 +16,10 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-
-from backend.core.config import settings
 from pathlib import Path
 from typing import Any
+
+from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,7 @@ class TranslationJobRegistry:
     def list_all(cls) -> list[dict[str, Any]]:
         with cls._lock:
             return [j.to_dict() for j in cls._jobs.values()]
+
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +360,8 @@ class UITranslationService:
             locale = js_file.stem
             content = js_file.read_text(encoding="utf-8")
             keys = {}
-            for match in __import__("re").finditer(r"^\s*['\"]([^'\"]+)['\"]\s*:\s*['\"]((?:[^'\"\\]|\\.)*)['\"]", content, __import__("re").MULTILINE):
+            pattern = r"^\s*['\"]([^'\"]+)['\"]\s*:\s*['\"]((?:[^'\"\\]|\\.)*)['\"]"
+            for match in __import__("re").finditer(pattern, content, __import__("re").MULTILINE):
                 keys[match.group(1)] = match.group(2)
             if keys:
                 result[locale] = keys
@@ -427,9 +429,7 @@ class UITranslationService:
 
         conn = self._get_conn()
         custom_rows = conn.execute(
-            "SELECT DISTINCT locale FROM ui_translations WHERE locale NOT IN ({}) AND namespace = ?".format(
-                ",".join("?" for _ in DEFAULT_LOCALES)
-            ),
+            "SELECT DISTINCT locale FROM ui_translations WHERE locale NOT IN ({}) AND namespace = ?".format(",".join("?" for _ in DEFAULT_LOCALES)),
             (*DEFAULT_LOCALES, namespace),
         ).fetchall()
         for row in custom_rows:
@@ -566,8 +566,7 @@ class UITranslationService:
                     total += len(missing)
 
                 job.total_strings = total
-                logger.info("Async bulk-translation: job=%s, total=%d, locales=%s, LLM=%s",
-                            job.job_id, total, target_locales, llm_profile_id)
+                logger.info("Async bulk-translation: job=%s, total=%d, locales=%s, LLM=%s", job.job_id, total, target_locales, llm_profile_id)
 
                 for locale in target_locales:
                     existing = self.get_translations_bulk(locale, namespace)
@@ -622,9 +621,13 @@ class UITranslationService:
             for key, val in bundled[locale].items():
                 if key not in target_map:
                     target_map[key] = {
-                        "key": key, "value": val, "source": "bundled",
-                        "confidence": None, "version": None,
-                        "created_at": None, "updated_at": None,
+                        "key": key,
+                        "value": val,
+                        "source": "bundled",
+                        "confidence": None,
+                        "version": None,
+                        "created_at": None,
+                        "updated_at": None,
                     }
 
         total_keys = len(en_keys)

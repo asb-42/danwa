@@ -6,10 +6,13 @@ and discovering Danwa modules.
 
 from __future__ import annotations
 
+import io
 import logging
+import zipfile
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.modules.service import ModuleService
@@ -395,10 +398,6 @@ async def disable_module(module_id: str) -> dict[str, Any]:
 @router.post("/{module_id}/export")
 async def export_module(module_id: str) -> Any:
     """Export a module as a ZIP archive for sharing/uploading to GitHub."""
-    from fastapi.responses import StreamingResponse
-    import io
-    import zipfile
-
     svc = get_module_service()
     module_dir = svc.modules_dir / module_id
     if not module_dir.exists():
@@ -410,6 +409,7 @@ async def export_module(module_id: str) -> Any:
 
     # Load manifest to get file list
     import json
+
     manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     # Create ZIP in memory

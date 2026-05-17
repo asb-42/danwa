@@ -18,10 +18,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.deps import get_project_store
-from backend.core.config import Settings
+from backend.core.config import Settings, is_service_llm_eligible
 from backend.core.config import settings as app_settings
 from backend.persistence.backup import BackupResult, BackupService, VerificationResult
 from backend.persistence.project_store import ProjectStore
+from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
 
@@ -367,9 +368,6 @@ def _apply_retention(service: BackupService) -> None:
 
 
 # --- Utility LLM (Sprint 16) ---
-
-from backend.core.config import is_service_llm_eligible
-from backend.services.profile_service import ProfileService
 
 
 class UtilityLLMRequest(BaseModel):

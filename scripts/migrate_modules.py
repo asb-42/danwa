@@ -12,7 +12,6 @@ import json
 import logging
 import shutil
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -47,7 +46,16 @@ def generate_module_id(category: str, profile_data: dict, file_stem: str) -> str
     return f"{prefix}-{slugify(file_stem)}"
 
 
-def make_manifest(category: str, module_type: str, module_id: str, profile_data: dict, profile_format: str, author: dict, license: str, tags: list) -> dict:
+def make_manifest(
+    category: str,
+    module_type: str,
+    module_id: str,
+    profile_data: dict,
+    profile_format: str,
+    author: dict,
+    license: str,
+    tags: list,
+) -> dict:
     name_en = profile_data.get("name", module_id)
     desc_en = profile_data.get("description", "")
 
