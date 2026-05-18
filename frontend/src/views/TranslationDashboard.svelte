@@ -217,6 +217,42 @@
     }
   }
 
+  async function exportAsPack(localeCode) {
+    const name = prompt('Language pack name:', LOCALE_NAMES[localeCode] || localeCode);
+    if (!name) return;
+    const suffix = prompt('Pack ID suffix (e.g. custom, v2):', 'custom');
+    if (!suffix) return;
+
+    try {
+      const res = await fetch(`/api/v1/i18n/${localeCode}/export-as-pack`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          description: `Custom ${LOCALE_NAMES[localeCode] || localeCode} translation pack`,
+          pack_id_suffix: suffix,
+          author: 'Danwa User',
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Export failed');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lang-${localeCode}-${suffix}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      addToast({ message: `Exported ${localeCode} as language pack`, type: 'success', timeout: 4000 });
+    } catch (e) {
+      addToast({ message: `Export failed: ${e.message}`, type: 'error', timeout: 6000 });
+    }
+  }
+
   function coverageColor(pct) {
     if (pct >= 90) return 'bg-green-500';
     if (pct >= 60) return 'bg-yellow-500';
@@ -365,6 +401,13 @@
                     onclick={() => loadDetail(locale.code)}
                   >
                     {expandedLocale === locale.code ? t('translation.close') : t('translation.details')}
+                  </button>
+                  <button
+                    class="px-2.5 py-1 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
+                    onclick={() => exportAsPack(locale.code)}
+                    title="Export as Language Pack ZIP"
+                  >
+                    📦 Export
                   </button>
                   <button
                     class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors disabled:opacity-50"
