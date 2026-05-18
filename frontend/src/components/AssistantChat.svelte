@@ -6,7 +6,7 @@
     getAssistantSession,
     deleteAssistantSession,
     sendAssistantMessage,
-  } from '$lib/api.js';
+  } from '../lib/api.js';
   import { marked } from 'marked';
 
   const dispatch = createEventDispatcher();
@@ -182,8 +182,8 @@
     <!-- Header -->
     <div class="chat-header">
       <div class="header-left">
-        <span class="chat-icon">🤖</span>
-        <span class="chat-title">Danwa Assistent</span>
+        <span class="chat-icon">🦊</span>
+        <span class="chat-title">Danwa Kitsune</span>
       </div>
       <div class="header-actions">
         <button class="btn-icon" on:click={toggleMinimize} title={isMinimized ? 'Öffnen' : 'Minimieren'}>
@@ -223,8 +223,8 @@
           <div class="messages" bind:this={chatContainer}>
             {#if messages.length === 0}
               <div class="welcome-message">
-                <h3>👋 Hallo! Ich bin Danwa</h3>
-                <p>Dein Assistent für das Danwa Debate Engine System.</p>
+                <h3>🦊 Konnichiwa! Ich bin Danwa Kitsune</h3>
+                <p>Dein intelligenter Begleiter für das Danwa Debate Engine System.</p>
                 <p>Frag mich nach:</p>
                 <ul>
                   <li>Wie man eine Debatte startet</li>
@@ -239,7 +239,7 @@
                 <div class="message" class:user={message.role === 'user'} class:assistant={message.role === 'assistant'}>
                   <div class="message-content">
                     {#if message.role === 'assistant'}
-                      <div class="markdown-content" {@html renderMarkdown(message.content)}></div>
+                      <div class="markdown-content">{@html renderMarkdown(message.content)}</div>
                     {:else}
                       <p>{message.content}</p>
                     {/if}

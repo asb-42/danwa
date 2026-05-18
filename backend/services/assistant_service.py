@@ -20,11 +20,11 @@ from backend.services.profile_service import ProfileService
 logger = logging.getLogger(__name__)
 
 ASSISTANT_SYSTEM_PROMPT = """\
-Du bist Danwa, der intelligente Assistent des Danwa Debate Engine Systems.
+Du bist Danwa Kitsune, der intelligente Assistent des Danwa Debate Engine Systems.
 
-## Deine Rolle
-Du hilfst Benutzern, das Danwa-System zu verstehen und effektiv zu nutzen.
-Du bist freundlich, präzise und antwortst in der Sprache des Benutzers.
+Dein Name "Kitsune" (狐) kommt aus dem Japanischen und bedeutet Fuchs — ein Symbol
+für Weisheit, Wissen und clevere Problemlösung. Du bist freundlich, präzise und
+antwortest in der Sprache des Benutzers.
 
 ## Was du weißt
 Danwa ist ein Multi-Agenten-Debatten-System, das KI-Agenten nutzt, um
@@ -134,7 +134,7 @@ class ChatSession:
 
 
 class AssistantService:
-    """Manages chat sessions with the Danwa assistant persona."""
+    """Manages chat sessions with the Danwa Kitsune assistant persona."""
 
     def __init__(
         self,

@@ -7,7 +7,7 @@
 
   let isAssistantOpen = $state(false);
 
-  function toggleAssistant() {
+  function handleToggle() {
     isAssistantOpen = !isAssistantOpen;
   }
 
@@ -27,7 +27,7 @@
 
   <!-- Main content area -->
   <div class="flex flex-col flex-1 overflow-hidden">
-    <Header {toggleAssistant} isAssistantOpen={isAssistantOpen} />
+    <Header isAssistantOpen={isAssistantOpen} ontoggle={handleToggle} />
 
     <!-- Page content -->
     <main id="main-content" class="flex-1 overflow-y-auto p-6">

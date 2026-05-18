@@ -1,10 +1,16 @@
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { healthStatus, appVersion } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
 
-  let { toggleAssistant, isAssistantOpen } = $props();
+  const dispatch = createEventDispatcher();
+  let { isAssistantOpen } = $props();
+
+  function handleToggle() {
+    dispatch('toggle');
+  }
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -54,22 +60,22 @@
       </span>
     </div>
 
-    <!-- Assistant toggle button -->
+    <!-- Kitsune toggle button -->
     <button
-      class="assistant-toggle"
+      class="kitsune-toggle"
       class:active={isAssistantOpen}
-      on:click={toggleAssistant}
-      title="Danwa Assistent öffnen/schließen"
-      aria-label="Danwa Assistent"
+      onclick={handleToggle}
+      title="Danwa Kitsune öffnen/schließen"
+      aria-label="Danwa Kitsune"
     >
-      <span class="assistant-icon">🤖</span>
-      <span class="assistant-label">Assistent</span>
+      <span class="kitsune-icon">🦊</span>
+      <span class="kitsune-label">Kitsune</span>
     </button>
   </div>
 </header>
 
 <style>
-  .assistant-toggle {
+  .kitsune-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -83,30 +89,30 @@
     color: #374151;
   }
 
-  .assistant-toggle:hover {
+  .kitsune-toggle:hover {
     background: #e5e7eb;
   }
 
-  .assistant-toggle.active {
+  .kitsune-toggle.active {
     background: #667eea;
     color: white;
     border-color: #667eea;
   }
 
-  .assistant-icon {
+  .kitsune-icon {
     font-size: 16px;
   }
 
-  .assistant-label {
+  .kitsune-label {
     font-weight: 500;
   }
 
   @media (max-width: 768px) {
-    .assistant-label {
+    .kitsune-label {
       display: none;
     }
 
-    .assistant-toggle {
+    .kitsune-toggle {
       padding: 6px 8px;
     }
   }
