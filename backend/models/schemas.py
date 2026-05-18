@@ -200,7 +200,7 @@ class DebateStatusResponse(BaseModel):
     updated_at: datetime
     # --- Extended metadata ---
     case_text: str = ""
-    language: str = "de"
+    language: str | None = None
     llm_profile_id: str = ""
     llm_profile_model: str = ""
     anomalies: list[str] = Field(default_factory=list)
