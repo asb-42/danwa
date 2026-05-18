@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -24,6 +25,7 @@ from backend.blueprints.workflow_models import (
     WorkflowDefinition,
     WorkflowTemplate,
 )
+from backend.services.module_profile_sync import get_workflow_templates_from_modules
 
 router = APIRouter()
 
@@ -45,15 +47,20 @@ class InstantiateRequest(BaseModel):
 # ------------------------------------------------------------------
 
 
-@router.get("", response_model=list[WorkflowTemplate])
+@router.get("")
 def list_workflow_templates(
     category: str | None = None,
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[WorkflowTemplate]:
-    """List all workflow templates (system + custom), filterable by category."""
-    return repo.list_workflow_templates(category=category, limit=limit, offset=offset)
+) -> list[dict[str, Any]]:
+    """List all workflow templates (system + custom + modules), filterable by category."""
+    db_templates = repo.list_workflow_templates(category=category, limit=limit, offset=offset)
+    db_dicts = [t.model_dump() if hasattr(t, "model_dump") else t for t in db_templates]
+    module_templates = get_workflow_templates_from_modules()
+    if category:
+        module_templates = [t for t in module_templates if t.get("category") == category]
+    return db_dicts + module_templates
 
 
 @router.get("/{template_id}", response_model=WorkflowTemplate)

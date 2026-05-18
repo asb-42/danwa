@@ -13,6 +13,7 @@ This router retains Agent Blueprints CRUD and the bulk import trigger.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -23,6 +24,10 @@ from backend.blueprints.importer import BlueprintImporter, ImportResult
 from backend.blueprints.models import AgentBlueprint, AgentBundle, PromptTemplate, ResolvedBundle
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.resolver import BundleResolver, resolve_bundle
+from backend.services.module_profile_sync import (
+    get_bundles_from_modules,
+    get_prompt_templates_from_modules,
+)
 
 router = APIRouter()
 
@@ -113,15 +118,20 @@ def delete_agent_blueprint(
 # ==================================================================
 
 
-@router.get("/bundles", response_model=list[AgentBundle])
+@router.get("/bundles")
 def list_bundles(
     active_only: bool = True,
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[AgentBundle]:
-    """List agent bundles with optional active-only filter and pagination."""
-    return repo.list_bundles(active_only=active_only, limit=limit, offset=offset)
+) -> list[dict[str, Any]]:
+    """List agent bundles with optional active-only filter and pagination, including enabled module bundles."""
+    db_bundles = repo.list_bundles(active_only=active_only, limit=limit, offset=offset)
+    db_dicts = [b.model_dump() if hasattr(b, "model_dump") else b for b in db_bundles]
+    module_bundles = get_bundles_from_modules()
+    if active_only:
+        module_bundles = [b for b in module_bundles if b.get("is_active", True)]
+    return db_dicts + module_bundles
 
 
 @router.get("/bundles/{bundle_id}", response_model=AgentBundle)
@@ -266,15 +276,23 @@ def import_bundle_endpoint(
 # ==================================================================
 
 
-@router.get("/prompt-templates", response_model=list[PromptTemplate])
+@router.get("/prompt-templates")
 def list_prompt_templates(
     role: str | None = None,
     variant: str | None = None,
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[PromptTemplate]:
-    """List prompt templates with optional filtering and pagination."""
+) -> list[dict[str, Any]]:
+    """List prompt templates with optional filtering and pagination, including enabled module prompts."""
+    db_templates = repo.list_prompt_templates(role=role, variant=variant, limit=limit, offset=offset)
+    db_dicts = [t.model_dump() if hasattr(t, "model_dump") else t for t in db_templates]
+    module_templates = get_prompt_templates_from_modules()
+    if role:
+        module_templates = [t for t in module_templates if t.get("role") == role]
+    if variant:
+        module_templates = [t for t in module_templates if t.get("variant") == variant]
+    return db_dicts + module_templates
     return repo.list_prompt_templates(role=role, variant=variant, limit=limit, offset=offset)
 
 

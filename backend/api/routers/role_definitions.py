@@ -6,12 +6,18 @@ Single Responsibility Principle.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
 from backend.blueprints.models import RoleDefinition, RoleType
 from backend.blueprints.repository import BlueprintRepository
+from backend.services.module_profile_sync import (
+    get_agent_personas_from_modules,
+    get_role_types_from_modules,
+)
 
 router = APIRouter()
 
@@ -38,16 +44,24 @@ def _require_not_exists(repo: BlueprintRepository, entity: str, entity_id: str) 
 # ==================================================================
 
 
-@router.get("/role-definitions", response_model=list[RoleDefinition])
+@router.get("/role-definitions")
 def list_role_definitions(
     role: str | None = None,
     argumentation_pattern: str | None = None,
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[RoleDefinition]:
-    """List role definitions with optional filtering and pagination."""
-    return repo.list_role_definitions(role=role, argumentation_pattern=argumentation_pattern, limit=limit, offset=offset)
+) -> list[dict[str, Any]]:
+    """List role definitions with optional filtering and pagination, including enabled module personas."""
+    db_defs = repo.list_role_definitions(role=role, argumentation_pattern=argumentation_pattern, limit=limit, offset=offset)
+    db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_defs]
+    module_personas = get_agent_personas_from_modules()
+    # Filter module personas if role filter is applied
+    if role:
+        module_personas = [p for p in module_personas if p.get("role") == role]
+    if argumentation_pattern:
+        module_personas = [p for p in module_personas if p.get("argumentation_pattern") == argumentation_pattern]
+    return db_dicts + module_personas
 
 
 @router.get("/role-definitions/{role_id}", response_model=RoleDefinition)
@@ -102,15 +116,20 @@ def delete_role_definition(
 # ==================================================================
 
 
-@router.get("/role-types", response_model=list[RoleType])
+@router.get("/role-types")
 def list_role_types(
     limit: int = 100,
     offset: int = 0,
     active_only: bool = False,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[RoleType]:
-    """List all role types with pagination."""
-    return repo.list_role_types(limit=limit, offset=offset, active_only=active_only)
+) -> list[dict[str, Any]]:
+    """List all role types with pagination, including enabled module role types."""
+    db_types = repo.list_role_types(limit=limit, offset=offset, active_only=active_only)
+    db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_types]
+    module_types = get_role_types_from_modules()
+    if active_only:
+        module_types = [t for t in module_types if t.get("is_active", True)]
+    return db_dicts + module_types
 
 
 @router.get("/role-types/{role_type_id}", response_model=RoleType)

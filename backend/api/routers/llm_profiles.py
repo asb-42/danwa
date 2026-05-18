@@ -6,12 +6,15 @@ Single Responsibility Principle.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 
 from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
 from backend.blueprints.models import BlueprintLLMProfile
 from backend.blueprints.repository import BlueprintRepository
+from backend.services.module_profile_sync import get_llm_profiles_from_modules
 
 router = APIRouter()
 
@@ -29,14 +32,17 @@ def _require_not_exists(repo: BlueprintRepository, entity: str, entity_id: str) 
         raise BlueprintConflictError(entity, entity_id)
 
 
-@router.get("", response_model=list[BlueprintLLMProfile])
+@router.get("")
 def list_llm_profiles(
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[BlueprintLLMProfile]:
-    """List all LLM profiles with pagination."""
-    return repo.list_llm_profiles(limit=limit, offset=offset)
+) -> list[dict[str, Any]]:
+    """List all LLM profiles with pagination, including enabled module profiles."""
+    db_profiles = repo.list_llm_profiles(limit=limit, offset=offset)
+    db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_profiles]
+    module_profiles = get_llm_profiles_from_modules()
+    return db_dicts + module_profiles
 
 
 @router.get("/{profile_id}", response_model=BlueprintLLMProfile)

@@ -358,19 +358,52 @@ class ProfileService:
     # ------------------------------------------------------------------
 
     def _merged_llm_profiles(self) -> dict[str, LLMProfile]:
-        """Return global LLM profiles merged with project overrides."""
+        """Return global LLM profiles merged with project overrides and module profiles."""
         self.ensure_loaded()
         merged = dict(self._llm_cache)
         if self._project_config and self._project_config.llm_profiles:
             merged.update(self._project_config.llm_profiles)
+        # Merge module-sourced LLM profiles (module profiles override DB)
+        from backend.services.module_profile_sync import get_llm_profiles_from_modules
+
+        for mp in get_llm_profiles_from_modules():
+            try:
+                # Strip internal metadata fields
+                clean = {k: v for k, v in mp.items() if not k.startswith("_") and k in LLMProfile.model_fields}
+                # Set defaults for missing required fields
+                clean.setdefault("min_recommended_context", 1024)
+                profile = LLMProfile(**clean)
+                # Re-attach metadata for frontend
+                profile._source_module = mp.get("_source_module")  # type: ignore[attr-defined]
+                profile._readonly = mp.get("_readonly", False)  # type: ignore[attr-defined]
+                merged[profile.id] = profile
+            except Exception:
+                logger.warning("Failed to convert module LLM profile %s", mp.get("id", "?"))
         return merged
 
     def _merged_agent_personas(self) -> dict[str, AgentPersona]:
-        """Return global agent personas merged with project overrides."""
+        """Return global agent personas merged with project overrides and module personas."""
         self.ensure_loaded()
         merged = dict(self._agent_cache)
         if self._project_config and self._project_config.agent_personas:
             merged.update(self._project_config.agent_personas)
+        # Merge module-sourced agent personas
+        from backend.services.module_profile_sync import get_agent_personas_from_modules
+
+        for mp in get_agent_personas_from_modules():
+            try:
+                # Strip internal metadata fields
+                clean = {k: v for k, v in mp.items() if not k.startswith("_") and k in AgentPersona.model_fields}
+                # Set defaults for missing fields
+                clean.setdefault("argumentation_pattern", None)
+                clean.setdefault("mode", None)
+                persona = AgentPersona(**clean)
+                # Re-attach metadata for frontend
+                persona._source_module = mp.get("_source_module")  # type: ignore[attr-defined]
+                persona._readonly = mp.get("_readonly", False)  # type: ignore[attr-defined]
+                merged[persona.id] = persona
+            except Exception:
+                logger.warning("Failed to convert module agent persona %s", mp.get("id", "?"))
         return merged
 
     def _merged_prompt_variants(self) -> dict[str, PromptVariant]:

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.deps import get_blueprint_repository
 from backend.blueprints.repository import BlueprintRepository
+from backend.services.module_profile_sync import get_argumentation_patterns_from_modules
 
 router = APIRouter()
 
@@ -18,9 +19,11 @@ router = APIRouter()
 def list_argumentation_patterns(
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> list[str]:
-    """List all available argumentation pattern names."""
-    patterns = repo.list_argumentation_patterns()
-    return patterns
+    """List all available argumentation pattern names, including enabled module patterns."""
+    db_patterns = repo.list_argumentation_patterns()
+    module_patterns = get_argumentation_patterns_from_modules()
+    # Merge and deduplicate
+    return sorted(set(db_patterns) | set(module_patterns))
 
 
 @router.get("/argumentation-patterns/{name}", response_model=dict)

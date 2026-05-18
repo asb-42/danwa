@@ -11,6 +11,7 @@ Endpoints:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -18,6 +19,7 @@ from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintNotFoundError
 from backend.blueprints.models import ToneProfile
 from backend.blueprints.repository import BlueprintRepository
+from backend.services.module_profile_sync import get_tone_profiles_from_modules
 
 router = APIRouter()
 
@@ -27,15 +29,18 @@ router = APIRouter()
 # ------------------------------------------------------------------
 
 
-@router.get("", response_model=list[ToneProfile])
+@router.get("")
 def list_tone_profiles(
     include_system: bool = True,
     limit: int = 50,
     offset: int = 0,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[ToneProfile]:
-    """List all tone profiles (system + custom), filterable via include_system."""
-    return repo.list_tone_profiles(include_system=include_system, limit=limit, offset=offset)
+) -> list[dict[str, Any]]:
+    """List all tone profiles (system + custom + modules), filterable via include_system."""
+    db_profiles = repo.list_tone_profiles(include_system=include_system, limit=limit, offset=offset)
+    db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_profiles]
+    module_profiles = get_tone_profiles_from_modules()
+    return db_dicts + module_profiles
 
 
 @router.get("/{profile_id}", response_model=ToneProfile)
