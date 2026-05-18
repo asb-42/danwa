@@ -77,6 +77,13 @@ const DEFAULT_NODE_DATA = {
     label: 'Gate',
     config: { condition: '' },
   },
+  'wf-agent': {
+    label: 'Agent (Bundle)',
+    bundle_id: null,
+    role_type_icon: '\u{1F464}',
+    role_type_name: '',
+    role_type_color: '#8b5cf6',
+  },
 };
 
 /**

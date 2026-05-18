@@ -29,6 +29,7 @@ import CreativeNode from '../../components/blueprint/nodes/CreativeNode.svelte';
 import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNode.svelte';
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
 import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
+import AgentNode from '../../components/blueprint/nodes/AgentNode.svelte';
 
 // Semantic edge components (Phase 3)
 import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
@@ -328,6 +329,26 @@ export function registerAllNodeTypes() {
       label: 'Tone Profile',
       tone_profile_id: null,
       inline_profile: null,
+    }),
+    active: true,
+  });
+
+  // ── Generic Agent Node (Bundle architecture) ───────────────────────
+
+  registerNode({
+    type: 'wf-agent',
+    component: AgentNode,
+    category: 'workflow',
+    schemaRef: 'AgentBundle',
+    icon: '🤖',
+    labelKey: 'blueprint.palette.wfAgent',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Agent (Bundle)',
+      bundle_id: null,
+      role_type_icon: '\u{1F464}',
+      role_type_name: '',
+      role_type_color: '#8b5cf6',
     }),
     active: true,
   });
