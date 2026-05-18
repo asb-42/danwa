@@ -12,8 +12,7 @@
 
   const dispatch = createEventDispatcher();
 
-  export let isOpen = false;
-  export let isMinimized = false;
+  let { isOpen = false, isMinimized = false } = $props();
 
   const WELCOME = {
     en: {
@@ -66,9 +65,11 @@
     }
   });
 
-  $: if (isOpen && sessions.length === 0 && !currentSession) {
-    createNewSession();
-  }
+  $effect(() => {
+    if (isOpen && sessions.length === 0 && !currentSession) {
+      createNewSession();
+    }
+  });
 
   async function loadSessions() {
     try {
