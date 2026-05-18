@@ -407,26 +407,34 @@ async def export_module(module_id: str) -> Any:
     if not manifest_path.exists():
         raise HTTPException(status_code=404, detail=f"Manifest not found for module '{module_id}'")
 
-    # Load manifest to get file list
     import json
 
     manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    module_type = manifest_data.get("type", "")
 
     # Create ZIP in memory
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(str(manifest_path), f"{module_id}/manifest.json")
 
-        profile_file = manifest_data.get("profile_file")
-        if profile_file:
-            fpath = module_dir / profile_file
-            if fpath.exists():
-                zf.write(str(fpath), f"{module_id}/{profile_file}")
+        if module_type == "language-pack":
+            # For language packs, generate ui_strings.json from DB
+            ui_strings = _export_ui_strings_for_pack(module_id, manifest_data)
+            zf.writestr(
+                f"{module_id}/ui_strings.json",
+                json.dumps(ui_strings, indent=2, ensure_ascii=False),
+            )
         else:
-            for file_entry in manifest_data.get("files", []):
-                fpath = module_dir / file_entry["path"]
+            profile_file = manifest_data.get("profile_file")
+            if profile_file:
+                fpath = module_dir / profile_file
                 if fpath.exists():
-                    zf.write(str(fpath), f"{module_id}/{file_entry['path']}")
+                    zf.write(str(fpath), f"{module_id}/{profile_file}")
+            else:
+                for file_entry in manifest_data.get("files", []):
+                    fpath = module_dir / file_entry["path"]
+                    if fpath.exists():
+                        zf.write(str(fpath), f"{module_id}/{file_entry['path']}")
 
     zip_buffer.seek(0)
 
@@ -435,3 +443,26 @@ async def export_module(module_id: str) -> Any:
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={module_id}.zip"},
     )
+
+
+def _export_ui_strings_for_pack(module_id: str, manifest: dict) -> dict[str, str]:
+    """Export UI strings for a language-pack module from the database."""
+    import sqlite3
+
+    from backend.modules.installer import UI_I18N_DB
+
+    namespace = f"langpack:{module_id}"
+    if not UI_I18N_DB.exists():
+        return {}
+
+    conn = sqlite3.connect(str(UI_I18N_DB), timeout=10.0)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT key, value FROM ui_translations WHERE namespace = ?",
+            (namespace,),
+        )
+        return {row["key"]: row["value"] for row in cursor.fetchall()}
+    finally:
+        conn.close()

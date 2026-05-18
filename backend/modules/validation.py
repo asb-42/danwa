@@ -48,12 +48,14 @@ class ModuleValidator:
         module_id = manifest.get("module_id", "<unknown>")
 
         # --- Schema version ---
-        if manifest.get("schema_version") != "1.0.0":
+        schema_version = manifest.get("schema_version", "1.0.0")
+        is_v2 = schema_version == "2.0.0"
+        if schema_version not in ("1.0.0", "2.0.0"):
             issues.append(
                 ValidationIssue(
                     severity="warning",
                     field="schema_version",
-                    message=f"Schema version '{manifest.get('schema_version')}' may not be supported. Expected '1.0.0'",
+                    message=f"Schema version '{schema_version}' may not be supported. Expected '1.0.0' or '2.0.0'",
                 )
             )
 
@@ -71,7 +73,9 @@ class ModuleValidator:
             )
 
         # --- Required fields ---
-        required_fields = ["name", "version", "type", "category", "files"]
+        has_files = "files" in manifest and manifest["files"] is not None and len(manifest["files"]) > 0
+        has_profile_file = "profile_file" in manifest and manifest["profile_file"] is not None
+        required_fields = ["name", "version", "type", "category"]
         for field in required_fields:
             if field not in manifest or manifest[field] is None:
                 issues.append(
@@ -81,6 +85,16 @@ class ModuleValidator:
                         message=f"Required field '{field}' is missing",
                     )
                 )
+
+        # v1 requires files[], v2 requires profile_file
+        if not is_v2 and not has_files:
+            issues.append(
+                ValidationIssue(severity="error", field="files", message="Required field 'files' is missing (v1 format)")
+            )
+        if is_v2 and not has_profile_file and not has_files:
+            issues.append(
+                ValidationIssue(severity="error", field="profile_file", message="Required field 'profile_file' is missing (v2 format)")
+            )
 
         # --- Version format ---
         version = manifest.get("version", "")
@@ -117,7 +131,16 @@ class ModuleValidator:
 
         # --- Files check ---
         files = manifest.get("files", [])
-        if not files:
+        profile_file = manifest.get("profile_file")
+        file_count = len(files)
+
+        if is_v2 and profile_file and not files:
+            # v2 single-profile format: validate profile_file exists
+            file_count = 1
+            fpath = self.module_base_dir / module_id / profile_file if module_id != "<unknown>" else None
+            # We can't check existence here since module may not be installed yet
+            # The installer will verify later
+        elif not files and not profile_file:
             issues.append(ValidationIssue(severity="error", field="files", message="No files defined in manifest"))
 
         file_paths = set()

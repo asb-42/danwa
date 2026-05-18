@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent.parent
 MODULES_DIR = ROOT / "modules"
 DEFAULT_DB = ROOT / "data" / "blueprints.db"
+UI_I18N_DIR = ROOT / "data" / "i18n"
+UI_I18N_DB = UI_I18N_DIR / "ui_translations.db"
 
 
 class InstallationError(Exception):
@@ -147,6 +149,115 @@ class ModuleInstaller:
         finally:
             conn.close()
         return db_entries
+
+    def _register_ui_strings_in_db(
+        self, module_id: str, module_dir: Path, manifest: dict[str, Any]
+    ) -> int:
+        """Register UI strings from a language-pack module into ui_translations.db.
+
+        Reads ui_strings.json from the module directory and inserts entries
+        with namespace='langpack:{module_id}'.
+
+        Returns the number of UI string entries created.
+        """
+        ui_strings_file = manifest.get("profile_file") or "ui_strings.json"
+        ui_strings_path = module_dir / ui_strings_file
+        if not ui_strings_path.exists():
+            logger.warning("Language pack %s: ui_strings file not found at %s", module_id, ui_strings_path)
+            return 0
+
+        try:
+            ui_strings = json.loads(ui_strings_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error("Language pack %s: failed to parse ui_strings.json: %s", module_id, e)
+            return 0
+
+        if not isinstance(ui_strings, dict):
+            logger.error("Language pack %s: ui_strings.json must be a key-value object", module_id)
+            return 0
+
+        locale = manifest.get("language", "en")
+        namespace = f"langpack:{module_id}"
+        now = datetime.now(UTC).isoformat()
+
+        UI_I18N_DIR.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(UI_I18N_DB), timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL")
+        cursor = conn.cursor()
+        entries = 0
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS ui_translations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL,
+                    locale TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    namespace TEXT DEFAULT 'global',
+                    source TEXT DEFAULT 'manual',
+                    confidence REAL,
+                    version INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(key, locale, namespace)
+                )
+            """)
+
+            for key, value in ui_strings.items():
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO ui_translations
+                        (key, locale, value, namespace, source, version, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+                    """,
+                    (key, locale, value, namespace, "bundle_imported", now, now),
+                )
+                entries += 1
+
+            conn.commit()
+            logger.info(
+                "Language pack %s: registered %d UI strings in namespace '%s'",
+                module_id, entries, namespace,
+            )
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Database error during UI string registration for %s: %s", module_id, e)
+            raise
+        finally:
+            conn.close()
+        return entries
+
+    def _uninstall_ui_strings(self, module_id: str) -> int:
+        """Remove UI strings belonging to a language-pack module.
+
+        Deletes all entries with namespace='langpack:{module_id}' from ui_translations.db.
+
+        Returns the number of entries removed.
+        """
+        namespace = f"langpack:{module_id}"
+        if not UI_I18N_DB.exists():
+            return 0
+
+        conn = sqlite3.connect(str(UI_I18N_DB), timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL")
+        cursor = conn.cursor()
+        removed = 0
+        try:
+            cursor.execute(
+                "DELETE FROM ui_translations WHERE namespace = ?",
+                (namespace,),
+            )
+            removed = cursor.rowcount
+            conn.commit()
+            logger.info(
+                "Language pack %s: removed %d UI strings from namespace '%s'",
+                module_id, removed, namespace,
+            )
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error("Database error during UI string removal for %s: %s", module_id, e)
+        finally:
+            conn.close()
+        return removed
 
     def install_from_directory(
         self,
@@ -273,6 +384,22 @@ class ModuleInstaller:
                 warnings=[i.message for i in validation.issues if i.severity == "warning"],
             )
 
+        # For language-pack modules, also register UI strings
+        ui_entries_created = 0
+        if manifest_data.get("type") == "language-pack":
+            try:
+                ui_entries_created = self._register_ui_strings_in_db(module_id, module_dir, manifest_data)
+            except sqlite3.Error as e:
+                return InstallationReport(
+                    status="partial",
+                    module_id=module_id,
+                    version=manifest_data.get("version", "0.0.0"),
+                    files_installed=files_installed,
+                    files_failed=files_failed,
+                    errors=[f"UI translation database error: {e}"],
+                    warnings=[i.message for i in validation.issues if i.severity == "warning"],
+                )
+
         # Copy manifest.json to target directory (only for cross-directory installs)
         if not is_in_place:
             manifest_src = module_dir / "manifest.json"
@@ -280,11 +407,12 @@ class ModuleInstaller:
                 shutil.copy2(str(manifest_src), str(target_dir / "manifest.json"))
 
         logger.info(
-            "Installed module %s v%s (%d files, %d DB entries)",
+            "Installed module %s v%s (%d files, %d DB entries, %d UI strings)",
             module_id,
             manifest_data.get("version"),
             files_installed,
             db_entries_created,
+            ui_entries_created,
         )
 
         return InstallationReport(
@@ -293,7 +421,7 @@ class ModuleInstaller:
             version=manifest_data.get("version", "0.0.0"),
             files_installed=files_installed,
             files_failed=files_failed,
-            db_entries_created=db_entries_created,
+            db_entries_created=db_entries_created + ui_entries_created,
             warnings=[i.message for i in validation.issues if i.severity == "warning"],
             checksum=manifest_data.get("checksum", ""),
             installed_at=datetime.now(UTC),
@@ -407,7 +535,11 @@ class ModuleInstaller:
                 errors=[f"Database error: {e}"],
             )
 
-        logger.info("Uninstalled module %s (%d files, %d DB entries)", module_id, files_removed, db_entries_removed)
+        # Remove UI strings for language-pack modules
+        ui_entries_removed = self._uninstall_ui_strings(module_id)
+        db_entries_removed += ui_entries_removed
+
+        logger.info("Uninstalled module %s (%d files, %d DB entries, %d UI strings)", module_id, files_removed, db_entries_removed, ui_entries_removed)
 
         return UninstallationReport(
             status="ok",
