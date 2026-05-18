@@ -224,11 +224,17 @@ class UITranslationService:
             conn.close()
 
     def get_translation(self, key: str, locale: str, namespace: str = "global") -> str | None:
-        """Hole eine einzelne Übersetzung."""
+        """Hole eine einzelne Übersetzung. Fallback: bundled loaders für EN."""
         conn = self._get_conn()
         row = conn.execute("SELECT value FROM ui_translations WHERE key = ? AND locale = ? AND namespace = ?", (key, locale, namespace)).fetchone()
         conn.close()
-        return row["value"] if row else None
+        if row:
+            return row["value"]
+        # Fallback: bundled loader (especially for English source strings)
+        if locale == "en" and namespace == "global":
+            bundled = self._scan_bundled_loaders()
+            return bundled.get("en", {}).get(key)
+        return None
 
     def get_translations_bulk(self, locale: str, namespace: str = "global", keys: list[str] | None = None) -> dict[str, str]:
         """Hole mehrere Übersetzungen auf einmal. Befüllt den lokalen Cache."""
