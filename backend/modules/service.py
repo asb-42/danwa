@@ -523,8 +523,13 @@ class ModuleService:
                 "FROM module_registry"
             )
             for row in cursor.fetchall():
+                raw_name = row["name"] or ""
+                try:
+                    parsed_name = json.loads(raw_name)
+                except (json.JSONDecodeError, TypeError):
+                    parsed_name = raw_name
                 result[row["id"]] = {
-                    "name": json.loads(row["name"] or "{}"),
+                    "name": parsed_name,
                     "description": row["description"] or "",
                     "type": row["type"] or "custom",
                     "category": row["category"] or "custom",
