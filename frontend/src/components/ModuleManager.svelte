@@ -9,6 +9,8 @@
     uninstallModule,
     exportModule,
     translateModule,
+    enableModule,
+    disableModule,
   } from '../lib/api.js';
 
   let t = $derived((key, params = {}) => {
@@ -180,6 +182,26 @@
     }
   }
 
+  async function handleEnable(mod) {
+    try {
+      await enableModule(mod.module_id);
+      statusMessage = `Enabled ${mod.module_id}`;
+      await loadModules();
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
+  async function handleDisable(mod) {
+    try {
+      await disableModule(mod.module_id);
+      statusMessage = `Disabled ${mod.module_id}`;
+      await loadModules();
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
   function updateField(field, value) {
     editForm = { ...editForm, [field]: value };
   }
@@ -335,9 +357,12 @@
               </thead>
               <tbody>
                 {#each mods as mod (mod.module_id)}
-                  <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                  <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {mod.enabled === false ? 'opacity-50' : ''}">
                     <td class="px-4 py-2.5">
                       <span class="font-medium text-gray-800 dark:text-white">{mod.name?.en || mod.module_id}</span>
+                      {#if mod.enabled === false}
+                        <span class="ml-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">disabled</span>
+                      {/if}
                     </td>
                     <td class="px-4 py-2.5">
                       <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{mod.type || '—'}</span>
@@ -355,6 +380,23 @@
                     </td>
                     <td class="px-4 py-2.5 text-right">
                       <div class="flex items-center justify-end gap-1">
+                        {#if mod.enabled !== false}
+                          <button
+                            class="px-2.5 py-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                            onclick={() => handleDisable(mod)}
+                            title="Disable module"
+                          >
+                            Disable
+                          </button>
+                        {:else}
+                          <button
+                            class="px-2.5 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                            onclick={() => handleEnable(mod)}
+                            title="Enable module"
+                          >
+                            Enable
+                          </button>
+                        {/if}
                         <button
                           class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                           onclick={() => openEdit(mod)}
