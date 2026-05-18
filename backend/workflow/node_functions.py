@@ -796,11 +796,17 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     """Resolve the system prompt for an agent node using the assembly pipeline.
 
     Prompt Assembly Pipeline (layered approach):
+      0. Pre-assembled system_prompt from Bundle (highest priority)
       1. Argumentation Pattern base (philosophical/sachliche Ausrichtung)
       2. Workflow-variant prompt overlay (Formatierungsvorgaben etc.)
       3. Tone Profile injection (Stimmung/Aszendenz) — handled in agent_node_factory
       4. Fallback to default role prompt if nothing else is configured
     """
+    # --- Layer 0: Pre-assembled system_prompt from Bundle ---
+    bundle_system_prompt = resolved_config.get("system_prompt")
+    if bundle_system_prompt and bundle_system_prompt.strip():
+        return bundle_system_prompt
+
     role = resolved_config.get("role", "agent")
     prompt_template_id = resolved_config.get("prompt_template_id")
     role_type_name = resolved_config.get("role_type_name", "")

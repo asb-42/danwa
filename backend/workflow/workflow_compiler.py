@@ -14,6 +14,7 @@ from langgraph.graph import END, StateGraph
 
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
+from backend.blueprints.resolver import BundleResolver
 from backend.blueprints.workflow_models import (
     AGENT_NODE_TYPES,
     WorkflowDefinition,
@@ -51,7 +52,7 @@ class ResolvedAgentConfig:
     role_definition_id: str
     role: str
     prompt_template_id: str | None = None
-    # RoleType metadata (resolved from RoleDefinition.role_type_id)
+    # RoleType metadata (resolved from RoleDefinition.role_type_id or Bundle)
     role_type_name: str = ""
     role_type_icon: str = "👤"
     role_type_color: str = "#8b5cf6"
@@ -59,6 +60,7 @@ class ResolvedAgentConfig:
     default_consensus_threshold: float = 0.9
     argumentation_pattern: str = ""
     mode: str = ""
+    system_prompt: str = ""  # Assembled system prompt (from Bundle or legacy assembly)
 
 
 @dataclass
@@ -142,6 +144,7 @@ class WorkflowCompiler:
                         "default_consensus_threshold": config.default_consensus_threshold,
                         "argumentation_pattern": config.argumentation_pattern,
                         "mode": config.mode,
+                        "system_prompt": config.system_prompt,
                     }
                     result.resolved_agents.append(config)
 
@@ -163,7 +166,12 @@ class WorkflowCompiler:
         return result
 
     def _resolve_agent_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:
-        """Resolve an agent node's blueprint, LLM profile, role definition, and role type."""
+        """Resolve an agent node's configuration from either a Bundle or an AgentBlueprint."""
+        # --- wf-agent: resolve via Bundle ---
+        if node.type == "wf-agent":
+            return self._resolve_bundle_config(node, errors)
+
+        # --- Legacy agent types: resolve via AgentBlueprint ---
         blueprint_id = node.agent_blueprint_id
         if not blueprint_id:
             errors.append(f"Agent node '{node.id}' has no agent_blueprint_id")
@@ -220,6 +228,39 @@ class WorkflowCompiler:
             default_consensus_threshold=default_consensus_threshold,
             argumentation_pattern=role_def.argumentation_pattern or "",
             mode=role_def.mode or "",
+        )
+
+    def _resolve_bundle_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:
+        """Resolve a wf-agent node via AgentBundle."""
+        bundle_id = node.bundle_id or node.config.get("bundle_id")
+        if not bundle_id:
+            errors.append(f"wf-agent node '{node.id}' has no bundle_id")
+            return None
+
+        try:
+            resolver = BundleResolver(self._repo)
+            resolved = resolver.resolve_bundle(bundle_id)
+        except ValueError as exc:
+            errors.append(f"Bundle resolution failed for node '{node.id}': {exc}")
+            return None
+
+        return ResolvedAgentConfig(
+            node_id=node.id,
+            blueprint_id=resolved.bundle_id,
+            blueprint_name=resolved.bundle_name,
+            llm_profile_id=resolved.llm_profile.id,
+            llm_model=resolved.llm_profile.model,
+            role_definition_id=resolved.role_definition.id if resolved.role_definition else "",
+            role=resolved.role_type.id,
+            prompt_template_id=resolved.prompt_template.id if resolved.prompt_template else None,
+            role_type_name=resolved.role_type.name,
+            role_type_icon=resolved.role_type.icon,
+            role_type_color=resolved.role_type.color,
+            default_max_rounds=resolved.role_type.default_max_rounds,
+            default_consensus_threshold=resolved.role_type.default_consensus_threshold,
+            argumentation_pattern=resolved.role_definition.argumentation_pattern or "" if resolved.role_definition else "",
+            mode=resolved.role_definition.mode or "" if resolved.role_definition else "",
+            system_prompt=resolved.system_prompt,
         )
 
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:
@@ -434,6 +475,9 @@ class WorkflowCompiler:
                 # Use RoleType default_consensus_threshold if available
                 threshold = config.get("default_consensus_threshold", 0.7)
                 return moderator_node_factory(node.id, config, threshold)
+            elif node.type == "wf-agent":
+                # Generic agent node — uses system_prompt from resolved Bundle
+                return agent_node_factory(node.id, "wf-agent", config)
             else:
                 return agent_node_factory(node.id, node.type, config)
         elif node.type == "wf-gate":

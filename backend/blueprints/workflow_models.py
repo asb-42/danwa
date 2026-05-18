@@ -36,9 +36,10 @@ WORKFLOW_NODE_TYPES: list[str] = [
     "wf-user-injection",
     "wf-gate",
     "wf-tone-profile",
+    "wf-agent",  # Generic agent node referencing an AgentBundle
 ]
 
-#: Node types that require an agent_blueprint_id reference.
+#: Node types that require an agent_blueprint_id or bundle_id reference.
 AGENT_NODE_TYPES: list[str] = [
     "wf-strategist",
     "wf-critic",
@@ -47,6 +48,7 @@ AGENT_NODE_TYPES: list[str] = [
     "wf-moderator",
     "wf-analyst",
     "wf-creative",
+    "wf-agent",
 ]
 
 
@@ -56,6 +58,8 @@ class WorkflowNode(BaseModel):
     Each node has a type that determines its behavior during execution.
     Agent-type nodes (strategist, critic, optimizer, moderator) must
     reference an AgentBlueprint via ``agent_blueprint_id``.
+    The generic ``wf-agent`` type references an ``AgentBundle`` via
+    ``bundle_id`` instead.
     Tone-profile nodes reference a ToneProfile from the catalog or
     define an inline profile.
     """
@@ -74,17 +78,24 @@ class WorkflowNode(BaseModel):
         "wf-user-injection",
         "wf-gate",
         "wf-tone-profile",
+        "wf-agent",
     ]
     label: str = ""
-    agent_blueprint_id: str | None = None  # Required for agent node types
+    agent_blueprint_id: str | None = None  # Required for legacy agent node types
+    bundle_id: str | None = None  # Required for wf-agent type
     config: dict[str, Any] = Field(default_factory=dict)
     position: dict[str, float] = Field(default_factory=dict)  # {x, y} for canvas
 
     @model_validator(mode="after")
-    def validate_agent_blueprint_id(self) -> WorkflowNode:
-        """Agent-type nodes must have an agent_blueprint_id."""
-        if self.type in AGENT_NODE_TYPES and not self.agent_blueprint_id:
-            raise ValueError(f"Node type '{self.type}' requires an agent_blueprint_id")
+    def validate_agent_reference(self) -> WorkflowNode:
+        """Agent-type nodes must have an agent_blueprint_id or bundle_id."""
+        if self.type in AGENT_NODE_TYPES:
+            if self.type == "wf-agent":
+                if not self.bundle_id and not self.agent_blueprint_id:
+                    raise ValueError(f"Node type '{self.type}' requires a 'bundle_id' or 'agent_blueprint_id'")
+            else:
+                if not self.agent_blueprint_id:
+                    raise ValueError(f"Node type '{self.type}' requires an 'agent_blueprint_id'")
         return self
 
     @model_validator(mode="after")
@@ -122,6 +133,7 @@ INJECTABLE_AGENT_NODE_TYPES: list[str] = [
     "wf-moderator",
     "wf-analyst",
     "wf-creative",
+    "wf-agent",
     # Note: wf-input, wf-gate, wf-user-injection, wf-tone-profile cannot receive injects_config
 ]
 
