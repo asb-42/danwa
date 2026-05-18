@@ -1,8 +1,19 @@
 <script>
   import Sidebar from './Sidebar.svelte';
   import Header from './Header.svelte';
+  import AssistantChat from './AssistantChat.svelte';
 
   let { navigate, currentRoute, children } = $props();
+
+  let isAssistantOpen = $state(false);
+
+  function toggleAssistant() {
+    isAssistantOpen = !isAssistantOpen;
+  }
+
+  function closeAssistant() {
+    isAssistantOpen = false;
+  }
 </script>
 
 <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -16,11 +27,14 @@
 
   <!-- Main content area -->
   <div class="flex flex-col flex-1 overflow-hidden">
-    <Header />
+    <Header {toggleAssistant} isAssistantOpen={isAssistantOpen} />
 
     <!-- Page content -->
     <main id="main-content" class="flex-1 overflow-y-auto p-6">
       {@render children()}
     </main>
   </div>
+
+  <!-- Assistant Chat -->
+  <AssistantChat isOpen={isAssistantOpen} on:close={closeAssistant} />
 </div>

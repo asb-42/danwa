@@ -25,6 +25,7 @@ from backend.api.deps import get_settings  # noqa: E402
 from backend.api.routers import (  # noqa: E402
     a2a_discovery,
     argumentation_patterns,
+    assistant,
     audit,
     blueprint_events,
     blueprints,
@@ -281,6 +282,9 @@ def create_app() -> FastAPI:
         prefix="/api/v1",
         tags=["input-composer"],
     )
+
+    # --- Danwa Assistant ---
+    app.include_router(assistant.router)
 
     # --- Error handlers (Blueprint Canvas) ---
     from backend.api.errors import register_error_handlers

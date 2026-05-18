@@ -4,6 +4,8 @@
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
 
+  let { toggleAssistant, isAssistantOpen } = $props();
+
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
     Object.entries(params).forEach(([k, v]) => {
@@ -51,5 +53,61 @@
         {/if}
       </span>
     </div>
+
+    <!-- Assistant toggle button -->
+    <button
+      class="assistant-toggle"
+      class:active={isAssistantOpen}
+      on:click={toggleAssistant}
+      title="Danwa Assistent öffnen/schließen"
+      aria-label="Danwa Assistent"
+    >
+      <span class="assistant-icon">🤖</span>
+      <span class="assistant-label">Assistent</span>
+    </button>
   </div>
 </header>
+
+<style>
+  .assistant-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .assistant-toggle:hover {
+    background: #e5e7eb;
+  }
+
+  .assistant-toggle.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+  }
+
+  .assistant-icon {
+    font-size: 16px;
+  }
+
+  .assistant-label {
+    font-weight: 500;
+  }
+
+  @media (max-width: 768px) {
+    .assistant-label {
+      display: none;
+    }
+
+    .assistant-toggle {
+      padding: 6px 8px;
+    }
+  }
+</style>
