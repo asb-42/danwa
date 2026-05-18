@@ -116,7 +116,14 @@ def extract_request_fields(req: object | dict) -> dict:
     agent_persona_ids, language, document_ids, rag_auto_retrieve,
     a2a_agents_raw, search_mode, agent_profile_list, bundle_ids,
     enable_extra_rounds.
+
+    If language is None, resolves to the user's configured UI language
+    (from config/settings.yaml), falling back to 'de' if not configured.
     """
+    from backend.api.deps import get_user_language
+
+    user_lang = get_user_language()
+
     if hasattr(req, "case"):
         case_text = req.case.text
         max_rounds = req.max_rounds
@@ -126,7 +133,7 @@ def extract_request_fields(req: object | dict) -> dict:
         llm_profile_id = req.llm_profile_id
         prompt_variant = req.prompt_variant
         agent_persona_ids = req.agent_persona_ids
-        language = getattr(req, "language", "de")
+        language = getattr(req, "language", None) or user_lang
         document_ids = getattr(req, "document_ids", [])
         rag_auto_retrieve = getattr(req, "rag_auto_retrieve", False)
         include_debate_results = getattr(req, "include_debate_results", False)
@@ -150,7 +157,7 @@ def extract_request_fields(req: object | dict) -> dict:
         llm_profile_id = req.get("llm_profile_id", "openrouter-claude")
         prompt_variant = req.get("prompt_variant", "default")
         agent_persona_ids = req.get("agent_persona_ids", {})
-        language = req.get("language", "de")
+        language = req.get("language") or user_lang
         document_ids = req.get("document_ids", [])
         rag_auto_retrieve = req.get("rag_auto_retrieve", False)
         include_debate_results = req.get("include_debate_results", False)

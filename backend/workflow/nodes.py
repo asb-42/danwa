@@ -491,18 +491,131 @@ async def _perform_optional_search(
     return content
 
 
+# Language instruction templates for all supported locales
+_LANGUAGE_INSTRUCTIONS = {
+    "en": "\n\nIMPORTANT: You MUST respond in English. Write all your analysis and conclusions in English.",
+    "de": "\n\nWICHTIG: Du MUSST auf Deutsch antworten. Schreibe deine gesamte Analyse und deine Schlussfolgerungen auf Deutsch.",
+    "fr": "\n\nIMPORTANT : Vous DEVEZ répondre en français. Rédigez toute votre analyse et vos conclusions en français.",
+    "es": "\n\nIMPORTANTE: DEBES responder en español. Escribe todo tu análisis y conclusiones en español.",
+    "it": "\n\nIMPORTANTE: DEVI rispondere in italiano. Scrivi tutta la tua analisi e le tue conclusioni in italiano.",
+    "pt": "\n\nIMPORTANTE: Você DEVE responder em português. Escreva toda a sua análise e conclusões em português.",
+    "ru": "\n\nВАЖНО: Вы ДОЛЖНЫ отвечать на русском языке. Пишите весь анализ и выводы на русском языке.",
+    "zh": "\n\n重要提示：你必须用中文回复。请用中文撰写所有分析和结论。",
+    "ja": "\n\n重要：必ず日本語で回答してください。すべての分析と結論を日本語で記述してください。",
+    "ko": "\n\n중요: 반드시 한국어로 응답해야 합니다. 모든 분석과 결론을 한국어로 작성하십시오.",
+    "sv": "\n\nVIKTIGT: Du MÅSTE svara på svenska. Skriv hela din analys och dina slutsatser på svenska.",
+    "el": "\n\nΣΗΜΑΝΤΙΚΟ: Πρέπει να απαντήσετε στα ελληνικά. Γράψτε όλη την ανάλυση και τα συμπεράσματά σας στα ελληνικά.",
+    "ar": "\n\nمهم: يجب أن ترد باللغة العربية. اكتب كل تحليلك واستنتاجاتك باللغة العربية.",
+    "he": "\n\nחשוב: עליך להגיב בעברית. כתוב את כל הניתוח והמסקנות שלך בעברית.",
+}
+
+
 def _append_language_instruction(prompt: str, language: str) -> str:
     """Append a language instruction to a system prompt.
 
     Ensures the LLM responds in the debate language even when the persona
     template is written in a different language (e.g. English persona with
     German debate language).
+
+    Falls back to English instruction if language is not supported.
     """
-    if language == "en":
-        instruction = "\n\nIMPORTANT: You MUST respond in English. Write all your analysis and conclusions in English."
-    else:
-        instruction = "\n\nWICHTIG: Du MUSST auf Deutsch antworten. Schreibe deine gesamte Analyse und deine Schlussfolgerungen auf Deutsch."
+    instruction = _LANGUAGE_INSTRUCTIONS.get(language, _LANGUAGE_INSTRUCTIONS["en"])
     return prompt + instruction
+
+
+# Search instruction templates for all supported locales
+_SEARCH_INSTRUCTIONS = {
+    "en": {
+        "required": (
+            "\n\n## Web Research\n"
+            "You have access to current web search results which are provided "
+            "in the user message under 'Web Research'. You MUST incorporate and "
+            "reference this external information in your analysis. "
+            "Cite sources where possible. If search results contradict your analysis, "
+            "address the discrepancy explicitly."
+        ),
+        "optional": (
+            "\n\n## Web Search Capability\n"
+            "You have access to web search. If you need to verify facts, find current "
+            "information, or research specific claims, include [SEARCH: your search query] "
+            "in your response. Each [SEARCH: ...] marker will be fulfilled and the results "
+            "appended to your output. Use this capability sparingly and only when factual "
+            "verification is needed."
+        ),
+    },
+    "de": {
+        "required": (
+            "\n\n## Web-Recherche\n"
+            "Du hast Zugriff auf aktuelle Websuchergebnisse, die in der "
+            "Benutzernachricht unter 'Web-Recherche' bereitgestellt werden. "
+            "Du MUSST diese externen Informationen in deine Analyse einbeziehen "
+            "und darauf verweisen. Zitiere Quellen, wo möglich. Wenn Suchergebnisse "
+            "deiner Analyse widersprechen, gehe explizit auf die Diskrepanz ein."
+        ),
+        "optional": (
+            "\n\n## Web-Suche\n"
+            "Du hast Zugriff auf Websuche. Wenn du Fakten überprüfen, aktuelle "
+            "Informationen finden oder spezifische Aussagen recherchieren musst, "
+            "füge [SEARCH: deine Suchanfrage] in deine Antwort ein. Jeder "
+            "[SEARCH: ...]-Marker wird ausgeführt und die Ergebnisse deiner "
+            "Ausgabe angehängt. Nutze diese Fähigkeit sparsam und nur wenn "
+            "faktische Überprüfung sinnvoll ist."
+        ),
+    },
+    "fr": {
+        "required": (
+            "\n\n## Recherche Web\n"
+            "Vous avez accès aux résultats de recherche web actuels fournis "
+            "dans le message utilisateur sous 'Recherche Web'. Vous DEVEZ intégrer "
+            "et référencer ces informations externes dans votre analyse. "
+            "Citez les sources si possible. Si les résultats contredisent votre analyse, "
+            "abordez explicitement la divergence."
+        ),
+        "optional": (
+            "\n\n## Capacité de Recherche Web\n"
+            "Vous avez accès à la recherche web. Si vous devez vérifier des faits, "
+            "trouver des informations actuelles ou rechercher des affirmations spécifiques, "
+            "incluez [SEARCH: votre requête] dans votre réponse. Chaque marqueur "
+            "[SEARCH: ...] sera exécuté et les résultats ajoutés à votre sortie. "
+            "Utilisez cette capacité avec parcimonie et uniquement lorsque la vérification "
+            "factuelle est nécessaire."
+        ),
+    },
+    "es": {
+        "required": (
+            "\n\n## Investigación Web\n"
+            "Tienes acceso a resultados de búsqueda web actuales que se proporcionan "
+            "en el mensaje del usuario bajo 'Investigación Web'. DEBES incorporar y "
+            "referenciar esta información externa en tu análisis. "
+            "Cita fuentes donde sea posible. Si los resultados contradicen tu análisis, "
+            "aborda la discrepancia explícitamente."
+        ),
+        "optional": (
+            "\n\n## Capacidad de Búsqueda Web\n"
+            "Tienes acceso a búsqueda web. Si necesitas verificar hechos, encontrar "
+            "información actual o investigar afirmaciones específicas, incluye "
+            "[SEARCH: tu consulta] en tu respuesta. Cada marcador [SEARCH: ...] "
+            "se cumplirá y los resultados se añadirán a tu salida. Usa esta capacidad "
+            "con moderación y solo cuando se necesite verificación factual."
+        ),
+    },
+    "ja": {
+        "required": (
+            "\n\n## Webリサーチ\n"
+            "ユーザーメッセージの「Webリサーチ」セクションで提供されている最新のWeb検索結果にアクセスできます。"
+            "この外部情報を分析に組み込み、参照しなければなりません。"
+            "可能であれば情報源を引用してください。検索結果があなたの分析と矛盾する場合は、"
+            "その不一致に明示的に対処してください。"
+        ),
+        "optional": (
+            "\n\n## Web検索機能\n"
+            "Web検索にアクセスできます。事実の確認、最新情報の検索、"
+            "特定の主張の調査が必要な場合は、回答に[SEARCH: 検索クエリ]を含めてください。"
+            "各[SEARCH: ...]マーカーが実行され、結果が出力に追加されます。"
+            "この機能は控えめに使用し、事実確認が必要な場合にのみ使用してください。"
+        ),
+    },
+}
 
 
 def _append_search_instruction(prompt: str, search_mode: str, language: str = "de") -> str:
@@ -510,46 +623,9 @@ def _append_search_instruction(prompt: str, search_mode: str, language: str = "d
     if search_mode == "off":
         return prompt
 
-    if search_mode == "required":
-        if language == "en":
-            instruction = (
-                "\n\n## Web Research\n"
-                "You have access to current web search results which are provided "
-                "in the user message under 'Web Research'. You MUST incorporate and "
-                "reference this external information in your analysis. "
-                "Cite sources where possible. If search results contradict your analysis, "
-                "address the discrepancy explicitly."
-            )
-        else:
-            instruction = (
-                "\n\n## Web-Recherche\n"
-                "Du hast Zugriff auf aktuelle Websuchergebnisse, die in der "
-                "Benutzernachricht unter 'Web-Recherche' bereitgestellt werden. "
-                "Du MUSST diese externen Informationen in deine Analyse einbeziehen "
-                "und darauf verweisen. Zitiere Quellen, wo möglich. Wenn Suchergebnisse "
-                "deiner Analyse widersprechen, gehe explizit auf die Diskrepanz ein."
-            )
-    elif search_mode == "optional":
-        if language == "en":
-            instruction = (
-                "\n\n## Web Search Capability\n"
-                "You have access to web search. If you need to verify facts, find current "
-                "information, or research specific claims, include [SEARCH: your search query] "
-                "in your response. Each [SEARCH: ...] marker will be fulfilled and the results "
-                "appended to your output. Use this capability sparingly and only when factual "
-                "verification is needed."
-            )
-        else:
-            instruction = (
-                "\n\n## Web-Suche\n"
-                "Du hast Zugriff auf Websuche. Wenn du Fakten überprüfen, aktuelle "
-                "Informationen finden oder spezifische Aussagen recherchieren musst, "
-                "füge [SEARCH: deine Suchanfrage] in deine Antwort ein. Jeder "
-                "[SEARCH: ...]-Marker wird ausgeführt und die Ergebnisse deiner "
-                "Ausgabe angehängt. Nutze diese Fähigkeit sparsam und nur wenn "
-                "faktische Überprüfung sinnvoll ist."
-            )
-    else:
+    lang_instructions = _SEARCH_INSTRUCTIONS.get(language, _SEARCH_INSTRUCTIONS["en"])
+    instruction = lang_instructions.get(search_mode)
+    if not instruction:
         return prompt
 
     return prompt + instruction

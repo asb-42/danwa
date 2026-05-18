@@ -61,6 +61,17 @@ function persisted(key, defaultValue) {
 /** Active project — persisted to localStorage. Stores { id, name }. */
 export const activeProject = persisted('danwa.activeProject', null);
 
+/** User's preferred UI language — persisted to localStorage.
+ * This is the single source of truth for the user's language preference.
+ * It takes precedence over browser settings and is used for:
+ * - UI translations
+ * - Debate language (when not explicitly specified)
+ * - Kitsune assistant responses
+ * - Prompt loading
+ * Falls back to 'de' (German) if not set.
+ */
+export const userLanguage = persisted('danwa.userLanguage', 'de');
+
 /** Selected LLM profile ID for debates (set in ConfigView, read in DebateView) */
 export const selectedLLMProfile = persisted('danwa.selectedLLMProfile', 'openrouter-claude');
 

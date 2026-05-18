@@ -119,9 +119,12 @@ class DebateRequest(BaseModel):
     )
 
     # --- Language (Sprint 4) ---
-    language: str = Field(
-        default="de",
-        description="Language for debate prompts: 'de' (German) or 'en' (English)",
+    language: str | None = Field(
+        default=None,
+        description=(
+            "Language for debate prompts. Uses the user's configured UI language "
+            "if not specified. Supported: de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he"
+        ),
     )
 
     # --- RAG / DMS (Phase 2) ---

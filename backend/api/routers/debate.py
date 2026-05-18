@@ -433,7 +433,7 @@ class StartFromLayoutBody(BaseModel):
     )
     max_rounds: int = Field(default=3, ge=1, le=20)
     consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
-    language: str = Field(default="de")
+    language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
     llm_profile_id: str = Field(default="openrouter-claude")
 
 
@@ -443,7 +443,7 @@ class StartFromWorkflowBody(BaseModel):
     case_text: str = Field(..., min_length=1, description="Debate case/topic")
     max_rounds: int = Field(default=3, ge=1, le=20)
     consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
-    language: str = Field(default="de")
+    language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
 
 
 @router.post("/from-layout/{layout_id}", response_model=DebateResponse, status_code=201)

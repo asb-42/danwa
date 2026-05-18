@@ -3,6 +3,7 @@
   import { locale, i18n } from '../lib/i18n/index.js';
   import { SUPPORTED_LOCALES, LOCALE_NAMES, RTL_LOCALES, customLocales, registerCustomLocale, getAllLocales } from '../lib/i18n/config.js';
   import { setLanguage, getCustomLocales } from '../lib/api.js';
+  import { userLanguage } from '../lib/stores.js';
 
   let open = $state(false);
   let persisting = $state(false);
@@ -27,6 +28,8 @@
 
   async function switchLanguage(lang) {
     await i18n.setLocale(lang);
+    // Update persisted user language preference
+    userLanguage.set(lang);
     // Persist to backend (non-critical)
     persisting = true;
     try { await setLanguage(lang); } catch {}

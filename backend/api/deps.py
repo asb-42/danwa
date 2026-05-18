@@ -5,7 +5,9 @@ Provides shared services (audit, graph, settings) as FastAPI dependencies.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
+from pathlib import Path
 
 from fastapi import Header, HTTPException
 
@@ -16,10 +18,35 @@ from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
 from backend.workflow.debate_graph import debate_graph
 
+_SETTINGS_PATH = Path("config/settings.yaml")
+
 
 @lru_cache
 def get_settings() -> Settings:
     return settings
+
+
+def get_user_language() -> str:
+    """Get the user's configured UI language.
+
+    Reads from config/settings.yaml (ui.language).
+    Falls back to 'de' if not configured.
+
+    This is the single source of truth for the user's language preference.
+    It is persisted across sessions and takes precedence over browser settings.
+    """
+    if _SETTINGS_PATH.exists():
+        try:
+            import yaml
+
+            with open(_SETTINGS_PATH, encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            lang = cfg.get("ui", {}).get("language")
+            if lang:
+                return lang
+        except Exception:
+            pass
+    return "de"
 
 
 @lru_cache

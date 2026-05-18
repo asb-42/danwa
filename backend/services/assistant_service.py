@@ -173,20 +173,21 @@ class AssistantService:
         profile_service: ProfileService | None = None,
         max_sessions: int = 50,
         max_messages_per_session: int = 100,
-        language: str = "en",
     ):
         self._profile_service = profile_service or ProfileService()
         self._sessions: dict[str, ChatSession] = {}
         self._max_sessions = max_sessions
         self._max_messages = max_messages_per_session
-        self._language = language
         self._system_prompt: str | None = None  # Lazy-loaded cache
 
     @property
     def system_prompt(self) -> str:
-        """Load and cache the Kitsune system prompt."""
+        """Load and cache the Kitsune system prompt in the user's configured language."""
         if self._system_prompt is None:
-            self._system_prompt = load_kitsune_prompt(self._language)
+            from backend.api.deps import get_user_language
+
+            user_lang = get_user_language()
+            self._system_prompt = load_kitsune_prompt(user_lang)
         return self._system_prompt
 
     def _select_llm_profile(self, profile_id: str | None = None) -> str | None:

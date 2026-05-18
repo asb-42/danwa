@@ -5,7 +5,7 @@
    * Owns all form state and emits onCreate with the collected parameters.
    */
   import { onMount } from 'svelte';
-  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject } from '../../lib/stores.js';
+  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, userLanguage } from '../../lib/stores.js';
   import { createDebate, getDocuments } from '../../lib/api.js';
   import { startWorkflow } from '../../lib/workflowExec.js';
   import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
@@ -24,6 +24,9 @@
   });
 
   let projectId = $derived($activeProject?.id);
+
+  // Debate language: user's configured preference (synced with UI locale)
+  let debateLanguage = $derived($userLanguage || $locale || 'de');
 
   // Form state
   let caseText = $state('');
@@ -159,7 +162,7 @@
       if (selectedWorkflowId && selectedWorkflow) {
         // Phase 5: Use workflow-exec endpoint for selected workflow
         const response = await startWorkflow(selectedWorkflowId, caseText, {
-          language: $locale || 'de',
+          language: debateLanguage,
           projectId: projectId || 'default',
           maxRounds: maxRounds,
           threshold: consensusThreshold,
@@ -178,7 +181,7 @@
           llm_profile_id: $selectedLLMProfile,
           prompt_variant: $selectedPromptVariant,
           agent_persona_ids: $selectedPersonas,
-          language: $locale || 'de',
+          language: debateLanguage,
           document_ids: selectedDocumentIds,
           rag_auto_retrieve: ragAutoRetrieve,
           include_debate_results: includeDebateResults,

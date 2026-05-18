@@ -73,7 +73,7 @@ class StartWorkflowRequest(BaseModel):
     """Request body for starting a workflow."""
 
     context: str = Field(..., min_length=1, description="The debate topic / context")
-    language: str = Field(default="de", description="Language code")
+    language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
     project_id: str = Field(default="default", description="Project ID")
     max_rounds: int = Field(default=10, ge=1, description="Maximum rounds")
     threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Consensus threshold")

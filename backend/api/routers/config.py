@@ -31,10 +31,20 @@ router = APIRouter()
 _SETTINGS_PATH = Path("config/settings.yaml")
 
 SUPPORTED_LANGUAGES = {
-    "en": "English",
     "de": "Deutsch",
+    "en": "English",
     "fr": "Français",
     "es": "Español",
+    "it": "Italiano",
+    "pt": "Português",
+    "ru": "Русский",
+    "zh": "中文",
+    "ja": "日本語",
+    "ko": "한국어",
+    "sv": "Svenska",
+    "el": "Ελληνικά",
+    "ar": "العربية",
+    "he": "עברית",
 }
 
 
