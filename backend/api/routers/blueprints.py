@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
@@ -198,6 +199,66 @@ def _validate_bundle_references(repo: BlueprintRepository, bundle: AgentBundle) 
         raise BlueprintNotFoundError("PromptTemplate", bundle.prompt_template_id)
     if bundle.tone_profile_id and not repo.get_tone_profile(bundle.tone_profile_id):
         raise BlueprintNotFoundError("ToneProfile", bundle.tone_profile_id)
+
+
+# ==================================================================
+# Bundle Export / Import
+# ==================================================================
+
+
+@router.get("/bundles/{bundle_id}/export")
+def export_bundle_endpoint(
+    bundle_id: str,
+    include_all_role_types: bool = False,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> dict:
+    """Export a bundle as a portable JSON document with all dependencies."""
+    from backend.blueprints.bundle_io import export_bundle_with_dependencies
+
+    bundle = repo.get_bundle(bundle_id)
+    _require_found("AgentBundle", bundle, bundle_id)
+
+    try:
+        data = export_bundle_with_dependencies(
+            bundle_id,
+            repo,
+            include_all_role_types=include_all_role_types,
+        )
+        return data
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+class ImportBundleRequest(BaseModel):
+    """Request body for importing a bundle."""
+
+    data: dict
+    conflict_strategy: str = "rename"  # skip | overwrite | rename
+
+
+@router.post("/bundles/import", response_model=AgentBundle, status_code=201)
+def import_bundle_endpoint(
+    body: ImportBundleRequest,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> AgentBundle:
+    """Import a bundle from an exported JSON document.
+
+    Conflict strategies:
+    - ``skip``: Skip entities that already exist by ID.
+    - ``overwrite``: Replace existing entities.
+    - ``rename``: Generate new IDs for conflicts (default).
+    """
+    from backend.blueprints.bundle_io import import_bundle
+
+    try:
+        bundle = import_bundle(
+            body.data,
+            repo,
+            conflict_strategy=body.conflict_strategy,
+        )
+        return bundle
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 # ==================================================================
