@@ -259,3 +259,6 @@ Thumbs.db
 .roo/
 .gitnexus
 pids/
+docs/.last-doc-update
+docs/.last-adr-check
+tmp/
