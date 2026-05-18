@@ -8,11 +8,41 @@
     sendAssistantMessage,
   } from '../lib/api.js';
   import { marked } from 'marked';
+  import { locale } from '../lib/i18n/index.js';
 
   const dispatch = createEventDispatcher();
 
   export let isOpen = false;
   export let isMinimized = false;
+
+  const WELCOME = {
+    en: {
+      greeting: '🦊 Hello! I\'m Danwa Kitsune',
+      subtitle: 'Your intelligent companion for the Danwa Debate Engine system.',
+      ask: 'Ask me about:',
+      items: [
+        'How to start a debate',
+        'Configuring LLM profiles',
+        'Using the Blueprint Canvas',
+        'Installing and managing modules',
+        'And much more...',
+      ],
+    },
+    de: {
+      greeting: '🦊 Konnichiwa! Ich bin Danwa Kitsune',
+      subtitle: 'Dein intelligenter Begleiter für das Danwa Debate Engine System.',
+      ask: 'Frag mich nach:',
+      items: [
+        'Wie man eine Debatte startet',
+        'LLM-Profile konfigurieren',
+        'Blueprint Canvas verwenden',
+        'Module installieren und verwalten',
+        'Und vieles mehr...',
+      ],
+    },
+  };
+
+  let welcome = $derived(WELCOME[$locale] || WELCOME.en);
 
   let sessions = [];
   let currentSession = null;
@@ -223,15 +253,13 @@
           <div class="messages" bind:this={chatContainer}>
             {#if messages.length === 0}
               <div class="welcome-message">
-                <h3>🦊 Konnichiwa! Ich bin Danwa Kitsune</h3>
-                <p>Dein intelligenter Begleiter für das Danwa Debate Engine System.</p>
-                <p>Frag mich nach:</p>
+                <h3>{welcome.greeting}</h3>
+                <p>{welcome.subtitle}</p>
+                <p>{welcome.ask}</p>
                 <ul>
-                  <li>Wie man eine Debatte startet</li>
-                  <li>LLM-Profile konfigurieren</li>
-                  <li>Blueprint Canvas verwenden</li>
-                  <li>Module installieren und verwalten</li>
-                  <li>Und vieles mehr...</li>
+                  {#each welcome.items as item}
+                    <li>{item}</li>
+                  {/each}
                 </ul>
               </div>
             {:else}
