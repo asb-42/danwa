@@ -532,7 +532,12 @@ class UITranslationService:
                 job.current_locale = target_locale
             return translated
         except Exception as exc:
-            logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s", key, target_locale, exc)
+            error_msg = str(exc)
+            is_rate_limit = "rate limit" in error_msg.lower() or "429" in error_msg
+            if is_rate_limit:
+                logger.warning("Rate limit hit for %s → %s: %s", key, target_locale, error_msg[:120])
+                raise  # Re-raise rate limit errors so the job can abort early
+            logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s", key, target_locale, error_msg[:200])
             return source_text
 
     def bulk_translate(self, target_locales: list[str] | None = None, namespace: str = "global") -> dict[str, Any]:
@@ -617,12 +622,33 @@ class UITranslationService:
                         job.results[locale] = {"status": "complete", "translated": 0}
                         continue
 
+                    # Set locale early so UI shows it even before first success
+                    job.current_locale = locale
+
                     translated_count = 0
+                    rate_limited = False
                     for key in missing:
                         en_val = self.get_translation(key, "en", namespace)
                         if en_val:
-                            self.translate_via_llm(key, en_val, locale, llm=llm, job=job)
-                            translated_count += 1
+                            try:
+                                self.translate_via_llm(key, en_val, locale, llm=llm, job=job)
+                                translated_count += 1
+                            except Exception as exc:
+                                error_msg = str(exc)
+                                if "rate limit" in error_msg.lower() or "429" in error_msg:
+                                    rate_limited = True
+                                    job.error = f"Rate limit exceeded for {locale}. Check your LLM provider quota."
+                                    job.status = "failed"
+                                    logger.error("Translation aborted for %s: rate limit exceeded", locale)
+                                    break
+                                # Non-rate-limit errors are logged but don't abort
+                                logger.warning("Skipping key %s due to error: %s", key, error_msg[:100])
+
+                    if rate_limited:
+                        job.results[locale] = {"status": "rate_limited", "translated": translated_count, "total_missing": len(missing)}
+                        job.finished_at = datetime.now(UTC).isoformat()
+                        logger.info("Async bulk-translation aborted: job=%s, rate limited", job.job_id)
+                        return
 
                     job.results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
                     logger.info("Locale %s done: %d/%d translated", locale, translated_count, len(missing))
