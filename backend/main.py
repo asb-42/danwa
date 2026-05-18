@@ -132,6 +132,21 @@ async def lifespan(app: FastAPI):
     # Ensure DB directory exists
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Load settings from YAML file (overrides .env defaults)
+    from backend.api.routers.config import _load_settings as _load_yaml_settings
+
+    yaml_settings = _load_yaml_settings()
+    if yaml_settings.get("backup"):
+        for key, value in yaml_settings["backup"].items():
+            if hasattr(settings, key):
+                setattr(settings, key, value)
+    if yaml_settings.get("ui"):
+        ui_lang = yaml_settings["ui"].get("language")
+        if ui_lang and hasattr(settings, "ui_language"):
+            settings.ui_language = ui_lang
+
+    logger.info("Settings loaded from config/settings.yaml")
+
     # Run project migration (idempotent)
     from backend.migrations.migrate_projects import migrate_to_projects
 
