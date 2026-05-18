@@ -257,3 +257,77 @@ async def delete_translation(
         raise HTTPException(status_code=404, detail="Translation not found")
     svc.invalidate_cache(locale)
     return {"deleted": True}
+
+
+# --- Language Pack Export ---
+
+
+class LanguagePackExportRequest(BaseModel):
+    """Request to export UI translations as a Language Pack ZIP."""
+
+    name: str = "Custom Language Pack"
+    description: str = ""
+    pack_id_suffix: str = "custom"
+    author: str = ""
+
+
+@router.post("/{locale}/export-as-pack")
+async def export_language_pack(
+    locale: str,
+    body: LanguagePackExportRequest,
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> Any:
+    """Export all UI translations for a locale as a Language Pack ZIP.
+
+    Creates a ZIP archive containing:
+    - manifest.json (ModuleManifest with type=language-pack)
+    - ui_strings.json (key-value pairs for the locale)
+    """
+    import io
+    import json
+    import zipfile
+    from datetime import UTC, datetime
+
+    from fastapi.responses import StreamingResponse
+
+    # Fetch all strings for the locale from global namespace
+    strings = svc.resolve_bulk(locale, "global")
+    if not strings:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No translations found for locale '{locale}' in global namespace",
+        )
+
+    module_id = f"lang-{locale}-{body.pack_id_suffix}"
+    now = datetime.now(UTC).isoformat()
+
+    manifest = {
+        "schema_version": "2.0.0",
+        "module_id": module_id,
+        "name": {"en": body.name},
+        "description": {"en": body.description} if body.description else {"en": f"Language pack for {locale}"},
+        "version": "1.0.0",
+        "type": "language-pack",
+        "category": "translations",
+        "language": locale,
+        "author": {"name": body.author} if body.author else {"name": "Danwa User"},
+        "license": "CC-BY-4.0",
+        "tags": [locale, "custom"],
+        "profile_file": "ui_strings.json",
+        "profile_format": "json",
+        "created_at": now,
+    }
+
+    # Create ZIP in memory
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"{module_id}/manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
+        zf.writestr(f"{module_id}/ui_strings.json", json.dumps(strings, indent=2, ensure_ascii=False))
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={module_id}.zip"},
+    )
