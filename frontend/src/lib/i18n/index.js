@@ -30,6 +30,20 @@ let currentLocale = DEFAULT_LOCALE;
 /** Track which locales are served by the backend (auto-detected). */
 let backendAvailable = false;
 
+/** Track if fallback warning was already shown this session. */
+let fallbackWarningShown = false;
+
+/** Callback set by App.svelte to show toast notifications. */
+let _toastCallback = null;
+
+/**
+ * Register a toast callback for i18n fallback warnings.
+ * Called once from App.svelte on mount.
+ */
+export function setToastCallback(fn) {
+  _toastCallback = fn;
+}
+
 // ---------------------------------------------------------------------------
 // HTTP Loading
 // ---------------------------------------------------------------------------
@@ -144,17 +158,34 @@ function createI18nStore() {
     t(key, params = {}) {
       const dict = translations.get(currentLocale) || {};
       let text = dict[key];
+      let usedFallback = false;
 
       // Level 1: exact key in current locale
       if (text === undefined && currentLocale !== 'en') {
         // Level 2: try English fallback
         const enDict = translations.get('en') || {};
         text = enDict[key];
+        if (text !== undefined) {
+          usedFallback = true;
+        }
       }
 
       // Level 3: key itself
       if (text === undefined) {
         text = key;
+        usedFallback = true;
+      }
+
+      // Show one-time fallback warning per session
+      if (usedFallback && !fallbackWarningShown && currentLocale !== 'en') {
+        fallbackWarningShown = true;
+        if (_toastCallback) {
+          _toastCallback({
+            message: `Some UI strings are not yet translated to ${getLocaleName(currentLocale)}. Showing English fallback.`,
+            type: 'warning',
+            timeout: 8000,
+          });
+        }
       }
 
       Object.entries(params).forEach(([k, v]) => {

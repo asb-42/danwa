@@ -675,6 +675,7 @@ async def run_debate_workflow(
         "prompt_variant": fields["prompt_variant"],
         "agent_persona_ids": fields["agent_persona_ids"],
         "language": fields["language"],
+        "prompt_language": fields["language"],  # Updated when actual prompts are loaded
         "search_mode": fields["search_mode"],
         "project_id": project_id,
         "session_id": debate_id,
@@ -827,6 +828,7 @@ async def run_debate_workflow(
                     },
                     "rounds_completed": result.get("current_round", 0),
                     "language": fields["language"],
+                    "prompt_language": result.get("prompt_language", fields["language"]),
                 },
             )
 

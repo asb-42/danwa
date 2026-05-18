@@ -201,6 +201,10 @@ class DebateStatusResponse(BaseModel):
     # --- Extended metadata ---
     case_text: str = ""
     language: str | None = None
+    prompt_language: str | None = Field(
+        default=None,
+        description="Actual language of loaded prompts (may differ from requested language if fallback used)",
+    )
     llm_profile_id: str = ""
     llm_profile_model: str = ""
     anomalies: list[str] = Field(default_factory=list)

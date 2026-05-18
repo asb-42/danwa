@@ -1,10 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { route, routeParams } from './lib/stores.js';
+  import { route, routeParams, addToast } from './lib/stores.js';
   import { getHealth } from './lib/api.js';
   import { healthStatus, appVersion } from './lib/stores.js';
   import { getVersion } from './lib/api.js';
-  import { i18n, discoverLanguagePacks } from './lib/i18n/index.js';
+  import { i18n, discoverLanguagePacks, setToastCallback } from './lib/i18n/index.js';
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
   import DebateView from './views/DebateView.svelte';
@@ -24,6 +24,9 @@ import ModulesView from './views/ModulesView.svelte';
 import ProposalsView from './views/ProposalsView.svelte';
 import ManageView from './views/ManageView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
+
+  // Register toast callback for i18n fallback warnings
+  setToastCallback(addToast);
 
   // Hash-based routing — supports #/route and #/route/param
   function parseHash() {
