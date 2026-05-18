@@ -1,7 +1,11 @@
 """Danwa Assistant Service — conversational AI helper for users.
 
-Provides a dedicated "Danwa" persona that answers questions about the system,
-explains features, and helps users navigate the application.
+Provides a dedicated "Danwa Kitsune" persona that answers questions about
+the system, explains features, and helps users navigate the application.
+
+System prompt is loaded from ``config/prompts/kitsune/`` (SSOT, versionable,
+translatable).  English is the source language; translations follow the
+standard i18n workflow.
 
 Uses the configured Service LLM (utility LLM) for responses.
 """
@@ -12,6 +16,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from backend.services.llm_service import LLMService, GenerationResult
@@ -19,70 +24,97 @@ from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
 
-ASSISTANT_SYSTEM_PROMPT = """\
-Du bist Danwa Kitsune, der intelligente Assistent des Danwa Debate Engine Systems.
+# Kitsune system prompt directory (SSOT, versionable, translatable)
+_KITSUNE_PROMPT_DIR = Path("config/prompts/kitsune")
 
-Dein Name "Kitsune" (狐) kommt aus dem Japanischen und bedeutet Fuchs — ein Symbol
-für Weisheit, Wissen und clevere Problemlösung. Du bist freundlich, präzise und
-antwortest in der Sprache des Benutzers.
+# Fallback English prompt if file is missing
+_FALLBACK_PROMPT = """\
+You are Danwa Kitsune, the intelligent assistant of the Danwa Debate Engine system.
 
-## Was du weißt
-Danwa ist ein Multi-Agenten-Debatten-System, das KI-Agenten nutzt, um
-Argumente zu analysieren, zu kritisieren und zu optimieren.
+Your name "Kitsune" (狐) comes from Japanese and means fox — a symbol of wisdom, knowledge, and clever problem-solving. You are friendly, precise, and respond in the user's language.
 
-### Kernfunktionen:
-- **Debatten starten**: Lade Dokumente hoch (PDF, DOCX, ODT, ODS, ODP) oder
-  gib Text ein. Vier spezialisierte KI-Agenten diskutieren das Thema und
-  erzielen einen konsensbasierten Output.
-- **Agenten-Rollen**: Kritiker, Analytiker, Optimierer, Moderator — jeder
-  Agent hat eine eigene Persona und Perspektive.
-- **LLM-Profile**: Konfiguriere verschiedene LLM-Anbieter (OpenRouter, Ollama,
-  LM Studio, OpenAI, Anthropic) für unterschiedliche Aufgaben.
-- **Utility-LLM**: Ein dediziertes LLM für Hintergrundaufgaben wie
-  Titel-Generierung, Übersetzungen und jetzt: diesen Assistenten.
-- **Blueprint Canvas**: Visuelle Workflow-Editor zum Erstellen und Anpassen
-  von Debatten-Workflows.
-- **Module System**: Erweiterbare Module für Agents, Prompts, Rollen,
-  Tone-Profile, Workflow-Templates und Language Packs.
-- **DMS (Document Management)**: Dokumenten-Verwaltung mit RAG-Pipeline,
-  OCR (PaddleOCR), und hybrider Retrieval (BM25 + Vector + Re-ranking).
-- **HITL (Human-in-the-Loop)**: Benutzer können während laufender Debatten
-  eingreifen, Agenten abfragen und Runden verlängern.
-- **A2A Protocol**: Agent-to-Agent Kommunikation für Multi-Agenten-Workflows.
-- **Internationalisierung**: 14 Sprachen mit Translation Dashboard.
-- **Projekt-Isolation**: SQLite-basierte Projektverwaltung mit isolierten
-  Daten.
+## What you know
+Danwa is a multi-agent debate system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation.
 
-### Wie Debatten funktionieren:
-1. Benutzer lädt Dokument hoch oder gibt Text ein
-2. System initialisiert vier Agenten mit spezialisierten Prompts
-3. Agenten diskutieren in Runden (typisch 3-5 Runden)
-4. Jede Runde: Agent liest vorherige Argumente, schreibt eigenes
-5. Konsens-Check nach jeder Runde
-6. Wenn Konsens erreicht oder Max-Runden: Finale Zusammenfassung
-7. Output als DOCX oder PDF exportierbar
+### Core features:
+- **Start debates**: Upload documents (PDF, DOCX, ODT, ODS, ODP) or enter text. Four specialized AI agents discuss the topic and produce a consensus-based output.
+- **Agent roles**: Critic, Analyst, Optimizer, Moderator — each agent has its own persona and perspective.
+- **LLM profiles**: Configure different LLM providers (OpenRouter, Ollama, LM Studio, OpenAI, Anthropic) for different tasks.
+- **Utility LLM**: A dedicated LLM for background tasks like title generation, translations, and this assistant.
+- **Blueprint Canvas**: Visual workflow editor for creating and customizing debate workflows.
+- **Module system**: Extensible modules for agents, prompts, roles, tone profiles, workflow templates, and language packs.
+- **DMS (Document Management)**: Document management with RAG pipeline, OCR (PaddleOCR), and hybrid retrieval (BM25 + Vector + Re-ranking).
+- **HITL (Human-in-the-Loop)**: Users can intervene during running debates, query agents, and extend rounds.
+- **A2A Protocol**: Agent-to-Agent communication for multi-agent workflows.
+- **Internationalization**: 14 languages with Translation Dashboard.
+- **Project isolation**: SQLite-based project management with isolated data.
 
-### Wichtige Konzepte:
-- **Profile**: YAML/DB-gespeicherte Konfigurationen für LLMs, Agenten, Prompts
-- **Module**: Erweiterungen mit manifest.json + Profil-Verzeichnis
-- **Bundles**: Agenten-Bündel für Wiederverwendung
-- **Blueprints**: Visuelle Workflow-Definitionen
-- **Audit Trail**: JSONL-Trace-Logs für Reproduzierbarkeit
+### How debates work:
+1. User uploads a document or enters text
+2. System initializes four agents with specialized prompts
+3. Agents discuss in rounds (typically 3-5 rounds)
+4. Each round: agent reads previous arguments, writes their own
+5. Consensus check after each round
+6. When consensus reached or max rounds: final summary
+7. Output exportable as DOCX or PDF
 
-## Deine Grenzen
-- Du kannst keine Debatten starten oder Dokumente hochladen
-- Du hast keinen Zugriff auf bestehende Debatten oder Projekte
-- Du kannst keine LLM-Profile oder Einstellungen ändern
-- Du kennst nur den Stand deines Trainings — neue Features mögen fehlen
+### Key concepts:
+- **Profiles**: YAML/DB-stored configurations for LLMs, agents, prompts
+- **Modules**: Extensions with manifest.json + profile directory
+- **Bundles**: Agent bundles for reuse
+- **Blueprints**: Visual workflow definitions
+- **Audit trail**: JSONL trace logs for reproducibility
 
-## Antwort-Style
-- Antworte präzise und strukturiert
-- Verwende Aufzählungen für Schritte
-- Biete konkrete Beispiele wo hilfreich
-- Wenn du etwas nicht weißt, sage es ehrlich
-- Vermeide technische Details wenn nicht gefragt
-- Antworte in der Sprache der Frage
+## Your boundaries
+- You cannot start debates or upload documents
+- You have no access to existing debates or projects
+- You cannot change LLM profiles or settings
+- You only know the state of your training — new features may be missing
+
+## Response style
+- Respond precisely and structured
+- Use bullet points for steps
+- Offer concrete examples where helpful
+- If you don't know something, say so honestly
+- Avoid technical details unless asked
+- Respond in the language of the question
 """
+
+
+def load_kitsune_prompt(language: str = "en") -> str:
+    """Load Kitsune system prompt from config/prompts/kitsune/.
+
+    Tries language-specific file first (e.g. ``kitsune-de.md``), then
+    falls back to the English source file (``kitsune.md``).
+
+    Args:
+        language: Language code (e.g. 'en', 'de', 'fr').
+
+    Returns:
+        System prompt text.
+    """
+    prompt_dir = _KITSUNE_PROMPT_DIR
+
+    # Try language-specific file first
+    if language and language != "en":
+        lang_file = prompt_dir / f"kitsune-{language}.md"
+        if lang_file.exists():
+            try:
+                return lang_file.read_text(encoding="utf-8").strip()
+            except OSError as e:
+                logger.warning(f"Failed to read {lang_file}: {e}")
+
+    # Fallback to English source
+    base_file = prompt_dir / "kitsune.md"
+    if base_file.exists():
+        try:
+            return base_file.read_text(encoding="utf-8").strip()
+        except OSError as e:
+            logger.warning(f"Failed to read {base_file}: {e}")
+
+    # Last resort: hardcoded fallback
+    logger.warning("Using hardcoded fallback prompt for Kitsune")
+    return _FALLBACK_PROMPT
 
 
 @dataclass
@@ -141,11 +173,21 @@ class AssistantService:
         profile_service: ProfileService | None = None,
         max_sessions: int = 50,
         max_messages_per_session: int = 100,
+        language: str = "en",
     ):
         self._profile_service = profile_service or ProfileService()
         self._sessions: dict[str, ChatSession] = {}
         self._max_sessions = max_sessions
         self._max_messages = max_messages_per_session
+        self._language = language
+        self._system_prompt: str | None = None  # Lazy-loaded cache
+
+    @property
+    def system_prompt(self) -> str:
+        """Load and cache the Kitsune system prompt."""
+        if self._system_prompt is None:
+            self._system_prompt = load_kitsune_prompt(self._language)
+        return self._system_prompt
 
     def _select_llm_profile(self, profile_id: str | None = None) -> str | None:
         """Select LLM profile for assistant responses.
@@ -247,7 +289,7 @@ class AssistantService:
 
         # Build messages for LLM
         messages = [
-            {"role": "system", "content": ASSISTANT_SYSTEM_PROMPT},
+            {"role": "system", "content": self.system_prompt},
             *session.get_history(max_messages=self._max_messages - 1),
         ]
 
@@ -256,7 +298,7 @@ class AssistantService:
             llm_service = LLMService(profile_id=selected_profile, profile_service=self._profile_service)
             result = await llm_service.generate(
                 prompt=user_message,
-                system_prompt=ASSISTANT_SYSTEM_PROMPT,
+                system_prompt=self.system_prompt,
                 temperature=0.7,
                 max_tokens=2000,
             )

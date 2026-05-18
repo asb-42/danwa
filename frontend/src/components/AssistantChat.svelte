@@ -178,7 +178,7 @@
 </script>
 
 {#if isOpen}
-  <div class="assistant-chat" class:minimized={isMinimized} style="height: {isMinized ? 'auto' : chatHeight + 'px'}">
+  <div class="assistant-chat" class:minimized={isMinimized} style="height: {isMinimized ? 'auto' : chatHeight + 'px'}">
     <!-- Header -->
     <div class="chat-header">
       <div class="header-left">
