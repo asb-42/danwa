@@ -59,6 +59,25 @@ log_header()  { echo -e "\n${BOLD}${CYAN}═════════════
 # Hilfsfunktionen
 # ═══════════════════════════════════════════════════════════════════════
 
+check_node_version() {
+    local required_major="${1:-22}"
+    if command -v node &>/dev/null; then
+        local current_version
+        current_version="$(node --version | sed 's/^v//')"
+        local current_major
+        current_major="${current_version%%.*}"
+        if [[ "$current_major" -lt "$required_major" ]]; then
+            log_error "Node.js >= $required_major erforderlich (installiert: $current_version)"
+            log_info "Installiere: nvm install $required_major"
+            return 1
+        fi
+        return 0
+    else
+        log_error "Node.js nicht installiert"
+        return 1
+    fi
+}
+
 pid_running() {
     local pid_file="$1"; shift
     if [[ -f "$pid_file" ]]; then
@@ -322,19 +341,39 @@ doc_pdoc() {
 
 doc_architecture() {
     log_step "Architektur-Doku generieren (GitNexus Wiki) …"
+
+    # Prüfe Node.js Version
+    if ! check_node_version 22; then
+        return 1
+    fi
+
     cd "$PROJECT_DIR"
 
     local output_dir="$DOCS_DIR/architecture"
     mkdir -p "$output_dir"
 
     if command -v npx &>/dev/null; then
-        npx gitnexus wiki --output "$output_dir" 2>&1
-        if [[ $? -eq 0 ]]; then
-            log_ok "GitNexus Wiki generiert: $output_dir/"
-        else
-            log_warn "GitNexus Wiki fehlgeschlagen — versuche Index zu aktualisieren …"
+        # Prüfe ob Index existiert
+        if ! npx gitnexus status 2>&1 | grep -q "indexed"; then
+            log_warn "Index nicht vorhanden — erstelle …"
             npx gitnexus analyze 2>&1
-            npx gitnexus wiki --output "$output_dir" 2>&1
+        fi
+
+        # GitNexus Wiki generiert direkt ins Repo-Verzeichnis
+        npx gitnexus wiki -f 2>&1
+        if [[ $? -eq 0 ]]; then
+            # Wiki wird in .gitnexus/wiki/ generiert, kopiere nach docs/architecture/
+            if [[ -d ".gitnexus/wiki" ]]; then
+                cp -r .gitnexus/wiki/* "$output_dir/" 2>/dev/null || true
+                log_ok "GitNexus Wiki generiert: $output_dir/"
+            else
+                log_warn "Wiki-Verzeichnis nicht gefunden"
+                return 1
+            fi
+        else
+            log_error "GitNexus Wiki fehlgeschlagen — LLM API Key erforderlich"
+            log_info "Setup: npx gitnexus wiki --provider <provider> --api-key <key>"
+            return 1
         fi
     else
         log_error "npx nicht verfügbar — bitte Node.js installieren"
@@ -348,80 +387,26 @@ doc_update() {
 
     log_step "Dokumentation aktualisieren (LLM-basiert) …"
 
+    cd "$PROJECT_DIR"
+    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
+
+    local args=""
+    case "$mode" in
+        tech) args="--tech" ;;
+        user) args="--user" ;;
+        all|"") args="--all" ;;
+    esac
+
     if [[ "$dry_run" == "true" ]]; then
-        log_info "Dry-Run: Zeige Änderungen ohne zu schreiben"
+        args="$args --dry-run"
     fi
 
-    # Ermittle geänderte Dateien seit letztem Doc-Update
-    local last_update_marker="$DOCS_DIR/.last-doc-update"
-    if [[ -f "$last_update_marker" ]]; then
-        local since
-        since="$(cat "$last_update_marker")"
-        log_info "Änderungen seit: $since"
+    uv run python scripts/doc_update.py $args 2>&1
+    if [[ $? -eq 0 ]]; then
+        log_ok "Dokumentation aktualisiert"
     else
-        log_info "Kein letztes Update gefunden — verwende letzte 10 Commits"
-        since="HEAD~10"
-    fi
-
-    local changed_files
-    changed_files="$(git diff "$since" --name-only -- '*.py' '*.svelte' '*.js' '*.ts' 2>/dev/null)" || true
-
-    if [[ -z "$changed_files" ]]; then
-        log_ok "Keine relevanten Änderungen seit letztem Doc-Update"
-        return 0
-    fi
-
-    log_info "Geänderte Dateien:"
-    echo "$changed_files" | while read -r f; do
-        echo "  - $f"
-    done
-
-    # Prompt generieren
-    local prompt_file="/tmp/danwa-doc-prompt.txt"
-    cat > "$prompt_file" << 'PROMPT_EOF'
-Du bist ein technischer Redakteur für das Danwa-Projekt.
-
-Folgende Dateien haben sich geändert:
-PROMPT_EOF
-
-    echo "$changed_files" | while read -r f; do
-        echo "- $f" >> "$prompt_file"
-    done
-
-    echo "" >> "$prompt_file"
-
-    if [[ "$mode" == "tech" || "$mode" == "all" ]]; then
-        echo "Aktualisiere die folgende technische Dokumentation basierend auf diesen Änderungen:" >> "$prompt_file"
-        echo "" >> "$prompt_file"
-        echo "[Inhalt von docs/technical_documentation.md]" >> "$prompt_file"
-    fi
-
-    if [[ "$mode" == "user" || "$mode" == "all" ]]; then
-        echo "" >> "$prompt_file"
-        echo "Aktualisiere das folgende User Manual basierend auf diesen Änderungen:" >> "$prompt_file"
-        echo "" >> "$prompt_file"
-        echo "[Inhalt von docs/user_manual.md]" >> "$prompt_file"
-    fi
-
-    echo "" >> "$prompt_file"
-    cat >> "$prompt_file" << 'PROMPT_EOF'
-
-Regeln:
-- Behalte die bestehende Struktur bei
-- Füge neue Sections hinzu wo nötig
-- Markiere geänderte Stellen mit <!-- UPDATED -->
-- Entferne veraltete Informationen
-- Output: Nur die aktualisierte Markdown-Datei
-PROMPT_EOF
-
-    log_info "Prompt generiert: $prompt_file"
-    log_warn "LLM-Integration noch nicht implementiert — manuell ausführen oder Utility-LLM anbinden"
-    log_info "Prompt-Inhalt:"
-    cat "$prompt_file"
-
-    if [[ "$dry_run" != "true" ]]; then
-        date -Iseconds > "$last_update_marker"
-        log_ok "Update-Marker gesetzt: $last_update_marker"
+        log_error "Dokumentation-Update fehlgeschlagen"
+        return 1
     fi
 }
 
