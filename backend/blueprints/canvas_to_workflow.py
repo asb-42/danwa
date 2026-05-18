@@ -41,6 +41,7 @@ CANVAS_TO_WF_NODE_TYPE: dict[str, str] = {
     "wf-user-injection": "wf-user-injection",
     "wf-gate": "wf-gate",
     "wf-tone-profile": "wf-tone-profile",
+    "wf-agent": "wf-agent",
 }
 
 # Asset-node types that should be resolved to their linked workflow node.
@@ -147,6 +148,8 @@ class CanvasToWorkflowConverter:
         for node in workflow_nodes:
             if node.agent_blueprint_id:
                 node_blueprint_map[node.id] = node.agent_blueprint_id
+            elif node.bundle_id:
+                node_blueprint_map[node.id] = f"bundle:{node.bundle_id}"
 
         now = datetime.now(UTC)
 
@@ -207,20 +210,35 @@ class CanvasToWorkflowConverter:
             node_id = cn.id
             node_type: str = CANVAS_TO_WF_NODE_TYPE.get(cn.type, cn.type)
 
-            # Resolve agent_blueprint_id — priority:
+            # Resolve agent_blueprint_id / bundle_id — priority:
             # 1. node-level agent_blueprint_id field
-            # 2. node-level blueprint_id field
+            # 2. node-level blueprint_id / bundle_id field
             # 3. data dict fallbacks (for round-tripped data)
             # 4. connected asset edge resolution
             agent_blueprint_id: str | None = None
+            bundle_id: str | None = None
             if node_type in AGENT_NODE_TYPES:
-                agent_blueprint_id = (
-                    cn.agent_blueprint_id
-                    or cn.blueprint_id
-                    or cn.data.get("agent_blueprint_id")
-                    or cn.data.get("blueprint_id")
-                    or wf_to_blueprint.get(node_id)
-                )
+                if node_type == "wf-agent":
+                    bundle_id = (
+                        cn.data.get("bundle_id")
+                        or cn.config.get("bundle_id")
+                        or cn.blueprint_id
+                    )
+                    # Fallback: try agent_blueprint_id for legacy compat
+                    if not bundle_id:
+                        agent_blueprint_id = (
+                            cn.agent_blueprint_id
+                            or cn.data.get("agent_blueprint_id")
+                            or wf_to_blueprint.get(node_id)
+                        )
+                else:
+                    agent_blueprint_id = (
+                        cn.agent_blueprint_id
+                        or cn.blueprint_id
+                        or cn.data.get("agent_blueprint_id")
+                        or cn.data.get("blueprint_id")
+                        or wf_to_blueprint.get(node_id)
+                    )
 
             # Extract label — prefer explicit label, then data fallbacks
             label = cn.label or cn.data.get("label", cn.data.get("name", ""))
@@ -254,6 +272,7 @@ class CanvasToWorkflowConverter:
                     type=node_type,  # type: ignore[arg-type]
                     label=label,
                     agent_blueprint_id=agent_blueprint_id,
+                    bundle_id=bundle_id,
                     config=config,
                     position=position,
                 )

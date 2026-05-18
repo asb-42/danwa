@@ -1,8 +1,18 @@
-"""LangGraph state machine for the debate workflow."""
+"""LangGraph state machine for the debate workflow.
+
+.. deprecated::
+    This module uses hardcoded agent roles (strategist, critic, optimizer, moderator)
+    and a fixed 4-role execution loop. New code should use the ``WorkflowCompiler``
+    with ``wf-agent`` nodes referencing ``AgentBundle`` instances for dynamic,
+    configurable agent roles.
+
+    See ``backend.workflow.workflow_compiler.WorkflowCompiler`` for the replacement.
+"""
 
 from __future__ import annotations
 
 import logging
+import warnings
 
 from langgraph.graph import END, StateGraph
 
@@ -17,6 +27,13 @@ from backend.workflow.nodes import (
 from backend.workflow.state import DebateState
 
 logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "backend.workflow.debate_graph is deprecated. "
+    "Use WorkflowCompiler with wf-agent nodes instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 # ---------------------------------------------------------------------------

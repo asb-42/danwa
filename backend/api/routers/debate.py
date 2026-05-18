@@ -12,7 +12,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.deps import (
     get_audit_service,
@@ -416,6 +416,166 @@ async def start_debate(
         rag_enabled=rag_enabled,
         rag_document_count=len(document_ids),
     )
+
+
+# ---------------------------------------------------------------------------
+# Debate from Canvas Layout / Workflow Definition
+# ---------------------------------------------------------------------------
+
+
+class StartFromLayoutBody(BaseModel):
+    """Request body for starting a debate from a canvas layout."""
+
+    case_text: str = Field(..., min_length=1, description="Debate case/topic")
+    bundle_ids: list[str] = Field(
+        default_factory=list,
+        description="AgentBundle IDs to use (overrides layout agent nodes)",
+    )
+    max_rounds: int = Field(default=3, ge=1, le=20)
+    consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
+    language: str = Field(default="de")
+    llm_profile_id: str = Field(default="openrouter-claude")
+
+
+class StartFromWorkflowBody(BaseModel):
+    """Request body for starting a debate from a workflow definition."""
+
+    case_text: str = Field(..., min_length=1, description="Debate case/topic")
+    max_rounds: int = Field(default=3, ge=1, le=20)
+    consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
+    language: str = Field(default="de")
+
+
+@router.post("/from-layout/{layout_id}", response_model=DebateResponse, status_code=201)
+async def start_debate_from_layout(
+    layout_id: str,
+    body: StartFromLayoutBody,
+    background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
+    audit: AuditService = Depends(get_audit_service),
+    project_store: ProjectStore = Depends(get_project_store),
+) -> DebateResponse:
+    """Start a debate directly from a canvas layout.
+
+    Converts the layout to a WorkflowDefinition, creates a debate with
+    bundle-resolved agent profiles, and launches the workflow.
+    """
+    from backend.api.deps import get_blueprint_repository
+    from backend.blueprints.canvas_to_workflow import CanvasToWorkflowConverter, ConversionError
+    from backend.blueprints.repository import BlueprintRepository
+    from backend.services.debate_workflow import run_debate_workflow
+
+    repo = get_blueprint_repository()
+    store = get_debate_store_for_project(project_id, project_store)
+
+    layout = repo.get_layout(layout_id)
+    if not layout:
+        raise HTTPException(status_code=404, detail="Canvas layout not found")
+
+    try:
+        converter = CanvasToWorkflowConverter(repo)
+        wf = converter.convert(layout=layout)
+    except ConversionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    debate_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+
+    # Build request with bundle_ids
+    from backend.models.schemas import AgentConfig, CaseInput
+    from backend.models.schemas import DebateRequest as ReqModel
+
+    request = ReqModel(
+        case=CaseInput(text=body.case_text),
+        agent_profile=[],  # Will be overridden by bundle_ids
+        bundle_ids=body.bundle_ids,
+        max_rounds=body.max_rounds,
+        consensus_threshold=body.consensus_threshold,
+        language=body.language,
+        llm_profile_id=body.llm_profile_id,
+    )
+
+    debate = {
+        "debate_id": debate_id,
+        "status": DebateStatus.RUNNING,
+        "title": "",
+        "request": request,
+        "max_rounds": body.max_rounds,
+        "current_round": 0,
+        "rounds": [],
+        "created_at": now,
+        "updated_at": now,
+        "result": None,
+        "workflow_id": wf.id,
+    }
+    store.put(debate_id, debate)
+
+    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
+
+    return DebateResponse(debate_id=debate_id, status=DebateStatus.RUNNING, title="", created_at=now)
+
+
+@router.post("/from-workflow/{workflow_id}", response_model=DebateResponse, status_code=201)
+async def start_debate_from_workflow(
+    workflow_id: str,
+    body: StartFromWorkflowBody,
+    background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
+    audit: AuditService = Depends(get_audit_service),
+    project_store: ProjectStore = Depends(get_project_store),
+) -> DebateResponse:
+    """Start a debate from an existing WorkflowDefinition.
+
+    The workflow's wf-agent nodes (with bundle_id references) are resolved
+    during execution via the WorkflowCompiler.
+    """
+    from backend.api.deps import get_blueprint_repository
+    from backend.blueprints.repository import BlueprintRepository
+    from backend.services.debate_workflow import run_debate_workflow
+
+    repo = get_blueprint_repository()
+    store = get_debate_store_for_project(project_id, project_store)
+
+    wf = repo.get_workflow_definition(workflow_id)
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow definition not found")
+
+    # Extract bundle_ids from wf-agent nodes
+    bundle_ids = [n.bundle_id for n in wf.nodes if n.type == "wf-agent" and n.bundle_id]
+
+    from backend.models.schemas import AgentConfig, CaseInput
+    from backend.models.schemas import DebateRequest as ReqModel
+
+    request = ReqModel(
+        case=CaseInput(text=body.case_text),
+        agent_profile=[],
+        bundle_ids=bundle_ids,
+        max_rounds=body.max_rounds,
+        consensus_threshold=body.consensus_threshold,
+        language=body.language,
+    )
+
+    debate_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+
+    debate = {
+        "debate_id": debate_id,
+        "status": DebateStatus.RUNNING,
+        "title": "",
+        "request": request,
+        "max_rounds": body.max_rounds,
+        "current_round": 0,
+        "rounds": [],
+        "created_at": now,
+        "updated_at": now,
+        "result": None,
+        "workflow_id": wf.id,
+    }
+    store.put(debate_id, debate)
+
+    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
+
+    return DebateResponse(debate_id=debate_id, status=DebateStatus.RUNNING, title="", created_at=now)
 
 
 # ---------------------------------------------------------------------------

@@ -114,7 +114,8 @@ def extract_request_fields(req: object | dict) -> dict:
     Returns a dict with keys: case_text, max_rounds, consensus_threshold,
     enable_fact_check, enable_memory, llm_profile_id, prompt_variant,
     agent_persona_ids, language, document_ids, rag_auto_retrieve,
-    a2a_agents_raw, search_mode, agent_profile_list.
+    a2a_agents_raw, search_mode, agent_profile_list, bundle_ids,
+    enable_extra_rounds.
     """
     if hasattr(req, "case"):
         case_text = req.case.text
@@ -130,6 +131,7 @@ def extract_request_fields(req: object | dict) -> dict:
         rag_auto_retrieve = getattr(req, "rag_auto_retrieve", False)
         include_debate_results = getattr(req, "include_debate_results", False)
         a2a_agents_raw = getattr(req, "a2a_agents", [])
+        bundle_ids = getattr(req, "bundle_ids", [])
         raw_search_mode = getattr(req, "search_mode", None)
         if raw_search_mode is not None:
             search_mode = raw_search_mode.value if hasattr(raw_search_mode, "value") else str(raw_search_mode)
@@ -138,7 +140,7 @@ def extract_request_fields(req: object | dict) -> dict:
         else:
             search_mode = "off"
         enable_extra_rounds = getattr(req, "enable_extra_rounds", False)
-        agent_profile_list = [{"role": a.role.value, "llm_profile": a.llm_profile, "temperature": a.temperature} for a in req.agent_profile]
+        agent_profile_list = [{"role": a.role, "llm_profile": a.llm_profile, "temperature": a.temperature} for a in req.agent_profile]
     else:
         case_text = req.get("case", {}).get("text", "")
         max_rounds = req.get("max_rounds", 3)
@@ -153,6 +155,7 @@ def extract_request_fields(req: object | dict) -> dict:
         rag_auto_retrieve = req.get("rag_auto_retrieve", False)
         include_debate_results = req.get("include_debate_results", False)
         a2a_agents_raw = req.get("a2a_agents", [])
+        bundle_ids = req.get("bundle_ids", [])
         raw_search_mode = req.get("search_mode")
         if raw_search_mode:
             search_mode = raw_search_mode
@@ -187,6 +190,7 @@ def extract_request_fields(req: object | dict) -> dict:
         "a2a_agents_raw": a2a_agents_raw,
         "search_mode": search_mode,
         "agent_profile_list": agent_profile_list,
+        "bundle_ids": bundle_ids,
         "enable_extra_rounds": enable_extra_rounds,
     }
 
@@ -230,6 +234,49 @@ def build_a2a_config(a2a_agents_raw: list) -> dict:
             for a in a2a_agents_raw
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Bundle-based agent profile builder
+# ---------------------------------------------------------------------------
+
+
+def build_agent_profile_from_bundles(bundle_ids: list[str]) -> list[dict]:
+    """Build agent_profile list from AgentBundle IDs.
+
+    Each bundle resolves to an agent config with its LLM profile and role type.
+
+    Args:
+        bundle_ids: List of AgentBundle IDs.
+
+    Returns:
+        List of agent config dicts: [{role, llm_profile, temperature, bundle_id}, ...]
+    """
+    from backend.blueprints.repository import BlueprintRepository
+    from backend.blueprints.resolver import BundleResolver
+
+    repo = BlueprintRepository()
+    resolver = BundleResolver(repo)
+    profile = []
+
+    for bid in bundle_ids:
+        try:
+            bundle = repo.get_bundle(bid)
+            if not bundle:
+                logger.warning("Bundle '%s' not found, skipping", bid)
+                continue
+            resolved = resolver.resolve(bundle)
+            profile.append({
+                "role": resolved.role_type.id,
+                "llm_profile": resolved.llm_profile.id,
+                "temperature": resolved.llm_profile.temperature,
+                "bundle_id": bid,
+                "system_prompt": resolved.system_prompt,
+            })
+        except Exception as exc:
+            logger.warning("Failed to resolve bundle '%s': %s", bid, exc)
+
+    return profile
 
 
 # ---------------------------------------------------------------------------
@@ -596,9 +643,22 @@ async def run_debate_workflow(
         )
 
     # Build initial state for LangGraph
+    agent_profile = fields["agent_profile_list"]
+
+    # If bundle_ids are provided, override agent_profile with bundle-resolved configs
+    if fields.get("bundle_ids"):
+        bundle_profile = build_agent_profile_from_bundles(fields["bundle_ids"])
+        if bundle_profile:
+            agent_profile = bundle_profile
+            logger.info(
+                "Using %d bundle-resolved agent profiles for debate %s",
+                len(bundle_profile),
+                debate_id,
+            )
+
     initial_state = {
         "context": fields["case_text"],
-        "agent_profile": fields["agent_profile_list"],
+        "agent_profile": agent_profile,
         "max_rounds": fields["max_rounds"],
         "threshold": fields["consensus_threshold"],
         "enable_fact_check": fields["enable_fact_check"],
