@@ -584,6 +584,76 @@ export function saveWorkflowAsTemplate(wfId, body) {
   });
 }
 
+// ─── Agent Bundles ──────────────────────────────────────────────────
+
+/**
+ * List all agent bundles.
+ * @param {{ limit?: number, offset?: number, active_only?: boolean }} [opts]
+ * @returns {Promise<Array>}
+ */
+export function listAgentBundles({ limit = 100, offset = 0, active_only = false } = {}) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (active_only) params.set('active_only', 'true');
+  return request(`/api/v1/blueprints/bundles?${params.toString()}`);
+}
+
+/**
+ * Get a single agent bundle by ID.
+ * @param {string} bundleId
+ * @returns {Promise<Object>}
+ */
+export function getAgentBundle(bundleId) {
+  return request(`/api/v1/blueprints/bundles/${bundleId}`);
+}
+
+/**
+ * Create a new agent bundle.
+ * @param {Object} bundle
+ * @returns {Promise<Object>}
+ */
+export function createAgentBundle(bundle) {
+  return request('/api/v1/blueprints/bundles', {
+    method: 'POST',
+    body: JSON.stringify(bundle),
+  });
+}
+
+/**
+ * Update an existing agent bundle.
+ * @param {string} bundleId
+ * @param {Object} bundle
+ * @returns {Promise<Object>}
+ */
+export function updateAgentBundle(bundleId, bundle) {
+  return request(`/api/v1/blueprints/bundles/${bundleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(bundle),
+  });
+}
+
+/**
+ * Delete an agent bundle.
+ * @param {string} bundleId
+ * @returns {Promise<void>}
+ */
+export function deleteAgentBundle(bundleId) {
+  return request(`/api/v1/blueprints/bundles/${bundleId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Resolve an agent bundle — returns full config with all references.
+ * @param {string} bundleId
+ * @returns {Promise<Object>}
+ */
+export function resolveAgentBundle(bundleId) {
+  return request(`/api/v1/blueprints/bundles/${bundleId}/resolve`);
+}
+
 // ─── Tone Profiles ───────────────────────────────────────────────
 
 /**

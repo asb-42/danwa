@@ -16,6 +16,7 @@
   import RoleTypeForm from './forms/RoleTypeForm.svelte';
   import WorkflowNodeForm from './forms/WorkflowNodeForm.svelte';
   import ToneProfileForm from './forms/ToneProfileForm.svelte';
+  import BundleAgentForm from './forms/BundleAgentForm.svelte';
 
   let t = $derived((key) => $i18n[key] || key);
 
@@ -55,6 +56,8 @@
         <RoleTypeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'wf-tone-profile'}
         <ToneProfileForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
+      {:else if nodeType === 'wf-agent'}
+        <BundleAgentForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if ['wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate'].includes(nodeType)}
         <WorkflowNodeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else}
