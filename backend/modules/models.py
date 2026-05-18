@@ -26,6 +26,7 @@ class ModuleType(StrEnum):
     ROLE_TYPE = "role-type"
     PROMPT_VARIANT = "prompt-variant"
     BUNDLE = "bundle"
+    LANGUAGE_PACK = "language-pack"
 
 
 class ModuleCategory(StrEnum):
@@ -37,6 +38,7 @@ class ModuleCategory(StrEnum):
     TONE_PROFILES = "tone-profiles"
     ROLE_TYPES = "role-types"
     BUNDLES = "bundles"
+    TRANSLATIONS = "translations"
 
 
 class ModuleFile(BaseModel):
@@ -127,6 +129,17 @@ class WorkflowTemplateData(BaseModel):
     category: str = "system"
     tags: list[str] = Field(default_factory=list)
     template_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class LanguagePackData(BaseModel):
+    """Profile data for a language-pack module."""
+
+    locale: str                          # Target locale code (e.g. "de", "es", "de-custom")
+    source_locale: str = "en"            # Source locale for translations
+    key_count: int = 0                   # Number of translation keys
+    coverage: float = 0.0                # Coverage ratio vs. source locale (0.0-1.0)
+    ui_strings_file: str = "ui_strings.json"
+    module_translations: list[str] = Field(default_factory=list)  # Paths to translated module files
 
 
 class ModuleManifest(BaseModel):
