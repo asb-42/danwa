@@ -102,6 +102,7 @@ start_backend() {
     cd "$PROJECT_DIR"
     export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
     export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
+    export PATH="$HOME/.local/bin:$PATH"
     nohup uv run uvicorn backend.main:app \
         --host 0.0.0.0 \
         --port "$BACKEND_PORT" \
@@ -280,6 +281,288 @@ dashboard() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════
+# Documentation
+# ═══════════════════════════════════════════════════════════════════════
+
+DOCS_DIR="$PROJECT_DIR/docs"
+
+doc_api() {
+    log_step "API-Referenz generieren (OpenAPI → Markdown) …"
+    cd "$PROJECT_DIR"
+    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
+    uv run python scripts/export_openapi.py --both 2>&1
+    if [[ $? -eq 0 ]]; then
+        log_ok "API-Referenz generiert: $DOCS_DIR/api-reference.md"
+    else
+        log_error "API-Referenz fehlgeschlagen"
+        return 1
+    fi
+}
+
+doc_pdoc() {
+    log_step "Python API-Doku generieren (pdoc) …"
+    cd "$PROJECT_DIR"
+    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
+
+    if ! uv run python -c "import pdoc" 2>/dev/null; then
+        log_warn "pdoc nicht installiert — installiere …"
+        uv add --dev pdoc 2>&1
+    fi
+
+    local output_dir="$DOCS_DIR/api"
+    mkdir -p "$output_dir"
+    uv run pdoc backend/ -o "$output_dir" --docformat google 2>&1
+    if [[ $? -eq 0 ]]; then
+        log_ok "pdoc generiert: $output_dir/index.html"
+    else
+        log_error "pdoc fehlgeschlagen"
+        return 1
+    fi
+}
+
+doc_architecture() {
+    log_step "Architektur-Doku generieren (GitNexus Wiki) …"
+    cd "$PROJECT_DIR"
+
+    local output_dir="$DOCS_DIR/architecture"
+    mkdir -p "$output_dir"
+
+    if command -v npx &>/dev/null; then
+        npx gitnexus wiki --output "$output_dir" 2>&1
+        if [[ $? -eq 0 ]]; then
+            log_ok "GitNexus Wiki generiert: $output_dir/"
+        else
+            log_warn "GitNexus Wiki fehlgeschlagen — versuche Index zu aktualisieren …"
+            npx gitnexus analyze 2>&1
+            npx gitnexus wiki --output "$output_dir" 2>&1
+        fi
+    else
+        log_error "npx nicht verfügbar — bitte Node.js installieren"
+        return 1
+    fi
+}
+
+doc_update() {
+    local mode="${1:-all}"
+    local dry_run="${2:-false}"
+
+    log_step "Dokumentation aktualisieren (LLM-basiert) …"
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_info "Dry-Run: Zeige Änderungen ohne zu schreiben"
+    fi
+
+    # Ermittle geänderte Dateien seit letztem Doc-Update
+    local last_update_marker="$DOCS_DIR/.last-doc-update"
+    if [[ -f "$last_update_marker" ]]; then
+        local since
+        since="$(cat "$last_update_marker")"
+        log_info "Änderungen seit: $since"
+    else
+        log_info "Kein letztes Update gefunden — verwende letzte 10 Commits"
+        since="HEAD~10"
+    fi
+
+    local changed_files
+    changed_files="$(git diff "$since" --name-only -- '*.py' '*.svelte' '*.js' '*.ts' 2>/dev/null)" || true
+
+    if [[ -z "$changed_files" ]]; then
+        log_ok "Keine relevanten Änderungen seit letztem Doc-Update"
+        return 0
+    fi
+
+    log_info "Geänderte Dateien:"
+    echo "$changed_files" | while read -r f; do
+        echo "  - $f"
+    done
+
+    # Prompt generieren
+    local prompt_file="/tmp/danwa-doc-prompt.txt"
+    cat > "$prompt_file" << 'PROMPT_EOF'
+Du bist ein technischer Redakteur für das Danwa-Projekt.
+
+Folgende Dateien haben sich geändert:
+PROMPT_EOF
+
+    echo "$changed_files" | while read -r f; do
+        echo "- $f" >> "$prompt_file"
+    done
+
+    echo "" >> "$prompt_file"
+
+    if [[ "$mode" == "tech" || "$mode" == "all" ]]; then
+        echo "Aktualisiere die folgende technische Dokumentation basierend auf diesen Änderungen:" >> "$prompt_file"
+        echo "" >> "$prompt_file"
+        echo "[Inhalt von docs/technical_documentation.md]" >> "$prompt_file"
+    fi
+
+    if [[ "$mode" == "user" || "$mode" == "all" ]]; then
+        echo "" >> "$prompt_file"
+        echo "Aktualisiere das folgende User Manual basierend auf diesen Änderungen:" >> "$prompt_file"
+        echo "" >> "$prompt_file"
+        echo "[Inhalt von docs/user_manual.md]" >> "$prompt_file"
+    fi
+
+    echo "" >> "$prompt_file"
+    cat >> "$prompt_file" << 'PROMPT_EOF'
+
+Regeln:
+- Behalte die bestehende Struktur bei
+- Füge neue Sections hinzu wo nötig
+- Markiere geänderte Stellen mit <!-- UPDATED -->
+- Entferne veraltete Informationen
+- Output: Nur die aktualisierte Markdown-Datei
+PROMPT_EOF
+
+    log_info "Prompt generiert: $prompt_file"
+    log_warn "LLM-Integration noch nicht implementiert — manuell ausführen oder Utility-LLM anbinden"
+    log_info "Prompt-Inhalt:"
+    cat "$prompt_file"
+
+    if [[ "$dry_run" != "true" ]]; then
+        date -Iseconds > "$last_update_marker"
+        log_ok "Update-Marker gesetzt: $last_update_marker"
+    fi
+}
+
+doc_all() {
+    log_header "Alle Dokumentation generieren"
+    doc_api
+    doc_pdoc
+    doc_architecture
+    log_ok "Alle Dokumentation generiert"
+}
+
+doc_help() {
+    log_header "Dokumentation Commands"
+    echo ""
+    echo "  ./manage.sh doc              Übersicht aller Doc-Commands"
+    echo "  ./manage.sh doc-api          OpenAPI → docs/api-reference.md"
+    echo "  ./manage.sh doc-pdoc         Python Docstrings → docs/api/"
+    echo "  ./manage.sh doc-architecture GitNexus Wiki → docs/architecture/"
+    echo "  ./manage.sh doc-update       LLM-basierte Doc-Updates"
+    echo "  ./manage.sh doc-update tech  Nur technische Doku"
+    echo "  ./manage.sh doc-update user  Nur User Manual"
+    echo "  ./manage.sh doc-update --dry-run Vorschau ohne Änderungen"
+    echo "  ./manage.sh doc-all          Alle Doc-Generierungen"
+    echo "  ./manage.sh adr-new \"Titel\"  Neue ADR erstellen"
+    echo "  ./manage.sh adr-check        Prüfen ob ADRs fehlen"
+    echo ""
+}
+
+# ═══════════════════════════════════════════════════════════════════════
+# ADR (Architecture Decision Records)
+# ═══════════════════════════════════════════════════════════════════════
+
+ADR_DIR="$DOCS_DIR/adr"
+
+adr_new() {
+    local title="${1:-}"
+    if [[ -z "$title" ]]; then
+        log_error "Titel erforderlich: ./manage.sh adr-new \"Titel\""
+        return 1
+    fi
+
+    mkdir -p "$ADR_DIR"
+
+    # Nächste Nummer finden (nur NNN*-*.md Pattern, mindestens 3 Ziffern gefolgt von Bindestrich und Buchstabe)
+    local max_num=0
+    for f in "$ADR_DIR"/[0-9]*.md; do
+        local bname
+        bname="$(basename "$f")"
+        if [[ "$bname" =~ ^[0-9]{3,4}-[a-zA-Z] ]]; then
+            local num
+            num="${bname%%-*}"
+            # Remove leading zeros for comparison
+            num=$((10#$num))
+            if [[ "$num" -gt "$max_num" ]]; then
+                max_num="$num"
+            fi
+        fi
+    done
+    local next_num=$(( max_num + 1 ))
+    local padded
+    padded="$(printf "%03d" "$next_num")"
+    local filename="$ADR_DIR/${padded}-${title// /-}.md"
+
+    # Prüfen ob Datei bereits existiert
+    if [[ -f "$filename" ]]; then
+        log_error "ADR existiert bereits: $filename"
+        return 1
+    fi
+
+    cat > "$filename" << EOF
+# ADR-${padded}: ${title}
+
+**Status:** Proposed
+**Date:** $(date -I)
+**Context:** Was war das Problem?
+
+<!-- Beschreibe den Hintergrund und das Problem, das diese Entscheidung erfordert hat -->
+
+**Decision:** Was wurde entschieden?
+
+<!-- Beschreibe die getroffene Entscheidung -->
+
+**Consequences:** Was sind die Folgen?
+
+<!-- Beschreibe die positiven und negativen Konsequenzen -->
+
+**Affected Files:**
+
+<!-- Liste der betroffenen Dateien -->
+
+**Alternatives Considered:**
+
+<!-- Welche Alternativen wurden geprüft und warum verworfen? -->
+EOF
+
+    log_ok "ADR erstellt: $filename"
+}
+
+adr_check() {
+    log_step "Prüfe fehlende ADRs …"
+
+    # Definiere Kern-Verzeichnisse die Architektur-Änderungen darstellen
+    local core_dirs=(
+        "backend/api/routers"
+        "backend/services"
+        "backend/blueprints"
+        "backend/modules"
+        "backend/models"
+        "backend/config"
+    )
+
+    local last_adr_check="$DOCS_DIR/.last-adr-check"
+    local since="HEAD~20"
+    if [[ -f "$last_adr_check" ]]; then
+        since="$(cat "$last_adr_check")"
+    fi
+
+    local changes_found=false
+    for dir in "${core_dirs[@]}"; do
+        local changed
+        changed="$(git diff "$since" --name-only -- "${dir}/*.py" 2>/dev/null)" || true
+        if [[ -n "$changed" ]]; then
+            changes_found=true
+            log_warn "Architektur-Änderungen in: $dir"
+            echo "$changed" | while read -r f; do
+                echo "  - $f"
+            done
+        fi
+    done
+
+    if [[ "$changes_found" == "false" ]]; then
+        log_ok "Keine Architektur-Änderungen seit letztem Check"
+    else
+        log_warn "Prüfe ob neue ADRs für diese Änderungen erforderlich sind …"
+        log_info "Erstelle bei Bedarf eine neue ADR: ./manage.sh adr-new \"Titel\""
+    fi
+
+    date -Iseconds > "$last_adr_check"
+}
+
+# ═══════════════════════════════════════════════════════════════════════
 # Clean
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -359,6 +642,36 @@ case "$cmd" in
     clean)
         clean_caches
         ;;
+    doc)
+        doc_help
+        ;;
+    doc-api)
+        doc_api
+        ;;
+    doc-pdoc)
+        doc_pdoc
+        ;;
+    doc-architecture)
+        doc_architecture
+        ;;
+    doc-update)
+        mode="${2:-all}"
+        dry="false"
+        if [[ "$mode" == "--dry-run" ]]; then
+            dry="true"
+            mode="all"
+        fi
+        doc_update "$mode" "$dry"
+        ;;
+    doc-all)
+        doc_all
+        ;;
+    adr-new)
+        adr_new "${2:-}"
+        ;;
+    adr-check)
+        adr_check
+        ;;
     test)
         log_step "Tests ausführen …"
         cd "$PROJECT_DIR"
@@ -381,6 +694,14 @@ case "$cmd" in
         echo "  ./manage.sh logs fe      Frontend-Logs"
         echo "  ./manage.sh clean        Caches aufräumen"
         echo "  ./manage.sh test         Tests ausführen"
+        echo "  ./manage.sh doc          Dokumentation Commands"
+        echo "  ./manage.sh doc-api      OpenAPI → Markdown"
+        echo "  ./manage.sh doc-pdoc     Docstrings → HTML"
+        echo "  ./manage.sh doc-architecture  GitNexus Wiki"
+        echo "  ./manage.sh doc-update   LLM-basierte Updates"
+        echo "  ./manage.sh doc-all      Alle Docs generieren"
+        echo "  ./manage.sh adr-new      Neue ADR erstellen"
+        echo "  ./manage.sh adr-check    ADR-Check"
         ;;
     *)
         log_error "Unbekannter Befehl: '$cmd'. Versuche: ./manage.sh help"
