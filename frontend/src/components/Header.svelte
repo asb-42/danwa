@@ -1,16 +1,10 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { healthStatus, appVersion } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
 
-  const dispatch = createEventDispatcher();
-  let { isAssistantOpen } = $props();
-
-  function handleToggle() {
-    dispatch('toggle');
-  }
+  let { isAssistantOpen, onToggle } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -64,7 +58,7 @@
     <button
       class="kitsune-toggle"
       class:active={isAssistantOpen}
-      onclick={handleToggle}
+      on:click={onToggle}
       title="Danwa Kitsune öffnen/schließen"
       aria-label="Danwa Kitsune"
     >
