@@ -45,7 +45,7 @@ import ToastContainer from './components/ToastContainer.svelte';
     routeParams.set(parsed.params);
   }
 
-  onMount(() => {
+  onMount(async () => {
     // Set initial route from hash
     applyRoute();
 
