@@ -477,7 +477,6 @@ async def continue_debate(
 
     from backend.models.schemas import (
         AgentConfig,
-        AgentRole,
         CaseInput,
     )
     from backend.models.schemas import (
@@ -487,10 +486,10 @@ async def continue_debate(
     new_request = ReqModel(
         case=CaseInput(text=followup_prompt),
         agent_profile=[
-            AgentConfig(role=AgentRole.STRATEGIST, **inherit_personas.get("strategist", {"llm_profile": inherit_llm})),
-            AgentConfig(role=AgentRole.CRITIC, **inherit_personas.get("critic", {"llm_profile": inherit_llm})),
-            AgentConfig(role=AgentRole.OPTIMIZER, **inherit_personas.get("optimizer", {"llm_profile": inherit_llm})),
-            AgentConfig(role=AgentRole.MODERATOR, **inherit_personas.get("moderator", {"llm_profile": inherit_llm})),
+            AgentConfig(role="strategist", **inherit_personas.get("strategist", {"llm_profile": inherit_llm})),
+            AgentConfig(role="critic", **inherit_personas.get("critic", {"llm_profile": inherit_llm})),
+            AgentConfig(role="optimizer", **inherit_personas.get("optimizer", {"llm_profile": inherit_llm})),
+            AgentConfig(role="moderator", **inherit_personas.get("moderator", {"llm_profile": inherit_llm})),
         ],
         max_rounds=inherit_max_rounds,
         consensus_threshold=inherit_consensus_threshold,
@@ -611,16 +610,16 @@ async def fork_from_consensus(
         f"Original-Falltext:\n{original_case}"
     )
 
-    from backend.models.schemas import AgentConfig, AgentRole, CaseInput
+    from backend.models.schemas import AgentConfig, CaseInput
     from backend.models.schemas import DebateRequest as ReqModel
 
     new_request = ReqModel(
         case=CaseInput(text=fork_case_text),
         agent_profile=[
-            AgentConfig(role=AgentRole.STRATEGIST, **inherit_personas.get("strategist", {"llm_profile": inherit_llm})),
-            AgentConfig(role=AgentRole.CRITIC, **inherit_personas.get("critic", {"llm_profile": inherit_llm})),
-            AgentConfig(role=AgentRole.OPTIMIZER, **inherit_personas.get("optimizer", {"llm_profile": inherit_llm})),
-            AgentConfig(role=AgentRole.MODERATOR, **inherit_personas.get("moderator", {"llm_profile": inherit_llm})),
+            AgentConfig(role="strategist", **inherit_personas.get("strategist", {"llm_profile": inherit_llm})),
+            AgentConfig(role="critic", **inherit_personas.get("critic", {"llm_profile": inherit_llm})),
+            AgentConfig(role="optimizer", **inherit_personas.get("optimizer", {"llm_profile": inherit_llm})),
+            AgentConfig(role="moderator", **inherit_personas.get("moderator", {"llm_profile": inherit_llm})),
         ],
         max_rounds=inherit_max_rounds,
         consensus_threshold=inherit_threshold,

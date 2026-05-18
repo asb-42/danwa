@@ -253,7 +253,7 @@ async def run_agent_node(state: DebateState) -> dict:
         if debate_id:
             oob_inputs = get_oob_for_debate(debate_id)
             # Filter for this agent role and round
-            relevant_oob = [oob for oob in oob_inputs if _is_oob_relevant(oob, role, state["current_round"])]
+            relevant_oob = [oob for oob in oob_inputs if _is_oob_relevant(oob, role, state["current_round"], state)]
             if relevant_oob:
                 oob_context = "\n\n--- ADDITIONAL CONTEXT (User) ---\n"
                 oob_context += "\n".join(f"- {oob['content']}" for oob in relevant_oob)
@@ -962,10 +962,20 @@ def should_continue_rounds(state: DebateState) -> str:
 # OOB helper
 # ---------------------------------------------------------------------------
 
-_AGENT_ORDER = ["strategist", "critic", "optimizer", "moderator"]
+#: Legacy agent order — used as fallback for OOB routing when state
+#: does not provide an explicit agent_profile list.
+_LEGACY_AGENT_ORDER = ["strategist", "critic", "optimizer", "moderator"]
 
 
-def _is_oob_relevant(oob: dict, role: str, current_round: int) -> bool:
+def _get_agent_order(state: dict) -> list[str]:
+    """Get the current agent execution order from state, or fall back to legacy order."""
+    agent_profile = state.get("agent_profile", [])
+    if agent_profile:
+        return [a.get("role", "") if isinstance(a, dict) else a for a in agent_profile]
+    return _LEGACY_AGENT_ORDER
+
+
+def _is_oob_relevant(oob: dict, role: str, current_round: int, state: dict | None = None) -> bool:
     """Check if an OOB input is relevant for the given agent role and round."""
     target = oob.get("target", {})
     target_type = target.get("type", "")
@@ -974,13 +984,14 @@ def _is_oob_relevant(oob: dict, role: str, current_round: int) -> bool:
         return target.get("agent_role") == role and (target.get("round") is None or target.get("round") == current_round)
 
     if target_type == "next_agent":
+        agent_order = _get_agent_order(state) if state else _LEGACY_AGENT_ORDER
         prev_role = target.get("current_agent_role", "")
-        idx = _AGENT_ORDER.index(prev_role) if prev_role in _AGENT_ORDER else -1
-        next_role = _AGENT_ORDER[idx + 1] if 0 <= idx < len(_AGENT_ORDER) - 1 else ""
+        idx = agent_order.index(prev_role) if prev_role in agent_order else -1
+        next_role = agent_order[idx + 1] if 0 <= idx < len(agent_order) - 1 else ""
         if not next_role:
             # If prev_role is unknown (e.g. "input") or is the last agent,
             # default to the first agent in the order so the OOB doesn't get lost
-            next_role = _AGENT_ORDER[0]
+            next_role = agent_order[0]
         return role == next_role
 
     if target_type == "all_future":

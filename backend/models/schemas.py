@@ -21,6 +21,12 @@ class DebateStatus(StrEnum):
 
 
 class AgentRole(StrEnum):
+    """Deprecated: Hardcoded agent roles. Use RoleType.id instead.
+
+    Kept for backward compatibility with existing API clients.
+    New clients should pass role as a string referencing a RoleType.id.
+    """
+
     STRATEGIST = "strategist"
     CRITIC = "critic"
     OPTIMIZER = "optimizer"
@@ -41,9 +47,13 @@ class SearchMode(StrEnum):
 
 
 class AgentConfig(BaseModel):
-    """Configuration for a single debate agent."""
+    """Configuration for a single debate agent.
 
-    role: AgentRole
+    The ``role`` field accepts any string (typically a RoleType.id).
+    For backward compatibility, legacy AgentRole enum values are also accepted.
+    """
+
+    role: str  # RoleType.id (e.g. "strategist", "critic", "mediator", etc.)
     llm_profile: str = "default"
     temperature: float = 0.7
 
@@ -51,7 +61,7 @@ class AgentConfig(BaseModel):
 class AgentOutput(BaseModel):
     """Output produced by one agent in one round."""
 
-    role: AgentRole
+    role: str  # RoleType.id
     content: str
     tokens_used: int = 0
 
@@ -78,7 +88,16 @@ class DebateRequest(BaseModel):
             AgentConfig(role=AgentRole.CRITIC),
             AgentConfig(role=AgentRole.OPTIMIZER),
             AgentConfig(role=AgentRole.MODERATOR),
-        ]
+        ],
+        description=(
+            "List of agent configurations. Each role is a RoleType.id. "
+            "Default: legacy 4-role setup (strategist, critic, optimizer, moderator). "
+            "For custom roles, provide explicit list with bundle_id references."
+        ),
+    )
+    bundle_ids: list[str] = Field(
+        default_factory=list,
+        description="AgentBundle IDs to use for debate agents. If provided, overrides agent_profile defaults.",
     )
     max_rounds: int = Field(default=3, ge=1, le=20)
     consensus_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
