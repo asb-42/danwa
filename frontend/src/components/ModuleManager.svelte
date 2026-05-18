@@ -32,7 +32,7 @@
   let editError = $state(null);
 
   const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
-  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'tone-profiles', 'workflows'];
+  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'tone-profiles', 'workflows', 'translations'];
   const CATEGORY_LABELS = {
     'agents': 'Agent Personas',
     'llm-profiles': 'LLM Profiles',
@@ -40,6 +40,7 @@
     'tone-profiles': 'Tone Profiles',
     'prompts': 'Prompt Variants',
     'workflows': 'Workflows',
+    'translations': '🌐 Translations',
   };
 
   const groupedModules = $derived.by(() => {
@@ -84,7 +85,16 @@
       if (!profile) return;
       editingModule = mod;
       editProfileType = mod.type || '';
-      editForm = { ...profile };
+      if (mod.type === 'language-pack') {
+        editForm = {
+          locale: mod.language || '',
+          source_locale: 'en',
+          key_count: profile ? Object.keys(profile).length : 0,
+          coverage: profile ? `${Object.keys(profile).length} keys` : '0 keys',
+        };
+      } else {
+        editForm = { ...profile };
+      }
       editError = null;
       editModalOpen = true;
     } catch (e) {
@@ -102,6 +112,10 @@
 
   async function saveEdit() {
     if (!editingModule) return;
+    if (editingModule.type === 'language-pack') {
+      closeEdit();
+      return;
+    }
     editSaving = true;
     editError = null;
     try {
@@ -242,6 +256,14 @@
     if (type === 'prompt-variant') {
       return [
         { key: 'content', label: 'Prompt Content (Markdown)', type: 'markdown' },
+      ];
+    }
+    if (type === 'language-pack') {
+      return [
+        { key: 'locale', label: 'Locale', type: 'text', readonly: true },
+        { key: 'source_locale', label: 'Source Locale', type: 'text', readonly: true },
+        { key: 'key_count', label: 'Translation Keys', type: 'number', readonly: true },
+        { key: 'coverage', label: 'Coverage', type: 'text', readonly: true },
       ];
     }
     return [];
@@ -408,6 +430,12 @@
         {#if editProfileType === 'workflow-template'}
           <div class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
             Workflow templates are edited visually in the Blueprint Canvas. Below you can only edit basic metadata.
+          </div>
+        {/if}
+
+        {#if editProfileType === 'language-pack'}
+          <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+            Language packs contain UI translations managed via the Translation Dashboard. Strings are read-only here.
           </div>
         {/if}
 
