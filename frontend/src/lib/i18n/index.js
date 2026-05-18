@@ -10,7 +10,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, RTL_LOCALES, customLocales, getLocaleName } from './config.js';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, RTL_LOCALES, customLocales, getLocaleName, registerCustomLocale } from './config.js';
 
 // Eagerly import the default locale to avoid race condition on first render.
 import defaultDict from './loaders/de.js';
@@ -228,4 +228,28 @@ export function formatRelativeTime(value, unit, options = {}) {
  */
 export function formatList(items) {
   return new Intl.ListFormat(currentLocale, { type: 'conjunction' }).format(items);
+}
+
+/**
+ * Discover installed language-pack modules and register them as custom locales.
+ * Called once at app startup.
+ */
+export async function discoverLanguagePacks() {
+  try {
+    const res = await fetch('/api/v1/modules?category=translations');
+    if (!res.ok) return;
+    const modules = await res.json();
+    for (const mod of modules) {
+      if (mod.type !== 'language-pack') continue;
+      const locale = mod.language || mod.module_id.replace(/^lang-/, '').replace(/-[^-]+$/, '');
+      if (!locale || SUPPORTED_LOCALES.includes(locale)) continue;
+      if (customLocales.has(locale)) continue;
+
+      const name = mod.name?.en || mod.name?.[Object.keys(mod.name || {})[0]] || locale;
+      registerCustomLocale({ locale, name, is_rtl: RTL_LOCALES.has(locale) });
+      console.log(`[i18n] Registered language pack: ${locale} (${name})`);
+    }
+  } catch (e) {
+    console.warn('[i18n] Failed to discover language packs:', e);
+  }
 }

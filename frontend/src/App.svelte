@@ -4,7 +4,7 @@
   import { getHealth } from './lib/api.js';
   import { healthStatus, appVersion } from './lib/stores.js';
   import { getVersion } from './lib/api.js';
-  import { i18n } from './lib/i18n/index.js';
+  import { i18n, discoverLanguagePacks } from './lib/i18n/index.js';
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
   import DebateView from './views/DebateView.svelte';
@@ -56,6 +56,9 @@ import ToastContainer from './components/ToastContainer.svelte';
     window.addEventListener('hashchange', onHashChange);
 
     // Initialize i18n from URL param, localStorage, or default
+    // Discover language packs first so custom locales are available
+    await discoverLanguagePacks();
+
     const urlParams = new URLSearchParams(window.location.search);
     const urlLang = urlParams.get('lang');
     const storedLang = localStorage.getItem('locale');

@@ -193,15 +193,29 @@ async def get_translations(
     locale: str,
     namespace: str = Query("global"),
     keys: str | None = Query(None, description="Komma-separierte Liste von Keys"),
+    merge_langpacks: bool = Query(True, description="Merge language-pack namespaces"),
     svc: UITranslationService = Depends(get_i18n_service),
 ) -> dict[str, Any]:
-    """Übersetzungen für eine Sprache abrufen."""
+    """Übersetzungen für eine Sprache abrufen.
+
+    When merge_langpacks is True (default), strings from language-pack
+    namespaces (langpack:*) are merged on top of the global namespace.
+    """
     if locale not in DEFAULT_LOCALES:
         custom = svc.get_custom_locales()
         if not any(c["locale"] == locale for c in custom):
-            return {"locale": locale, "namespace": namespace, "translations": {}}
+            # Still check for language packs even if locale is not registered
+            if not merge_langpacks:
+                return {"locale": locale, "namespace": namespace, "translations": {}}
     key_list = keys.split(",") if keys else None
     result = svc.resolve_bulk(locale, namespace, key_list)
+
+    # Merge language-pack namespaces on top
+    if merge_langpacks:
+        langpack_strings = svc.resolve_bulk_for_locale(locale, prefix="langpack:")
+        # Langpack strings override global
+        result = {**result, **langpack_strings}
+
     return {"locale": locale, "namespace": namespace, "translations": result}
 
 

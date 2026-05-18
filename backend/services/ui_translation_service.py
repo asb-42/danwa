@@ -253,6 +253,39 @@ class UITranslationService:
             self._locales_cache[locale].update(result)
         return result
 
+    def resolve_bulk_for_locale(self, locale: str, prefix: str = "langpack:") -> dict[str, str]:
+        """Resolve all translations for a locale from namespaces matching a prefix.
+
+        Merges strings from ALL matching namespaces, with later namespaces
+        overriding earlier ones (alphabetical order).
+
+        Args:
+            locale: Target locale code (e.g. 'de', 'de-custom')
+            prefix: Namespace prefix to match (e.g. 'langpack:')
+
+        Returns:
+            Merged dict of key-value pairs
+        """
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT namespace, key, value FROM ui_translations WHERE locale = ? AND namespace LIKE ?",
+            (locale, f"{prefix}%"),
+        ).fetchall()
+        conn.close()
+
+        # Group by namespace, then merge in alphabetical order
+        by_namespace: dict[str, dict[str, str]] = {}
+        for row in rows:
+            ns = row["namespace"]
+            if ns not in by_namespace:
+                by_namespace[ns] = {}
+            by_namespace[ns][row["key"]] = row["value"]
+
+        merged: dict[str, str] = {}
+        for ns in sorted(by_namespace.keys()):
+            merged.update(by_namespace[ns])
+        return merged
+
     def get_all_keys(self, namespace: str = "global") -> list[str]:
         """Liste aller bekannten Keys aus DB (alle Locales) + bundled."""
         conn = self._get_conn()
