@@ -3,15 +3,16 @@
 Provides a dedicated "Danwa Kitsune" persona that answers questions about
 the system, explains features, and helps users navigate the application.
 
-System prompt is loaded from ``config/prompts/kitsune/`` (SSOT, versionable,
-translatable).  English is the source language; translations follow the
-standard i18n workflow.
+System prompt is loaded from ``config/prompts/kitsune/kitsune.md`` (SSOT,
+versionable, English source).  Translations are generated on-demand via
+``TranslationService`` and cached in ``blueprints.db``.
 
 Uses the configured Service LLM (utility LLM) for responses.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 import uuid
@@ -80,39 +81,94 @@ Danwa is a multi-agent debate system that uses AI agents to analyze, critique, a
 - Respond in the language of the question
 """
 
+# In-memory cache for translated Kitsune prompts
+# Key: language code, Value: (prompt_text, source_hash)
+_kitsune_prompt_cache: dict[str, tuple[str, str]] = {}
+
+
+def _get_source_hash(content: str) -> str:
+    """Compute SHA256 hash of prompt content."""
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
 
 def load_kitsune_prompt(language: str = "en") -> str:
-    """Load Kitsune system prompt from config/prompts/kitsune/.
+    """Load Kitsune system prompt, translating if necessary.
 
-    Tries language-specific file first (e.g. ``kitsune-de.md``), then
-    falls back to the English source file (``kitsune.md``).
+    For English: loads directly from ``kitsune.md``.
+    For other languages: checks DB translation cache, then translates
+    on-demand via ``TranslationService``. Falls back to English source
+    if translation fails.
 
     Args:
         language: Language code (e.g. 'en', 'de', 'fr').
 
     Returns:
-        System prompt text.
+        System prompt text in the requested language.
     """
-    prompt_dir = _KITSUNE_PROMPT_DIR
+    # English is the source — no translation needed
+    if language == "en":
+        return _load_english_prompt()
 
-    # Try language-specific file first
-    if language and language != "en":
-        lang_file = prompt_dir / f"kitsune-{language}.md"
-        if lang_file.exists():
-            try:
-                return lang_file.read_text(encoding="utf-8").strip()
-            except OSError as e:
-                logger.warning(f"Failed to read {lang_file}: {e}")
+    # Load source and compute hash
+    source_content = _load_english_prompt()
+    source_hash = _get_source_hash(source_content)
 
-    # Fallback to English source
-    base_file = prompt_dir / "kitsune.md"
+    # Check in-memory cache first
+    cached = _kitsune_prompt_cache.get(language)
+    if cached and cached[1] == source_hash:
+        return cached[0]
+
+    # Try DB translation cache via TranslationService
+    try:
+        from backend.services.translation_service import TranslationService
+
+        trans_svc = TranslationService()
+
+        # Check if translation already exists in DB
+        existing = trans_svc.get_translation("kitsune", "system", language)
+        if existing and existing.translated_content and existing.source_hash == source_hash:
+            _kitsune_prompt_cache[language] = (existing.translated_content, source_hash)
+            return existing.translated_content
+
+        # Import source content if not in DB
+        if source_content:
+            trans_svc.import_source_content(
+                module_id="kitsune",
+                file_path="system",
+                content=source_content,
+            )
+
+        # Translate on-demand
+        result = trans_svc.translate_module(
+            module_id="kitsune",
+            target_language=language,
+            force=False,
+            auto_approve=True,
+            quality_threshold=0.5,
+        )
+
+        if result.status in ("ok", "partial") and result.files_translated > 0:
+            entry = trans_svc.get_translation("kitsune", "system", language)
+            if entry and entry.translated_content:
+                _kitsune_prompt_cache[language] = (entry.translated_content, source_hash)
+                return entry.translated_content
+    except Exception:
+        logger.debug("Translation failed for Kitsune prompt (%s)", language, exc_info=True)
+
+    # Fallback: return English source
+    logger.warning("No translation available for Kitsune prompt (%s), using English source", language)
+    _kitsune_prompt_cache[language] = (source_content, source_hash)
+    return source_content
+
+
+def _load_english_prompt() -> str:
+    """Load the English source prompt from config/prompts/kitsune/kitsune.md."""
+    base_file = _KITSUNE_PROMPT_DIR / "kitsune.md"
     if base_file.exists():
         try:
             return base_file.read_text(encoding="utf-8").strip()
         except OSError as e:
             logger.warning(f"Failed to read {base_file}: {e}")
-
-    # Last resort: hardcoded fallback
     logger.warning("Using hardcoded fallback prompt for Kitsune")
     return _FALLBACK_PROMPT
 
