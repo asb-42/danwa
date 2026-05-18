@@ -458,3 +458,57 @@ class ToneProfile(BaseModel):
     is_system: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# AgentBundle — higher-level composition for Workflow-Nodes
+# ---------------------------------------------------------------------------
+
+
+class AgentBundle(BaseModel):
+    """A reusable composition of LLM + Role-Type + Persona + Prompt + Tone Profile.
+
+    Represents a complete debate agent configuration that can be placed
+    as a node on the Canvas and referenced in Workflows.  Unlike
+    ``AgentBlueprint`` (which ties LLM + RoleDefinition + PromptTemplate
+    together), a Bundle is more flexible: it references a RoleType directly
+    and optionally includes a ToneProfile.
+    """
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = ""
+    # Core composition
+    llm_profile_id: str  # References BlueprintLLMProfile.id
+    role_type_id: str  # References RoleType.id
+    role_definition_id: str | None = None  # Optional: specific RoleDefinition override
+    prompt_template_id: str | None = None  # Optional: specific PromptTemplate override
+    tone_profile_id: str | None = None  # Optional: ToneProfile for communication style
+    persona_id: str | None = None  # Optional: legacy AgentPersona reference
+    # Metadata
+    tags: list[str] = Field(default_factory=list)
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# ResolvedBundle — fully resolved Bundle with all referenced entities inline
+# ---------------------------------------------------------------------------
+
+
+class ResolvedBundle(BaseModel):
+    """An AgentBundle with all referenced entities resolved and inline.
+
+    Produced by the BundleResolver for use in Workflow execution.
+    Contains the fully assembled system prompt.
+    """
+
+    bundle_id: str
+    bundle_name: str
+    llm_profile: BlueprintLLMProfile
+    role_type: RoleType
+    role_definition: RoleDefinition | None = None
+    prompt_template: PromptTemplate | None = None
+    tone_profile: ToneProfile | None = None
+    system_prompt: str = ""

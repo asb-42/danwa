@@ -15,10 +15,12 @@ from pathlib import Path
 from backend.blueprints.migrations import run_migrations
 from backend.blueprints.models import (
     AgentBlueprint,
+    AgentBundle,
     BlueprintLLMProfile,
     CanvasLayout,
     CanvasLayoutData,
     PromptTemplate,
+    ResolvedBundle,
     RoleDefinition,
     RoleType,
     ToneProfile,
@@ -892,3 +894,90 @@ class BlueprintRepository:
     def _row_to_tone_profile(row: sqlite3.Row) -> ToneProfile:
         """Convert a SQLite row to a ToneProfile model."""
         return ToneProfile.model_validate_json(row["profile_json"])
+
+    # ------------------------------------------------------------------
+    # Agent Bundles
+    # ------------------------------------------------------------------
+
+    def save_bundle(self, bundle: AgentBundle) -> None:
+        """Insert or replace an agent bundle."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO agent_bundles
+                    (id, name, description, llm_profile_id, role_type_id,
+                     role_definition_id, prompt_template_id, tone_profile_id,
+                     persona_id, tags_json, is_active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    bundle.id,
+                    bundle.name,
+                    bundle.description,
+                    bundle.llm_profile_id,
+                    bundle.role_type_id,
+                    bundle.role_definition_id,
+                    bundle.prompt_template_id,
+                    bundle.tone_profile_id,
+                    bundle.persona_id,
+                    json.dumps(bundle.tags),
+                    int(bundle.is_active),
+                    bundle.created_at.isoformat(),
+                    bundle.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved agent bundle %s", bundle.id)
+
+    def get_bundle(self, bundle_id: str) -> AgentBundle | None:
+        """Retrieve an agent bundle by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM agent_bundles WHERE id = ?",
+                (bundle_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_bundle(row)
+
+    def list_bundles(
+        self,
+        active_only: bool = True,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[AgentBundle]:
+        """List agent bundles, optionally filtering to active only."""
+        where = " WHERE is_active = 1" if active_only else ""
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM agent_bundles{where} ORDER BY name LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        return [self._row_to_bundle(r) for r in rows]
+
+    def delete_bundle(self, bundle_id: str) -> bool:
+        """Delete an agent bundle. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM agent_bundles WHERE id = ?",
+                (bundle_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_bundle(row: sqlite3.Row) -> AgentBundle:
+        """Convert a SQLite row to an AgentBundle model."""
+        return AgentBundle(
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            llm_profile_id=row["llm_profile_id"],
+            role_type_id=row["role_type_id"],
+            role_definition_id=row["role_definition_id"],
+            prompt_template_id=row["prompt_template_id"],
+            tone_profile_id=row["tone_profile_id"],
+            persona_id=row["persona_id"],
+            tags=json.loads(row["tags_json"]),
+            is_active=bool(row["is_active"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )

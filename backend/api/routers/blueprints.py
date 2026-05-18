@@ -19,8 +19,9 @@ from fastapi import APIRouter, Depends
 from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
 from backend.blueprints.importer import BlueprintImporter, ImportResult
-from backend.blueprints.models import AgentBlueprint, PromptTemplate
+from backend.blueprints.models import AgentBlueprint, AgentBundle, PromptTemplate, ResolvedBundle
 from backend.blueprints.repository import BlueprintRepository
+from backend.blueprints.resolver import BundleResolver, resolve_bundle
 
 router = APIRouter()
 
@@ -104,6 +105,99 @@ def delete_agent_blueprint(
     if not deleted:
         raise BlueprintNotFoundError("AgentBlueprint", blueprint_id)
     return {"status": "ok", "deleted": blueprint_id}
+
+
+# ==================================================================
+# Agent Bundles
+# ==================================================================
+
+
+@router.get("/bundles", response_model=list[AgentBundle])
+def list_bundles(
+    active_only: bool = True,
+    limit: int = 50,
+    offset: int = 0,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> list[AgentBundle]:
+    """List agent bundles with optional active-only filter and pagination."""
+    return repo.list_bundles(active_only=active_only, limit=limit, offset=offset)
+
+
+@router.get("/bundles/{bundle_id}", response_model=AgentBundle)
+def get_bundle(
+    bundle_id: str,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> AgentBundle:
+    """Get a single agent bundle by ID."""
+    bundle = repo.get_bundle(bundle_id)
+    _require_found("AgentBundle", bundle, bundle_id)
+    return bundle  # type: ignore[return-value]
+
+
+@router.post("/bundles", response_model=AgentBundle, status_code=201)
+def create_bundle(
+    bundle: AgentBundle,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> AgentBundle:
+    """Create a new agent bundle.
+
+    Validates that all referenced entities (LLM profile, RoleType, etc.) exist.
+    """
+    _validate_bundle_references(repo, bundle)
+    repo.save_bundle(bundle)
+    return bundle
+
+
+@router.put("/bundles/{bundle_id}", response_model=AgentBundle)
+def update_bundle(
+    bundle_id: str,
+    bundle: AgentBundle,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> AgentBundle:
+    """Update an existing agent bundle."""
+    existing = repo.get_bundle(bundle_id)
+    _require_found("AgentBundle", existing, bundle_id)
+    _validate_bundle_references(repo, bundle)
+    repo.save_bundle(bundle)
+    return bundle
+
+
+@router.delete("/bundles/{bundle_id}")
+def delete_bundle(
+    bundle_id: str,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> dict:
+    """Delete an agent bundle."""
+    deleted = repo.delete_bundle(bundle_id)
+    if not deleted:
+        raise BlueprintNotFoundError("AgentBundle", bundle_id)
+    return {"status": "ok", "deleted": bundle_id}
+
+
+@router.get("/bundles/{bundle_id}/resolve", response_model=ResolvedBundle)
+def resolve_bundle_endpoint(
+    bundle_id: str,
+    repo: BlueprintRepository = Depends(get_blueprint_repository),
+) -> ResolvedBundle:
+    """Resolve a bundle — load all referenced entities and assemble system prompt."""
+    bundle = repo.get_bundle(bundle_id)
+    _require_found("AgentBundle", bundle, bundle_id)
+    resolver = BundleResolver(repo)
+    return resolver.resolve(bundle)
+
+
+def _validate_bundle_references(repo: BlueprintRepository, bundle: AgentBundle) -> None:
+    """Validate that all required references in a bundle exist."""
+    if not repo.get_llm_profile(bundle.llm_profile_id):
+        raise BlueprintNotFoundError("BlueprintLLMProfile", bundle.llm_profile_id)
+    if not repo.get_role_type(bundle.role_type_id):
+        raise BlueprintNotFoundError("RoleType", bundle.role_type_id)
+    if bundle.role_definition_id and not repo.get_role_definition(bundle.role_definition_id):
+        raise BlueprintNotFoundError("RoleDefinition", bundle.role_definition_id)
+    if bundle.prompt_template_id and not repo.get_prompt_template(bundle.prompt_template_id):
+        raise BlueprintNotFoundError("PromptTemplate", bundle.prompt_template_id)
+    if bundle.tone_profile_id and not repo.get_tone_profile(bundle.tone_profile_id):
+        raise BlueprintNotFoundError("ToneProfile", bundle.tone_profile_id)
 
 
 # ==================================================================
