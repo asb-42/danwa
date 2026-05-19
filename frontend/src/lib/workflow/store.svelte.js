@@ -12,8 +12,8 @@
  *
  * Usage in components:
  *   import { workflowStore } from './store.svelte.js';
- *   let nodes = $derived(workflowStore.flowNodes);
- *   let status = $derived(workflowStore.runtimeStatus);
+ *   // Direct use — no intermediate $derived needed:
+ *   <SvelteFlow nodes={workflowStore.flowNodes} edges={workflowStore.flowEdges} />
  */
 
 import { applyEventToGraph } from './graphReducer.js';
@@ -45,40 +45,47 @@ class WorkflowStore {
   viewMode = $state('current'); // 'current' | 'timeline'
 
   // ─── Derived: Svelte Flow compatible nodes with runtime overlay ───
-  get flowNodes() {
-    return Array.from(this.graphNodes.values()).map(node => ({
+  // $derived.by memoizes the result — only recalculates when dependencies change.
+  // This avoids creating a new array on every access (which a getter would do).
+  flowNodes = $derived.by(() => {
+    // Reading graphNodes and runtimeActiveNodeId establishes reactive dependencies
+    const nodes = this.graphNodes;
+    const activeId = this.runtimeActiveNodeId;
+    return Array.from(nodes.values()).map(node => ({
       id: node.id,
       type: node.type,
       data: {
         ...node.data,
-        isActive: this.runtimeActiveNodeId === node.id,
+        isActive: activeId === node.id,
       },
       position: node.position || { x: 0, y: 0 },
       className: this.#getNodeClassName(
-        this.runtimeActiveNodeId === node.id ? 'active' : node.data?.status
+        activeId === node.id ? 'active' : node.data?.status
       ),
     }));
-  }
+  });
 
   // ─── Derived: Svelte Flow compatible edges with runtime overlay ───
-  get flowEdges() {
-    return Array.from(this.graphEdges.values()).map(edge => ({
+  flowEdges = $derived.by(() => {
+    const edges = this.graphEdges;
+    const activeEdgeId = this.runtimeActiveEdgeId;
+    return Array.from(edges.values()).map(edge => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
       type: edge.type || 'default',
-      animated: this.runtimeActiveEdgeId === edge.id || edge.data?.isActive,
+      animated: activeEdgeId === edge.id || edge.data?.isActive,
       className: this.#getEdgeClassName(
-        this.runtimeActiveEdgeId === edge.id ? 'active' : edge.data?.status
+        activeEdgeId === edge.id ? 'active' : edge.data?.status
       ),
       data: edge.data,
     }));
-  }
+  });
 
   // ─── Derived: Count of pending OOB inputs ───
-  get pendingOOBCount() {
+  pendingOOBCount = $derived.by(() => {
     return this.oobQueueItems.filter(o => o.status === 'pending').length;
-  }
+  });
 
   // ─── Actions ───
 

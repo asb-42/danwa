@@ -66,18 +66,19 @@
     oob: OOBEdge,
   };
 
-  // Reactive nodes/edges for Svelte Flow (computed from store getters)
-  let nodes = $derived(workflowStore.flowNodes);
-  let edges = $derived(workflowStore.flowEdges);
+  // Direct access — flowNodes/flowEdges are $derived.by() in the store,
+  // so no intermediate $derived layer is needed.
+  // Svelte Flow receives stable array references that only change when
+  // the underlying graphNodes/graphEdges or runtime state changes.
   let status = $derived(workflowStore.runtimeStatus);
 
   // Trigger ELK layout when topology changes (node/edge count).
   // This is a side effect, so it lives in $effect, NOT in a derived store.
   $effect(() => {
-    // Reading nodes.length and edges.length makes this effect re-run
+    // Reading flowNodes.length and flowEdges.length makes this effect re-run
     // whenever the graph topology changes (new node/edge added).
-    const n = nodes.length;
-    const e = edges.length;
+    const n = workflowStore.flowNodes.length;
+    const e = workflowStore.flowEdges.length;
     if (n > 0) {
       // scheduleLayout() returns a cleanup function that cancels
       // the pending layout timer. Svelte calls it automatically when
@@ -97,15 +98,15 @@
 
 <div class="workflow-canvas-container" class:has-panel={selectedNode}>
   <div class="canvas-area">
-    {#if nodes.length === 0}
+    {#if workflowStore.flowNodes.length === 0}
       <div class="empty-state">
         <span class="empty-icon">🔄</span>
         <p class="empty-text">{t('workflow.emptyState')}</p>
       </div>
     {:else}
       <SvelteFlow
-        {nodes}
-        {edges}
+        nodes={workflowStore.flowNodes}
+        edges={workflowStore.flowEdges}
         {nodeTypes}
         {edgeTypes}
         fitView
@@ -144,7 +145,7 @@
           ○ Idle
         {/if}
       </span>
-      <span class="node-count">{nodes.length} nodes · {edges.length} edges</span>
+      <span class="node-count">{workflowStore.flowNodes.length} nodes · {workflowStore.flowEdges.length} edges</span>
     </div>
   </div>
 
