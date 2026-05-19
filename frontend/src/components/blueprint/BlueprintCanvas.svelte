@@ -335,7 +335,6 @@
     {edges}
     {nodeTypes}
     {edgeTypes}
-    fitView
     onnodeclick={handleNodeClick}
     onpaneclick={handlePaneClick}
     onconnect={handleConnect}
@@ -346,7 +345,11 @@
     class="blueprint-flow"
   >
     <!-- Bridge to expose SvelteFlow instance to parent -->
-    <SvelteFlowInstanceBridge onready={(flow) => { svelteFlow = flow; }} />
+    <SvelteFlowInstanceBridge onready={(flow) => {
+      svelteFlow = flow;
+      // Only fit view on initial mount, not on every node change
+      setTimeout(() => flow.fitView({ padding: 0.3 }), 100);
+    }} />
     <Background />
     <Controls />
     <MiniMap
