@@ -29,6 +29,7 @@ export default {
   'nav.section.run': 'Run',
   'nav.section.build': 'Build',
   'nav.section.config': 'Configuration',
+  'nav.section.configure': 'Settings',
   'nav.section.evolve': 'Evolve',
   'nav.proposals': 'Optimization Proposals',
   'proposals.description': 'Review and approve AI-generated optimization proposals',

@@ -28,10 +28,9 @@ export default {
   'nav.backup': 'Backup',
   'nav.section.run': 'Run',
   'nav.section.build': 'Build',
-  'nav.section.config': 'Konfiguration',
-  'nav.section.management': 'Management',
-  'nav.section.manage': 'Verwalten',
-  'nav.section.configure': 'Konfigurieren',
+  'nav.section.config': 'Konfigurieren',
+
+  'nav.section.configure': 'Einstellungen',
   'nav.roleTypes': 'Rollentypen',
   'nav.agentPersonas': 'Agenten-Personas',
   'nav.promptVariants': 'Prompt-Varianten',
