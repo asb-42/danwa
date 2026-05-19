@@ -50,10 +50,31 @@ def get_llm_profile(
     profile_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> BlueprintLLMProfile:
-    """Get a single LLM profile by ID."""
+    """Get a single LLM profile by ID (DB or module)."""
     profile = repo.get_llm_profile(profile_id)
-    _require_found("LLMProfile", profile, profile_id)
-    return profile  # type: ignore[return-value]
+    if profile:
+        return profile  # type: ignore[return-value]
+    # Fallback: check module profiles
+    module_profiles = get_llm_profiles_from_modules()
+    for mp in module_profiles:
+        if mp.get("id") == profile_id:
+            return BlueprintLLMProfile(
+                id=mp["id"],
+                name=mp["name"],
+                provider=mp["provider"],
+                model=mp["model"],
+                api_base=mp.get("api_base"),
+                api_key_env=mp.get("api_key_env", "OPENROUTER_API_KEY"),
+                max_tokens=mp.get("max_tokens", 4096),
+                context_window=mp.get("context_window"),
+                temperature=mp.get("temperature", 0.7),
+                timeout=mp.get("timeout", 600),
+                cost_per_1k_input=mp.get("cost_per_1k_input", 0.0),
+                cost_per_1k_output=mp.get("cost_per_1k_output", 0.0),
+                is_active=mp.get("is_active", True),
+                service_eligible=mp.get("service_eligible", True),
+            )
+    _require_found("LLMProfile", None, profile_id)
 
 
 @router.post("", response_model=BlueprintLLMProfile, status_code=201)
