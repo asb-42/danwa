@@ -341,6 +341,8 @@
     onconnect={handleConnect}
     ondelete={handleDelete}
     onnodedragstop={handleNodeDragStop}
+    ondragover={handleDragOver}
+    ondrop={handleDrop}
     class="blueprint-flow"
   >
     <!-- Bridge to expose SvelteFlow instance to parent -->
