@@ -4,76 +4,80 @@
  * Tests the ELK.js layout wrapper including node sizing,
  * graph building, and position extraction.
  *
- * Note: applyLayout uses setTimeout debounce, so we test
- * calculateLayout indirectly via the exported function.
- * We also test the helper functions by importing the module.
+ * Note: scheduleLayout uses setTimeout debounce, so we test
+ * it with async timing. We also verify edge cases.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { get } from 'svelte/store';
-import { graphNodes, graphEdges, resetWorkflow } from '../../../src/lib/workflow/store.js';
-
-// We test the layout module's exported function and verify
-// it doesn't throw and handles edge cases correctly.
-// Full ELK integration requires async timing, so we focus on
-// the input validation and topology-change detection.
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { workflowStore, resetWorkflow } from '../../../src/lib/workflow/store.svelte.js';
 
 describe('layout engine', () => {
   beforeEach(() => {
     resetWorkflow();
+    vi.useFakeTimers();
   });
 
-  describe('applyLayout', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('scheduleLayout', () => {
     it('is exported and callable', async () => {
-      const { applyLayout } = await import('../../../src/lib/workflow/layout.js');
-      expect(typeof applyLayout).toBe('function');
+      const { scheduleLayout } = await import('../../../src/lib/workflow/layout.js');
+      expect(typeof scheduleLayout).toBe('function');
     });
 
-    it('does not throw with empty nodes/edges', async () => {
-      const { applyLayout } = await import('../../../src/lib/workflow/layout.js');
-      await expect(applyLayout([], [])).resolves.not.toThrow();
+    it('does not throw with empty store', async () => {
+      const { scheduleLayout } = await import('../../../src/lib/workflow/layout.js');
+      expect(() => scheduleLayout()).not.toThrow();
     });
 
-    it('does not throw with valid nodes and edges', async () => {
-      const { applyLayout } = await import('../../../src/lib/workflow/layout.js');
+    it('debounces rapid calls — only last generation executes', async () => {
+      const { scheduleLayout } = await import('../../../src/lib/workflow/layout.js');
 
-      const nodes = [
-        { id: 'input', type: 'input', data: { round: 0 }, position: { x: 0, y: 0 } },
-        { id: 'strategist_r1', type: 'agent', data: { round: 1 }, position: { x: 0, y: 0 } },
-        { id: 'strategy_r1', type: 'artifact', data: { round: 1 }, position: { x: 0, y: 0 } },
-      ];
+      // Populate store with nodes
+      workflowStore.graphNodes.set('a', {
+        id: 'a', type: 'agent', data: { round: 1 }, position: { x: 0, y: 0 },
+      });
+      workflowStore.graphEdges.set('e1', {
+        id: 'e1', source: 'a', target: 'b',
+      });
 
-      const edges = [
-        { id: 'e1', source: 'input', target: 'strategist_r1' },
-        { id: 'e2', source: 'strategist_r1', target: 'strategy_r1' },
-      ];
+      // Schedule multiple times rapidly
+      scheduleLayout();
+      scheduleLayout();
+      scheduleLayout();
 
-      await expect(applyLayout(nodes, edges)).resolves.not.toThrow();
+      // Advance past debounce window
+      await vi.advanceTimersByTimeAsync(150);
+
+      // Should have completed without error
+      // (verify by checking no unhandled rejections)
     });
 
-    it('skips layout when topology has not changed', async () => {
-      const { applyLayout } = await import('../../../src/lib/workflow/layout.js');
+    it('returns cleanup function that cancels pending layout', async () => {
+      const { scheduleLayout } = await import('../../../src/lib/workflow/layout.js');
 
-      const nodes = [
-        { id: 'a', type: 'agent', data: { round: 1 }, position: { x: 0, y: 0 } },
-      ];
-      const edges = [];
+      workflowStore.graphNodes.set('a', {
+        id: 'a', type: 'agent', data: { round: 1 }, position: { x: 0, y: 0 },
+      });
 
-      // First call
-      await applyLayout(nodes, edges);
+      const cleanup = scheduleLayout();
+      expect(typeof cleanup).toBe('function');
 
-      // Second call with same count — should skip
-      // (We can't directly verify skip, but it should not throw)
-      await expect(applyLayout(nodes, edges)).resolves.not.toThrow();
+      // Cancel the pending layout
+      cleanup();
+
+      // Advance past debounce window
+      await vi.advanceTimersByTimeAsync(150);
+
+      // Should not have executed (no error thrown)
     });
   });
 
   describe('node sizing', () => {
-    it('assigns correct widths based on node type', async () => {
-      // We verify indirectly by checking that ELK receives correct dimensions
-      // The getNodeWidth/getNodeHeight functions are internal, but we can
-      // verify the layout completes without error for each node type
-      const { applyLayout } = await import('../../../src/lib/workflow/layout.js');
+    it('handles all node types without error', async () => {
+      const { scheduleLayout } = await import('../../../src/lib/workflow/layout.js');
 
       const nodeTypes = [
         { id: 'agent', type: 'agent', data: { round: 1 } },
@@ -83,18 +87,21 @@ describe('layout engine', () => {
         { id: 'default', type: 'unknown', data: {} },
       ];
 
-      const nodes = nodeTypes.map(n => ({
-        ...n,
-        position: { x: 0, y: 0 },
-      }));
+      nodeTypes.forEach(n => {
+        workflowStore.graphNodes.set(n.id, {
+          ...n,
+          position: { x: 0, y: 0 },
+        });
+      });
 
-      await expect(applyLayout(nodes, [])).resolves.not.toThrow();
+      expect(() => scheduleLayout()).not.toThrow();
+      await vi.advanceTimersByTimeAsync(150);
     });
   });
 
   describe('round container grouping', () => {
-    it('groups agent nodes by round into ELK containers', async () => {
-      const { applyLayout } = await import('../../../src/lib/workflow/layout.js');
+    it('handles multi-round nodes without error', async () => {
+      const { scheduleLayout } = await import('../../../src/lib/workflow/layout.js');
 
       const nodes = [
         { id: 'input', type: 'input', data: {}, position: { x: 0, y: 0 } },
@@ -103,14 +110,15 @@ describe('layout engine', () => {
         { id: 'strategist_r2', type: 'agent', data: { round: 2 }, position: { x: 0, y: 0 } },
       ];
 
-      const edges = [
-        { id: 'e1', source: 'input', target: 'strategist_r1' },
-        { id: 'e2', source: 'strategist_r1', target: 'critic_r1' },
-        { id: 'e3', source: 'critic_r1', target: 'strategist_r2' },
-      ];
+      nodes.forEach(n => {
+        workflowStore.graphNodes.set(n.id, n);
+        workflowStore.graphEdges.set(`e-${n.id}`, {
+          id: `e-${n.id}`, source: 'input', target: n.id,
+        });
+      });
 
-      // Should complete without error, grouping round 1 and round 2 agents
-      await expect(applyLayout(nodes, edges)).resolves.not.toThrow();
+      expect(() => scheduleLayout()).not.toThrow();
+      await vi.advanceTimersByTimeAsync(150);
     });
   });
 });

@@ -12,7 +12,7 @@
   import { SvelteFlow, Background, Controls, MiniMap } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import { workflowStore } from '../../lib/workflow/store.svelte.js';
-  import { applyLayout } from '../../lib/workflow/layout.js';
+  import { scheduleLayout } from '../../lib/workflow/layout.js';
   import { i18n } from '../../lib/i18n/index.js';
 
   // Custom nodes
@@ -79,7 +79,10 @@
     const n = nodes.length;
     const e = edges.length;
     if (n > 0) {
-      applyLayout(nodes, edges);
+      // scheduleLayout() returns a cleanup function that cancels
+      // the pending layout timer. Svelte calls it automatically when
+      // this $effect re-runs or the component unmounts.
+      return scheduleLayout();
     }
   });
 

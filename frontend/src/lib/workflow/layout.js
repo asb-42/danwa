@@ -1,5 +1,5 @@
 /**
- * ELK.js Layout Engine
+ * ELK.js Layout Engine — Workflow
  *
  * Wraps ELK.js to calculate automatic node positioning for non-linear workflows.
  * Uses the layered algorithm with round containers as ELK parent nodes.
@@ -11,6 +11,13 @@
  *   hierarchy and lays out the ENTIRE graph, not just top-level nodes.
  * - Both agent AND artifact nodes are grouped into round containers.
  * - applyPositions uses a direct import (not dynamic) to avoid race conditions.
+ *
+ * Race-condition safety:
+ * - Debounce timer reads fresh data from the store when it fires,
+ *   not stale closure-captured values.
+ * - A generation counter ensures only the latest layout result is applied.
+ * - The $effect in WorkflowCanvas returns a cleanup function that cancels
+ *   pending layout timers on component unmount.
  */
 
 import { workflowStore } from './store.svelte.js';
@@ -26,44 +33,60 @@ const elkOptions = {
   'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
 };
 
-// Debounce layout calculations
+// ─── Debounce + Generation Counter ────────────────────────────────
+// Prevents race conditions when multiple SSE events fire in quick succession.
+// The timer always reads fresh data from the store when it fires,
+// and only the latest generation's result is applied.
+
 let layoutTimer = null;
-let lastNodeCount = 0;
-let lastEdgeCount = 0;
+let layoutGeneration = 0;
 
 /**
- * Apply ELK layout to the given nodes and edges.
- * Only recalculates when topology changes (node/edge count differs).
- * Updates node positions in the graphNodes store — but ONLY for nodes
- * that don't already have a position (incremental layout).
+ * Schedule an ELK layout calculation.
  *
- * @param {Array} nodes - Svelte Flow compatible nodes
- * @param {Array} edges - Svelte Flow compatible edges
+ * Uses a debounce timer (100ms) so rapid topology changes don't trigger
+ * redundant layout runs. When the timer fires, it reads the current
+ * node/edge state directly from the store (not from stale closures).
+ *
+ * @returns {() => void} Cleanup function to cancel the pending layout.
  */
-export async function applyLayout(nodes, edges) {
-  // Skip if topology hasn't changed
-  if (nodes.length === lastNodeCount && edges.length === lastEdgeCount) {
-    return;
-  }
-
-  // Debounce rapid updates
+export function scheduleLayout() {
+  // Cancel any pending layout
   if (layoutTimer) {
     clearTimeout(layoutTimer);
+    layoutTimer = null;
   }
 
+  // Bump generation — invalidates any in-flight layout calculations
+  layoutGeneration++;
+  const currentGeneration = layoutGeneration;
+
   layoutTimer = setTimeout(async () => {
-    lastNodeCount = nodes.length;
-    lastEdgeCount = edges.length;
+    layoutTimer = null;
+
+    // Read fresh data from the store at execution time
+    const nodes = workflowStore.flowNodes;
+    const edges = workflowStore.flowEdges;
+
+    if (nodes.length === 0) return;
 
     try {
       const positions = await calculateLayout(nodes, edges);
-      if (positions) {
+      if (positions && currentGeneration === layoutGeneration) {
         applyPositions(positions);
       }
     } catch (err) {
       console.warn('[workflow/layout] ELK layout failed:', err);
     }
-  }, 30);
+  }, 100);
+
+  // Return cleanup function for $effect
+  return () => {
+    if (layoutTimer) {
+      clearTimeout(layoutTimer);
+      layoutTimer = null;
+    }
+  };
 }
 
 /**
@@ -161,7 +184,6 @@ async function calculateLayout(nodes, edges) {
 
 /**
  * Apply calculated positions back to the graphNodes store.
- * Uses a direct import (not dynamic) to avoid race conditions.
  *
  * INCREMENTAL: Only updates nodes that don't already have a position.
  * This prevents ELK from overwriting the good initial positions set by
