@@ -43,19 +43,19 @@
 
   let welcome = $derived(WELCOME[$locale] || WELCOME.en);
 
-  let sessions = [];
-  let currentSession = null;
-  let messages = [];
-  let newMessage = '';
-  let isLoading = false;
-  let error = null;
+  let sessions = $state([]);
+  let currentSession = $state(null);
+  let messages = $state([]);
+  let newMessage = $state('');
+  let isLoading = $state(false);
+  let error = $state(null);
   let chatContainer;
 
   // Resize state
-  let chatHeight = 400; // px
-  let isResizing = false;
-  let startY = 0;
-  let startHeight = 0;
+  let chatHeight = $state(400);
+  let isResizing = $state(false);
+  let startY = $state(0);
+  let startHeight = $state(0);
   const MIN_HEIGHT = 200;
   const MAX_HEIGHT = 800;
 
@@ -217,33 +217,33 @@
         <span class="chat-title">Danwa Kitsune</span>
       </div>
       <div class="header-actions">
-        <button class="btn-icon" on:click={toggleMinimize} title={isMinimized ? 'Öffnen' : 'Minimieren'}>
+        <button class="btn-icon" onclick={toggleMinimize} title={isMinimized ? 'Öffnen' : 'Minimieren'}>
           {isMinimized ? '▲' : '▼'}
         </button>
-        <button class="btn-icon" on:click={close} title="Schließen">✕</button>
+        <button class="btn-icon" onclick={close} title="Schließen">✕</button>
       </div>
     </div>
 
     {#if !isMinimized}
       <!-- Resize handle -->
-      <div class="resize-handle" on:mousedown={startResize} on:touchstart={startResize}></div>
+      <div class="resize-handle" onmousedown={startResize} ontouchstart={startResize}></div>
 
       <div class="chat-body">
         <!-- Session sidebar -->
         <div class="session-sidebar">
           <div class="session-header">
             <span>Konversationen</span>
-            <button class="btn-new" on:click={createNewSession} title="Neue Konversation">+</button>
+            <button class="btn-new" onclick={createNewSession} title="Neue Konversation">+</button>
           </div>
           <div class="session-list">
             {#each sessions as session (session.id)}
               <div
                 class="session-item"
                 class:active={currentSession?.id === session.id}
-                on:click={() => selectSession(session)}
+                onclick={() => selectSession(session)}
               >
                 <span class="session-title">{session.title || 'Neue Konversation'}</span>
-                <button class="btn-delete" on:click={(e) => deleteSession(session, e)}>×</button>
+                <button class="btn-delete" onclick={(e) => deleteSession(session, e)}>×</button>
               </div>
             {/each}
           </div>
@@ -303,15 +303,16 @@
           <div class="input-area">
             <textarea
               bind:value={newMessage}
-              on:keydown={handleKeydown}
+              onkeydown={handleKeydown}
               placeholder="Frage den Danwa Assistenten..."
               rows="1"
               disabled={isLoading}
             ></textarea>
             <button
               class="btn-send"
-              on:click={sendMessage}
-              disabled={!newMessage.trim() || isLoading}
+              onclick={sendMessage}
+              disabled={!newMessage.trim() || isLoading || !currentSession}
+              title={!currentSession ? 'No active session' : ''}
             >
               ➤
             </button>
