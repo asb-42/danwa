@@ -414,6 +414,11 @@ async def set_utility_llm(body: UtilityLLMRequest):
     """Set or clear the utility LLM profile."""
     if not body.profile_id:
         app_settings.service_llm_profile_id = None
+        settings = _load_settings()
+        if "utility_llm" not in settings:
+            settings["utility_llm"] = {}
+        settings["utility_llm"]["service_llm_profile_id"] = None
+        _save_settings(settings)
         logger.info("Utility LLM cleared")
         return {"status": "ok", "service_llm_profile_id": None}
     ps = ProfileService()
@@ -424,5 +429,10 @@ async def set_utility_llm(body: UtilityLLMRequest):
     if not eligible:
         raise HTTPException(status_code=400, detail=f"Profile '{body.profile_id}' not eligible: {reason}")
     app_settings.service_llm_profile_id = body.profile_id
+    settings = _load_settings()
+    if "utility_llm" not in settings:
+        settings["utility_llm"] = {}
+    settings["utility_llm"]["service_llm_profile_id"] = body.profile_id
+    _save_settings(settings)
     logger.info("Utility LLM changed to %s", body.profile_id)
     return {"status": "ok", "service_llm_profile_id": body.profile_id}

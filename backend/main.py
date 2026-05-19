@@ -144,6 +144,10 @@ async def lifespan(app: FastAPI):
         ui_lang = yaml_settings["ui"].get("language")
         if ui_lang and hasattr(settings, "ui_language"):
             settings.ui_language = ui_lang
+    if yaml_settings.get("utility_llm"):
+        svc_llm_id = yaml_settings["utility_llm"].get("service_llm_profile_id")
+        if svc_llm_id and hasattr(settings, "service_llm_profile_id"):
+            settings.service_llm_profile_id = svc_llm_id
 
     logger.info("Settings loaded from config/settings.yaml")
 
