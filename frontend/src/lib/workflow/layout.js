@@ -100,15 +100,37 @@ async function calculateLayout(nodes, edges) {
   if (nodes.length === 0) return null;
 
   // Build ELK graph structure
-  // Group nodes by round into containers (agents AND artifacts)
-  const roundContainers = new Map();
+  //
+  // Layout hierarchy:
+  //   root
+  //   ├── round_container_1
+  //   │   ├── strategist_r1 (agent)
+  //   │   ├── strategy_r1   (artifact)
+  //   │   └── ...
+  //   ├── round_container_2
+  //   │   └── ...
+  //   ├── input             (top-level, round 0)
+  //   ├── decision_r1       (top-level, between rounds)
+  //   ├── user_action_x     (top-level, HITL)
+  //   └── placeholder_x     (top-level, pending agents)
+
+  const roundContainers = new Map(); // Map<round, Node[]>
   const topLevelNodes = [];
 
   for (const node of nodes) {
     const round = node.data?.round;
-    // Group agent, artifact, and input nodes with a valid round into containers
-    // Skip user_action, placeholder, decision — they stay at top level
-    if (round != null && round > 0 && (node.type === 'agent' || node.type === 'artifact' || node.type === 'input' || node.type === 'decision')) {
+
+    // Only agent and artifact nodes with round > 0 go into round containers.
+    // Everything else stays at the top level:
+    //   - input (round 0) — entry point before all rounds
+    //   - decision — sits between rounds
+    //   - user_action — HITL nodes, positioned by ELK based on edges
+    //   - placeholder — pending agents waiting to appear
+    //   - a2a_agent — external agents, not part of the round pipeline
+    const isRoundScoped = round != null && round > 0
+      && (node.type === 'agent' || node.type === 'artifact');
+
+    if (isRoundScoped) {
       if (!roundContainers.has(round)) {
         roundContainers.set(round, []);
       }
@@ -139,7 +161,7 @@ async function calculateLayout(nodes, edges) {
     });
   }
 
-  // Add top-level nodes (input, artifacts without round, user actions, placeholders)
+  // Add top-level nodes (input, decision, user_action, placeholder, a2a_agent)
   for (const node of topLevelNodes) {
     elkChildren.push({
       id: node.id,
