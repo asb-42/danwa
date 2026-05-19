@@ -38,6 +38,14 @@
   <!-- Global badge -->
   <span class="global-badge">Global</span>
 
+  <!-- Config input port (left) -->
+  <Handle
+    type="target"
+    position={Position.Left}
+    id="config-in"
+    class="config-port port-config"
+  />
+
   <!-- Config output port (bottom) -->
   <Handle
     type="source"

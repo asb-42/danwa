@@ -10,11 +10,13 @@
   /** @type {{ data: any, selected?: boolean }} */
   let { data, selected = false } = $props();
 
-  let preview = $derived(() => {
-    const content = data?.content || '';
-    const lines = content.split('\n').filter((l) => l.trim()).slice(0, 3);
-    return lines.map((l) => (l.length > 40 ? l.slice(0, 37) + '...' : l));
-  });
+  let preview = $derived(
+    (data?.content || '')
+      .split('\n')
+      .filter((l) => l.trim())
+      .slice(0, 3)
+      .map((l) => (l.length > 40 ? l.slice(0, 37) + '...' : l))
+  );
   let varCount = $derived(data?.variables?.length || 0);
   let isDraft = $derived(!!data?.isDraft);
 </script>
@@ -42,9 +44,9 @@
       <span class="role-label">{data.role} · {data?.variant || 'default'}</span>
     {/if}
 
-    {#if preview().length > 0}
+    {#if preview.length > 0}
       <div class="content-preview">
-        {#each preview() as line}
+        {#each preview as line}
           <span class="preview-line">"{line}"</span>
         {/each}
       </div>
