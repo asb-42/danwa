@@ -320,19 +320,27 @@ class ProfileService:
                     continue
                 for md_file in sorted(base.glob("*.md")):
                     try:
-                        role = md_file.stem
+                        stem = md_file.stem
+                        # Extract language suffix (e.g., "strategist-en" → role="strategist", lang="en")
+                        if "-" in stem and stem.rsplit("-", 1)[-1] in ("en", "de", "fr", "es", "it", "pt", "ru", "zh", "ja", "ko", "sv", "el", "ar", "he"):
+                            role = stem.rsplit("-", 1)[0]
+                            language = stem.rsplit("-", 1)[-1]
+                        else:
+                            role = stem
+                            language = "de"  # Default language for files without suffix
                         content = md_file.read_text(encoding="utf-8")
                         template = PromptTemplate(
-                            id=f"{variant_name}-{role}",
-                            name=f"{variant_name}/{role}",
+                            id=f"{variant_name}-{stem}",
+                            name=f"{variant_name}/{stem}",
                             role=role,
                             content=content,
                             variant=variant_name,
                             source_path=str(md_file),
+                            language=language,
                         )
                         repo.save_prompt_template(template)
-                        # Populate content cache for same-session DB access
-                        cache_key = f"db:{variant_name}/{role}/de"
+                        # Populate content cache with correct language key
+                        cache_key = f"db:{variant_name}/{role}/{language}"
                         self._prompt_content_cache[cache_key] = {
                             "content": content,
                             "hash": template.content_hash,

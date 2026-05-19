@@ -211,7 +211,12 @@ def get_prompt_templates_from_modules(modules_dir: Path = MODULES_DIR) -> list[d
         if "content" in profile:
             profile.setdefault("role", "strategist")
             profile.setdefault("variant", "default")
-            profile.setdefault("language", "en")
+            # Use manifest language if available, otherwise detect from profile filename
+            manifest_lang = mod["manifest"].get("language")
+            if manifest_lang:
+                profile.setdefault("language", manifest_lang)
+            else:
+                profile.setdefault("language", "en")
             profile.setdefault("variables", [])
             results.append(_mark_readonly(profile, mod["module_id"], mod["manifest"]))
     return results

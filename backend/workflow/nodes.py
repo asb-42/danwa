@@ -250,10 +250,13 @@ async def run_agent_node(state: DebateState) -> dict:
         from backend.services.debate_workflow import consume_oob, get_oob_for_debate
 
         debate_id = state.get("debate_id", "")
+        logger.debug("OOB check: debate_id=%r, role=%s, round=%d", debate_id, role, state.get("current_round", 0))
         if debate_id:
             oob_inputs = get_oob_for_debate(debate_id)
+            logger.debug("OOB check: %d pending OOB inputs for debate %s", len(oob_inputs), debate_id)
             # Filter for this agent role and round
             relevant_oob = [oob for oob in oob_inputs if _is_oob_relevant(oob, role, state["current_round"], state)]
+            logger.debug("OOB check: %d relevant for role=%s", len(relevant_oob), role)
             if relevant_oob:
                 oob_context = "\n\n--- ADDITIONAL CONTEXT (User) ---\n"
                 oob_context += "\n".join(f"- {oob['content']}" for oob in relevant_oob)
