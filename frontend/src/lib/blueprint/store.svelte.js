@@ -212,11 +212,11 @@ class BlueprintCanvasStore {
     this.edges = (layoutJson.edges || []).map((e) => ({
       id: e.id,
       source: e.source,
-      sourceHandle: e.sourceHandle || null,
+      sourceHandle: e.sourceHandle ?? e.source_handle ?? null,
       target: e.target,
-      targetHandle: e.targetHandle || null,
+      targetHandle: e.targetHandle ?? e.target_handle ?? null,
       type: e.type,
-      data: e.data || {},
+      data: e.data ?? {},
     }));
 
     this.isDirty = false;

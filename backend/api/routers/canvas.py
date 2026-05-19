@@ -73,6 +73,8 @@ def update_layout(
     """Update an existing canvas layout."""
     existing = repo.get_layout(layout_id)
     _require_found("CanvasLayout", existing, layout_id)
+    # Ensure the layout uses the URL's ID, not a newly generated one
+    layout.id = layout_id
     repo.save_layout(layout)
     return layout
 

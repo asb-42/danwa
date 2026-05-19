@@ -20,7 +20,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.core.profiles import AgentPersona, LLMProfile
 
@@ -391,6 +391,8 @@ class CanvasLayoutNode(BaseModel):
 
 class CanvasLayoutEdge(BaseModel):
     """An edge in the simplified canvas layout format."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     source: str  # Node ID
