@@ -162,15 +162,32 @@ def load_kitsune_prompt(language: str = "en") -> str:
 
 
 def _load_english_prompt() -> str:
-    """Load the English source prompt from config/prompts/kitsune/kitsune.md."""
+    """Load the English source prompt from config/prompts/kitsune/kitsune.md.
+
+    Appends the auto-generated knowledge base (config/prompts/kitsune/knowledge.txt)
+    if it exists, giving Kitsune concrete information about the codebase.
+    """
     base_file = _KITSUNE_PROMPT_DIR / "kitsune.md"
     if base_file.exists():
         try:
-            return base_file.read_text(encoding="utf-8").strip()
+            content = base_file.read_text(encoding="utf-8").strip()
         except OSError as e:
             logger.warning(f"Failed to read {base_file}: {e}")
-    logger.warning("Using hardcoded fallback prompt for Kitsune")
-    return _FALLBACK_PROMPT
+            content = _FALLBACK_PROMPT
+    else:
+        logger.warning("Using hardcoded fallback prompt for Kitsune")
+        content = _FALLBACK_PROMPT
+
+    # Append knowledge base if available
+    knowledge_file = _KITSUNE_PROMPT_DIR / "knowledge.txt"
+    if knowledge_file.exists():
+        try:
+            knowledge = knowledge_file.read_text(encoding="utf-8").strip()
+            content += "\n\n## Reference: Codebase Knowledge Base\n\n" + knowledge
+        except OSError:
+            logger.warning("Failed to read knowledge base file")
+
+    return content
 
 
 @dataclass

@@ -1,0 +1,328 @@
+# Danwa Knowledge Base
+Generated from codebase at: /media/data/coding/danwa
+
+## API Endpoints
+  DELETE /api/v1/assistant/sessions/{session_id}            → ?  
+  DELETE /api/v1/blueprints/agent-blueprints/{blueprint_id} → ?  
+  DELETE /api/v1/blueprints/bundles/{bundle_id}             → ?  
+  DELETE /api/v1/blueprints/prompt-templates/{template_id}  → ?  
+  DELETE /api/v1/blueprints/role-definitions/{role_id}      → ?  
+  DELETE /api/v1/blueprints/role-types/{role_type_id}       → ?  
+  DELETE /api/v1/blueprints/workflows/{template_id}         → ?  
+  DELETE /api/v1/blueprints/workflows/{wf_id}               → ?  
+  DELETE /api/v1/canvas/layouts/{layout_id}                 → ?  
+  DELETE /api/v1/config/backups/{backup_id}                 → ?  
+  DELETE /api/v1/debate/{debate_id}                         → ?  
+  DELETE /api/v1/debate/{session_id}                        → ?  ---------------------------------------------------------------------------
+  DELETE /api/v1/dms/documents/{document_id}                → ?  
+  DELETE /api/v1/dms/documents/{document_id}/rag            → ?  
+  DELETE /api/v1/i18n/{locale}/{key}                        → ?  
+  DELETE /api/v1/input/input/jobs/{job_id}                  → ?  
+  DELETE /api/v1/output/render-jobs/{job_id}                → ?  
+  DELETE /api/v1/profiles/agents/{persona_id}               → ?  
+  DELETE /api/v1/profiles/llm/{profile_id}                  → ?  
+  DELETE /api/v1/profiles/prompts/{variant_id}              → ?  
+  DELETE /api/v1/projects/{project_id}                      → ?  
+  DELETE /{profile_id}                                      → ?  
+  DELETE /{profile_id}                                      → ?  
+  DELETE /{session_id}                                      → ?  
+  GET    /api/v1/assistant/sessions                         → ?  
+  GET    /api/v1/assistant/sessions/{session_id}            → ?  
+  GET    /api/v1/audit/project/{project_id}                 → ?  
+  GET    /api/v1/audit/{debate_id_or_title}                 → ?  
+  GET    /api/v1/blueprint-events/stream                    → ?  
+  GET    /api/v1/blueprints/agent-blueprints                → ?  ==================================================================
+  GET    /api/v1/blueprints/agent-blueprints/{blueprint_id} → ?  
+  GET    /api/v1/blueprints/bundles                         → ?  ==================================================================
+  GET    /api/v1/blueprints/bundles/{bundle_id}             → ?  
+  GET    /api/v1/blueprints/bundles/{bundle_id}/export      → ?  ==================================================================
+  GET    /api/v1/blueprints/bundles/{bundle_id}/resolve     → ?  
+  GET    /api/v1/blueprints/prompt-templates                → ?  ==================================================================
+  GET    /api/v1/blueprints/prompt-templates/{template_id}  → ?  
+  GET    /api/v1/blueprints/role-definitions                → ?  ==================================================================
+  GET    /api/v1/blueprints/role-definitions/{role_id}      → ?  
+  GET    /api/v1/blueprints/role-types                      → ?  ==================================================================
+  GET    /api/v1/blueprints/role-types/{role_type_id}       → ?  
+  GET    /api/v1/blueprints/workflows/reports/{job_id}/download → ?  
+  GET    /api/v1/blueprints/workflows/reports/{job_id}/status → ?  
+  GET    /api/v1/blueprints/workflows/sessions/{session_id}/report/stream → ?  
+  GET    /api/v1/blueprints/workflows/{template_id}         → ?  
+  GET    /api/v1/blueprints/workflows/{wf_id}               → ?  
+  GET    /api/v1/canvas/layouts                             → ?  
+  GET    /api/v1/canvas/layouts/{layout_id}                 → ?  
+  GET    /api/v1/config/backup-settings                     → ?  
+  GET    /api/v1/config/backups                             → ?  
+  GET    /api/v1/config/backups/{backup_id}                 → ?  
+  GET    /api/v1/config/backups/{backup_id}/files           → ?  
+  GET    /api/v1/config/language                            → ?  --- Language ---
+  GET    /api/v1/config/service-llm                         → ?  
+  GET    /api/v1/config/settings                            → ?  --- Settings ---
+  GET    /api/v1/config/settings/project/{project_id}       → ?  
+  GET    /api/v1/config/version                             → ?  --- Version ---
+  GET    /api/v1/debate/cross-project/running               → ?  
+  GET    /api/v1/debate/{debate_id}                         → ?  
+  GET    /api/v1/debate/{debate_id}/forks                   → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/debate/{debate_id}/stream                  → ?  
+  GET    /api/v1/debate/{session_id}/state                  → ?  
+  GET    /api/v1/debate/{session_id}/stream                 → ?  
+  GET    /api/v1/dms/documents                              → ?  --- Documents ---
+  GET    /api/v1/dms/documents/{document_id}                → ?  
+  GET    /api/v1/dms/ocr-status                             → ?  --- OCR Status ---
+  GET    /api/v1/dms/rag/manual                             → ?  
+  GET    /api/v1/dms/rag/search                             → ?  
+  GET    /api/v1/i18n/bulk-translate                        → ?  
+  GET    /api/v1/i18n/bulk-translate/{job_id}/status        → ?  
+  GET    /api/v1/i18n/coverage                              → ?  
+  GET    /api/v1/i18n/custom-locales                        → ?  --- Locale registration MUST come before /{locale} to avoid route collision ---
+  GET    /api/v1/i18n/locales                               → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/i18n/stats                                 → ?  --- Stats & Coverage MUST come before /{locale} to avoid route collision ---
+  GET    /api/v1/i18n/strings/{locale}                      → ?  
+  GET    /api/v1/i18n/{locale}                              → ?  --- Locale-specific routes ---
+  GET    /api/v1/i18n/{locale}/{key}                        → ?  
+  GET    /api/v1/input/input-plugins                        → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/input/input/jobs                           → ?  
+  GET    /api/v1/input/input/jobs/{job_id}                  → ?  
+  GET    /api/v1/modules/                                   → ?  ------------------------------------------------------------------
+  GET    /api/v1/modules/available                          → ?  
+  GET    /api/v1/modules/{module_id}                        → ?  
+  GET    /api/v1/modules/{module_id}/profile                → ?  
+  GET    /api/v1/modules/{module_id}/translations           → ?  
+  GET    /api/v1/output/output-plugins                      → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/output/render-jobs/{job_id}                → ?  
+  GET    /api/v1/output/render-jobs/{job_id}/download       → ?  
+  GET    /api/v1/output/render-sessions                     → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/output/tts-voices                          → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/profiles/agents                            → ?  ------------------------------------------------------------------
+  GET    /api/v1/profiles/agents/{persona_id}               → ?  
+  GET    /api/v1/profiles/cost-estimate                     → ?  ------------------------------------------------------------------
+  GET    /api/v1/profiles/llm                               → ?  
+  GET    /api/v1/profiles/llm/service-eligible              → ?  ------------------------------------------------------------------
+  GET    /api/v1/profiles/llm/{profile_id}                  → ?  
+  GET    /api/v1/profiles/prompts                           → ?  ------------------------------------------------------------------
+  GET    /api/v1/profiles/prompts/{variant_id}/preview      → ?  
+  GET    /api/v1/projects/{project_id}                      → ?  
+  GET    /api/v1/projects/{project_id}/config               → ?  
+  GET    /api/v1/system/logs                                → ?  
+  GET    /api/v1/translation/supported-languages            → ?  ---------------------------------------------------------------------------
+  GET    /api/v1/translation/{module_id}/statistics         → ?  
+  GET    /api/v1/translation/{module_id}/status             → ?  
+  GET    /argumentation-patterns                            → ?  
+  GET    /argumentation-patterns/{name}                     → ?  
+  GET    /{profile_id}                                      → ?  
+  GET    /{profile_id}                                      → ?  
+  GET    /{session_id}                                      → ?  
+  GET    /{session_id}/report/{fmt}                         → ?  
+  GET    /{session_id}/trace                                → ?  
+  POST   /api/v1/a2a/capabilities/{profile_id}              → ?  
+  POST   /api/v1/a2a/discover                               → ?  
+  POST   /api/v1/assistant/chat                             → ?  
+  POST   /api/v1/assistant/sessions                         → ?  
+  POST   /api/v1/assistant/sessions/{session_id}/chat       → ?  
+  POST   /api/v1/blueprints/agent-blueprints                → ?  
+  POST   /api/v1/blueprints/bundles                         → ?  
+  POST   /api/v1/blueprints/bundles/import                  → ?  
+  POST   /api/v1/blueprints/import                          → ?  ==================================================================
+  POST   /api/v1/blueprints/prompt-templates                → ?  
+  POST   /api/v1/blueprints/role-definitions                → ?  
+  POST   /api/v1/blueprints/role-types                      → ?  
+  POST   /api/v1/blueprints/workflows/sessions/{session_id}/report → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/blueprints/workflows/{template_id}/instantiate → ?  ------------------------------------------------------------------
+  POST   /api/v1/blueprints/workflows/{wf_id}/clone         → ?  
+  POST   /api/v1/blueprints/workflows/{wf_id}/compile       → ?  
+  POST   /api/v1/canvas/layouts                             → ?  
+  POST   /api/v1/config/backup                              → ?  
+  POST   /api/v1/config/backups/{backup_id}/restore         → ?  
+  POST   /api/v1/config/backups/{backup_id}/verify          → ?  
+  POST   /api/v1/config/service-llm                         → ?  
+  POST   /api/v1/config/validate-service-llm                → ?  
+  POST   /api/v1/debate/from-layout/{layout_id}             → ?  
+  POST   /api/v1/debate/from-workflow/{workflow_id}         → ?  
+  POST   /api/v1/debate/on-completed                        → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/debate/{debate_id}/cancel                  → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/debate/{debate_id}/continue                → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/debate/{debate_id}/fork                    → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/debate/{debate_id}/fork-from-consensus     → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/debate/{debate_id}/oob                     → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/debate/{debate_id}/start                   → ?  
+  POST   /api/v1/debate/{session_id}/cancel                 → ?  
+  POST   /api/v1/debate/{session_id}/interject              → ?  
+  POST   /api/v1/debate/{session_id}/pause                  → ?  
+  POST   /api/v1/debate/{session_id}/restore                → ?  
+  POST   /api/v1/debate/{session_id}/resume                 → ?  
+  POST   /api/v1/debate/{workflow_id}/start                 → ?  ---------------------------------------------------------------------------
+  POST   /api/v1/dms/documents                              → ?  
+  POST   /api/v1/dms/documents/{document_id}/rag            → ?  --- RAG Context ---
+  POST   /api/v1/i18n/bulk-translate                        → ?  --- Batch translation endpoints (MUST be before /{locale} to avoid shadowing) ---
+  POST   /api/v1/i18n/locales                               → ?  
+  POST   /api/v1/i18n/{locale}                              → ?  
+  POST   /api/v1/i18n/{locale}/export-as-pack               → ?  
+  POST   /api/v1/input/input/a2a/{task_id}/approve          → ?  
+  POST   /api/v1/input/input/a2a/{task_id}/reject           → ?  
+  POST   /api/v1/input/input/launch                         → ?  
+  POST   /api/v1/input/input/stt/stream                     → ?  
+  POST   /api/v1/input/input/submit                         → ?  
+  POST   /api/v1/input/mcp/tools/call                       → ?  
+  POST   /api/v1/modules/install                            → ?  
+  POST   /api/v1/modules/validate                           → ?  
+  POST   /api/v1/modules/{module_id}/disable                → ?  
+  POST   /api/v1/modules/{module_id}/duplicate              → ?  
+  POST   /api/v1/modules/{module_id}/enable                 → ?  ------------------------------------------------------------------
+  POST   /api/v1/modules/{module_id}/export                 → ?  ------------------------------------------------------------------
+  POST   /api/v1/modules/{module_id}/translate              → ?  
+  POST   /api/v1/modules/{module_id}/uninstall              → ?  
+  POST   /api/v1/profiles/agents                            → ?  
+  POST   /api/v1/profiles/llm                               → ?  
+  POST   /api/v1/profiles/prompts                           → ?  
+  POST   /api/v1/profiles/prompts/{variant_id}/translate    → ?  
+  POST   /api/v1/system/reload-profiles                     → ?  
+  POST   /api/v1/translation/batch-translate                → ?  
+  POST   /api/v1/translation/{module_id}/approve            → ?  
+  POST   /api/v1/translation/{module_id}/invalidate         → ?  
+  POST   /api/v1/translation/{module_id}/translate          → ?  
+  PUT    /api/v1/blueprints/agent-blueprints/{blueprint_id} → ?  
+  PUT    /api/v1/blueprints/bundles/{bundle_id}             → ?  
+  PUT    /api/v1/blueprints/prompt-templates/{template_id}  → ?  
+  PUT    /api/v1/blueprints/role-definitions/{role_id}      → ?  
+  PUT    /api/v1/blueprints/role-types/{role_type_id}       → ?  
+  PUT    /api/v1/blueprints/workflows/{template_id}         → ?  
+  PUT    /api/v1/blueprints/workflows/{wf_id}               → ?  
+  PUT    /api/v1/canvas/layouts/{layout_id}                 → ?  
+  PUT    /api/v1/config/backup-settings                     → ?  
+  PUT    /api/v1/config/language                            → ?  
+  PUT    /api/v1/config/settings                            → ?  
+  PUT    /api/v1/debate/{debate_id}/documents               → ?  
+  PUT    /api/v1/i18n/{locale}/{key}                        → ?  
+  PUT    /api/v1/modules/{module_id}/profile                → ?  
+  PUT    /api/v1/modules/{module_id}/update                 → ?  
+  PUT    /api/v1/profiles/agents/{persona_id}               → ?  
+  PUT    /api/v1/profiles/llm/{profile_id}                  → ?  
+  PUT    /api/v1/projects/{project_id}                      → ?  
+  PUT    /api/v1/projects/{project_id}/config               → ?  
+  PUT    /{profile_id}                                      → ?  
+  PUT    /{profile_id}                                      → ?  
+
+## Configuration Options (Settings class)
+  app_name                            (str                 ) default="Debate-Agent"
+  app_version                         (str                 ) default=_get_version()
+  debug                               (bool                ) default=False
+  host                                (str                 ) default="0.0.0.0"
+  port                                (int                 ) default=8000
+  db_path                             (Path                ) default=Path("data/audit.db")
+  default_max_rounds                  (int                 ) default=3
+  default_consensus_threshold         (float               ) default=0.8
+  default_agent_profile               (str                 ) default="default"
+  searxng_url                         (str                 ) default="http://localhost:8080"
+  searxng_max_results                 (int                 ) default=5
+  searxng_region                      (str                 ) default="de-de"
+  cors_origins                        (list[str]           ) default=["http://localhost:5173", "http://localhost:8000"]
+  a2a_allow_private_ips               (bool                ) default=False
+  output_dir                          (Path                ) default=Path("data/outputs")
+  allow_external_plugins              (bool                ) default=False
+  service_llm_min_context             (int                 ) default=4096
+  service_llm_blacklist               (list[str]           ) default=[
+  backup_enabled                      (bool                ) default=True
+  backup_auto_on_shutdown             (bool                ) default=True
+  backup_retention_count              (int                 ) default=10
+  backup_encrypt                      (bool                ) default=False
+  backup_dir                          (Path                ) default=Path("data/backups")
+
+## Installed Modules
+  agent-critic-default                     type=agent-persona        v1.0.0
+  agent-critic-example                     type=agent-persona        v1.0.0
+  agent-critic-stoic                       type=agent-persona        v1.0.0
+  agent-custom-moderator                   type=agent-persona        v1.0.0
+  agent-moderator-default                  type=agent-persona        v1.0.0
+  agent-moderator-example                  type=agent-persona        v1.0.0
+  agent-optimizer-default                  type=agent-persona        v1.0.0
+  agent-optimizer-example                  type=agent-persona        v1.0.0
+  agent-strategist-default                 type=agent-persona        v1.0.0
+  agent-strategist-example                 type=agent-persona        v1.0.0
+  agent-strategist-german-law              type=agent-persona        v1.0.0
+  llm-cloud-openrouter                     type=llm-profile          v1.0.0
+  llm-cloud-qwen                           type=llm-profile          v1.0.0
+  llm-draft-d6f64175                       type=llm-profile          v1.0.0
+  llm-local-gemma                          type=llm-profile          v1.0.0
+  llm-local-gemma-4-26b-a4b                type=llm-profile          v1.0.0
+  llm-local-gemma-4-31b-it                 type=llm-profile          v1.0.0
+  llm-local-glm-4-32b-0414-uncensored-heretic-v1 type=llm-profile          v1.0.0
+  llm-local-qwen3.5-27b-distilled          type=llm-profile          v1.0.0
+  llm-local-qwen3.6-35b-a3b                type=llm-profile          v1.0.0
+  llm-opencodezen-minimax-m2.5-free-ry6l   type=llm-profile          v1.0.0
+  llm-openrouter-claude-3.6-sonnet         type=llm-profile          v1.0.0
+  llm-openrouter-glm-5-2ond                type=llm-profile          v1.0.0
+  llm-openrouter-gpt4                      type=llm-profile          v1.0.0
+  llm-openrouter-grok-4.20                 type=llm-profile          v1.0.0
+  llm-openrouter-hy3-preview               type=llm-profile          v1.0.0
+  llm-owl-alpha                            type=llm-profile          v1.0.0
+  llm-owl-alpha-copy-u7rv                  type=llm-profile          v1.0.0
+  llm-xiaomi-io-2--6btm                    type=llm-profile          v1.0.0
+  llm-xiaomi-mimi-v2.5-pro                 type=llm-profile          v1.0.0
+  prompt-critic                            type=prompt-variant       v1.0.0
+  prompt-critic-en                         type=prompt-variant       v1.0.0
+  prompt-dialectic-critic                  type=prompt-variant       v1.0.0
+  prompt-dialectic-critic-en               type=prompt-variant       v1.0.0
+  prompt-dialectic-moderator               type=prompt-variant       v1.0.0
+  prompt-dialectic-moderator-en            type=prompt-variant       v1.0.0
+  prompt-dialectic-optimizer               type=prompt-variant       v1.0.0
+  prompt-dialectic-optimizer-en            type=prompt-variant       v1.0.0
+  prompt-dialectic-strategist              type=prompt-variant       v1.0.0
+  prompt-dialectic-strategist-en           type=prompt-variant       v1.0.0
+  prompt-kantian-critic                    type=prompt-variant       v1.0.0
+  prompt-kantian-strategist                type=prompt-variant       v1.0.0
+  prompt-moderator                         type=prompt-variant       v1.0.0
+  prompt-moderator-en                      type=prompt-variant       v1.0.0
+  prompt-optimizer                         type=prompt-variant       v1.0.0
+  prompt-optimizer-en                      type=prompt-variant       v1.0.0
+  prompt-steiner-critic                    type=prompt-variant       v1.0.0
+  prompt-steiner-strategist                type=prompt-variant       v1.0.0
+  prompt-strategist                        type=prompt-variant       v1.0.0
+  prompt-strategist-en                     type=prompt-variant       v1.0.0
+  role-analyst                             type=role-type            v1.0.0
+  role-creative                            type=role-type            v1.0.0
+  role-critic                              type=role-type            v1.0.0
+  role-expert-reviewer                     type=role-type            v1.0.0
+  role-external-agent                      type=role-type            v1.0.0
+  role-fact-checker                        type=role-type            v1.0.0
+  role-hitl-user                           type=role-type            v1.0.0
+  role-moderator                           type=role-type            v1.0.0
+  role-optimizer                           type=role-type            v1.0.0
+  role-strategist                          type=role-type            v1.0.0
+  tone-system-academic                     type=tone-profile         v1.0.0
+  tone-system-heated                       type=tone-profile         v1.0.0
+  tone-system-neutral                      type=tone-profile         v1.0.0
+  workflow-socratic-debate                 type=workflow-template    v1.0.0
+  workflow-tpl-dialectic-debate            type=workflow-template    v1.0.0
+  workflow-tpl-interview                   type=workflow-template    v1.0.0
+  workflow-tpl-kantian-analysis            type=workflow-template    v1.0.0
+  workflow-tpl-mediation                   type=workflow-template    v1.0.0
+  workflow-tpl-quick-review                type=workflow-template    v1.0.0
+  workflow-tpl-standard-debate             type=workflow-template    v1.0.0
+  workflow-tpl-streitgespraech             type=workflow-template    v1.0.0
+
+## Database Tables
+  schema_version                 columns: version, description, applied_at
+  blueprint_llm_profiles         columns: id, name, provider, model, api_base, api_key_env, max_tokens, context_window
+  prompt_templates               columns: id, name, role, content, language, variant, description, tags_json
+  role_definitions               columns: id, name, role, description, prompt_template_id, max_rounds, consensus_threshold, tags_json
+  agent_blueprints               columns: id, name, description, llm_profile_id, role_definition_id, prompt_template_id, tags_json, is_active
+  canvas_layouts                 columns: id, name, description, project_id, layout_json, created_at, updated_at
+  workflow_definitions           columns: id, name, description, canvas_layout_id, execution_order_json, conditional_edges_json, interjection_points_json, node_blueprint_map_json
+  role_types                     columns: id, name, description, icon, color, default_max_rounds, default_consensus_threshold, tags_json
+  workflow_sessions              columns: id, workflow_id, project_id, status, current_node_id, current_round, initial_state_json, result_json
+  audit_log                      columns: id, session_id, workflow_id, workflow_version, timestamp, event_type, node_id, actor
+  report_jobs                    columns: id, session_id, format, status, file_path, error, created_at, completed_at
+  workflow_templates             columns: id, name, description, category, tags_json, template_data_json, placeholders_json, is_system
+  tone_profiles                  columns: id, name, description, profile_json, is_system, created_at, updated_at
+  debate_artifacts               columns: session_id, workflow_id, data, created_at
+  render_jobs                    columns: id, session_id, plugin_key, config, status, output_files, error_message, artifact_snapshot_hash
+  tts_voices                     columns: voice_id, name, language, gender, provider, is_active
+  optimization_proposals         columns: id, target_workflow_id, source_session_id, proposed_nodes_json, proposed_edges_json, rationale, risk_assessment, estimated_impact
+  input_jobs                     columns: id, plugin_key, config, raw_input_data, processed_input, status, error_message, created_at
+  a2a_inbound_tasks              columns: task_id, agent_id, message_preview, input_job_id, status, created_at
+  debate_inputs                  columns: session_id, data, created_at
+  module_registry                columns: id, name, description, type, category, version, author_json, license
+  module_translation_cache       columns: id, module_id, file_path, language, translated_content, source_hash, quality_score, generated_at
+  agent_bundles                  columns: id, name, description, llm_profile_id, role_type_id, role_definition_id, prompt_template_id, tone_profile_id
+
+## Workflow Nodes
+
