@@ -14,7 +14,7 @@
  */
 
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { graphNodes } from './store.js';
+import { workflowStore } from './store.svelte.js';
 
 const elk = new ELK();
 
@@ -172,17 +172,13 @@ async function calculateLayout(nodes, edges) {
  * @param {Map<string, {x: number, y: number}>} positions
  */
 function applyPositions(positions) {
-  graphNodes.update(nodes => {
-    const copy = new Map(nodes);
-    for (const [id, pos] of positions) {
-      const node = copy.get(id);
-      // Only apply ELK position if node doesn't already have one
-      if (node && !node.position) {
-        copy.set(id, { ...node, position: pos });
-      }
+  for (const [id, pos] of positions) {
+    const node = workflowStore.graphNodes.get(id);
+    // Only apply ELK position if node doesn't already have one
+    if (node && !node.position) {
+      node.position = pos;
     }
-    return copy;
-  });
+  }
 }
 
 /**

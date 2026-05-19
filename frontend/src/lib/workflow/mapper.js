@@ -6,7 +6,7 @@
  * Called from DebateView's handleSSEEvent().
  */
 
-import { dispatchEvent } from './store.js';
+import { workflowStore } from './store.svelte.js';
 
 /**
  * Map incoming SSE events to workflow events and dispatch them.
@@ -17,7 +17,7 @@ export function handleWorkflowSSE(sseEvent) {
 
     case 'workflow_started':
       // Initialize graph with input node
-      dispatchEvent({
+      workflowStore.dispatchEvent({
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'input',
@@ -33,7 +33,7 @@ export function handleWorkflowSSE(sseEvent) {
       // Agent is resolving profile/prompts — show as active
       // Detect A2A agents by phase === 'a2a_invocation'
       if (sseEvent.phase === 'a2a_invocation') {
-        dispatchEvent({
+        workflowStore.dispatchEvent({
           type: 'AGENT_STARTED',
           payload: {
             agentId: `${sseEvent.role}_r${sseEvent.round}`,
@@ -46,7 +46,7 @@ export function handleWorkflowSSE(sseEvent) {
           },
         });
       } else {
-        dispatchEvent({
+        workflowStore.dispatchEvent({
           type: 'AGENT_STARTED',
           payload: {
             agentId: `${sseEvent.role}_r${sseEvent.round}`,
@@ -61,7 +61,7 @@ export function handleWorkflowSSE(sseEvent) {
 
     case 'agent_started':
       // Agent profile resolved — update node with profile info
-      dispatchEvent({
+      workflowStore.dispatchEvent({
         type: 'AGENT_STARTED',
         payload: {
           agentId: `${sseEvent.role}_r${sseEvent.round}`,
@@ -79,7 +79,7 @@ export function handleWorkflowSSE(sseEvent) {
       // Agent completed — produce artifact
       {
         const artifactId = `${sseEvent.role}_output_r${sseEvent.round}`;
-        dispatchEvent({
+        workflowStore.dispatchEvent({
           type: 'ARTIFACT_PRODUCED',
           payload: {
             artifactId,
@@ -90,7 +90,7 @@ export function handleWorkflowSSE(sseEvent) {
             tokenCount: sseEvent.tokens || 0,
           },
         });
-        dispatchEvent({
+        workflowStore.dispatchEvent({
           type: 'AGENT_COMPLETED',
           payload: {
             agentId: `${sseEvent.role}_r${sseEvent.round}`,
@@ -112,7 +112,7 @@ export function handleWorkflowSSE(sseEvent) {
 
         // First dispatch CONSENSUS_CHECK to create/update the decision node
         if (consensus != null) {
-          dispatchEvent({
+          workflowStore.dispatchEvent({
             type: 'CONSENSUS_CHECK',
             payload: {
               decisionId: `decision_r${sseEvent.round}`,
@@ -125,7 +125,7 @@ export function handleWorkflowSSE(sseEvent) {
         }
 
         // Then dispatch ROUND_COMPLETED
-        dispatchEvent({
+        workflowStore.dispatchEvent({
           type: 'ROUND_COMPLETED',
           payload: {
             round: sseEvent.round,
@@ -139,7 +139,7 @@ export function handleWorkflowSSE(sseEvent) {
       break;
 
     case 'oob_consumed':
-      dispatchEvent({
+      workflowStore.dispatchEvent({
         type: 'OOB_CONSUMED',
         payload: {
           oobIds: sseEvent.oob_ids || [],
@@ -149,7 +149,7 @@ export function handleWorkflowSSE(sseEvent) {
       break;
 
     case 'web_search':
-      dispatchEvent({
+      workflowStore.dispatchEvent({
         type: 'AGENT_ACTIVITY',
         payload: {
           agentId: `${sseEvent.role}_r${sseEvent.round}`,
@@ -160,7 +160,7 @@ export function handleWorkflowSSE(sseEvent) {
       break;
 
     case 'llm_call_started':
-      dispatchEvent({
+      workflowStore.dispatchEvent({
         type: 'AGENT_ACTIVITY',
         payload: {
           agentId: `${sseEvent.role}_r${sseEvent.round}`,
@@ -171,7 +171,7 @@ export function handleWorkflowSSE(sseEvent) {
       break;
 
     case 'hitl_inject_consumed':
-      dispatchEvent({
+      workflowStore.dispatchEvent({
         type: 'USER_OUT_OF_BAND_INPUT',
         payload: {
           inputId: sseEvent.interaction_id || `inject_${Date.now()}`,
@@ -184,7 +184,7 @@ export function handleWorkflowSSE(sseEvent) {
 
     case 'status_change':
       if (sseEvent.status === 'completed' || sseEvent.status === 'failed') {
-        dispatchEvent({
+        workflowStore.dispatchEvent({
           type: 'WORKFLOW_COMPLETED',
           payload: {
             finalConsensusId: 'final',

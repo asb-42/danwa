@@ -4,68 +4,49 @@
  * Updates the runtime state (active node, current round, status)
  * based on incoming workflow events.
  *
- * IMPORTANT: Must return new object references for Svelte reactivity.
+ * Migrated from Svelte 4 store.update() pattern to Svelte 5 $state direct mutation.
  */
-
-import { runtime } from './store.js';
 
 /**
  * Apply a workflow event to the runtime state.
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {import('./events.js').WorkflowEvent} event
  */
-export function applyEventToRuntime(event) {
+export function applyEventToRuntime(store, event) {
   switch (event.type) {
 
     case 'AGENT_STARTED':
-      runtime.update(r => ({
-        ...r,
-        activeNodeId: event.payload.agentId,
-        status: 'running',
-        currentRound: event.payload.round,
-        executionPath: [...r.executionPath, event.payload.agentId],
-      }));
+      store.runtimeActiveNodeId = event.payload.agentId;
+      store.runtimeStatus = 'running';
+      store.runtimeCurrentRound = event.payload.round;
+      store.runtimeExecutionPath = [...store.runtimeExecutionPath, event.payload.agentId];
       break;
 
     case 'AGENT_COMPLETED':
-      runtime.update(r => ({
-        ...r,
-        activeNodeId: null,
-        activeEdgeId: null,
-      }));
+      store.runtimeActiveNodeId = null;
+      store.runtimeActiveEdgeId = null;
       break;
 
     case 'ARTIFACT_PRODUCED':
-      runtime.update(r => ({
-        ...r,
-        activeEdgeId: `${event.payload.producerAgentId}->${event.payload.artifactId}`,
-      }));
+      store.runtimeActiveEdgeId = `${event.payload.producerAgentId}->${event.payload.artifactId}`;
       break;
 
     case 'USER_CLARIFICATION_REQUESTED':
-      runtime.update(r => ({
-        ...r,
-        status: 'waiting_for_user',
-        blockingUserRequestId: event.payload.requestId,
-        activeNodeId: `user_action_${event.payload.requestId}`,
-      }));
+      store.runtimeStatus = 'waiting_for_user';
+      store.runtimeBlockingUserRequestId = event.payload.requestId;
+      store.runtimeActiveNodeId = `user_action_${event.payload.requestId}`;
       break;
 
     case 'USER_CLARIFICATION_RECEIVED':
-      runtime.update(r => ({
-        ...r,
-        status: 'running',
-        blockingUserRequestId: null,
-        activeNodeId: event.payload.respondingToAgentId,
-      }));
+      store.runtimeStatus = 'running';
+      store.runtimeBlockingUserRequestId = null;
+      store.runtimeActiveNodeId = event.payload.respondingToAgentId;
       break;
 
     case 'ROUND_COMPLETED':
-      runtime.update(r => ({
-        ...r,
-        currentRound: event.payload.round + 1,
-        activeNodeId: null,
-        activeEdgeId: null,
-      }));
+      store.runtimeCurrentRound = event.payload.round + 1;
+      store.runtimeActiveNodeId = null;
+      store.runtimeActiveEdgeId = null;
       break;
 
     case 'CONSENSUS_CHECK':
@@ -77,12 +58,9 @@ export function applyEventToRuntime(event) {
       break;
 
     case 'WORKFLOW_COMPLETED':
-      runtime.update(r => ({
-        ...r,
-        status: 'completed',
-        activeNodeId: null,
-        activeEdgeId: null,
-      }));
+      store.runtimeStatus = 'completed';
+      store.runtimeActiveNodeId = null;
+      store.runtimeActiveEdgeId = null;
       break;
 
     default:

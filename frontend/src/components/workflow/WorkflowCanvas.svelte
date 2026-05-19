@@ -11,8 +11,7 @@
    */
   import { SvelteFlow, Background, Controls, MiniMap } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
-  import { flowNodes, flowEdges, runtime, viewMode } from '../../lib/workflow/store.js';
-  import { workflowGraph } from '../../lib/workflow/useWorkflowGraph.js';
+  import { workflowStore } from '../../lib/workflow/store.svelte.js';
   import { applyLayout } from '../../lib/workflow/layout.js';
   import { i18n } from '../../lib/i18n/index.js';
 
@@ -67,14 +66,10 @@
     oob: OOBEdge,
   };
 
-  // Reactive nodes/edges for Svelte Flow
-  let nodes = $derived($flowNodes);
-  let edges = $derived($flowEdges);
-  let status = $derived($runtime.status);
-
-  // Subscribe to workflowGraph to keep the derived store alive
-  // (ensures the store stays active while the canvas is mounted)
-  let _wg = $workflowGraph;
+  // Reactive nodes/edges for Svelte Flow (computed from store getters)
+  let nodes = $derived(workflowStore.flowNodes);
+  let edges = $derived(workflowStore.flowEdges);
+  let status = $derived(workflowStore.runtimeStatus);
 
   // Trigger ELK layout when topology changes (node/edge count).
   // This is a side effect, so it lives in $effect, NOT in a derived store.
@@ -155,7 +150,7 @@
     <NodeDetailPanel node={selectedNode} onclose={() => selectedNode = null} />
   {/if}
 
-  {#if $viewMode === 'timeline'}
+  {#if workflowStore.viewMode === 'timeline'}
     <TimelinePanel />
   {/if}
 </div>

@@ -3,10 +3,9 @@
  *
  * Allows users to inject additional context into a running debate
  * without interrupting the current agent execution.
+ *
+ * Migrated from Svelte 4 store.update()/.get() pattern to Svelte 5 $state direct mutation.
  */
-
-import { get } from 'svelte/store';
-import { oobQueue, graphNodes, runtime, dispatchEvent } from './store.js';
 
 /**
  * @typedef {'append'|'inject_now'|'override_context'} OOBUrgency
@@ -32,10 +31,11 @@ import { oobQueue, graphNodes, runtime, dispatchEvent } from './store.js';
 /**
  * Submit an OOB input to the queue.
  * Immediately emits USER_OUT_OF_BAND_INPUT event for visualization.
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {Omit<OOBInput, 'id'|'timestamp'|'status'>} input
  * @returns {string} The OOB input ID
  */
-export function submitOOBInput(input) {
+export function submitOOBInput(store, input) {
   const id = `oob_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const newOOB = {
     ...input,
@@ -44,26 +44,25 @@ export function submitOOBInput(input) {
     status: 'pending',
   };
 
-  oobQueue.update(q => {
-    const newItems = [...q.items, newOOB];
+  const newItems = [...store.oobQueueItems, newOOB];
 
-    // Update index for fast lookup (create new Map for reactivity)
-    const newIndex = new Map(q.indexByTarget);
-    const key = getOOBIndexKey(newOOB.target);
-    const existing = newIndex.get(key) || [];
-    newIndex.set(key, [...existing, newOOB]);
+  // Update index for fast lookup (create new Map for reactivity)
+  const newIndex = new Map(store.oobQueueIndexByTarget);
+  const key = getOOBIndexKey(newOOB.target);
+  const existing = newIndex.get(key) || [];
+  newIndex.set(key, [...existing, newOOB]);
 
-    return { items: newItems, indexByTarget: newIndex };
-  });
+  store.oobQueueItems = newItems;
+  store.oobQueueIndexByTarget = newIndex;
 
   // Immediately emit event for visualization
-  dispatchEvent({
+  store.dispatchEvent({
     type: 'USER_OUT_OF_BAND_INPUT',
     payload: {
       inputId: id,
-      targetAgentId: resolveTargetAgentId(input.target),
+      targetAgentId: resolveTargetAgentId(store, input.target),
       content: input.content,
-      round: get(runtime).currentRound,
+      round: store.runtimeCurrentRound,
     },
   });
 
@@ -72,25 +71,25 @@ export function submitOOBInput(input) {
 
 /**
  * Consume all pending OOB inputs for a specific agent at a given round.
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {string} agentRole
  * @param {number} round
  * @returns {OOBInput[]}
  */
-export function consumeOOBForAgent(agentRole, round) {
-  const q = get(oobQueue);
+export function consumeOOBForAgent(store, agentRole, round) {
   const relevant = [];
 
   // 1. Specific for this agent in this round
   const specificKey = `specific:${agentRole}:${round}`;
-  relevant.push(...(q.indexByTarget.get(specificKey) || []));
+  relevant.push(...(store.oobQueueIndexByTarget.get(specificKey) || []));
 
   // 2. "Next agent" — if the previous agent targeted this one
   const prevRole = getPreviousRole(agentRole);
   const nextKey = `next:${prevRole}`;
-  relevant.push(...(q.indexByTarget.get(nextKey) || []));
+  relevant.push(...(store.oobQueueIndexByTarget.get(nextKey) || []));
 
   // 3. "All future" from this round onwards
-  q.items.forEach((item) => {
+  store.oobQueueItems.forEach((item) => {
     if (item.target.type === 'all_future'
         && item.target.fromRound <= round
         && item.status === 'pending') {
@@ -100,7 +99,7 @@ export function consumeOOBForAgent(agentRole, round) {
 
   // 4. "Current active"
   const currentKey = 'current:any';
-  relevant.push(...(q.indexByTarget.get(currentKey) || []));
+  relevant.push(...(store.oobQueueIndexByTarget.get(currentKey) || []));
 
   // Remove duplicates and filter only pending
   const unique = Array.from(new Map(relevant.map(o => [o.id, o])).values())
@@ -111,42 +110,39 @@ export function consumeOOBForAgent(agentRole, round) {
 
 /**
  * Mark an OOB input as consumed by a specific agent.
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {string} oobId
  * @param {string} agentId
  */
-export function markOOBConsumed(oobId, agentId) {
-  oobQueue.update(q => {
-    const newItems = q.items.map(o =>
-      o.id === oobId
-        ? { ...o, status: 'consumed', consumedBy: agentId, consumedAt: Date.now() }
-        : o
-    );
-    return { ...q, items: newItems };
-  });
+export function markOOBConsumed(store, oobId, agentId) {
+  store.oobQueueItems = store.oobQueueItems.map(o =>
+    o.id === oobId
+      ? { ...o, status: 'consumed', consumedBy: agentId, consumedAt: Date.now() }
+      : o
+  );
 }
 
 /**
  * Get count of pending OOB inputs.
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @returns {number}
  */
-export function getPendingOOBCount() {
-  return get(oobQueue).items.filter(o => o.status === 'pending').length;
+export function getPendingOOBCount(store) {
+  return store.oobQueueItems.filter(o => o.status === 'pending').length;
 }
 
 /**
  * Mark stale OOB inputs (older than threshold).
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {number} olderThanMs
  */
-export function clearStaleOOB(olderThanMs) {
+export function clearStaleOOB(store, olderThanMs) {
   const cutoff = Date.now() - olderThanMs;
-  oobQueue.update(q => {
-    const newItems = q.items.map(o =>
-      o.status === 'pending' && o.timestamp < cutoff
-        ? { ...o, status: 'stale' }
-        : o
-    );
-    return { ...q, items: newItems };
-  });
+  store.oobQueueItems = store.oobQueueItems.map(o =>
+    o.status === 'pending' && o.timestamp < cutoff
+      ? { ...o, status: 'stale' }
+      : o
+  );
 }
 
 // ─── Helpers ───
@@ -161,10 +157,9 @@ function getOOBIndexKey(target) {
   }
 }
 
-function resolveTargetAgentId(target) {
-  const nodes = get(graphNodes);
+function resolveTargetAgentId(store, target) {
   if (target.type === 'specific_agent') {
-    const found = Array.from(nodes.values())
+    const found = Array.from(store.graphNodes.values())
       .filter(n => n.type === 'agent' && n.data.role === target.agentRole)
       .sort((a, b) => b.data.round - a.data.round);
     return found[0]?.id || `pending_${target.agentRole}`;

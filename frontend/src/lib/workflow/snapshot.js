@@ -3,26 +3,22 @@
  *
  * Creates deep-copy snapshots of the current graph state at round boundaries.
  * Used for timeline view and audit trail.
+ *
+ * Migrated from Svelte 4 store.get() pattern to Svelte 5 $state direct access.
  */
-
-import { get } from 'svelte/store';
-import { graphNodes, graphEdges, runtime, roundSnapshots } from './store.js';
 
 /**
  * Create a deep-copy snapshot of the current graph state for a round.
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {number} roundNumber
  */
-export function createRoundSnapshot(roundNumber) {
-  const nodes = get(graphNodes);
-  const edges = get(graphEdges);
-  const rt = get(runtime);
-
-  const nodesSnapshot = Array.from(nodes.values()).map(n => ({
+export function createRoundSnapshot(store, roundNumber) {
+  const nodesSnapshot = Array.from(store.graphNodes.values()).map(n => ({
     ...n,
     data: { ...n.data, isActive: false, status: 'completed' },
   }));
 
-  const edgesSnapshot = Array.from(edges.values()).map(e => ({
+  const edgesSnapshot = Array.from(store.graphEdges.values()).map(e => ({
     ...e,
     data: { ...e.data, isActive: false },
   }));
@@ -32,12 +28,12 @@ export function createRoundSnapshot(roundNumber) {
     title: `Round ${roundNumber}`,
     nodes: nodesSnapshot,
     edges: edgesSnapshot,
-    executionPath: [...rt.executionPath],
+    executionPath: [...store.runtimeExecutionPath],
     completedAt: Date.now(),
   };
 
-  roundSnapshots.update(snaps => [...snaps, snapshot]);
+  store.roundSnapshots = [...store.roundSnapshots, snapshot];
 
   // Reset execution path for new round
-  runtime.update(r => ({ ...r, executionPath: [] }));
+  store.runtimeExecutionPath = [];
 }

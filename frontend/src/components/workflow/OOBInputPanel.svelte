@@ -4,9 +4,9 @@
    * during a running debate.
    */
 
-  import { runtime, pendingOOBCount } from '../../lib/workflow/store.js';
-  import { submitOOBInput } from '../../lib/workflow/oob.js';
+  import { workflowStore } from '../../lib/workflow/store.svelte.js';
   import { submitOOBInput as apiSubmitOOB } from '../../lib/api.js';
+  import { submitOOBInput } from '../../lib/workflow/oob.js';
   import { i18n } from '../../lib/i18n/index.js';
 
   let { debateId = '' } = $props();
@@ -32,8 +32,8 @@
     { value: 'current_active', label: t('oob.targetCurrent') },
   ]);
 
-  let rt = $derived($runtime);
-  let pendingCount = $derived($pendingOOBCount);
+  let rt = $derived(workflowStore.runtime);
+  let pendingCount = $derived(workflowStore.pendingOOBCount);
   let isVisible = $derived(rt.status === 'running' || rt.status === 'waiting_for_user');
 
   let submitError = $state('');
@@ -53,7 +53,7 @@
     const trimmedContent = content.trim();
 
     // Update local store for immediate UI feedback
-    submitOOBInput({ content: trimmedContent, target, urgency });
+    submitOOBInput(workflowStore, { content: trimmedContent, target, urgency });
 
     // Submit to backend API so workflow nodes can consume it
     if (debateId) {

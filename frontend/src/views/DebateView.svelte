@@ -7,7 +7,7 @@
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
   import WorkflowGraph from '../components/WorkflowGraph.svelte';
   import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
-  import { resetWorkflow } from '../lib/workflow/store.js';
+  import { resetWorkflow } from '../lib/workflow/store.svelte.js';
   // HITL components
   import InjectPanel from '../components/hitl/InjectPanel.svelte';
   import PauseControls from '../components/hitl/PauseControls.svelte';

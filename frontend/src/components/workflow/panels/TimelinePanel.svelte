@@ -4,7 +4,7 @@
    * Allows switching between current view and historical round views.
    */
 
-  import { roundSnapshots, viewMode, graphNodes, graphEdges } from '../../../lib/workflow/store.js';
+  import { workflowStore } from '../../../lib/workflow/store.svelte.js';
   import { i18n } from '../../../lib/i18n/index.js';
 
   let t = $derived((key, params = {}) => {
@@ -15,20 +15,20 @@
     return text;
   });
 
-  let snapshots = $derived($roundSnapshots);
-  let currentView = $derived($viewMode);
+  let snapshots = $derived(workflowStore.roundSnapshots);
+  let currentView = $derived(workflowStore.viewMode);
   let selectedRound = $state(null);
 
   function selectRound(snapshot) {
     selectedRound = snapshot.round;
     // Load snapshot into graph for viewing
-    graphNodes.set(new Map(snapshot.nodes.map(n => [n.id, n])));
-    graphEdges.set(new Map(snapshot.edges.map(e => [e.id, e])));
+    workflowStore.graphNodes = new Map(snapshot.nodes.map(n => [n.id, n]));
+    workflowStore.graphEdges = new Map(snapshot.edges.map(e => [e.id, e]));
   }
 
   function returnToCurrent() {
     selectedRound = null;
-    viewMode.set('current');
+    workflowStore.viewMode = 'current';
   }
 </script>
 
