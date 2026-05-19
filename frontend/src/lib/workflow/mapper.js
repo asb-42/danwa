@@ -7,6 +7,7 @@
  */
 
 import { workflowStore } from './store.svelte.js';
+import { PIPELINE_ROLES, ROLE_ARTIFACT_MAP } from './constants.js';
 
 /**
  * Map incoming SSE events to workflow events and dispatch them.
@@ -199,6 +200,7 @@ export function handleWorkflowSSE(sseEvent) {
 
 /**
  * Get the artifact IDs that serve as input for a given agent role and round.
+ * Uses the shared PIPELINE_ROLES constant for consistent ordering.
  * @param {string} role
  * @param {number} round
  * @returns {string[]}
@@ -206,31 +208,22 @@ export function handleWorkflowSSE(sseEvent) {
 function getInputArtifacts(role, round) {
   if (round === 1 && role === 'strategist') return ['input'];
   // For subsequent agents in same round, use previous agent's output
-  const roles = ['strategist', 'critic', 'fact-checker', 'optimizer', 'moderator', 'analyst', 'creative'];
-  const idx = roles.indexOf(role);
-  if (idx > 0) return [`${roles[idx - 1]}_output_r${round}`];
-  // A2A agents (custom roles) receive moderator output as input
+  const idx = PIPELINE_ROLES.indexOf(role);
+  if (idx > 0) return [`${PIPELINE_ROLES[idx - 1]}_output_r${round}`];
+  // A2A agents (custom roles not in pipeline) receive moderator output as input
   // since they run after all standard agents
-  if (!roles.includes(role)) return [`moderator_output_r${round}`];
+  if (!PIPELINE_ROLES.includes(role)) return [`moderator_output_r${round}`];
   // For first agent of new round, use previous round's moderator output
   return [`moderator_output_r${round - 1}`];
 }
 
 /**
  * Map an agent role to an artifact type.
+ * Uses the shared ROLE_ARTIFACT_MAP constant.
  * @param {string} role
  * @returns {string}
  */
 function mapRoleToArtifactType(role) {
-  const map = {
-    strategist: 'strategy',
-    critic: 'critique',
-    'fact-checker': 'fact-check',
-    analyst: 'analysis',
-    creative: 'creative',
-    optimizer: 'synthesis',
-    moderator: 'consensus',
-  };
   // A2A agents produce 'synthesis' type artifacts
-  return map[role] || 'synthesis';
+  return ROLE_ARTIFACT_MAP[role] || 'synthesis';
 }

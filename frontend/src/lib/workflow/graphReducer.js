@@ -6,33 +6,31 @@
  *
  * Migrated from Svelte 4 store.update() pattern to Svelte 5 $state direct mutation.
  * $state creates deep reactive proxies, so Map.set/delete triggers reactivity directly.
+ *
+ * Pipeline order is defined in constants.js — not hardcoded here — so that
+ * mapper.js, layout.js, and graphReducer.js all share the same source of truth.
  */
+
+import { PIPELINE_ROLES, ARTIFACT_ROLE_MAP } from './constants.js';
 
 // ── Initial position calculation ──────────────────────────────────
 // Gives each node a reasonable starting position so the graph is
 // readable even before ELK layout runs. ELK will refine these.
-const ROLE_ORDER = ['strategist', 'critic', 'optimizer', 'moderator'];
 const NODE_SPACING_X = 220;
 const ROUND_SPACING_Y = 200;
-const ARTIFACT_ROLE_MAP = {
-  strategy: 'strategist',
-  critique: 'critic',
-  synthesis: 'optimizer',
-  consensus: 'moderator',
-};
 
 function getInitialPosition(nodeType, role, round) {
   if (role === 'input') return { x: -200, y: 0 };
   const r = role in ARTIFACT_ROLE_MAP ? ARTIFACT_ROLE_MAP[role] : role;
-  const col = ROLE_ORDER.indexOf(r);
-  const c = col >= 0 ? col : 0;
+  const col = PIPELINE_ROLES.indexOf(r);
+  const c = col >= 0 ? col : PIPELINE_ROLES.length; // Unknown roles go after last known
   const baseX = c * 2 * NODE_SPACING_X;
   const baseY = ((round || 1) - 1) * ROUND_SPACING_Y;
   if (nodeType === 'artifact') return { x: baseX + NODE_SPACING_X, y: baseY + 30 };
-  if (nodeType === 'decision') return { x: ROLE_ORDER.length * 2 * NODE_SPACING_X + 80, y: baseY };
+  if (nodeType === 'decision') return { x: PIPELINE_ROLES.length * 2 * NODE_SPACING_X + 80, y: baseY };
   if (nodeType === 'user_action') return { x: baseX + NODE_SPACING_X / 2, y: baseY - 90 };
-  // A2A agents are positioned after the moderator column
-  if (nodeType === 'a2a_agent') return { x: (ROLE_ORDER.length) * 2 * NODE_SPACING_X, y: baseY };
+  // A2A agents are positioned after the last pipeline role column
+  if (nodeType === 'a2a_agent') return { x: (PIPELINE_ROLES.length) * 2 * NODE_SPACING_X, y: baseY };
   return { x: baseX, y: baseY };
 }
 
@@ -85,12 +83,13 @@ export function applyEventToGraph(store, event) {
       }
 
       // Create edges: previous agent/input → this agent
-      const pipelineOrder = ['strategist', 'critic', 'optimizer', 'moderator'];
-      const currentIdx = pipelineOrder.indexOf(role);
+      // Uses the shared PIPELINE_ROLES constant so all roles (including
+      // fact-checker, analyst, creative) get correct predecessor edges.
+      const currentIdx = PIPELINE_ROLES.indexOf(role);
 
       if (currentIdx > 0) {
         // Find the previous agent node in this round
-        const prevRole = pipelineOrder[currentIdx - 1];
+        const prevRole = PIPELINE_ROLES[currentIdx - 1];
         const prevAgentId = `${prevRole}_r${round}`;
         if (graphNodes.has(prevAgentId)) {
           const edgeId = `${prevAgentId}->${agentId}`;
@@ -103,7 +102,7 @@ export function applyEventToGraph(store, event) {
           });
         }
       } else if (currentIdx === 0) {
-        // First agent (strategist) — connect to decision node of previous round if it exists
+        // First pipeline agent (strategist) — connect to decision node of previous round if it exists
         const prevDecisionId = `decision_r${round - 1}`;
         if (round > 1 && graphNodes.has(prevDecisionId)) {
           const edgeId = `${prevDecisionId}->${agentId}`;
@@ -130,18 +129,39 @@ export function applyEventToGraph(store, event) {
             }
           }
         }
-      } else if (!pipelineOrder.includes(role)) {
-        // A2A or custom agent → connect to moderator of this round
-        const modAgentId = `moderator_r${round}`;
-        if (graphNodes.has(modAgentId)) {
-          const edgeId = `${modAgentId}->${agentId}`;
-          graphEdges.set(edgeId, {
-            id: edgeId,
-            source: modAgentId,
-            target: agentId,
-            type: 'flow',
-            data: { type: 'flow', isActive: true },
-          });
+      } else {
+        // Unknown/A2A role — connect to the last known pipeline agent in this round.
+        // Walk backwards through the pipeline to find the latest completed agent.
+        let connected = false;
+        for (let i = PIPELINE_ROLES.length - 1; i >= 0 && !connected; i--) {
+          const candidateId = `${PIPELINE_ROLES[i]}_r${round}`;
+          if (graphNodes.has(candidateId)) {
+            const edgeId = `${candidateId}->${agentId}`;
+            graphEdges.set(edgeId, {
+              id: edgeId,
+              source: candidateId,
+              target: agentId,
+              type: 'flow',
+              data: { type: 'flow', isActive: true },
+            });
+            connected = true;
+          }
+        }
+        // Fallback: connect to input if no pipeline agent found
+        if (!connected) {
+          for (const [, node] of graphNodes) {
+            if (node.type === 'input') {
+              const edgeId = `${node.id}->${agentId}`;
+              graphEdges.set(edgeId, {
+                id: edgeId,
+                source: node.id,
+                target: agentId,
+                type: 'flow',
+                data: { type: 'flow', isActive: true },
+              });
+              break;
+            }
+          }
         }
       }
       break;
