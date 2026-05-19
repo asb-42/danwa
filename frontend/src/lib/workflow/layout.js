@@ -13,10 +13,8 @@
  * - applyPositions uses a direct import (not dynamic) to avoid race conditions.
  */
 
-import ELK from 'elkjs/lib/elk.bundled.js';
 import { workflowStore } from './store.svelte.js';
-
-const elk = new ELK();
+import { runLayout } from '../elk-service.js';
 
 const elkOptions = {
   'elk.algorithm': 'layered',
@@ -141,7 +139,7 @@ async function calculateLayout(nodes, edges) {
     edges: elkEdges,
   };
 
-  const result = await elk.layout(elkGraph);
+  const result = await runLayout(elkGraph);
 
   // Extract positions from result (recursively for nested children)
   const positions = new Map();

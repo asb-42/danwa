@@ -9,7 +9,7 @@
    */
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
-  import ELK from 'elkjs/lib/elk.bundled.js';
+  import { getElk } from '../lib/elk-service.js';
 
   let { activeNodeId = null, status = 'idle' } = $props();
 
@@ -51,7 +51,7 @@
 
   onMount(async () => {
     try {
-      const elk = new ELK();
+      const elk = getElk();
       const graph = {
         id: 'root',
         layoutOptions: {

@@ -5,9 +5,7 @@
  * Uses the layered algorithm with LEFT→RIGHT direction.
  */
 
-import ELK from 'elkjs/lib/elk.bundled.js';
-
-const elk = new ELK();
+import { runLayout } from '../elk-service.js';
 
 const elkOptions = {
   'elk.algorithm': 'layered',
@@ -71,7 +69,7 @@ export async function calculateBlueprintLayout(nodes, edges) {
     edges: elkEdges,
   };
 
-  const result = await elk.layout(elkGraph);
+  const result = await runLayout(elkGraph);
 
   const positions = new Map();
 
