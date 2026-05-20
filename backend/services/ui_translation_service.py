@@ -224,17 +224,15 @@ class UITranslationService:
             conn.close()
 
     def get_translation(self, key: str, locale: str, namespace: str = "global") -> str | None:
-        """Hole eine einzelne Übersetzung. Fallback: bundled loaders für EN."""
+        """Hole eine einzelne Übersetzung. Fallback: bundled loaders."""
         conn = self._get_conn()
         row = conn.execute("SELECT value FROM ui_translations WHERE key = ? AND locale = ? AND namespace = ?", (key, locale, namespace)).fetchone()
         conn.close()
         if row:
             return row["value"]
-        # Fallback: bundled loader (especially for English source strings)
-        if locale == "en" and namespace == "global":
-            bundled = self._scan_bundled_loaders()
-            return bundled.get("en", {}).get(key)
-        return None
+        # Fallback: bundled loader (for any locale, not just English)
+        bundled = self._scan_bundled_loaders()
+        return bundled.get(locale, {}).get(key)
 
     def get_translations_bulk(self, locale: str, namespace: str = "global", keys: list[str] | None = None) -> dict[str, str]:
         """Hole mehrere Übersetzungen auf einmal. Befüllt den lokalen Cache."""
@@ -354,8 +352,20 @@ class UITranslationService:
 
         result = {}
         primary = self.get_translations_bulk(locale, namespace, keys)
-        fallback_de = self.get_translations_bulk("de", namespace, [k for k in keys if k not in primary]) if locale != "de" else {}
-        fallback_en = self.get_translations_bulk("en", namespace, [k for k in keys if k not in primary and k not in fallback_de])
+        missing_after_primary = [k for k in keys if k not in primary]
+        fallback_de = self.get_translations_bulk("de", namespace, missing_after_primary) if locale != "de" else {}
+        missing_after_de = [k for k in missing_after_primary if k not in fallback_de]
+        fallback_en = self.get_translations_bulk("en", namespace, missing_after_de)
+
+        # Fallback to bundled loaders for any remaining missing keys
+        bundled = self._scan_bundled_loaders()
+        for k in list(fallback_en.keys()):
+            if not fallback_en[k] and k in bundled.get("en", {}):
+                fallback_en[k] = bundled["en"][k]
+        if locale not in ("de", "en"):
+            for k in list(fallback_de.keys()):
+                if not fallback_de[k] and k in bundled.get("de", {}):
+                    fallback_de[k] = bundled["de"][k]
 
         result.update(primary)
         result.update(fallback_de)
@@ -522,9 +532,11 @@ class UITranslationService:
                 prompt=source_text,
                 system_prompt=system_prompt,
                 temperature=0.2,
-                max_tokens=max(30, len(source_text) // 4),
+                max_tokens=max(100, len(source_text) * 2),
             )
             translated = result.content.strip()
+            if not translated:
+                raise ValueError(f"LLM returned empty translation for key '{key}'")
             self.set_translation(key, target_locale, translated, source="llm_generated")
             if job:
                 job.completed_strings += 1
@@ -538,7 +550,7 @@ class UITranslationService:
                 logger.warning("Rate limit hit for %s → %s: %s", key, target_locale, error_msg[:120])
                 raise  # Re-raise rate limit errors so the job can abort early
             logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s", key, target_locale, error_msg[:200])
-            return source_text
+            raise  # Re-raise so caller knows translation failed
 
     def bulk_translate(self, target_locales: list[str] | None = None, namespace: str = "global") -> dict[str, Any]:
         """Übersetze alle fehlenden Strings per LLM.
@@ -565,14 +577,19 @@ class UITranslationService:
 
             logger.info("Übersetze %d Strings nach %s …", len(missing), locale)
             translated_count = 0
+            failed_count = 0
             for key in missing:
                 en_val = self.get_translation(key, "en", namespace)
                 if en_val:
-                    self.translate_via_llm(key, en_val, locale)
-                    translated_count += 1
+                    try:
+                        self.translate_via_llm(key, en_val, locale)
+                        translated_count += 1
+                    except Exception as exc:
+                        failed_count += 1
+                        logger.warning("Skipping key %s: %s", key, str(exc)[:100])
 
-            logger.info("Fertig für %s: %d Strings übersetzt", locale, translated_count)
-            results[locale] = {"status": "ok", "translated": translated_count, "total_missing": len(missing)}
+            logger.info("Fertig für %s: %d Strings übersetzt, %d fehlgeschlagen", locale, translated_count, failed_count)
+            results[locale] = {"status": "ok", "translated": translated_count, "failed": failed_count, "total_missing": len(missing)}
 
         return results
 
@@ -655,6 +672,8 @@ class UITranslationService:
 
                 job.status = "completed"
                 job.finished_at = datetime.now(UTC).isoformat()
+                # Invalidate cache so newly stored translations are visible
+                self.invalidate_cache()
                 logger.info("Async bulk-translation completed: job=%s", job.job_id)
             except Exception as exc:
                 job.status = "failed"
@@ -672,10 +691,14 @@ class UITranslationService:
             (namespace,),
         ).fetchall()
         en_keys = {r["key"]: r["value"] for r in en_rows}
+        conn.close()
 
+        # Always merge bundled loaders — don't skip if DB has some entries
         bundled = self._scan_bundled_loaders()
-        if not en_keys and "en" in bundled:
-            en_keys = bundled["en"]
+        if "en" in bundled:
+            for key, val in bundled["en"].items():
+                if key not in en_keys:
+                    en_keys[key] = val
 
         target_rows = conn.execute(
             "SELECT key, value, source, confidence, version, created_at, updated_at FROM ui_translations WHERE locale = ? AND namespace = ?",
