@@ -587,6 +587,9 @@ case "$cmd" in
         stop_backend
         stop_frontend
         sleep 1
+        # Python-Bytecode-Caches löschen — sonst lädt der neue Prozess alte .pyc-Dateien
+        find "$PROJECT_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+        find "$PROJECT_DIR" -name "*.pyc" -delete 2>/dev/null || true
         start_backend
         start_frontend
         ;;
