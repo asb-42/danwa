@@ -3,7 +3,7 @@
    * PromptTemplateNode — Custom Svelte Flow node for Prompt Templates.
    *
    * Displays: name, 3-line content preview, variables count.
-   * Handles: LEFT (target), RIGHT (source).
+   * Handles: LEFT (target only — prompt templates are leaf nodes, no outgoing edges).
    */
   import { Handle, Position } from '@xyflow/svelte';
 
@@ -56,8 +56,6 @@
       <span class="var-count">{varCount} variable{varCount !== 1 ? 's' : ''}</span>
     {/if}
   </div>
-
-  <Handle type="source" position={Position.Right} class="port-prompt" />
 </div>
 
 <style>

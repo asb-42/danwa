@@ -100,6 +100,18 @@
   }
 
   /**
+   * Pre-validate connections during drag — SvelteFlow shows red line + bounce-back
+   * for invalid connections, preventing the "ghost edge" UX issue.
+   */
+  function isValidConnection(connection) {
+    const sourceNode = nodes.find((n) => n.id === connection.source);
+    const targetNode = nodes.find((n) => n.id === connection.target);
+    if (!sourceNode || !targetNode) return false;
+    const result = validateConnection(sourceNode.type, targetNode.type, canvasStore.mode);
+    return result.valid;
+  }
+
+  /**
    * Handle node/edge deletion — unwire semantic edges from backend.
    * Triggered when the user selects and deletes nodes/edges (Delete/Backspace key).
    * @param {{ nodes: Array, edges: Array }} param0
@@ -335,6 +347,7 @@
     {edges}
     {nodeTypes}
     {edgeTypes}
+    {isValidConnection}
     onnodeclick={handleNodeClick}
     onpaneclick={handlePaneClick}
     onconnect={handleConnect}

@@ -3,7 +3,7 @@
    * LLMProfileNode — Custom Svelte Flow node for LLM Profiles.
    *
    * Displays: provider icon, model name, A2A badge.
-   * Handles: LEFT (target), RIGHT (source).
+   * Handles: LEFT (target only — LLM profiles are leaf nodes, no outgoing edges).
    */
   import { Handle, Position } from '@xyflow/svelte';
 
@@ -59,8 +59,6 @@
       <span class="a2a-badge" title="A2A endpoint configured">A2A</span>
     {/if}
   </div>
-
-  <Handle type="source" position={Position.Right} class="port-llm" />
 </div>
 
 <style>
