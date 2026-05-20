@@ -54,7 +54,7 @@
         <PromptTemplateForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'role-type'}
         <RoleTypeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
-      {:else if nodeType === 'wf-tone-profile'}
+      {:else if nodeType === 'wf-tone-profile' || nodeType === 'tone-profile'}
         <ToneProfileForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'wf-agent'}
         <BundleAgentForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />

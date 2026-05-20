@@ -10,6 +10,7 @@
     createPromptTemplate,
     updatePromptTemplate,
     deletePromptTemplate,
+    getPromptTemplate,
   } from '../../../lib/blueprint/api.js';
 
   /** @type {{ node: any, onsave?: (data: any) => void, ondelete?: () => void }} */
@@ -22,7 +23,7 @@
   let error = $state(null);
 
   const roles = ['strategist', 'critic', 'optimizer', 'moderator'];
-  const languages = ['de', 'en'];
+  const languages = ['de', 'en', 'fr', 'es', 'it', 'pt', 'ru', 'zh', 'ja', 'ko', 'sv', 'el', 'ar', 'he'];
 
   $effect(() => {
     if (node?.data) {
@@ -35,6 +36,29 @@
         content: node.data.content || '',
         variables: node.data.variables || [],
       };
+    }
+  });
+
+  // Fetch full entity data on mount for non-draft nodes (e.g. dropped from palette)
+  $effect(() => {
+    const id = node?.data?.blueprint_id;
+    if (id && !node.data?.isDraft && !node.data?.content) {
+      getPromptTemplate(id).then((entity) => {
+        if (entity) {
+          draft = {
+            id: entity.id || id,
+            name: entity.name || '',
+            role: entity.role || 'strategist',
+            variant: entity.variant || 'default',
+            language: entity.language || 'de',
+            content: entity.content || '',
+            variables: entity.variables || [],
+          };
+          canvasStore.updateNodeData(node.id, entity);
+        }
+      }).catch(() => {
+        // Silently fail — draft already has fallback values
+      });
     }
   });
 

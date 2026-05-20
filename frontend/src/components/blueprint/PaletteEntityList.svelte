@@ -41,8 +41,11 @@
             {#if entity.provider}
               <span class="entity-meta">{entity.provider}</span>
             {/if}
-            {#if entity.role}
+            {#if nodeType === 'role-definition' && entity.role}
               <span class="entity-meta">{entity.role}</span>
+            {/if}
+            {#if nodeType === 'tone-profile' && entity.tone}
+              <span class="entity-meta">{entity.tone}</span>
             {/if}
           </div>
         {/each}

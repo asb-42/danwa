@@ -133,12 +133,12 @@ export function getDefaultData(nodeType) {
 
 /**
  * Sanitize entity data for SvelteFlow node storage.
- * Excludes large fields (e.g. content) that cause UI freezes when reactive.
+ * Preserves all fields including content — UI freeze concerns
+ * are handled by the form components, not by stripping data.
  */
 function sanitizeNodeData(data) {
   if (!data) return {};
-  const { content, ...rest } = data;
-  return rest;
+  return { ...data };
 }
 
 /**
