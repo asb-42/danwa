@@ -93,6 +93,27 @@ const EDGE_WIRING = {
     },
   },
 
+  uses_tone: {
+    fkField: 'tone_profile_id',
+    defaultFk: null,
+    async wire(sourceId, targetId) {
+      const target = await getAgentBlueprint(sourceId);
+      if (!target) return null;
+      return updateAgentBlueprint(sourceId, {
+        ...target,
+        tone_profile_id: targetId,
+      });
+    },
+    async unwire(sourceId) {
+      const target = await getAgentBlueprint(sourceId);
+      if (!target) return null;
+      return updateAgentBlueprint(sourceId, {
+        ...target,
+        tone_profile_id: null,
+      });
+    },
+  },
+
   prompted_by: {
     fkField: 'prompt_template_id',
     defaultFk: null,
@@ -180,7 +201,9 @@ export async function wireEdgeOnDisconnect(edge, nodes, updateNodeData) {
   const wiring = EDGE_WIRING[edge.type];
   if (!wiring) return false;
 
-  const targetNode = nodes.find((n) => n.id === edge.target);
+  // For uses_tone, the FK is on the source (Agent Blueprint), not the target
+  const nodeToFind = edge.type === 'uses_tone' ? edge.source : edge.target;
+  const targetNode = nodes.find((n) => n.id === nodeToFind);
   if (!targetNode) return false;
 
   const targetId = targetNode.data?.blueprint_id || targetNode.id;

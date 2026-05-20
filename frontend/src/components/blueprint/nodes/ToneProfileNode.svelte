@@ -1,14 +1,9 @@
 <script>
   /**
-   * ToneProfileNode — Global Config Node for tone/style injection.
+   * ToneProfileNode — Tone/Style configuration node.
    *
-   * Rounded rectangle (not angular like Agent Nodes), smaller footprint,
-   * warm color scheme (orange/yellow gradient).
-   * Badge: "Global" label in upper right.
-   * Display: Profile name + style emoji.
-   * Ports:
-   *   - RIGHT: sequential output (optional)
-   *   - BOTTOM: config output (for injects_config edges only)
+   * Blueprint Mode: source port (right) only — connects to Agent Blueprint.
+   * Workflow Mode: config ports (left input, bottom output) + sequential output.
    */
   import { Handle, Position } from '@xyflow/svelte';
 
@@ -23,44 +18,52 @@
     neutral: '⚖️',
   };
 
-  let profileName = $derived(data?.label || data?.profileName || 'Tone Profile');
+  let profileName = $derived(data?.label || data?.name || data?.profileName || 'Tone Profile');
   let style = $derived(data?.inline_profile?.style || data?.style || 'neutral');
   let emoji = $derived(STYLE_EMOJIS[style] || '⚖️');
   let isLinked = $derived(!!data?.tone_profile_id);
   let linkedName = $derived(data?.catalogProfileName || data?.tone_profile_id || '');
+  let isWorkflowMode = $derived(data?.type?.startsWith('wf-'));
 </script>
 
 <div
   class="tone-profile-node"
   class:selected
-  data-testid="node-wf-tone-profile"
+  data-testid="node-tone-profile-{data?.blueprint_id || 'draft'}"
 >
-  <!-- Global badge -->
-  <span class="global-badge">Global</span>
+  <!-- Global badge (workflow mode only) -->
+  {#if isWorkflowMode}
+    <span class="global-badge">Global</span>
+  {/if}
 
-  <!-- Config input port (left) -->
-  <Handle
-    type="target"
-    position={Position.Left}
-    id="config-in"
-    class="config-port port-config"
-  />
+  <!-- Workflow mode: config input port (left) -->
+  {#if isWorkflowMode}
+    <Handle
+      type="target"
+      position={Position.Left}
+      id="config-in"
+      class="config-port port-config"
+    />
 
-  <!-- Config output port (bottom) -->
-  <Handle
-    type="source"
-    position={Position.Bottom}
-    id="config-out"
-    class="config-port port-config"
-  />
+    <!-- Workflow mode: config output port (bottom) -->
+    <Handle
+      type="source"
+      position={Position.Bottom}
+      id="config-out"
+      class="config-port port-config"
+    />
 
-  <!-- Sequential output port (right) -->
-  <Handle
-    type="source"
-    position={Position.Right}
-    id="out"
-    class="sequential-port port-sequence"
-  />
+    <!-- Workflow mode: sequential output port (right) -->
+    <Handle
+      type="source"
+      position={Position.Right}
+      id="out"
+      class="sequential-port port-sequence"
+    />
+  {:else}
+    <!-- Blueprint mode: source port (right) — connects to Agent Blueprint -->
+    <Handle type="source" position={Position.Right} class="port-tone" />
+  {/if}
 
   <div class="node-content">
     <div class="node-header">
@@ -200,5 +203,17 @@
     background: #f59e0b !important;
     border: 2px solid white !important;
     border-radius: 50% !important;
+  }
+
+  /* Blueprint mode: tone port (right) */
+  :global(.port-tone) {
+    width: 10px !important;
+    height: 10px !important;
+    background: white !important;
+    border: 2px solid #f59e0b !important;
+    border-radius: 50% !important;
+  }
+  :global(.dark) :global(.port-tone) {
+    background: #451a03 !important;
   }
 </style>

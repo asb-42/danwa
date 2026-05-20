@@ -580,6 +580,9 @@
   :global(.port-feedback) {
     border-color: #ec4899 !important;
   }
+  :global(.port-tone) {
+    border-color: #f59e0b !important;
+  }
   :global(.dark) :global(.port-llm),
   :global(.dark) :global(.port-role),
   :global(.dark) :global(.port-prompt),

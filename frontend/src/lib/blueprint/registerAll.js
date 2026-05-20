@@ -36,6 +36,7 @@ import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
 import ImplementsRoleEdge from '../../components/blueprint/edges/ImplementsRoleEdge.svelte';
 import PromptedByEdge from '../../components/blueprint/edges/PromptedByEdge.svelte';
 import OverridesPromptEdge from '../../components/blueprint/edges/OverridesPromptEdge.svelte';
+import UsesToneEdge from '../../components/blueprint/edges/UsesToneEdge.svelte';
 
 // Control flow edge components (Phase 4)
 import SequentialEdge from '../../components/blueprint/edges/SequentialEdge.svelte';
@@ -382,6 +383,12 @@ export function registerAllNodeTypes() {
   registerEdge({
     type: 'defines_role',
     component: DefinesRoleEdge,
+    category: 'semantic',
+  });
+
+  registerEdge({
+    type: 'uses_tone',
+    component: UsesToneEdge,
     category: 'semantic',
   });
 

@@ -23,6 +23,7 @@
   let hasLlm = $derived(!!data?.llm_profile_id);
   let hasRole = $derived(!!data?.role_definition_id);
   let hasPrompt = $derived(!!data?.prompt_template_id);
+  let hasTone = $derived(!!data?.tone_profile_id);
   let isDraft = $derived(!!data?.isDraft);
 </script>
 
@@ -57,10 +58,13 @@
         {hasLlm ? '✓' : '○'} LLM
       </span>
       <span class="indicator" class:linked={hasRole} title={hasRole ? 'Role linked' : 'No role linked'}>
-        {hasLlm ? '✓' : '○'} Role
+        {hasRole ? '✓' : '○'} Role
       </span>
       <span class="indicator" class:linked={hasPrompt} title={hasPrompt ? 'Prompt override' : 'No prompt override'}>
         {hasPrompt ? '✓' : '○'} Prompt
+      </span>
+      <span class="indicator" class:linked={hasTone} title={hasTone ? 'Tone linked' : 'No tone linked'}>
+        {hasTone ? '✓' : '○'} Tone
       </span>
     </div>
   </div>
