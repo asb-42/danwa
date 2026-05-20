@@ -469,7 +469,8 @@ class UITranslationService:
                 bundle_keys = set(bundled[locale].keys())
                 translated = len(bundle_keys & en_keys)
             else:
-                db_keys = set(self.get_translations_bulk(locale, namespace).keys())
+                db_translations = self.get_translations_bulk(locale, namespace)
+                db_keys = {k for k, v in db_translations.items() if v}
                 translated = len(db_keys & en_keys)
             coverage = translated / len(en_keys) * 100
             result[locale] = {
@@ -485,7 +486,8 @@ class UITranslationService:
         ).fetchall()
         for row in custom_rows:
             locale = row["locale"]
-            db_keys = set(self.get_translations_bulk(locale, namespace).keys())
+            db_translations = self.get_translations_bulk(locale, namespace)
+            db_keys = {k for k, v in db_translations.items() if v}
             translated = len(db_keys & en_keys)
             coverage = translated / len(en_keys) * 100
             result[locale] = {
@@ -496,6 +498,31 @@ class UITranslationService:
         conn.close()
 
         return result
+
+    def wipe_locale(self, locale: str, namespace: str = "global") -> dict[str, Any]:
+        """Delete all translations for a locale. Use before re-translating.
+
+        Args:
+            locale: Target locale code (e.g. 'hu', 'it').
+            namespace: Translation namespace.
+
+        Returns:
+            Dict with deleted count.
+        """
+        conn = self._get_conn()
+        try:
+            cursor = conn.execute(
+                "DELETE FROM ui_translations WHERE locale = ? AND namespace = ?",
+                (locale, namespace),
+            )
+            conn.commit()
+            deleted = cursor.rowcount
+            logger.info("Wiped %d translations for locale '%s'", deleted, locale)
+            # Invalidate cache
+            self._locales_cache.pop(locale, None)
+            return {"deleted": deleted, "locale": locale}
+        finally:
+            conn.close()
 
     # ------------------------------------------------------------------
     # LLM-basierte Übersetzung
@@ -519,12 +546,33 @@ class UITranslationService:
                 llm_profile_id = self._select_llm_for_locale(target_locale, ps)
             llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
 
+        # Build context-aware system prompt
+        # Detect key type for better context hints
+        key_lower = key.lower()
+        if any(s in key_lower for s in ("button", "btn", "save", "cancel", "submit", "delete", "edit")):
+            context_hint = "This is a button label."
+        elif any(s in key_lower for s in ("tooltip", "hint")):
+            context_hint = "This is a tooltip (hover text)."
+        elif any(s in key_lower for s in ("title", "heading", "header")):
+            context_hint = "This is a page or section title."
+        elif any(s in key_lower for s in ("error", "warning", "alert")):
+            context_hint = "This is an error or warning message."
+        elif any(s in key_lower for s in ("placeholder", "input")):
+            context_hint = "This is an input field placeholder."
+        else:
+            context_hint = "This is a UI string (label, menu item, or status text)."
+
+        max_display_len = max(60, len(source_text) + 20)
+
         system_prompt = (
-            f"You are a professional UI/UX translator. "
-            f"Translate the following English UI string to {self._locale_name(target_locale)}. "
-            f"Keep it concise, precise, and consistent with UI conventions. "
-            f"Do NOT translate placeholder variables like {{param}}. "
-            f"Output ONLY the translation, nothing else."
+            f"You are a professional UI/UX translator for a web application "
+            f"called Danwa — a multi-agent debate and document analysis platform. "
+            f"{context_hint} "
+            f"Translate the following English text to {self._locale_name(target_locale)}. "
+            f"Keep it concise and precise. The translation must not exceed {max_display_len} characters. "
+            f"Do NOT translate placeholder variables like {{param}}, {{count}}, or {{name}}. "
+            f"Do NOT translate HTML tags, Markdown formatting, or escape sequences. "
+            f"Output ONLY the translated text, nothing else. No quotes, no explanations."
         )
 
         try:

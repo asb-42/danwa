@@ -875,10 +875,18 @@ export function getTranslationCoverage(namespace = 'global') {
 // ---------------------------------------------------------------------------
 
 /** Start an async bulk translation job. Returns job_id for polling. */
-export function bulkTranslate(targetLocales = null, namespace = 'global', force = false) {
+export function bulkTranslate(targetLocales = null, namespace = 'global', force = false, wipeFirst = false) {
   return request('/api/v1/i18n/bulk-translate', {
     method: 'POST',
-    body: JSON.stringify({ target_locales: targetLocales, namespace, force }),
+    body: JSON.stringify({ target_locales: targetLocales, namespace, force, wipe_first: wipeFirst }),
+  });
+}
+
+/** Wipe all translations for a locale. */
+export function wipeLocale(locale, namespace = 'global') {
+  return request(`/api/v1/i18n/${encodeURIComponent(locale)}/wipe`, {
+    method: 'POST',
+    body: JSON.stringify({ namespace }),
   });
 }
 

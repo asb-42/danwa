@@ -13,6 +13,7 @@
     setTranslation,
     registerLocale,
     getCustomLocales,
+    wipeLocale,
   } from '../lib/api.js';
 
   let { navigate } = $props();
@@ -30,6 +31,7 @@
   let customLocales = $state([]);
   let loading = $state(false);
   let translatingLocale = $state(null);
+  let wipingLocale = $state(null);
 
   // Async job state
   let activeJobId = $state(null);
@@ -140,10 +142,10 @@
     }
   }
 
-  async function translateLocale(localeCode) {
+  async function translateLocale(localeCode, wipeFirst = false) {
     translatingLocale = localeCode;
     try {
-      const { job_id } = await bulkTranslate([localeCode]);
+      const { job_id } = await bulkTranslate([localeCode], 'global', false, wipeFirst);
       activeJobId = job_id;
       jobStatus = 'running';
       jobProgress = 0;
@@ -188,6 +190,34 @@
       console.error('LLM translation failed:', e);
     } finally {
       translatingLocale = null;
+    }
+  }
+
+  async function wipeLocaleHandler(localeCode) {
+    const localeName = LOCALE_NAMES[localeCode] || localeCode;
+    const confirmed = confirm(
+      `Delete ALL translations for ${localeName}?\n\nThis cannot be undone. You will need to re-translate all strings.`,
+    );
+    if (!confirmed) return;
+
+    wipingLocale = localeCode;
+    try {
+      const result = await wipeLocale(localeCode);
+      const deleted = result.deleted || 0;
+      addToast({
+        message: `${deleted} translations deleted for ${localeName}`,
+        type: 'success',
+        timeout: 5000,
+      });
+      await loadOverview();
+      if (expandedLocale === localeCode) {
+        await loadDetail(localeCode);
+      }
+    } catch (e) {
+      addToast({ message: `Wipe failed: ${e.message}`, type: 'error', timeout: 8000 });
+      console.error('Wipe failed:', e);
+    } finally {
+      wipingLocale = null;
     }
   }
 
@@ -410,11 +440,27 @@
                     📦 Export
                   </button>
                   <button
+                    class="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors disabled:opacity-50"
+                    disabled={wipingLocale === locale.code || activeJobId !== null}
+                    onclick={() => wipeLocaleHandler(locale.code)}
+                    title="Delete all translations for this locale"
+                  >
+                    {wipingLocale === locale.code ? '⏳ Wiping…' : '🗑️ Wipe'}
+                  </button>
+                  <button
                     class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors disabled:opacity-50"
                     disabled={translatingLocale === locale.code || activeJobId !== null}
-                    onclick={() => translateLocale(locale.code)}
+                    onclick={() => translateLocale(locale.code, false)}
                   >
                     {translatingLocale === locale.code ? '⏳ ' + t('translation.translating') : '🤖 ' + t('translation.llm')}
+                  </button>
+                  <button
+                    class="px-2.5 py-1 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded hover:bg-violet-200 dark:hover:bg-violet-800/50 transition-colors disabled:opacity-50"
+                    disabled={translatingLocale === locale.code || activeJobId !== null}
+                    onclick={() => translateLocale(locale.code, true)}
+                    title="Wipe existing translations, then translate all strings fresh"
+                  >
+                    {translatingLocale === locale.code ? '⏳ ' + t('translation.translating') : '🔄 ' + t('translation.llm') + ' + Wipe'}
                   </button>
                 </div>
               </td>

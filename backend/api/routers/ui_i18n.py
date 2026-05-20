@@ -65,6 +65,13 @@ class BulkTranslateRequest(BaseModel):
     target_locales: list[str] | None = None
     namespace: str = "global"
     force: bool = False
+    wipe_first: bool = False
+
+
+class WipeLocaleRequest(BaseModel):
+    """Request to wipe all translations for a locale."""
+
+    namespace: str = "global"
 
 
 class RegisterLocaleRequest(BaseModel):
@@ -157,11 +164,27 @@ async def bulk_translate(
     svc: UITranslationService = Depends(get_i18n_service),
 ) -> dict[str, Any]:
     """Start an async bulk translation job. Returns job_id for polling."""
+    # Optionally wipe existing translations first
+    if body.wipe_first and body.target_locales:
+        for locale in body.target_locales:
+            svc.wipe_locale(locale, body.namespace)
     job_id = svc.bulk_translate_async(
         target_locales=body.target_locales,
         namespace=body.namespace,
     )
     return {"job_id": job_id}
+
+
+@router.post("/{locale}/wipe")
+async def wipe_locale(
+    locale: str,
+    body: WipeLocaleRequest | None = None,
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Delete all translations for a locale. Use before re-translating."""
+    namespace = body.namespace if body else "global"
+    result = svc.wipe_locale(locale, namespace)
+    return result
 
 
 @router.get("/bulk-translate/{job_id}/status")
