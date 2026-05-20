@@ -40,19 +40,32 @@ def list_tone_profiles(
     db_profiles = repo.list_tone_profiles(include_system=include_system, limit=limit, offset=offset)
     db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_profiles]
     module_profiles = get_tone_profiles_from_modules()
-    return db_dicts + module_profiles
+
+    seen_ids: set[str] = set()
+    combined: list[dict[str, Any]] = []
+    for entry in db_dicts + module_profiles:
+        eid = entry.get("id")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            combined.append(entry)
+    return combined
 
 
 @router.get("/{profile_id}", response_model=ToneProfile)
-def get_tone_profile(
+def get_tone_profile_by_id(
     profile_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> ToneProfile:
-    """Get a single tone profile by ID."""
+    """Get a single tone profile by ID — checks DB first, then modules."""
     profile = repo.get_tone_profile(profile_id)
-    if profile is None:
-        raise BlueprintNotFoundError("ToneProfile", profile_id)
-    return profile
+    if profile is not None:
+        return profile
+
+    for mp in get_tone_profiles_from_modules():
+        if mp.get("id") == profile_id:
+            return ToneProfile(**{k: v for k, v in mp.items() if k in ToneProfile.model_fields})
+
+    raise BlueprintNotFoundError("ToneProfile", profile_id)
 
 
 @router.post("", response_model=ToneProfile, status_code=201)

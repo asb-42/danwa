@@ -131,7 +131,15 @@ def list_bundles(
     module_bundles = get_bundles_from_modules()
     if active_only:
         module_bundles = [b for b in module_bundles if b.get("is_active", True)]
-    return db_dicts + module_bundles
+
+    seen_ids: set[str] = set()
+    combined: list[dict[str, Any]] = []
+    for entry in db_dicts + module_bundles:
+        eid = entry.get("id")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            combined.append(entry)
+    return combined
 
 
 @router.get("/bundles/{bundle_id}", response_model=AgentBundle)
@@ -139,10 +147,16 @@ def get_bundle(
     bundle_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> AgentBundle:
-    """Get a single agent bundle by ID."""
+    """Get a single agent bundle by ID — checks DB first, then modules."""
     bundle = repo.get_bundle(bundle_id)
-    _require_found("AgentBundle", bundle, bundle_id)
-    return bundle  # type: ignore[return-value]
+    if bundle is not None:
+        return bundle  # type: ignore[return-value]
+
+    for mb in get_bundles_from_modules():
+        if mb.get("id") == bundle_id:
+            return AgentBundle(**{k: v for k, v in mb.items() if k in AgentBundle.model_fields})
+
+    raise BlueprintNotFoundError("AgentBundle", bundle_id)
 
 
 @router.post("/bundles", response_model=AgentBundle, status_code=201)
@@ -292,8 +306,16 @@ def list_prompt_templates(
         module_templates = [t for t in module_templates if t.get("role") == role]
     if variant:
         module_templates = [t for t in module_templates if t.get("variant") == variant]
-    return db_dicts + module_templates
-    return repo.list_prompt_templates(role=role, variant=variant, limit=limit, offset=offset)
+
+    # Deduplicate by ID — DB entries take priority over modules
+    seen_ids: set[str] = set()
+    combined: list[dict[str, Any]] = []
+    for entry in db_dicts + module_templates:
+        eid = entry.get("id")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            combined.append(entry)
+    return combined
 
 
 @router.get("/prompt-templates/{template_id}", response_model=PromptTemplate)
@@ -301,10 +323,17 @@ def get_prompt_template(
     template_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> PromptTemplate:
-    """Get a single prompt template by ID."""
+    """Get a single prompt template by ID — checks DB first, then modules."""
     template = repo.get_prompt_template(template_id)
-    _require_found("PromptTemplate", template, template_id)
-    return template  # type: ignore[return-value]
+    if template is not None:
+        return template  # type: ignore[return-value]
+
+    # Fallback: search module-sourced templates
+    for mod_template in get_prompt_templates_from_modules():
+        if mod_template.get("id") == template_id:
+            return PromptTemplate(**{k: v for k, v in mod_template.items() if k in PromptTemplate.model_fields})
+
+    raise BlueprintNotFoundError("PromptTemplate", template_id)
 
 
 @router.post("/prompt-templates", response_model=PromptTemplate, status_code=201)

@@ -42,7 +42,15 @@ def list_llm_profiles(
     db_profiles = repo.list_llm_profiles(limit=limit, offset=offset)
     db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_profiles]
     module_profiles = get_llm_profiles_from_modules()
-    return db_dicts + module_profiles
+
+    seen_ids: set[str] = set()
+    combined: list[dict[str, Any]] = []
+    for entry in db_dicts + module_profiles:
+        eid = entry.get("id")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            combined.append(entry)
+    return combined
 
 
 @router.get("/{profile_id}", response_model=BlueprintLLMProfile)

@@ -56,12 +56,19 @@ def list_role_definitions(
     db_defs = repo.list_role_definitions(role=role, argumentation_pattern=argumentation_pattern, limit=limit, offset=offset)
     db_dicts = [p.model_dump() if hasattr(p, "model_dump") else p for p in db_defs]
     module_personas = get_agent_personas_from_modules()
-    # Filter module personas if role filter is applied
     if role:
         module_personas = [p for p in module_personas if p.get("role") == role]
     if argumentation_pattern:
         module_personas = [p for p in module_personas if p.get("argumentation_pattern") == argumentation_pattern]
-    return db_dicts + module_personas
+
+    seen_ids: set[str] = set()
+    combined: list[dict[str, Any]] = []
+    for entry in db_dicts + module_personas:
+        eid = entry.get("id")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            combined.append(entry)
+    return combined
 
 
 @router.get("/role-definitions/{role_id}", response_model=RoleDefinition)
@@ -69,10 +76,16 @@ def get_role_definition(
     role_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> RoleDefinition:
-    """Get a single role definition by ID."""
+    """Get a single role definition by ID — checks DB first, then modules."""
     role_def = repo.get_role_definition(role_id)
-    _require_found("RoleDefinition", role_def, role_id)
-    return role_def  # type: ignore[return-value]
+    if role_def is not None:
+        return role_def  # type: ignore[return-value]
+
+    for mp in get_agent_personas_from_modules():
+        if mp.get("id") == role_id:
+            return RoleDefinition(**{k: v for k, v in mp.items() if k in RoleDefinition.model_fields})
+
+    raise BlueprintNotFoundError("RoleDefinition", role_id)
 
 
 @router.post("/role-definitions", response_model=RoleDefinition, status_code=201)
@@ -129,7 +142,15 @@ def list_role_types(
     module_types = get_role_types_from_modules()
     if active_only:
         module_types = [t for t in module_types if t.get("is_active", True)]
-    return db_dicts + module_types
+
+    seen_ids: set[str] = set()
+    combined: list[dict[str, Any]] = []
+    for entry in db_dicts + module_types:
+        eid = entry.get("id")
+        if eid not in seen_ids:
+            seen_ids.add(eid)
+            combined.append(entry)
+    return combined
 
 
 @router.get("/role-types/{role_type_id}", response_model=RoleType)
@@ -137,10 +158,16 @@ def get_role_type(
     role_type_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> RoleType:
-    """Get a single role type by ID."""
+    """Get a single role type by ID — checks DB first, then modules."""
     rt = repo.get_role_type(role_type_id)
-    _require_found("RoleType", rt, role_type_id)
-    return rt
+    if rt is not None:
+        return rt
+
+    for mt in get_role_types_from_modules():
+        if mt.get("id") == role_type_id:
+            return RoleType(**{k: v for k, v in mt.items() if k in RoleType.model_fields})
+
+    raise BlueprintNotFoundError("RoleType", role_type_id)
 
 
 @router.post("/role-types", response_model=RoleType, status_code=201)
