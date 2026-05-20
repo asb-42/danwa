@@ -134,10 +134,10 @@ class WorkflowTemplateData(BaseModel):
 class LanguagePackData(BaseModel):
     """Profile data for a language-pack module."""
 
-    locale: str                          # Target locale code (e.g. "de", "es", "de-custom")
-    source_locale: str = "en"            # Source locale for translations
-    key_count: int = 0                   # Number of translation keys
-    coverage: float = 0.0                # Coverage ratio vs. source locale (0.0-1.0)
+    locale: str  # Target locale code (e.g. "de", "es", "de-custom")
+    source_locale: str = "en"  # Source locale for translations
+    key_count: int = 0  # Number of translation keys
+    coverage: float = 0.0  # Coverage ratio vs. source locale (0.0-1.0)
     ui_strings_file: str = "ui_strings.json"
     module_translations: list[str] = Field(default_factory=list)  # Paths to translated module files
 

@@ -88,13 +88,9 @@ class ModuleValidator:
 
         # v1 requires files[], v2 requires profile_file
         if not is_v2 and not has_files:
-            issues.append(
-                ValidationIssue(severity="error", field="files", message="Required field 'files' is missing (v1 format)")
-            )
+            issues.append(ValidationIssue(severity="error", field="files", message="Required field 'files' is missing (v1 format)"))
         if is_v2 and not has_profile_file and not has_files:
-            issues.append(
-                ValidationIssue(severity="error", field="profile_file", message="Required field 'profile_file' is missing (v2 format)")
-            )
+            issues.append(ValidationIssue(severity="error", field="profile_file", message="Required field 'profile_file' is missing (v2 format)"))
 
         # --- Version format ---
         version = manifest.get("version", "")
@@ -132,11 +128,9 @@ class ModuleValidator:
         # --- Files check ---
         files = manifest.get("files", [])
         profile_file = manifest.get("profile_file")
-        file_count = len(files)
 
         if is_v2 and profile_file and not files:
-            # v2 single-profile format: validate profile_file exists
-            file_count = 1
+            # v2 single-profile format: profile_file counts as the file
             fpath = self.module_base_dir / module_id / profile_file if module_id != "<unknown>" else None
             # We can't check existence here since module may not be installed yet
             # The installer will verify later

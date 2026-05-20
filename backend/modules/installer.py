@@ -150,9 +150,7 @@ class ModuleInstaller:
             conn.close()
         return db_entries
 
-    def _register_ui_strings_in_db(
-        self, module_id: str, module_dir: Path, manifest: dict[str, Any]
-    ) -> int:
+    def _register_ui_strings_in_db(self, module_id: str, module_dir: Path, manifest: dict[str, Any]) -> int:
         """Register UI strings from a language-pack module into ui_translations.db.
 
         Reads ui_strings.json from the module directory and inserts entries
@@ -216,7 +214,9 @@ class ModuleInstaller:
             conn.commit()
             logger.info(
                 "Language pack %s: registered %d UI strings in namespace '%s'",
-                module_id, entries, namespace,
+                module_id,
+                entries,
+                namespace,
             )
         except sqlite3.Error as e:
             conn.rollback()
@@ -250,7 +250,9 @@ class ModuleInstaller:
             conn.commit()
             logger.info(
                 "Language pack %s: removed %d UI strings from namespace '%s'",
-                module_id, removed, namespace,
+                module_id,
+                removed,
+                namespace,
             )
         except sqlite3.Error as e:
             conn.rollback()
@@ -539,7 +541,13 @@ class ModuleInstaller:
         ui_entries_removed = self._uninstall_ui_strings(module_id)
         db_entries_removed += ui_entries_removed
 
-        logger.info("Uninstalled module %s (%d files, %d DB entries, %d UI strings)", module_id, files_removed, db_entries_removed, ui_entries_removed)
+        logger.info(
+            "Uninstalled module %s (%d files, %d DB entries, %d UI strings)",
+            module_id,
+            files_removed,
+            db_entries_removed,
+            ui_entries_removed,
+        )
 
         return UninstallationReport(
             status="ok",
