@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -201,7 +202,39 @@ class LLMService:
         duration_ms = int((time.monotonic() - t0) * 1000)
 
         data = response.json()
-        content = data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        message = choice.get("message", {})
+        content = message.get("content")
+
+        if content is None or (isinstance(content, str) and content.strip() == ""):
+            logger.warning(
+                "Local LLM empty/None response for model=%s. Full choice: %s",
+                self._profile.model,
+                str(choice)[:500],
+            )
+            psf = message.get("provider_specific_fields", {})
+            for k, v in (psf or {}).items():
+                logger.warning("  psf[%s] = %s", k, str(v)[:300])
+            if content is None:
+                content = psf.get("reasoning_content", psf.get("content", "")) if psf else ""
+
+        if content and "<think>" in content:
+            cleaned = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+            if cleaned:
+                logger.info(
+                    "Stripped <think> block from local model=%s (%d → %d chars).",
+                    self._profile.model,
+                    len(content),
+                    len(cleaned),
+                )
+                content = cleaned
+            else:
+                logger.warning(
+                    "Local model %s returned ONLY a <think> block. First 200 chars: %s",
+                    self._profile.model,
+                    content[:200],
+                )
+                content = ""
 
         # Extract real token usage if available
         usage = data.get("usage")
@@ -273,21 +306,58 @@ class LLMService:
         message = response.choices[0].message
         content = message.content
 
-        # Thinking/reasoning models (e.g. tencent/hy3-preview) may return
-        # the actual response in reasoning_content while content is None.
+        psf = getattr(message, "provider_specific_fields", None) or {}
+        if content is None or (isinstance(content, str) and content.strip() == ""):
+            logger.warning(
+                "LLM empty/None content for model=%s. provider_specific_fields keys: %s. "
+                "Full message attrs: content=%r, role=%r, refusal=%r, tool_calls=%r",
+                model_name,
+                list(psf.keys()),
+                content,
+                getattr(message, "role", None),
+                getattr(message, "refusal", None),
+                getattr(message, "tool_calls", None),
+            )
+            for k, v in psf.items():
+                val_preview = str(v)[:300] if v else ""
+                logger.warning("  psf[%s] = %s", k, val_preview)
+
         if content is None:
-            psf = getattr(message, "provider_specific_fields", None) or {}
             reasoning = psf.get("reasoning_content")
             if reasoning:
                 logger.info(
-                    "LLM returned reasoning_content for model=%s (thinking model detected, using reasoning output).",
+                    "LLM returned reasoning_content for model=%s (using reasoning as answer).",
                     model_name,
                 )
                 content = reasoning
+            elif psf.get("content"):
+                logger.info(
+                    "LLM returned content via provider_specific_fields for model=%s.",
+                    model_name,
+                )
+                content = psf["content"]
             else:
                 logger.warning(
-                    "LLM returned None content for model=%s. This may indicate a content filter or empty response.",
+                    "LLM returned None content for model=%s. Content filter or empty response.",
                     model_name,
+                )
+                content = ""
+
+        if content and "<think>" in content:
+            cleaned = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+            if cleaned:
+                logger.info(
+                    "Stripped <think> block from model=%s response (%d chars reasoning → %d chars answer).",
+                    model_name,
+                    len(content),
+                    len(cleaned),
+                )
+                content = cleaned
+            else:
+                logger.warning(
+                    "Model %s returned ONLY a <think> block, no answer. First 200 chars: %s",
+                    model_name,
+                    content[:200],
                 )
                 content = ""
 
