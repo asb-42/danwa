@@ -209,6 +209,7 @@ def get_prompt_templates_from_modules(modules_dir: Path = MODULES_DIR) -> list[d
             continue
         # Prompt profiles from modules have content field
         if "content" in profile:
+            profile.setdefault("id", mod["module_id"])
             profile.setdefault("role", "strategist")
             profile.setdefault("variant", "default")
             # Use manifest language if available, otherwise detect from profile filename
