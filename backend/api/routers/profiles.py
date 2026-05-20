@@ -86,12 +86,6 @@ async def update_llm_profile(profile_id: str, profile: LLMProfile) -> LLMProfile
     existing = get_profile_service().get_llm_profile(profile_id)
     if not existing:
         raise HTTPException(status_code=404, detail=f"LLM profile '{profile_id}' not found")
-    if getattr(existing, "_readonly", False):
-        raise HTTPException(
-            status_code=400,
-            detail=f"LLM profile '{profile_id}' is managed by a module and cannot be edited via the UI. "
-                   f"Edit the source file in modules/ instead.",
-        )
     # Ensure the ID in the URL matches the body
     profile.id = profile_id
     return get_profile_service().save_llm_profile(profile)
@@ -139,12 +133,6 @@ async def update_agent_persona(persona_id: str, persona: AgentPersona) -> AgentP
     existing = get_profile_service().get_agent_persona(persona_id)
     if not existing:
         raise HTTPException(status_code=404, detail=f"Agent persona '{persona_id}' not found")
-    if getattr(existing, "_readonly", False):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Agent persona '{persona_id}' is managed by a module and cannot be edited via the UI. "
-                   f"Edit the source file in modules/ instead.",
-        )
     persona.id = persona_id
     return get_profile_service().save_agent_persona(persona)
 

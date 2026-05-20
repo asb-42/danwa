@@ -589,15 +589,9 @@
                         </button>
                         {#if llmDropdownOpen === profile.id}
                            <div class="absolute right-0 top-full mt-1 z-40 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
-                             {#if profile._readonly}
-                               <div class="w-full text-left px-3 py-2 text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Managed by module — edit in modules/">
-                                 ✏️ {t('common.edit')} (module)
-                               </div>
-                             {:else}
-                               <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { llmDropdownOpen = null; openEditLLM(profile); }}>
-                                 ✏️ {t('common.edit')}
-                               </button>
-                             {/if}
+                             <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { llmDropdownOpen = null; openEditLLM(profile); }}>
+                               ✏️ {t('common.edit')}
+                             </button>
                              <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { llmDropdownOpen = null; openDuplicateLLM(profile); }}>
                                📋 {t('config.duplicate') || 'Duplizieren'}
                              </button>
