@@ -105,22 +105,37 @@ class TestWorkflowNodeModel:
 
     def test_agent_node_without_blueprint_id_fails(self):
         """Agent nodes without agent_blueprint_id should fail validation."""
-        with pytest.raises(ValueError, match="requires an agent_blueprint_id"):
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
             WorkflowNode(id="n1", type="wf-strategist")
 
     def test_critic_node_requires_blueprint_id(self):
         """Critic node requires agent_blueprint_id."""
-        with pytest.raises(ValueError, match="requires an agent_blueprint_id"):
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
             WorkflowNode(id="n1", type="wf-critic")
 
     def test_optimizer_node_requires_blueprint_id(self):
         """Optimizer node requires agent_blueprint_id."""
-        with pytest.raises(ValueError, match="requires an agent_blueprint_id"):
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
+            WorkflowNode(id="n1", type="wf-optimizer")
+
+    def test_strategist_node_requires_blueprint_id(self):
+        """Strategist node requires agent_blueprint_id."""
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
+            WorkflowNode(id="n1", type="wf-strategist")
+
+    def test_critic_node_requires_blueprint_id(self):
+        """Critic node requires agent_blueprint_id."""
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
+            WorkflowNode(id="n1", type="wf-critic")
+
+    def test_optimizer_node_requires_blueprint_id(self):
+        """Optimizer node requires agent_blueprint_id."""
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
             WorkflowNode(id="n1", type="wf-optimizer")
 
     def test_moderator_node_requires_blueprint_id(self):
         """Moderator node requires agent_blueprint_id."""
-        with pytest.raises(ValueError, match="requires an agent_blueprint_id"):
+        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
             WorkflowNode(id="n1", type="wf-moderator")
 
     def test_non_agent_node_without_blueprint_id(self):

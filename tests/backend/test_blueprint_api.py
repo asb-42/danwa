@@ -25,6 +25,11 @@ from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
 
+
+def _db_only(items: list) -> list:
+    """Filter out module-sourced items (those with _source_module key)."""
+    return [item for item in items if not item.get("_source_module")]
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -170,7 +175,10 @@ class TestLLMProfileAPI:
     def test_list_empty(self, client: TestClient) -> None:
         response = client.get("/api/v1/blueprints/llm-profiles")
         assert response.status_code == 200
-        assert response.json() == []
+        # Module fallback data may be present; assert no DB items
+        data = response.json()
+        db_items = [item for item in data if not item.get("_source_module")]
+        assert db_items == []
 
     def test_create(self, client: TestClient) -> None:
         payload = _sample_llm_profile()
@@ -192,7 +200,7 @@ class TestLLMProfileAPI:
         client.post("/api/v1/blueprints/llm-profiles", json=_sample_llm_profile("p2"))
         response = client.get("/api/v1/blueprints/llm-profiles")
         assert response.status_code == 200
-        assert len(response.json()) == 2
+        assert len(_db_only(response.json())) == 2
 
     def test_update(self, client: TestClient) -> None:
         client.post("/api/v1/blueprints/llm-profiles", json=_sample_llm_profile())
@@ -238,10 +246,10 @@ class TestLLMProfileAPI:
             client.post("/api/v1/blueprints/llm-profiles", json=_sample_llm_profile(f"p{i}"))
         response = client.get("/api/v1/blueprints/llm-profiles?limit=2&offset=0")
         assert response.status_code == 200
-        assert len(response.json()) == 2
+        assert len(_db_only(response.json())) == 2
         response = client.get("/api/v1/blueprints/llm-profiles?limit=2&offset=4")
         assert response.status_code == 200
-        assert len(response.json()) == 1
+        assert len(_db_only(response.json())) == 1
 
 
 # ===================================================================
@@ -255,7 +263,10 @@ class TestPromptTemplateAPI:
     def test_list_empty(self, client: TestClient) -> None:
         response = client.get("/api/v1/blueprints/prompt-templates")
         assert response.status_code == 200
-        assert response.json() == []
+        # Module fallback data may be present; assert no DB items
+        data = response.json()
+        db_items = [item for item in data if not item.get("_source_module")]
+        assert db_items == []
 
     def test_create(self, client: TestClient) -> None:
         payload = _sample_prompt_template()
@@ -325,7 +336,7 @@ class TestPromptTemplateAPI:
             )
         response = client.get("/api/v1/blueprints/prompt-templates?limit=3&offset=0")
         assert response.status_code == 200
-        assert len(response.json()) == 3
+        assert len(_db_only(response.json())) == 3
 
 
 # ===================================================================
@@ -339,7 +350,10 @@ class TestRoleDefinitionAPI:
     def test_list_empty(self, client: TestClient) -> None:
         response = client.get("/api/v1/blueprints/role-definitions")
         assert response.status_code == 200
-        assert response.json() == []
+        # Module fallback data may be present; assert no DB items
+        data = response.json()
+        db_items = [item for item in data if not item.get("_source_module")]
+        assert db_items == []
 
     def test_create(self, client: TestClient) -> None:
         payload = _sample_role_definition()
@@ -378,7 +392,7 @@ class TestRoleDefinitionAPI:
         client.post("/api/v1/blueprints/role-definitions", json=critic)
         response = client.get("/api/v1/blueprints/role-definitions?role=critic")
         assert response.status_code == 200
-        data = response.json()
+        data = _db_only(response.json())
         assert len(data) == 1
         assert data[0]["role_type_id"] == "critic"
 
@@ -400,7 +414,7 @@ class TestRoleDefinitionAPI:
             )
         response = client.get("/api/v1/blueprints/role-definitions?limit=2&offset=0")
         assert response.status_code == 200
-        assert len(response.json()) == 2
+        assert len(_db_only(response.json())) == 2
 
 
 # ===================================================================
@@ -488,7 +502,7 @@ class TestRoleTypeAPI:
             )
         response = client.get("/api/v1/blueprints/role-types?limit=3&offset=0")
         assert response.status_code == 200
-        assert len(response.json()) == 3
+        assert len(_db_only(response.json())) == 3
 
     def test_active_only_filter(self, client: TestClient) -> None:
         client.post("/api/v1/blueprints/role-types", json=_sample_role_type("active-rt"))
