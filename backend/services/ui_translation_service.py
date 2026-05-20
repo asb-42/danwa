@@ -696,7 +696,6 @@ class UITranslationService:
             (namespace,),
         ).fetchall()
         en_keys = {r["key"]: r["value"] for r in en_rows}
-        conn.close()
 
         # Always merge bundled loaders — don't skip if DB has some entries
         bundled = self._scan_bundled_loaders()
