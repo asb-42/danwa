@@ -799,8 +799,10 @@ async def check_consensus_node(state: DebateState) -> dict:
         session_id,
         "round_update",
         {
+            "type": "round_update",
             "round": current_round,
             "consensus": round(consensus, 3),
+            "threshold": threshold,
             "agent_count": len(agent_outputs),
             "total_tokens": total_tokens,
         },

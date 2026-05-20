@@ -106,9 +106,11 @@ export function handleWorkflowSSE(sseEvent) {
 
     case 'round_update':
       {
-        // Extract consensus data from round_update (backend includes it here)
-        const consensus = sseEvent.consensus ?? null;
-        const threshold = sseEvent.threshold ?? 0.8;
+        // Handle both flat and nested data structures
+        // Backend may send: {"round": X, "data": {...}} or {"round": X, "consensus": Y, ...}
+        const roundData = sseEvent.data || sseEvent;
+        const consensus = roundData.consensus ?? sseEvent.consensus ?? null;
+        const threshold = roundData.threshold ?? sseEvent.threshold ?? 0.8;
         const passed = consensus != null && consensus >= threshold;
 
         // First dispatch CONSENSUS_CHECK to create/update the decision node
