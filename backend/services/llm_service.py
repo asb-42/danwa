@@ -205,18 +205,28 @@ class LLMService:
         choice = data["choices"][0]
         message = choice.get("message", {})
         content = message.get("content")
+        finish_reason = choice.get("finish_reason", "")
 
         if content is None or (isinstance(content, str) and content.strip() == ""):
-            logger.warning(
-                "Local LLM empty/None response for model=%s. Full choice: %s",
-                self._profile.model,
-                str(choice)[:500],
-            )
-            psf = message.get("provider_specific_fields", {})
-            for k, v in (psf or {}).items():
-                logger.warning("  psf[%s] = %s", k, str(v)[:300])
-            if content is None:
-                content = psf.get("reasoning_content", psf.get("content", "")) if psf else ""
+            reasoning = message.get("reasoning_content", "")
+            if reasoning:
+                logger.info(
+                    "Local LLM empty content for model=%s, extracting from reasoning_content (%d chars).",
+                    self._profile.model,
+                    len(reasoning),
+                )
+                content = reasoning
+            else:
+                logger.warning(
+                    "Local LLM empty/None response for model=%s. Full choice: %s",
+                    self._profile.model,
+                    str(choice)[:500],
+                )
+                psf = message.get("provider_specific_fields", {})
+                for k, v in (psf or {}).items():
+                    logger.warning("  psf[%s] = %s", k, str(v)[:300])
+                if content is None:
+                    content = psf.get("reasoning_content", psf.get("content", "")) if psf else ""
 
         if content and "<think>" in content:
             cleaned = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
@@ -236,130 +246,13 @@ class LLMService:
                 )
                 content = ""
 
-        # Extract real token usage if available
-        usage = data.get("usage")
-        tokens_in = usage.get("prompt_tokens", 0) if usage else 0
-        tokens_out = usage.get("completion_tokens", 0) if usage else 0
-
-        if tokens_in or tokens_out:
-            logger.info(
-                "Tokens used: %d in / %d out",
-                tokens_in,
-                tokens_out,
-            )
-
-        return GenerationResult(
-            content=content,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-            duration_ms=duration_ms,
-            model=self._profile.model,
-        )
-
-    async def _generate_litellm(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float,
-        max_tokens: int,
-    ) -> GenerationResult:
-        """Call a cloud LLM via litellm (OpenRouter, OpenAI, Anthropic, etc.)."""
-        try:
-            import litellm
-        except ImportError:
-            raise ImportError("litellm is required for cloud LLM calls. Install it with: uv add litellm")
-
-        # Get API key from environment
-        api_key = os.getenv(self._profile.api_key_env)
-        if not api_key:
-            raise ValueError(f"API key not found. Set the {self._profile.api_key_env} environment variable.")
-
-        # Auto-prepend provider prefix for litellm routing.
-        # e.g. "openrouter" + "tencent/hy3-preview:free" → "openrouter/tencent/hy3-preview:free"
-        model_name = self._profile.model
-        provider_prefix = self._profile.provider.value
-        if not model_name.startswith(f"{provider_prefix}/"):
-            model_name = f"{provider_prefix}/{model_name}"
-
-        kwargs: dict[str, Any] = {
-            "model": model_name,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "timeout": self._profile.timeout,
-            "api_key": api_key,
-        }
-
-        if self._profile.api_base:
-            kwargs["api_base"] = self._profile.api_base
-
-        logger.info(
-            "LLM call (litellm): model=%s, temp=%.2f, max_tokens=%d",
-            model_name,
-            temperature,
-            max_tokens,
-        )
-
-        t0 = time.monotonic()
-        response = await litellm.acompletion(**kwargs)
-        duration_ms = int((time.monotonic() - t0) * 1000)
-
-        message = response.choices[0].message
-        content = message.content
-
-        psf = getattr(message, "provider_specific_fields", None) or {}
-        if content is None or (isinstance(content, str) and content.strip() == ""):
+        if finish_reason == "length" and content and not content.strip():
             logger.warning(
-                "LLM empty/None content for model=%s. provider_specific_fields keys: %s. "
-                "Full message attrs: content=%r, role=%r, refusal=%r, tool_calls=%r",
-                model_name,
-                list(psf.keys()),
-                content,
-                getattr(message, "role", None),
-                getattr(message, "refusal", None),
-                getattr(message, "tool_calls", None),
+                "Local model %s hit max_tokens during reasoning. content=%r, finish_reason=%s",
+                self._profile.model,
+                content[:100],
+                finish_reason,
             )
-            for k, v in psf.items():
-                val_preview = str(v)[:300] if v else ""
-                logger.warning("  psf[%s] = %s", k, val_preview)
-
-        if content is None:
-            reasoning = psf.get("reasoning_content")
-            if reasoning:
-                logger.info(
-                    "LLM returned reasoning_content for model=%s (using reasoning as answer).",
-                    model_name,
-                )
-                content = reasoning
-            elif psf.get("content"):
-                logger.info(
-                    "LLM returned content via provider_specific_fields for model=%s.",
-                    model_name,
-                )
-                content = psf["content"]
-            else:
-                logger.warning(
-                    "LLM returned None content for model=%s. Content filter or empty response.",
-                    model_name,
-                )
-                content = ""
-
-        if content and "<think>" in content:
-            cleaned = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-            if cleaned:
-                logger.info(
-                    "Stripped <think> block from model=%s response (%d chars reasoning → %d chars answer).",
-                    model_name,
-                    len(content),
-                    len(cleaned),
-                )
-                content = cleaned
-            else:
-                logger.warning(
-                    "Model %s returned ONLY a <think> block, no answer. First 200 chars: %s",
-                    model_name,
-                    content[:200],
-                )
-                content = ""
 
         # Extract real token usage
         tokens_in = 0
@@ -378,7 +271,7 @@ class LLMService:
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             duration_ms=duration_ms,
-            model=model_name,
+            model=self._profile.model,
         )
 
     def generate_sync(

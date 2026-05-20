@@ -576,11 +576,12 @@ class UITranslationService:
         )
 
         try:
+            thinking_budget = max(2048, len(source_text) * 8)
             result = llm.generate_sync(
                 prompt=source_text,
                 system_prompt=system_prompt,
                 temperature=0.2,
-                max_tokens=max(100, len(source_text) * 2),
+                max_tokens=thinking_budget,
             )
             translated = result.content.strip()
             if not translated:
