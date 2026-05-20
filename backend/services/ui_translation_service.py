@@ -643,8 +643,11 @@ class UITranslationService:
                     job.current_locale = locale
 
                     translated_count = 0
+                    failed_count = 0
                     rate_limited = False
                     for key in missing:
+                        job.current_key = key
+                        job.current_locale = locale
                         en_val = self.get_translation(key, "en", namespace)
                         if en_val:
                             try:
@@ -658,7 +661,9 @@ class UITranslationService:
                                     job.status = "failed"
                                     logger.error("Translation aborted for %s: rate limit exceeded", locale)
                                     break
-                                # Non-rate-limit errors are logged but don't abort
+                                # Non-rate-limit errors: still count as processed for progress
+                                failed_count += 1
+                                job.completed_strings += 1
                                 logger.warning("Skipping key %s due to error: %s", key, error_msg[:100])
 
                     if rate_limited:
