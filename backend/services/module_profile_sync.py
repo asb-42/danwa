@@ -63,11 +63,13 @@ def _get_enabled_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, Any]
         if not enabled:
             continue
 
-        modules.append({
-            "module_id": mod_dir.name,
-            "manifest": manifest,
-            "dir": mod_dir,
-        })
+        modules.append(
+            {
+                "module_id": mod_dir.name,
+                "manifest": manifest,
+                "dir": mod_dir,
+            }
+        )
 
     return modules
 

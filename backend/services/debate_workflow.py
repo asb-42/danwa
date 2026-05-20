@@ -273,13 +273,15 @@ def build_agent_profile_from_bundles(bundle_ids: list[str]) -> list[dict]:
                 logger.warning("Bundle '%s' not found, skipping", bid)
                 continue
             resolved = resolver.resolve(bundle)
-            profile.append({
-                "role": resolved.role_type.id,
-                "llm_profile": resolved.llm_profile.id,
-                "temperature": resolved.llm_profile.temperature,
-                "bundle_id": bid,
-                "system_prompt": resolved.system_prompt,
-            })
+            profile.append(
+                {
+                    "role": resolved.role_type.id,
+                    "llm_profile": resolved.llm_profile.id,
+                    "temperature": resolved.llm_profile.temperature,
+                    "bundle_id": bid,
+                    "system_prompt": resolved.system_prompt,
+                }
+            )
         except Exception as exc:
             logger.warning("Failed to resolve bundle '%s': %s", bid, exc)
 

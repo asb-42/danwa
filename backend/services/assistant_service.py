@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from backend.services.llm_service import LLMService, GenerationResult
+from backend.services.llm_service import LLMService
 from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
@@ -32,13 +32,17 @@ _KITSUNE_PROMPT_DIR = Path("config/prompts/kitsune")
 _FALLBACK_PROMPT = """\
 You are Danwa Kitsune, the intelligent assistant of the Danwa Debate Engine system.
 
-Your name "Kitsune" (狐) comes from Japanese and means fox — a symbol of wisdom, knowledge, and clever problem-solving. You are friendly, precise, and respond in the user's language.
+Your name "Kitsune" (狐) comes from Japanese and means fox — a symbol of
+wisdom, knowledge, and clever problem-solving. You are friendly, precise,
+and respond in the user's language.
 
 ## What you know
 Danwa is a multi-agent debate system that uses AI agents to analyze, critique, and optimize arguments through structured deliberation.
 
 ### Core features:
-- **Start debates**: Upload documents (PDF, DOCX, ODT, ODS, ODP) or enter text. Four specialized AI agents discuss the topic and produce a consensus-based output.
+- **Start debates**: Upload documents (PDF, DOCX, ODT, ODS, ODP) or enter
+text. Four specialized AI agents discuss the topic and produce a
+consensus-based output.
 - **Agent roles**: Critic, Analyst, Optimizer, Moderator — each agent has its own persona and perspective.
 - **LLM profiles**: Configure different LLM providers (OpenRouter, Ollama, LM Studio, OpenAI, Anthropic) for different tasks.
 - **Utility LLM**: A dedicated LLM for background tasks like title generation, translations, and this assistant.
@@ -358,11 +362,14 @@ class AssistantService:
         llm_profile_id = profile_id or session.llm_profile_id
         selected_profile = self._select_llm_profile(llm_profile_id)
         if not selected_profile:
-            session.add_message("assistant", "Entschuldigung, kein LLM-Profil ist konfiguriert. Bitte konfiguriere ein Utility-LLM in den Einstellungen.")
+            session.add_message(
+                "assistant",
+                "Entschuldigung, kein LLM-Profil ist konfiguriert. Bitte konfiguriere ein Utility-LLM in den Einstellungen.",
+            )
             return session.messages[-1]
 
         # Build messages for LLM
-        messages = [
+        _messages = [
             {"role": "system", "content": self.system_prompt},
             *session.get_history(max_messages=self._max_messages - 1),
         ]

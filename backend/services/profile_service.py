@@ -322,7 +322,8 @@ class ProfileService:
                     try:
                         stem = md_file.stem
                         # Extract language suffix (e.g., "strategist-en" → role="strategist", lang="en")
-                        if "-" in stem and stem.rsplit("-", 1)[-1] in ("en", "de", "fr", "es", "it", "pt", "ru", "zh", "ja", "ko", "sv", "el", "ar", "he"):
+                        _langs = ("en", "de", "fr", "es", "it", "pt", "ru", "zh", "ja", "ko", "sv", "el", "ar", "he")
+                        if "-" in stem and stem.rsplit("-", 1)[-1] in _langs:
                             role = stem.rsplit("-", 1)[0]
                             language = stem.rsplit("-", 1)[-1]
                         else:
