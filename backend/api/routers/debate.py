@@ -464,7 +464,6 @@ async def start_debate_from_layout(
     """
     from backend.api.deps import get_blueprint_repository
     from backend.blueprints.canvas_to_workflow import CanvasToWorkflowConverter, ConversionError
-    from backend.blueprints.repository import BlueprintRepository
     from backend.services.debate_workflow import run_debate_workflow
 
     repo = get_blueprint_repository()
@@ -484,7 +483,7 @@ async def start_debate_from_layout(
     now = datetime.now(UTC)
 
     # Build request with bundle_ids
-    from backend.models.schemas import AgentConfig, CaseInput
+    from backend.models.schemas import CaseInput
     from backend.models.schemas import DebateRequest as ReqModel
 
     request = ReqModel(
@@ -532,7 +531,6 @@ async def start_debate_from_workflow(
     during execution via the WorkflowCompiler.
     """
     from backend.api.deps import get_blueprint_repository
-    from backend.blueprints.repository import BlueprintRepository
     from backend.services.debate_workflow import run_debate_workflow
 
     repo = get_blueprint_repository()
@@ -545,7 +543,7 @@ async def start_debate_from_workflow(
     # Extract bundle_ids from wf-agent nodes
     bundle_ids = [n.bundle_id for n in wf.nodes if n.type == "wf-agent" and n.bundle_id]
 
-    from backend.models.schemas import AgentConfig, CaseInput
+    from backend.models.schemas import CaseInput
     from backend.models.schemas import DebateRequest as ReqModel
 
     request = ReqModel(

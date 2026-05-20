@@ -23,7 +23,7 @@ from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
 from backend.blueprints.importer import BlueprintImporter, ImportResult
 from backend.blueprints.models import AgentBlueprint, AgentBundle, PromptTemplate, ResolvedBundle
 from backend.blueprints.repository import BlueprintRepository
-from backend.blueprints.resolver import BundleResolver, resolve_bundle
+from backend.blueprints.resolver import BundleResolver
 from backend.services.module_profile_sync import (
     get_bundles_from_modules,
     get_prompt_templates_from_modules,
