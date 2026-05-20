@@ -14,7 +14,6 @@ Kitsune system prompt for accurate, code-aware responses.
 
 from __future__ import annotations
 
-import ast
 import json
 import re
 from pathlib import Path
@@ -30,9 +29,7 @@ def extract_api_routes() -> str:
     for f in sorted(router_dir.glob("*.py")):
         content = f.read_text()
         # Find @router.get/post/put/delete patterns
-        for m in re.finditer(
-            r'@router\.(get|post|put|delete|patch)\(["\']([^"\']+)["\']', content
-        ):
+        for m in re.finditer(r'@router\.(get|post|put|delete|patch)\(["\']([^"\']+)["\']', content):
             method = m.group(1).upper()
             path = m.group(2)
             # Get the function name
@@ -137,9 +134,7 @@ def extract_module_info() -> str:
         manifest = d / "manifest.json"
         if manifest.exists():
             data = json.loads(manifest.read_text())
-            modules.append(
-                f"  {data.get('id', d.name):40s} type={data.get('type', '?'):20s} v{data.get('version', '?')}"
-            )
+            modules.append(f"  {data.get('id', d.name):40s} type={data.get('type', '?'):20s} v{data.get('version', '?')}")
         else:
             modules.append(f"  {d.name:40s} (no manifest)")
     return "\n".join(modules)

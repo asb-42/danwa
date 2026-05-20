@@ -87,20 +87,22 @@ def build_prompt(
         lines.append("</user_manual>")
         lines.append("")
 
-    lines.extend([
-        "Regeln:",
-        "- Behalte die bestehende Struktur bei",
-        "- Füge neue Sections hinzu wo nötig",
-        "- Markiere geänderte Stellen mit <!-- UPDATED -->",
-        "- Entferne veraltete Informationen",
-        "- Output: Nur die aktualisierte Markdown-Datei",
-        "",
-        "Output-Format (JSON):",
-        "{",
-        '  "tech_doc": "<aktualisierte technische Dokumentation oder leer wenn nicht geändert>",',
-        '  "user_manual": "<aktualisiertes User Manual oder leer wenn nicht geändert>"',
-        "}",
-    ])
+    lines.extend(
+        [
+            "Regeln:",
+            "- Behalte die bestehende Struktur bei",
+            "- Füge neue Sections hinzu wo nötig",
+            "- Markiere geänderte Stellen mit <!-- UPDATED -->",
+            "- Entferne veraltete Informationen",
+            "- Output: Nur die aktualisierte Markdown-Datei",
+            "",
+            "Output-Format (JSON):",
+            "{",
+            '  "tech_doc": "<aktualisierte technische Dokumentation oder leer wenn nicht geändert>",',
+            '  "user_manual": "<aktualisiertes User Manual oder leer wenn nicht geändert>"',
+            "}",
+        ]
+    )
 
     return "\n".join(lines)
 

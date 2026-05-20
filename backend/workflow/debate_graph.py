@@ -29,8 +29,7 @@ from backend.workflow.state import DebateState
 logger = logging.getLogger(__name__)
 
 warnings.warn(
-    "backend.workflow.debate_graph is deprecated. "
-    "Use WorkflowCompiler with wf-agent nodes instead.",
+    "backend.workflow.debate_graph is deprecated. Use WorkflowCompiler with wf-agent nodes instead.",
     DeprecationWarning,
     stacklevel=2,
 )
