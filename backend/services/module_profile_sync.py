@@ -210,6 +210,9 @@ def get_prompt_templates_from_modules(modules_dir: Path = MODULES_DIR) -> list[d
         # Prompt profiles from modules have content field
         if "content" in profile:
             profile.setdefault("id", mod["module_id"])
+            # Derive name from manifest (localized) or fallback to module_id
+            manifest_name = mod["manifest"].get("name", {})
+            profile.setdefault("name", manifest_name.get("en", manifest_name.get("de", mod["module_id"])))
             profile.setdefault("role", "strategist")
             profile.setdefault("variant", "default")
             # Use manifest language if available, otherwise detect from profile filename

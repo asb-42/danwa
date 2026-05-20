@@ -51,6 +51,7 @@ ASSET_NODE_TYPES = {
     "role-definition",
     "prompt-template",
     "role-type",
+    "tone-profile",
 }
 
 # Edge types that are valid in a WorkflowDefinition.
@@ -198,12 +199,15 @@ class CanvasToWorkflowConverter:
         # Build a map of workflow node ID → connected agent-blueprint ID
         # by scanning edges from asset nodes to workflow nodes
         wf_to_blueprint: dict[str, str | None] = {}
+        wf_to_tone: dict[str, str | None] = {}
         for edge in canvas_edges:
             source_asset = asset_node_map.get(edge.source)
             if source_asset and source_asset.type == "agent-blueprint":
-                # Edge from agent-blueprint → workflow node
                 blueprint_id = source_asset.blueprint_id or source_asset.id
                 wf_to_blueprint[edge.target] = blueprint_id
+            elif source_asset and source_asset.type == "tone-profile":
+                tone_id = source_asset.blueprint_id or source_asset.id
+                wf_to_tone[edge.target] = tone_id
 
         nodes = []
         for cn in wf_canvas_nodes:
@@ -262,6 +266,12 @@ class CanvasToWorkflowConverter:
                     config["tone_profile_id"] = cn.data["tone_profile_id"]
                 if not config.get("inline_profile") and cn.data.get("inline_profile"):
                     config["inline_profile"] = cn.data["inline_profile"]
+
+            # Resolve tone_profile_id from connected tone-profile asset node
+            if node_type in AGENT_NODE_TYPES and not config.get("tone_profile_id"):
+                connected_tone = wf_to_tone.get(node_id)
+                if connected_tone:
+                    config["tone_profile_id"] = connected_tone
 
             # Position
             position = {"x": cn.x, "y": cn.y}
