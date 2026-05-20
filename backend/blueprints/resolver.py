@@ -10,7 +10,6 @@ import logging
 
 from backend.blueprints.models import (
     AgentBundle,
-    BlueprintLLMProfile,
     PromptTemplate,
     ResolvedBundle,
     RoleDefinition,
@@ -42,15 +41,11 @@ class BundleResolver:
         """
         llm_profile = self.repo.get_llm_profile(bundle.llm_profile_id)
         if not llm_profile:
-            raise ValueError(
-                f"Bundle '{bundle.id}' references non-existent LLM profile '{bundle.llm_profile_id}'"
-            )
+            raise ValueError(f"Bundle '{bundle.id}' references non-existent LLM profile '{bundle.llm_profile_id}'")
 
         role_type = self.repo.get_role_type(bundle.role_type_id)
         if not role_type:
-            raise ValueError(
-                f"Bundle '{bundle.id}' references non-existent RoleType '{bundle.role_type_id}'"
-            )
+            raise ValueError(f"Bundle '{bundle.id}' references non-existent RoleType '{bundle.role_type_id}'")
 
         role_definition: RoleDefinition | None = None
         if bundle.role_definition_id:

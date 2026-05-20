@@ -223,18 +223,10 @@ class CanvasToWorkflowConverter:
             bundle_id: str | None = None
             if node_type in AGENT_NODE_TYPES:
                 if node_type == "wf-agent":
-                    bundle_id = (
-                        cn.data.get("bundle_id")
-                        or cn.config.get("bundle_id")
-                        or cn.blueprint_id
-                    )
+                    bundle_id = cn.data.get("bundle_id") or cn.config.get("bundle_id") or cn.blueprint_id
                     # Fallback: try agent_blueprint_id for legacy compat
                     if not bundle_id:
-                        agent_blueprint_id = (
-                            cn.agent_blueprint_id
-                            or cn.data.get("agent_blueprint_id")
-                            or wf_to_blueprint.get(node_id)
-                        )
+                        agent_blueprint_id = cn.agent_blueprint_id or cn.data.get("agent_blueprint_id") or wf_to_blueprint.get(node_id)
                 else:
                     agent_blueprint_id = (
                         cn.agent_blueprint_id

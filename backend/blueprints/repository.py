@@ -20,7 +20,6 @@ from backend.blueprints.models import (
     CanvasLayout,
     CanvasLayoutData,
     PromptTemplate,
-    ResolvedBundle,
     RoleDefinition,
     RoleType,
     ToneProfile,
