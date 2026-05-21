@@ -20,6 +20,10 @@
     $currentDebate && ['pending', 'running'].includes($currentDebate.status)
   );
 
+  let activeDebateRoute = $derived(
+    hasActiveDebate ? `debate/${$currentDebate.debate_id}` : 'debate'
+  );
+
   const routeGroups = {
     projects: ['projects'],
     blueprint: ['blueprint'],
@@ -34,7 +38,9 @@
     if (group) {
       return group.some((r) => currentRoute === r || currentRoute?.startsWith(r + '/'));
     }
-    return currentRoute === route;
+    // Handle routes with params (e.g. 'debate/{id}')
+    const baseRoute = route.split('/')[0];
+    return currentRoute === baseRoute;
   }
 
   function isActiveAny(routes) {
@@ -46,7 +52,7 @@
       id: 'run',
       label: t('nav.section.run'),
       items: [
-        ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬', route: 'debate' }] : []),
+        ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬', route: activeDebateRoute }] : []),
         { id: 'input', label: t('nav.input'), icon: '💬', route: 'input' },
         { id: 'output', label: t('nav.output'), icon: '🖨️', route: 'output' },
         { id: 'documents', label: t('nav.documents'), icon: '📄', route: 'documents' },
