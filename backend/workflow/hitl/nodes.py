@@ -225,6 +225,7 @@ async def hitl_agent_query_node(state: DebateState) -> dict:
             "interrupt_id": interrupt_id,
             "agent_role": agent_role,
             "question": analysis.suggested_question,
+            "context": context_snippet,
             "confidence": analysis.confidence,
             "reason": analysis.reason,
             "round": current_round,

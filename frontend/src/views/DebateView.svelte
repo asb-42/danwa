@@ -362,10 +362,26 @@
     if (event.type === 'hitl_query') {
       currentAgentQuery.set({
         interrupt_id: event.interrupt_id, agent_role: event.agent_role,
-        question: event.question, confidence: event.confidence,
-        reason: event.reason, round: event.round,
+        question: event.question, context: event.context || '',
+        confidence: event.confidence, reason: event.reason, round: event.round,
       });
+      // Update hitlStatus immediately so modal has active_interrupt before polling completes
+      hitlStatus.update(status => ({
+        ...status,
+        active_interrupt: {
+          interrupt_id: event.interrupt_id,
+          agent_role: event.agent_role,
+          question: event.question,
+          context: event.context || '',
+          round: event.round,
+          created_at: new Date().toISOString(),
+          timeout_seconds: 300,
+          status: 'waiting',
+          elapsed_seconds: 0,
+        },
+      }));
       showAgentQueryModal.set(true);
+      // Poll to get server-side elapsed_seconds and confirm state
       refreshHITLStatus();
       return;
     }

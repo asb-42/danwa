@@ -243,12 +243,23 @@ def _extract_question(agent_output: str) -> str:
     """Extract the most relevant question from the agent's output.
 
     Returns the first question found, or a generic clarification request.
+    Handles markdown-formatted output by stripping formatting before extraction.
     """
+    # Strip markdown code blocks and inline code to avoid extracting questions from examples
+    cleaned = re.sub(r'```[\s\S]*?```', '', agent_output)
+    cleaned = re.sub(r'`[^`]+`', '', cleaned)
+    # Strip bold/italic markers but keep the text
+    cleaned = re.sub(r'\*\*([^*]+)\*\*', r'\1', cleaned)
+    cleaned = re.sub(r'\*([^*]+)\*', r'\1', cleaned)
+    # Strip list markers for cleaner extraction
+    cleaned = re.sub(r'^\s*[-*•]\s+', '', cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r'^\s*\d+\.\s+', '', cleaned, flags=re.MULTILINE)
+
     # Look for explicit question sentences
-    sentences = re.split(r"[.!?\n]+", agent_output)
+    sentences = re.split(r'[.!?\n]+', cleaned)
     for sentence in sentences:
         stripped = sentence.strip()
-        if "?" in stripped and len(stripped) > 10:
+        if "?" in stripped and 10 < len(stripped) < 300:
             return stripped + "?" if not stripped.endswith("?") else stripped
 
     # Look for [NEEDS_CLARIFICATION] or [QUESTION] markers
@@ -259,7 +270,7 @@ def _extract_question(agent_output: str) -> str:
             start = match.end()
             remaining = agent_output[start : start + 200].strip()
             if remaining:
-                next_sentence = re.split(r"[.!?\n]+", remaining)[0].strip()
+                next_sentence = re.split(r'[.!?\n]+', remaining)[0].strip()
                 if next_sentence:
                     return next_sentence
 
