@@ -107,9 +107,9 @@
     }
   });
 
-  // Reconnect SSE for running debates
+  // Reconnect SSE for running debates, or when loading a debate from archive
   $effect(() => {
-    if ($currentDebate && $currentDebate.status === 'running' && !sseConnection) {
+    if ($currentDebate && (isArchiveMode || $currentDebate.status === 'running') && !sseConnection && !archiveLoading) {
       sseConnection = createSSE($currentDebate.debate_id, {
         onEvent: (event) => { handleSSEEvent(event); },
         onOpen: () => { sseConnected.set(true); },
@@ -240,6 +240,34 @@
       titleGenerating = false;
       titleError = event.message || t('toast.titleError') || 'Titelgenerierung fehlgeschlagen';
       addToast({ message: titleError, type: 'error', timeout: 5000 });
+      return;
+    }
+
+    if (event.type === 'status_change' && event.status) {
+      currentDebate.set({ ...$currentDebate, status: event.status });
+      if (event.status === 'completed' || event.status === 'failed') {
+        currentActivity = null;
+        workflowPhase = null;
+        stopProcessingTimer();
+        stopWorkflowTimer();
+        handleRefreshStatus();
+      }
+      return;
+    }
+
+    if (event.type === 'round_update' && event.data) {
+      // Handle round_update events from SSE (for completed debates)
+      const roundData = event.data;
+      const roundNum = event.round;
+      if (roundData.consensus !== undefined) {
+        currentDebate.set({
+          ...$currentDebate,
+          current_round: roundNum,
+          consensus_score: roundData.consensus,
+        });
+      }
+      // Trigger a full status refresh to populate rounds array
+      handleRefreshStatus();
       return;
     }
 
