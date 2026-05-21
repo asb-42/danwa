@@ -107,7 +107,7 @@ class LLMService:
         if protocol == "a2a":
             return await self._generate_a2a(messages, temp, tokens)
         # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
-        local_providers = {"local", "ollama", "opencode-zen", "opencode-go", "xiaomi"}
+        local_providers = {"local", "ollama", "opencode-zen", "opencode-go"}
         if self._profile.provider.value in local_providers:
             return await self._generate_local(messages, temp, tokens)
         else:
@@ -292,6 +292,9 @@ class LLMService:
 
         model_name = self._profile.model
         provider_prefix = self._profile.provider.value
+        # LiteLLM uses 'xiaomi_mimo/' prefix, not 'xiaomi/'
+        if provider_prefix == "xiaomi":
+            provider_prefix = "xiaomi_mimo"
         if not model_name.startswith(f"{provider_prefix}/"):
             model_name = f"{provider_prefix}/{model_name}"
 
