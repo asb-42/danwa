@@ -2,7 +2,8 @@
   "schema_version": "2.0.0",
   "module_id": "agent-critic-default",
   "name": {
-    "en": "Default Critic"
+    "en": "Default Critic",
+    "de": "Standard-Kritiker"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -13,14 +14,15 @@
   "license": "CC-BY-4.0",
   "tags": [
     "default",
-    "rigorous"
+    "rigorous",
+    "german"
   ],
-  "language": "en",
+  "language": "de",
   "profile_file": "profile.yaml",
   "profile_format": "yaml",
   "files": [],
   "description": {
-    "en": "Default critic with rigorous evaluation approach"
-  },
-  "checksum": "762e28334070f382f4916c89d6988c502a6d5cf57dcedf7d89c694fcd0955402"
+    "en": "Rigorous critic for fundamental weakness analysis",
+    "de": "Rigoroser Kritiker für fundamentale Schwächenanalyse"
+  }
 }

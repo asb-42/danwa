@@ -2,7 +2,8 @@
   "schema_version": "2.0.0",
   "module_id": "agent-strategist-default",
   "name": {
-    "en": "Default Strategist"
+    "en": "Default Strategist",
+    "de": "Standard-Stratege"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -13,14 +14,15 @@
   "license": "CC-BY-4.0",
   "tags": [
     "default",
-    "balanced"
+    "balanced",
+    "german"
   ],
-  "language": "en",
+  "language": "de",
   "profile_file": "profile.yaml",
   "profile_format": "yaml",
   "files": [],
   "description": {
-    "en": "Default strategist with balanced analysis approach"
-  },
-  "checksum": "daf0deed8a5a3dce9326a452680b0016f359114b5c098f5ab169ed2520248b8b"
+    "en": "Standard strategist for objective, structured analysis",
+    "de": "Standard-Strategieentwickler für sachliche, strukturierte Analyse"
+  }
 }

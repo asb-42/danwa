@@ -1,9 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "agent-moderator-default",
+  "module_id": "agent-optimizer-default-en",
   "name": {
-    "en": "Default Moderator",
-    "de": "Standard-Moderator"
+    "en": "Default Optimizer (EN)"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -14,15 +13,14 @@
   "license": "CC-BY-4.0",
   "tags": [
     "default",
-    "neutral",
-    "german"
+    "refinement",
+    "english"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.yaml",
   "profile_format": "yaml",
   "files": [],
   "description": {
-    "en": "Neutral moderator for consensus evaluation",
-    "de": "Neutraler Moderator für Konsensbewertung"
+    "en": "Synthesis specialist for argument refinement (English)"
   }
 }
