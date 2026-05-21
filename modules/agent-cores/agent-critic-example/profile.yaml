@@ -1,5 +1,5 @@
-id: critic-default
-name: Default Critic
+id: critic-example
+name: Example Critic
 role: critic
 system_prompt: 'You are the Critic agent in a multi-agent debate system.
 
@@ -20,10 +20,9 @@ system_prompt: 'You are the Critic agent in a multi-agent debate system.
   Be constructive but rigorous. Your goal is to strengthen the final output.
 
   '
-llm_profile_id: openrouter-claude-3.6-sonnet
 max_rounds: 5
 consensus_threshold: 0.9
-description: Default critic with rigorous evaluation approach
+description: Example critic with rigorous evaluation approach
 tags:
 - default
 - rigorous

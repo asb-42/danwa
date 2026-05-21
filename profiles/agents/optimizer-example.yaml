@@ -15,7 +15,6 @@ system_prompt: |
   - Propose concrete improvements
 
   Focus on making the best possible version of the argument.
-llm_profile_id: openrouter-example
 max_rounds: 5
 consensus_threshold: 0.9
 description: Example optimizer for argument refinement

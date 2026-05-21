@@ -1,5 +1,5 @@
-id: strategist-default
-name: Default Strategist
+id: strategist-example
+name: Example Strategist
 role: strategist
 system_prompt: 'You are the Strategist agent in a multi-agent debate system.
 
@@ -20,10 +20,9 @@ system_prompt: 'You are the Strategist agent in a multi-agent debate system.
   Provide clear, well-reasoned analysis. Be thorough but concise.
 
   '
-llm_profile_id: openrouter-claude-3.6-sonnet
 max_rounds: 5
 consensus_threshold: 0.9
-description: Default strategist with balanced analysis approach
+description: Example strategist with balanced analysis approach
 tags:
 - default
 - balanced

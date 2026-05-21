@@ -119,6 +119,26 @@ class TestProfileServiceLLM:
         data = yaml.safe_load(yaml_path.read_text())
         assert data["id"] == "new-llm"
 
+    def test_save_llm_profile_auto_generates_id(self, profile_service, profile_dir):
+        """New profiles without an explicit ID get a short uuid4 hex ID."""
+        new_profile = LLMProfile(
+            name="Auto-ID LLM",
+            provider=LLMProvider.LOCAL,
+            model="local/model",
+        )
+        result = profile_service.save_llm_profile(new_profile)
+
+        # ID should be auto-generated (8 hex chars)
+        assert len(result.id) == 8
+        assert all(c in "0123456789abcdef" for c in result.id)
+
+        # Should be retrievable by generated ID
+        assert profile_service.get_llm_profile(result.id) is not None
+
+        # YAML file should exist with generated name
+        yaml_path = profile_dir / "llm" / f"{result.id}.yaml"
+        assert yaml_path.exists()
+
     def test_delete_llm_profile(self, profile_service):
         assert profile_service.delete_llm_profile("test-llm") is True
         assert profile_service.get_llm_profile("test-llm") is None

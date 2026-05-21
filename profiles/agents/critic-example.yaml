@@ -15,7 +15,6 @@ system_prompt: |
   - Evaluate evidence quality and relevance
 
   Be constructive but rigorous. Your goal is to strengthen the final output.
-llm_profile_id: openrouter-example
 max_rounds: 5
 consensus_threshold: 0.9
 description: Example critic with rigorous evaluation approach

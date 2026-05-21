@@ -16,7 +16,6 @@ system_prompt: |
   - Consider multiple perspectives
 
   Provide clear, well-reasoned analysis. Be thorough but concise.
-llm_profile_id: openrouter-example         # must match an id in profiles/llm/
 max_rounds: 5
 consensus_threshold: 0.9
 description: Example strategist with balanced analysis approach

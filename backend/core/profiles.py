@@ -28,7 +28,7 @@ class LLMProvider(StrEnum):
 class LLMProfile(BaseModel):
     """Configuration for a specific LLM endpoint."""
 
-    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
+    id: str = Field(default="", pattern=r"^([a-z0-9][a-z0-9.-]*)?$")
     name: str
     profile_type: Literal["text", "tts", "stt"] = "text"
     provider: LLMProvider
@@ -76,7 +76,6 @@ class AgentPersona(BaseModel):
     name: str
     role: str  # Legacy role; widened for new role types (analyst, creative, etc.)
     system_prompt: str
-    llm_profile_id: str  # Reference to LLMProfile.id
 
     # Behaviour constraints
     max_rounds: int = 5

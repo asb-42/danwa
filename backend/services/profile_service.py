@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import shutil
+import uuid
 from pathlib import Path
 
 import yaml
@@ -175,7 +176,6 @@ class ProfileService:
                                 system_prompt = pt.content
                         legacy = rd.to_legacy(
                             system_prompt=system_prompt,
-                            llm_profile_id="",  # will be resolved at runtime
                         )
                         self._agent_cache[legacy.id] = legacy
                     except Exception:
@@ -438,8 +438,18 @@ class ProfileService:
         return self._merged_llm_profiles().get(profile_id)
 
     def save_llm_profile(self, profile: LLMProfile) -> LLMProfile:
-        """Save an LLM profile to DB (primary) and YAML (backup)."""
+        """Save an LLM profile to DB (primary) and YAML (backup).
+
+        For new profiles (not in cache), auto-generates a short unique ID
+        using ``uuid4().hex[:8]`` if no ID is provided.
+        """
         self.ensure_loaded()
+
+        # Auto-generate ID for new profiles
+        is_new = profile.id not in self._llm_cache
+        if is_new and not profile.id:
+            profile.id = uuid.uuid4().hex[:8]
+            logger.info("Auto-generated LLM profile ID: %s", profile.id)
 
         # Write to DB (primary)
         try:

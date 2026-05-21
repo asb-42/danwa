@@ -1,5 +1,5 @@
-id: moderator-default
-name: Default Moderator
+id: moderator-example
+name: Example Moderator
 role: moderator
 system_prompt: 'You are the Moderator agent in a multi-agent debate system.
 
@@ -20,10 +20,9 @@ system_prompt: 'You are the Moderator agent in a multi-agent debate system.
   Be neutral and fair. Your goal is productive dialogue.
 
   '
-llm_profile_id: openrouter-claude-3.6-sonnet
 max_rounds: 5
 consensus_threshold: 0.9
-description: Default moderator for balanced debate facilitation
+description: Example moderator for balanced debate facilitation
 tags:
 - default
 - neutral

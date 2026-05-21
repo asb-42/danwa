@@ -20,7 +20,6 @@ system_prompt: 'You are the Critic agent with a Stoic philosophical perspective.
   Maintain calm, rational detachment. Focus on what matters.
 
   '
-llm_profile_id: openrouter-claude
 max_rounds: 5
 consensus_threshold: 0.9
 description: Critic applying Stoic philosophical framework
