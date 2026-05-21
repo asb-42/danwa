@@ -185,12 +185,13 @@
   }
 
   async function refreshLists() {
-    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions()]);
+    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions(), getServiceEligibleProfiles()]);
     if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
     if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
     if (results[2].status === 'fulfilled') promptVariants = results[2].value;
     if (results[3].status === 'fulfilled') roleTypes = results[3].value;
     if (results[4].status === 'fulfilled') blueprintRoleDefIds = new Set(results[4].value.map(rd => rd.id));
+    if (results[5].status === 'fulfilled') serviceEligibleProfiles = results[5].value || [];
   }
 
   function isBlueprintManaged(personaId) {

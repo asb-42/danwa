@@ -185,6 +185,26 @@ async def run_workflow_background(
 
         set_session_status(session_id, "completed")
 
+        debate_id = initial_state.get("debate_id")
+        if debate_id:
+            try:
+                from backend.api.deps import get_debate_store_for_project
+                from backend.persistence.debate_store import DebateStatus
+                from backend.persistence.project_store import ProjectStore
+                project_store = ProjectStore()
+                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate = debate_store.get(debate_id)
+                if debate:
+                    debate["status"] = DebateStatus.COMPLETED
+                    debate["current_round"] = final_state.get("current_round", 0)
+                    debate["result"] = {
+                        "consensus": final_state.get("final_consensus", 0.0),
+                        "output": final_state.get("output", ""),
+                    }
+                    debate_store.put(debate_id, debate)
+            except Exception:
+                logger.warning("Failed to update debate record %s", debate_id, exc_info=True)
+
         # --- Auto-lock session and snapshots ---
         try:
             lock_session(session_id)
@@ -235,6 +255,22 @@ async def run_workflow_background(
         )
 
         set_session_status(session_id, "failed")
+
+        debate_id = initial_state.get("debate_id")
+        if debate_id:
+            try:
+                from backend.api.deps import get_debate_store_for_project
+                from backend.persistence.debate_store import DebateStatus
+                from backend.persistence.project_store import ProjectStore
+                project_store = ProjectStore()
+                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate = debate_store.get(debate_id)
+                if debate:
+                    debate["status"] = DebateStatus.FAILED
+                    debate["error"] = str(exc)
+                    debate_store.put(debate_id, debate)
+            except Exception:
+                logger.warning("Failed to update debate record %s", debate_id, exc_info=True)
 
         # --- Auto-lock session and snapshots ---
         try:

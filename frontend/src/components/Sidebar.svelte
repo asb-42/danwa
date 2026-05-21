@@ -31,6 +31,7 @@
     modules: ['modules'],
     proposals: ['proposals'],
     manage: ['manage'],
+    'mvp-debate': ['mvp-debate'],
   };
 
   function isActive(route) {
@@ -53,6 +54,7 @@
       label: t('nav.section.run'),
       items: [
         ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬', route: activeDebateRoute }] : []),
+        { id: 'mvp-debate', label: 'MVP Debate', icon: '🏛️', route: 'mvp-debate' },
         { id: 'input', label: t('nav.input'), icon: '💬', route: 'input' },
         { id: 'output', label: t('nav.output'), icon: '🖨️', route: 'output' },
         { id: 'documents', label: t('nav.documents'), icon: '📄', route: 'documents' },

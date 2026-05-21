@@ -16,13 +16,15 @@ import asyncio
 import json
 import logging
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
-from backend.api.deps import get_project_store
+from backend.api.deps import get_project_store, get_debate_store_for_project
+from backend.persistence.debate_store import DebateStatus
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
@@ -132,9 +134,198 @@ class InterjectResponse(BaseModel):
     status: str = "queued"
 
 
+class StartMvpDebateRequest(BaseModel):
+    """Request body for starting an MVP debate with per-agent LLM profiles."""
+
+    context: str = Field(..., min_length=1, description="The debate topic / context")
+    language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
+    project_id: str = Field(default="_default", description="Project ID")
+    max_rounds: int = Field(default=5, ge=1, description="Maximum rounds")
+    threshold: float = Field(default=0.9, ge=0.0, le=1.0, description="Consensus threshold")
+    llm_profile_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of role → llm_profile_id for per-agent LLM assignment",
+    )
+
+
+class StartMvpDebateResponse(BaseModel):
+    """Response after starting an MVP debate."""
+
+    session_id: str
+    debate_id: str
+    workflow_id: str
+    status: str = "running"
+    llm_assignments: dict[str, str] = Field(
+        description="Mapping of role → llm_profile_id actually used",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+
+@router.post("/mvp/start", response_model=StartMvpDebateResponse)
+async def start_mvp_debate(
+    body: StartMvpDebateRequest,
+    background_tasks: BackgroundTasks,
+    project_store: ProjectStore = Depends(get_project_store),
+) -> StartMvpDebateResponse:
+    """Create and execute an MVP debate workflow with per-agent LLM profiles.
+
+    Builds a 4-agent debate (strategist → critic → optimizer → moderator)
+    where each agent uses its own dedicated LLM profile, compiles it via
+    WorkflowCompiler, and launches execution as a background task.
+    """
+    from backend.blueprints.mvp_debate_canvas import build_mvp_debate_workflow
+
+    repo = _get_repo()
+    snapshot_store = _get_snapshot_store()
+
+    # Normalize LLM profile IDs: strip 'llm-' prefix if present (module dir name vs DB ID)
+    llm_ids = body.llm_profile_ids or {}
+    normalized_ids = {}
+    for role, pid in llm_ids.items():
+        normalized_ids[role] = pid.removeprefix("llm-") if pid else pid
+
+    wf = build_mvp_debate_workflow(
+        repo,
+        llm_profile_ids=normalized_ids or None,
+        max_rounds=body.max_rounds,
+        consensus_threshold=body.threshold,
+    )
+
+    repo.save_workflow_definition(wf)
+
+    compiler = CompilerService(repo)
+    compiled = compiler.compile_to_langgraph(wf)
+
+    if not compiled.is_valid:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "MVP debate compilation failed",
+                "errors": compiled.errors,
+                "warnings": compiled.warnings,
+            },
+        )
+
+    session_id = f"wf-{uuid.uuid4().hex[:12]}"
+
+    rag_context = ""
+    if body.project_id:
+        try:
+            from backend.services.debate_workflow import resolve_rag_context
+
+            rag_context, _ = resolve_rag_context(
+                project_id=body.project_id,
+                case_text=body.context,
+            )
+        except Exception:
+            logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
+
+    llm_assignments = {
+        agent.node_id.replace("node-", ""): agent.llm_profile_id
+        for agent in compiled.resolved_agents
+    }
+
+    initial_state: dict[str, Any] = {
+        "workflow_id": wf.id,
+        "session_id": session_id,
+        "project_id": body.project_id,
+        "context": body.context,
+        "language": body.language,
+        "rag_context": rag_context,
+        "node_sequence": compiled.node_sequence,
+        "node_configs": {
+            agent.node_id: {
+                "blueprint_id": agent.blueprint_id,
+                "blueprint_name": agent.blueprint_name,
+                "llm_profile_id": agent.llm_profile_id,
+                "llm_model": agent.llm_model,
+                "role_definition_id": agent.role_definition_id,
+                "role": agent.role,
+                "prompt_template_id": agent.prompt_template_id,
+                "role_type_name": agent.role_type_name,
+                "role_type_icon": agent.role_type_icon,
+                "role_type_color": agent.role_type_color,
+                "default_max_rounds": agent.default_max_rounds,
+                "default_consensus_threshold": agent.default_consensus_threshold,
+                "argumentation_pattern": agent.argumentation_pattern,
+                "mode": agent.mode,
+                "system_prompt": agent.system_prompt,
+            }
+            for agent in compiled.resolved_agents
+        },
+        "edge_map": {},
+        "termination_conditions": [],
+        "current_node_id": "",
+        "current_round": 1,
+        "max_rounds": body.max_rounds,
+        "threshold": body.threshold,
+        "node_outputs": [],
+        "messages": [],
+        "current_draft": "",
+        "interjection_queue": [],
+        "consumed_interjections": [],
+        "final_consensus": 0.0,
+        "output": "",
+        "status": "running",
+        "is_paused": False,
+        "pause_event": get_pause_event(session_id),
+    }
+
+    set_session_status(session_id, "running")
+
+    debate_id = f"mvp-{uuid.uuid4().hex[:12]}"
+    now = datetime.now(UTC)
+    try:
+        debate_store = get_debate_store_for_project(body.project_id, project_store)
+        debate_store.put(debate_id, {
+            "debate_id": debate_id,
+            "session_id": session_id,
+            "status": DebateStatus.RUNNING,
+            "title": body.context[:80],
+            "request": {"case": {"text": body.context}, "max_rounds": body.max_rounds},
+            "max_rounds": body.max_rounds,
+            "current_round": 0,
+            "rounds": [],
+            "created_at": now,
+            "updated_at": now,
+            "result": None,
+            "is_mvp": True,
+            "llm_assignments": llm_assignments,
+        })
+        logger.info("Created MVP debate record %s for session %s", debate_id, session_id)
+    except Exception as e:
+        logger.warning("Failed to create debate record for MVP session %s: %s", session_id, e, exc_info=True)
+
+    initial_state["debate_id"] = debate_id
+
+    background_tasks.add_task(
+        run_workflow_background,
+        session_id=session_id,
+        workflow_id=wf.id,
+        project_id=body.project_id,
+        initial_state=initial_state,
+        compiled_workflow=compiled,
+        snapshot_store=snapshot_store,
+    )
+
+    logger.info(
+        "Started MVP debate %s as session %s (debate_id=%s) with LLM assignments: %s",
+        wf.id,
+        session_id,
+        debate_id,
+        llm_assignments,
+    )
+    return StartMvpDebateResponse(
+        session_id=session_id,
+        debate_id=debate_id,
+        workflow_id=wf.id,
+        status="running",
+        llm_assignments=llm_assignments,
+    )
 
 
 @router.post("/{workflow_id}/start", response_model=StartWorkflowResponse)

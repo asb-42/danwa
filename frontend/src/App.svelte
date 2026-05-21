@@ -23,6 +23,7 @@ import TranslationDashboard from './views/TranslationDashboard.svelte';
 import ModulesView from './views/ModulesView.svelte';
 import ProposalsView from './views/ProposalsView.svelte';
 import ManageView from './views/ManageView.svelte';
+import MvpDebateView from './views/MvpDebateView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Register toast callback for i18n fallback warnings
@@ -127,6 +128,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <ModulesView {navigate} />
   {:else if $route === 'proposals'}
     <ProposalsView />
+  {:else if $route === 'mvp-debate'}
+    <MvpDebateView {navigate} />
   {:else}
     <Dashboard {navigate} />
   {/if}

@@ -70,6 +70,38 @@ export function cancelWorkflow(sessionId) {
 }
 
 /**
+ * Start an MVP debate with per-agent LLM profiles.
+ * @param {object} params
+ * @param {string} params.context - The debate topic
+ * @param {string} [params.language] - Language code
+ * @param {string} [params.projectId] - Project ID
+ * @param {number} [params.maxRounds] - Maximum rounds
+ * @param {number} [params.threshold] - Consensus threshold
+ * @param {Record<string, string>} [params.llmProfileIds] - role → llm_profile_id mapping
+ * @returns {Promise<{ session_id: string, workflow_id: string, status: string, llm_assignments: Record<string, string> }>}
+ */
+export function startMvpDebate({
+  context,
+  language = 'de',
+  projectId = '_default',
+  maxRounds = 5,
+  threshold = 0.9,
+  llmProfileIds = {},
+}) {
+  return request('/api/v1/workflow-exec/mvp/start', {
+    method: 'POST',
+    body: JSON.stringify({
+      context,
+      language,
+      project_id: projectId,
+      max_rounds: maxRounds,
+      threshold,
+      llm_profile_ids: llmProfileIds,
+    }),
+  });
+}
+
+/**
  * Submit a user interjection for a running workflow session.
  * @param {string} sessionId
  * @param {string} content - The interjection text.
