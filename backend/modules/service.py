@@ -43,14 +43,36 @@ class ModuleService:
         self._registry_cache_time: float = 0
         self._registry_cache_ttl: int = 86400
 
+    def _resolve_module_dir(self, module_id: str) -> Path | None:
+        """Find a module directory by ID, searching root and one level of subdirectories."""
+        direct = self.modules_dir / module_id
+        if (direct / "manifest.json").exists():
+            return direct
+        for subdir in self.modules_dir.iterdir():
+            if subdir.is_dir() and not subdir.name.startswith("."):
+                candidate = subdir / module_id
+                if (candidate / "manifest.json").exists():
+                    return candidate
+        return None
+
     def discover_local(self) -> list[ModuleInfo]:
         modules: list[ModuleInfo] = []
         if not self.modules_dir.exists():
             return modules
 
-        for module_dir in sorted(self.modules_dir.iterdir()):
-            if not module_dir.is_dir() or module_dir.name.startswith("."):
+        # Search root and one level of subdirectories (category dirs)
+        search_dirs = []
+        for entry in sorted(self.modules_dir.iterdir()):
+            if not entry.is_dir() or entry.name.startswith("."):
                 continue
+            if (entry / "manifest.json").exists():
+                search_dirs.append(entry)
+            else:
+                for sub in sorted(entry.iterdir()):
+                    if sub.is_dir() and not sub.name.startswith("."):
+                        search_dirs.append(sub)
+
+        for module_dir in search_dirs:
             if not (module_dir / "manifest.json").exists():
                 continue
             try:
@@ -120,8 +142,8 @@ class ModuleService:
         return result
 
     def get(self, module_id: str) -> ModuleInfo | None:
-        module_dir = self.modules_dir / module_id
-        if module_dir.exists():
+        module_dir = self._resolve_module_dir(module_id)
+        if module_dir:
             return self._dir_to_info(module_dir)
         return None
 
@@ -183,9 +205,9 @@ class ModuleService:
         if source == "url" and source_url:
             return self.installer.install_from_url(source_url)
         else:
-            module_dir = self.modules_dir / module_id
-            if not module_dir.exists():
-                raise FileNotFoundError(f"Module directory not found: {module_dir}")
+            module_dir = self._resolve_module_dir(module_id)
+            if not module_dir:
+                raise FileNotFoundError(f"Module directory not found: {module_id}")
             return self.installer.install_from_directory(module_dir)
 
     def uninstall(self, module_id: str, force: bool = False) -> UninstallationReport:
@@ -198,7 +220,13 @@ class ModuleService:
         return self.installer.update(module_id)
 
     def _force_uninstall(self, module_id: str) -> UninstallationReport:
-        target_dir = self.modules_dir / module_id
+        target_dir = self._resolve_module_dir(module_id)
+        if not target_dir:
+            return UninstallationReport(
+                status="error",
+                module_id=module_id,
+                errors=[f"Module directory not found: {module_id}"],
+            )
         files_removed = 0
         if target_dir.exists():
             for f in target_dir.rglob("*"):
@@ -238,7 +266,9 @@ class ModuleService:
         )
 
     def get_profile(self, module_id: str) -> dict[str, Any] | None:
-        module_dir = self.modules_dir / module_id
+        module_dir = self._resolve_module_dir(module_id)
+        if not module_dir:
+            return None
         manifest_path = module_dir / "manifest.json"
         if not manifest_path.exists():
             return None
@@ -264,7 +294,9 @@ class ModuleService:
         return None
 
     def update_profile(self, module_id: str, profile_data: dict[str, Any]) -> bool:
-        module_dir = self.modules_dir / module_id
+        module_dir = self._resolve_module_dir(module_id)
+        if not module_dir:
+            return False
         manifest_path = module_dir / "manifest.json"
         if not manifest_path.exists():
             return False
@@ -290,10 +322,10 @@ class ModuleService:
         return True
 
     def duplicate_module(self, module_id: str, new_id: str, new_name: str | None = None) -> dict[str, Any] | None:
-        src_dir = self.modules_dir / module_id
+        src_dir = self._resolve_module_dir(module_id)
         dst_dir = self.modules_dir / new_id
 
-        if not src_dir.exists() or dst_dir.exists():
+        if not src_dir or dst_dir.exists():
             return None
 
         shutil.copytree(src_dir, dst_dir)

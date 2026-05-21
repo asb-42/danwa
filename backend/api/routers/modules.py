@@ -399,9 +399,9 @@ async def disable_module(module_id: str) -> dict[str, Any]:
 async def export_module(module_id: str) -> Any:
     """Export a module as a ZIP archive for sharing/uploading to GitHub."""
     svc = get_module_service()
-    module_dir = svc.modules_dir / module_id
-    if not module_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Module directory not found: {module_dir}")
+    module_dir = svc._resolve_module_dir(module_id)
+    if not module_dir:
+        raise HTTPException(status_code=404, detail=f"Module directory not found: {module_id}")
 
     manifest_path = module_dir / "manifest.json"
     if not manifest_path.exists():

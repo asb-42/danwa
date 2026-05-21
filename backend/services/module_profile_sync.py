@@ -40,15 +40,19 @@ def _get_enabled_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, Any]
     if not modules_dir.exists():
         return modules
 
-    for mod_dir in sorted(modules_dir.iterdir()):
-        if not mod_dir.is_dir():
+    # Collect module dirs: root level + one level of subdirectories
+    mod_dirs = []
+    for entry in sorted(modules_dir.iterdir()):
+        if not entry.is_dir() or entry.name.startswith(".") or ".bak." in entry.name:
             continue
-        if mod_dir.name.startswith("."):
-            continue
-        # Skip backup directories
-        if ".bak." in mod_dir.name:
-            continue
+        if (entry / "manifest.json").exists():
+            mod_dirs.append(entry)
+        else:
+            for sub in sorted(entry.iterdir()):
+                if sub.is_dir() and not sub.name.startswith(".") and ".bak." not in sub.name:
+                    mod_dirs.append(sub)
 
+    for mod_dir in mod_dirs:
         manifest_path = mod_dir / "manifest.json"
         if not manifest_path.exists():
             continue
