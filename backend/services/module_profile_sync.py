@@ -102,10 +102,17 @@ def _is_module_enabled(module_id: str) -> bool:
         return True
 
 
+def _derive_profile_format(profile_file: str, manifest_format: str | None) -> str | None:
+    if manifest_format:
+        return manifest_format
+    ext = Path(profile_file).suffix.lower()
+    return {"yaml": "yaml", "yml": "yaml", "json": "json", "md": "markdown"}.get(ext)
+
+
 def _read_module_profile(mod_dir: Path, manifest: dict) -> dict[str, Any] | None:
     """Read and parse a module's profile file."""
     profile_file = manifest.get("profile_file")
-    profile_format = manifest.get("profile_format")
+    profile_format = _derive_profile_format(profile_file, manifest.get("profile_format"))
 
     if not profile_file:
         return None

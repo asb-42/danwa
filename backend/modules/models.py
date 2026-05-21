@@ -165,7 +165,7 @@ class ModuleManifest(BaseModel):
 
     # v2: single profile file
     profile_file: str | None = None  # e.g. "profile.yaml"
-    profile_format: Literal["yaml", "json"] | None = None
+    profile_format: Literal["yaml", "json", "markdown"] | None = None
 
     # v1: legacy bundle files (migration compat)
     files: list[ModuleFile] = Field(default_factory=list)

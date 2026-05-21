@@ -42,10 +42,17 @@
     return `${p}-${m}-${ts}`;
   }
 
+  /** Auto-generate agent persona ID from role + name. */
+  function generateAgentId() {
+    const role = (formData.role || 'agent').replace(/[^a-z0-9]/g, '');
+    const name = (formData.name || 'persona').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const ts = Date.now().toString(36).slice(-4);
+    return name ? `${role}-${name}-${ts}` : `${role}-${ts}`;
+  }
+
   function validateForm() {
     const errors = {};
     if (type === 'llm') {
-      // Auto-generate ID if empty
       if (!formData.id && mode === 'create') {
         formData.id = generateLLMId();
       }
@@ -54,8 +61,8 @@
       if (formData.temperature < 0 || formData.temperature > 2) errors.temperature = '0–2';
       if (formData.max_tokens < 1) errors.max_tokens = '≥ 1';
     } else {
-      if (!formData.id || !/^[a-z0-9][a-z0-9.-]*$/.test(formData.id)) {
-        errors.id = 'ID: lowercase alphanumeric, dots, hyphens';
+      if (!formData.id && mode === 'create') {
+        formData.id = generateAgentId();
       }
       if (!formData.name?.trim()) errors.name = t('config.required');
       if (!formData.system_prompt?.trim()) errors.system_prompt = t('config.required');
@@ -308,22 +315,13 @@
 
         {:else}
           <!-- Agent Persona Form -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label for="form-agent-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('config.id')} *
-              </label>
-              <input id="form-agent-id" type="text" bind:value={formData.id}
-                disabled={mode === 'edit'}
-                class="w-full px-3 py-2 border rounded-lg text-sm
-                  {formErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                  disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
-                placeholder="my-strategist"
-              />
-              {#if formErrors.id}<p class="text-xs text-red-500 mt-1">{formErrors.id}</p>{/if}
+          {#if mode === 'edit' && formData.id}
+            <div class="mb-2">
+              <span class="text-xs text-gray-500 dark:text-gray-400">{t('config.id')}: </span>
+              <code class="text-xs font-mono text-gray-600 dark:text-gray-400">{formData.id}</code>
             </div>
-
+          {/if}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="form-agent-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('config.name')} *

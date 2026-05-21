@@ -265,6 +265,13 @@ class ModuleService:
             db_entries_removed=db_entries_removed,
         )
 
+    @staticmethod
+    def _derive_profile_format(profile_file: str, manifest_format: str | None) -> str | None:
+        if manifest_format:
+            return manifest_format
+        ext = Path(profile_file).suffix.lower()
+        return {"yaml": "yaml", "yml": "yaml", "json": "json", "md": "markdown"}.get(ext)
+
     def get_profile(self, module_id: str) -> dict[str, Any] | None:
         module_dir = self._resolve_module_dir(module_id)
         if not module_dir:
@@ -275,7 +282,7 @@ class ModuleService:
 
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         profile_file = manifest.get("profile_file")
-        profile_format = manifest.get("profile_format")
+        profile_format = self._derive_profile_format(profile_file, manifest.get("profile_format"))
 
         if not profile_file:
             return None
@@ -303,18 +310,20 @@ class ModuleService:
 
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         profile_file = manifest.get("profile_file")
-        profile_format = manifest.get("profile_format")
+        profile_format = self._derive_profile_format(profile_file, manifest.get("profile_format"))
 
         if not profile_file:
             return False
 
+        safe_data = {k: v for k, v in profile_data.items() if k != "id"}
+
         profile_path = module_dir / profile_file
         if profile_format == "yaml":
-            profile_path.write_text(yaml.dump(profile_data, default_flow_style=False, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            profile_path.write_text(yaml.dump(safe_data, default_flow_style=False, sort_keys=False, allow_unicode=True), encoding="utf-8")
         elif profile_format == "json":
-            profile_path.write_text(json.dumps(profile_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            profile_path.write_text(json.dumps(safe_data, indent=2, ensure_ascii=False), encoding="utf-8")
         elif profile_format == "markdown":
-            profile_path.write_text(profile_data.get("content", ""), encoding="utf-8")
+            profile_path.write_text(safe_data.get("content", ""), encoding="utf-8")
         else:
             return False
 

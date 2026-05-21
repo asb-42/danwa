@@ -210,7 +210,6 @@
     const type = editProfileType;
     if (type === 'llm-profile') {
       return [
-        { key: 'id', label: 'ID', type: 'text', readonly: true },
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'provider', label: 'Provider', type: 'text' },
         { key: 'model', label: 'Model', type: 'text' },
@@ -230,7 +229,6 @@
     }
     if (type === 'agent-persona') {
       return [
-        { key: 'id', label: 'ID', type: 'text', readonly: true },
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'role', label: 'Role', type: 'text' },
         { key: 'system_prompt', label: 'System Prompt', type: 'textarea' },
@@ -242,7 +240,6 @@
     }
     if (type === 'role-type') {
       return [
-        { key: 'id', label: 'ID', type: 'text', readonly: true },
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'description', label: 'Description', type: 'text' },
         { key: 'icon', label: 'Icon', type: 'text' },
@@ -255,7 +252,6 @@
     }
     if (type === 'tone-profile') {
       return [
-        { key: 'id', label: 'ID', type: 'text', readonly: true },
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'description', label: 'Description', type: 'text' },
         { key: 'style', label: 'Style', type: 'text' },
@@ -268,7 +264,6 @@
     }
     if (type === 'workflow-template') {
       return [
-        { key: 'id', label: 'ID', type: 'text', readonly: true },
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'description', label: 'Description', type: 'textarea' },
         { key: 'category', label: 'Category', type: 'text' },
