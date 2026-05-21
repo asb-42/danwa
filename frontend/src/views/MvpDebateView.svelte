@@ -3,6 +3,7 @@
   import { getLLMProfiles } from '../lib/api.js';
   import { startMvpDebate } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
+  import { activeProject } from '../lib/stores.js';
 
   let { navigate = () => {} } = $props();
 
@@ -143,6 +144,7 @@
         maxRounds,
         threshold,
         llmProfileIds: profileMap,
+        projectId: $activeProject?.id,
       });
       sessionId = result.session_id;
       llmAssignmentsResult = result.llm_assignments || {};

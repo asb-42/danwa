@@ -23,11 +23,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
-from backend.api.deps import get_project_store, get_debate_store_for_project
-from backend.persistence.debate_store import DebateStatus
+from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
+from backend.persistence.debate_store import DebateStatus
 from backend.persistence.project_store import ProjectStore
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.immutability import archive_session, guard_mutable, restore_session
@@ -169,6 +169,7 @@ class StartMvpDebateResponse(BaseModel):
 async def start_mvp_debate(
     body: StartMvpDebateRequest,
     background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
     project_store: ProjectStore = Depends(get_project_store),
 ) -> StartMvpDebateResponse:
     """Create and execute an MVP debate workflow with per-agent LLM profiles.
@@ -212,13 +213,16 @@ async def start_mvp_debate(
 
     session_id = f"wf-{uuid.uuid4().hex[:12]}"
 
+    # Use project_id from header (same as all other endpoints) for RAG context & debate store
+    effective_project_id = project_id
+
     rag_context = ""
-    if body.project_id:
+    if effective_project_id:
         try:
             from backend.services.debate_workflow import resolve_rag_context
 
             rag_context, _ = resolve_rag_context(
-                project_id=body.project_id,
+                project_id=effective_project_id,
                 case_text=body.context,
             )
         except Exception:
@@ -232,7 +236,7 @@ async def start_mvp_debate(
     initial_state: dict[str, Any] = {
         "workflow_id": wf.id,
         "session_id": session_id,
-        "project_id": body.project_id,
+        "project_id": effective_project_id,
         "context": body.context,
         "language": body.language,
         "rag_context": rag_context,
@@ -280,7 +284,7 @@ async def start_mvp_debate(
     debate_id = f"mvp-{uuid.uuid4().hex[:12]}"
     now = datetime.now(UTC)
     try:
-        debate_store = get_debate_store_for_project(body.project_id, project_store)
+        debate_store = get_debate_store_for_project(effective_project_id, project_store)
         debate_store.put(debate_id, {
             "debate_id": debate_id,
             "session_id": session_id,
@@ -306,7 +310,7 @@ async def start_mvp_debate(
         run_workflow_background,
         session_id=session_id,
         workflow_id=wf.id,
-        project_id=body.project_id,
+        project_id=effective_project_id,
         initial_state=initial_state,
         compiled_workflow=compiled,
         snapshot_store=snapshot_store,
