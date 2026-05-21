@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 
 from backend.modules.models import ModuleType
+from backend.modules.type_derivation import derive_module_type, parent_dir_name
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +68,18 @@ def _get_enabled_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, Any]
         if not enabled:
             continue
 
+        module_id = mod_dir.name
+        # Derive type from directory + module_id prefix if not in manifest
+        manifest_type = manifest.get("type")
+        parent = parent_dir_name(mod_dir, modules_dir)
+        derived_type = manifest_type or derive_module_type(parent, module_id)
+
         modules.append(
             {
-                "module_id": mod_dir.name,
+                "module_id": module_id,
                 "manifest": manifest,
                 "dir": mod_dir,
+                "type": derived_type,
             }
         )
 
@@ -144,7 +152,7 @@ def get_llm_profiles_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict[
     """Get LLM profiles from enabled llm-profile modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.LLM_PROFILE:
+        if mod["type"] != ModuleType.LLM_PROFILE:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -160,7 +168,7 @@ def get_role_types_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict[st
     """Get role types from enabled role-type modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.ROLE_TYPE:
+        if mod["type"] != ModuleType.ROLE_TYPE:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -177,7 +185,7 @@ def get_agent_personas_from_modules(modules_dir: Path = MODULES_DIR) -> list[dic
     """Get agent personas from enabled agent-persona modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.AGENT_PERSONA:
+        if mod["type"] != ModuleType.AGENT_PERSONA:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -197,7 +205,7 @@ def get_tone_profiles_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict
     """Get tone profiles from enabled tone-profile modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.TONE_PROFILE:
+        if mod["type"] != ModuleType.TONE_PROFILE:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -215,7 +223,7 @@ def get_prompt_templates_from_modules(modules_dir: Path = MODULES_DIR) -> list[d
     """Get prompt templates from enabled prompt-variant modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.PROMPT_VARIANT:
+        if mod["type"] != ModuleType.PROMPT_VARIANT:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -243,7 +251,7 @@ def get_workflow_templates_from_modules(modules_dir: Path = MODULES_DIR) -> list
     """Get workflow templates from enabled workflow-template modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.WORKFLOW_TEMPLATE:
+        if mod["type"] != ModuleType.WORKFLOW_TEMPLATE:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -258,7 +266,7 @@ def get_bundles_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, 
     """Get agent bundles from enabled bundle modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.BUNDLE:
+        if mod["type"] != ModuleType.BUNDLE:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
@@ -272,7 +280,7 @@ def get_argumentation_patterns_from_modules(modules_dir: Path = MODULES_DIR) -> 
     """Get argumentation pattern names from enabled argumentation-pattern modules."""
     results = []
     for mod in _get_enabled_modules(modules_dir):
-        if mod["manifest"].get("type") != ModuleType.ARGUMENTATION_PATTERN:
+        if mod["type"] != ModuleType.ARGUMENTATION_PATTERN:
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:

@@ -14,11 +14,12 @@ import json
 import logging
 import shutil
 import sqlite3
-import zipfile
 from datetime import UTC, datetime
-from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+from backend.modules.models import ModuleType
+from backend.modules.type_derivation import derive_module_type, derive_module_category, parent_dir_name
 
 from backend.blueprints.migrations import run_migrations
 from backend.modules.models import (
@@ -92,8 +93,8 @@ class ModuleInstaller:
                     module_id,
                     json.dumps(manifest.get("name", {})),
                     json.dumps(manifest.get("description", {})),
-                    manifest.get("type", "custom"),
-                    manifest.get("category", "custom"),
+                    manifest.get("type") or derive_module_type(parent_dir_name(self.modules_dir / module_id, self.modules_dir), module_id),
+                    manifest.get("category") or derive_module_category(parent_dir_name(self.modules_dir / module_id, self.modules_dir)),
                     manifest.get("version", "0.0.0"),
                     json.dumps(manifest.get("author", {})),
                     manifest.get("license", "CC-BY-4.0"),
@@ -388,7 +389,8 @@ class ModuleInstaller:
 
         # For language-pack modules, also register UI strings
         ui_entries_created = 0
-        if manifest_data.get("type") == "language-pack":
+        derived_t = manifest_data.get("type") or derive_module_type(parent_dir_name(module_dir, self.modules_dir), module_id)
+        if derived_t == "language-pack":
             try:
                 ui_entries_created = self._register_ui_strings_in_db(module_id, module_dir, manifest_data)
             except sqlite3.Error as e:
@@ -630,8 +632,8 @@ class ModuleInstaller:
                         module_id,
                         json.dumps(manifest_data.get("name", {})),
                         json.dumps(manifest_data.get("description", {})),
-                        manifest_data.get("type", "custom"),
-                        manifest_data.get("category", "custom"),
+                        manifest_data.get("type") or derive_module_type(parent_dir_name(module_dir, self.modules_dir), module_id),
+                        manifest_data.get("category") or derive_module_category(parent_dir_name(module_dir, self.modules_dir)),
                         manifest_data.get("version", "0.0.0"),
                         json.dumps(manifest_data.get("author", {})),
                         manifest_data.get("license", "CC-BY-4.0"),

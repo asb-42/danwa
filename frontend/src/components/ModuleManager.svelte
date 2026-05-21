@@ -36,11 +36,11 @@
   const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
   const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'tone-profiles', 'workflows', 'translations'];
   const CATEGORY_LABELS = {
-    'agents': 'Agent Personas',
+    'agents': 'Agent Cores',
     'llm-profiles': 'LLM Profiles',
     'role-types': 'Role Types',
     'tone-profiles': 'Tone Profiles',
-    'prompts': 'Prompt Variants',
+    'prompts': 'Argumentation Patterns',
     'workflows': 'Workflows',
     'translations': '🌐 Translations',
   };

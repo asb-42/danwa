@@ -7,6 +7,7 @@ import logging
 import shutil
 import sqlite3
 import urllib.request
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,11 @@ from backend.modules.models import (
     ModuleInfo,
     TranslationResult,
     UninstallationReport,
+)
+from backend.modules.type_derivation import (
+    derive_module_type,
+    derive_module_category,
+    parent_dir_name,
 )
 from backend.modules.validation import ModuleValidator
 
@@ -351,15 +357,16 @@ class ModuleService:
             profile_path = dst_dir / profile_file
             if profile_path.exists():
                 profile_format = manifest.get("profile_format")
+                new_profile_id = uuid.uuid4().hex[:8]
                 if profile_format == "yaml":
                     data = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
-                    data["id"] = new_id
+                    data["id"] = new_profile_id
                     if new_name:
                         data["name"] = new_name
                     profile_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True), encoding="utf-8")
                 elif profile_format == "json":
                     data = json.loads(profile_path.read_text(encoding="utf-8"))
-                    data["id"] = new_id
+                    data["id"] = new_profile_id
                     if new_name:
                         data["name"] = new_name
                     profile_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -498,14 +505,16 @@ class ModuleService:
             file_count = sum(1 for f in manifest_data.get("files", []) if (module_dir / f["path"]).exists())
 
         db_info = self._get_db_module_info(manifest_data["module_id"])
+        parent = parent_dir_name(module_dir, self.modules_dir)
+        module_id = manifest_data.get("module_id", module_dir.name)
 
         return ModuleInfo(
-            module_id=manifest_data.get("module_id", module_dir.name),
+            module_id=module_id,
             name=manifest_data.get("name", {}),
             description=manifest_data.get("description", {}),
             version=manifest_data.get("version", "0.0.0"),
-            type=manifest_data.get("type", "custom"),
-            category=manifest_data.get("category", "custom"),
+            type=manifest_data.get("type") or derive_module_type(parent, module_id),
+            category=manifest_data.get("category") or derive_module_category(parent),
             author=manifest_data.get("author", {}),
             license=manifest_data.get("license", "CC-BY-4.0"),
             tags=manifest_data.get("tags", []),

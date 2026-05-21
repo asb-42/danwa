@@ -154,8 +154,8 @@ class ModuleManifest(BaseModel):
     name: dict[str, str] = Field(default_factory=dict)
     description: dict[str, str] = Field(default_factory=dict)
     version: str = "1.0.0"
-    type: ModuleType
-    category: ModuleCategory
+    type: ModuleType | None = None  # Derived from directory + module_id prefix if absent
+    category: ModuleCategory | None = None  # Derived from directory if absent
     author: dict[str, str] = Field(default_factory=dict)
     license: str = "CC-BY-4.0"
     dependencies: dict[str, str] = Field(default_factory=dict)
