@@ -126,10 +126,23 @@ def _ensure_blueprint(
     role: str,
     llm_profile_id: str,
 ) -> AgentBlueprint:
-    """Ensure an AgentBlueprint exists for the given role + LLM profile."""
+    """Ensure an AgentBlueprint exists for the given role + LLM profile.
+
+    If the blueprint already exists but has a different LLM profile,
+    update it to use the requested profile.
+    """
     blueprint_id = f"mvp-{role}"
     existing = repo.get_blueprint(blueprint_id)
     if existing:
+        if existing.llm_profile_id != llm_profile_id:
+            existing.llm_profile_id = llm_profile_id
+            repo.save_blueprint(existing)
+            logger.info(
+                "Updated AgentBlueprint '%s' LLM profile from '%s' to '%s'",
+                blueprint_id,
+                existing.llm_profile_id,
+                llm_profile_id,
+            )
         return existing
 
     _ensure_role_definition(repo, role)

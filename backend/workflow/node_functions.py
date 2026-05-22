@@ -442,7 +442,7 @@ def moderator_node_factory(
     """Create a moderator node that also evaluates consensus.
 
     Same as ``agent_node_factory`` but additionally computes a consensus
-    score and publishes a ``consensus.reached`` SSE event.
+    score, increments ``current_round``, and publishes SSE events.
     """
     base_fn = agent_node_factory(node_id, "wf-moderator", resolved_config)
 
@@ -453,9 +453,12 @@ def moderator_node_factory(
         # In a real implementation, this would use LLM-based evaluation
         current_draft = result.get("current_draft", state.get("current_draft", ""))
         draft_length = len(current_draft)
-        # Heuristic: longer drafts with more contributions = higher consensus
         num_outputs = len(state.get("node_outputs", [])) + len(result.get("node_outputs", []))
         consensus = min(1.0, (num_outputs * 0.15) + (draft_length / 10000))
+
+        current_round = state.get("current_round", 1)
+        max_rounds = state.get("max_rounds", 10)
+        next_round = current_round + 1
 
         session_id = state.get("session_id", "")
         await publish_async(
@@ -464,11 +467,41 @@ def moderator_node_factory(
             {
                 "score": round(consensus, 2),
                 "threshold": threshold,
-                "round": state.get("current_round", 1),
+                "round": current_round,
+            },
+        )
+
+        # Publish round update for UI
+        total_tokens = sum(
+            no.get("tokens_used", 0)
+            for no in state.get("node_outputs", []) + result.get("node_outputs", [])
+        )
+        await publish_async(
+            session_id,
+            "round_update",
+            {
+                "type": "round_update",
+                "round": current_round,
+                "consensus": round(consensus, 2),
+                "threshold": threshold,
+                "agent_count": num_outputs,
+                "total_tokens": total_tokens,
             },
         )
 
         result["final_consensus"] = round(consensus, 2)
+        # Increment current_round so the feedback router can cap at max_rounds
+        result["current_round"] = next_round
+
+        logger.info(
+            "Moderator (node %s, round %d): consensus=%.2f, next_round=%d, max_rounds=%d",
+            node_id,
+            current_round,
+            consensus,
+            next_round,
+            max_rounds,
+        )
+
         return result
 
     return _moderator_node

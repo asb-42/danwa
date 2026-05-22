@@ -644,6 +644,54 @@ async def submit_interjection(
 
 
 # ---------------------------------------------------------------------------
+# Audit log retrieval
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{session_id}/audit-log")
+async def get_workflow_audit_log(
+    session_id: str,
+    event_type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[dict]:
+    """Return audit log entries for a workflow session.
+
+    Used by the frontend to display the audit trail for MVP debates.
+    """
+    from backend.models.schemas import AuditLogQuery
+    from backend.workflow.audit_logger import get_audit_logger
+
+    al = get_audit_logger()
+    filters = AuditLogQuery(
+        event_type=event_type,
+        limit=limit,
+        offset=offset,
+    )
+    events = al.get_audit_log(session_id, filters)
+
+    # Transform to a format compatible with the AuditView
+    result = []
+    for entry in events:
+        result.append({
+            "session_id": entry.get("session_id"),
+            "workflow_id": entry.get("workflow_id"),
+            "event_type": entry.get("event_type"),
+            "node_id": entry.get("node_id"),
+            "actor": entry.get("actor"),
+            "timestamp": entry.get("timestamp"),
+            "input_content": entry.get("input_content", ""),
+            "output_content": entry.get("output_content", ""),
+            "llm_profile_id": entry.get("llm_profile_id"),
+            "latency_ms": entry.get("latency_ms"),
+            "prompt_tokens": entry.get("prompt_tokens"),
+            "completion_tokens": entry.get("completion_tokens"),
+        })
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Session soft-delete / restore
 # ---------------------------------------------------------------------------
 
