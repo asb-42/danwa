@@ -131,45 +131,53 @@ def _transform_workflow_audit_events(wf_events: list[dict]) -> list[dict]:
     for entry in wf_events:
         event_type = entry.get("event_type", "")
         if event_type == "node_completed":
-            result.append({
-                "round": None,
-                "agent": entry.get("actor", ""),
-                "action": f"node_completed ({entry.get('node_id', '')})",
-                "content": entry.get("output_content", ""),
-                "timestamp": entry.get("timestamp"),
-                "llm_model": entry.get("llm_profile_id", ""),
-                "tokens_used": entry.get("completion_tokens", 0),
-            })
+            result.append(
+                {
+                    "round": None,
+                    "agent": entry.get("actor", ""),
+                    "action": f"node_completed ({entry.get('node_id', '')})",
+                    "content": entry.get("output_content", ""),
+                    "timestamp": entry.get("timestamp"),
+                    "llm_model": entry.get("llm_profile_id", ""),
+                    "tokens_used": entry.get("completion_tokens", 0),
+                }
+            )
         elif event_type == "node_started":
-            result.append({
-                "round": None,
-                "agent": entry.get("actor", ""),
-                "action": f"node_started ({entry.get('node_id', '')})",
-                "content": "",
-                "timestamp": entry.get("timestamp"),
-                "llm_model": "",
-                "tokens_used": 0,
-            })
+            result.append(
+                {
+                    "round": None,
+                    "agent": entry.get("actor", ""),
+                    "action": f"node_started ({entry.get('node_id', '')})",
+                    "content": "",
+                    "timestamp": entry.get("timestamp"),
+                    "llm_model": "",
+                    "tokens_used": 0,
+                }
+            )
         elif event_type == "node_failed":
-            result.append({
-                "round": None,
-                "agent": entry.get("actor", ""),
-                "action": f"node_failed ({entry.get('node_id', '')})",
-                "content": entry.get("output_content", ""),
-                "timestamp": entry.get("timestamp"),
-                "llm_model": "",
-                "tokens_used": 0,
-            })
+            result.append(
+                {
+                    "round": None,
+                    "agent": entry.get("actor", ""),
+                    "action": f"node_failed ({entry.get('node_id', '')})",
+                    "content": entry.get("output_content", ""),
+                    "timestamp": entry.get("timestamp"),
+                    "llm_model": "",
+                    "tokens_used": 0,
+                }
+            )
         else:
-            result.append({
-                "round": None,
-                "agent": entry.get("actor", ""),
-                "action": event_type,
-                "content": entry.get("output_content", ""),
-                "timestamp": entry.get("timestamp"),
-                "llm_model": "",
-                "tokens_used": 0,
-            })
+            result.append(
+                {
+                    "round": None,
+                    "agent": entry.get("actor", ""),
+                    "action": event_type,
+                    "content": entry.get("output_content", ""),
+                    "timestamp": entry.get("timestamp"),
+                    "llm_model": "",
+                    "tokens_used": 0,
+                }
+            )
     return result
 
 
