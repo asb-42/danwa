@@ -22,7 +22,7 @@
   let error = $state(null);
 
   const protocols = ['litellm', 'a2a'];
-  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'xiaomi', 'opencode-zen', 'opencode-go'];
+  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'deepseek', 'xiaomi', 'opencode-zen', 'opencode-go'];
   const profileTypes = ['text', 'tts', 'stt'];
   let discovering = $state(false);
   let discoverError = $state(null);

@@ -23,6 +23,7 @@ class LLMProvider(StrEnum):
     OPENCODE_ZEN = "opencode-zen"
     OPENCODE_GO = "opencode-go"
     XIAOMI = "xiaomi"
+    DEEPSEEK = "deepseek"
 
 
 class LLMProfile(BaseModel):
