@@ -196,8 +196,6 @@ async def start_mvp_debate(
         consensus_threshold=body.threshold,
     )
 
-    repo.save_workflow_definition(wf)
-
     compiler = CompilerService(repo)
     compiled = compiler.compile_to_langgraph(wf)
 

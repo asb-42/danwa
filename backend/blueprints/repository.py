@@ -642,10 +642,18 @@ class BlueprintRepository:
         return self._row_to_workflow_definition(row)
 
     def list_workflow_definitions(self, limit: int = 50, offset: int = 0) -> list[WorkflowDefinition]:
-        """List all workflow definitions with pagination."""
+        """List all workflow definitions with pagination (deduplicated by name)."""
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM workflow_definitions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                """SELECT * FROM workflow_definitions
+                   WHERE id IN (
+                       SELECT id FROM (
+                           SELECT id, ROW_NUMBER() OVER (
+                               PARTITION BY name ORDER BY created_at DESC
+                           ) AS rn FROM workflow_definitions
+                       ) WHERE rn = 1
+                   )
+                   ORDER BY created_at DESC LIMIT ? OFFSET ?""",
                 (limit, offset),
             ).fetchall()
         return [self._row_to_workflow_definition(r) for r in rows]
