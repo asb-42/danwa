@@ -5,6 +5,13 @@
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject } from '../lib/stores.js';
 
+  import { getHITLStatus, getInteractions } from '../lib/hitl.js';
+  import { hitlStatus, hitlInteractions, showAgentQueryModal, currentAgentQuery } from '../lib/stores/hitl.svelte.js';
+  import InjectPanel from '../components/hitl/InjectPanel.svelte';
+  import PauseControls from '../components/hitl/PauseControls.svelte';
+  import AgentQueryModal from '../components/hitl/AgentQueryModal.svelte';
+  import InteractionTimeline from '../components/hitl/InteractionTimeline.svelte';
+
   let { debateId: externalDebateId = null, navigate = () => {} } = $props();
 
   let t = $derived((key, params = {}) => {
@@ -47,6 +54,7 @@
   let currentNodeId = $state('');
   let currentRound = $state(0);
   let consensus = $state(0);
+  let hasReceivedConsensus = $state(false);
   let elapsedMs = $state(0);
   let nodeOutputs = $state([]);
   let nodeStatuses = $state({});
@@ -54,9 +62,11 @@
   let cleanupSSE = $state(null);
   let llmAssignmentsResult = $state({});
   let totalTokens = $state(0);
+  let expandedOutputs = $state(new Set());
 
   let startTime = $state(null);
   let timerInterval = $state(null);
+  let hitlPollTimer = $state(null);
 
   $effect(() => {
     getLLMProfiles()
@@ -103,6 +113,7 @@
         currentRound = debate.current_round || 0;
         if (debate.consensus_score !== null && debate.consensus_score !== undefined) {
           consensus = debate.consensus_score;
+          hasReceivedConsensus = true;
         }
 
         if (debate.session_id) {
@@ -172,6 +183,11 @@
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
+  function getProfileName(profileId) {
+    const profile = llmProfiles.find(p => p.id === profileId);
+    return profile ? profile.name : profileId;
+  }
+
   function renderMarkdown(text) {
     if (!text) return '';
     return text
@@ -206,17 +222,23 @@
           tokensUsed: data.tokens_used || 0,
         }];
         nodeStatuses = { ...nodeStatuses, [data.node_id]: 'completed' };
-        if (data.consensus !== undefined) consensus = data.consensus;
+        if (data.consensus !== undefined) { consensus = data.consensus; hasReceivedConsensus = true; }
         if (data.round !== undefined) currentRound = data.round;
         totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
       },
       onRoundUpdate: (data) => {
         currentRound = data.round || currentRound;
-        consensus = data.consensus ?? consensus;
+        if (data.consensus !== undefined && data.consensus !== null) {
+          consensus = data.consensus;
+          hasReceivedConsensus = true;
+        }
         totalTokens = data.total_tokens ?? totalTokens;
       },
       onConsensusReached: (data) => {
-        consensus = data.score ?? consensus;
+        if (data.score !== undefined && data.score !== null) {
+          consensus = data.score;
+          hasReceivedConsensus = true;
+        }
       },
       onNodeError: (data) => {
         error = data.error || 'Unknown error';
@@ -227,12 +249,78 @@
       onWorkflowComplete: (data) => {
         status = 'completed';
         stopTimer();
-        if (data.final_consensus !== undefined) consensus = data.final_consensus;
+        if (data.final_consensus !== undefined) { consensus = data.final_consensus; hasReceivedConsensus = true; }
       },
       onWorkflowPaused: () => { status = 'paused'; },
       onWorkflowResumed: () => { status = 'running'; },
       onError: (err) => { console.error('[MvpDebateView] SSE error:', err); },
+      // HITL event handlers
+      onHITLQuery: (data) => {
+        currentAgentQuery.set({
+          interrupt_id: data.interrupt_id,
+          agent_role: data.agent_role,
+          question: data.question,
+          context: data.context || '',
+          confidence: data.confidence,
+          reason: data.reason,
+          round: data.round,
+        });
+        hitlStatus.update(status => ({
+          ...status,
+          active_interrupt: {
+            interrupt_id: data.interrupt_id,
+            agent_role: data.agent_role,
+            question: data.question,
+            context: data.context || '',
+            round: data.round,
+            created_at: new Date().toISOString(),
+            timeout_seconds: 300,
+            status: 'waiting',
+            elapsed_seconds: 0,
+          },
+        }));
+        showAgentQueryModal.set(true);
+        refreshHITLStatus();
+      },
+      onHITLResponse: () => {
+        showAgentQueryModal.set(false);
+        currentAgentQuery.set(null);
+        refreshHITLStatus();
+        refreshHITLInteractions();
+      },
+      onHITLInject: () => {
+        refreshHITLStatus();
+        refreshHITLInteractions();
+      },
+      onHITLInjectConsumed: () => {
+        refreshHITLStatus();
+        refreshHITLInteractions();
+      },
+      onHITLPause: () => {
+        refreshHITLStatus();
+      },
+      onHITLTimeout: () => {
+        showAgentQueryModal.set(false);
+        currentAgentQuery.set(null);
+        refreshHITLStatus();
+      },
     });
+  }
+
+  async function refreshHITLStatus() {
+    if (!debateId) return;
+    try {
+      const status = await getHITLStatus(debateId);
+      hitlStatus.set(status);
+    } catch { /* Silently fail */ }
+  }
+
+  async function refreshHITLInteractions() {
+    if (!debateId) return;
+    try {
+      const result = await getInteractions(debateId, { limit: 100 });
+      hitlInteractions.set(result.interactions || []);
+    } catch { /* Silently fail */ }
   }
 
   async function handleStart() {
@@ -243,9 +331,11 @@
     nodeStatuses = {};
     currentRound = 0;
     consensus = 0;
+    hasReceivedConsensus = false;
     elapsedMs = 0;
     llmAssignmentsResult = {};
     totalTokens = 0;
+    expandedOutputs = new Set();
     debateId = null;
 
     const profileMap = {};
@@ -325,19 +415,37 @@
     currentNodeId = '';
     currentRound = 0;
     consensus = 0;
+    hasReceivedConsensus = false;
     elapsedMs = 0;
     nodeOutputs = [];
     nodeStatuses = {};
     error = '';
     llmAssignmentsResult = {};
     totalTokens = 0;
+    expandedOutputs = new Set();
     stopTimer();
   }
+
+  // HITL polling when debate is running
+  $effect(() => {
+    if (status === 'running' && debateId) {
+      refreshHITLStatus();
+      refreshHITLInteractions();
+      if (hitlPollTimer) clearInterval(hitlPollTimer);
+      hitlPollTimer = setInterval(() => {
+        refreshHITLStatus();
+        refreshHITLInteractions();
+      }, 5000);
+    } else {
+      if (hitlPollTimer) { clearInterval(hitlPollTimer); hitlPollTimer = null; }
+    }
+  });
 
   $effect(() => {
     return () => {
       stopTimer();
       if (cleanupSSE) cleanupSSE();
+      if (hitlPollTimer) clearInterval(hitlPollTimer);
     };
   });
 </script>
@@ -500,6 +608,7 @@
       </div>
     </div>
     {:else}
+    <AgentQueryModal debateId={debateId || ''} />
     <div class="execution-section">
       <div class="status-bar status-{status}">
         <span class="status-dot"></span>
@@ -519,7 +628,7 @@
         </div>
         <div class="metric">
           <span class="metric-label">Consensus</span>
-          <span class="metric-value">{(consensus * 100).toFixed(0)}%</span>
+            <span class="metric-value">{#if hasReceivedConsensus}{(consensus * 100).toFixed(0)}%{:else}—{/if}</span>
         </div>
         <div class="metric">
           <span class="metric-label">Elapsed</span>
@@ -537,7 +646,7 @@
           <div class="llm-assignments">
             {#each Object.entries(llmAssignmentsResult) as [role, profileId]}
               <span class="llm-assignment">
-                <span class="llm-role">{role}</span>: <span class="llm-profile">{profileId}</span>
+                <span class="llm-role">{role}</span>: <span class="llm-profile">{getProfileName(profileId)}</span>
               </span>
             {/each}
           </div>
@@ -556,6 +665,14 @@
           </button>
         {/if}
       </div>
+
+      {#if status === 'running' && debateId}
+        <PauseControls {debateId} />
+      {/if}
+
+      {#if status === 'running' && debateId}
+        <InjectPanel {debateId} agentRoles={['strategist', 'critic', 'optimizer', 'moderator']} />
+      {/if}
 
       {#if status === 'running' || status === 'paused'}
         <div class="interjection-area">
@@ -579,11 +696,18 @@
         </div>
       {/if}
 
+      {#if debateId}
+        <InteractionTimeline {debateId} />
+      {/if}
+
       {#if nodeOutputs.length > 0}
         <div class="outputs-section">
           <h4 class="outputs-title">Agent Outputs ({nodeOutputs.length})</h4>
           <div class="outputs-list">
-            {#each nodeOutputs as output}
+            {#each nodeOutputs as output, idx}
+              {@const key = `output-${idx}`}
+              {@const isExpanded = expandedOutputs.has(key)}
+              {@const isLong = output.content?.length > 400}
               <div class="output-item">
                 <div class="output-header">
                   <span class="output-role">{output.role || output.nodeType}</span>
@@ -593,7 +717,21 @@
                     {output.tokensUsed || 0} tokens
                   </span>
                 </div>
-                <div class="output-content markdown-rendered">{@html renderMarkdown(output.content)}</div>
+                <div class="output-content markdown-rendered">
+                  {#if isLong && !isExpanded}
+                    {@html renderMarkdown(output.content.substring(0, 400) + '…')}
+                    <button class="expand-btn" onclick={() => expandedOutputs = new Set([...expandedOutputs, key])}>
+                      ▼ Show full response ({output.content.length} chars)
+                    </button>
+                  {:else}
+                    {@html renderMarkdown(output.content)}
+                    {#if isLong}
+                      <button class="expand-btn" onclick={() => { const next = new Set(expandedOutputs); next.delete(key); expandedOutputs = next; }}>
+                        ▲ Collapse
+                      </button>
+                    {/if}
+                  {/if}
+                </div>
               </div>
             {/each}
           </div>
@@ -856,7 +994,16 @@
     border-radius: 8px;
     background: #f9fafb;
   }
-  :global(.dark) .status-bar { background: #1f2937; }
+  :global(.dark) .status-bar { background: #1f2937; color: #e5e7eb; }
+  .status-text { color: inherit; }
+  .status-running .status-text { color: #3b82f6; }
+  :global(.dark) .status-running .status-text { color: #60a5fa; }
+  .status-completed .status-text { color: #16a34a; }
+  :global(.dark) .status-completed .status-text { color: #4ade80; }
+  .status-failed .status-text { color: #dc2626; }
+  :global(.dark) .status-failed .status-text { color: #f87171; }
+  .status-cancelled .status-text { color: #6b7280; }
+  :global(.dark) .status-cancelled .status-text { color: #9ca3af; }
   .status-dot {
     width: 8px;
     height: 8px;
@@ -975,7 +1122,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 500px;
+    max-height: 70vh;
     overflow-y: auto;
   }
   .output-item {
@@ -1046,6 +1193,21 @@
     margin-left: 16px;
     list-style-type: disc;
   }
+
+  .expand-btn {
+    display: block;
+    margin-top: 6px;
+    background: none;
+    border: none;
+    color: #3b82f6;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 0;
+    text-decoration: underline dotted;
+  }
+  :global(.dark) .expand-btn { color: #60a5fa; }
+  .expand-btn:hover { color: #1d4ed8; }
+  :global(.dark) .expand-btn:hover { color: #93c5fd; }
 
   .loading-section {
     padding: 24px;

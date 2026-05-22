@@ -50,6 +50,12 @@ export function createWorkflowSSE(sessionId, handlers = {}) {
     'workflow.resumed': 'onWorkflowResumed',
     'status': 'onStatus',
     'ping': 'onPing',
+    'hitl_query': 'onHITLQuery',
+    'hitl_response': 'onHITLResponse',
+    'hitl_inject': 'onHITLInject',
+    'hitl_inject_consumed': 'onHITLInjectConsumed',
+    'hitl_pause': 'onHITLPause',
+    'hitl_timeout': 'onHITLTimeout',
   };
 
   function connect() {
@@ -85,6 +91,12 @@ export function createWorkflowSSE(sessionId, handlers = {}) {
       'status',
       'ping',
       'connected',
+      'hitl_query',
+      'hitl_response',
+      'hitl_inject',
+      'hitl_inject_consumed',
+      'hitl_pause',
+      'hitl_timeout',
     ];
 
     for (const eventName of namedEvents) {
