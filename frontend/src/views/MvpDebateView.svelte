@@ -1,5 +1,5 @@
 <script>
-  import { i18n } from '../lib/i18n/index.js';
+  import { i18n, formatNumber } from '../lib/i18n/index.js';
   import { getLLMProfiles } from '../lib/api.js';
   import { startMvpDebate } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
@@ -30,6 +30,7 @@
   let isLoadingProfiles = $state(true);
 
   let sessionId = $state(null);
+  let debateId = $state(null);
   let status = $state('idle');
   let currentNodeId = $state('');
   let currentRound = $state(0);
@@ -40,6 +41,7 @@
   let error = $state('');
   let cleanupSSE = $state(null);
   let llmAssignmentsResult = $state({});
+  let totalTokens = $state(0);
 
   let startTime = $state(null);
   let timerInterval = $state(null);
@@ -83,6 +85,20 @@
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
+  function renderMarkdown(text) {
+    if (!text) return '';
+    return text
+      .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+  }
+
   function connectSSE(sid) {
     cleanupSSE = createWorkflowSSE(sid, {
       onWorkflowStarted: () => {
@@ -100,10 +116,20 @@
           content: data.content,
           durationMs: data.duration_ms,
           round: data.round,
+          tokensUsed: data.tokens_used || 0,
         }];
         nodeStatuses = { ...nodeStatuses, [data.node_id]: 'completed' };
         if (data.consensus !== undefined) consensus = data.consensus;
         if (data.round !== undefined) currentRound = data.round;
+        totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
+      },
+      onRoundUpdate: (data) => {
+        currentRound = data.round || currentRound;
+        consensus = data.consensus ?? consensus;
+        totalTokens = data.total_tokens ?? totalTokens;
+      },
+      onConsensusReached: (data) => {
+        consensus = data.score ?? consensus;
       },
       onNodeError: (data) => {
         error = data.error || 'Unknown error';
@@ -132,6 +158,8 @@
     consensus = 0;
     elapsedMs = 0;
     llmAssignmentsResult = {};
+    totalTokens = 0;
+    debateId = null;
 
     const profileMap = {};
     for (const agent of AGENTS) {
@@ -147,6 +175,7 @@
         projectId: $activeProject?.id,
       });
       sessionId = result.session_id;
+      debateId = result.debate_id;
       llmAssignmentsResult = result.llm_assignments || {};
       startTimer();
       connectSSE(sessionId);
@@ -173,6 +202,7 @@
   function handleReset() {
     if (cleanupSSE) cleanupSSE();
     sessionId = null;
+    debateId = null;
     status = 'idle';
     currentNodeId = '';
     currentRound = 0;
@@ -182,6 +212,7 @@
     nodeStatuses = {};
     error = '';
     llmAssignmentsResult = {};
+    totalTokens = 0;
     stopTimer();
   }
 
@@ -296,11 +327,14 @@
         </button>
       </div>
     </div>
-  {:else}
+    {:else}
     <div class="execution-section">
       <div class="status-bar status-{status}">
         <span class="status-dot"></span>
         <span class="status-text">{status}</span>
+        {#if debateId}
+          <span class="debate-id" title="Debate ID: {debateId}">ID: {debateId.substring(0, 12)}…</span>
+        {/if}
         {#if sessionId}
           <span class="session-id">{sessionId}</span>
         {/if}
@@ -309,7 +343,7 @@
       <div class="metrics-grid">
         <div class="metric">
           <span class="metric-label">Round</span>
-          <span class="metric-value">{currentRound}</span>
+          <span class="metric-value">{currentRound}/{maxRounds}</span>
         </div>
         <div class="metric">
           <span class="metric-label">Consensus</span>
@@ -320,8 +354,8 @@
           <span class="metric-value">{formatDuration(elapsedMs)}</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Current</span>
-          <span class="metric-value">{currentNodeId || '—'}</span>
+          <span class="metric-label">Tokens</span>
+          <span class="metric-value">{formatNumber(totalTokens)}</span>
         </div>
       </div>
 
@@ -361,10 +395,11 @@
                   <span class="output-role">{output.role || output.nodeType}</span>
                   <span class="output-meta">
                     {#if output.round}Round {output.round} · {/if}
-                    {output.durationMs}ms
+                    {formatDuration(output.durationMs)} ·
+                    {output.tokensUsed || 0} tokens
                   </span>
                 </div>
-                <div class="output-content">{output.content}</div>
+                <div class="output-content markdown-rendered">{@html renderMarkdown(output.content)}</div>
               </div>
             {/each}
           </div>
@@ -643,6 +678,12 @@
     color: #9ca3af;
     font-family: monospace;
   }
+  .debate-id {
+    font-size: 11px;
+    color: #7dd3fc;
+    font-family: monospace;
+    font-weight: 600;
+  }
 
   @keyframes blink {
     0%, 100% { opacity: 1; }
@@ -769,4 +810,39 @@
     word-break: break-word;
   }
   :global(.dark) .output-content { color: #d1d5db; }
+  .output-content.markdown-rendered {
+    white-space: normal;
+  }
+  .output-content.markdown-rendered :global(h2) {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 8px 0 4px;
+  }
+  .output-content.markdown-rendered :global(h3) {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 6px 0 3px;
+  }
+  .output-content.markdown-rendered :global(h4) {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 4px 0 2px;
+  }
+  .output-content.markdown-rendered :global(strong) {
+    font-weight: 700;
+  }
+  .output-content.markdown-rendered :global(code) {
+    background: #f3f4f6;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+  :global(.dark) .output-content.markdown-rendered :global(code) {
+    background: #374151;
+  }
+  .output-content.markdown-rendered :global(li) {
+    margin-left: 16px;
+    list-style-type: disc;
+  }
 </style>

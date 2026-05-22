@@ -275,7 +275,8 @@
         {#each debates as debate}
           <div
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-                   md:grid md:grid-cols-12 md:gap-2 md:items-center"
+                   md:grid md:grid-cols-12 md:gap-2 md:items-center cursor-pointer"
+            onclick={() => navigate('debate/' + debate.debate_id)}
           >
             <!-- Title / Case preview (clickable) -->
             <button
@@ -294,9 +295,12 @@
                   {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 16)}
                 </p>
               {/if}
-              <p class="text-xs text-gray-400 dark:text-gray-500 font-mono md:hidden">
-                {debate.debate_id.substring(0, 8)}…
+              <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
+                {debate.debate_id.substring(0, 12)}…
               </p>
+              {#if debate.is_mvp}
+                <span class="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 mt-0.5">MVP</span>
+              {/if}
             </button>
 
             <!-- Project (clickable) -->
