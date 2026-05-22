@@ -347,7 +347,8 @@ def resolve_rag_context(
                     from backend.services.dms.chunker import TextChunker
 
                     chunker = TextChunker()
-                    chunks = chunker.chunk_text(summary, f"debate_result_{d.get('debate_id', '')[:8]}")
+                    raw_chunks = chunker.chunk(summary)
+                    chunks = [{"text": t, "document_id": f"debate_result_{d.get('debate_id', '')[:8]}"} for t in raw_chunks]
                     all_chunks.extend(chunks[:3])
 
                     debate_count += 1
@@ -1136,13 +1137,8 @@ async def on_debate_completed(debate_id: str, project_id: str):
             chunk_ids = await dms2.rag_pipeline.process_file(doc_id, doc_entry["file_path"])
             logger.info("Created DMS document %s for debate %s (%d chunks)", doc_id, debate_id, len(chunk_ids))
         else:
-            # Direct chunk creation if no file path
-            from backend.services.dms.chunker import TextChunker
-
-            chunker = TextChunker()
-            chunks = chunker.chunk_text(document_text, doc_id)
-            dms2.metadata_index.add_chunks(chunks)
-            logger.info("Created %d RAG chunks for debate %s", len(chunks), debate_id)
+            chunk_ids = dms2.rag_pipeline.process_document(doc_id, document_text)
+            logger.info("Created DMS document %s for debate %s (%d chunks)", doc_id, debate_id, len(chunk_ids))
 
         return doc_id
     except Exception as exc:
@@ -1260,7 +1256,8 @@ def resolve_rag_context_with_debate_results(
                     from backend.services.dms.chunker import TextChunker
 
                     chunker = TextChunker()
-                    chunks = chunker.chunk_text(summary, f"debate_result_{d.get('debate_id', '')[:8]}")
+                    raw_chunks = chunker.chunk(summary)
+                    chunks = [{"text": t, "document_id": f"debate_result_{d.get('debate_id', '')[:8]}"} for t in raw_chunks]
                     all_chunks.extend(chunks[:3])  # Max 3 Chunks pro Debatte
 
                     debate_count += 1
