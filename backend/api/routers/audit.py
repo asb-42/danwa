@@ -105,14 +105,72 @@ async def get_audit_events(
     If a title is provided, it is resolved to the matching debate ID first.
 
     Events are enriched with actual agent output content from the debate store.
+    Falls back to workflow audit_log table for MVP debates.
     """
     debate_id, debate_data = _resolve_debate_id(debate_id_or_title, project_id, project_store)
     events = audit.get_events(debate_id)
     if events:
         return _enrich_events_with_debate_data(events, debate_data)
 
+    # Fallback: check workflow audit_log table for MVP debates
+    if debate_data and debate_data.get("session_id"):
+        from backend.workflow.audit_logger import get_audit_logger
+
+        al = get_audit_logger()
+        wf_events = al.get_audit_log(debate_data["session_id"])
+        if wf_events:
+            return _transform_workflow_audit_events(wf_events)
+
     # Return empty list — not a 404, since "no events yet" is valid
     return []
+
+
+def _transform_workflow_audit_events(wf_events: list[dict]) -> list[dict]:
+    """Transform workflow audit_log entries to the format expected by AuditView."""
+    result = []
+    for entry in wf_events:
+        event_type = entry.get("event_type", "")
+        if event_type == "node_completed":
+            result.append({
+                "round": None,
+                "agent": entry.get("actor", ""),
+                "action": f"node_completed ({entry.get('node_id', '')})",
+                "content": entry.get("output_content", ""),
+                "timestamp": entry.get("timestamp"),
+                "llm_model": entry.get("llm_profile_id", ""),
+                "tokens_used": entry.get("completion_tokens", 0),
+            })
+        elif event_type == "node_started":
+            result.append({
+                "round": None,
+                "agent": entry.get("actor", ""),
+                "action": f"node_started ({entry.get('node_id', '')})",
+                "content": "",
+                "timestamp": entry.get("timestamp"),
+                "llm_model": "",
+                "tokens_used": 0,
+            })
+        elif event_type == "node_failed":
+            result.append({
+                "round": None,
+                "agent": entry.get("actor", ""),
+                "action": f"node_failed ({entry.get('node_id', '')})",
+                "content": entry.get("output_content", ""),
+                "timestamp": entry.get("timestamp"),
+                "llm_model": "",
+                "tokens_used": 0,
+            })
+        else:
+            result.append({
+                "round": None,
+                "agent": entry.get("actor", ""),
+                "action": event_type,
+                "content": entry.get("output_content", ""),
+                "timestamp": entry.get("timestamp"),
+                "llm_model": "",
+                "tokens_used": 0,
+            })
+    return result
 
 
 @router.get("/project/{project_id}")

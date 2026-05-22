@@ -277,12 +277,12 @@
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                    md:grid md:grid-cols-12 md:gap-2 md:items-center cursor-pointer"
             onclick={() => navigate('debate/' + debate.debate_id)}
+            role="button"
+            tabindex="0"
+            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('debate/' + debate.debate_id); } }}
           >
-            <!-- Title / Case preview (clickable) -->
-            <button
-              class="md:col-span-2 mb-2 md:mb-0 text-left cursor-pointer"
-              onclick={() => navigate('debate/' + debate.debate_id)}
-            >
+            <!-- Title / Case preview -->
+            <div class="md:col-span-2 mb-2 md:mb-0">
               {#if debate.title}
                 <p class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
                   {debate.title}
@@ -301,41 +301,29 @@
               {#if debate.is_mvp}
                 <span class="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 mt-0.5">MVP</span>
               {/if}
-            </button>
+            </div>
 
-            <!-- Project (clickable) -->
-            <button
-              class="md:col-span-2 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 md:mb-0 text-left cursor-pointer"
-              onclick={() => navigate('debate/' + debate.debate_id)}
-            >
+            <!-- Project -->
+            <div class="md:col-span-2 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 md:mb-0">
               {#if debate.project_name}
                 📁 {debate.project_name}
               {:else}
                 <span class="text-gray-400 dark:text-gray-500">—</span>
               {/if}
-            </button>
+            </div>
 
-            <!-- Date (clickable) -->
-            <button
-              class="md:col-span-1 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0 text-left cursor-pointer"
-              onclick={() => navigate('debate/' + debate.debate_id)}
-            >
+            <!-- Date -->
+            <div class="md:col-span-1 text-xs text-gray-500 dark:text-gray-400 mb-1 md:mb-0">
               {formatDate(debate.created_at)}
-            </button>
+            </div>
 
-            <!-- Rounds (clickable) -->
-            <button
-              class="md:col-span-1 text-sm text-gray-700 dark:text-gray-300 mb-1 md:mb-0 text-left cursor-pointer"
-              onclick={() => navigate('debate/' + debate.debate_id)}
-            >
+            <!-- Rounds -->
+            <div class="md:col-span-1 text-sm text-gray-700 dark:text-gray-300 mb-1 md:mb-0">
               {debate.current_round}/{debate.max_rounds}
-            </button>
+            </div>
 
-            <!-- Consensus (clickable) -->
-            <button
-              class="md:col-span-1 mb-1 md:mb-0 text-left cursor-pointer"
-              onclick={() => navigate('debate/' + debate.debate_id)}
-            >
+            <!-- Consensus -->
+            <div class="md:col-span-1 mb-1 md:mb-0">
               {#if debate.consensus_score !== null && debate.consensus_score !== undefined}
                 <div class="flex items-center gap-2">
                   <div class="w-10 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 hidden md:block">
@@ -351,35 +339,10 @@
               {:else}
                 <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
               {/if}
-            </button>
-
-            <!-- Forks -->
-            <div class="md:col-span-1 flex items-center gap-1">
-              {#if debate.forks_count > 0}
-                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full" title="{debate.forks_count} Forks">
-                  🍴 {debate.forks_count}
-                </span>
-              {:else}
-                <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
-              {/if}
             </div>
 
-            <!-- Parent info -->
-            <div class="md:col-span-1 flex items-center gap-1">
-              {#if debate.parent_debate_id}
-                <a href={'/debate/' + debate.parent_debate_id} class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" title="Parent-Debatte" onclick={() => event.stopPropagation()}>
-                  🔗
-                </a>
-              {:else}
-                <span class="text-xs text-gray-300 dark:text-gray-600">—</span>
-              {/if}
-            </div>
-
-            <!-- Status (clickable) -->
-            <button
-              class="md:col-span-1 text-left cursor-pointer"
-              onclick={() => navigate('debate/' + debate.debate_id)}
-            >
+            <!-- Status -->
+            <div class="md:col-span-1">
               <div class="flex items-center gap-2">
                 <span class="px-2 py-1 text-xs font-medium rounded-full {statusBadgeClass(debate.status)}">
                   {t(`status.${debate.status}`)}
@@ -390,7 +353,7 @@
                   </span>
                 {/if}
               </div>
-            </button>
+            </div>
 
             <!-- Actions -->
             <div class="md:col-span-2 flex justify-end gap-1">
