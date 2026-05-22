@@ -60,6 +60,7 @@ def _ensure_llm_profile_in_db(repo: BlueprintRepository, profile_id: str) -> Non
                 context_window=mp.get("context_window"),
                 temperature=mp.get("temperature", 0.7),
                 timeout=mp.get("timeout", 600),
+                profile_type=mp.get("profile_type", "text"),
             )
             repo.save_llm_profile(profile)
             logger.info("Synced LLM profile '%s' from module to DB", profile_id)
