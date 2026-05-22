@@ -22,8 +22,8 @@ from backend.modules.models import (
     UninstallationReport,
 )
 from backend.modules.type_derivation import (
-    derive_module_type,
     derive_module_category,
+    derive_module_type,
     parent_dir_name,
 )
 from backend.modules.validation import ModuleValidator

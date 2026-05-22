@@ -30,6 +30,7 @@ def _db_only(items: list) -> list:
     """Filter out module-sourced items (those with _source_module key)."""
     return [item for item in items if not item.get("_source_module")]
 
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

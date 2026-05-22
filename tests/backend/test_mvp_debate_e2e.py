@@ -46,9 +46,7 @@ def four_llm_profiles(repo: BlueprintRepository) -> dict[str, str]:
 class TestMvpDebateEndToEnd:
     """Full pipeline: factory → compiler → LangGraph with per-agent LLM."""
 
-    def test_compilation_produces_distinct_llm_per_agent(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_compilation_produces_distinct_llm_per_agent(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Each compiled agent should resolve to its own LLM profile."""
         wf = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
         compiler = WorkflowCompiler(repo)
@@ -61,13 +59,9 @@ class TestMvpDebateEndToEnd:
         resolved_map = {a.role: a for a in result.resolved_agents}
         for role in ("strategist", "critic", "optimizer", "moderator"):
             agent = resolved_map[role]
-            assert agent.llm_profile_id == four_llm_profiles[role], (
-                f"{role} should use {four_llm_profiles[role]}, got {agent.llm_profile_id}"
-            )
+            assert agent.llm_profile_id == four_llm_profiles[role], f"{role} should use {four_llm_profiles[role]}, got {agent.llm_profile_id}"
 
-    def test_all_agents_have_distinct_llm_models(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_all_agents_have_distinct_llm_models(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Each agent should resolve to a distinct model name."""
         wf = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
         compiler = WorkflowCompiler(repo)
@@ -76,9 +70,7 @@ class TestMvpDebateEndToEnd:
         models = [a.llm_model for a in result.resolved_agents]
         assert len(set(models)) == 4, f"Expected 4 distinct models, got {models}"
 
-    def test_node_sequence_includes_all_agents(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_node_sequence_includes_all_agents(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Topological sort should include all 4 agent nodes."""
         wf = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
         compiler = WorkflowCompiler(repo)
@@ -87,9 +79,7 @@ class TestMvpDebateEndToEnd:
         for role in ("strategist", "critic", "optimizer", "moderator"):
             assert f"node-{role}" in result.node_sequence
 
-    def test_strategist_comes_before_moderator(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_strategist_comes_before_moderator(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Topological order should place strategist before moderator."""
         wf = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
         compiler = WorkflowCompiler(repo)

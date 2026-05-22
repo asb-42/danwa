@@ -472,10 +472,7 @@ def moderator_node_factory(
         )
 
         # Publish round update for UI
-        total_tokens = sum(
-            no.get("tokens_used", 0)
-            for no in state.get("node_outputs", []) + result.get("node_outputs", [])
-        )
+        total_tokens = sum(no.get("tokens_used", 0) for no in state.get("node_outputs", []) + result.get("node_outputs", []))
         await publish_async(
             session_id,
             "round_update",

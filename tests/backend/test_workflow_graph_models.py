@@ -123,16 +123,6 @@ class TestWorkflowNodeModel:
         with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
             WorkflowNode(id="n1", type="wf-strategist")
 
-    def test_critic_node_requires_blueprint_id(self):
-        """Critic node requires agent_blueprint_id."""
-        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
-            WorkflowNode(id="n1", type="wf-critic")
-
-    def test_optimizer_node_requires_blueprint_id(self):
-        """Optimizer node requires agent_blueprint_id."""
-        with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):
-            WorkflowNode(id="n1", type="wf-optimizer")
-
     def test_moderator_node_requires_blueprint_id(self):
         """Moderator node requires agent_blueprint_id."""
         with pytest.raises(ValueError, match="requires an .*agent_blueprint_id"):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from backend.modules.models import ModuleType, ModuleCategory
+from backend.modules.models import ModuleCategory, ModuleType
 
 # Directory name → ModuleType mapping
 _DIR_TO_TYPE: dict[str, ModuleType] = {

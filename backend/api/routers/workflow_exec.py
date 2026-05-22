@@ -226,10 +226,7 @@ async def start_mvp_debate(
         except Exception:
             logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
 
-    llm_assignments = {
-        agent.node_id.replace("node-", ""): agent.llm_profile_id
-        for agent in compiled.resolved_agents
-    }
+    llm_assignments = {agent.node_id.replace("node-", ""): agent.llm_profile_id for agent in compiled.resolved_agents}
 
     initial_state: dict[str, Any] = {
         "workflow_id": wf.id,
@@ -283,21 +280,24 @@ async def start_mvp_debate(
     now = datetime.now(UTC)
     try:
         debate_store = get_debate_store_for_project(effective_project_id, project_store)
-        debate_store.put(debate_id, {
-            "debate_id": debate_id,
-            "session_id": session_id,
-            "status": DebateStatus.RUNNING,
-            "title": body.context[:80],
-            "request": {"case": {"text": body.context}, "max_rounds": body.max_rounds},
-            "max_rounds": body.max_rounds,
-            "current_round": 0,
-            "rounds": [],
-            "created_at": now,
-            "updated_at": now,
-            "result": None,
-            "is_mvp": True,
-            "llm_assignments": llm_assignments,
-        })
+        debate_store.put(
+            debate_id,
+            {
+                "debate_id": debate_id,
+                "session_id": session_id,
+                "status": DebateStatus.RUNNING,
+                "title": body.context[:80],
+                "request": {"case": {"text": body.context}, "max_rounds": body.max_rounds},
+                "max_rounds": body.max_rounds,
+                "current_round": 0,
+                "rounds": [],
+                "created_at": now,
+                "updated_at": now,
+                "result": None,
+                "is_mvp": True,
+                "llm_assignments": llm_assignments,
+            },
+        )
         logger.info("Created MVP debate record %s for session %s", debate_id, session_id)
     except Exception as e:
         logger.warning("Failed to create debate record for MVP session %s: %s", session_id, e, exc_info=True)
@@ -671,20 +671,22 @@ async def get_workflow_audit_log(
     # Transform to a format compatible with the AuditView
     result = []
     for entry in events:
-        result.append({
-            "session_id": entry.get("session_id"),
-            "workflow_id": entry.get("workflow_id"),
-            "event_type": entry.get("event_type"),
-            "node_id": entry.get("node_id"),
-            "actor": entry.get("actor"),
-            "timestamp": entry.get("timestamp"),
-            "input_content": entry.get("input_content", ""),
-            "output_content": entry.get("output_content", ""),
-            "llm_profile_id": entry.get("llm_profile_id"),
-            "latency_ms": entry.get("latency_ms"),
-            "prompt_tokens": entry.get("prompt_tokens"),
-            "completion_tokens": entry.get("completion_tokens"),
-        })
+        result.append(
+            {
+                "session_id": entry.get("session_id"),
+                "workflow_id": entry.get("workflow_id"),
+                "event_type": entry.get("event_type"),
+                "node_id": entry.get("node_id"),
+                "actor": entry.get("actor"),
+                "timestamp": entry.get("timestamp"),
+                "input_content": entry.get("input_content", ""),
+                "output_content": entry.get("output_content", ""),
+                "llm_profile_id": entry.get("llm_profile_id"),
+                "latency_ms": entry.get("latency_ms"),
+                "prompt_tokens": entry.get("prompt_tokens"),
+                "completion_tokens": entry.get("completion_tokens"),
+            }
+        )
 
     return result
 

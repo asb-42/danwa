@@ -191,6 +191,7 @@ async def run_workflow_background(
                 from backend.api.deps import get_debate_store_for_project
                 from backend.persistence.debate_store import DebateStatus
                 from backend.persistence.project_store import ProjectStore
+
                 project_store = ProjectStore()
                 debate_store = get_debate_store_for_project(project_id, project_store)
                 debate = debate_store.get(debate_id)
@@ -262,6 +263,7 @@ async def run_workflow_background(
                 from backend.api.deps import get_debate_store_for_project
                 from backend.persistence.debate_store import DebateStatus
                 from backend.persistence.project_store import ProjectStore
+
                 project_store = ProjectStore()
                 debate_store = get_debate_store_for_project(project_id, project_store)
                 debate = debate_store.get(debate_id)

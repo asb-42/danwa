@@ -41,9 +41,7 @@ def four_llm_profiles(repo: BlueprintRepository) -> dict[str, str]:
 class TestMvpDebateCanvas:
     """Test build_mvp_debate_workflow with various configurations."""
 
-    def test_builds_with_distinct_llm_profiles(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_builds_with_distinct_llm_profiles(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Each agent should be assigned its own LLM profile."""
         wf = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
 
@@ -76,7 +74,7 @@ class TestMvpDebateCanvas:
             )
         )
 
-        wf = build_mvp_debate_workflow(repo)
+        build_mvp_debate_workflow(repo)
 
         for role in ("strategist", "critic", "optimizer", "moderator"):
             bp = repo.get_blueprint(f"mvp-{role}")
@@ -119,9 +117,7 @@ class TestMvpDebateCanvas:
         assert tc["max_rounds"].value == 3
         assert tc["consensus_reached"].value == 0.85
 
-    def test_custom_name_and_description(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_custom_name_and_description(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Should accept custom name and description."""
         wf = build_mvp_debate_workflow(
             repo,
@@ -146,9 +142,7 @@ class TestMvpDebateCanvas:
         with pytest.raises(ValueError, match="No LLM profiles available"):
             build_mvp_debate_workflow(repo)
 
-    def test_idempotent_blueprint_creation(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_idempotent_blueprint_creation(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Calling build twice should not duplicate blueprints."""
         wf1 = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
         wf2 = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
@@ -160,9 +154,7 @@ class TestMvpDebateCanvas:
             assert wf1.nodes[("strategist", "critic", "optimizer", "moderator").index(role)].agent_blueprint_id == bp1.id
             assert wf2.nodes[("strategist", "critic", "optimizer", "moderator").index(role)].agent_blueprint_id == bp1.id
 
-    def test_node_types_match_roles(
-        self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]
-    ) -> None:
+    def test_node_types_match_roles(self, repo: BlueprintRepository, four_llm_profiles: dict[str, str]) -> None:
         """Node types should be wf-strategist, wf-critic, wf-optimizer, wf-moderator."""
         wf = build_mvp_debate_workflow(repo, llm_profile_ids=four_llm_profiles)
 

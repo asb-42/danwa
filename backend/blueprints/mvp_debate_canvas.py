@@ -203,13 +203,8 @@ def build_mvp_debate_workflow(
     for role, profile_id in llm_profile_ids.items():
         profile = repo.get_llm_profile(profile_id)
         if profile is None and profile_id not in module_profiles:
-            available = sorted(set(
-                [p.id for p in repo.list_llm_profiles(limit=200)] + list(module_profiles.keys())
-            ))
-            raise ValueError(
-                f"LLM profile '{profile_id}' not found for role '{role}'. "
-                f"Available: {', '.join(available)}"
-            )
+            available = sorted(set([p.id for p in repo.list_llm_profiles(limit=200)] + list(module_profiles.keys())))
+            raise ValueError(f"LLM profile '{profile_id}' not found for role '{role}'. Available: {', '.join(available)}")
 
     # Create/ensure blueprints for each role
     blueprints: dict[str, AgentBlueprint] = {}

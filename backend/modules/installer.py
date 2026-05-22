@@ -14,18 +14,22 @@ import json
 import logging
 import shutil
 import sqlite3
+import zipfile
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Any
-
-from backend.modules.models import ModuleType
-from backend.modules.type_derivation import derive_module_type, derive_module_category, parent_dir_name
 
 from backend.blueprints.migrations import run_migrations
 from backend.modules.models import (
     InstallationReport,
     UninstallationReport,
     ValidationIssue,
+)
+from backend.modules.type_derivation import (
+    derive_module_category,
+    derive_module_type,
+    parent_dir_name,
 )
 from backend.modules.validation import ModuleValidator
 
@@ -616,39 +620,7 @@ class ModuleInstaller:
         if manifest_path.exists():
             try:
                 manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
-                conn = self._get_db()
-                cursor = conn.cursor()
-                now = datetime.now(UTC).isoformat()
-                cursor.execute(
-                    """
-                    INSERT OR REPLACE INTO module_registry
-                        (id, name, description, type, category, version,
-                         author_json, license, checksum, installed_at,
-                         updated_at, enabled, source_url, source_schema,
-                         tags_json, dependencies)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        module_id,
-                        json.dumps(manifest_data.get("name", {})),
-                        json.dumps(manifest_data.get("description", {})),
-                        manifest_data.get("type") or derive_module_type(parent_dir_name(module_dir, self.modules_dir), module_id),
-                        manifest_data.get("category") or derive_module_category(parent_dir_name(module_dir, self.modules_dir)),
-                        manifest_data.get("version", "0.0.0"),
-                        json.dumps(manifest_data.get("author", {})),
-                        manifest_data.get("license", "CC-BY-4.0"),
-                        manifest_data.get("checksum", ""),
-                        now,
-                        now,
-                        1,
-                        None,
-                        manifest_data.get("schema_version", "1.0.0"),
-                        json.dumps(manifest_data.get("tags", [])),
-                        json.dumps(manifest_data.get("dependencies", {})),
-                    ),
-                )
-                conn.commit()
-                conn.close()
+                self._register_in_db(module_id, manifest_data)
             except Exception as e:
                 logger.error("Failed to re-register %s in DB: %s", module_id, e)
 
