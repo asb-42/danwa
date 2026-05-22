@@ -43,6 +43,7 @@ class BlueprintLLMProfile(BaseModel):
         "openrouter",
         "openai",
         "anthropic",
+        "deepseek",
         "local",
         "ollama",
         "opencode-zen",
