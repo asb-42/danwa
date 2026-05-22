@@ -196,6 +196,7 @@
                 <option value="openrouter">OpenRouter</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
+                <option value="deepseek">Deepseek</option>
                 <option value="ollama">Ollama</option>
                 <option value="opencode-zen">Opencode Zen</option>
                 <option value="opencode-go">Opencode Go</option>
