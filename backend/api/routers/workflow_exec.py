@@ -25,6 +25,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe
+from backend.models.schemas import SearchMode
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
 from backend.persistence.debate_store import DebateStatus
@@ -147,6 +148,28 @@ class StartMvpDebateRequest(BaseModel):
         description="Mapping of role → llm_profile_id for per-agent LLM assignment",
     )
 
+    # --- Web search ---
+    search_mode: SearchMode = Field(
+        default=SearchMode.OFF,
+        description="Web search mode: 'off', 'optional', or 'required'",
+    )
+
+    # --- DMS / RAG ---
+    document_ids: list[str] = Field(
+        default_factory=list,
+        description="DMS document IDs to include as RAG context",
+    )
+    rag_auto_retrieve: bool = Field(
+        default=False,
+        description="Automatically retrieve relevant document chunks based on context",
+    )
+
+    # --- Previous debate context ---
+    include_debate_results: bool = Field(
+        default=False,
+        description="Include results from previous completed debates as RAG context",
+    )
+
 
 class StartMvpDebateResponse(BaseModel):
     """Response after starting an MVP debate."""
@@ -222,6 +245,9 @@ async def start_mvp_debate(
             rag_context, _ = resolve_rag_context(
                 project_id=effective_project_id,
                 case_text=body.context,
+                document_ids=body.document_ids or None,
+                rag_auto_retrieve=body.rag_auto_retrieve,
+                include_debate_results=body.include_debate_results,
             )
         except Exception:
             logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
@@ -234,6 +260,7 @@ async def start_mvp_debate(
         "project_id": effective_project_id,
         "context": body.context,
         "language": body.language,
+        "search_mode": body.search_mode.value,
         "rag_context": rag_context,
         "node_sequence": compiled.node_sequence,
         "node_configs": {

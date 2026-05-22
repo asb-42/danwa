@@ -1,7 +1,7 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
-  import { getLLMProfiles, getDebate } from '../lib/api.js';
-  import { startMvpDebate } from '../lib/workflowExec.js';
+  import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
+  import { startMvpDebate, submitInterjection } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject } from '../lib/stores.js';
 
@@ -29,6 +29,17 @@
   let llmAssignments = $state({});
   let isLoadingProfiles = $state(true);
   let isLoadingDebate = $state(false);
+
+  // New config fields
+  let searchMode = $state('off');
+  let availableDocuments = $state([]);
+  let selectedDocumentIds = $state([]);
+  let ragAutoRetrieve = $state(false);
+  let includeDebateResults = $state(false);
+
+  // Interjection
+  let interjectionText = $state('');
+  let sendingInterjection = $state(false);
 
   let sessionId = $state(null);
   let debateId = $state(null);
@@ -63,6 +74,13 @@
       .finally(() => {
         isLoadingProfiles = false;
       });
+  });
+
+  // Load available DMS documents for document selection
+  $effect(() => {
+    getDocuments()
+      .then((docs) => { availableDocuments = docs; })
+      .catch(() => { availableDocuments = []; });
   });
 
   // Load existing debate when externalDebateId is provided
@@ -242,6 +260,10 @@
         threshold,
         llmProfileIds: profileMap,
         projectId: $activeProject?.id,
+        searchMode,
+        documentIds: selectedDocumentIds,
+        ragAutoRetrieve,
+        includeDebateResults,
       });
       sessionId = result.session_id;
       debateId = result.debate_id;
@@ -265,6 +287,28 @@
       if (cleanupSSE) cleanupSSE();
     } catch (err) {
       error = err.message || 'Failed to cancel';
+    }
+  }
+
+  function toggleDocumentSelection(docId) {
+    const idx = selectedDocumentIds.indexOf(docId);
+    if (idx >= 0) {
+      selectedDocumentIds = selectedDocumentIds.filter(id => id !== docId);
+    } else {
+      selectedDocumentIds = [...selectedDocumentIds, docId];
+    }
+  }
+
+  async function handleSendInterjection() {
+    if (!interjectionText.trim() || !sessionId) return;
+    sendingInterjection = true;
+    try {
+      await submitInterjection(sessionId, interjectionText.trim());
+      interjectionText = '';
+    } catch (err) {
+      console.error('Failed to send interjection:', err);
+    } finally {
+      sendingInterjection = false;
     }
   }
 
@@ -353,6 +397,53 @@
         </div>
       </div>
 
+      <!-- Web Search Mode -->
+      <div class="form-group">
+        <label for="mvp-search-mode" class="form-label">Web Search</label>
+        <select
+          id="mvp-search-mode"
+          class="form-select"
+          bind:value={searchMode}
+        >
+          <option value="off">Off</option>
+          <option value="optional">Optional (agents may request)</option>
+          <option value="required">Required (auto-search before each agent)</option>
+        </select>
+      </div>
+
+      <!-- DMS Document Selection -->
+      {#if availableDocuments.length > 0}
+        <div class="dms-section">
+          <div class="flex items-center justify-between mb-2">
+            <span class="form-label">DMS Documents (RAG Context)</span>
+            <span class="text-xs text-gray-500">{selectedDocumentIds.length} selected</span>
+          </div>
+          <div class="dms-doc-list">
+            {#each availableDocuments as doc (doc.id)}
+              <label class="dms-doc-item">
+                <input
+                  type="checkbox"
+                  checked={selectedDocumentIds.includes(doc.id)}
+                  onchange={() => toggleDocumentSelection(doc.id)}
+                  class="dms-checkbox"
+                />
+                <span class="dms-doc-name">{doc.filename}</span>
+              </label>
+            {/each}
+          </div>
+          <div class="dms-options">
+            <label class="dms-option">
+              <input type="checkbox" bind:checked={ragAutoRetrieve} class="dms-checkbox" />
+              <span class="text-sm text-gray-700">Auto-retrieve relevant chunks</span>
+            </label>
+            <label class="dms-option">
+              <input type="checkbox" bind:checked={includeDebateResults} class="dms-checkbox" />
+              <span class="text-sm text-gray-700">Include previous debate results</span>
+            </label>
+          </div>
+        </div>
+      {/if}
+
       <div class="agent-nodes">
         {#each AGENTS as agent, idx}
           <div class="agent-node" style="border-top-color: {agent.color}">
@@ -414,7 +505,7 @@
         <span class="status-dot"></span>
         <span class="status-text">{status}</span>
         {#if debateId}
-          <span class="debate-id" title="Debate ID: {debateId}">ID: {debateId.substring(0, 12)}…</span>
+          <span class="debate-id clickable" title="Debate ID: {debateId}" onclick={() => navigator.clipboard?.writeText(debateId)} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') navigator.clipboard?.writeText(debateId); }}>ID: {debateId}</span>
         {/if}
         {#if sessionId}
           <span class="session-id">{sessionId}</span>
@@ -465,6 +556,28 @@
           </button>
         {/if}
       </div>
+
+      {#if status === 'running' || status === 'paused'}
+        <div class="interjection-area">
+          <div class="interjection-input-row">
+            <input
+              type="text"
+              class="interjection-input"
+              bind:value={interjectionText}
+              placeholder="Send input to agents..."
+              onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendInterjection(); } }}
+              disabled={sendingInterjection}
+            />
+            <button
+              class="btn btn-interject"
+              onclick={handleSendInterjection}
+              disabled={!interjectionText.trim() || sendingInterjection}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      {/if}
 
       {#if nodeOutputs.length > 0}
         <div class="outputs-section">
@@ -765,6 +878,13 @@
     font-family: monospace;
     font-weight: 600;
   }
+  .debate-id.clickable {
+    cursor: pointer;
+    text-decoration: underline dotted;
+  }
+  .debate-id.clickable:hover {
+    color: #38bdf8;
+  }
 
   @keyframes blink {
     0%, 100% { opacity: 1; }
@@ -942,4 +1062,105 @@
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
+
+  /* DMS Document Section */
+  .dms-section {
+    padding: 16px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  :global(.dark) .dms-section {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  .dms-doc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  .dms-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .dms-checkbox {
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    accent-color: #3b82f6;
+  }
+  .dms-doc-name {
+    font-size: 13px;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  :global(.dark) .dms-doc-name { color: #e5e7eb; }
+  .dms-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  :global(.dark) .dms-options { border-color: #374151; }
+  .dms-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  /* Interjection area */
+  .interjection-area {
+    padding: 12px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+  }
+  :global(.dark) .interjection-area {
+    background: #164e63;
+    border-color: #155e75;
+  }
+  .interjection-input-row {
+    display: flex;
+    gap: 8px;
+  }
+  .interjection-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: white;
+    color: #1f2937;
+  }
+  :global(.dark) .interjection-input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+  .interjection-input:focus { border-color: #3b82f6; }
+  .btn-interject {
+    background: #0ea5e9;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-interject:hover { background: #0284c7; }
+  .btn-interject:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

@@ -199,6 +199,7 @@ class RenderEngineService:
         from backend.persistence.debate_store import DebateStore
         from backend.persistence.project_store import ProjectStore
 
+        # Try direct key lookup first (legacy debates keyed by session_id)
         try:
             project_store = ProjectStore()
             for project in project_store.list_all():
@@ -207,11 +208,24 @@ class RenderEngineService:
                 debate = store.get(session_id)
                 if debate:
                     artifact = _debate_to_artifact(debate)
-                    # Cache for future use
                     self.artifact_store.save(artifact)
                     return artifact
         except Exception as exc:
             logger.warning("Failed to build artifact from debate store for %s: %s", session_id, exc)
+
+        # Try by session_id field (MVP debates: session_id=wf-xxx, key=debate_id=mvp-xxx)
+        try:
+            project_store = ProjectStore()
+            for project in project_store.list_all():
+                project_dir = project_store.get_project_dir(project.id)
+                store = DebateStore(data_dir=project_dir / "debates")
+                for d in store.list_all(limit=500):
+                    if d.get("session_id") == session_id:
+                        artifact = _debate_to_artifact(d)
+                        self.artifact_store.save(artifact)
+                        return artifact
+        except Exception as exc:
+            logger.warning("Failed to search debates by session_id %s: %s", session_id, exc)
 
         # Second fallback: try global DebateStore (data/debates)
         try:
@@ -221,6 +235,12 @@ class RenderEngineService:
                 artifact = _debate_to_artifact(debate)
                 self.artifact_store.save(artifact)
                 return artifact
+            # Also search by session_id field in global store
+            for d in global_store.list_all(limit=500):
+                if d.get("session_id") == session_id:
+                    artifact = _debate_to_artifact(d)
+                    self.artifact_store.save(artifact)
+                    return artifact
         except Exception as exc:
             logger.warning("Failed to build artifact from global debate store for %s: %s", session_id, exc)
 
@@ -239,6 +259,32 @@ class RenderEngineService:
         return None
 
 
+def _build_turns_from_node_outputs(node_outputs: list[dict]) -> list:
+    """Convert workflow ``node_outputs`` (from state snapshots) to ``Turn`` objects.
+
+    MVP debates store per-agent content in ``node_outputs`` rather than the
+    legacy ``rounds[n].agent_outputs`` format used by the original debate engine.
+    """
+    from backend.models.artifact import Turn
+
+    turns: list[Turn] = []
+    for no in node_outputs:
+        role = no.get("role") or no.get("nodeType", "agent")
+        rnd = no.get("round", 0)
+        turns.append(
+            Turn(
+                round=rnd,
+                node_id=no.get("nodeId", f"{role}_round{rnd}"),
+                agent_name=role,
+                role_type=role,
+                content=no.get("content", ""),
+                latency_ms=no.get("durationMs", 0),
+                token_usage={"total": no.get("tokensUsed", 0)},
+            )
+        )
+    return turns
+
+
 def _debate_to_artifact(debate: dict):
     """Convert a debate store dict into a DebateArtifact."""
     from backend.models.artifact import DebateArtifact, Turn
@@ -250,24 +296,50 @@ def _debate_to_artifact(debate: dict):
     req = debate.get("request", {})
 
     turns: list[Turn] = []
-    for rd in rounds:
-        for ao in rd.get("agent_outputs", []):
-            turns.append(
-                Turn(
-                    round=rd.get("round", 0),
-                    node_id=f"{ao.get('role', 'agent')}_round{rd.get('round', 0)}",
-                    agent_name=ao.get("role", "agent"),
-                    role_type=ao.get("role", "agent"),
-                    content=ao.get("content", ""),
-                    token_usage={"total": ao.get("tokens_used", 0)},
+
+    # MVP debates store content in workflow state snapshot node_outputs
+    if debate.get("is_mvp"):
+        session_id = debate.get("session_id")
+        if session_id:
+            try:
+                from backend.workflow.state_snapshot import StateSnapshotStore
+
+                snap_store = StateSnapshotStore()
+                snapshot = snap_store.get_latest(session_id)
+                if snapshot:
+                    state = snapshot.get("state", {})
+                    node_outputs = state.get("node_outputs", [])
+                    turns = _build_turns_from_node_outputs(node_outputs)
+            except Exception as exc:
+                logger.warning("Failed to load snapshot for MVP debate %s: %s", session_id, exc)
+    else:
+        # Legacy debates: build turns from rounds[n].agent_outputs
+        for rd in rounds:
+            for ao in rd.get("agent_outputs", []):
+                turns.append(
+                    Turn(
+                        round=rd.get("round", 0),
+                        node_id=f"{ao.get('role', 'agent')}_round{rd.get('round', 0)}",
+                        agent_name=ao.get("role", "agent"),
+                        role_type=ao.get("role", "agent"),
+                        content=ao.get("content", ""),
+                        token_usage={"total": ao.get("tokens_used", 0)},
+                    )
                 )
-            )
 
     case_text = ""
     if isinstance(req.get("case"), dict):
         case_text = req["case"].get("text", "")
     elif req.get("case"):
         case_text = str(req["case"])
+
+    # Determine consensus score: MVP uses consensus field, legacy uses final_consensus
+    consensus_score = result.get("final_consensus")
+    if consensus_score is None:
+        consensus_score = result.get("consensus", 0.0)
+
+    metadata_title = debate.get("title", "")
+    metadata_language = req.get("language", "de")
 
     return DebateArtifact(
         session_id=debate.get("debate_id", ""),
@@ -277,14 +349,14 @@ def _debate_to_artifact(debate: dict):
         topic=case_text,
         transcript=turns,
         consensus_result={
-            "score": result.get("final_consensus", 0.0),
+            "score": consensus_score,
             "summary": result.get("output", ""),
         },
         metadata={
             "token_usage": {
                 "total": sum(t.token_usage.get("total", 0) for t in turns),
             },
-            "title": debate.get("title", ""),
-            "language": req.get("language", "de"),
+            "title": metadata_title,
+            "language": metadata_language,
         },
     )

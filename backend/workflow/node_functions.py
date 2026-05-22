@@ -8,6 +8,7 @@ merges into the shared ``WorkflowState``.  Agent nodes resolve their
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Callable
 
@@ -15,7 +16,14 @@ from backend.api.events import publish_async
 from backend.services.llm_service import LLMService
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
+from backend.services.web_search import (
+    WebSearchTool,
+    extract_search_markers,
+    extract_search_queries,
+    format_search_results,
+)
 from backend.workflow.audit_logger import get_audit_logger
+from backend.workflow.interjection import interjection_service
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -40,6 +48,156 @@ def _get_prompt_service() -> PromptService:
     if _prompt_service is None:
         _prompt_service = PromptService()
     return _prompt_service
+
+
+_search_tool: WebSearchTool | None = None
+
+
+def _get_search_tool() -> WebSearchTool:
+    global _search_tool
+    if _search_tool is None:
+        from backend.core.config import settings
+
+        _search_tool = WebSearchTool(
+            url=settings.searxng_url,
+            max_results=settings.searxng_max_results,
+            region=settings.searxng_region,
+        )
+    return _search_tool
+
+
+# ---------------------------------------------------------------------------
+# Web search helpers (required / optional modes)
+# ---------------------------------------------------------------------------
+
+_SEARCH_INSTRUCTIONS: dict[str, dict[str, str]] = {
+    "en": {
+        "required": (
+            "\n\n## Web Research\n"
+            "You have access to current web search results which are provided "
+            "in the user message under 'Web Research'. You MUST incorporate and "
+            "reference this external information in your analysis. "
+            "Cite sources where possible. If search results contradict your analysis, "
+            "address the discrepancy explicitly."
+        ),
+        "optional": (
+            "\n\n## Web Search Capability\n"
+            "You have access to web search. If you need to verify facts, find current "
+            "information, or research specific claims, include [SEARCH: your search query] "
+            "in your response. Each [SEARCH: ...] marker will be fulfilled and the results "
+            "appended to your output. Use this capability sparingly and only when factual "
+            "verification is needed."
+        ),
+    },
+    "de": {
+        "required": (
+            "\n\n## Web-Recherche\n"
+            "Du hast Zugriff auf aktuelle Websuchergebnisse, die in der "
+            "Benutzernachricht unter 'Web-Recherche' bereitgestellt werden. "
+            "Du MUSST diese externen Informationen in deine Analyse einbeziehen "
+            "und darauf verweisen. Zitiere Quellen, wo moeglich. Wenn Suchergebnisse "
+            "deiner Analyse widersprechen, gehe explizit auf die Diskrepanz ein."
+        ),
+        "optional": (
+            "\n\n## Web-Suche\n"
+            "Du hast Zugriff auf Websuche. Wenn du Fakten ueberpruefen, aktuelle "
+            "Informationen finden oder spezifische Aussagen recherchieren musst, "
+            "fuege [SEARCH: deine Suchanfrage] in deine Antwort ein. Jeder "
+            "[SEARCH: ...]-Marker wird ausgefuehrt und die Ergebnisse deiner "
+            "Ausgabe angehaengt. Nutze diese Faehigkeit sparsam und nur wenn "
+            "faktische Ueberpruefung sinnvoll ist."
+        ),
+    },
+}
+
+
+def _append_search_instruction(prompt: str, search_mode: str, language: str = "de") -> str:
+    """Append web search instructions to a system prompt based on the search mode."""
+    if search_mode == "off":
+        return prompt
+
+    lang_instructions = _SEARCH_INSTRUCTIONS.get(language, _SEARCH_INSTRUCTIONS["en"])
+    instruction = lang_instructions.get(search_mode)
+    if not instruction:
+        return prompt
+
+    return prompt + instruction
+
+
+async def _perform_required_search(
+    state: WorkflowState,
+    role: str,
+    language: str,
+    user_prompt: str,
+    session_id: str,
+) -> str:
+    """Required mode: auto-search before LLM call and inject results into prompt."""
+    search_tool = _get_search_tool()
+    queries = extract_search_queries(state.get("context", ""), role)
+    if not queries:
+        return user_prompt
+
+    all_results = []
+    for query in queries:
+        try:
+            results = await search_tool.search(query)
+            all_results.extend(results)
+            await publish_async(
+                session_id,
+                "web_search",
+                {
+                    "type": "web_search",
+                    "round": state.get("current_round", 1),
+                    "role": role,
+                    "query": query,
+                    "result_count": len(results),
+                    "results": results,
+                },
+            )
+        except Exception as exc:
+            logger.warning("Web search failed for '%s': %s", query, exc)
+
+    if all_results:
+        user_prompt += format_search_results(all_results, language)
+    return user_prompt
+
+
+async def _perform_optional_search(
+    content: str,
+    role: str,
+    language: str,
+    session_id: str,
+    state: WorkflowState,
+) -> str:
+    """Optional mode: check for [SEARCH: ...] markers and fulfill them."""
+    markers = extract_search_markers(content)
+    if not markers:
+        return content
+
+    search_tool = _get_search_tool()
+    all_results = []
+    for query in markers:
+        try:
+            results = await search_tool.search(query)
+            all_results.extend(results)
+            await publish_async(
+                session_id,
+                "web_search",
+                {
+                    "type": "web_search",
+                    "round": state.get("current_round", 1),
+                    "role": role,
+                    "query": query,
+                    "result_count": len(results),
+                    "results": results,
+                },
+            )
+        except Exception as exc:
+            logger.warning("Web search failed for '%s': %s", query, exc)
+
+    if all_results:
+        content += format_search_results(all_results, language)
+    return content
 
 
 # ---------------------------------------------------------------------------
@@ -309,17 +467,28 @@ def agent_node_factory(
         if current_draft:
             user_prompt += f"\n\nCurrent draft:\n{current_draft}"
 
-        # Inject pending interjections
-        interjections = state.get("interjection_queue", [])
-        if interjections:
+        # Inject pending interjections (from both state queue and interjection service)
+        interjection_queue = list(state.get("interjection_queue", []))
+        try:
+            service_injs = await interjection_service.consume(session_id, node_id)
+            interjection_queue.extend(service_injs)
+        except Exception:
+            logger.debug("Failed to consume interjection service for %s", session_id, exc_info=True)
+
+        if interjection_queue:
             inj_text = "\n\n--- ADDITIONAL CONTEXT (User) ---\n"
-            inj_text += "\n".join(f"- {inj['content']}" for inj in interjections)
+            inj_text += "\n".join(f"- {inj['content']}" for inj in interjection_queue)
             user_prompt += inj_text
 
         if language == "en":
             user_prompt += "\n\nPlease respond in English."
         else:
             user_prompt += "\n\nBitte antworte auf Deutsch."
+
+        # Required mode: auto-search before LLM call
+        search_mode = state.get("search_mode", "off")
+        if search_mode == "required":
+            user_prompt = await _perform_required_search(state, role, language, user_prompt, session_id)
 
         # --- LLM call ---
         content = ""
@@ -337,6 +506,12 @@ def agent_node_factory(
                 system_prompt=system_prompt,
             )
             content = gen_result.content
+
+            # Optional mode: check for [SEARCH: ...] markers after LLM response
+            if state.get("search_mode") == "optional":
+                content = await _perform_optional_search(content, role, language, session_id, state)
+                tokens_used = len(content.split())
+
             tokens_used = gen_result.tokens_out if gen_result.tokens_out > 0 else len(content.split())
             duration_ms = gen_result.duration_ms
 
@@ -894,5 +1069,9 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     # Enhance with RoleType name if available (for custom role types)
     if role_type_name and role_type_name.lower() != role.lower():
         prompt = f"{role_type_icon} You are a {role_type_name} ({role}). " + prompt.split(". ", 1)[-1] if ". " in prompt else prompt
+
+    # Append web search instructions based on search_mode
+    search_mode = state.get("search_mode", "off")
+    prompt = _append_search_instruction(prompt, search_mode, language)
 
     return prompt

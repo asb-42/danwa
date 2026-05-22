@@ -296,7 +296,7 @@
                 </p>
               {/if}
               <p class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
-                {debate.debate_id.substring(0, 12)}…
+                {debate.debate_id}
               </p>
               {#if debate.is_mvp}
                 <span class="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 mt-0.5">MVP</span>

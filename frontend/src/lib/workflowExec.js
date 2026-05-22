@@ -87,6 +87,10 @@ export function startMvpDebate({
   maxRounds = 5,
   threshold = 0.9,
   llmProfileIds = {},
+  searchMode = 'off',
+  documentIds = [],
+  ragAutoRetrieve = false,
+  includeDebateResults = false,
 }) {
   return request('/api/v1/workflow-exec/mvp/start', {
     method: 'POST',
@@ -97,6 +101,10 @@ export function startMvpDebate({
       max_rounds: maxRounds,
       threshold,
       llm_profile_ids: llmProfileIds,
+      search_mode: searchMode,
+      document_ids: documentIds,
+      rag_auto_retrieve: ragAutoRetrieve,
+      include_debate_results: includeDebateResults,
     }),
   });
 }
