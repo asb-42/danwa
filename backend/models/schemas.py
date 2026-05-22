@@ -249,6 +249,7 @@ class DebateListItem(BaseModel):
     project_name: str = ""
     parent_debate_id: str | None = None
     forks_count: int = 0
+    is_mvp: bool = False
 
 
 class HealthResponse(BaseModel):

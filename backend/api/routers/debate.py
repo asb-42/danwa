@@ -142,6 +142,7 @@ async def list_debates(
                 project_name=project_name,
                 parent_debate_id=parent_id,
                 forks_count=forks_count,
+                is_mvp=d.get("is_mvp", False),
             )
         )
 

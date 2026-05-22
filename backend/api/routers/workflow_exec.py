@@ -303,7 +303,7 @@ async def start_mvp_debate(
 
     set_session_status(session_id, "running")
 
-    debate_id = f"mvp-{uuid.uuid4().hex[:12]}"
+    debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
     try:
         debate_store = get_debate_store_for_project(effective_project_id, project_store)
