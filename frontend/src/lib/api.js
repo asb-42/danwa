@@ -127,6 +127,13 @@ export function deleteDebate(debateId) {
   });
 }
 
+export function moveDebate(debateId, targetProjectId) {
+  return request(`/api/v1/debate/${debateId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ project_id: targetProjectId }),
+  });
+}
+
 export function startDebate(debateId) {
   return request(`/api/v1/debate/${debateId}/start`, {
     method: 'POST',

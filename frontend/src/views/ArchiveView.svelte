@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error, activeProject } from '../lib/stores.js';
-  import { getDebates, listDebateForks, deleteDebate, softDeleteSession, restoreSession, getTrace } from '../lib/api.js';
+  import { getDebates, listDebateForks, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
@@ -31,6 +31,12 @@
   let archiveConfirmId = $state(null);
   let isArchiving = $state(false);
   let restoringId = $state(null);
+
+  // Move to project state
+  let moveDialogDebateId = $state(null);
+  let targetProjectId = $state('');
+  let availableProjects = $state([]);
+  let isMoving = $state(false);
 
   // Trace state
   let traceData = $state(null);
@@ -143,6 +149,39 @@
       error.set(err.message);
     } finally {
       isArchiving = false;
+    }
+  }
+
+  async function loadAvailableProjects() {
+    try {
+      availableProjects = await getProjects();
+    } catch (err) {
+      console.warn('Could not load projects:', err);
+    }
+  }
+
+  function confirmMove(debateId) {
+    moveDialogDebateId = debateId;
+    targetProjectId = '';
+    loadAvailableProjects();
+  }
+
+  function cancelMove() {
+    moveDialogDebateId = null;
+    targetProjectId = '';
+  }
+
+  async function handleMove(debateId) {
+    if (!targetProjectId) return;
+    isMoving = true;
+    try {
+      await moveDebate(debateId, targetProjectId);
+      debates = debates.filter(d => d.debate_id !== debateId);
+      moveDialogDebateId = null;
+    } catch (err) {
+      error.set(err.message);
+    } finally {
+      isMoving = false;
     }
   }
 
@@ -422,6 +461,53 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
               </button>
+
+              <!-- Move to project button -->
+              {#if moveDialogDebateId === debate.debate_id}
+                <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                <div class="flex items-center gap-1" onclick={(e) => e.stopPropagation()}>
+                  <select
+                    class="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white max-w-[120px]"
+                    bind:value={targetProjectId}
+                  >
+                    <option value="">{t('archive.selectProject')}</option>
+                    {#each availableProjects.filter(p => p.id !== projectId) as project}
+                      <option value={project.id}>{project.name}</option>
+                    {/each}
+                  </select>
+                  <button
+                    class="px-2 py-1 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700
+                           disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    onclick={() => handleMove(debate.debate_id)}
+                    disabled={!targetProjectId || isMoving}
+                  >
+                    {isMoving ? '...' : t('archive.moveButton')}
+                  </button>
+                  <button
+                    class="px-2 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-600
+                           text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500
+                           transition-colors"
+                    onclick={cancelMove}
+                    disabled={isMoving}
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              {:else}
+                <button
+                  class="p-1.5 rounded text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400
+                         hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                  onclick={(e) => { e.stopPropagation(); confirmMove(debate.debate_id); }}
+                  aria-label={t('archive.moveToProject')}
+                  title={t('archive.moveToProject')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </button>
+              {/if}
 
               <!-- Delete button -->
               {#if deleteConfirmId === debate.debate_id}

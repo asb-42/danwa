@@ -135,6 +135,24 @@ class DebateStore:
             logger.error("Failed to delete debate file %s: %s", path, exc)
         return True
 
+    def move(self, debate_id: str, target_store: 'DebateStore') -> bool:
+        """Move a debate file to another project's store and update caches."""
+        with self._lock:
+            debate = self._cache.get(debate_id)
+            if not debate:
+                return False
+        target_store.put(debate_id, debate)
+        with self._lock:
+            if debate_id in self._cache:
+                del self._cache[debate_id]
+        path = self._data_dir / f"{debate_id}.json"
+        try:
+            if path.exists():
+                path.unlink()
+        except Exception as exc:
+            logger.error("Failed to delete source debate file after move %s: %s", path, exc)
+        return True
+
     def update(self, debate_id: str, **kwargs: Any) -> dict | None:
         """Update fields of a debate and persist."""
         with self._lock:

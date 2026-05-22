@@ -162,3 +162,15 @@ class AuditService:
                 (debate_id,),
             )
             return cursor.rowcount
+
+    def update_debate_project(self, debate_id: str, new_project_id: str) -> int:
+        """Update the project_id for all audit events of a debate.
+
+        Returns the number of affected rows.
+        """
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "UPDATE audit_events SET project_id = ? WHERE debate_id = ?",
+                (new_project_id, debate_id),
+            )
+            return cursor.rowcount

@@ -263,6 +263,62 @@ async def delete_debate(
     return {"detail": "Debate deleted", "debate_id": debate_id}
 
 
+class MoveDebateBody(BaseModel):
+    """Request body for moving a debate to another project."""
+    project_id: str = Field(..., description="Target project ID to move the debate to")
+
+
+@router.patch("/{debate_id}")
+async def move_debate(
+    debate_id: str,
+    body: MoveDebateBody,
+    project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
+    audit: AuditService = Depends(get_audit_service),
+) -> dict:
+    """Move a debate to a different project.
+
+    Source project is determined by the X-Project-Id header.
+    Target project is specified in the request body.
+    """
+    if body.project_id == project_id:
+        raise HTTPException(status_code=400, detail="Source and target projects are the same")
+
+    target_project = project_store.get(body.project_id)
+    if not target_project:
+        raise HTTPException(status_code=404, detail="Target project not found")
+
+    source_store = get_debate_store_for_project(project_id, project_store)
+    debate = source_store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate.get("status")
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val == "running":
+        raise HTTPException(status_code=409, detail="Cannot move a running debate")
+
+    target_store = get_debate_store_for_project(body.project_id, project_store)
+    moved = source_store.move(debate_id, target_store)
+    if not moved:
+        raise HTTPException(status_code=500, detail="Failed to move debate")
+
+    updated_audit = audit.update_debate_project(debate_id, body.project_id)
+
+    logger.info(
+        "Moved debate %s from project %s to project %s (%d audit events updated)",
+        debate_id, project_id, body.project_id, updated_audit,
+    )
+
+    return {
+        "detail": "Debate moved successfully",
+        "debate_id": debate_id,
+        "source_project_id": project_id,
+        "target_project_id": body.project_id,
+        "audit_events_updated": updated_audit,
+    }
+
+
 @router.get("/{debate_id}", response_model=DebateStatusResponse)
 async def get_debate(
     debate_id: str,
