@@ -1,11 +1,11 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
-  import { getLLMProfiles } from '../lib/api.js';
+  import { getLLMProfiles, getDebate } from '../lib/api.js';
   import { startMvpDebate } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject } from '../lib/stores.js';
 
-  let { navigate = () => {} } = $props();
+  let { debateId: externalDebateId = null, navigate = () => {} } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -28,6 +28,7 @@
   let llmProfiles = $state([]);
   let llmAssignments = $state({});
   let isLoadingProfiles = $state(true);
+  let isLoadingDebate = $state(false);
 
   let sessionId = $state(null);
   let debateId = $state(null);
@@ -62,6 +63,74 @@
       .finally(() => {
         isLoadingProfiles = false;
       });
+  });
+
+  // Load existing debate when externalDebateId is provided
+  $effect(() => {
+    const eid = externalDebateId;
+    if (!eid) return;
+
+    isLoadingDebate = true;
+    error = '';
+    status = 'loading';
+
+    (async () => {
+      try {
+        const debate = await getDebate(eid);
+        debateId = debate.debate_id;
+        topic = debate.case_text || '';
+        maxRounds = debate.max_rounds || 5;
+        threshold = debate.consensus_score ?? 0.9;
+        status = debate.status;
+        currentRound = debate.current_round || 0;
+        if (debate.consensus_score !== null && debate.consensus_score !== undefined) {
+          consensus = debate.consensus_score;
+        }
+
+        if (debate.session_id) {
+          sessionId = debate.session_id;
+
+          // For completed/cancelled/failed debates, load the state snapshot
+          if (debate.status === 'completed' || debate.status === 'cancelled' || debate.status === 'failed') {
+            const { getWorkflowState } = await import('../lib/workflowExec.js');
+            try {
+              const state = await getWorkflowState(debate.session_id);
+              if (state.node_outputs) {
+                nodeOutputs = state.node_outputs;
+                totalTokens = state.node_outputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
+              }
+              if (state.final_consensus !== undefined && state.final_consensus !== null) {
+                consensus = state.final_consensus;
+              }
+              if (state.current_round) currentRound = state.current_round;
+            } catch (_) {
+              // state may not be available for old sessions
+            }
+            isLoadingDebate = false;
+            return;
+          }
+
+          // For running debates, connect SSE
+          if (debate.status === 'running' || debate.status === 'paused') {
+            const { getWorkflowState } = await import('../lib/workflowExec.js');
+            try {
+              const state = await getWorkflowState(debate.session_id);
+              if (state.node_outputs) {
+                nodeOutputs = state.node_outputs;
+              }
+              if (state.current_round) currentRound = state.current_round;
+            } catch (_) { /* ok */ }
+            startTimer();
+            connectSSE(debate.session_id);
+          }
+        }
+      } catch (err) {
+        error = `Failed to load debate: ${err.message}`;
+        status = 'failed';
+      } finally {
+        isLoadingDebate = false;
+      }
+    })();
   });
 
   function startTimer() {
@@ -200,6 +269,11 @@
   }
 
   function handleReset() {
+    if (externalDebateId) {
+      // Came from archive — navigate back to fresh create page
+      navigate('mvp-debate');
+      return;
+    }
     if (cleanupSSE) cleanupSSE();
     sessionId = null;
     debateId = null;
@@ -233,7 +307,14 @@
     <p class="view-subtitle">4-agent debate with per-agent LLM profiles</p>
   </div>
 
-  {#if status === 'idle'}
+  {#if isLoadingDebate}
+    <div class="loading-section">
+      <div class="flex items-center justify-center py-12">
+        <span class="loading-spinner"></span>
+        <span class="ml-3 text-gray-500 dark:text-gray-400 text-sm">Loading debate...</span>
+      </div>
+    </div>
+  {:else if status === 'idle'}
     <div class="config-section">
       <div class="form-group">
         <label for="mvp-topic" class="form-label">Debate Topic</label>
@@ -844,5 +925,21 @@
   .output-content.markdown-rendered :global(li) {
     margin-left: 16px;
     list-style-type: disc;
+  }
+
+  .loading-section {
+    padding: 24px;
+  }
+  .loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style>

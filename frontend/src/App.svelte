@@ -129,7 +129,7 @@ import ToastContainer from './components/ToastContainer.svelte';
   {:else if $route === 'proposals'}
     <ProposalsView />
   {:else if $route === 'mvp-debate'}
-    <MvpDebateView {navigate} />
+    <MvpDebateView debateId={$routeParams[0] || null} {navigate} />
   {:else}
     <Dashboard {navigate} />
   {/if}

@@ -350,6 +350,8 @@ async def get_debate(
         has_active_interrupt=active_interrupt is not None,
         total_interactions=len(result_interactions),
         parent_debate_id=parent_id,
+        session_id=debate.get("session_id"),
+        is_mvp=debate.get("is_mvp", False),
     )
 
 

@@ -213,6 +213,12 @@ class DebateStatusResponse(BaseModel):
     project_name: str = ""
     parent_debate_id: str | None = None
     forks_count: int = 0
+    # --- MVP debate fields ---
+    session_id: str | None = Field(
+        default=None,
+        description="Workflow session ID (wf-… format). Set for MVP debates.",
+    )
+    is_mvp: bool = False
     # --- RAG / DMS ---
     rag_enabled: bool = False
     rag_document_count: int = 0

@@ -276,10 +276,10 @@
           <div
             class="w-full px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                    md:grid md:grid-cols-12 md:gap-2 md:items-center cursor-pointer"
-            onclick={() => navigate('debate/' + debate.debate_id)}
+            onclick={() => navigate((debate.debate_id && debate.debate_id.startsWith('mvp-') ? 'mvp-debate' : 'debate') + '/' + debate.debate_id)}
             role="button"
             tabindex="0"
-            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('debate/' + debate.debate_id); } }}
+            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate((debate.debate_id && debate.debate_id.startsWith('mvp-') ? 'mvp-debate' : 'debate') + '/' + debate.debate_id); } }}
           >
             <!-- Title / Case preview -->
             <div class="md:col-span-2 mb-2 md:mb-0">

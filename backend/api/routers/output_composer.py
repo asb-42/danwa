@@ -15,10 +15,12 @@ import mimetypes
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from backend.api.deps import get_project_id, get_project_store
+from backend.persistence.project_store import ProjectStore
 from backend.services.output.registry import PluginRegistry
 from backend.services.render_engine import RenderEngineService
 from backend.services.render_job_store import RenderJobStore
@@ -280,15 +282,20 @@ async def list_tts_voices(
 
 
 @router.get("/render-sessions")
-async def search_sessions(q: str = "", limit: int = 20) -> list[dict]:
+async def search_sessions(
+    q: str = "",
+    limit: int = 20,
+    project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
+) -> list[dict]:
     """Search completed sessions by ID or debate title for autocomplete.
 
     Returns sessions that have a saved DebateArtifact.
     """
-    from backend.persistence.debate_store import DebateStore
+    from backend.api.deps import get_debate_store_for_project
 
     artifact_store = _get_engine().artifact_store
-    debate_store = DebateStore()
+    debate_store = get_debate_store_for_project(project_id, project_store)
     results: list[dict] = []
 
     # Get all debates and filter by those with artifacts
@@ -297,14 +304,23 @@ async def search_sessions(q: str = "", limit: int = 20) -> list[dict]:
         did = d.get("debate_id", "")
         title = d.get("title", "")
         status = d.get("status", "")
+        is_mvp = d.get("is_mvp", False)
 
         # Only completed sessions
         if status not in ("completed",):
             continue
 
-        # Check if artifact exists
-        if not artifact_store.exists(did):
-            continue
+        # For MVP debates: use the workflow session_id, skip artifact check
+        # (MVP debates store state in workflow snapshots, not legacy DebateArtifacts)
+        if is_mvp:
+            session_id = d.get("session_id")
+            if not session_id:
+                continue
+        else:
+            # Legacy debates: check if artifact exists
+            if not artifact_store.exists(did):
+                continue
+            session_id = did
 
         # Filter by query
         if q:
@@ -314,7 +330,7 @@ async def search_sessions(q: str = "", limit: int = 20) -> list[dict]:
 
         results.append(
             {
-                "session_id": did,
+                "session_id": session_id,
                 "title": title or did,
                 "status": status,
             }
