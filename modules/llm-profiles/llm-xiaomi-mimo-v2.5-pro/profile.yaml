@@ -6,7 +6,7 @@ context_window: 1048576
 cost_per_1k_input: 0.003
 cost_per_1k_output: 0.015
 fallback_llm_profile_id: null
-id: xiaomi-mimi-v2.5-pro
+id: xiaomi-mimo-v2.5-pro
 max_tokens: 131072
 model: mimo-v2.5-pro
 name: mimo-v2.5-pro (Xiaomi)

@@ -256,7 +256,7 @@ Generated from codebase at: /media/data/coding/danwa
   llm-owl-alpha                            type=llm-profile          v1.0.0
   llm-owl-alpha-copy-u7rv                  type=llm-profile          v1.0.0
   llm-xiaomi-io-2--6btm                    type=llm-profile          v1.0.0
-  llm-xiaomi-mimi-v2.5-pro                 type=llm-profile          v1.0.0
+  llm-xiaomi-mimo-v2.5-pro                 type=llm-profile          v1.0.0
   prompt-critic                            type=prompt-variant       v1.0.0
   prompt-critic-en                         type=prompt-variant       v1.0.0
   prompt-dialectic-critic                  type=prompt-variant       v1.0.0
