@@ -25,9 +25,9 @@ from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async, subscribe, unsubscribe
-from backend.models.schemas import SearchMode
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
+from backend.models.schemas import SearchMode
 from backend.persistence.debate_store import DebateStatus
 from backend.persistence.project_store import ProjectStore
 from backend.workflow.audit_logger import get_audit_logger

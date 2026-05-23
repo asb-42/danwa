@@ -8,7 +8,6 @@ merges into the shared ``WorkflowState``.  Agent nodes resolve their
 from __future__ import annotations
 
 import logging
-import re
 import time
 from collections.abc import Callable
 

@@ -135,7 +135,7 @@ class DebateStore:
             logger.error("Failed to delete debate file %s: %s", path, exc)
         return True
 
-    def move(self, debate_id: str, target_store: 'DebateStore') -> bool:
+    def move(self, debate_id: str, target_store: DebateStore) -> bool:
         """Move a debate file to another project's store and update caches."""
         with self._lock:
             debate = self._cache.get(debate_id)

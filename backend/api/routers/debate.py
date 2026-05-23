@@ -265,6 +265,7 @@ async def delete_debate(
 
 class MoveDebateBody(BaseModel):
     """Request body for moving a debate to another project."""
+
     project_id: str = Field(..., description="Target project ID to move the debate to")
 
 
@@ -307,7 +308,10 @@ async def move_debate(
 
     logger.info(
         "Moved debate %s from project %s to project %s (%d audit events updated)",
-        debate_id, project_id, body.project_id, updated_audit,
+        debate_id,
+        project_id,
+        body.project_id,
+        updated_audit,
     )
 
     return {
