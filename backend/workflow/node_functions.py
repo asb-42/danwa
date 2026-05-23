@@ -1073,7 +1073,9 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     except Exception:
         logger.exception(
             "Failed to assemble prompt for role='%s' pattern='%s' language='%s'",
-            role, argumentation_pattern, language,
+            role,
+            argumentation_pattern,
+            language,
         )
 
     # Fallback: generic system prompt based on role

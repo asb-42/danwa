@@ -267,13 +267,17 @@ class PromptService:
         except Exception:
             logger.exception(
                 "Translation failed for %s/%s → %s, falling back to English content",
-                variant, role, target_language,
+                variant,
+                role,
+                target_language,
             )
 
         # Fallback: return English source content when translation unavailable
         logger.warning(
             "Using English fallback for %s/%s (requested language: %s)",
-            variant, role, target_language,
+            variant,
+            role,
+            target_language,
         )
         result = TranslationEntry(
             module_id="prompts-base",
@@ -406,7 +410,11 @@ class PromptService:
             except FileNotFoundError as e:
                 logger.warning(
                     "Prompt template not found for %s/%s (language=%s, translate=%s): %s",
-                    workflow_variant, role_type_id, language, translate, e,
+                    workflow_variant,
+                    role_type_id,
+                    language,
+                    translate,
+                    e,
                 )
 
         return "\n\n".join(parts)

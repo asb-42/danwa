@@ -413,7 +413,10 @@ Respond with ONLY a valid JSON object:
                             if attempt == 0:
                                 logger.warning(
                                     "Forward translation attempt 1 failed for %s/%s → %s, retrying: %s",
-                                    module_id, fpath, target_language, e,
+                                    module_id,
+                                    fpath,
+                                    target_language,
+                                    e,
                                 )
                                 time.sleep(1)
                                 continue
@@ -532,7 +535,11 @@ Respond with ONLY a valid JSON object:
             if errored > 0:
                 logger.warning(
                     "Translation summary for %s → %s: %d translated, %d skipped, %d errored (status=%s)",
-                    module_id, target_language, translated, skipped, errored,
+                    module_id,
+                    target_language,
+                    translated,
+                    skipped,
+                    errored,
                     "error" if errored > 0 and translated == 0 else "partial",
                 )
 
@@ -844,14 +851,19 @@ Respond with ONLY a valid JSON object:
         if result.status == "error":
             logger.warning(
                 "Translation failed for %s/%s → %s: %s",
-                module_id, file_path, target_language,
+                module_id,
+                file_path,
+                target_language,
                 "; ".join(result.errors) if result.errors else "unknown error",
             )
         elif result.files_errored > 0:
             logger.warning(
                 "Translation partial for %s/%s → %s: %d file(s) errored, %d skipped",
-                module_id, file_path, target_language,
-                result.files_errored, result.files_skipped,
+                module_id,
+                file_path,
+                target_language,
+                result.files_errored,
+                result.files_skipped,
             )
 
         return None
