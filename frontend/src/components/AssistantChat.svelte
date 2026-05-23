@@ -908,6 +908,116 @@
     cursor: not-allowed;
   }
 
+  :global(.dark) .assistant-chat {
+    background: #1f2937;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  :global(.dark) .chat-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #6b21a8 100%);
+  }
+
+  :global(.dark) .resize-handle--height {
+    background: #4b5563;
+  }
+
+  :global(.dark) .session-sidebar {
+    background: #374151;
+    border-right-color: #4b5563;
+  }
+
+  :global(.dark) .session-header {
+    color: #e5e7eb;
+    border-bottom-color: #4b5563;
+  }
+
+  :global(.dark) .session-item {
+    border-bottom-color: #374151;
+  }
+
+  :global(.dark) .session-item:hover {
+    background: #4b5563;
+  }
+
+  :global(.dark) .session-item.active {
+    background: #1e3a5f;
+    border-left-color: #60a5fa;
+  }
+
+  :global(.dark) .session-title {
+    color: #d1d5db;
+  }
+
+  :global(.dark) .welcome-message {
+    color: #9ca3af;
+  }
+
+  :global(.dark) .welcome-message h3 {
+    color: #e5e7eb;
+  }
+
+  :global(.dark) .message.assistant .message-content {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  :global(.dark) .message.tool .message-content {
+    background: #78350f;
+    color: #fde68a;
+  }
+
+  :global(.dark) .tool-output {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  :global(.dark) .markdown-content :global(code) {
+    background: #4b5563;
+  }
+
+  :global(.dark) .model-badge {
+    background: #4b5563;
+    color: #d1d5db;
+  }
+
+  :global(.dark) .error-message {
+    background: #7f1d1d;
+    color: #fca5a5;
+  }
+
+  :global(.dark) .input-area {
+    background: #1f2937;
+    border-top-color: #4b5563;
+  }
+
+  :global(.dark) .input-area textarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  :global(.dark) .input-area textarea:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+
+  :global(.dark) .input-area textarea:disabled {
+    background: #1f2937;
+  }
+
+  :global(.dark) .btn-send:disabled {
+    background: #4b5563;
+  }
+
+  :global(.dark) .typing-indicator span {
+    background: #6b7280;
+  }
+
+  @media (max-width: 768px) {
+    :global(.dark) .assistant-chat {
+      background: #111827;
+    }
+  }
+
   /* Responsive */
   @media (max-width: 768px) {
     .assistant-chat {
