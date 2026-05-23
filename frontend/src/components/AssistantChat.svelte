@@ -134,13 +134,27 @@
 
     try {
       const response = await sendAssistantMessage(currentSession.id, msgToSend);
-      const assistantMsg = {
-        role: 'assistant',
-        content: response.content,
-        timestamp: response.timestamp,
-        model: response.model,
-      };
-      messages = [...messages, assistantMsg];
+
+      if (response.messages && Array.isArray(response.messages)) {
+        // New format: array of all messages from this turn
+        const newMsgs = response.messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+          model: m.model || '',
+          tool_call_id: m.tool_call_id || '',
+          tool_name: m.tool_name || '',
+        }));
+        messages = [...messages, ...newMsgs];
+      } else if (response.content) {
+        // Legacy format: single message
+        messages = [...messages, {
+          role: 'assistant',
+          content: response.content,
+          timestamp: response.timestamp,
+          model: response.model || '',
+        }];
+      }
       await loadSessions();
       scrollToBottom();
     } catch (e) {
@@ -264,11 +278,21 @@
                 </ul>
               </div>
             {:else}
-              {#each messages as message (message.timestamp + '-' + message.role)}
-                <div class="message" class:user={message.role === 'user'} class:assistant={message.role === 'assistant'}>
+              {#each messages as message (message.timestamp + '-' + message.role + '-' + (message.tool_call_id || ''))}
+                <div class="message"
+                     class:user={message.role === 'user'}
+                     class:assistant={message.role === 'assistant'}
+                     class:tool={message.role === 'tool'}>
                   <div class="message-content">
                     {#if message.role === 'assistant'}
                       <div class="markdown-content">{@html renderMarkdown(message.content)}</div>
+                    {:else if message.role === 'tool'}
+                      <div class="tool-result">
+                        <span class="tool-badge">
+                          🔧 {message.tool_name || 'Tool'}
+                        </span>
+                        <pre class="tool-output">{message.content}</pre>
+                      </div>
                     {:else}
                       <p>{message.content}</p>
                     {/if}
@@ -572,6 +596,44 @@
     background: #f3f4f6;
     color: #1f2937;
     border-bottom-left-radius: 4px;
+  }
+
+  .message.tool {
+    align-self: center;
+    max-width: 90%;
+  }
+
+  .message.tool .message-content {
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .tool-result {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tool-badge {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+
+  .tool-output {
+    font-size: 11px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 100px;
+    overflow-y: auto;
+    margin: 0;
+    background: rgba(0,0,0,0.05);
+    padding: 4px 6px;
+    border-radius: 4px;
   }
 
   .markdown-content {

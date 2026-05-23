@@ -30,9 +30,13 @@ class GenerationResult:
     Carries the generated content along with metadata about the call:
     real token counts (from litellm or local endpoint), wall-clock
     duration, and the model name used.
+
+    When the LLM responds with tool calls instead of text, ``tool_calls``
+    contains the list of parsed tool call dicts.
     """
 
     content: str = ""
+    tool_calls: list[dict[str, Any]] | None = None
     tokens_in: int = 0
     tokens_out: int = 0
     duration_ms: int = 0
@@ -69,6 +73,7 @@ class LLMService:
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Generate text using the configured LLM.
 
@@ -81,9 +86,13 @@ class LLMService:
             system_prompt: Optional system prompt for the LLM.
             temperature: Override temperature (uses profile default if None).
             max_tokens: Override max tokens (uses profile default if None).
+            tools: Optional list of OpenAI-compatible tool definitions for
+                   function calling. When provided, the LLM may respond with
+                   ``tool_calls`` instead of text content.
 
         Returns:
-            GenerationResult with content, token counts, duration, and model name.
+            GenerationResult with content, token counts, duration, model name,
+            and optionally tool_calls if the LLM chose to call a tool.
 
         Raises:
             RuntimeError: If no LLM profile is configured.
@@ -105,13 +114,13 @@ class LLMService:
         # Route by protocol (Phase 8)
         protocol = getattr(self._profile, "protocol", "litellm")
         if protocol == "a2a":
-            return await self._generate_a2a(messages, temp, tokens)
+            return await self._generate_a2a(messages, temp, tokens, tools=tools)
         # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
         local_providers = {"local", "ollama", "opencode-zen", "opencode-go"}
         if self._profile.provider.value in local_providers:
-            return await self._generate_local(messages, temp, tokens)
+            return await self._generate_local(messages, temp, tokens, tools=tools)
         else:
-            return await self._generate_litellm(messages, temp, tokens)
+            return await self._generate_litellm(messages, temp, tokens, tools=tools)
 
     async def generate_with_fallback(
         self,
@@ -138,6 +147,7 @@ class LLMService:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Generate via A2A protocol using A2AAdapter."""
         from backend.a2a.adapter import A2AAdapter
@@ -155,6 +165,7 @@ class LLMService:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Call a local OpenAI-compatible endpoint directly via httpx.
 
@@ -183,6 +194,9 @@ class LLMService:
             "max_tokens": max_tokens,
         }
 
+        if tools:
+            payload["tools"] = tools
+
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
@@ -206,6 +220,29 @@ class LLMService:
         message = choice.get("message", {})
         content = message.get("content")
         finish_reason = choice.get("finish_reason", "")
+
+        # Extract tool_calls if present (OpenAI-compatible local endpoints)
+        tool_calls = None
+        raw_tool_calls = message.get("tool_calls")
+        if raw_tool_calls:
+            tool_calls = []
+            for tc in raw_tool_calls:
+                tool_calls.append(
+                    {
+                        "id": tc.get("id"),
+                        "type": tc.get("type"),
+                        "function": {
+                            "name": tc["function"]["name"],
+                            "arguments": tc["function"]["arguments"],
+                        },
+                    }
+                )
+            logger.info(
+                "Local LLM returned %d tool_calls for model=%s, finish_reason=%s",
+                len(tool_calls),
+                self._profile.model,
+                finish_reason,
+            )
 
         if content is None or (isinstance(content, str) and content.strip() == ""):
             reasoning = message.get("reasoning_content", "")
@@ -268,6 +305,7 @@ class LLMService:
 
         return GenerationResult(
             content=content,
+            tool_calls=tool_calls,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             duration_ms=duration_ms,
@@ -279,6 +317,7 @@ class LLMService:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
+        tools: list[dict[str, Any]] | None = None,
     ) -> GenerationResult:
         """Call a cloud LLM via litellm (OpenRouter, OpenAI, Anthropic, etc.)."""
         try:
@@ -307,6 +346,9 @@ class LLMService:
             "api_key": api_key,
         }
 
+        if tools:
+            kwargs["tools"] = tools
+
         if self._profile.api_base:
             kwargs["api_base"] = self._profile.api_base
 
@@ -323,6 +365,28 @@ class LLMService:
 
         message = response.choices[0].message
         content = message.content
+
+        # Extract tool_calls if present
+        tool_calls = None
+        raw_tool_calls = getattr(message, "tool_calls", None)
+        if raw_tool_calls:
+            tool_calls = []
+            for tc in raw_tool_calls:
+                tool_calls.append(
+                    {
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                )
+            logger.info(
+                "LLM returned %d tool_calls for model=%s",
+                len(tool_calls),
+                model_name,
+            )
 
         psf = getattr(message, "provider_specific_fields", None) or {}
         if content is None or (isinstance(content, str) and content.strip() == ""):
@@ -392,6 +456,7 @@ class LLMService:
 
         return GenerationResult(
             content=content,
+            tool_calls=tool_calls,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             duration_ms=duration_ms,

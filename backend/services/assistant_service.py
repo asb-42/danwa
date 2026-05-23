@@ -20,6 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from backend.blueprints.repository import BlueprintRepository
+from backend.persistence.debate_store import DebateStore
+from backend.services.assistant_tools import execute_tool, get_tool_definitions
 from backend.services.llm_service import LLMService
 from backend.services.profile_service import ProfileService
 
@@ -70,11 +73,15 @@ consensus-based output.
 - **Blueprints**: Visual workflow definitions
 - **Audit trail**: JSONL trace logs for reproducibility
 
-## Your boundaries
-- You cannot start debates or upload documents
-- You have no access to existing debates or projects
-- You cannot change LLM profiles or settings
-- You only know the state of your training — new features may be missing
+## Your capabilities
+You have access to tools that let you interact with the Danwa system directly:
+- **get_system_status** — System status summary
+- **list_debates** — List debates with status and topic
+- **get_debate_details** — Details about a specific debate
+- **get_llm_profiles** — Configured LLM profiles
+- **get_modules** — Installed modules by category
+- **search_knowledge_base** — Search documentation
+You currently have read-only access. You cannot start debates, change settings, or modify data.
 
 ## Response style
 - Respond precisely and structured
@@ -198,12 +205,14 @@ def _load_english_prompt() -> str:
 class ChatMessage:
     """Single message in a chat session."""
 
-    role: str  # "user" or "assistant"
+    role: str  # "user", "assistant", or "tool"
     content: str
     timestamp: float = field(default_factory=time.time)
     tokens_in: int = 0
     tokens_out: int = 0
     model: str = ""
+    tool_call_id: str = ""
+    tool_name: str = ""
 
 
 @dataclass
@@ -225,9 +234,20 @@ class ChatSession:
         return msg
 
     def get_history(self, max_messages: int = 20) -> list[dict[str, str]]:
-        """Get message history as LLM-compatible format."""
+        """Get message history as LLM-compatible format.
+
+        For ``role="tool"`` messages, adds the ``tool_call_id`` and ``name``
+        fields required by the OpenAI chat completions API.
+        """
         recent = self.messages[-max_messages:] if len(self.messages) > max_messages else self.messages
-        return [{"role": m.role, "content": m.content} for m in recent]
+        result = []
+        for m in recent:
+            entry: dict[str, str] = {"role": m.role, "content": m.content}
+            if m.role == "tool" and m.tool_call_id:
+                entry["tool_call_id"] = m.tool_call_id
+                entry["name"] = m.tool_name
+            result.append(entry)
+        return result
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize session to dict."""
@@ -349,7 +369,12 @@ class AssistantService:
         user_message: str,
         profile_id: str | None = None,
     ) -> ChatMessage | None:
-        """Send a user message and get assistant response."""
+        """Send a user message and get assistant response.
+
+        If tools are registered, the LLM may respond with tool calls.
+        Tool calls are executed automatically (up to 5 iterations) and
+        the final text response is returned to the caller.
+        """
         session = self._sessions.get(session_id)
         if not session:
             logger.error(f"Session not found: {session_id}")
@@ -368,36 +393,90 @@ class AssistantService:
             )
             return session.messages[-1]
 
-        # Build messages for LLM
-        _messages = [
-            {"role": "system", "content": self.system_prompt},
-            *session.get_history(max_messages=self._max_messages - 1),
-        ]
+        tool_defs = get_tool_definitions()
 
-        # Call LLM
-        try:
-            llm_service = LLMService(profile_id=selected_profile, profile_service=self._profile_service)
-            result = await llm_service.generate(
-                prompt=user_message,
-                system_prompt=self.system_prompt,
-                temperature=0.7,
-                max_tokens=2000,
-            )
+        # Tool execution loop
+        max_iterations = 5
+        current_message = user_message
+        for iteration in range(max_iterations):
+            # Build messages for LLM
+            _messages = [
+                {"role": "system", "content": self.system_prompt},
+                *session.get_history(max_messages=self._max_messages - 1),
+            ]
 
-            # Add assistant response
-            assistant_msg = session.add_message(
-                "assistant",
-                result.content,
-                tokens_in=result.tokens_in,
-                tokens_out=result.tokens_out,
-                model=result.model,
-            )
-            return assistant_msg
+            # Call LLM
+            try:
+                llm_service = LLMService(
+                    profile_id=selected_profile,
+                    profile_service=self._profile_service,
+                )
+                result = await llm_service.generate(
+                    prompt=current_message if iteration == 0 else "",
+                    system_prompt=self.system_prompt,
+                    temperature=0.7,
+                    max_tokens=2000,
+                    tools=tool_defs if tool_defs else None,
+                )
+            except Exception as e:
+                logger.error(f"LLM call failed: {e}", exc_info=True)
+                error_msg = session.add_message(
+                    "assistant",
+                    f"Entschuldigung, ein Fehler ist aufgetreten: {str(e)}",
+                )
+                return error_msg
 
-        except Exception as e:
-            logger.error(f"LLM call failed: {e}", exc_info=True)
-            error_msg = session.add_message(
-                "assistant",
-                f"Entschuldigung, ein Fehler ist aufgetreten: {str(e)}",
-            )
-            return error_msg
+            if result.tool_calls:
+                # Execute each tool call and add results to session history
+                for tc in result.tool_calls:
+                    fn_name = tc["function"]["name"]
+                    fn_args = tc["function"]["arguments"]
+
+                    # Build context with available services
+                    repo = BlueprintRepository()
+                    ctx: dict[str, Any] = {
+                        "assistant_service": self,
+                        "profile_service": self._profile_service,
+                        "blueprint_repository": repo,
+                    }
+
+                    ctx["debate_store"] = DebateStore()
+
+                    # Optionally provide module_service if available
+                    try:
+                        from backend.modules.service import ModuleService
+
+                        ctx["module_service"] = ModuleService()
+                    except Exception:
+                        pass
+
+                    ctx["knowledge_base_path"] = Path("config/prompts/kitsune/knowledge.txt")
+
+                    tool_result_str = await execute_tool(fn_name, fn_args, **ctx)
+
+                    # Add tool result message to session
+                    session.add_message(
+                        "tool",
+                        tool_result_str,
+                        tool_call_id=tc.get("id", ""),
+                        tool_name=fn_name,
+                    )
+
+                current_message = ""  # Continue loop without user prompt
+            else:
+                # Text response — done
+                assistant_msg = session.add_message(
+                    "assistant",
+                    result.content or "",
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    model=result.model,
+                )
+                return assistant_msg
+
+        # Max iterations reached without text response
+        fallback_msg = session.add_message(
+            "assistant",
+            "Entschuldigung, die Anfrage konnte nicht vollständig bearbeitet werden. Bitte versuche es erneut oder formuliere deine Frage anders.",
+        )
+        return fallback_msg

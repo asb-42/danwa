@@ -100,6 +100,8 @@ async def get_session(session_id: str):
                 "tokens_in": m.tokens_in,
                 "tokens_out": m.tokens_out,
                 "model": m.model,
+                "tool_call_id": m.tool_call_id,
+                "tool_name": m.tool_name,
             }
             for m in session.messages
         ],
@@ -139,7 +141,9 @@ async def send_message(
         profile_id: Optional LLM profile override.
 
     Returns:
-        Assistant's response message.
+        Contains ``messages`` (array of all new messages from this turn,
+        including tool calls and results) and ``message`` (the final
+        assistant text response for backward compatibility).
 
     Raises:
         HTTP 404: Session not found.
@@ -153,6 +157,9 @@ async def send_message(
     if not message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
+    # Track message count before the call to detect new messages
+    before_count = len(session.messages)
+
     try:
         assistant_msg = await service.send_message(
             session_id=session_id,
@@ -162,13 +169,34 @@ async def send_message(
         if not assistant_msg:
             raise HTTPException(status_code=500, detail="Failed to generate response")
 
+        # Return all new messages from this turn
+        new_messages = [
+            {
+                "role": m.role,
+                "content": m.content,
+                "timestamp": m.timestamp,
+                "tokens_in": m.tokens_in,
+                "tokens_out": m.tokens_out,
+                "model": m.model,
+                "tool_call_id": m.tool_call_id,
+                "tool_name": m.tool_name,
+            }
+            for m in session.messages[before_count:]
+        ]
+
         return {
-            "role": assistant_msg.role,
-            "content": assistant_msg.content,
-            "timestamp": assistant_msg.timestamp,
-            "tokens_in": assistant_msg.tokens_in,
-            "tokens_out": assistant_msg.tokens_out,
-            "model": assistant_msg.model,
+            "messages": new_messages,
+            "message": {
+                "role": assistant_msg.role,
+                "content": assistant_msg.content,
+                "timestamp": assistant_msg.timestamp,
+                "tokens_in": assistant_msg.tokens_in,
+                "tokens_out": assistant_msg.tokens_out,
+                "model": assistant_msg.model,
+                "tool_call_id": assistant_msg.tool_call_id,
+                "tool_name": assistant_msg.tool_name,
+            },
+            "message_count": len(new_messages),
         }
     except HTTPException:
         raise
@@ -192,7 +220,7 @@ async def quick_chat(
         profile_id: Optional LLM profile override.
 
     Returns:
-        Session ID and assistant's response.
+        Session ID and all new messages from this turn.
     """
     if not message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
@@ -202,6 +230,8 @@ async def quick_chat(
     # Create a new session for this quick chat
     session = service.create_session(title="Quick Chat", profile_id=profile_id)
 
+    before_count = len(session.messages)
+
     assistant_msg = await service.send_message(
         session_id=session.id,
         user_message=message,
@@ -210,8 +240,23 @@ async def quick_chat(
     if not assistant_msg:
         raise HTTPException(status_code=500, detail="Failed to generate response")
 
+    new_messages = [
+        {
+            "role": m.role,
+            "content": m.content,
+            "timestamp": m.timestamp,
+            "tokens_in": m.tokens_in,
+            "tokens_out": m.tokens_out,
+            "model": m.model,
+            "tool_call_id": m.tool_call_id,
+            "tool_name": m.tool_name,
+        }
+        for m in session.messages[before_count:]
+    ]
+
     return {
         "session_id": session.id,
+        "messages": new_messages,
         "message": {
             "role": assistant_msg.role,
             "content": assistant_msg.content,
@@ -219,5 +264,8 @@ async def quick_chat(
             "tokens_in": assistant_msg.tokens_in,
             "tokens_out": assistant_msg.tokens_out,
             "model": assistant_msg.model,
+            "tool_call_id": assistant_msg.tool_call_id,
+            "tool_name": assistant_msg.tool_name,
         },
+        "message_count": len(new_messages),
     }
