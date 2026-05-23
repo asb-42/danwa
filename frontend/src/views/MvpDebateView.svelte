@@ -62,15 +62,15 @@
   let nodeOutputs = $state([]);
   let nodeStatuses = $state({});
   let error = $state('');
-  let cleanupSSE = $state(null);
+  let cleanupSSE = null;
   let llmAssignmentsResult = $state({});
   let totalTokens = $state(0);
   let expandedOutputs = $state(new Set());
   let activityText = $state('');
 
-  let startTime = $state(null);
-  let timerInterval = $state(null);
-  let hitlPollTimer = $state(null);
+  let startTime = null;           // not reactive — internal timer bookkeeping
+  let timerInterval = null;       // not reactive — internal timer bookkeeping
+  let hitlPollTimer = null;       // not reactive — polling interval ID, would create $effect loop
 
   $effect(() => {
     getLLMProfiles()
@@ -497,6 +497,102 @@
         <span class="ml-3 text-gray-500 dark:text-gray-400 text-sm">Loading debate...</span>
       </div>
     </div>
+  {:else if showConfirm}
+    <!-- Confirmation / Parameter Summary Page -->
+    <div class="confirm-section">
+      <h3 class="confirm-title">📋 Debate Parameter Review</h3>
+      <p class="confirm-subtitle">Please review all parameters before starting the debate.</p>
+
+      <div class="confirm-grid">
+        <!-- Topic -->
+        <div class="confirm-card">
+          <span class="confirm-label">📝 Topic</span>
+          <p class="confirm-value confirm-topic">{topic}</p>
+        </div>
+
+        <!-- Round & Threshold -->
+        <div class="confirm-row">
+          <div class="confirm-card">
+            <span class="confirm-label">🔄 Max Rounds</span>
+            <span class="confirm-value confirm-number">{maxRounds}</span>
+          </div>
+          <div class="confirm-card">
+            <span class="confirm-label">🎯 Consensus Threshold</span>
+            <span class="confirm-value confirm-number">{(threshold * 100).toFixed(0)}%</span>
+          </div>
+        </div>
+
+        <!-- Agent → LLM Mapping -->
+        <div class="confirm-card">
+          <span class="confirm-label">🤖 Agent → LLM Mapping</span>
+          {#each AGENTS as agent}
+            {@const profile = llmProfiles.find(p => p.id === llmAssignments[agent.role])}
+            <div class="confirm-row-item">
+              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
+              {#if profile?.model}
+                <span class="confirm-llm-name">{profile.name} ({profile.model})</span>
+              {:else}
+                <span class="confirm-llm-name dimmed">Will be auto-assigned</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+
+        <!-- Web Search -->
+        <div class="confirm-card">
+          <span class="confirm-label">🔍 Web Search</span>
+          <span class="confirm-value">
+            {#if searchMode === 'required'}Required (auto-search before each agent)
+            {:else if searchMode === 'optional'}Optional (agents may request)
+            {:else}Off{/if}
+          </span>
+        </div>
+
+        <!-- RAG / DMS Documents -->
+        {#if selectedDocumentIds.length > 0}
+          <div class="confirm-card">
+            <span class="confirm-label">📚 RAG Context ({selectedDocumentIds.length} document{selectedDocumentIds.length > 1 ? 's' : ''})</span>
+            <div class="confirm-value">
+              {#each selectedDocumentIds as docId}
+                {@const doc = availableDocuments.find(d => d.id === docId)}
+                <span class="confirm-doc">{doc?.filename || docId}</span>
+              {/each}
+              {#if ragAutoRetrieve}<span class="confirm-badge">Auto-retrieve</span>{/if}
+              {#if includeDebateResults}<span class="confirm-badge">Include debate results</span>{/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Language & Project -->
+        <div class="confirm-row">
+          <div class="confirm-card">
+            <span class="confirm-label">🌐 Debate Language</span>
+            <span class="confirm-value">{($userLanguage || 'de').toUpperCase()}</span>
+          </div>
+          <div class="confirm-card">
+            <span class="confirm-label">📁 Active Project</span>
+            <span class="confirm-value">{$activeProject?.name || '—'}</span>
+          </div>
+        </div>
+      </div>
+
+      {#if error}
+        <div class="error-box" role="alert">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{error}</span>
+        </div>
+      {/if}
+
+      <div class="actions-row" style="gap: 12px;">
+        <button class="btn btn-cancel" onclick={() => { showConfirm = false; }}>
+          ← Back to Edit
+        </button>
+        <button class="btn btn-start" onclick={() => { showConfirm = false; handleStart(); }}>
+          ▶ Start Debate
+        </button>
+      </div>
+    </div>
+
   {:else if status === 'idle'}
     <div class="config-section">
       <div class="form-group">
@@ -504,9 +600,9 @@
         <textarea
           id="mvp-topic"
           class="form-textarea"
+          placeholder="Enter your debate topic..."
           bind:value={topic}
-          placeholder="Enter the topic or case to debate..."
-          rows="3"
+          disabled={isLoadingProfiles}
         ></textarea>
       </div>
 
@@ -639,105 +735,6 @@
       </div>
     </div>
 
-    {:else if showConfirm}
-    <!-- Confirmation / Parameter Summary Page -->
-    <div class="confirm-section">
-      <h3 class="confirm-title">📋 Debate Parameter Review</h3>
-      <p class="confirm-subtitle">Please review all parameters before starting the debate.</p>
-
-      <div class="confirm-grid">
-        <!-- Topic -->
-        <div class="confirm-card">
-          <span class="confirm-label">📝 Topic</span>
-          <p class="confirm-value confirm-topic">{topic}</p>
-        </div>
-
-        <!-- Round & Threshold -->
-        <div class="confirm-row">
-          <div class="confirm-card">
-            <span class="confirm-label">🔄 Max Rounds</span>
-            <span class="confirm-value confirm-number">{maxRounds}</span>
-          </div>
-          <div class="confirm-card">
-            <span class="confirm-label">🎯 Consensus Threshold</span>
-            <span class="confirm-value confirm-number">{(threshold * 100).toFixed(0)}%</span>
-          </div>
-        </div>
-
-        <!-- Agent → LLM Mapping -->
-        <div class="confirm-card">
-          <span class="confirm-label">🤖 Agent → LLM Mapping</span>
-          <div class="confirm-agent-list">
-            {#each AGENTS as agent}
-              {@const profileId = llmAssignments[agent.role] || ''}
-              {@const profile = llmProfiles.find(p => p.id === profileId)}
-              <div class="confirm-agent-row">
-                <span class="confirm-agent-icon">{agent.icon}</span>
-                <span class="confirm-agent-name">{agent.label}</span>
-                <span class="confirm-arrow">→</span>
-                <span class="confirm-llm-name">{profile?.name || profileId || '—'}</span>
-                {#if profile?.model}
-                  <span class="confirm-llm-model">({profile.model})</span>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Web Search -->
-        <div class="confirm-card">
-          <span class="confirm-label">🔍 Web Search</span>
-          <span class="confirm-value">
-            {#if searchMode === 'required'}Required (auto-search before each agent)
-            {:else if searchMode === 'optional'}Optional (agents may request)
-            {:else}Off{/if}
-          </span>
-        </div>
-
-        <!-- RAG / DMS Documents -->
-        {#if selectedDocumentIds.length > 0}
-          <div class="confirm-card">
-            <span class="confirm-label">📚 RAG Context ({selectedDocumentIds.length} document{selectedDocumentIds.length > 1 ? 's' : ''})</span>
-            <div class="confirm-value">
-              {#each selectedDocumentIds as docId}
-                {@const doc = availableDocuments.find(d => d.id === docId)}
-                <span class="confirm-doc">{doc?.filename || docId}</span>
-              {/each}
-              {#if ragAutoRetrieve}<span class="confirm-badge">Auto-retrieve</span>{/if}
-              {#if includeDebateResults}<span class="confirm-badge">Include debate results</span>{/if}
-            </div>
-          </div>
-        {/if}
-
-        <!-- Language & Project -->
-        <div class="confirm-row">
-          <div class="confirm-card">
-            <span class="confirm-label">🌐 Debate Language</span>
-            <span class="confirm-value">{($userLanguage || 'de').toUpperCase()}</span>
-          </div>
-          <div class="confirm-card">
-            <span class="confirm-label">📁 Active Project</span>
-            <span class="confirm-value">{$activeProject?.name || '—'}</span>
-          </div>
-        </div>
-      </div>
-
-      {#if error}
-        <div class="error-box" role="alert">
-          <span class="error-icon">⚠️</span>
-          <span class="error-text">{error}</span>
-        </div>
-      {/if}
-
-      <div class="actions-row" style="gap: 12px;">
-        <button class="btn btn-cancel" onclick={() => { showConfirm = false; }}>
-          ← Back to Edit
-        </button>
-        <button class="btn btn-start" onclick={() => { showConfirm = false; handleStart(); }}>
-          ▶ Start Debate
-        </button>
-      </div>
-    </div>
     {:else}
     <AgentQueryModal debateId={debateId || ''} />
     <div class="execution-section">
