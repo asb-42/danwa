@@ -196,10 +196,13 @@
   }
 
   // Resize handlers
+  let startTop = $state(null);
+
   function startResize(event) {
     isResizing = true;
     startY = event.clientY || event.touches?.[0]?.clientY;
     startHeight = chatHeight;
+    startTop = chatPos.top;
     document.addEventListener('mousemove', onResize);
     document.addEventListener('mouseup', stopResize);
     document.addEventListener('touchmove', onResize);
@@ -212,6 +215,9 @@
     const clientY = event.clientY || event.touches?.[0]?.clientY;
     const delta = startY - clientY;
     chatHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight + delta));
+    if (startTop !== null) {
+      chatPos = { ...chatPos, top: startTop - delta };
+    }
   }
 
   function stopResize() {
@@ -295,6 +301,9 @@
     const clientX = event.clientX || event.touches?.[0]?.clientX;
     const delta = resizeWidthStart.x - clientX;
     chatWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeWidthStart.w + delta));
+    if (chatPos.left !== null) {
+      chatPos = { ...chatPos, left: chatPos.left - delta };
+    }
   }
 
   function stopResizeWidth() {
@@ -303,6 +312,80 @@
     document.removeEventListener('mouseup', stopResizeWidth);
     document.removeEventListener('touchmove', onResizeWidth);
     document.removeEventListener('touchend', stopResizeWidth);
+  }
+
+  // Right resize (width from right edge)
+  let isResizingRight = $state(false);
+  let resizeRightStart = $state({ x: 0, w: 0 });
+
+  function startResizeRight(event) {
+    isResizingRight = true;
+    resizeRightStart.x = event.clientX || event.touches?.[0]?.clientX;
+    resizeRightStart.w = chatWidth;
+    if (chatPos.top === null) {
+      const chatEl = event.currentTarget.closest('.assistant-chat');
+      if (chatEl) {
+        const rect = chatEl.getBoundingClientRect();
+        chatPos = { top: rect.top, left: rect.left };
+      }
+    }
+    document.addEventListener('mousemove', onResizeRight);
+    document.addEventListener('mouseup', stopResizeRight);
+    document.addEventListener('touchmove', onResizeRight);
+    document.addEventListener('touchend', stopResizeRight);
+    event.preventDefault();
+  }
+
+  function onResizeRight(event) {
+    if (!isResizingRight) return;
+    const clientX = event.clientX || event.touches?.[0]?.clientX;
+    const delta = clientX - resizeRightStart.x;
+    chatWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeRightStart.w + delta));
+  }
+
+  function stopResizeRight() {
+    isResizingRight = false;
+    document.removeEventListener('mousemove', onResizeRight);
+    document.removeEventListener('mouseup', stopResizeRight);
+    document.removeEventListener('touchmove', onResizeRight);
+    document.removeEventListener('touchend', stopResizeRight);
+  }
+
+  // Bottom resize (height from bottom edge)
+  let isResizingBottom = $state(false);
+  let resizeBottomStart = $state({ y: 0, h: 0 });
+
+  function startResizeBottom(event) {
+    isResizingBottom = true;
+    resizeBottomStart.y = event.clientY || event.touches?.[0]?.clientY;
+    resizeBottomStart.h = chatHeight;
+    if (chatPos.top === null) {
+      const chatEl = event.currentTarget.closest('.assistant-chat');
+      if (chatEl) {
+        const rect = chatEl.getBoundingClientRect();
+        chatPos = { top: rect.top, left: rect.left };
+      }
+    }
+    document.addEventListener('mousemove', onResizeBottom);
+    document.addEventListener('mouseup', stopResizeBottom);
+    document.addEventListener('touchmove', onResizeBottom);
+    document.addEventListener('touchend', stopResizeBottom);
+    event.preventDefault();
+  }
+
+  function onResizeBottom(event) {
+    if (!isResizingBottom) return;
+    const clientY = event.clientY || event.touches?.[0]?.clientY;
+    const delta = clientY - resizeBottomStart.y;
+    chatHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, resizeBottomStart.h + delta));
+  }
+
+  function stopResizeBottom() {
+    isResizingBottom = false;
+    document.removeEventListener('mousemove', onResizeBottom);
+    document.removeEventListener('mouseup', stopResizeBottom);
+    document.removeEventListener('touchmove', onResizeBottom);
+    document.removeEventListener('touchend', stopResizeBottom);
   }
 
   function toggleMinimize() {
@@ -316,6 +399,9 @@
 
 {#if isOpen}
   <div class="assistant-chat" class:minimized={isMinimized} class:dragging={isDragging} style={getChatStyle()}>
+    {#if !isMinimized}
+      <div class="resize-handle resize-handle--height" onmousedown={startResize} ontouchstart={startResize}></div>
+    {/if}
     <!-- Header -->
     <div class="chat-header" onmousedown={startDrag} ontouchstart={startDrag}>
       <div class="header-left">
@@ -331,9 +417,9 @@
     </div>
 
     {#if !isMinimized}
-      <!-- Resize handles -->
-      <div class="resize-handle resize-handle--height" onmousedown={startResize} ontouchstart={startResize}></div>
-      <div class="resize-handle resize-handle--width" onmousedown={startResizeWidth} ontouchstart={startResizeWidth}></div>
+      <div class="resize-handle resize-handle--left" onmousedown={startResizeWidth} ontouchstart={startResizeWidth}></div>
+      <div class="resize-handle resize-handle--right" onmousedown={startResizeRight} ontouchstart={startResizeRight}></div>
+      <div class="resize-handle resize-handle--bottom" onmousedown={startResizeBottom} ontouchstart={startResizeBottom}></div>
 
       <div class="chat-body">
         <!-- Session sidebar -->
@@ -520,30 +606,62 @@
   }
 
   .resize-handle--height {
-    height: 4px;
-    background: #e5e7eb;
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: transparent;
     cursor: ns-resize;
     transition: background 0.2s;
+    z-index: 10;
   }
 
   .resize-handle--height:hover {
-    background: #667eea;
+    background: rgba(102, 126, 234, 0.2);
   }
 
-  .resize-handle--width {
+  .resize-handle--left,
+  .resize-handle--right {
     position: absolute;
-    left: 0;
     top: 0;
     bottom: 0;
     width: 4px;
     background: transparent;
     cursor: ew-resize;
     transition: background 0.2s;
+    z-index: 10;
   }
 
-  .resize-handle--width:hover,
-  .resize-handle--width:active {
+  .resize-handle--left {
+    left: 0;
+  }
+
+  .resize-handle--right {
+    right: 0;
+  }
+
+  .resize-handle--left:hover,
+  .resize-handle--left:active,
+  .resize-handle--right:hover,
+  .resize-handle--right:active {
     background: #667eea;
+  }
+
+  .resize-handle--bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: transparent;
+    cursor: ns-resize;
+    transition: background 0.2s;
+    z-index: 10;
+  }
+
+  .resize-handle--bottom:hover {
+    background: rgba(102, 126, 234, 0.2);
   }
 
   .chat-body {
@@ -917,8 +1035,13 @@
     background: linear-gradient(135deg, #4f46e5 0%, #6b21a8 100%);
   }
 
-  :global(.dark) .resize-handle--height {
-    background: #4b5563;
+  :global(.dark) .resize-handle--left:hover,
+  :global(.dark) .resize-handle--left:active,
+  :global(.dark) .resize-handle--right:hover,
+  :global(.dark) .resize-handle--right:active,
+  :global(.dark) .resize-handle--height:hover,
+  :global(.dark) .resize-handle--bottom:hover {
+    background: rgba(96, 165, 250, 0.3);
   }
 
   :global(.dark) .session-sidebar {
@@ -1031,7 +1154,9 @@
       width: 140px;
     }
 
-    .resize-handle--width {
+    .resize-handle--left,
+    .resize-handle--right,
+    .resize-handle--bottom {
       display: none;
     }
 
