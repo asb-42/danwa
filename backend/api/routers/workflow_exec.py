@@ -305,6 +305,23 @@ async def start_mvp_debate(
 
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
+
+    title = body.context[:80]
+    try:
+        from backend.services.debate_workflow import generate_debate_title
+
+        generated = await generate_debate_title(
+            case_text=body.context,
+            llm_profile_id="",
+            language=body.language,
+            project_id=effective_project_id,
+            use_service_llm=True,
+        )
+        if generated:
+            title = generated
+    except Exception:
+        logger.warning("MVP title generation failed, using fallback", exc_info=True)
+
     try:
         debate_store = get_debate_store_for_project(effective_project_id, project_store)
         debate_store.put(
@@ -313,7 +330,7 @@ async def start_mvp_debate(
                 "debate_id": debate_id,
                 "session_id": session_id,
                 "status": DebateStatus.RUNNING,
-                "title": body.context[:80],
+                "title": title,
                 "request": {"case": {"text": body.context}, "max_rounds": body.max_rounds},
                 "max_rounds": body.max_rounds,
                 "current_round": 0,
