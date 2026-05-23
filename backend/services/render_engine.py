@@ -288,6 +288,7 @@ def _build_turns_from_node_outputs(
             # Serialized as string in snapshot — try to eval
             try:
                 import ast
+
                 cfg = ast.literal_eval(cfg)
             except (ValueError, SyntaxError):
                 cfg = {}

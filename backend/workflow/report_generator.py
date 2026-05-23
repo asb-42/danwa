@@ -94,10 +94,7 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
         config = config_by_node.get(node_id, {})
 
         llm_model = config.get("llm_model", "")
-        llm_profile_id = (
-            config.get("llm_profile_id", "")
-            or llm_assignments.get(role, "")
-        )
+        llm_profile_id = config.get("llm_profile_id", "") or llm_assignments.get(role, "")
         role_type_name = config.get("role_type_name", "")
 
         # Build a human-readable agent name: "Strategist (deepseek-v4-flash)"
@@ -105,22 +102,26 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
         if llm_model:
             agent_name = f"{agent_name} ({llm_model})"
 
-        agent_outputs.append({
-            "role": agent_name,
-            "content": no.get("content", ""),
-            "tokens_used": no.get("tokens_used", 0),
-            "duration_ms": no.get("duration_ms", 0),
-            "llm_profile_id": llm_profile_id,
-            "round": no.get("round"),
-        })
+        agent_outputs.append(
+            {
+                "role": agent_name,
+                "content": no.get("content", ""),
+                "tokens_used": no.get("tokens_used", 0),
+                "duration_ms": no.get("duration_ms", 0),
+                "llm_profile_id": llm_profile_id,
+                "round": no.get("round"),
+            }
+        )
 
     current_round = state.get("current_round", debate_data.get("current_round", 1))
 
-    return [{
-        "round": current_round,
-        "consensus": state.get("final_consensus", debate_data.get("result", {}).get("consensus", 0.0)),
-        "agent_outputs": agent_outputs,
-    }]
+    return [
+        {
+            "round": current_round,
+            "consensus": state.get("final_consensus", debate_data.get("result", {}).get("consensus", 0.0)),
+            "agent_outputs": agent_outputs,
+        }
+    ]
 
 
 class WorkflowReportGenerator:
@@ -429,12 +430,7 @@ class WorkflowReportGenerator:
                 doc.text.addElement(H(text="Audit-Trail", outlinelevel=2))
                 for entry in audit_entries:
                     llm_pid = entry.get("llm_profile_id", "")
-                    line = (
-                        f"{entry.get('timestamp', '')} | "
-                        f"{entry.get('event_type', '')} | "
-                        f"{entry.get('node_id', '')} | "
-                        f"{entry.get('actor', '')}"
-                    )
+                    line = f"{entry.get('timestamp', '')} | {entry.get('event_type', '')} | {entry.get('node_id', '')} | {entry.get('actor', '')}"
                     if llm_pid:
                         line += f" | LLM: {llm_pid}"
                     doc.text.addElement(P(text=line))
@@ -498,9 +494,7 @@ class WorkflowReportGenerator:
                     display_role = esc(_display_agent_role(role))
                     if llm_pid:
                         display_role += f' <span style="font-weight:normal;color:#666;">— {esc(llm_pid)}</span>'
-                    rounds_html += (
-                        f'<div class="agent-block"><div class="agent-role">{display_role}</div><div class="agent-content">{content}</div>'
-                    )
+                    rounds_html += f'<div class="agent-block"><div class="agent-role">{display_role}</div><div class="agent-content">{content}</div>'
                     meta_parts = []
                     if tokens:
                         meta_parts.append(f"Tokens: {tokens}")

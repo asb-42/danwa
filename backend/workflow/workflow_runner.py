@@ -340,6 +340,7 @@ def _build_artifact_from_state(
         if isinstance(cfg, str):
             try:
                 import ast
+
                 cfg = ast.literal_eval(cfg)
             except (ValueError, SyntaxError):
                 cfg = {}
