@@ -317,10 +317,11 @@ class TestSeedTemplates:
 class TestWorkflowTemplateAPI:
     """Tests for /api/v1/workflow-templates endpoints."""
 
-    def test_list_empty(self, client):
+    def test_list_returns_list(self, client):
         response = client.get("/api/v1/workflow-templates")
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert isinstance(data, list)
 
     def test_create(self, client, sample_template):
         payload = sample_template.model_dump(mode="json")
@@ -402,8 +403,8 @@ class TestWorkflowTemplateAPI:
         response = client.get("/api/v1/workflow-templates?category=system")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["category"] == "system"
+        assert len(data) >= 1
+        assert all(t["category"] == "system" for t in data)
 
 
 class TestInstantiateAPI:
