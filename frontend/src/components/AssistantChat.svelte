@@ -8,7 +8,16 @@
     sendAssistantMessage,
   } from '../lib/api.js';
   import { marked } from 'marked';
+  import { i18n } from '../lib/i18n/index.js';
   import { locale } from '../lib/i18n/index.js';
+
+  let t = $derived((key, params = {}) => {
+    let text = $i18n[key] || key;
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    });
+    return text;
+  });
 
   const dispatch = createEventDispatcher();
 
@@ -314,10 +323,10 @@
         <span class="chat-title">Danwa Kitsune</span>
       </div>
       <div class="header-actions">
-        <button class="btn-icon" onclick={toggleMinimize} title={isMinimized ? 'Öffnen' : 'Minimieren'}>
+        <button class="btn-icon" onclick={toggleMinimize} title={isMinimized ? t('kitsune.open') : t('kitsune.minimize')}>
           {isMinimized ? '▲' : '▼'}
         </button>
-        <button class="btn-icon" onclick={close} title="Schließen">✕</button>
+        <button class="btn-icon" onclick={close} title={t('common.close')}>✕</button>
       </div>
     </div>
 
@@ -330,8 +339,8 @@
         <!-- Session sidebar -->
         <div class="session-sidebar">
           <div class="session-header">
-            <span>Konversationen</span>
-            <button class="btn-new" onclick={createNewSession} title="Neue Konversation">+</button>
+            <span>{t('kitsune.sessions')}</span>
+            <button class="btn-new" onclick={createNewSession} title={t('kitsune.newSession')}>+</button>
           </div>
           <div class="session-list">
             {#each sessions as session (session.id)}
@@ -340,7 +349,7 @@
                 class:active={currentSession?.id === session.id}
                 onclick={() => selectSession(session)}
               >
-                <span class="session-title">{session.title || 'Neue Konversation'}</span>
+                <span class="session-title">{session.title || t('kitsune.newSession')}</span>
                 <button class="btn-delete" onclick={(e) => deleteSession(session, e)}>×</button>
               </div>
             {/each}
@@ -412,7 +421,7 @@
             <textarea
               bind:value={newMessage}
               onkeydown={handleKeydown}
-              placeholder="Frage den Danwa Assistenten..."
+              placeholder={t('kitsune.placeholder')}
               rows="1"
               disabled={isLoading}
             ></textarea>

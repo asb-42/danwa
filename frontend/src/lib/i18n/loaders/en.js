@@ -913,4 +913,10 @@ export default {
   'config.translationComplete': 'Translation complete',
   'config.promptTranslated': 'Prompt translated',
 
+  'kitsune.sessions': 'Conversations',
+  'kitsune.newSession': 'New Conversation',
+  'kitsune.placeholder': 'Ask the Danwa assistant...',
+  'kitsune.open': 'Open',
+  'kitsune.minimize': 'Minimize',
+
 };

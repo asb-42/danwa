@@ -912,4 +912,10 @@ export default {
   'config.translationComplete': 'Übersetzung abgeschlossen',
   'config.promptTranslated': 'Prompt übersetzt',
 
+  'kitsune.sessions': 'Konversationen',
+  'kitsune.newSession': 'Neue Konversation',
+  'kitsune.placeholder': 'Frage den Danwa Assistenten...',
+  'kitsune.open': 'Öffnen',
+  'kitsune.minimize': 'Minimieren',
+
 };
