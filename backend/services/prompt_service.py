@@ -265,9 +265,16 @@ class PromptService:
                     self._cache[cache_key] = result
                 return result
         except Exception:
-            logger.exception("Translation failed, falling back to source content")
+            logger.exception(
+                "Translation failed for %s/%s → %s, falling back to English content",
+                variant, role, target_language,
+            )
 
-        # Fallback: return source content with translated=False
+        # Fallback: return English source content when translation unavailable
+        logger.warning(
+            "Using English fallback for %s/%s (requested language: %s)",
+            variant, role, target_language,
+        )
         result = TranslationEntry(
             module_id="prompts-base",
             file_path=f"{variant}/{role}",
@@ -397,6 +404,9 @@ class PromptService:
                 if wf_prompt:
                     parts.append(wf_prompt)
             except FileNotFoundError as e:
-                logger.debug("Prompt template file not found for %s: %s", workflow_variant, e)
+                logger.warning(
+                    "Prompt template not found for %s/%s (language=%s, translate=%s): %s",
+                    workflow_variant, role_type_id, language, translate, e,
+                )
 
         return "\n\n".join(parts)

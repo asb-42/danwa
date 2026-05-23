@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import sqlite3
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -390,19 +391,35 @@ Respond with ONLY a valid JSON object:
                     continue
 
                 try:
-                    # Step 1: Forward translation (EN → target)
+                    # Step 1: Forward translation (EN → target) with retry
                     forward_prompt = self.FORWARD_TRANSLATION_PROMPT.format(
                         source_lang="en",
                         target_lang=target_language,
                         source_text=source_content,
                     )
-                    forward_result = llm.generate_sync(
-                        prompt=forward_prompt,
-                        system_prompt=f"You are a professional translator translating from English to {target_language}. "
-                        f"Preserve technical terms and placeholder variables.",
-                        temperature=0.3,
-                        max_tokens=max(512, len(source_content) // 2),
-                    )
+                    forward_result = None
+                    for attempt in range(2):
+                        try:
+                            forward_result = llm.generate_sync(
+                                prompt=forward_prompt,
+                                system_prompt=f"You are a professional translator translating from English to {target_language}. "
+                                f"Preserve technical terms and placeholder variables.",
+                                temperature=0.3,
+                                max_tokens=max(512, len(source_content) // 2),
+                            )
+                            if forward_result and forward_result.content.strip():
+                                break
+                        except Exception as e:
+                            if attempt == 0:
+                                logger.warning(
+                                    "Forward translation attempt 1 failed for %s/%s → %s, retrying: %s",
+                                    module_id, fpath, target_language, e,
+                                )
+                                time.sleep(1)
+                                continue
+                            raise
+                    if forward_result is None:
+                        raise RuntimeError(f"Forward translation failed after retry for {fpath}")
                     translated_content = forward_result.content.strip()
                     quality_scores[fpath] = 0.0  # temporary, will be updated
                     back_trans_scores[fpath] = 0.0
@@ -510,6 +527,14 @@ Respond with ONLY a valid JSON object:
 
             conn.commit()
             conn.close()
+
+            # Log per-module summary when failures occurred
+            if errored > 0:
+                logger.warning(
+                    "Translation summary for %s → %s: %d translated, %d skipped, %d errored (status=%s)",
+                    module_id, target_language, translated, skipped, errored,
+                    "error" if errored > 0 and translated == 0 else "partial",
+                )
 
             # Determine overall status
             if errored > 0 and translated == 0:
@@ -814,5 +839,19 @@ Respond with ONLY a valid JSON object:
 
         if result.status in ("ok", "partial") and result.files_translated > 0:
             return self.get_translation(module_id, file_path, target_language)
+
+        # Log failure details so operators can diagnose
+        if result.status == "error":
+            logger.warning(
+                "Translation failed for %s/%s → %s: %s",
+                module_id, file_path, target_language,
+                "; ".join(result.errors) if result.errors else "unknown error",
+            )
+        elif result.files_errored > 0:
+            logger.warning(
+                "Translation partial for %s/%s → %s: %d file(s) errored, %d skipped",
+                module_id, file_path, target_language,
+                result.files_errored, result.files_skipped,
+            )
 
         return None

@@ -1,8 +1,9 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "agent-critic-default-en",
+  "module_id": "agent-optimizer-default",
   "name": {
-    "en": "Default Critic (EN)"
+    "en": "Default Optimizer",
+    "de": "Standard-Optimierer"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -13,14 +14,15 @@
   "license": "CC-BY-4.0",
   "tags": [
     "default",
-    "rigorous",
-    "english"
+    "refinement",
+    "german"
   ],
-  "language": "en",
+  "language": "de",
   "profile_file": "profile.yaml",
   "profile_format": "yaml",
   "files": [],
   "description": {
-    "en": "Rigorous critic for fundamental weakness analysis (English)"
+    "en": "Synthesis specialist for argument refinement",
+    "de": "Synthesespezialist für Argumentationsverfeinerung"
   }
 }

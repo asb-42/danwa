@@ -1,9 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "agent-critic-default",
+  "module_id": "agent-critic-default-en",
   "name": {
-    "en": "Default Critic",
-    "de": "Standard-Kritiker"
+    "en": "Default Critic (EN)"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -15,14 +14,13 @@
   "tags": [
     "default",
     "rigorous",
-    "german"
+    "english"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.yaml",
   "profile_format": "yaml",
   "files": [],
   "description": {
-    "en": "Rigorous critic for fundamental weakness analysis",
-    "de": "Rigoroser Kritiker für fundamentale Schwächenanalyse"
+    "en": "Rigorous critic for fundamental weakness analysis (English)"
   }
 }

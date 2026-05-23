@@ -45,7 +45,9 @@ def _get_profile_service() -> ProfileService:
 def _get_prompt_service() -> PromptService:
     global _prompt_service
     if _prompt_service is None:
-        _prompt_service = PromptService()
+        _prompt_service = PromptService(
+            profile_service=_get_profile_service(),
+        )
     return _prompt_service
 
 
@@ -1038,38 +1040,41 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     language = state.get("language", "de")
 
     # --- Layer 1+2: Use PromptService assemble_prompt ---
-    if argumentation_pattern or prompt_template_id:
-        try:
-            prompt_service = _get_prompt_service()
-            # Determine workflow variant from prompt_template_id if set
-            workflow_variant = "default"
-            assembled = prompt_service.assemble_prompt(
-                role_type_id=role,
-                argumentation_pattern=argumentation_pattern,
-                workflow_variant=workflow_variant,
-                language=language,
-            )
-            if assembled.strip():
-                prompt = assembled
-                # Enhance with Mode info if available
-                if mode:
-                    mode_hints = {
-                        "interviewer": "Stelle gezielte Nachfolgefragen und vertiefe die Antworten.",
-                        "advocate": "Verteide die Position ueberzeugend und einseitig.",
-                        "adversary": "Nimm aktiv die Gegenposition ein und widerlege die Argumente.",
-                        "mediator": "Vermittle zwischen den Positionen und suche Gemeinsamkeiten.",
-                        "referee": "Bewerte die Fairness und Relevanz der Argumente.",
-                        "facilitator": "Foerder den strukturierten Dialog und halte den Prozess auf Kurs.",
-                    }
-                    hint = mode_hints.get(mode)
-                    if hint:
-                        if language == "en":
-                            prompt = f"{prompt}\n\n[{mode.title()} mode: {hint}]"
-                        else:
-                            prompt = f"{prompt}\n\n[{mode.title()}-Modus: {hint}]"
-                return prompt
-        except Exception as exc:
-            logger.warning("Failed to assemble prompt for role '%s' (pattern=%s): %s", role, argumentation_pattern, exc)
+    try:
+        prompt_service = _get_prompt_service()
+        # Determine workflow variant from prompt_template_id if set
+        workflow_variant = prompt_template_id or "default"
+        assembled = prompt_service.assemble_prompt(
+            role_type_id=role,
+            argumentation_pattern=argumentation_pattern,
+            workflow_variant=workflow_variant,
+            language=language,
+            translate=(language != "en"),
+        )
+        if assembled.strip():
+            prompt = assembled
+            # Enhance with Mode info if available
+            if mode:
+                mode_hints = {
+                    "interviewer": "Stelle gezielte Nachfolgefragen und vertiefe die Antworten.",
+                    "advocate": "Verteide die Position ueberzeugend und einseitig.",
+                    "adversary": "Nimm aktiv die Gegenposition ein und widerlege die Argumente.",
+                    "mediator": "Vermittle zwischen den Positionen und suche Gemeinsamkeiten.",
+                    "referee": "Bewerte die Fairness und Relevanz der Argumente.",
+                    "facilitator": "Foerder den strukturierten Dialog und halte den Prozess auf Kurs.",
+                }
+                hint = mode_hints.get(mode)
+                if hint:
+                    if language == "en":
+                        prompt = f"{prompt}\n\n[{mode.title()} mode: {hint}]"
+                    else:
+                        prompt = f"{prompt}\n\n[{mode.title()}-Modus: {hint}]"
+            return prompt
+    except Exception:
+        logger.exception(
+            "Failed to assemble prompt for role='%s' pattern='%s' language='%s'",
+            role, argumentation_pattern, language,
+        )
 
     # Fallback: generic system prompt based on role
     role_prompts = {
