@@ -213,6 +213,89 @@
     document.removeEventListener('touchend', stopResize);
   }
 
+  let chatWidth = $state(700);
+  let chatPos = $state({ top: null, left: null });
+  let isDragging = $state(false);
+  let dragStart = $state({ x: 0, y: 0, top: 0, left: 0 });
+  let isResizingWidth = $state(false);
+  let resizeWidthStart = $state({ x: 0, w: 0 });
+  const MIN_WIDTH = 320;
+  const MAX_WIDTH = 1200;
+
+  function getChatStyle() {
+    let s = `height: ${isMinimized ? 'auto' : chatHeight + 'px'}; width: ${chatWidth}px; `;
+    if (chatPos.top !== null) {
+      s += `top: ${chatPos.top}px; left: ${chatPos.left}px; `;
+    } else {
+      s += `bottom: 0; right: 20px; `;
+    }
+    return s;
+  }
+
+  function startDrag(event) {
+    if (event.target.closest('button')) return;
+    isDragging = true;
+    const clientX = event.clientX || event.touches?.[0]?.clientX;
+    const clientY = event.clientY || event.touches?.[0]?.clientY;
+    dragStart.x = clientX;
+    dragStart.y = clientY;
+    const chatEl = event.currentTarget.closest('.assistant-chat');
+    if (!chatEl) return;
+    const rect = chatEl.getBoundingClientRect();
+    chatPos = { top: rect.top, left: rect.left };
+    dragStart.top = rect.top;
+    dragStart.left = rect.left;
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', onDrag);
+    document.addEventListener('touchend', stopDrag);
+    event.preventDefault();
+  }
+
+  function onDrag(event) {
+    if (!isDragging) return;
+    const clientX = event.clientX || event.touches?.[0]?.clientX;
+    const clientY = event.clientY || event.touches?.[0]?.clientY;
+    chatPos = {
+      top: Math.max(0, dragStart.top + (clientY - dragStart.y)),
+      left: Math.max(0, dragStart.left + (clientX - dragStart.x)),
+    };
+  }
+
+  function stopDrag() {
+    isDragging = false;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', stopDrag);
+  }
+
+  function startResizeWidth(event) {
+    isResizingWidth = true;
+    resizeWidthStart.x = event.clientX || event.touches?.[0]?.clientX;
+    resizeWidthStart.w = chatWidth;
+    document.addEventListener('mousemove', onResizeWidth);
+    document.addEventListener('mouseup', stopResizeWidth);
+    document.addEventListener('touchmove', onResizeWidth);
+    document.addEventListener('touchend', stopResizeWidth);
+    event.preventDefault();
+  }
+
+  function onResizeWidth(event) {
+    if (!isResizingWidth) return;
+    const clientX = event.clientX || event.touches?.[0]?.clientX;
+    const delta = resizeWidthStart.x - clientX;
+    chatWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeWidthStart.w + delta));
+  }
+
+  function stopResizeWidth() {
+    isResizingWidth = false;
+    document.removeEventListener('mousemove', onResizeWidth);
+    document.removeEventListener('mouseup', stopResizeWidth);
+    document.removeEventListener('touchmove', onResizeWidth);
+    document.removeEventListener('touchend', stopResizeWidth);
+  }
+
   function toggleMinimize() {
     isMinimized = !isMinimized;
   }
@@ -223,9 +306,9 @@
 </script>
 
 {#if isOpen}
-  <div class="assistant-chat" class:minimized={isMinimized} style="height: {isMinimized ? 'auto' : chatHeight + 'px'}">
+  <div class="assistant-chat" class:minimized={isMinimized} class:dragging={isDragging} style={getChatStyle()}>
     <!-- Header -->
-    <div class="chat-header">
+    <div class="chat-header" onmousedown={startDrag} ontouchstart={startDrag}>
       <div class="header-left">
         <span class="chat-icon">🦊</span>
         <span class="chat-title">Danwa Kitsune</span>
@@ -239,8 +322,9 @@
     </div>
 
     {#if !isMinimized}
-      <!-- Resize handle -->
-      <div class="resize-handle" onmousedown={startResize} ontouchstart={startResize}></div>
+      <!-- Resize handles -->
+      <div class="resize-handle resize-handle--height" onmousedown={startResize} ontouchstart={startResize}></div>
+      <div class="resize-handle resize-handle--width" onmousedown={startResizeWidth} ontouchstart={startResizeWidth}></div>
 
       <div class="chat-body">
         <!-- Session sidebar -->
@@ -352,7 +436,7 @@
     position: fixed;
     bottom: 0;
     right: 20px;
-    width: 700px;
+    min-width: 320px;
     max-width: calc(100vw - 40px);
     background: white;
     border-radius: 12px 12px 0 0;
@@ -360,12 +444,16 @@
     display: flex;
     flex-direction: column;
     z-index: 1000;
-    transition: height 0.2s ease;
     overflow: hidden;
   }
 
   .assistant-chat.minimized {
     height: auto !important;
+  }
+
+  .assistant-chat.dragging {
+    transition: none;
+    user-select: none;
   }
 
   .chat-header {
@@ -375,7 +463,12 @@
     padding: 12px 16px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    cursor: pointer;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .assistant-chat.dragging .chat-header {
+    cursor: grabbing;
   }
 
   .header-left {
@@ -417,14 +510,30 @@
     background: rgba(255, 255, 255, 0.3);
   }
 
-  .resize-handle {
+  .resize-handle--height {
     height: 4px;
     background: #e5e7eb;
     cursor: ns-resize;
     transition: background 0.2s;
   }
 
-  .resize-handle:hover {
+  .resize-handle--height:hover {
+    background: #667eea;
+  }
+
+  .resize-handle--width {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: transparent;
+    cursor: ew-resize;
+    transition: background 0.2s;
+  }
+
+  .resize-handle--width:hover,
+  .resize-handle--width:active {
     background: #667eea;
   }
 
@@ -794,13 +903,21 @@
   @media (max-width: 768px) {
     .assistant-chat {
       right: 0;
-      width: 100%;
+      width: 100% !important;
       max-width: 100%;
       border-radius: 0;
     }
 
     .session-sidebar {
       width: 140px;
+    }
+
+    .resize-handle--width {
+      display: none;
+    }
+
+    .chat-header {
+      cursor: default;
     }
   }
 </style>
