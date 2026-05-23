@@ -334,14 +334,40 @@ def _build_artifact_from_state(
     from datetime import UTC, datetime
 
     # Build turns from node_outputs
+    node_configs = state.get("node_configs", {})
+    config_by_node: dict[str, dict] = {}
+    for nid, cfg in node_configs.items():
+        if isinstance(cfg, str):
+            try:
+                import ast
+                cfg = ast.literal_eval(cfg)
+            except (ValueError, SyntaxError):
+                cfg = {}
+        config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
+
     turns: list[Turn] = []
     for output in state.get("node_outputs", []):
+        role = output.get("role", "")
+        node_id = output.get("node_id", "")
+        config = config_by_node.get(node_id, {})
+        llm_model = config.get("llm_model", "")
+        llm_profile_id = config.get("llm_profile_id", "")
+        role_type_name = config.get("role_type_name", role.title() if role else "")
+
+        # Build descriptive agent name: "Critic (owl-alpha)"
+        agent_name = role_type_name or role.title() if role else ""
+        if llm_model:
+            agent_name = f"{agent_name} ({llm_model})"
+        elif llm_profile_id:
+            agent_name = f"{agent_name} ({llm_profile_id})"
+
         turns.append(
             Turn(
-                node_id=output.get("node_id", ""),
+                node_id=node_id,
                 round=output.get("round", 0),
-                agent_name=output.get("role", ""),
-                role_type=output.get("node_type", ""),
+                agent_name=agent_name,
+                role_type=role,
+                llm_profile_id=llm_profile_id,
                 content=output.get("content", ""),
                 latency_ms=output.get("duration_ms", 0),
                 token_usage={"total": output.get("tokens_used", 0)},

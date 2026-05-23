@@ -72,10 +72,10 @@ def route_feedback(
 
     def _router(state: WorkflowState) -> str:
         current_round = state.get("current_round", 1)
-        if current_round < max_rounds:
-            logger.info("Feedback loop: round %d < max %d, continuing", current_round, max_rounds)
+        if current_round <= max_rounds:
+            logger.info("Feedback loop: round %d <= max %d, continuing", current_round, max_rounds)
             return "continue"
-        logger.info("Feedback loop: round %d >= max %d, exiting", current_round, max_rounds)
+        logger.info("Feedback loop: round %d > max %d, exiting", current_round, max_rounds)
         return "exit"
 
     return _router

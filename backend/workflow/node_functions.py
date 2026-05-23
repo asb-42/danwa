@@ -496,6 +496,19 @@ def agent_node_factory(
         duration_ms = 0
         status = "completed"
 
+        # Publish LLM call started event for live progress feedback
+        await publish_async(
+            session_id,
+            "llm.call_started",
+            {
+                "node_id": node_id,
+                "node_type": node_type,
+                "role": role,
+                "round": current_round,
+                "llm_profile_id": llm_profile_id,
+            },
+        )
+
         try:
             llm_service = LLMService(
                 profile_id=llm_profile_id,
@@ -557,9 +570,11 @@ def agent_node_factory(
                 "node_id": node_id,
                 "node_type": node_type,
                 "role": role,
-                "content": content[:500],
+                "round": current_round,
+                "content": content,
                 "tokens_used": tokens_used,
                 "duration_ms": elapsed_ms,
+                "status": status,
             },
         )
 
@@ -599,6 +614,9 @@ def agent_node_factory(
                 )
         except Exception:
             logger.debug("Audit logging failed for agent_node %s", node_id, exc_info=True)
+
+        # Include round number in node_output for render engine / PDF generation
+        output["round"] = current_round
 
         return {
             "node_outputs": [output],

@@ -259,27 +259,73 @@ class RenderEngineService:
         return None
 
 
-def _build_turns_from_node_outputs(node_outputs: list[dict]) -> list:
+def _build_turns_from_node_outputs(
+    node_outputs: list[dict],
+    node_configs: dict | None = None,
+    llm_assignments: dict | None = None,
+) -> list:
     """Convert workflow ``node_outputs`` (from state snapshots) to ``Turn`` objects.
 
     MVP debates store per-agent content in ``node_outputs`` rather than the
     legacy ``rounds[n].agent_outputs`` format used by the original debate engine.
+
+    Args:
+        node_outputs: List of WorkflowNodeOutput dicts (snake_case keys).
+        node_configs: Optional node_id → config dict (from state snapshot).
+            Used to resolve LLM profile info for agent display names.
+        llm_assignments: Optional role → llm_profile_id mapping (from debate record).
+            Fallback when node_configs is not available.
     """
     from backend.models.artifact import Turn
 
+    node_configs = node_configs or {}
+    llm_assignments = llm_assignments or {}
+
+    # Build node_id → config lookup
+    config_by_node: dict[str, dict] = {}
+    for nid, cfg in node_configs.items():
+        if isinstance(cfg, str):
+            # Serialized as string in snapshot — try to eval
+            try:
+                import ast
+                cfg = ast.literal_eval(cfg)
+            except (ValueError, SyntaxError):
+                cfg = {}
+        config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
+
     turns: list[Turn] = []
     for no in node_outputs:
-        role = no.get("role") or no.get("nodeType", "agent")
+        role = no.get("role") or no.get("node_type", "agent")
         rnd = no.get("round", 0)
+        node_id = no.get("node_id", f"{role}_round{rnd}")
+
+        # Resolve LLM profile info for display name
+        config = config_by_node.get(node_id, {})
+        llm_model = config.get("llm_model", "")
+        llm_profile_id = config.get("llm_profile_id", "")
+        role_type_name = config.get("role_type_name", role.title())
+
+        # Fallback: use llm_assignments from debate record
+        if not llm_profile_id:
+            llm_profile_id = llm_assignments.get(role, "")
+
+        # Build descriptive agent name: "Critic (owl-alpha)"
+        agent_name = role_type_name or role.title()
+        if llm_model:
+            agent_name = f"{agent_name} ({llm_model})"
+        elif llm_profile_id:
+            agent_name = f"{agent_name} ({llm_profile_id})"
+
         turns.append(
             Turn(
                 round=rnd,
-                node_id=no.get("nodeId", f"{role}_round{rnd}"),
-                agent_name=role,
+                node_id=node_id,
+                agent_name=agent_name,
                 role_type=role,
+                llm_profile_id=llm_profile_id,
                 content=no.get("content", ""),
-                latency_ms=no.get("durationMs", 0),
-                token_usage={"total": no.get("tokensUsed", 0)},
+                latency_ms=no.get("duration_ms", 0),
+                token_usage={"total": no.get("tokens_used", 0)},
             )
         )
     return turns
@@ -309,7 +355,13 @@ def _debate_to_artifact(debate: dict):
                 if snapshot:
                     state = snapshot.get("state", {})
                     node_outputs = state.get("node_outputs", [])
-                    turns = _build_turns_from_node_outputs(node_outputs)
+                    node_configs = state.get("node_configs", {})
+                    llm_assignments = debate.get("llm_assignments", {})
+                    turns = _build_turns_from_node_outputs(
+                        node_outputs,
+                        node_configs=node_configs,
+                        llm_assignments=llm_assignments,
+                    )
             except Exception as exc:
                 logger.warning("Failed to load snapshot for MVP debate %s: %s", session_id, exc)
     else:

@@ -3,7 +3,7 @@
   import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
   import { startMvpDebate, submitInterjection } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
-  import { activeProject } from '../lib/stores.js';
+  import { activeProject, userLanguage } from '../lib/stores.js';
 
   import { getHITLStatus, getInteractions } from '../lib/hitl.js';
   import { hitlStatus, hitlInteractions, showAgentQueryModal, currentAgentQuery } from '../lib/stores/hitl.svelte.js';
@@ -48,6 +48,9 @@
   let interjectionText = $state('');
   let sendingInterjection = $state(false);
 
+  // Confirmation page
+  let showConfirm = $state(false);
+
   let sessionId = $state(null);
   let debateId = $state(null);
   let status = $state('idle');
@@ -63,6 +66,7 @@
   let llmAssignmentsResult = $state({});
   let totalTokens = $state(0);
   let expandedOutputs = $state(new Set());
+  let activityText = $state('');
 
   let startTime = $state(null);
   let timerInterval = $state(null);
@@ -208,23 +212,43 @@
         status = 'running';
       },
       onNodeStart: (data) => {
-        currentNodeId = data.node_id || '';
-        nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
+        try {
+          currentNodeId = data.node_id || '';
+          const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
+          activityText = `${agentLabel} starting…`;
+          nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
+        } catch (e) { console.warn('[MvpDebateView] onNodeStart error:', e); }
+      },
+      onLLMCallStarted: (data) => {
+        try {
+          const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
+          const llmName = getProfileName(data.llm_profile_id);
+          activityText = `🧠 ${agentLabel} → ${llmName} (Round ${data.round || currentRound})…`;
+        } catch (e) { console.warn('[MvpDebateView] onLLMCallStarted error:', e); }
+      },
+      onWebSearch: (data) => {
+        try {
+          activityText = `🔍 Searching: ${data.query || ''}…`;
+        } catch (e) { console.warn('[MvpDebateView] onWebSearch error:', e); }
       },
       onNodeComplete: (data) => {
-        nodeOutputs = [...nodeOutputs, {
-          nodeId: data.node_id,
-          nodeType: data.node_type,
-          role: data.role,
-          content: data.content,
-          durationMs: data.duration_ms,
-          round: data.round,
-          tokensUsed: data.tokens_used || 0,
-        }];
-        nodeStatuses = { ...nodeStatuses, [data.node_id]: 'completed' };
-        if (data.consensus !== undefined) { consensus = data.consensus; hasReceivedConsensus = true; }
-        if (data.round !== undefined) currentRound = data.round;
-        totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
+        try {
+          nodeOutputs = [...nodeOutputs, {
+            nodeId: data.node_id,
+            nodeType: data.node_type,
+            role: data.role,
+            content: data.content,
+            durationMs: data.duration_ms,
+            round: data.round,
+            tokensUsed: data.tokens_used || 0,
+          }];
+          nodeStatuses = { ...nodeStatuses, [data.node_id]: 'completed' };
+          if (data.consensus !== undefined) { consensus = data.consensus; hasReceivedConsensus = true; }
+          if (data.round !== undefined) currentRound = data.round;
+          totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
+          const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
+          activityText = `✓ ${agentLabel} completed (${formatDuration(data.duration_ms)}, ${data.tokens_used || 0} tokens)`;
+        } catch (e) { console.warn('[MvpDebateView] onNodeComplete error:', e); }
       },
       onRoundUpdate: (data) => {
         currentRound = data.round || currentRound;
@@ -244,12 +268,16 @@
         error = data.error || 'Unknown error';
         status = 'failed';
         stopTimer();
+        activityText = '';
         nodeStatuses = { ...nodeStatuses, [data.node_id]: 'failed' };
       },
       onWorkflowComplete: (data) => {
         status = 'completed';
         stopTimer();
+        activityText = '';
         if (data.final_consensus !== undefined) { consensus = data.final_consensus; hasReceivedConsensus = true; }
+        // Proactively close SSE to prevent stale connections from freezing the UI
+        if (cleanupSSE) { cleanupSSE(); cleanupSSE = null; }
       },
       onWorkflowPaused: () => { status = 'paused'; },
       onWorkflowResumed: () => { status = 'running'; },
@@ -336,6 +364,7 @@
     llmAssignmentsResult = {};
     totalTokens = 0;
     expandedOutputs = new Set();
+    activityText = '';
     debateId = null;
 
     const profileMap = {};
@@ -346,6 +375,7 @@
     try {
       const result = await startMvpDebate({
         context: topic.trim(),
+        language: $userLanguage || 'de',
         maxRounds,
         threshold,
         llmProfileIds: profileMap,
@@ -423,6 +453,7 @@
     llmAssignmentsResult = {};
     totalTokens = 0;
     expandedOutputs = new Set();
+    activityText = '';
     stopTimer();
   }
 
@@ -600,9 +631,109 @@
       <div class="actions-row">
         <button
           class="btn btn-start"
-          onclick={handleStart}
+          onclick={() => { if (topic.trim() && !isLoadingProfiles) showConfirm = true; }}
           disabled={!topic.trim() || isLoadingProfiles}
         >
+          ▶ Review & Start
+        </button>
+      </div>
+    </div>
+
+    {:else if showConfirm}
+    <!-- Confirmation / Parameter Summary Page -->
+    <div class="confirm-section">
+      <h3 class="confirm-title">📋 Debate Parameter Review</h3>
+      <p class="confirm-subtitle">Please review all parameters before starting the debate.</p>
+
+      <div class="confirm-grid">
+        <!-- Topic -->
+        <div class="confirm-card">
+          <span class="confirm-label">📝 Topic</span>
+          <p class="confirm-value confirm-topic">{topic}</p>
+        </div>
+
+        <!-- Round & Threshold -->
+        <div class="confirm-row">
+          <div class="confirm-card">
+            <span class="confirm-label">🔄 Max Rounds</span>
+            <span class="confirm-value confirm-number">{maxRounds}</span>
+          </div>
+          <div class="confirm-card">
+            <span class="confirm-label">🎯 Consensus Threshold</span>
+            <span class="confirm-value confirm-number">{(threshold * 100).toFixed(0)}%</span>
+          </div>
+        </div>
+
+        <!-- Agent → LLM Mapping -->
+        <div class="confirm-card">
+          <span class="confirm-label">🤖 Agent → LLM Mapping</span>
+          <div class="confirm-agent-list">
+            {#each AGENTS as agent}
+              {@const profileId = llmAssignments[agent.role] || ''}
+              {@const profile = llmProfiles.find(p => p.id === profileId)}
+              <div class="confirm-agent-row">
+                <span class="confirm-agent-icon">{agent.icon}</span>
+                <span class="confirm-agent-name">{agent.label}</span>
+                <span class="confirm-arrow">→</span>
+                <span class="confirm-llm-name">{profile?.name || profileId || '—'}</span>
+                {#if profile?.model}
+                  <span class="confirm-llm-model">({profile.model})</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Web Search -->
+        <div class="confirm-card">
+          <span class="confirm-label">🔍 Web Search</span>
+          <span class="confirm-value">
+            {#if searchMode === 'required'}Required (auto-search before each agent)
+            {:else if searchMode === 'optional'}Optional (agents may request)
+            {:else}Off{/if}
+          </span>
+        </div>
+
+        <!-- RAG / DMS Documents -->
+        {#if selectedDocumentIds.length > 0}
+          <div class="confirm-card">
+            <span class="confirm-label">📚 RAG Context ({selectedDocumentIds.length} document{selectedDocumentIds.length > 1 ? 's' : ''})</span>
+            <div class="confirm-value">
+              {#each selectedDocumentIds as docId}
+                {@const doc = availableDocuments.find(d => d.id === docId)}
+                <span class="confirm-doc">{doc?.filename || docId}</span>
+              {/each}
+              {#if ragAutoRetrieve}<span class="confirm-badge">Auto-retrieve</span>{/if}
+              {#if includeDebateResults}<span class="confirm-badge">Include debate results</span>{/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Language & Project -->
+        <div class="confirm-row">
+          <div class="confirm-card">
+            <span class="confirm-label">🌐 Debate Language</span>
+            <span class="confirm-value">{($userLanguage || 'de').toUpperCase()}</span>
+          </div>
+          <div class="confirm-card">
+            <span class="confirm-label">📁 Active Project</span>
+            <span class="confirm-value">{$activeProject?.name || '—'}</span>
+          </div>
+        </div>
+      </div>
+
+      {#if error}
+        <div class="error-box" role="alert">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{error}</span>
+        </div>
+      {/if}
+
+      <div class="actions-row" style="gap: 12px;">
+        <button class="btn btn-cancel" onclick={() => { showConfirm = false; }}>
+          ← Back to Edit
+        </button>
+        <button class="btn btn-start" onclick={() => { showConfirm = false; handleStart(); }}>
           ▶ Start Debate
         </button>
       </div>
@@ -620,6 +751,13 @@
           <span class="session-id">{sessionId}</span>
         {/if}
       </div>
+
+      {#if activityText && status === 'running'}
+        <div class="activity-bar">
+          <span class="activity-spinner"></span>
+          <span class="activity-text">{activityText}</span>
+        </div>
+      {/if}
 
       <div class="metrics-grid">
         <div class="metric">
@@ -1038,6 +1176,47 @@
     50% { opacity: 0.3; }
   }
 
+  .activity-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e40af;
+    animation: fadeIn 0.3s ease;
+  }
+  :global(.dark) .activity-bar {
+    background: #1e3a5f;
+    border-color: #2563eb;
+    color: #93c5fd;
+  }
+  .activity-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #bfdbfe;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  :global(.dark) .activity-spinner {
+    border-color: #1e3a5f;
+    border-top-color: #60a5fa;
+  }
+  .activity-text {
+    font-weight: 500;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .metrics-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1325,4 +1504,136 @@
   }
   .btn-interject:hover { background: #0284c7; }
   .btn-interject:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Confirmation / Parameter Review */
+  .confirm-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+  }
+  :global(.dark) .confirm-section {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  .confirm-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+  }
+  :global(.dark) .confirm-title { color: #e5e7eb; }
+  .confirm-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+  }
+  .confirm-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .confirm-row {
+    display: flex;
+    gap: 12px;
+  }
+  .confirm-row .confirm-card { flex: 1; }
+  .confirm-card {
+    padding: 12px 16px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+  :global(.dark) .confirm-card {
+    background: #111827;
+    border-color: #374151;
+  }
+  .confirm-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .confirm-value {
+    font-size: 14px;
+    color: #1f2937;
+    word-break: break-word;
+  }
+  :global(.dark) .confirm-value { color: #e5e7eb; }
+  .confirm-topic {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+  .confirm-number {
+    font-size: 20px;
+    font-weight: 700;
+    color: #3b82f6;
+  }
+  .confirm-agent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .confirm-agent-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .confirm-agent-icon { font-size: 16px; }
+  .confirm-agent-name {
+    font-weight: 600;
+    color: #374151;
+    min-width: 80px;
+  }
+  :global(.dark) .confirm-agent-name { color: #d1d5db; }
+  .confirm-arrow { color: #9ca3af; }
+  .confirm-llm-name {
+    font-weight: 500;
+    color: #3b82f6;
+  }
+  .confirm-llm-model {
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: monospace;
+  }
+  .confirm-doc {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px 4px 2px 0;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #1e40af;
+  }
+  :global(.dark) .confirm-doc {
+    background: #1e3a5f;
+    border-color: #2563eb;
+    color: #93c5fd;
+  }
+  .confirm-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    margin-left: 6px;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #166534;
+  }
+  :global(.dark) .confirm-badge {
+    background: #14532d;
+    border-color: #16a34a;
+    color: #4ade80;
+  }
 </style>

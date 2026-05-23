@@ -396,14 +396,14 @@ class WorkflowCompiler:
                         },
                     )
                 else:
-                    # Only feedback edge — loop back or end
+                    # Only feedback edge — loop back or complete
                     router = route_feedback(max_rounds)
                     graph.add_conditional_edges(
                         node.id,
                         router,
                         {
                             "continue": feedback_target,
-                            "exit": END,
+                            "exit": "__complete__",
                         },
                     )
 

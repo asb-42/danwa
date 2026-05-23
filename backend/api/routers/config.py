@@ -175,7 +175,7 @@ def set_language(body: LanguageBody) -> dict:
 
 
 @router.get("/version")
-async def get_version(settings: Settings = Depends(get_settings)):
+async def get_version():
     """Return the current application version from the single source of truth."""
     commit = ""
     try:
@@ -191,7 +191,7 @@ async def get_version(settings: Settings = Depends(get_settings)):
         commit = os.environ.get("GIT_COMMIT_HASH", "")
 
     return {
-        "version": settings.app_version,
+        "version": app_settings.app_version,
         "build": datetime.now(UTC).isoformat(),
         "commit": commit,
     }

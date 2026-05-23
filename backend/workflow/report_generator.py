@@ -10,6 +10,7 @@ Produces a structured report including:
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import html as html_mod
 import logging
@@ -21,10 +22,105 @@ from docx import Document
 from weasyprint import HTML
 
 from backend.workflow.audit_logger import AuditLogger
+from backend.workflow.state_snapshot import StateSnapshotStore
 
 logger = logging.getLogger(__name__)
 
 _REPORTS_DIR = Path("reports")
+
+
+def _display_agent_role(role: str) -> str:
+    """Format an agent role for display.
+
+    MVP debates pass pre-formatted names like ``"Strategist (deepseek-v4-flash)"``
+    while legacy debates pass raw role names like ``"critic"``.  Capitalize
+    only when the role starts with a lowercase letter.
+    """
+    if not role:
+        return "Unbekannt"
+    return role if role[0].isupper() else role.capitalize()
+
+
+def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build round data from state snapshot for MVP debates.
+
+    MVP debates don't populate ``debate_data["rounds"]`` — the agent
+    outputs live exclusively in the state snapshot's ``node_outputs``.
+    This helper loads the snapshot, resolves agent names and LLM
+    profiles from ``node_configs``, and returns a list of round dicts
+    compatible with the existing renderer expectations.
+
+    Returns:
+        A list of round dicts with keys ``round``, ``consensus``,
+        ``agent_outputs``.
+    """
+    session_id = debate_data.get("session_id", "")
+    if not session_id:
+        return []
+
+    try:
+        snap_store = StateSnapshotStore()
+        snapshot = snap_store.get_latest(session_id)
+    except Exception:
+        logger.warning("Could not load state snapshot for session %s", session_id)
+        return []
+
+    if not snapshot:
+        return []
+
+    state = snapshot.get("state", {})
+    node_outputs: list[dict] = state.get("node_outputs", [])
+    node_configs_raw: dict[str, Any] = state.get("node_configs", {})
+    llm_assignments: dict[str, str] = debate_data.get("llm_assignments", {})
+
+    if not node_outputs:
+        return []
+
+    # Parse node_configs — values may be stored as Python repr strings
+    config_by_node: dict[str, dict] = {}
+    for nid, cfg in node_configs_raw.items():
+        if isinstance(cfg, str):
+            try:
+                cfg = ast.literal_eval(cfg)
+            except (ValueError, SyntaxError):
+                cfg = {}
+        config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
+
+    # Build agent outputs with proper names and metadata
+    agent_outputs: list[dict[str, Any]] = []
+    for no in node_outputs:
+        role = no.get("role", "")
+        node_id = no.get("node_id", "")
+        config = config_by_node.get(node_id, {})
+
+        llm_model = config.get("llm_model", "")
+        llm_profile_id = (
+            config.get("llm_profile_id", "")
+            or llm_assignments.get(role, "")
+        )
+        role_type_name = config.get("role_type_name", "")
+
+        # Build a human-readable agent name: "Strategist (deepseek-v4-flash)"
+        agent_name = role_type_name or role.replace("_", " ").title()
+        if llm_model:
+            agent_name = f"{agent_name} ({llm_model})"
+
+        agent_outputs.append({
+            "role": agent_name,
+            "content": no.get("content", ""),
+            "tokens_used": no.get("tokens_used", 0),
+            "duration_ms": no.get("duration_ms", 0),
+            "llm_profile_id": llm_profile_id,
+            "round": no.get("round"),
+        })
+
+    current_round = state.get("current_round", debate_data.get("current_round", 1))
+
+    return [{
+        "round": current_round,
+        "consensus": state.get("final_consensus", debate_data.get("result", {}).get("consensus", 0.0)),
+        "agent_outputs": agent_outputs,
+    }]
 
 
 class WorkflowReportGenerator:
@@ -110,6 +206,11 @@ class WorkflowReportGenerator:
         if not rounds and result:
             rounds = result.get("rounds", [])
 
+        # MVP debates: build rounds from state snapshot node_outputs
+        is_mvp = debate_data.get("is_mvp", False)
+        if is_mvp and not rounds:
+            rounds = _build_mvp_rounds_from_snapshot(debate_data)
+
         return {
             "title": debate_data.get("title", ""),
             "case_text": req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else str(req.get("case", "")),
@@ -122,6 +223,7 @@ class WorkflowReportGenerator:
             "final_consensus": result.get("final_consensus", debate_data.get("final_consensus", 0.0)),
             "rounds": rounds,
             "output": result.get("output", ""),
+            "is_mvp": is_mvp,
         }
 
     # ------------------------------------------------------------------
@@ -182,14 +284,26 @@ class WorkflowReportGenerator:
                     role = ao.get("role", "unbekannt")
                     content = ao.get("content", "")
                     tokens = ao.get("tokens_used", 0)
-                    doc.add_heading(f"{role.capitalize()}", level=3)
+                    duration_ms = ao.get("duration_ms", 0)
+                    llm_pid = ao.get("llm_profile_id", "")
+                    heading = _display_agent_role(role)
+                    if llm_pid:
+                        heading += f" — {llm_pid}"
+                    doc.add_heading(heading, level=3)
                     if content:
                         for paragraph in content.split("\n\n"):
                             paragraph = paragraph.strip()
                             if paragraph:
                                 doc.add_paragraph(paragraph)
+                    meta_parts = []
                     if tokens:
-                        doc.add_paragraph(f"(Tokens: {tokens})").italic = True
+                        meta_parts.append(f"Tokens: {tokens}")
+                    if duration_ms:
+                        meta_parts.append(f"Latenz: {duration_ms}ms")
+                    if llm_pid:
+                        meta_parts.append(f"LLM-Profil: {llm_pid}")
+                    if meta_parts:
+                        doc.add_paragraph(" | ".join(meta_parts)).italic = True
 
         # --- Final output ---
         output = transcript["output"]
@@ -203,8 +317,8 @@ class WorkflowReportGenerator:
         # --- Audit trail (supplementary) ---
         if audit_entries:
             doc.add_heading("Audit-Trail", level=1)
-            table = doc.add_table(rows=1, cols=6, style="Table Grid")
-            headers = ["Zeitstempel", "Ereignis", "Knoten", "Aktor", "Latenz (ms)", "Tokens"]
+            table = doc.add_table(rows=1, cols=7, style="Table Grid")
+            headers = ["Zeitstempel", "Ereignis", "Knoten", "Aktor", "LLM-Profil", "Latenz (ms)", "Tokens"]
             for i, h in enumerate(headers):
                 table.rows[0].cells[i].text = h
             for entry in audit_entries:
@@ -213,8 +327,9 @@ class WorkflowReportGenerator:
                 row.cells[1].text = str(entry.get("event_type", ""))
                 row.cells[2].text = str(entry.get("node_id", ""))
                 row.cells[3].text = str(entry.get("actor", ""))
-                row.cells[4].text = str(entry.get("latency_ms", 0))
-                row.cells[5].text = str(entry.get("prompt_tokens", 0) + entry.get("completion_tokens", 0))
+                row.cells[4].text = str(entry.get("llm_profile_id", ""))
+                row.cells[5].text = str(entry.get("latency_ms", 0))
+                row.cells[6].text = str(entry.get("prompt_tokens", 0) + entry.get("completion_tokens", 0))
 
         doc.save(str(path))
 
@@ -289,7 +404,11 @@ class WorkflowReportGenerator:
                     for ao in rd.get("agent_outputs", []):
                         role = ao.get("role", "unbekannt")
                         content = ao.get("content", "")
-                        doc.text.addElement(P(text=f"[{role.capitalize()}]"))
+                        llm_pid = ao.get("llm_profile_id", "")
+                        role_label = _display_agent_role(role)
+                        if llm_pid:
+                            role_label += f" — {llm_pid}"
+                        doc.text.addElement(P(text=f"[{role_label}]"))
                         if content:
                             for para in content.split("\n\n"):
                                 para = para.strip()
@@ -309,7 +428,15 @@ class WorkflowReportGenerator:
             if audit_entries:
                 doc.text.addElement(H(text="Audit-Trail", outlinelevel=2))
                 for entry in audit_entries:
-                    line = f"{entry.get('timestamp', '')} | {entry.get('event_type', '')} | {entry.get('node_id', '')} | {entry.get('actor', '')}"
+                    llm_pid = entry.get("llm_profile_id", "")
+                    line = (
+                        f"{entry.get('timestamp', '')} | "
+                        f"{entry.get('event_type', '')} | "
+                        f"{entry.get('node_id', '')} | "
+                        f"{entry.get('actor', '')}"
+                    )
+                    if llm_pid:
+                        line += f" | LLM: {llm_pid}"
                     doc.text.addElement(P(text=line))
 
             doc.save(str(path))
@@ -363,14 +490,26 @@ class WorkflowReportGenerator:
                 consensus = rd.get("consensus", 0.0)
                 rounds_html += f"<h3>Runde {round_num} — Konsens: {consensus:.1%}</h3>"
                 for ao in rd.get("agent_outputs", []):
-                    role = esc(ao.get("role", "unbekannt"))
+                    role = ao.get("role", "unbekannt")
                     content = esc(ao.get("content", ""))
                     tokens = ao.get("tokens_used", 0)
+                    duration_ms = ao.get("duration_ms", 0)
+                    llm_pid = ao.get("llm_profile_id", "")
+                    display_role = esc(_display_agent_role(role))
+                    if llm_pid:
+                        display_role += f' <span style="font-weight:normal;color:#666;">— {esc(llm_pid)}</span>'
                     rounds_html += (
-                        f'<div class="agent-block"><div class="agent-role">{role.capitalize()}</div><div class="agent-content">{content}</div>'
+                        f'<div class="agent-block"><div class="agent-role">{display_role}</div><div class="agent-content">{content}</div>'
                     )
+                    meta_parts = []
                     if tokens:
-                        rounds_html += f'<div class="agent-meta">Tokens: {tokens}</div>'
+                        meta_parts.append(f"Tokens: {tokens}")
+                    if duration_ms:
+                        meta_parts.append(f"Latenz: {duration_ms}ms")
+                    if llm_pid:
+                        meta_parts.append(f"LLM-Profil: {esc(llm_pid)}")
+                    if meta_parts:
+                        rounds_html += f'<div class="agent-meta">{" | ".join(meta_parts)}</div>'
                     rounds_html += "</div>"
 
         # --- Final output ---
@@ -388,6 +527,7 @@ class WorkflowReportGenerator:
                 f"<td>{esc(str(e.get('event_type', '')))}</td>"
                 f"<td>{esc(str(e.get('node_id', '')))}</td>"
                 f"<td>{esc(str(e.get('actor', '')))}</td>"
+                f"<td>{esc(str(e.get('llm_profile_id', '')))}</td>"
                 f"<td>{e.get('latency_ms', 0)}</td>"
                 f"<td>{e.get('prompt_tokens', 0) + e.get('completion_tokens', 0)}</td>"
                 f"</tr>"
@@ -396,7 +536,7 @@ class WorkflowReportGenerator:
         if audit_entries:
             audit_section = f"""<h2>Audit-Trail</h2>
 <table>
-<thead><tr><th>Zeitstempel</th><th>Ereignis</th><th>Knoten</th><th>Aktor</th><th>Latenz (ms)</th><th>Tokens</th></tr></thead>
+<thead><tr><th>Zeitstempel</th><th>Ereignis</th><th>Knoten</th><th>Aktor</th><th>LLM-Profil</th><th>Latenz (ms)</th><th>Tokens</th></tr></thead>
 <tbody>{audit_rows}</tbody>
 </table>"""
 
