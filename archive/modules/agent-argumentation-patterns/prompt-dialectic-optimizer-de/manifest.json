@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "prompt-dialectic-optimizer",
+  "name": {
+    "en": "Optimizer (Dialectic)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "dialectic",
+    "optimizer",
+    "de"
+  ],
+  "language": "de",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "98d712d7607462841d3671609b5adc307259e06544930351d6212b8cf7b7fcf6"
+}

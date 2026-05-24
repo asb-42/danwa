@@ -24,6 +24,7 @@ class LLMProvider(StrEnum):
     OPENCODE_GO = "opencode-go"
     XIAOMI = "xiaomi"
     DEEPSEEK = "deepseek"
+    CLOUDFLARE = "cloudflare"
 
 
 class LLMProfile(BaseModel):
@@ -36,6 +37,7 @@ class LLMProfile(BaseModel):
     model: str  # e.g. "anthropic/claude-3.5-sonnet"
     api_base: str | None = None  # For OpenRouter / local
     api_key_env: str = "OPENROUTER_API_KEY"  # Environment variable name
+    account_id_env: str | None = None  # Environment variable name for account ID (e.g. Cloudflare)
     max_tokens: int = 4096
     context_window: int | None = None  # Max total tokens (input + output) the model supports
     temperature: float = 0.7

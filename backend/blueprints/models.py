@@ -49,6 +49,7 @@ class BlueprintLLMProfile(BaseModel):
         "opencode-zen",
         "opencode-go",
         "xiaomi",
+        "cloudflare",
         # STT providers (Input Composer Phase D)
         "whisper-local",
         "whisper-api",
@@ -58,6 +59,7 @@ class BlueprintLLMProfile(BaseModel):
     model: str
     api_base: str | None = None
     api_key_env: str = "OPENROUTER_API_KEY"
+    account_id_env: str | None = None
     max_tokens: int = 4096
     context_window: int | None = None
     temperature: float = 0.7
@@ -121,6 +123,7 @@ class BlueprintLLMProfile(BaseModel):
             model=legacy.model,
             api_base=legacy.api_base,
             api_key_env=legacy.api_key_env,
+            account_id_env=getattr(legacy, "account_id_env", None),
             max_tokens=legacy.max_tokens,
             context_window=legacy.context_window,
             temperature=legacy.temperature,
@@ -148,6 +151,7 @@ class BlueprintLLMProfile(BaseModel):
             model=self.model,
             api_base=self.api_base,
             api_key_env=self.api_key_env,
+            account_id_env=self.account_id_env,
             max_tokens=self.max_tokens,
             context_window=self.context_window,
             temperature=self.temperature,

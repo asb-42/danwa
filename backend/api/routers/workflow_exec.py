@@ -147,6 +147,11 @@ class StartMvpDebateRequest(BaseModel):
         default_factory=dict,
         description="Mapping of role → llm_profile_id for per-agent LLM assignment",
     )
+    agent_core_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of role → agent-core persona_id for per-agent core selection. "
+        "When set, the persona's system_prompt is used directly (Layer 0).",
+    )
 
     # --- Web search ---
     search_mode: SearchMode = Field(
@@ -254,6 +259,48 @@ async def start_mvp_debate(
 
     llm_assignments = {agent.node_id.replace("node-", ""): agent.llm_profile_id for agent in compiled.resolved_agents}
 
+    # --- Agent Core override: inject module-sourced system_prompt via Layer 0 ---
+    node_configs: dict[str, dict] = {}
+    for agent in compiled.resolved_agents:
+        role = agent.node_id.replace("node-", "")
+        cfg: dict = {
+            "blueprint_id": agent.blueprint_id,
+            "blueprint_name": agent.blueprint_name,
+            "llm_profile_id": agent.llm_profile_id,
+            "llm_model": agent.llm_model,
+            "role_definition_id": agent.role_definition_id,
+            "role": agent.role,
+            "prompt_template_id": agent.prompt_template_id,
+            "role_type_name": agent.role_type_name,
+            "role_type_icon": agent.role_type_icon,
+            "role_type_color": agent.role_type_color,
+            "default_max_rounds": agent.default_max_rounds,
+            "default_consensus_threshold": agent.default_consensus_threshold,
+            "argumentation_pattern": agent.argumentation_pattern,
+            "mode": agent.mode,
+            "system_prompt": agent.system_prompt,
+        }
+        # If an agent_core_id is provided for this role, load the persona
+        # and override system_prompt (Layer 0 in _resolve_system_prompt).
+        core_id = body.agent_core_ids.get(role)
+        if core_id:
+            from backend.services.profile_service import ProfileService
+
+            ps = ProfileService()
+            persona = ps.get_agent_persona(core_id)
+            if persona and persona.system_prompt.strip():
+                cfg["system_prompt"] = persona.system_prompt
+                logger.info(
+                    "Agent Core '%s' applied to role '%s' — system_prompt overridden (%d chars)",
+                    core_id, role, len(persona.system_prompt),
+                )
+            else:
+                logger.warning(
+                    "Agent Core '%s' for role '%s' not found or has empty prompt — using default",
+                    core_id, role,
+                )
+        node_configs[agent.node_id] = cfg
+
     initial_state: dict[str, Any] = {
         "workflow_id": wf.id,
         "session_id": session_id,
@@ -263,26 +310,7 @@ async def start_mvp_debate(
         "search_mode": body.search_mode.value,
         "rag_context": rag_context,
         "node_sequence": compiled.node_sequence,
-        "node_configs": {
-            agent.node_id: {
-                "blueprint_id": agent.blueprint_id,
-                "blueprint_name": agent.blueprint_name,
-                "llm_profile_id": agent.llm_profile_id,
-                "llm_model": agent.llm_model,
-                "role_definition_id": agent.role_definition_id,
-                "role": agent.role,
-                "prompt_template_id": agent.prompt_template_id,
-                "role_type_name": agent.role_type_name,
-                "role_type_icon": agent.role_type_icon,
-                "role_type_color": agent.role_type_color,
-                "default_max_rounds": agent.default_max_rounds,
-                "default_consensus_threshold": agent.default_consensus_threshold,
-                "argumentation_pattern": agent.argumentation_pattern,
-                "mode": agent.mode,
-                "system_prompt": agent.system_prompt,
-            }
-            for agent in compiled.resolved_agents
-        },
+        "node_configs": node_configs,
         "edge_map": {},
         "termination_conditions": [],
         "current_node_id": "",

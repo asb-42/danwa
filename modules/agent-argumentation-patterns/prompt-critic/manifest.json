@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "prompt-critic",
+  "module_id": "prompt-critic-en",
   "name": {
-    "en": "Critic (Default)"
+    "en": "Critic (Default) [EN]"
   },
   "version": "1.0.0",
   "type": "prompt-variant",
@@ -14,11 +14,11 @@
   "tags": [
     "default",
     "critic",
-    "de"
+    "en"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": "eec750ed41c2bd33f526eca27e51fd4c2efd0bab36639002b170dac1efd9a9c6"
+  "checksum": "07f713d54bfb71abb03f30e722d31eb21e8a198ea6964681b6f590af0b630d1f"
 }

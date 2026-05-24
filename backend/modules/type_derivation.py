@@ -28,6 +28,28 @@ _DIR_TO_CATEGORY: dict[str, ModuleCategory] = {
     "agent-prompt-modifiers": ModuleCategory.PROMPTS,
 }
 
+# Aliases: manifest "type" field → ModuleType (e.g. "agent-core" → AGENT_PERSONA)
+_MANIFEST_TYPE_ALIASES: dict[str, ModuleType] = {
+    "agent-core": ModuleType.AGENT_PERSONA,
+}
+
+
+def resolve_manifest_type(manifest_type: str) -> ModuleType | None:
+    """Resolve a manifest ``type`` field to a ModuleType, handling aliases.
+
+    Returns None if the type is not recognized (caller should fall back to
+    directory/prefix-based derivation).
+    """
+    # Direct match against known aliases
+    if mt := _MANIFEST_TYPE_ALIASES.get(manifest_type):
+        return mt
+    # Check if it's already a valid ModuleType value
+    try:
+        return ModuleType(manifest_type)
+    except ValueError:
+        return None
+
+
 # module_id prefix → ModuleType (for mixed directories like agent-cores)
 _PREFIX_TO_TYPE: dict[str, ModuleType] = {
     "agent-": ModuleType.AGENT_PERSONA,

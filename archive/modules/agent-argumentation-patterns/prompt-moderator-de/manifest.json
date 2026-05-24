@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "prompt-moderator",
+  "name": {
+    "en": "Moderator (Default)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "moderator",
+    "de"
+  ],
+  "language": "de",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "dbdb0718fb59ab9d5da8a829715edf3397043257587a9f2fc5dd74a544d272a6"
+}

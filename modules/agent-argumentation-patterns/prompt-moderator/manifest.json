@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "prompt-moderator",
+  "module_id": "prompt-moderator-en",
   "name": {
-    "en": "Moderator (Default)"
+    "en": "Moderator (Default) [EN]"
   },
   "version": "1.0.0",
   "type": "prompt-variant",
@@ -14,11 +14,11 @@
   "tags": [
     "default",
     "moderator",
-    "de"
+    "en"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": "dbdb0718fb59ab9d5da8a829715edf3397043257587a9f2fc5dd74a544d272a6"
+  "checksum": "90aa94838e4f26857b2d11f11f82b97cc2be528312a33146c97fa2dbb8cd5e91"
 }

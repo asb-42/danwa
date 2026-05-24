@@ -22,7 +22,7 @@
   let error = $state(null);
 
   const protocols = ['litellm', 'a2a'];
-  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'deepseek', 'xiaomi', 'opencode-zen', 'opencode-go'];
+  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'deepseek', 'xiaomi', 'opencode-zen', 'opencode-go', 'cloudflare'];
   const profileTypes = ['text', 'tts', 'stt'];
   let discovering = $state(false);
   let discoverError = $state(null);
@@ -41,6 +41,7 @@
         context_window: node.data.context_window ?? null,
         api_base: node.data.api_base || '',
         api_key_env: node.data.api_key_env || 'OPENROUTER_API_KEY',
+        account_id_env: node.data.account_id_env || '',
         timeout: node.data.timeout ?? 600,
         cost_per_1k_input: node.data.cost_per_1k_input ?? null,
         cost_per_1k_output: node.data.cost_per_1k_output ?? null,
@@ -138,6 +139,13 @@
     <span class="field-label">{t('blueprint.form.apiKeyEnv')}</span>
     <input type="text" bind:value={draft.api_key_env} class="field-input" placeholder="OPENROUTER_API_KEY" data-testid="form-lp-api-key-env" />
   </label>
+
+  {#if draft.provider === 'cloudflare'}
+    <label class="form-field">
+      <span class="field-label">{t('blueprint.form.accountIdEnv')}</span>
+      <input type="text" bind:value={draft.account_id_env} class="field-input" placeholder="CLOUDFLARE_ACCOUNT_ID" data-testid="form-lp-account-id-env" />
+    </label>
+  {/if}
 
   <label class="form-field">
     <span class="field-label">{t('blueprint.form.temperature')}</span>

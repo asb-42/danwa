@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "prompt-strategist",
+  "name": {
+    "en": "Strategist (Default)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "strategist",
+    "de"
+  ],
+  "language": "de",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "7e77e55ea7e12ad1c3a3a42c16dd9c2c78d88244fa03f74aed6ec2cf9e1969d1"
+}

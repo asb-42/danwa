@@ -87,6 +87,7 @@ export function startMvpDebate({
   maxRounds = 5,
   threshold = 0.9,
   llmProfileIds = {},
+  agentCoreIds = {},
   searchMode = 'off',
   documentIds = [],
   ragAutoRetrieve = false,
@@ -101,12 +102,23 @@ export function startMvpDebate({
       max_rounds: maxRounds,
       threshold,
       llm_profile_ids: llmProfileIds,
+      agent_core_ids: agentCoreIds,
       search_mode: searchMode,
       document_ids: documentIds,
       rag_auto_retrieve: ragAutoRetrieve,
       include_debate_results: includeDebateResults,
     }),
   });
+}
+
+/**
+ * Fetch all available agent personas (agent cores).
+ * @param {string} [role] - Optional role filter
+ * @returns {Promise<Array<{ id: string, name: string, role: string, system_prompt: string, llm_profile_id: string, tags: string[] }>>}
+ */
+export function getAgentCores(role) {
+  const params = role ? `?role=${encodeURIComponent(role)}` : '';
+  return request(`/api/v1/profiles/agents${params}`);
 }
 
 /**

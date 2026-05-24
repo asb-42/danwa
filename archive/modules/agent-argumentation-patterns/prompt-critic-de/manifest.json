@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "prompt-critic",
+  "name": {
+    "en": "Critic (Default)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "critic",
+    "de"
+  ],
+  "language": "de",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "eec750ed41c2bd33f526eca27e51fd4c2efd0bab36639002b170dac1efd9a9c6"
+}

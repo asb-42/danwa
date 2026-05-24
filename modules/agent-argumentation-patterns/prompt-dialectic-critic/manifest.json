@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "prompt-dialectic-critic",
+  "module_id": "prompt-dialectic-critic-en",
   "name": {
-    "en": "Critic (Dialectic)"
+    "en": "Critic (Dialectic) [EN]"
   },
   "version": "1.0.0",
   "type": "prompt-variant",
@@ -14,11 +14,11 @@
   "tags": [
     "dialectic",
     "critic",
-    "de"
+    "en"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": "1b269cf49663d1bde5928dc5868a3b946deffacffc3241c2ae9b45864e50bef5"
+  "checksum": "a879fa15a4ddd343d91f643a63537e2e1bd82686408cbe02ec018ae57646cf33"
 }

@@ -17,7 +17,7 @@ from typing import Any
 
 import httpx
 
-from backend.core.profiles import LLMProfile
+from backend.core.profiles import LLMProfile, LLMProvider
 from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
@@ -119,8 +119,9 @@ class LLMService:
         local_providers = {"local", "ollama", "opencode-zen", "opencode-go"}
         if self._profile.provider.value in local_providers:
             return await self._generate_local(messages, temp, tokens, tools=tools)
-        else:
-            return await self._generate_litellm(messages, temp, tokens, tools=tools)
+        if self._profile.provider == LLMProvider.CLOUDFLARE:
+            return await self._generate_cloudflare(messages, temp, tokens)
+        return await self._generate_litellm(messages, temp, tokens, tools=tools)
 
     async def generate_with_fallback(
         self,
@@ -310,6 +311,78 @@ class LLMService:
             tokens_out=tokens_out,
             duration_ms=duration_ms,
             model=self._profile.model,
+        )
+
+    async def _generate_cloudflare(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+    ) -> GenerationResult:
+        """Call Cloudflare Workers AI via direct HTTP.
+
+        API format:
+          POST https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/{MODEL}
+          Authorization: Bearer {API_KEY}
+          Body: {"messages": [...]}
+        """
+        # Resolve account ID
+        account_id_env = self._profile.account_id_env or "CLOUDFLARE_ACCOUNT_ID"
+        account_id = os.getenv(account_id_env)
+        if not account_id:
+            raise ValueError(
+                f"Cloudflare account ID not found. Set the {account_id_env} environment variable."
+            )
+
+        # Resolve API key
+        api_key = os.getenv(self._profile.api_key_env)
+        if not api_key:
+            raise ValueError(
+                f"Cloudflare API key not found. Set the {self._profile.api_key_env} environment variable."
+            )
+
+        model = self._profile.model
+        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
+
+        payload: dict[str, Any] = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+
+        logger.info(
+            "LLM call (cloudflare): POST %s model=%s, temp=%.2f, max_tokens=%d",
+            url,
+            model,
+            temperature,
+            max_tokens,
+        )
+
+        t0 = time.monotonic()
+        async with httpx.AsyncClient(timeout=self._profile.timeout) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+        duration_ms = int((time.monotonic() - t0) * 1000)
+
+        data = response.json()
+        if not data.get("success"):
+            errors = data.get("errors", [])
+            raise RuntimeError(f"Cloudflare API error: {errors}")
+
+        result = data.get("result", {})
+        content = result.get("response", "")
+
+        return GenerationResult(
+            content=content,
+            tokens_in=0,
+            tokens_out=0,
+            duration_ms=duration_ms,
+            model=model,
         )
 
     async def _generate_litellm(

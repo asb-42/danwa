@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "agent-steel-manner-default",
+  "name": {
+    "en": "Default Steel-manner (EN)"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "description": {
+    "en": "Steel-manner."
+  }
+}
+

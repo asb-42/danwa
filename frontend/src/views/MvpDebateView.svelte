@@ -1,7 +1,7 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
   import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
-  import { startMvpDebate, submitInterjection } from '../lib/workflowExec.js';
+  import { startMvpDebate, submitInterjection, getAgentCores } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject, userLanguage } from '../lib/stores.js';
 
@@ -36,6 +36,11 @@
   let llmAssignments = $state({});
   let isLoadingProfiles = $state(true);
   let isLoadingDebate = $state(false);
+
+  // Agent Core selection
+  let agentCores = $state([]);
+  let agentCoreAssignments = $state({});
+  let isLoadingAgentCores = $state(true);
 
   // New config fields
   let searchMode = $state('off');
@@ -73,20 +78,33 @@
   let hitlPollTimer = null;       // not reactive — polling interval ID, would create $effect loop
 
   $effect(() => {
-    getLLMProfiles()
-      .then((profiles) => {
+    // Load both LLM profiles and agent cores in parallel
+    Promise.all([
+      getLLMProfiles(),
+      getAgentCores(),
+    ])
+      .then(([profiles, cores]) => {
         llmProfiles = profiles;
         const defaults = {};
         for (const agent of AGENTS) {
           defaults[agent.role] = profiles[0]?.id || '';
         }
         llmAssignments = defaults;
+
+        agentCores = cores;
+        // Default: no custom agent core for any role (empty string = use default)
+        const coreDefaults = {};
+        for (const agent of AGENTS) {
+          coreDefaults[agent.role] = '';
+        }
+        agentCoreAssignments = coreDefaults;
       })
       .catch((err) => {
-        error = `Failed to load LLM profiles: ${err.message}`;
+        error = `Failed to load profiles: ${err.message}`;
       })
       .finally(() => {
         isLoadingProfiles = false;
+        isLoadingAgentCores = false;
       });
   });
 
@@ -372,6 +390,14 @@
       profileMap[agent.role] = llmAssignments[agent.role] || '';
     }
 
+    // Build agent core map: only include non-empty selections
+    const coreMap = {};
+    for (const agent of AGENTS) {
+      if (agentCoreAssignments[agent.role]) {
+        coreMap[agent.role] = agentCoreAssignments[agent.role];
+      }
+    }
+
     try {
       const result = await startMvpDebate({
         context: topic.trim(),
@@ -379,6 +405,7 @@
         maxRounds,
         threshold,
         llmProfileIds: profileMap,
+        agentCoreIds: coreMap,
         projectId: $activeProject?.id,
         searchMode,
         documentIds: selectedDocumentIds,
@@ -533,6 +560,23 @@
                 <span class="confirm-llm-name">{profile.name} ({profile.model})</span>
               {:else}
                 <span class="confirm-llm-name dimmed">Will be auto-assigned</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+
+        <!-- Agent → Core Mapping -->
+        <div class="confirm-card">
+          <span class="confirm-label">🧠 Agent → Core Mapping</span>
+          {#each AGENTS as agent}
+            {@const coreId = agentCoreAssignments[agent.role]}
+            {@const core = agentCores.find(c => c.id === coreId)}
+            <div class="confirm-row-item">
+              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
+              {#if core}
+                <span class="confirm-llm-name">{core.name}</span>
+              {:else}
+                <span class="confirm-llm-name dimmed">Default (built-in)</span>
               {/if}
             </div>
           {/each}
@@ -706,6 +750,24 @@
                 >
                   {#each llmProfiles as profile}
                     <option value={profile.id}>{profile.name}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
+
+            <div class="agent-core-select">
+              <label for="core-{agent.role}" class="select-label">Agent Core (optional)</label>
+              {#if isLoadingAgentCores}
+                <div class="select-loading">Loading agent cores...</div>
+              {:else}
+                <select
+                  id="core-{agent.role}"
+                  class="form-select"
+                  bind:value={agentCoreAssignments[agent.role]}
+                >
+                  <option value="">Default (built-in)</option>
+                  {#each agentCores.filter(c => c.role === agent.role) as core}
+                    <option value={core.id}>{core.name}</option>
                   {/each}
                 </select>
               {/if}

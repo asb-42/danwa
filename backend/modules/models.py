@@ -90,6 +90,7 @@ class LLMProfileData(BaseModel):
     model: str
     api_base: str | None = None
     api_key_env: str = "OPENROUTER_API_KEY"
+    account_id_env: str | None = None
     max_tokens: int = 4096
     context_window: int | None = None
     temperature: float = 0.7

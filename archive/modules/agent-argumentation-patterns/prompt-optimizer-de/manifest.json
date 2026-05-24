@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "prompt-optimizer",
+  "name": {
+    "en": "Optimizer (Default)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "optimizer",
+    "de"
+  ],
+  "language": "de",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "b11b8600c8615afd299bb40b836f5ba3d6dfccaed5235bada5d52c3e98b35686"
+}

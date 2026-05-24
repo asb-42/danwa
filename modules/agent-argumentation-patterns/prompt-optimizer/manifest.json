@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "prompt-optimizer",
+  "module_id": "prompt-optimizer-en",
   "name": {
-    "en": "Optimizer (Default)"
+    "en": "Optimizer (Default) [EN]"
   },
   "version": "1.0.0",
   "type": "prompt-variant",
@@ -14,11 +14,11 @@
   "tags": [
     "default",
     "optimizer",
-    "de"
+    "en"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": "b11b8600c8615afd299bb40b836f5ba3d6dfccaed5235bada5d52c3e98b35686"
+  "checksum": "4081d545cf842a6493aadb8c2160f4ce9622c15e0f5b0dd795cced78251f27b3"
 }

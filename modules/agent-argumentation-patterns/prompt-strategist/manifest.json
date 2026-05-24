@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "prompt-strategist",
+  "module_id": "prompt-strategist-en",
   "name": {
-    "en": "Strategist (Default)"
+    "en": "Strategist (Default) [EN]"
   },
   "version": "1.0.0",
   "type": "prompt-variant",
@@ -14,11 +14,11 @@
   "tags": [
     "default",
     "strategist",
-    "de"
+    "en"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": "7e77e55ea7e12ad1c3a3a42c16dd9c2c78d88244fa03f74aed6ec2cf9e1969d1"
+  "checksum": "3c3b2d16732e2f708b075ef35c59c8d5b8d44e67550c60f4c7366913abefb1f5"
 }

@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "prompt-dialectic-moderator",
+  "module_id": "prompt-dialectic-moderator-en",
   "name": {
-    "en": "Moderator (Dialectic)"
+    "en": "Moderator (Dialectic) [EN]"
   },
   "version": "1.0.0",
   "type": "prompt-variant",
@@ -14,11 +14,11 @@
   "tags": [
     "dialectic",
     "moderator",
-    "de"
+    "en"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": "1d476ee232fdd3b06c037489fc96b9bf2ae909aa7d59935b825d4b51dbe5754b"
+  "checksum": "c8b0dbe785375ca9b687f5271da5d6c04ff4bb5add8ebb5ea689d26bf264d7a7"
 }
