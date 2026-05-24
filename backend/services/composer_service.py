@@ -134,7 +134,11 @@ class ComposerService:
             modules = get_tone_profiles_from_modules()
             for mod in modules:
                 if mod.get("id") == tone_id or mod.get("_source_module") == tone_id:
-                    # Convert tone profile dict to ToneProfile model for the injector
+                    # Markdown-based module profile — use content directly
+                    content = mod.get("content", "")
+                    if content:
+                        return f"\n\n[TONE PROFILE]\n{content.strip()}"
+                    # Structured profile (DB or legacy JSON) — convert via injector
                     from backend.blueprints.models import ToneProfile
 
                     profile = ToneProfile(
@@ -147,7 +151,6 @@ class ComposerService:
                         rhetorical_mode=mod.get("rhetorical_mode", "none"),
                         custom_instructions=mod.get("custom_instructions"),
                     )
-                    # Use inject_tone_profile with an empty base prompt to get just the instructions
                     return inject_tone_profile("", profile)
         except Exception:
             logger.exception("Failed to load tone profile '%s'", tone_id)

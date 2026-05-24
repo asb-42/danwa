@@ -13,8 +13,8 @@
   "license": "CC-BY-4.0",
   "tags": [],
   "language": "en",
-  "profile_file": "profile.json",
-  "profile_format": "json",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
   "files": [],
   "description": {
     "en": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring."

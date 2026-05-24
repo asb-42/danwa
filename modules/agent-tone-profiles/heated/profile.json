@@ -1,8 +1,0 @@
-{
-  "style": "heated",
-  "formality": 0.3,
-  "verbosity": "verbose",
-  "emotional_valence": 0.9,
-  "rhetorical_mode": "assertive",
-  "custom_instructions": null
-}
