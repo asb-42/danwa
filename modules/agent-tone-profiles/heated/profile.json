@@ -1,7 +1,4 @@
 {
-  "id": "system-heated",
-  "name": "Heated Debate",
-  "description": "A confrontational, emotionally charged debate style. Agents challenge each other aggressively and use rhetorical devices.",
   "style": "heated",
   "formality": 0.3,
   "verbosity": "verbose",

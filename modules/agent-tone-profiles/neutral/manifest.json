@@ -19,5 +19,6 @@
   "description": {
     "en": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring."
   },
-  "checksum": "e71bdf6c6238ccca031557970252e3aee7d13ca0db2eb4db60fb1de3a0ed76f9"
+  "checksum": "e71bdf6c6238ccca031557970252e3aee7d13ca0db2eb4db60fb1de3a0ed76f9",
+  "profile_id": "system-neutral"
 }

@@ -230,15 +230,24 @@ def get_tone_profiles_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict
     for mod in _get_enabled_modules(modules_dir):
         if mod["type"] != ModuleType.TONE_PROFILE:
             continue
-        profile = _read_module_profile(mod["dir"], mod["manifest"])
-        if profile is None:
-            continue
+
+        manifest = mod["manifest"]
+        profile = {
+            "id": manifest.get("profile_id", mod["module_id"]),
+            "name": _localized(manifest.get("name", {}), mod["module_id"]),
+            "description": _localized(manifest.get("description", {})),
+        }
+
+        file_profile = _read_module_profile(mod["dir"], manifest)
+        if file_profile:
+            profile.update(file_profile)
+
         profile.setdefault("style", "neutral")
         profile.setdefault("formality", 0.5)
         profile.setdefault("verbosity", "medium")
         profile.setdefault("emotional_valence", 0.5)
         profile.setdefault("rhetorical_mode", "balanced")
-        results.append(_mark_readonly(profile, mod["module_id"], mod["manifest"]))
+        results.append(_mark_readonly(profile, mod["module_id"], manifest))
     return results
 
 

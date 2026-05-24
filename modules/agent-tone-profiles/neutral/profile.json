@@ -1,7 +1,4 @@
 {
-  "id": "system-neutral",
-  "name": "Neutral / Sachlich",
-  "description": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring.",
   "style": "neutral",
   "formality": 0.5,
   "verbosity": "normal",

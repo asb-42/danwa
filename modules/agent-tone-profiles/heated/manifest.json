@@ -19,5 +19,6 @@
   "description": {
     "en": "A confrontational, emotionally charged debate style. Agents challenge each other aggressively and use rhetorical devices."
   },
-  "checksum": "8f4b88e9042acdda2ad8a27ad9f5af80aa8183f0818e15176b71e0d7f871c8e6"
+  "checksum": "8f4b88e9042acdda2ad8a27ad9f5af80aa8183f0818e15176b71e0d7f871c8e6",
+  "profile_id": "system-heated"
 }

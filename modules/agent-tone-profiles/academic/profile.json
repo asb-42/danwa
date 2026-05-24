@@ -1,7 +1,4 @@
 {
-  "id": "system-academic",
-  "name": "Academic Debate",
-  "description": "A formal, evidence-based debate style. Agents cite sources, use precise language, and maintain scholarly decorum.",
   "style": "academic",
   "formality": 0.9,
   "verbosity": "normal",
