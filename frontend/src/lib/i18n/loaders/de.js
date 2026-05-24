@@ -39,6 +39,7 @@ export default {
   'nav.system': 'System',
   'nav.section.evolve': 'Evolve',
   'nav.proposals': 'Optimierungs-Vorschläge',
+'nav.bundleComposer': 'Bundle Composer',
   'proposals.description': 'Von der KI generierte Optimierungsvorschläge prüfen und genehmigen',
   'proposals.refresh': 'Aktualisieren',
   'proposals.noProposals': 'Noch keine Vorschläge',

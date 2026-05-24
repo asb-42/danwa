@@ -17,6 +17,7 @@ from backend.blueprints.models import (
     ToneProfile,
 )
 from backend.blueprints.repository import BlueprintRepository
+from backend.services.composer_service import ComposerService, Composition
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +78,22 @@ class BundleResolver:
                     bundle.tone_profile_id,
                 )
 
-        system_prompt = self._assemble_system_prompt(
-            role_type=role_type,
-            role_definition=role_definition,
-            prompt_template=prompt_template,
-            tone_profile=tone_profile,
-        )
+        # Path C (BundleComposer): assemble from composition when present
+        if bundle.composition is not None:
+            composition = Composition(
+                agent_core_id=bundle.composition.agent_core_id,
+                argumentation_pattern_id=bundle.composition.argumentation_pattern_id,
+                tone_profile_id=bundle.tone_profile_id or "",
+                prompt_modifier_id=bundle.composition.prompt_modifier_id,
+            )
+            system_prompt = ComposerService().compose(composition)
+        else:
+            system_prompt = self._assemble_system_prompt(
+                role_type=role_type,
+                role_definition=role_definition,
+                prompt_template=prompt_template,
+                tone_profile=tone_profile,
+            )
 
         return ResolvedBundle(
             bundle_id=bundle.id,

@@ -714,3 +714,95 @@ export function deleteToneProfile(profileId) {
     method: 'DELETE',
   });
 }
+
+// ─── Bundle Composer ───────────────────────────────────────────────
+
+/**
+ * List all available composer components (agent cores, arg patterns,
+ * tone profiles, prompt modifiers, LLM profiles).
+ * @returns {Promise<Object>}
+ */
+export function listComposerComponents() {
+  return request('/api/v1/bundle-composer/components');
+}
+
+/**
+ * Preview the assembled system prompt from component selection.
+ * @param {{ agent_core_id?: string, argumentation_pattern_id?: string, tone_profile_id?: string, prompt_modifier_id?: string }} composition
+ * @returns {Promise<{prompt: string}>}
+ */
+export function previewComposition(composition) {
+  return request('/api/v1/bundle-composer/preview', {
+    method: 'POST',
+    body: JSON.stringify(composition),
+  });
+}
+
+/**
+ * Create a new composer-based agent bundle.
+ * @param {{ name: string, composition: Object, description?: string, llm_profile_id?: string }} bundle
+ * @returns {Promise<Object>}
+ */
+export function createComposerBundle(bundle) {
+  return request('/api/v1/bundle-composer/bundles', {
+    method: 'POST',
+    body: JSON.stringify(bundle),
+  });
+}
+
+/**
+ * Update an existing composer bundle.
+ * @param {string} bundleId
+ * @param {{ name?: string, composition?: Object, description?: string, llm_profile_id?: string }} bundle
+ * @returns {Promise<Object>}
+ */
+export function updateComposerBundle(bundleId, bundle) {
+  return request(`/api/v1/bundle-composer/bundles/${bundleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(bundle),
+  });
+}
+
+/**
+ * Get a single composer bundle by ID.
+ * @param {string} bundleId
+ * @returns {Promise<Object>}
+ */
+export function getComposerBundle(bundleId) {
+  return request(`/api/v1/bundle-composer/bundles/${bundleId}`);
+}
+
+/**
+ * List all composer bundles.
+ * @param {{ limit?: number, offset?: number, active_only?: boolean }} [opts]
+ * @returns {Promise<Array>}
+ */
+export function listComposerBundles({ limit = 100, offset = 0, active_only = false } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (active_only) params.set('active_only', 'true');
+  return request(`/api/v1/bundle-composer/bundles?${params.toString()}`);
+}
+
+/**
+ * Export a composer bundle as manifest + profile.
+ * @param {string} bundleId
+ * @param {boolean} [to_directory=false] Write to modules/agent-bundles/ on disk
+ * @returns {Promise<Object>}
+ */
+export function exportComposerBundle(bundleId, to_directory = false) {
+  return request(`/api/v1/bundle-composer/bundles/${bundleId}/export?to_directory=${to_directory}`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Import a composer bundle from modules/agent-bundles/<module_id>/.
+ * @param {string} moduleId
+ * @returns {Promise<Object>}
+ */
+export function importComposerBundle(moduleId) {
+  return request('/api/v1/bundle-composer/import', {
+    method: 'POST',
+    body: JSON.stringify({ module_id: moduleId }),
+  });
+}

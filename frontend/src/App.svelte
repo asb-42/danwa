@@ -24,6 +24,7 @@ import ModulesView from './views/ModulesView.svelte';
 import ProposalsView from './views/ProposalsView.svelte';
 import ManageView from './views/ManageView.svelte';
 import MvpDebateView from './views/MvpDebateView.svelte';
+import BundleComposerView from './views/BundleComposerView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Register toast callback for i18n fallback warnings
@@ -114,6 +115,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <ManageView />
   {:else if $route === 'blueprint'}
     <BlueprintCanvasView layoutId={$routeParams[0] || null} {navigate} />
+  {:else if $route === 'bundle-composer'}
+    <BundleComposerView />
   {:else if $route === 'replay'}
     <ReplayView />
   {:else if $route === 'diff'}

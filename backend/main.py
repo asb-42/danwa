@@ -29,6 +29,7 @@ from backend.api.routers import (  # noqa: E402
     audit,
     blueprint_events,
     blueprints,
+    bundle_composer,
     canvas,
     config,
     debate,
@@ -265,6 +266,13 @@ def create_app() -> FastAPI:
         workflow_templates.router,
         prefix="/api/v1/workflow-templates",
         tags=["workflow-templates"],
+    )
+
+    # --- Bundle Composer ---
+    app.include_router(
+        bundle_composer.router,
+        prefix="/api/v1/bundle-composer",
+        tags=["bundle-composer"],
     )
 
     # --- Tone Profiles ---
