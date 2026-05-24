@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "tone-system-heated",
+  "module_id": "heated",
   "name": {
     "en": "Heated Debate"
   },

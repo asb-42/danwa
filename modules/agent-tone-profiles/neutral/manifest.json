@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "tone-system-academic",
+  "module_id": "neutral",
   "name": {
-    "en": "Academic Debate"
+    "en": "Neutral / Sachlich"
   },
   "version": "1.0.0",
   "type": "tone-profile",
@@ -17,7 +17,7 @@
   "profile_format": "json",
   "files": [],
   "description": {
-    "en": "A formal, evidence-based debate style. Agents cite sources, use precise language, and maintain scholarly decorum."
+    "en": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring."
   },
-  "checksum": "fc4a711cbcc898f832885f3c7e371d3b1d73363e9537f23f1e780e8967464349"
+  "checksum": "e71bdf6c6238ccca031557970252e3aee7d13ca0db2eb4db60fb1de3a0ed76f9"
 }
