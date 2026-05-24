@@ -13,10 +13,7 @@ Covers all 8 endpoints under /api/v1/bundle-composer:
 
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
-from unittest.mock import ANY, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,7 +26,6 @@ from backend.api.deps import (
     get_project_store,
     get_settings,
 )
-from backend.blueprints.composer import BundleComposer
 from backend.blueprints.repository import BlueprintRepository
 from backend.core.config import Settings
 from backend.main import create_app
@@ -75,8 +71,9 @@ FAKE_PROMPT_MODIFIERS = [
 @pytest.fixture(autouse=True)
 def _mock_module_functions(monkeypatch: pytest.MonkeyPatch):
     """Replace all module-filesystem scanning functions with fake data."""
-    import backend.services.module_profile_sync as mps
     import backend.blueprints.composer as bp_composer
+    import backend.services.composer_service as cs
+    import backend.services.module_profile_sync as mps
 
     monkeypatch.setattr(mps, "get_agent_personas_from_modules", lambda **kw: FAKE_AGENT_CORES)
     monkeypatch.setattr(mps, "get_tone_profiles_from_modules", lambda **kw: FAKE_TONE_PROFILES)
@@ -84,7 +81,6 @@ def _mock_module_functions(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(mps, "seed_prompt_modifiers_to_db", lambda: None)
 
     # Also patch the listers in composer.py so they don't reach module filesystem
-    monkeypatch.setattr(bp_composer, "get_agent_personas_from_modules", lambda **kw: FAKE_AGENT_CORES)
     monkeypatch.setattr(bp_composer, "get_tone_profiles_from_modules", lambda **kw: FAKE_TONE_PROFILES)
     monkeypatch.setattr(bp_composer, "get_prompt_modifiers_from_modules", lambda **kw: FAKE_PROMPT_MODIFIERS)
     monkeypatch.setattr(bp_composer, "seed_prompt_modifiers_to_db", lambda: None)
@@ -93,14 +89,16 @@ def _mock_module_functions(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(mps, "get_argumentation_patterns_from_modules", lambda **kw: [p["id"] for p in FAKE_ARG_PATTERNS])
 
     # Make ComposerService.list_argumentation_patterns return fake data
-    import backend.services.composer_service as cs
-
     monkeypatch.setattr(cs.ComposerService, "list_argumentation_patterns", staticmethod(lambda: FAKE_ARG_PATTERNS))
     monkeypatch.setattr(cs.ComposerService, "list_agent_cores", staticmethod(lambda: FAKE_AGENT_CORES))
     monkeypatch.setattr(cs.ComposerService, "list_tone_profiles", staticmethod(lambda: FAKE_TONE_PROFILES))
 
     # Make compose() return a predictable string so we don't need real module files
-    monkeypatch.setattr(cs.ComposerService, "compose", lambda self, composition: f"# Composed prompt\n\nAgent: {composition.agent_core_id}\nPattern: {composition.argumentation_pattern_id}")
+    monkeypatch.setattr(
+        cs.ComposerService,
+        "compose",
+        lambda self, composition: f"# Composed prompt\n\nAgent: {composition.agent_core_id}\nPattern: {composition.argumentation_pattern_id}",
+    )
 
 
 # ---------------------------------------------------------------------------

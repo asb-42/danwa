@@ -27,20 +27,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from backend.blueprints.models import (
-    AgentBundle,
-    BlueprintLLMProfile,
-    BundleComposition,
-    PromptModifier,
-    RoleDefinition,
-    RoleType,
-    ToneProfile,
-)
+from backend.blueprints.models import AgentBundle, BundleComposition, ToneProfile
 from backend.blueprints.repository import BlueprintRepository
 from backend.services.composer_service import ComposerService, Composition
 from backend.services.module_profile_sync import (
-    get_agent_personas_from_modules,
-    get_argumentation_patterns_from_modules,
     get_prompt_modifiers_from_modules,
     get_tone_profiles_from_modules,
     seed_prompt_modifiers_to_db,
@@ -103,8 +93,6 @@ class BundleComposer:
 
     @staticmethod
     def _list_llm_profiles() -> list[dict[str, str]]:
-        from backend.blueprints.models import BlueprintLLMProfile
-
         repo = BlueprintRepository()
         profiles = repo.list_llm_profiles(limit=200)
         return [
@@ -165,7 +153,7 @@ class BundleComposer:
         now = datetime.now(UTC)
 
         # Resolve LLM profile (required)
-        llm_profile = self.repo.get_llm_profile(llm_profile_id)
+        _ = self.repo.get_llm_profile(llm_profile_id)
 
         # Resolve tone profile (optional — import from module if not in DB)
         tone_profile_id = None
@@ -397,13 +385,16 @@ class BundleComposer:
         existing = self.repo.get_bundle(profile["id"])
         if existing:
             logger.info("Bundle '%s' already exists in DB — updating", profile["id"])
-            return self.update(
-                bundle_id=profile["id"],
-                name=profile.get("name", existing.name),
-                composition=composition,
-                description=profile.get("description"),
-                llm_profile_id=profile.get("llm_profile_id"),
-            ) or existing
+            return (
+                self.update(
+                    bundle_id=profile["id"],
+                    name=profile.get("name", existing.name),
+                    composition=composition,
+                    description=profile.get("description"),
+                    llm_profile_id=profile.get("llm_profile_id"),
+                )
+                or existing
+            )
 
         return self.create(
             name=profile.get("name", module_id),
