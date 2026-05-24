@@ -1,7 +1,7 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
   import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
-  import { startMvpDebate, submitInterjection, getAgentCores } from '../lib/workflowExec.js';
+  import { startMvpDebate, submitInterjection, getAgentCores, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject, userLanguage } from '../lib/stores.js';
 
@@ -37,10 +37,16 @@
   let isLoadingProfiles = $state(true);
   let isLoadingDebate = $state(false);
 
-  // Agent Core selection
+  // Composition selection (Phase 2 — 4 component types)
   let agentCores = $state([]);
+  let argumentationPatterns = $state([]);
+  let toneProfiles = $state([]);
+  let promptModifiers = $state([]);
   let agentCoreAssignments = $state({});
-  let isLoadingAgentCores = $state(true);
+  let argumentationPatternAssignments = $state({});
+  let toneProfileAssignments = $state({});
+  let promptModifierAssignments = $state({});
+  let isLoadingComponents = $state(true);
 
   // New config fields
   let searchMode = $state('off');
@@ -78,12 +84,12 @@
   let hitlPollTimer = null;       // not reactive — polling interval ID, would create $effect loop
 
   $effect(() => {
-    // Load both LLM profiles and agent cores in parallel
+    // Load LLM profiles and all composition components in parallel
     Promise.all([
       getLLMProfiles(),
-      getAgentCores(),
+      getCompositionComponents(),
     ])
-      .then(([profiles, cores]) => {
+      .then(([profiles, components]) => {
         llmProfiles = profiles;
         const defaults = {};
         for (const agent of AGENTS) {
@@ -91,20 +97,28 @@
         }
         llmAssignments = defaults;
 
-        agentCores = cores;
-        // Default: no custom agent core for any role (empty string = use default)
-        const coreDefaults = {};
+        // Composition components
+        agentCores = components.agent_cores || [];
+        argumentationPatterns = components.argumentation_patterns || [];
+        toneProfiles = components.tone_profiles || [];
+        promptModifiers = components.prompt_modifiers || [];
+
+        // Default: empty strings = use built-in defaults
+        const emptyDefaults = {};
         for (const agent of AGENTS) {
-          coreDefaults[agent.role] = '';
+          emptyDefaults[agent.role] = '';
         }
-        agentCoreAssignments = coreDefaults;
+        agentCoreAssignments = { ...emptyDefaults };
+        argumentationPatternAssignments = { ...emptyDefaults };
+        toneProfileAssignments = { ...emptyDefaults };
+        promptModifierAssignments = { ...emptyDefaults };
       })
       .catch((err) => {
         error = `Failed to load profiles: ${err.message}`;
       })
       .finally(() => {
         isLoadingProfiles = false;
-        isLoadingAgentCores = false;
+        isLoadingComponents = false;
       });
   });
 
@@ -390,12 +404,16 @@
       profileMap[agent.role] = llmAssignments[agent.role] || '';
     }
 
-    // Build agent core map: only include non-empty selections
+    // Build component maps: only include non-empty selections
     const coreMap = {};
+    const argPatternMap = {};
+    const toneMap = {};
+    const modifierMap = {};
     for (const agent of AGENTS) {
-      if (agentCoreAssignments[agent.role]) {
-        coreMap[agent.role] = agentCoreAssignments[agent.role];
-      }
+      if (agentCoreAssignments[agent.role]) coreMap[agent.role] = agentCoreAssignments[agent.role];
+      if (argumentationPatternAssignments[agent.role]) argPatternMap[agent.role] = argumentationPatternAssignments[agent.role];
+      if (toneProfileAssignments[agent.role]) toneMap[agent.role] = toneProfileAssignments[agent.role];
+      if (promptModifierAssignments[agent.role]) modifierMap[agent.role] = promptModifierAssignments[agent.role];
     }
 
     try {
@@ -406,6 +424,9 @@
         threshold,
         llmProfileIds: profileMap,
         agentCoreIds: coreMap,
+        argumentationPatternIds: argPatternMap,
+        toneProfileIds: toneMap,
+        promptModifierIds: modifierMap,
         projectId: $activeProject?.id,
         searchMode,
         documentIds: selectedDocumentIds,
@@ -577,6 +598,57 @@
                 <span class="confirm-llm-name">{core.name}</span>
               {:else}
                 <span class="confirm-llm-name dimmed">Default (built-in)</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+
+        <!-- Argumentation Patterns -->
+        <div class="confirm-card">
+          <span class="confirm-label">📐 Argumentation Patterns</span>
+          {#each AGENTS as agent}
+            {@const patId = argumentationPatternAssignments[agent.role]}
+            {@const pat = argumentationPatterns.find(p => p.id === patId)}
+            <div class="confirm-row-item">
+              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
+              {#if pat}
+                <span class="confirm-llm-name">{pat.name}</span>
+              {:else}
+                <span class="confirm-llm-name dimmed">None (default)</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+
+        <!-- Tone Profiles -->
+        <div class="confirm-card">
+          <span class="confirm-label">🎭 Tone Profiles</span>
+          {#each AGENTS as agent}
+            {@const toneId = toneProfileAssignments[agent.role]}
+            {@const tp = toneProfiles.find(p => p.id === toneId)}
+            <div class="confirm-row-item">
+              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
+              {#if tp}
+                <span class="confirm-llm-name">{tp.name}</span>
+              {:else}
+                <span class="confirm-llm-name dimmed">None (default)</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+
+        <!-- Prompt Modifiers -->
+        <div class="confirm-card">
+          <span class="confirm-label">✏️ Prompt Modifiers</span>
+          {#each AGENTS as agent}
+            {@const modId = promptModifierAssignments[agent.role]}
+            {@const mod = promptModifiers.find(p => p.id === modId)}
+            <div class="confirm-row-item">
+              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
+              {#if mod}
+                <span class="confirm-llm-name">{mod.name}</span>
+              {:else}
+                <span class="confirm-llm-name dimmed">None (default)</span>
               {/if}
             </div>
           {/each}
@@ -757,8 +829,8 @@
 
             <div class="agent-core-select">
               <label for="core-{agent.role}" class="select-label">Agent Core (optional)</label>
-              {#if isLoadingAgentCores}
-                <div class="select-loading">Loading agent cores...</div>
+              {#if isLoadingComponents}
+                <div class="select-loading">Loading...</div>
               {:else}
                 <select
                   id="core-{agent.role}"
@@ -768,6 +840,60 @@
                   <option value="">Default (built-in)</option>
                   {#each agentCores.filter(c => c.role === agent.role) as core}
                     <option value={core.id}>{core.name}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
+
+            <div class="agent-pat-select">
+              <label for="pat-{agent.role}" class="select-label">Argumentation Pattern (optional)</label>
+              {#if isLoadingComponents}
+                <div class="select-loading">Loading...</div>
+              {:else}
+                <select
+                  id="pat-{agent.role}"
+                  class="form-select"
+                  bind:value={argumentationPatternAssignments[agent.role]}
+                >
+                  <option value="">Default (none)</option>
+                  {#each argumentationPatterns as pattern}
+                    <option value={pattern.id}>{pattern.name}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
+
+            <div class="agent-tone-select">
+              <label for="tone-{agent.role}" class="select-label">Tone Profile (optional)</label>
+              {#if isLoadingComponents}
+                <div class="select-loading">Loading...</div>
+              {:else}
+                <select
+                  id="tone-{agent.role}"
+                  class="form-select"
+                  bind:value={toneProfileAssignments[agent.role]}
+                >
+                  <option value="">Default (none)</option>
+                  {#each toneProfiles as profile}
+                    <option value={profile.id}>{profile.name}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
+
+            <div class="agent-mod-select">
+              <label for="mod-{agent.role}" class="select-label">Prompt Modifier (optional)</label>
+              {#if isLoadingComponents}
+                <div class="select-loading">Loading...</div>
+              {:else}
+                <select
+                  id="mod-{agent.role}"
+                  class="form-select"
+                  bind:value={promptModifierAssignments[agent.role]}
+                >
+                  <option value="">Default (none)</option>
+                  {#each promptModifiers as mod}
+                    <option value={mod.id}>{mod.name}</option>
                   {/each}
                 </select>
               {/if}

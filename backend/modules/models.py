@@ -25,6 +25,7 @@ class ModuleType(StrEnum):
     WORKFLOW_VARIANT = "workflow-variant"
     ROLE_TYPE = "role-type"
     PROMPT_VARIANT = "prompt-variant"
+    PROMPT_MODIFIER = "prompt-modifier"
     BUNDLE = "bundle"
     LANGUAGE_PACK = "language-pack"
 

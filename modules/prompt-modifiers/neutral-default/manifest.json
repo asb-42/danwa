@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "prompt-modifier-neutral-default",
+  "name": {
+    "en": "Neutral Default (EN)"
+  },
+  "description": {
+    "en": "Default prompt modifier — clean output formatting without additional constraints."
+  },
+  "version": "1.0.0",
+  "type": "prompt-modifier",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": ["default", "neutral"],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": ""
+}

@@ -294,3 +294,29 @@ def get_argumentation_patterns_from_modules(modules_dir: Path = MODULES_DIR) -> 
         if name not in results:
             results.append(name)
     return results
+
+
+def get_prompt_modifiers_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, Any]]:
+    """Get prompt modifiers from enabled prompt-modifier modules.
+
+    Returns a list of dicts with keys: id, name, content, description.
+    """
+    results = []
+    for mod in _get_enabled_modules(modules_dir):
+        if mod["type"] != ModuleType.PROMPT_MODIFIER:
+            continue
+        profile = _read_module_profile(mod["dir"], mod["manifest"])
+        if profile is None:
+            continue
+        content = profile.get("content", "")
+        if not content.strip():
+            continue
+        manifest_name = mod["manifest"].get("name", {})
+        entry = {
+            "id": mod["module_id"],
+            "name": manifest_name.get("en", manifest_name.get("de", mod["module_id"])),
+            "content": content,
+            "description": mod["manifest"].get("description", {}).get("en", ""),
+        }
+        results.append(_mark_readonly(entry, mod["module_id"], mod["manifest"]))
+    return results

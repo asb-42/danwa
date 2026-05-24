@@ -88,6 +88,9 @@ export function startMvpDebate({
   threshold = 0.9,
   llmProfileIds = {},
   agentCoreIds = {},
+  argumentationPatternIds = {},
+  toneProfileIds = {},
+  promptModifierIds = {},
   searchMode = 'off',
   documentIds = [],
   ragAutoRetrieve = false,
@@ -103,6 +106,9 @@ export function startMvpDebate({
       threshold,
       llm_profile_ids: llmProfileIds,
       agent_core_ids: agentCoreIds,
+      argumentation_pattern_ids: argumentationPatternIds,
+      tone_profile_ids: toneProfileIds,
+      prompt_modifier_ids: promptModifierIds,
       search_mode: searchMode,
       document_ids: documentIds,
       rag_auto_retrieve: ragAutoRetrieve,
@@ -119,6 +125,14 @@ export function startMvpDebate({
 export function getAgentCores(role) {
   const params = role ? `?role=${encodeURIComponent(role)}` : '';
   return request(`/api/v1/profiles/agents${params}`);
+}
+
+/**
+ * Fetch all composition components for Phase 2 dropdowns.
+ * @returns {Promise<{ agent_cores: Array, argumentation_patterns: Array, tone_profiles: Array, prompt_modifiers: Array }>}
+ */
+export function getCompositionComponents() {
+  return request('/api/v1/profiles/composition/components');
 }
 
 /**

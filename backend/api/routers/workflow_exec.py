@@ -149,8 +149,20 @@ class StartMvpDebateRequest(BaseModel):
     )
     agent_core_ids: dict[str, str] = Field(
         default_factory=dict,
-        description="Mapping of role → agent-core persona_id for per-agent core selection. "
-        "When set, the persona's system_prompt is used directly (Layer 0).",
+        description="[Phase 2] Mapping of role → agent-core module ID. "
+        "Composed with other components via ComposerService.",
+    )
+    argumentation_pattern_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="[Phase 2] Mapping of role → argumentation-pattern module ID.",
+    )
+    tone_profile_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="[Phase 2] Mapping of role → tone-profile module ID.",
+    )
+    prompt_modifier_ids: dict[str, str] = Field(
+        default_factory=dict,
+        description="[Phase 2] Mapping of role → prompt-modifier module ID.",
     )
 
     # --- Web search ---
@@ -259,7 +271,10 @@ async def start_mvp_debate(
 
     llm_assignments = {agent.node_id.replace("node-", ""): agent.llm_profile_id for agent in compiled.resolved_agents}
 
-    # --- Agent Core override: inject module-sourced system_prompt via Layer 0 ---
+    # --- Phase 2: Compose system_prompt from up to 4 modular components ---
+    from backend.services.composer_service import ComposerService, Composition
+
+    composer = ComposerService()
     node_configs: dict[str, dict] = {}
     for agent in compiled.resolved_agents:
         role = agent.node_id.replace("node-", "")
@@ -280,25 +295,25 @@ async def start_mvp_debate(
             "mode": agent.mode,
             "system_prompt": agent.system_prompt,
         }
-        # If an agent_core_id is provided for this role, load the persona
-        # and override system_prompt (Layer 0 in _resolve_system_prompt).
-        core_id = body.agent_core_ids.get(role)
-        if core_id:
-            from backend.services.profile_service import ProfileService
-
-            ps = ProfileService()
-            persona = ps.get_agent_persona(core_id)
-            if persona and persona.system_prompt.strip():
-                cfg["system_prompt"] = persona.system_prompt
-                logger.info(
-                    "Agent Core '%s' applied to role '%s' — system_prompt overridden (%d chars)",
-                    core_id, role, len(persona.system_prompt),
-                )
-            else:
-                logger.warning(
-                    "Agent Core '%s' for role '%s' not found or has empty prompt — using default",
-                    core_id, role,
-                )
+        # Compose system_prompt from selected components (if any provided)
+        composition = Composition(
+            agent_core_id=body.agent_core_ids.get(role, ""),
+            argumentation_pattern_id=body.argumentation_pattern_ids.get(role, ""),
+            tone_profile_id=body.tone_profile_ids.get(role, ""),
+            prompt_modifier_id=body.prompt_modifier_ids.get(role, ""),
+        )
+        composed = composer.compose(composition)
+        if composed:
+            cfg["system_prompt"] = composed
+            logger.info(
+                "Composed system_prompt for role '%s' from agent_core=%s pattern=%s tone=%s modifier=%s (%d chars)",
+                role,
+                composition.agent_core_id or "(default)",
+                composition.argumentation_pattern_id or "(none)",
+                composition.tone_profile_id or "(none)",
+                composition.prompt_modifier_id or "(none)",
+                len(composed),
+            )
         node_configs[agent.node_id] = cfg
 
     initial_state: dict[str, Any] = {

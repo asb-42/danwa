@@ -14,7 +14,7 @@ _DIR_TO_TYPE: dict[str, ModuleType] = {
     "agent-bundles": ModuleType.BUNDLE,
     "ui-translations": ModuleType.LANGUAGE_PACK,
     "agent-tone-profiles": ModuleType.TONE_PROFILE,
-    "agent-prompt-modifiers": ModuleType.ARGUMENTATION_PATTERN,
+    "agent-prompt-modifiers": ModuleType.PROMPT_MODIFIER,
 }
 
 # Directory name → ModuleCategory mapping

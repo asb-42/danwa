@@ -241,6 +241,32 @@ async def translate_prompt_variant(variant_id: str, body: TranslatePromptRequest
 # ------------------------------------------------------------------
 
 
+# ------------------------------------------------------------------
+# Composition Components (Phase 2 — Composer Architecture)
+# ------------------------------------------------------------------
+
+
+@router.get("/composition/components")
+async def list_composition_components() -> dict:
+    """List all available components for the Prompt Composer UI.
+
+    Returns all four component types in a single call:
+      - agent_cores: functional role definitions
+      - argumentation_patterns: argumentation methodologies
+      - tone_profiles: communication style profiles
+      - prompt_modifiers: output formatting modifiers
+    """
+    from backend.services.composer_service import ComposerService
+
+    cs = ComposerService()
+    return {
+        "agent_cores": cs.list_agent_cores(),
+        "argumentation_patterns": cs.list_argumentation_patterns(),
+        "tone_profiles": cs.list_tone_profiles(),
+        "prompt_modifiers": cs.list_prompt_modifiers(),
+    }
+
+
 @router.get("/cost-estimate")
 async def estimate_cost(
     llm_profile_id: str = Query(..., description="LLM profile ID"),
