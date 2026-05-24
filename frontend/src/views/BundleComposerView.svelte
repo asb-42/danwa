@@ -11,7 +11,6 @@
     exportComposerBundle,
     importComposerBundle,
   } from '../lib/blueprint/api.js';
-  import { listLLMProfiles } from '../lib/api.js';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -51,15 +50,12 @@
   onMount(async () => {
     isLoading = true;
     try {
-      const [components, profiles] = await Promise.all([
-        listComposerComponents(),
-        listLLMProfiles(),
-      ]);
+      const components = await listComposerComponents();
       agentCores = components.agent_cores || [];
       argPatterns = components.argumentation_patterns || [];
       toneProfiles = components.tone_profiles || [];
       promptModifiers = components.prompt_modifiers || [];
-      llmProfiles = profiles || [];
+      llmProfiles = components.llm_profiles || [];
       await loadBundles();
     } catch (e) {
       error.set(e.message);
