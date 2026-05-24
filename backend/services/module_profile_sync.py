@@ -349,3 +349,34 @@ def get_prompt_modifiers_from_modules(modules_dir: Path = MODULES_DIR) -> list[d
         }
         results.append(_mark_readonly(entry, mod["module_id"], mod["manifest"]))
     return results
+
+
+def seed_prompt_modifiers_to_db(modules_dir: Path = MODULES_DIR) -> int:
+    """Seed prompt modifiers from module filesystem into the DB."""
+    from datetime import UTC, datetime
+
+    from backend.blueprints.models import PromptModifier
+    from backend.blueprints.repository import BlueprintRepository
+
+    repo = BlueprintRepository()
+    modifiers = get_prompt_modifiers_from_modules(modules_dir)
+    count = 0
+    for mod in modifiers:
+        try:
+            pm = PromptModifier(
+                id=mod["id"],
+                name=mod["name"],
+                content=mod.get("content", ""),
+                description=mod.get("description", ""),
+                tags=mod.get("tags", []),
+                is_system=True,
+                created_at=mod.get("created_at", datetime.now(UTC)),
+                updated_at=mod.get("updated_at", datetime.now(UTC)),
+            )
+            repo.save_prompt_modifier(pm)
+            count += 1
+        except Exception:
+            logger.warning("Failed to seed prompt modifier '%s' to DB", mod.get("id"), exc_info=True)
+    if count:
+        logger.info("Seeded %d prompt modifiers from modules into DB", count)
+    return count

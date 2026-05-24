@@ -15,6 +15,7 @@ from typing import Any
 from backend.blueprints.models import (
     AgentBundle,
     BlueprintLLMProfile,
+    BundleComposition,
     PromptTemplate,
     RoleDefinition,
     RoleType,
@@ -202,7 +203,7 @@ def import_bundle(
 
 
 def _serialize_bundle(b: AgentBundle) -> dict:
-    return {
+    d: dict = {
         "id": b.id,
         "name": b.name,
         "description": b.description,
@@ -215,6 +216,9 @@ def _serialize_bundle(b: AgentBundle) -> dict:
         "tags": b.tags,
         "is_active": b.is_active,
     }
+    if b.composition:
+        d["composition"] = b.composition.model_dump()
+    return d
 
 
 def _serialize_llm_profile(p: BlueprintLLMProfile) -> dict:
@@ -510,6 +514,11 @@ def _import_bundle_entity(
     if existing and strategy == ImportConflictStrategy.SKIP:
         return existing
 
+    composition = None
+    composition_raw = raw.get("composition")
+    if composition_raw:
+        composition = BundleComposition(**composition_raw)
+
     bundle = AgentBundle(
         id=resolved_id,
         name=raw["name"],
@@ -520,6 +529,7 @@ def _import_bundle_entity(
         prompt_template_id=resolved_prompt_id,
         tone_profile_id=resolved_tone_id,
         persona_id=raw.get("persona_id"),
+        composition=composition,
         tags=raw.get("tags", []),
         is_active=raw.get("is_active", True),
     )

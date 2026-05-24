@@ -466,6 +466,50 @@ class ToneProfile(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# PromptModifier
+# ---------------------------------------------------------------------------
+
+
+class PromptModifier(BaseModel):
+    """A prompt modifier — output formatting & finetuning snippet.
+
+    Loaded from ``modules/prompt-modifiers/`` modules and seeded into
+    the database.  The ``content`` field contains the raw modifier text
+    that gets appended to the system prompt during assembly.
+    """
+
+    id: str = Field(..., min_length=1, max_length=200)
+    name: str = Field(..., min_length=1, max_length=200)
+    content: str = ""  # The modifier text (Markdown)
+    description: str = ""
+    tags: list[str] = Field(default_factory=list)
+    is_system: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# BundleComposition — module-ID references for Composer-based Bundles
+# ---------------------------------------------------------------------------
+
+
+class BundleComposition(BaseModel):
+    """Modul-Referenzen für die Composer-Assembly — KEINE Inline-Daten.
+
+    References module IDs from the ``modules/`` directory tree, NOT
+    database primary keys.  At resolve time the actual content is loaded
+    from the module filesystem (or a future ``danwa-modules`` resolver).
+
+    FUTURE: Dependency resolver from ``danwa-modules`` repo on GitHub
+    will automatically fetch missing dependencies.
+    """
+
+    agent_core_id: str = ""
+    argumentation_pattern_id: str = ""
+    prompt_modifier_id: str = ""
+
+
+# ---------------------------------------------------------------------------
 # AgentBundle — higher-level composition for Workflow-Nodes
 # ---------------------------------------------------------------------------
 
@@ -490,6 +534,10 @@ class AgentBundle(BaseModel):
     prompt_template_id: str | None = None  # Optional: specific PromptTemplate override
     tone_profile_id: str | None = None  # Optional: ToneProfile for communication style
     persona_id: str | None = None  # Optional: legacy AgentPersona reference
+    # Composition (Composer-based assembly — overrides legacy role_definition + prompt_template)
+    composition: BundleComposition | None = None
+    # When set: system_prompt is assembled via ComposerService from module IDs
+    # When None: legacy path via BundleResolver._assemble_system_prompt()
     # Metadata
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True

@@ -188,7 +188,7 @@ class BundleComposer:
             description=description,
             llm_profile_id=llm_profile_id,
             role_type_id=role_type_id,
-            tone_profile_id=tone_profile_id or "",
+            tone_profile_id=tone_profile_id,
             composition=comp,
             tags=[],
             is_active=True,
@@ -283,8 +283,8 @@ class BundleComposer:
             dependencies[f"agent-cores/{composition.agent_core_id}"] = ">=1.0.0"
         if composition.argumentation_pattern_id:
             dependencies[f"agent-argumentation-patterns/{composition.argumentation_pattern_id}"] = ">=1.0.0"
-        if composition.tone_profile_id:
-            dependencies[f"agent-tone-profiles/{composition.tone_profile_id}"] = ">=1.0.0"
+        if bundle.tone_profile_id:
+            dependencies[f"agent-tone-profiles/{bundle.tone_profile_id}"] = ">=1.0.0"
         if composition.prompt_modifier_id:
             dependencies[f"prompt-modifiers/{composition.prompt_modifier_id}"] = ">=1.0.0"
         if bundle.llm_profile_id:
@@ -386,9 +386,10 @@ class BundleComposer:
         if not composition_raw:
             raise ValueError(f"Bundle profile '{module_id}' has no composition")
 
-        composition = BundleComposition(
+        composition = Composition(
             agent_core_id=composition_raw.get("agent_core_id", ""),
             argumentation_pattern_id=composition_raw.get("argumentation_pattern_id", ""),
+            tone_profile_id=composition_raw.get("tone_profile_id", ""),
             prompt_modifier_id=composition_raw.get("prompt_modifier_id", ""),
         )
 

@@ -340,7 +340,7 @@ async def complete_wf_node(state: WorkflowState) -> dict:
         "node_id": node_id,
         "node_type": "wf-complete",
         "role": "complete",
-        "content": final_output[:500],
+        "content": final_output,
         "tokens_used": 0,
         "duration_ms": 0,
         "status": "completed",

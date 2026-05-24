@@ -1,0 +1,16 @@
+{
+  "id": "bundle-17a32dec8a31",
+  "name": "Dir Export",
+  "description": "",
+  "llm_profile_id": "test-llm",
+  "role_type_id": "strategist",
+  "tone_profile_id": null,
+  "role_definition_id": null,
+  "prompt_template_id": null,
+  "composition": {
+    "agent_core_id": "strategist-default",
+    "argumentation_pattern_id": "",
+    "prompt_modifier_id": ""
+  },
+  "is_active": true
+}

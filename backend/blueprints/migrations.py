@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 26
+SCHEMA_VERSION = 27
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -658,6 +658,21 @@ _MIGRATION_V26_TABLES = [
     "CREATE INDEX IF NOT EXISTS idx_agent_bundles_active ON agent_bundles (is_active)",
 ]
 
+_MIGRATION_V27_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS prompt_modifiers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        tags_json TEXT DEFAULT '[]',
+        is_system INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+]
+
 
 def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
     """Apply all pending schema migrations.
@@ -965,6 +980,19 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 26, "Add agent_bundles table for Bundle architecture")
             conn.commit()
             logger.info("Migration v26 applied successfully")
+
+        # ── V27 — prompt_modifiers table + composition_json on agent_bundles ──
+        if current < 27:
+            logger.info("Applying migration v27: prompt_modifiers table + composition_json on agent_bundles")
+            for stmt in _MIGRATION_V27_TABLES:
+                conn.execute(stmt)
+            try:
+                conn.execute("ALTER TABLE agent_bundles ADD COLUMN composition_json TEXT")
+            except sqlite3.OperationalError:
+                logger.debug("agent_bundles.composition_json column already exists")
+            _record_version(conn, 27, "Add prompt_modifiers table + composition_json column to agent_bundles")
+            conn.commit()
+            logger.info("Migration v27 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

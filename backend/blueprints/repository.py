@@ -17,8 +17,10 @@ from backend.blueprints.models import (
     AgentBlueprint,
     AgentBundle,
     BlueprintLLMProfile,
+    BundleComposition,
     CanvasLayout,
     CanvasLayoutData,
+    PromptModifier,
     PromptTemplate,
     RoleDefinition,
     RoleType,
@@ -903,19 +905,102 @@ class BlueprintRepository:
         return ToneProfile.model_validate_json(row["profile_json"])
 
     # ------------------------------------------------------------------
+    # Prompt Modifiers
+    # ------------------------------------------------------------------
+
+    def save_prompt_modifier(self, modifier: PromptModifier) -> None:
+        """Insert or replace a prompt modifier."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO prompt_modifiers
+                    (id, name, content, description, tags_json, is_system,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    modifier.id,
+                    modifier.name,
+                    modifier.content,
+                    modifier.description,
+                    json.dumps(modifier.tags),
+                    int(modifier.is_system),
+                    modifier.created_at.isoformat(),
+                    modifier.updated_at.isoformat(),
+                ),
+            )
+        logger.debug("Saved prompt modifier %s", modifier.id)
+
+    def get_prompt_modifier(self, modifier_id: str) -> PromptModifier | None:
+        """Retrieve a prompt modifier by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM prompt_modifiers WHERE id = ?",
+                (modifier_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return self._row_to_prompt_modifier(row)
+
+    def list_prompt_modifiers(
+        self,
+        include_system: bool = True,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PromptModifier]:
+        """List prompt modifiers, optionally including system ones."""
+        with self._connect() as conn:
+            if include_system:
+                rows = conn.execute(
+                    "SELECT * FROM prompt_modifiers ORDER BY is_system DESC, name LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM prompt_modifiers WHERE is_system = 0 ORDER BY name LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+        return [self._row_to_prompt_modifier(r) for r in rows]
+
+    def delete_prompt_modifier(self, modifier_id: str) -> bool:
+        """Delete a prompt modifier. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM prompt_modifiers WHERE id = ?",
+                (modifier_id,),
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _row_to_prompt_modifier(row: sqlite3.Row) -> PromptModifier:
+        """Convert a SQLite row to a PromptModifier model."""
+        return PromptModifier(
+            id=row["id"],
+            name=row["name"],
+            content=row["content"],
+            description=row["description"],
+            tags=json.loads(row["tags_json"]) if row["tags_json"] else [],
+            is_system=bool(row["is_system"]) if "is_system" in row.keys() else False,
+            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
+            updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else datetime.now(),
+        )
+
+    # ------------------------------------------------------------------
     # Agent Bundles
     # ------------------------------------------------------------------
 
     def save_bundle(self, bundle: AgentBundle) -> None:
         """Insert or replace an agent bundle."""
+        composition_json = json.dumps(bundle.composition.model_dump()) if bundle.composition else None
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO agent_bundles
                     (id, name, description, llm_profile_id, role_type_id,
                      role_definition_id, prompt_template_id, tone_profile_id,
-                     persona_id, tags_json, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     persona_id, tags_json, is_active, created_at, updated_at,
+                     composition_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     bundle.id,
@@ -931,6 +1016,7 @@ class BlueprintRepository:
                     int(bundle.is_active),
                     bundle.created_at.isoformat(),
                     bundle.updated_at.isoformat(),
+                    composition_json,
                 ),
             )
         logger.debug("Saved agent bundle %s", bundle.id)
@@ -973,6 +1059,15 @@ class BlueprintRepository:
     @staticmethod
     def _row_to_bundle(row: sqlite3.Row) -> AgentBundle:
         """Convert a SQLite row to an AgentBundle model."""
+        composition = None
+        composition_raw = row["composition_json"] if "composition_json" in row.keys() else None
+        if composition_raw:
+            try:
+                parsed = json.loads(composition_raw)
+                if parsed:
+                    composition = BundleComposition(**parsed)
+            except (json.JSONDecodeError, TypeError):
+                logger.debug("Failed to parse composition_json for bundle %s", row["id"])
         return AgentBundle(
             id=row["id"],
             name=row["name"],
@@ -987,4 +1082,5 @@ class BlueprintRepository:
             is_active=bool(row["is_active"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
+            composition=composition,
         )

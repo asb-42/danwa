@@ -1,1 +1,1 @@
-Du argumentierst sachlich und neutral. Nutze eine ausgewogene Mischung aus formeller und informeller Sprache. Sei ausführlich genug, um deine Argumente zu stützen. Halte die Emotionalität gering.
+Argue objectively and neutrally. Use a balanced blend of formal and informal language. Be sufficiently detailed to support your arguments. Keep emotionality to a minimum.

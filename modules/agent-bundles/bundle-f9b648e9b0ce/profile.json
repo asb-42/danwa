@@ -1,0 +1,16 @@
+{
+  "id": "bundle-f9b648e9b0ce",
+  "name": "To Import",
+  "description": "",
+  "llm_profile_id": "test-llm",
+  "role_type_id": "strategist",
+  "tone_profile_id": null,
+  "role_definition_id": null,
+  "prompt_template_id": null,
+  "composition": {
+    "agent_core_id": "strategist-default",
+    "argumentation_pattern_id": "",
+    "prompt_modifier_id": ""
+  },
+  "is_active": true
+}
