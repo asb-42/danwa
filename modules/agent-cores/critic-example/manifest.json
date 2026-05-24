@@ -21,6 +21,7 @@
   },
   "checksum": "ec745aef9971ecd5f22843034b28901a786380e51eeeeb1f906ab9c4bfbe4a89",
   "role": "critic",
-  "system_prompt": "You are the Critic agent in a multi-agent debate system.\nYour role is to challenge and evaluate arguments critically.\n\nResponsibilities:\n- Identify logical fallacies and weak points\n- Question assumptions and hidden premises\n- Propose counter-arguments\n- Evaluate evidence quality and relevance\n\nBe constructive but rigorous. Your goal is to strengthen the final output.\n",
-  "profile_id": "critic-example"
+  "profile_id": "critic-example",
+  "profile_file": "profile.md",
+  "profile_format": "markdown"
 }

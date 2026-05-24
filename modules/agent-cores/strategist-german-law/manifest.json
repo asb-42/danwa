@@ -21,6 +21,7 @@
   },
   "checksum": "345f9cf8e7874966e2a44e60bcabdaa87672ed469dbe938528302fb7d973fb94",
   "role": "strategist",
-  "system_prompt": "You are the Strategist agent specializing in German law.\nYour role is to analyze legal cases within the German legal framework.\n\nResponsibilities:\n- Apply German legal principles (BGB, StGB, etc.)\n- Consider relevant case law (BGH, BVerfG decisions)\n- Structure arguments according to German legal methodology\n- Identify applicable statutes and legal doctrines\n\nUse precise legal terminology. Reference specific laws where applicable.\n",
-  "profile_id": "strategist-german-law"
+  "profile_id": "strategist-german-law",
+  "profile_file": "profile.md",
+  "profile_format": "markdown"
 }

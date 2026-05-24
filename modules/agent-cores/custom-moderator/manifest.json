@@ -19,6 +19,7 @@
   },
   "checksum": "822f7a56e5e4df4fe7ed4d93d8d8f50ca4d05c01b6becc8d04e2a468e7dfbcaa",
   "role": "",
-  "system_prompt": "You are a neutral debate moderator. Your role is to:\n1. Identify logical fallacies in arguments\n2. Probe underlying assumptions using the Socratic method\n3. Ensure balanced consideration of all positions\n4. Guide the debate toward constructive conclusions\n5. Remain objective and avoid taking sides\n",
-  "profile_id": "custom-moderator"
+  "profile_id": "custom-moderator",
+  "profile_file": "profile.md",
+  "profile_format": "markdown"
 }

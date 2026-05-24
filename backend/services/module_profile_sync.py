@@ -198,25 +198,29 @@ def get_agent_personas_from_modules(modules_dir: Path = MODULES_DIR) -> list[dic
     for mod in _get_enabled_modules(modules_dir):
         if mod["type"] != ModuleType.AGENT_PERSONA:
             continue
-        profile = _read_module_profile(mod["dir"], mod["manifest"])
-        if profile is None:
-            manifest = mod["manifest"]
-            profile = {
-                "id": manifest.get("profile_id", mod["module_id"].replace("agent-", "", 1)),
-                "name": _localized(manifest.get("name", {}), mod["module_id"]),
-                "role": manifest.get("role", ""),
-                "system_prompt": manifest.get("system_prompt", ""),
-                "description": _localized(manifest.get("description", {})),
-                "tags": manifest.get("tags", []),
-            }
-        # Map role_type → role (legacy compat)
+
+        manifest = mod["manifest"]
+        profile = {
+            "id": manifest.get("profile_id", mod["module_id"].replace("agent-", "", 1)),
+            "name": _localized(manifest.get("name", {}), mod["module_id"]),
+            "role": manifest.get("role", ""),
+            "description": _localized(manifest.get("description", {})),
+            "tags": manifest.get("tags", []),
+        }
+
+        file_profile = _read_module_profile(mod["dir"], manifest)
+        if file_profile and "content" in file_profile:
+            profile["system_prompt"] = file_profile["content"]
+        else:
+            profile["system_prompt"] = manifest.get("system_prompt", "")
+
         if "role_type" in profile and "role" not in profile:
             profile["role"] = profile.pop("role_type")
         profile.setdefault("max_rounds", 5)
         profile.setdefault("consensus_threshold", 0.9)
         profile.setdefault("tags", [])
         profile.setdefault("llm_profile_id", "")
-        results.append(_mark_readonly(profile, mod["module_id"], mod["manifest"]))
+        results.append(_mark_readonly(profile, mod["module_id"], manifest))
     return results
 
 

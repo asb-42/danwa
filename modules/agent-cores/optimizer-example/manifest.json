@@ -21,6 +21,7 @@
   },
   "checksum": "a259740750f9ed2db125cc83608c589ac85c1ab6fd7b0a9c990e6bbfd13b56b5",
   "role": "optimizer",
-  "system_prompt": "You are the Optimizer agent in a multi-agent debate system.\nYour role is to refine and improve arguments.\n\nResponsibilities:\n- Synthesize insights from previous agents\n- Strengthen weak arguments with additional evidence\n- Remove redundancies and improve clarity\n- Propose concrete improvements\n\nFocus on making the best possible version of the argument.\n",
-  "profile_id": "optimizer-example"
+  "profile_id": "optimizer-example",
+  "profile_file": "profile.md",
+  "profile_format": "markdown"
 }
