@@ -121,10 +121,11 @@ def _derive_profile_format(profile_file: str, manifest_format: str | None) -> st
 def _read_module_profile(mod_dir: Path, manifest: dict) -> dict[str, Any] | None:
     """Read and parse a module's profile file."""
     profile_file = manifest.get("profile_file")
-    profile_format = _derive_profile_format(profile_file, manifest.get("profile_format"))
 
     if not profile_file:
         return None
+
+    profile_format = _derive_profile_format(profile_file, manifest.get("profile_format"))
 
     profile_path = mod_dir / profile_file
     if not profile_path.exists():
@@ -182,6 +183,15 @@ def get_role_types_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict[st
     return results
 
 
+def _localized(d: Any, fallback: str = "") -> str:
+    """Extract a string from a localized dict, plain string, or fallback."""
+    if isinstance(d, str):
+        return d
+    if isinstance(d, dict):
+        return next((v for v in d.values() if v), fallback)
+    return fallback
+
+
 def get_agent_personas_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, Any]]:
     """Get agent personas from enabled agent-persona modules."""
     results = []
@@ -190,8 +200,16 @@ def get_agent_personas_from_modules(modules_dir: Path = MODULES_DIR) -> list[dic
             continue
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
-            continue
-        # Map role_type → role (some modules use role_type)
+            manifest = mod["manifest"]
+            profile = {
+                "id": manifest.get("profile_id", mod["module_id"].replace("agent-", "", 1)),
+                "name": _localized(manifest.get("name", {}), mod["module_id"]),
+                "role": manifest.get("role", ""),
+                "system_prompt": manifest.get("system_prompt", ""),
+                "description": _localized(manifest.get("description", {})),
+                "tags": manifest.get("tags", []),
+            }
+        # Map role_type → role (legacy compat)
         if "role_type" in profile and "role" not in profile:
             profile["role"] = profile.pop("role_type")
         profile.setdefault("max_rounds", 5)

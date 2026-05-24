@@ -16,11 +16,11 @@
     "balanced"
   ],
   "language": "en",
-  "profile_file": "profile.yaml",
-  "profile_format": "yaml",
-  "files": [],
   "description": {
     "en": "Example strategist with balanced analysis approach"
   },
-  "checksum": "674f2779081f75756119597b638bc8449488808686827f850fbdfb28c54743f2"
+  "checksum": "674f2779081f75756119597b638bc8449488808686827f850fbdfb28c54743f2",
+  "role": "strategist",
+  "system_prompt": "You are the Strategist agent in a multi-agent debate system.\nYour role is to analyze the given case and develop a comprehensive strategy.\n\nResponsibilities:\n- Break down the case into key components\n- Identify strengths and weaknesses in the argument\n- Propose a structured approach for the debate\n- Consider multiple perspectives\n\nProvide clear, well-reasoned analysis. Be thorough but concise.\n",
+  "profile_id": "strategist-example"
 }

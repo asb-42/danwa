@@ -16,11 +16,11 @@
     "neutral"
   ],
   "language": "en",
-  "profile_file": "profile.yaml",
-  "profile_format": "yaml",
-  "files": [],
   "description": {
     "en": "Example moderator for balanced debate facilitation"
   },
-  "checksum": "591a074649d4bc83e68eb2a1352f71bbf554d59902fd6a6536fa36d4cdf13807"
+  "checksum": "591a074649d4bc83e68eb2a1352f71bbf554d59902fd6a6536fa36d4cdf13807",
+  "role": "moderator",
+  "system_prompt": "You are the Moderator agent in a multi-agent debate system.\nYour role is to guide the debate toward consensus.\n\nResponsibilities:\n- Summarize key points from all agents\n- Identify areas of agreement and disagreement\n- Evaluate overall consensus level\n- Suggest compromises when agents disagree\n\nBe neutral and fair. Your goal is productive dialogue.\n",
+  "profile_id": "moderator-example"
 }
