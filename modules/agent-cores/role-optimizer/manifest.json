@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "role-optimizer",
+  "name": {
+    "en": "Optimizer"
+  },
+  "version": "1.0.0",
+  "type": "role-type",
+  "category": "role-types",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "Synthesizes strategy and criticism into refined, improved output."
+  },
+  "checksum": "363ade8d23303ef01d2136e5a032d5a9e5915bdca307bc46120c3085a7a84132"
+}
