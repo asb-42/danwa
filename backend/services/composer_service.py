@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 from backend.services.module_profile_sync import (
     get_agent_personas_from_modules,
@@ -107,7 +106,7 @@ class ComposerService:
             return ""
         try:
             # Patterns are stored as prompt-variant modules with markdown content
-            patterns = get_argumentation_patterns_from_modules()
+            get_argumentation_patterns_from_modules()
             # We need the actual content — look it up via module path
             from backend.modules.models import ModuleType
             from backend.services.module_profile_sync import _get_enabled_modules, _read_module_profile
@@ -202,12 +201,14 @@ class ComposerService:
             if profile is None:
                 continue
             manifest_name = mod["manifest"].get("name", {})
-            results.append({
-                "id": mod["module_id"],
-                "name": manifest_name.get("en", manifest_name.get("de", mod["module_id"])),
-                "role": profile.get("role", ""),
-                "description": mod["manifest"].get("description", {}).get("en", ""),
-            })
+            results.append(
+                {
+                    "id": mod["module_id"],
+                    "name": manifest_name.get("en", manifest_name.get("de", mod["module_id"])),
+                    "role": profile.get("role", ""),
+                    "description": mod["manifest"].get("description", {}).get("en", ""),
+                }
+            )
         return results
 
     @staticmethod

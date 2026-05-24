@@ -149,8 +149,7 @@ class StartMvpDebateRequest(BaseModel):
     )
     agent_core_ids: dict[str, str] = Field(
         default_factory=dict,
-        description="[Phase 2] Mapping of role → agent-core module ID. "
-        "Composed with other components via ComposerService.",
+        description="[Phase 2] Mapping of role → agent-core module ID. Composed with other components via ComposerService.",
     )
     argumentation_pattern_ids: dict[str, str] = Field(
         default_factory=dict,

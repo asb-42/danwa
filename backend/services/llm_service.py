@@ -330,16 +330,12 @@ class LLMService:
         account_id_env = self._profile.account_id_env or "CLOUDFLARE_ACCOUNT_ID"
         account_id = os.getenv(account_id_env)
         if not account_id:
-            raise ValueError(
-                f"Cloudflare account ID not found. Set the {account_id_env} environment variable."
-            )
+            raise ValueError(f"Cloudflare account ID not found. Set the {account_id_env} environment variable.")
 
         # Resolve API key
         api_key = os.getenv(self._profile.api_key_env)
         if not api_key:
-            raise ValueError(
-                f"Cloudflare API key not found. Set the {self._profile.api_key_env} environment variable."
-            )
+            raise ValueError(f"Cloudflare API key not found. Set the {self._profile.api_key_env} environment variable.")
 
         model = self._profile.model
         url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"

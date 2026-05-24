@@ -73,11 +73,7 @@ def _get_enabled_modules(modules_dir: Path = MODULES_DIR) -> list[dict[str, Any]
         # directory + module_id prefix derivation
         parent = parent_dir_name(mod_dir, modules_dir)
         manifest_type = manifest.get("type")
-        derived_type = (
-            resolve_manifest_type(manifest_type)
-            if manifest_type
-            else derive_module_type(parent, module_id)
-        )
+        derived_type = resolve_manifest_type(manifest_type) if manifest_type else derive_module_type(parent, module_id)
 
         modules.append(
             {
