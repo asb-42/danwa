@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "dialectic-moderator",
+  "name": {
+    "en": "Moderator (Dialectic) [EN]"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "dialectic",
+    "moderator",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "c8b0dbe785375ca9b687f5271da5d6c04ff4bb5add8ebb5ea689d26bf264d7a7"
+}

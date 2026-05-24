@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "kantian-critic",
+  "name": {
+    "en": "Critic (Kantian)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "kantian",
+    "critic",
+    "de"
+  ],
+  "language": "de",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "4ed2a9602e3a111e0df59e9ab8e3c7df4032a93520d54a69fbfc36b4bad778f0"
+}
