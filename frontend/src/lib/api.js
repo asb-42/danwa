@@ -930,7 +930,7 @@ export function getCustomLocales() {
 // ═══════════════════════════════════════════════════════════
 
 /** Create a new chat session with the Danwa assistant. */
-export function createAssistantSession(title = 'Neue Konversation', profileId = null) {
+export function createAssistantSession(title = 'New Conversation', profileId = null) {
   const params = new URLSearchParams({ title });
   if (profileId) params.append('profile_id', profileId);
   return request(`/api/v1/assistant/sessions?${params}`, { method: 'POST' });

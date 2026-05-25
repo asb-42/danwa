@@ -330,7 +330,7 @@ class AssistantService:
 
         return None
 
-    def create_session(self, title: str = "Neue Konversation", profile_id: str | None = None) -> ChatSession:
+    def create_session(self, title: str = "New Conversation", profile_id: str | None = None) -> ChatSession:
         """Create a new chat session."""
         # Evict oldest session if at capacity
         if len(self._sessions) >= self._max_sessions:

@@ -32,7 +32,7 @@ def get_assistant_service() -> AssistantService:
 
 @router.post("/sessions", response_model=dict[str, Any])
 async def create_session(
-    title: str = "Neue Konversation",
+    title: str = "New Conversation",
     profile_id: str | None = None,
 ):
     """Create a new chat session with the Danwa assistant.
