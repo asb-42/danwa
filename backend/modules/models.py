@@ -26,6 +26,7 @@ class ModuleType(StrEnum):
     ROLE_TYPE = "role-type"
     PROMPT_VARIANT = "prompt-variant"
     PROMPT_MODIFIER = "prompt-modifier"
+    KITSUNE_ASSISTANT = "kitsune-assistant"
     BUNDLE = "bundle"
     LANGUAGE_PACK = "language-pack"
 
@@ -39,6 +40,7 @@ class ModuleCategory(StrEnum):
     WORKFLOW_VARIANTS = "workflow-variants"
     TONE_PROFILES = "tone-profiles"
     ROLE_TYPES = "role-types"
+    KITSUNE = "kitsune"
     BUNDLES = "bundles"
     TRANSLATIONS = "translations"
 

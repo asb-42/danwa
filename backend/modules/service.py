@@ -149,6 +149,9 @@ class ModuleService:
 
         for mid, db_info in db_status.items():
             if not any(m.module_id == mid for m in modules):
+                # Skip legacy ghost entries that now have a proper filesystem module
+                if db_info.get("type") == "custom" and mid in ("kitsune",):
+                    continue
                 result.append(
                     {
                         "module_id": mid,

@@ -36,7 +36,7 @@
   let editError = $state(null);
 
   const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
-  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'prompt-modifiers', 'tone-profiles', 'workflows', 'translations'];
+  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'prompt-modifiers', 'tone-profiles', 'workflows', 'kitsune', 'translations'];
   const CATEGORY_LABELS = {
     'agents': 'Agent Cores',
     'llm-profiles': 'LLM Profiles',
@@ -44,6 +44,7 @@
     'tone-profiles': 'Tone Profiles',
     'prompts': 'Argumentation Patterns',
     'prompt-modifiers': 'Prompt Modifiers',
+    'kitsune': 'Kitsune',
     'workflows': 'Workflows',
     'translations': '🌐 Translations',
   };
@@ -301,6 +302,15 @@
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'description', label: 'Description', type: 'text' },
         { key: 'content', label: 'Prompt (Markdown)', type: 'markdown' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
+      ];
+    }
+    if (type === 'kitsune-assistant') {
+      return [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'content', label: 'System Prompt (Markdown)', type: 'markdown' },
         { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
         { key: 'language', label: 'Language', type: 'text' },
       ];

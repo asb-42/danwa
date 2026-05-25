@@ -10,6 +10,7 @@ from backend.modules.models import ModuleCategory, ModuleType
 _DIR_TO_TYPE: dict[str, ModuleType] = {
     "llm-profiles": ModuleType.LLM_PROFILE,
     "agent-argumentation-patterns": ModuleType.PROMPT_VARIANT,
+    "kitsune-assistant": ModuleType.KITSUNE_ASSISTANT,
     "prompt-modifiers": ModuleType.PROMPT_MODIFIER,
     "workflows": ModuleType.WORKFLOW_TEMPLATE,
     "agent-bundles": ModuleType.BUNDLE,
@@ -22,6 +23,7 @@ _DIR_TO_TYPE: dict[str, ModuleType] = {
 _DIR_TO_CATEGORY: dict[str, ModuleCategory] = {
     "llm-profiles": ModuleCategory.LLM_PROFILES,
     "agent-argumentation-patterns": ModuleCategory.PROMPTS,
+    "kitsune-assistant": ModuleCategory.KITSUNE,
     "prompt-modifiers": ModuleCategory.PROMPT_MODIFIERS,
     "workflows": ModuleCategory.WORKFLOWS,
     "agent-bundles": ModuleCategory.BUNDLES,

@@ -28,6 +28,7 @@
     { id: 'prompt-modifiers', label: 'Prompt Modifiers' },
     { id: 'agent-bundles', label: 'Agent Bundles' },
     { id: 'workflows', label: 'Workflows' },
+    { id: 'kitsune', label: 'Kitsune' },
     { id: 'translations', label: '🌐 Translations' },
   ];
 
@@ -273,6 +274,9 @@
 
   {:else if activeTab === 'workflows'}
     <ModuleManager filterCategory="workflows" />
+
+  {:else if activeTab === 'kitsune'}
+    <ModuleManager filterCategory="kitsune" />
 
   {:else if activeTab === 'translations'}
     <ModuleManager filterCategory="translations" />
