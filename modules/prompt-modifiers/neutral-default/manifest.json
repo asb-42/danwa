@@ -14,10 +14,15 @@
     "name": "Danwa Community"
   },
   "license": "CC-BY-4.0",
-  "tags": ["default", "neutral"],
+  "tags": [
+    "default",
+    "neutral"
+  ],
   "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
-  "checksum": ""
+  "checksum": "b38e17412b2eafe78a531af78e06fe33f1144984611cdfe2d6e62ed3e1b9a4be",
+  "role": "",
+  "updated_at": "2026-05-25T02:29:24.894985+00:00"
 }
