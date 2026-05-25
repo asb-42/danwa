@@ -664,10 +664,18 @@ def agent_node_factory(
         # Include round number in node_output for render engine / PDF generation
         output["round"] = current_round
 
+        # Keep current_draft bounded — only retain the latest round's content
+        # to prevent unbounded context growth across feedback loops
+        existing_draft = state.get("current_draft", "")
+        # Append this agent's output, but cap total length to ~8000 chars (last ~2 rounds)
+        new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
+        if len(new_draft) > 8000:
+            new_draft = new_draft[-8000:]
+
         return {
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],
-            "current_draft": state.get("current_draft", "") + "\n" + content,
+            "current_draft": new_draft,
         }
 
     return _agent_node
@@ -698,6 +706,17 @@ def moderator_node_factory(
         current_round = state.get("current_round", 1)
         max_rounds = state.get("max_rounds", 10)
         next_round = current_round + 1
+
+        # Safety cap: if we've exceeded max_rounds, log a warning and cap
+        # This is a belt-and-suspenders check in addition to route_feedback
+        if current_round > max_rounds + 1:
+            logger.warning(
+                "Moderator (node %s): current_round=%d exceeds max_rounds=%d — forcing round cap to prevent infinite loop",
+                node_id,
+                current_round,
+                max_rounds,
+            )
+            next_round = current_round  # Don't increment further
 
         session_id = state.get("session_id", "")
         await publish_async(

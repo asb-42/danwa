@@ -136,9 +136,24 @@ async def run_workflow_background(
     try:
         graph = compiled_workflow.graph
 
-        # Invoke the compiled graph
-        # The graph will call node functions which publish their own SSE events
-        final_state = await graph.ainvoke(initial_state)
+        # Calculate a hard recursion limit as a safety cap against infinite loops.
+        # Each round uses ~len(node_sequence) node calls; add generous buffer.
+        num_nodes = len(compiled_workflow.node_sequence) or 4
+        max_rounds = initial_state.get("max_rounds", 10)
+        recursion_limit = max(num_nodes * (max_rounds + 1) * 2 + 20, 100)
+        logger.info(
+            "Workflow %s: recursion_limit=%d (nodes=%d, max_rounds=%d)",
+            workflow_id,
+            recursion_limit,
+            num_nodes,
+            max_rounds,
+        )
+
+        # Invoke the compiled graph with a hard recursion limit
+        final_state = await graph.ainvoke(
+            initial_state,
+            config={"recursion_limit": recursion_limit},
+        )
 
         # Save final snapshot
         snapshot_store.save(
