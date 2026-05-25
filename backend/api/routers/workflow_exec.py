@@ -194,6 +194,7 @@ class StartMvpDebateResponse(BaseModel):
     debate_id: str
     workflow_id: str
     status: str = "running"
+    title: str = ""
     llm_assignments: dict[str, str] = Field(
         description="Mapping of role → llm_profile_id actually used",
     )
@@ -412,6 +413,7 @@ async def start_mvp_debate(
         debate_id=debate_id,
         workflow_id=wf.id,
         status="running",
+        title=title,
         llm_assignments=llm_assignments,
     )
 

@@ -66,6 +66,7 @@
 
   let sessionId = $state(null);
   let debateId = $state(null);
+  let debateTitle = $state('');
   let status = $state('idle');
   let currentNodeId = $state('');
   let currentRound = $state(0);
@@ -144,6 +145,7 @@
       try {
         const debate = await getDebate(eid);
         debateId = debate.debate_id;
+        debateTitle = debate.title || '';
         topic = debate.case_text || '';
         maxRounds = debate.max_rounds || 5;
         threshold = debate.consensus_score ?? 0.9;
@@ -462,6 +464,7 @@
       });
       sessionId = result.session_id;
       debateId = result.debate_id;
+      debateTitle = result.title || '';
       llmAssignmentsResult = result.llm_assignments || {};
       startTimer();
       connectSSE(sessionId);
@@ -516,6 +519,7 @@
     if (cleanupSSE) cleanupSSE();
     sessionId = null;
     debateId = null;
+    debateTitle = '';
     status = 'idle';
     currentNodeId = '';
     currentRound = 0;
@@ -560,9 +564,15 @@
   <div class="view-header">
     <h1 class="view-title">
       <span class="title-icon">🏛️</span>
-      MVP Debate Canvas
+      {debateTitle || 'MVP Debate Canvas'}
     </h1>
-    <p class="view-subtitle">4-agent debate with per-agent LLM profiles</p>
+    <p class="view-subtitle">
+      {#if debateTitle}
+        MVP Debate · 4-agent debate with per-agent LLM profiles
+      {:else}
+        4-agent debate with per-agent LLM profiles
+      {/if}
+    </p>
   </div>
 
   {#if isLoadingDebate}
