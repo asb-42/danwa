@@ -511,6 +511,20 @@ def agent_node_factory(
                             exc_info=True,
                         )
 
+            # Publish SSE event so the frontend shows interjection consumption feedback
+            await publish_async(
+                session_id,
+                "interjection.consumed",
+                {
+                    "node_id": node_id,
+                    "node_type": node_type,
+                    "role": role,
+                    "round": current_round,
+                    "interjection_count": len(interjection_queue),
+                    "contents": [inj["content"][:200] for inj in interjection_queue],
+                },
+            )
+
         if language == "en":
             user_prompt += "\n\nPlease respond in English."
         else:

@@ -58,6 +58,8 @@
   // Interjection
   let interjectionText = $state('');
   let sendingInterjection = $state(false);
+  let interjectionFeedback = $state('');      // Visual feedback for submitted interjections
+  let consumedInterjections = $state([]);     // Interjections consumed by agents
 
   // Confirmation page
   let showConfirm = $state(false);
@@ -347,6 +349,31 @@
         currentAgentQuery.set(null);
         refreshHITLStatus();
         refreshHITLInteractions();
+      },
+      onInterjectionReceived: (data) => {
+        try {
+          interjectionFeedback = `✓ Sent: "${(data.content || '').substring(0, 60)}${(data.content || '').length > 60 ? '…' : ''}"`;
+          // Clear feedback after 5 seconds
+          setTimeout(() => { if (interjectionFeedback.startsWith('✓ Sent:')) interjectionFeedback = ''; }, 5000);
+        } catch (e) { console.warn('[MvpDebateView] onInterjectionReceived error:', e); }
+      },
+      onInterjectionConsumed: (data) => {
+        try {
+          const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
+          const contents = data.contents || [];
+          const preview = contents.length > 0 ? `"${contents[0].substring(0, 80)}${contents[0].length > 80 ? '…' : ''}"` : '';
+          interjectionFeedback = `📨 ${agentLabel} received your input (Round ${data.round || '?'}) ${preview}`;
+          consumedInterjections = [...consumedInterjections, {
+            role: data.role,
+            round: data.round,
+            count: data.interjection_count,
+            contents: data.contents,
+            timestamp: Date.now(),
+          }];
+          // Clear feedback after 8 seconds
+          setTimeout(() => { if (interjectionFeedback.startsWith('📨')) interjectionFeedback = ''; }, 8000);
+          refreshHITLInteractions();
+        } catch (e) { console.warn('[MvpDebateView] onInterjectionConsumed error:', e); }
       },
       onHITLInject: () => {
         refreshHITLStatus();
@@ -1016,6 +1043,11 @@
               Send
             </button>
           </div>
+          {#if interjectionFeedback}
+            <div class="interjection-feedback" class:consumed={interjectionFeedback.startsWith('📨')}>
+              {interjectionFeedback}
+            </div>
+          {/if}
         </div>
       {/if}
 
@@ -1689,6 +1721,35 @@
   }
   .btn-interject:hover { background: #0284c7; }
   .btn-interject:disabled { opacity: 0.5; cursor: not-allowed; }
+  .interjection-feedback {
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #166534;
+    animation: fadeIn 0.3s ease-in;
+  }
+  .interjection-feedback.consumed {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+  }
+  :global(.dark) .interjection-feedback {
+    background: #14532d;
+    border-color: #22c55e;
+    color: #bbf7d0;
+  }
+  :global(.dark) .interjection-feedback.consumed {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #bfdbfe;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   /* Confirmation / Parameter Review */
   .confirm-section {
