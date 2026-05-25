@@ -1,0 +1,1544 @@
+[
+  {
+    "name": "Backend Core",
+    "slug": "backend-core",
+    "files": [
+      "backend/__init__.py",
+      "backend/main.py",
+      "backend/core/__init__.py",
+      "backend/core/config.py",
+      "backend/core/profiles.py",
+      "backend/api/__init__.py",
+      "backend/api/deps.py",
+      "backend/api/errors.py",
+      "backend/api/events.py",
+      "backend/models/__init__.py",
+      "backend/models/artifact.py",
+      "backend/models/debate_input.py",
+      "backend/models/input_job.py",
+      "backend/models/optimization_proposal.py",
+      "backend/models/project.py",
+      "backend/models/render_job.py",
+      "backend/models/schemas.py",
+      "tests/backend/test_health.py",
+      "tests/backend/test_version_consistency.py",
+      "tests/backend/test_artifact.py",
+      "tests/backend/test_debate_input.py",
+      "tests/backend/test_input_job.py",
+      "tests/backend/test_optimization_proposals.py",
+      "tests/backend/test_projects.py",
+      "tests/backend/test_render_job.py"
+    ]
+  },
+  {
+    "name": "API Endpoints",
+    "slug": "api-endpoints",
+    "files": [],
+    "children": [
+      {
+        "name": "API Endpoints — api",
+        "slug": "api-endpoints-api",
+        "files": [
+          "backend/api/routers/__init__.py",
+          "backend/api/routers/a2a_discovery.py",
+          "backend/api/routers/argumentation_patterns.py",
+          "backend/api/routers/assistant.py",
+          "backend/api/routers/audit.py",
+          "backend/api/routers/blueprint_events.py",
+          "backend/api/routers/blueprints.py",
+          "backend/api/routers/bundle_composer.py",
+          "backend/api/routers/canvas.py",
+          "backend/api/routers/config.py",
+          "backend/api/routers/debate.py",
+          "backend/api/routers/debate_stream.py",
+          "backend/api/routers/dms.py",
+          "backend/api/routers/health.py",
+          "backend/api/routers/input_composer.py",
+          "backend/api/routers/llm_profiles.py",
+          "backend/api/routers/modules.py",
+          "backend/api/routers/optimization_proposals.py",
+          "backend/api/routers/output_composer.py",
+          "backend/api/routers/profiles.py",
+          "backend/api/routers/projects.py",
+          "backend/api/routers/role_definitions.py",
+          "backend/api/routers/sessions.py",
+          "backend/api/routers/system.py",
+          "backend/api/routers/tone_profiles.py",
+          "backend/api/routers/translation.py",
+          "backend/api/routers/ui_i18n.py",
+          "backend/api/routers/workflow_definitions.py",
+          "backend/api/routers/workflow_exec.py",
+          "backend/api/routers/workflow_reports.py",
+          "backend/api/routers/workflow_templates.py"
+        ]
+      },
+      {
+        "name": "API Endpoints — backend",
+        "slug": "api-endpoints-backend",
+        "files": [
+          "tests/backend/test_a2a_discovery_api.py",
+          "tests/backend/test_backup_api.py",
+          "tests/backend/test_blueprint_api.py",
+          "tests/backend/test_bundle_composer_api.py",
+          "tests/backend/test_debate_api.py",
+          "tests/backend/test_dms_api.py",
+          "tests/backend/test_i18n_api.py",
+          "tests/backend/test_input_composer_api.py",
+          "tests/backend/test_module_api.py",
+          "tests/backend/test_output_composer_api.py",
+          "tests/backend/test_project_isolation.py",
+          "tests/backend/test_workflow_exec_api.py",
+          "tests/backend/test_workflow_templates.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Persistence Layer",
+    "slug": "persistence-layer",
+    "files": [
+      "backend/persistence/__init__.py",
+      "backend/persistence/audit.py",
+      "backend/persistence/backup.py",
+      "backend/persistence/debate_store.py",
+      "backend/persistence/project_store.py",
+      "backend/repositories/__init__.py",
+      "backend/repositories/profile_repo.py",
+      "backend/repositories/proposal_repo.py",
+      "backend/migrations/migrate_projects.py",
+      "tests/backend/test_backup.py",
+      "tests/backend/test_migration.py",
+      "tests/backend/test_migration_v6.py",
+      "tests/backend/test_migration_v7.py"
+    ]
+  },
+  {
+    "name": "Services Layer",
+    "slug": "services-layer",
+    "files": [],
+    "children": [
+      {
+        "name": "Services Layer — services",
+        "slug": "services-layer-services",
+        "files": [
+          "backend/services/__init__.py",
+          "backend/services/artifact_store.py",
+          "backend/services/assistant_service.py",
+          "backend/services/assistant_tools.py",
+          "backend/services/composer_service.py",
+          "backend/services/debate_workflow.py",
+          "backend/services/doc_parser.py",
+          "backend/services/llm_service.py",
+          "backend/services/meta_workflow.py",
+          "backend/services/module_profile_sync.py",
+          "backend/services/profile_service.py",
+          "backend/services/prompt_service.py",
+          "backend/services/render_engine.py",
+          "backend/services/render_job_store.py",
+          "backend/services/stt_service.py",
+          "backend/services/tone_prompt_injector.py",
+          "backend/services/translation_service.py",
+          "backend/services/ui_translation_service.py",
+          "backend/services/web_search.py"
+        ]
+      },
+      {
+        "name": "Services Layer — backend",
+        "slug": "services-layer-backend",
+        "files": [
+          "tests/backend/test_llm_service.py",
+          "tests/backend/test_profiles.py",
+          "tests/backend/test_service_llm.py",
+          "tests/backend/test_translation_service.py",
+          "tests/backend/test_web_search.py",
+          "tests/backend/test_workflow.py"
+        ]
+      },
+      {
+        "name": "Services Layer — tests",
+        "slug": "services-layer-tests",
+        "files": [
+          "tests/test_i18n_service.py",
+          "tests/test_logging_config.py",
+          "tests/test_report_generator.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Document Management",
+    "slug": "document-management",
+    "files": [],
+    "children": [
+      {
+        "name": "Document Management — services",
+        "slug": "document-management-services",
+        "files": [
+          "backend/services/dms/__init__.py",
+          "backend/services/dms/chunker.py",
+          "backend/services/dms/config.py",
+          "backend/services/dms/database.py",
+          "backend/services/dms/document_processor.py",
+          "backend/services/dms/hybrid_retriever.py",
+          "backend/services/dms/metadata_index.py",
+          "backend/services/dms/rag_context_formatter.py",
+          "backend/services/dms/rag_pipeline.py",
+          "backend/services/dms/service.py",
+          "backend/services/dms/vector_store.py"
+        ]
+      },
+      {
+        "name": "Document Management — dms",
+        "slug": "document-management-dms",
+        "files": [
+          "src/dms/__init__.py",
+          "src/dms/chunker.py",
+          "src/dms/config.py",
+          "src/dms/context_formatter.py",
+          "src/dms/database.py",
+          "src/dms/dms.py",
+          "src/dms/dms_memory.py",
+          "src/dms/document_processor.py",
+          "src/dms/hybrid_retriever.py",
+          "src/dms/metadata_index.py",
+          "src/dms/project_manager.py",
+          "src/dms/rag_context_formatter.py",
+          "src/dms/rag_pipeline.py",
+          "src/dms/vector_store.py"
+        ]
+      },
+      {
+        "name": "Document Management — backend",
+        "slug": "document-management-backend",
+        "files": [
+          "tests/backend/test_dms_ocr.py",
+          "tests/backend/test_rag_integration.py"
+        ]
+      },
+      {
+        "name": "Document Management — tests",
+        "slug": "document-management-tests",
+        "files": [
+          "tests/test_dms_chunker.py",
+          "tests/test_dms_config.py",
+          "tests/test_dms_core.py",
+          "tests/test_dms_core_comprehensive.py",
+          "tests/test_dms_database.py",
+          "tests/test_dms_document_processor.py",
+          "tests/test_dms_hybrid_retriever.py",
+          "tests/test_dms_memory.py",
+          "tests/test_dms_metadata_index.py",
+          "tests/test_dms_project_manager.py",
+          "tests/test_dms_rag_formatter.py",
+          "tests/test_dms_rag_pipeline.py",
+          "tests/test_dms_vector_store.py",
+          "tests/test_doc_parser.py",
+          "tests/test_paddleocr_integration.py",
+          "tests/test_rag_pipeline_retrieval.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Input/Output Pipeline",
+    "slug": "input-output-pipeline",
+    "files": [
+      "backend/services/input/__init__.py",
+      "backend/services/input/base.py",
+      "backend/services/input/input_engine.py",
+      "backend/services/input/input_job_store.py",
+      "backend/services/input/input_store.py",
+      "backend/services/input/mcp_adapter.py",
+      "backend/services/input/plugin_manifest.py",
+      "backend/services/input/plugins/__init__.py",
+      "backend/services/input/plugins/a2a_inbound.py",
+      "backend/services/input/plugins/mcp_plugin.py",
+      "backend/services/input/plugins/standard_text.py",
+      "backend/services/input/plugins/stt_plugin.py",
+      "backend/services/input/registry.py",
+      "tests/backend/test_input_engine.py",
+      "tests/backend/test_input_plugin.py",
+      "tests/backend/test_output_plugin.py",
+      "tests/backend/test_print_plugin.py",
+      "tests/backend/test_render_engine.py",
+      "tests/backend/test_tts_plugin.py"
+    ]
+  },
+  {
+    "name": "Workflow Engine",
+    "slug": "workflow-engine",
+    "files": [],
+    "children": [
+      {
+        "name": "Workflow Engine — workflow",
+        "slug": "workflow-engine-workflow",
+        "files": [
+          "backend/workflow/__init__.py",
+          "backend/workflow/audit_logger.py",
+          "backend/workflow/debate_graph.py",
+          "backend/workflow/immutability.py",
+          "backend/workflow/interjection.py",
+          "backend/workflow/node_functions.py",
+          "backend/workflow/nodes.py",
+          "backend/workflow/report_generator.py",
+          "backend/workflow/report_jobs.py",
+          "backend/workflow/state.py",
+          "backend/workflow/state_snapshot.py",
+          "backend/workflow/workflow_compiler.py",
+          "backend/workflow/workflow_routers.py",
+          "backend/workflow/workflow_runner.py",
+          "backend/workflow/workflow_state.py",
+          "backend/workflow/hitl/__init__.py",
+          "backend/workflow/hitl/agent_query.py",
+          "backend/workflow/hitl/api.py",
+          "backend/workflow/hitl/contracts.py",
+          "backend/workflow/hitl/graph.py",
+          "backend/workflow/hitl/nodes.py",
+          "backend/workflow/hitl/round_manager.py",
+          "backend/workflow/hitl/security.py",
+          "backend/workflow/hitl/state.py"
+        ]
+      },
+      {
+        "name": "Workflow Engine — backend",
+        "slug": "workflow-engine-backend",
+        "files": [
+          "tests/backend/test_audit_logger.py",
+          "tests/backend/test_hitl_integration.py",
+          "tests/backend/test_immutability.py",
+          "tests/backend/test_interjection_service.py",
+          "tests/backend/test_report_jobs.py",
+          "tests/backend/test_state_snapshot.py",
+          "tests/backend/test_workflow_compiler.py",
+          "tests/backend/test_workflow_nodes.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Blueprint System",
+    "slug": "blueprint-system",
+    "files": [],
+    "children": [
+      {
+        "name": "Blueprint System — blueprints",
+        "slug": "blueprint-system-blueprints",
+        "files": [
+          "backend/blueprints/__init__.py",
+          "backend/blueprints/bundle_io.py",
+          "backend/blueprints/canvas_to_workflow.py",
+          "backend/blueprints/compiler.py",
+          "backend/blueprints/composer.py",
+          "backend/blueprints/importer.py",
+          "backend/blueprints/migrations.py",
+          "backend/blueprints/models.py",
+          "backend/blueprints/mvp_debate_canvas.py",
+          "backend/blueprints/repository.py",
+          "backend/blueprints/resolver.py",
+          "backend/blueprints/workflow_models.py"
+        ]
+      },
+      {
+        "name": "Blueprint System — backend",
+        "slug": "blueprint-system-backend",
+        "files": [
+          "tests/backend/test_blueprints.py",
+          "tests/backend/test_canvas_to_workflow.py",
+          "tests/backend/test_mvp_debate_canvas.py",
+          "tests/backend/test_mvp_debate_e2e.py",
+          "tests/backend/test_workflow_graph_models.py",
+          "tests/backend/test_tone_profile.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Module Management",
+    "slug": "module-management",
+    "files": [],
+    "children": [
+      {
+        "name": "Module Management — modules",
+        "slug": "module-management-modules",
+        "files": [
+          "backend/modules/__init__.py",
+          "backend/modules/installer.py",
+          "backend/modules/models.py",
+          "backend/modules/service.py",
+          "backend/modules/type_derivation.py",
+          "backend/modules/validation.py"
+        ]
+      },
+      {
+        "name": "Module Management — backend",
+        "slug": "module-management-backend",
+        "files": [
+          "tests/backend/test_module_installer.py",
+          "tests/backend/test_module_lifecycle.py",
+          "tests/backend/test_module_service.py",
+          "tests/backend/test_module_validator.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Agent-to-Agent Protocol",
+    "slug": "agent-to-agent-protocol",
+    "files": [],
+    "children": [
+      {
+        "name": "Agent-to-Agent Protocol — a2a",
+        "slug": "agent-to-agent-protocol-a2a",
+        "files": [
+          "backend/a2a/__init__.py",
+          "backend/a2a/adapter.py",
+          "backend/a2a/agent_card.py",
+          "backend/a2a/client.py",
+          "backend/a2a/config.py",
+          "backend/a2a/exceptions.py",
+          "backend/a2a/node.py",
+          "backend/a2a/payload_translator.py",
+          "backend/a2a/router.py",
+          "backend/a2a/schemas.py",
+          "backend/a2a/server.py",
+          "backend/a2a/task_manager.py",
+          "backend/a2a/url_validator.py"
+        ]
+      },
+      {
+        "name": "Agent-to-Agent Protocol — backend",
+        "slug": "agent-to-agent-protocol-backend",
+        "files": [
+          "tests/backend/test_a2a_adapter.py",
+          "tests/backend/test_a2a_client.py",
+          "tests/backend/test_a2a_e2e.py",
+          "tests/backend/test_a2a_exceptions.py",
+          "tests/backend/test_a2a_fallback.py",
+          "tests/backend/test_a2a_payload_translator.py",
+          "tests/backend/test_a2a_server.py",
+          "tests/backend/test_a2a_task_manager.py",
+          "tests/backend/test_a2a_url_validator.py",
+          "tests/backend/test_a2a_workflow.py"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Frontend Application",
+    "slug": "frontend-application",
+    "files": [],
+    "children": [
+      {
+        "name": "Frontend Application — frontend",
+        "slug": "frontend-application-frontend",
+        "files": [
+          "frontend/index.html",
+          "frontend/package.json",
+          "frontend/playwright.config.js",
+          "frontend/postcss.config.js",
+          "frontend/svelte.config.js",
+          "frontend/tailwind.config.js",
+          "frontend/vite.config.js",
+          "frontend/vitest.config.js"
+        ]
+      },
+      {
+        "name": "Frontend Application — src",
+        "slug": "frontend-application-src",
+        "files": [
+          "frontend/src/main.js",
+          "frontend/src/App.svelte",
+          "frontend/src/app.css",
+          "frontend/src/components/AssistantChat.svelte",
+          "frontend/src/components/AuditTrail.svelte",
+          "frontend/src/components/AuditTrailVisualization.svelte",
+          "frontend/src/components/ConsensusPanel.svelte",
+          "frontend/src/components/DashboardWorkflowGraph.svelte",
+          "frontend/src/components/DebateTimeline.svelte",
+          "frontend/src/components/DocumentUploader.svelte",
+          "frontend/src/components/Header.svelte",
+          "frontend/src/components/LanguageSwitcher.svelte",
+          "frontend/src/components/Layout.svelte",
+          "frontend/src/components/MarkdownRenderer.svelte",
+          "frontend/src/components/ModuleManager.svelte",
+          "frontend/src/components/ProjectSelector.svelte",
+          "frontend/src/components/ProjectSettings.svelte",
+          "frontend/src/components/Sidebar.svelte",
+          "frontend/src/components/ToastContainer.svelte",
+          "frontend/src/components/WorkflowGraph.svelte",
+          "frontend/src/components/blueprint/A2ACapabilities.svelte",
+          "frontend/src/components/blueprint/BlueprintCanvas.svelte",
+          "frontend/src/components/blueprint/ExecutionPanel.svelte",
+          "frontend/src/components/blueprint/Inspector.svelte",
+          "frontend/src/components/blueprint/ModeSwitcher.svelte",
+          "frontend/src/components/blueprint/Palette.svelte",
+          "frontend/src/components/blueprint/PaletteCategory.svelte",
+          "frontend/src/components/blueprint/PaletteEntityList.svelte",
+          "frontend/src/components/blueprint/ProposalsPanel.svelte",
+          "frontend/src/components/blueprint/RunWorkflowDialog.svelte",
+          "frontend/src/components/blueprint/SaveAsTemplateDialog.svelte",
+          "frontend/src/components/blueprint/SvelteFlowInstanceBridge.svelte",
+          "frontend/src/components/blueprint/TemplateGallery.svelte",
+          "frontend/src/components/blueprint/TemplateInstantiateModal.svelte",
+          "frontend/src/components/blueprint/edges/ConditionalEdge.svelte",
+          "frontend/src/components/blueprint/edges/DefinesRoleEdge.svelte",
+          "frontend/src/components/blueprint/edges/FeedbackEdge.svelte",
+          "frontend/src/components/blueprint/edges/ImplementsRoleEdge.svelte",
+          "frontend/src/components/blueprint/edges/InjectsConfigEdge.svelte",
+          "frontend/src/components/blueprint/edges/InterjectionEdge.svelte",
+          "frontend/src/components/blueprint/edges/OverridesPromptEdge.svelte",
+          "frontend/src/components/blueprint/edges/PromptedByEdge.svelte",
+          "frontend/src/components/blueprint/edges/SequentialEdge.svelte",
+          "frontend/src/components/blueprint/edges/UsesLlmEdge.svelte",
+          "frontend/src/components/blueprint/edges/UsesToneEdge.svelte",
+          "frontend/src/components/blueprint/forms/AgentBlueprintForm.svelte",
+          "frontend/src/components/blueprint/forms/BundleAgentForm.svelte",
+          "frontend/src/components/blueprint/forms/LLMProfileForm.svelte",
+          "frontend/src/components/blueprint/forms/PromptTemplateForm.svelte",
+          "frontend/src/components/blueprint/forms/RoleDefinitionForm.svelte",
+          "frontend/src/components/blueprint/forms/RoleTypeForm.svelte",
+          "frontend/src/components/blueprint/forms/ToneProfileForm.svelte",
+          "frontend/src/components/blueprint/forms/WorkflowNodeForm.svelte",
+          "frontend/src/components/blueprint/nodes/AgentBlueprintNode.svelte",
+          "frontend/src/components/blueprint/nodes/AgentNode.svelte",
+          "frontend/src/components/blueprint/nodes/AnalystNode.svelte",
+          "frontend/src/components/blueprint/nodes/CreativeNode.svelte",
+          "frontend/src/components/blueprint/nodes/CriticNode.svelte",
+          "frontend/src/components/blueprint/nodes/FactCheckerNode.svelte",
+          "frontend/src/components/blueprint/nodes/GateNode.svelte",
+          "frontend/src/components/blueprint/nodes/InitializeNode.svelte",
+          "frontend/src/components/blueprint/nodes/InputNode.svelte",
+          "frontend/src/components/blueprint/nodes/LLMProfileNode.svelte",
+          "frontend/src/components/blueprint/nodes/ModeratorNode.svelte",
+          "frontend/src/components/blueprint/nodes/OptimizerNode.svelte",
+          "frontend/src/components/blueprint/nodes/PromptTemplateNode.svelte",
+          "frontend/src/components/blueprint/nodes/RoleDefinitionNode.svelte",
+          "frontend/src/components/blueprint/nodes/RoleTypeNode.svelte",
+          "frontend/src/components/blueprint/nodes/StrategistNode.svelte",
+          "frontend/src/components/blueprint/nodes/ToneProfileNode.svelte",
+          "frontend/src/components/blueprint/nodes/UserInjectionNode.svelte",
+          "frontend/src/components/blueprint/nodes/WorkflowNode.svelte",
+          "frontend/src/components/config/ConfigModal.svelte",
+          "frontend/src/components/debate/ContinueDebateModal.svelte",
+          "frontend/src/components/debate/DebateActivityStrip.svelte",
+          "frontend/src/components/debate/DebateCreatePanel.svelte",
+          "frontend/src/components/debate/DebateReportPanel.svelte",
+          "frontend/src/components/debate/ExtensionRequestPanel.svelte",
+          "frontend/src/components/debate/ForkDebateModal.svelte",
+          "frontend/src/components/hitl/AgentQueryModal.svelte",
+          "frontend/src/components/hitl/InjectPanel.svelte",
+          "frontend/src/components/hitl/InteractionTimeline.svelte",
+          "frontend/src/components/hitl/PauseControls.svelte",
+          "frontend/src/components/input/A2AApprovalCard.svelte",
+          "frontend/src/components/input/PluginSelector.svelte",
+          "frontend/src/components/input/STTMicrophoneButton.svelte",
+          "frontend/src/components/input/WorkflowTemplatePicker.svelte",
+          "frontend/src/components/workflow/DiffNodeDetail.svelte",
+          "frontend/src/components/workflow/OOBInputPanel.svelte",
+          "frontend/src/components/workflow/ReplayControls.svelte",
+          "frontend/src/components/workflow/ReplayNodeDetail.svelte",
+          "frontend/src/components/workflow/SessionAuditTab.svelte",
+          "frontend/src/components/workflow/WorkflowCanvas.svelte",
+          "frontend/src/components/workflow/edges/FeedbackEdge.svelte",
+          "frontend/src/components/workflow/edges/FlowEdge.svelte",
+          "frontend/src/components/workflow/edges/OOBEdge.svelte",
+          "frontend/src/components/workflow/edges/UserEdge.svelte",
+          "frontend/src/components/workflow/nodes/A2ANode.svelte",
+          "frontend/src/components/workflow/nodes/AgentNode.svelte",
+          "frontend/src/components/workflow/nodes/ArtifactNode.svelte",
+          "frontend/src/components/workflow/nodes/DecisionNode.svelte",
+          "frontend/src/components/workflow/nodes/HistoryNode.svelte",
+          "frontend/src/components/workflow/nodes/InputNode.svelte",
+          "frontend/src/components/workflow/nodes/UserActionNode.svelte",
+          "frontend/src/components/workflow/panels/NodeDetailPanel.svelte",
+          "frontend/src/components/workflow/panels/TimelinePanel.svelte",
+          "frontend/src/lib/a2aApi.js",
+          "frontend/src/lib/api.js",
+          "frontend/src/lib/blueprint/api.js",
+          "frontend/src/lib/blueprint/dnd.js",
+          "frontend/src/lib/blueprint/edgeWiring.js",
+          "frontend/src/lib/blueprint/layout.js",
+          "frontend/src/lib/blueprint/registerAll.js",
+          "frontend/src/lib/blueprint/registry.js",
+          "frontend/src/lib/blueprint/store.svelte.js",
+          "frontend/src/lib/blueprint/validation.js",
+          "frontend/src/lib/elk-service.js",
+          "frontend/src/lib/hitl.js",
+          "frontend/src/lib/i18n/config.js",
+          "frontend/src/lib/i18n/index.js",
+          "frontend/src/lib/i18n/loaders/ar.js",
+          "frontend/src/lib/i18n/loaders/de.js",
+          "frontend/src/lib/i18n/loaders/el.js",
+          "frontend/src/lib/i18n/loaders/en.js",
+          "frontend/src/lib/i18n/loaders/es.js",
+          "frontend/src/lib/i18n/loaders/fr.js",
+          "frontend/src/lib/i18n/loaders/he.js",
+          "frontend/src/lib/i18n/loaders/it.js",
+          "frontend/src/lib/i18n/loaders/ja.js",
+          "frontend/src/lib/i18n/loaders/ko.js",
+          "frontend/src/lib/i18n/loaders/pt.js",
+          "frontend/src/lib/i18n/loaders/ru.js",
+          "frontend/src/lib/i18n/loaders/sv.js",
+          "frontend/src/lib/i18n/loaders/zh.js",
+          "frontend/src/lib/i18n/rtl.css",
+          "frontend/src/lib/input/inputApi.js",
+          "frontend/src/lib/input/inputJobStore.js",
+          "frontend/src/lib/input/sttStream.js",
+          "frontend/src/lib/sse.js",
+          "frontend/src/lib/stores.js",
+          "frontend/src/lib/stores/hitl.svelte.js",
+          "frontend/src/lib/workflow/auditApi.js",
+          "frontend/src/lib/workflow/constants.js",
+          "frontend/src/lib/workflow/events.js",
+          "frontend/src/lib/workflow/graphReducer.js",
+          "frontend/src/lib/workflow/layout.js",
+          "frontend/src/lib/workflow/mapper.js",
+          "frontend/src/lib/workflow/oob.js",
+          "frontend/src/lib/workflow/oobRouter.js",
+          "frontend/src/lib/workflow/runtimeReducer.js",
+          "frontend/src/lib/workflow/snapshot.js",
+          "frontend/src/lib/workflow/store.svelte.js",
+          "frontend/src/lib/workflowExec.js",
+          "frontend/src/lib/workflowSSE.js",
+          "frontend/src/views/ArchiveView.svelte",
+          "frontend/src/views/AuditView.svelte",
+          "frontend/src/views/BlueprintCanvasView.svelte",
+          "frontend/src/views/BundleComposerView.svelte",
+          "frontend/src/views/ConfigView.svelte",
+          "frontend/src/views/Dashboard.svelte",
+          "frontend/src/views/DebateView.svelte",
+          "frontend/src/views/DiffView.svelte",
+          "frontend/src/views/DocumentsView.svelte",
+          "frontend/src/views/InputComposerView.svelte",
+          "frontend/src/views/ManageView.svelte",
+          "frontend/src/views/ModulesView.svelte",
+          "frontend/src/views/MvpDebateView.svelte",
+          "frontend/src/views/OutputComposerView.svelte",
+          "frontend/src/views/ProjectsView.svelte",
+          "frontend/src/views/ProposalsView.svelte",
+          "frontend/src/views/ReplayView.svelte",
+          "frontend/src/views/TranslationDashboard.svelte"
+        ]
+      },
+      {
+        "name": "Frontend Application — tests",
+        "slug": "frontend-application-tests",
+        "files": [
+          "frontend/tests/e2e/a11y/aria.a11y.spec.js",
+          "frontend/tests/e2e/a11y/audit.a11y.spec.js",
+          "frontend/tests/e2e/a11y/config.a11y.spec.js",
+          "frontend/tests/e2e/a11y/dashboard.a11y.spec.js",
+          "frontend/tests/e2e/a11y/debate.a11y.spec.js",
+          "frontend/tests/e2e/a11y/keyboard.a11y.spec.js",
+          "frontend/tests/e2e/a11y/screenreader.a11y.spec.js",
+          "frontend/tests/e2e/audit.spec.js",
+          "frontend/tests/e2e/config.spec.js",
+          "frontend/tests/e2e/contracts/debate.contract.spec.js",
+          "frontend/tests/e2e/contracts/schemas.js",
+          "frontend/tests/e2e/debate.spec.js",
+          "frontend/tests/e2e/extension.spec.js",
+          "frontend/tests/e2e/health.spec.js",
+          "frontend/tests/e2e/helpers.js",
+          "frontend/tests/e2e/i18n/api-isolation.spec.js",
+          "frontend/tests/e2e/i18n/formatting.spec.js",
+          "frontend/tests/e2e/i18n/locale.spec.js",
+          "frontend/tests/e2e/i18n/rtl.spec.js",
+          "frontend/tests/e2e/i18n/setup.i18n.js",
+          "frontend/tests/e2e/navigation.spec.js",
+          "frontend/tests/e2e/visual/audit.visual.spec.js",
+          "frontend/tests/e2e/visual/dashboard.visual.spec.js",
+          "frontend/tests/e2e/visual/debate.visual.spec.js",
+          "frontend/tests/e2e/visual/responsive.visual.spec.js",
+          "frontend/tests/e2e/visual/workflow.visual.spec.js",
+          "frontend/tests/e2e/workflow-templates.spec.js",
+          "frontend/tests/e2e/workflow.spec.js",
+          "frontend/tests/unit/workflow/graphReducer.test.js",
+          "frontend/tests/unit/workflow/layout.test.js",
+          "frontend/tests/unit/workflow/mapper.test.js",
+          "frontend/tests/unit/workflow/oob.test.js",
+          "frontend/tests/unit/workflow/runtimeReducer.test.js",
+          "frontend/tests/unit/workflow/store.test.js"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Module Definitions",
+    "slug": "module-definitions",
+    "files": [
+      "modules/agent-argumentation-patterns/critic/manifest.json",
+      "modules/agent-argumentation-patterns/critic/profile.md",
+      "modules/agent-argumentation-patterns/dialectic-critic/manifest.json",
+      "modules/agent-argumentation-patterns/dialectic-critic/profile.md",
+      "modules/agent-argumentation-patterns/dialectic-moderator/manifest.json",
+      "modules/agent-argumentation-patterns/dialectic-moderator/profile.md",
+      "modules/agent-argumentation-patterns/dialectic-optimizer/manifest.json",
+      "modules/agent-argumentation-patterns/dialectic-optimizer/profile.md",
+      "modules/agent-argumentation-patterns/dialectic-strategist/manifest.json",
+      "modules/agent-argumentation-patterns/dialectic-strategist/profile.md",
+      "modules/agent-argumentation-patterns/kantian-critic/manifest.json",
+      "modules/agent-argumentation-patterns/kantian-critic/profile.md",
+      "modules/agent-argumentation-patterns/kantian-strategist/manifest.json",
+      "modules/agent-argumentation-patterns/kantian-strategist/profile.md",
+      "modules/agent-argumentation-patterns/moderator/manifest.json",
+      "modules/agent-argumentation-patterns/moderator/profile.md",
+      "modules/agent-argumentation-patterns/optimizer/manifest.json",
+      "modules/agent-argumentation-patterns/optimizer/profile.md",
+      "modules/agent-argumentation-patterns/steiner-critic/manifest.json",
+      "modules/agent-argumentation-patterns/steiner-critic/profile.md",
+      "modules/agent-argumentation-patterns/steiner-strategist/manifest.json",
+      "modules/agent-argumentation-patterns/steiner-strategist/profile.md",
+      "modules/agent-argumentation-patterns/strategist/manifest.json",
+      "modules/agent-argumentation-patterns/strategist/profile.md",
+      "modules/agent-cores/analyst-default/manifest.json",
+      "modules/agent-cores/analyst-default/profile.md",
+      "modules/agent-cores/creative-thinker-default/manifest.json",
+      "modules/agent-cores/creative-thinker-default/profile.md",
+      "modules/agent-cores/critic-default/manifest.json",
+      "modules/agent-cores/critic-default/profile.md",
+      "modules/agent-cores/critic-enhanced/manifest.json",
+      "modules/agent-cores/critic-enhanced/profile.md",
+      "modules/agent-cores/critic-example/manifest.json",
+      "modules/agent-cores/critic-example/profile.md",
+      "modules/agent-cores/critic-stoic/manifest.json",
+      "modules/agent-cores/critic-stoic/profile.md",
+      "modules/agent-cores/custom-moderator/manifest.json",
+      "modules/agent-cores/custom-moderator/profile.md",
+      "modules/agent-cores/devils-advocate-default/manifest.json",
+      "modules/agent-cores/devils-advocate-default/profile.md",
+      "modules/agent-cores/ethicist-default/manifest.json",
+      "modules/agent-cores/ethicist-default/profile.md",
+      "modules/agent-cores/expert-reviewer-default/manifest.json",
+      "modules/agent-cores/expert-reviewer-default/profile.md",
+      "modules/agent-cores/fact-checker-default/manifest.json",
+      "modules/agent-cores/fact-checker-default/profile.md",
+      "modules/agent-cores/mediator-default/manifest.json",
+      "modules/agent-cores/mediator-default/profile.md",
+      "modules/agent-cores/moderator-default/manifest.json",
+      "modules/agent-cores/moderator-default/profile.md",
+      "modules/agent-cores/moderator-enhanced/manifest.json",
+      "modules/agent-cores/moderator-enhanced/profile.md",
+      "modules/agent-cores/moderator-example/manifest.json",
+      "modules/agent-cores/moderator-example/profile.md",
+      "modules/agent-cores/optimizer-default/manifest.json",
+      "modules/agent-cores/optimizer-default/profile.md",
+      "modules/agent-cores/optimizer-enhanced/manifest.json",
+      "modules/agent-cores/optimizer-enhanced/profile.md",
+      "modules/agent-cores/optimizer-example/manifest.json",
+      "modules/agent-cores/optimizer-example/profile.md",
+      "modules/agent-cores/orchestrator-default/manifest.json",
+      "modules/agent-cores/orchestrator-default/profile.md",
+      "modules/agent-cores/steel-manner-default/manifest.json",
+      "modules/agent-cores/steel-manner-default/profile.md",
+      "modules/agent-cores/strategist-default/manifest.json",
+      "modules/agent-cores/strategist-default/profile.md",
+      "modules/agent-cores/strategist-enhanced/manifest.json",
+      "modules/agent-cores/strategist-enhanced/profile.md",
+      "modules/agent-cores/strategist-example/manifest.json",
+      "modules/agent-cores/strategist-example/profile.md",
+      "modules/agent-cores/strategist-german-law/manifest.json",
+      "modules/agent-cores/strategist-german-law/profile.md",
+      "modules/agent-cores/synthesizer-default/manifest.json",
+      "modules/agent-cores/synthesizer-default/profile.md",
+      "modules/agent-cores/troll-default/manifest.json",
+      "modules/agent-cores/troll-default/profile.md",
+      "modules/agent-tone-profiles/academic/manifest.json",
+      "modules/agent-tone-profiles/academic/profile.md",
+      "modules/agent-tone-profiles/heated/manifest.json",
+      "modules/agent-tone-profiles/heated/profile.md",
+      "modules/agent-tone-profiles/neutral/manifest.json",
+      "modules/agent-tone-profiles/neutral/profile.md",
+      "modules/llm-profiles/llm-cloud-openrouter/manifest.json",
+      "modules/llm-profiles/llm-cloud-openrouter/profile.yaml",
+      "modules/llm-profiles/llm-cloud-qwen/manifest.json",
+      "modules/llm-profiles/llm-cloud-qwen/profile.yaml",
+      "modules/llm-profiles/llm-draft-d6f64175/manifest.json",
+      "modules/llm-profiles/llm-draft-d6f64175/profile.yaml",
+      "modules/llm-profiles/llm-local-gemma-4-26b-a4b/manifest.json",
+      "modules/llm-profiles/llm-local-gemma-4-26b-a4b/profile.yaml",
+      "modules/llm-profiles/llm-local-gemma-4-31b-it/manifest.json",
+      "modules/llm-profiles/llm-local-gemma-4-31b-it/profile.yaml",
+      "modules/llm-profiles/llm-local-gemma/manifest.json",
+      "modules/llm-profiles/llm-local-gemma/profile.yaml",
+      "modules/llm-profiles/llm-local-glm-4-32b-0414-uncensored-heretic-v1/manifest.json",
+      "modules/llm-profiles/llm-local-glm-4-32b-0414-uncensored-heretic-v1/profile.yaml",
+      "modules/llm-profiles/llm-local-qwen3.5-27b-distilled/manifest.json",
+      "modules/llm-profiles/llm-local-qwen3.5-27b-distilled/profile.yaml",
+      "modules/llm-profiles/llm-local-qwen3.6-35b-a3b/manifest.json",
+      "modules/llm-profiles/llm-local-qwen3.6-35b-a3b/profile.yaml",
+      "modules/llm-profiles/llm-opencodezen-minimax-m2.5-free-ry6l/manifest.json",
+      "modules/llm-profiles/llm-opencodezen-minimax-m2.5-free-ry6l/profile.yaml",
+      "modules/llm-profiles/llm-openrouter-claude-3.6-sonnet/manifest.json",
+      "modules/llm-profiles/llm-openrouter-claude-3.6-sonnet/profile.yaml",
+      "modules/llm-profiles/llm-openrouter-glm-5-2ond/manifest.json",
+      "modules/llm-profiles/llm-openrouter-glm-5-2ond/profile.yaml",
+      "modules/llm-profiles/llm-openrouter-gpt4/manifest.json",
+      "modules/llm-profiles/llm-openrouter-gpt4/profile.yaml",
+      "modules/llm-profiles/llm-openrouter-grok-4.20/manifest.json",
+      "modules/llm-profiles/llm-openrouter-grok-4.20/profile.yaml",
+      "modules/llm-profiles/llm-openrouter-hy3-preview/manifest.json",
+      "modules/llm-profiles/llm-openrouter-hy3-preview/profile.yaml",
+      "modules/llm-profiles/llm-owl-alpha-copy-u7rv/manifest.json",
+      "modules/llm-profiles/llm-owl-alpha-copy-u7rv/profile.yaml",
+      "modules/llm-profiles/llm-owl-alpha/manifest.json",
+      "modules/llm-profiles/llm-owl-alpha/profile.yaml",
+      "modules/llm-profiles/llm-xiaomi-io-2--6btm/manifest.json",
+      "modules/llm-profiles/llm-xiaomi-io-2--6btm/profile.yaml",
+      "modules/llm-profiles/llm-xiaomi-mimo-v2.5-pro/manifest.json",
+      "modules/llm-profiles/llm-xiaomi-mimo-v2.5-pro/profile.yaml",
+      "modules/prompt-modifiers/neutral-default/manifest.json",
+      "modules/prompt-modifiers/neutral-default/profile.md",
+      "modules/workflows/workflow-socratic-debate/manifest.json",
+      "modules/workflows/workflow-socratic-debate/profile.json",
+      "modules/workflows/workflow-tpl-dialectic-debate/manifest.json",
+      "modules/workflows/workflow-tpl-dialectic-debate/profile.json",
+      "modules/workflows/workflow-tpl-interview/manifest.json",
+      "modules/workflows/workflow-tpl-interview/profile.json",
+      "modules/workflows/workflow-tpl-kantian-analysis/manifest.json",
+      "modules/workflows/workflow-tpl-kantian-analysis/profile.json",
+      "modules/workflows/workflow-tpl-mediation/manifest.json",
+      "modules/workflows/workflow-tpl-mediation/profile.json",
+      "modules/workflows/workflow-tpl-quick-review/manifest.json",
+      "modules/workflows/workflow-tpl-quick-review/profile.json",
+      "modules/workflows/workflow-tpl-standard-debate/manifest.json",
+      "modules/workflows/workflow-tpl-standard-debate/profile.json",
+      "modules/workflows/workflow-tpl-streitgespraech/manifest.json",
+      "modules/workflows/workflow-tpl-streitgespraech/profile.json"
+    ]
+  },
+  {
+    "name": "Scripts & Tools",
+    "slug": "scripts-tools",
+    "files": [],
+    "children": [
+      {
+        "name": "Scripts & Tools — scripts",
+        "slug": "scripts-tools-scripts",
+        "files": [
+          "scripts/__init__.py",
+          "scripts/cleanup.sh",
+          "scripts/cleanup_legacy.py",
+          "scripts/deploy_import.py",
+          "scripts/doc_update.py",
+          "scripts/export_openapi.py",
+          "scripts/export_to_repo.py",
+          "scripts/fix_svelte.py",
+          "scripts/generate_kitsune_knowledge.py",
+          "scripts/import_from_repo.py",
+          "scripts/manage.sh",
+          "scripts/migrate_agents.py",
+          "scripts/migrate_legacy_debates.py",
+          "scripts/migrate_llm_profiles.py",
+          "scripts/migrate_modules.py",
+          "scripts/migrate_prompts.py",
+          "scripts/migrate_templates.py",
+          "scripts/migrate_variants.py",
+          "scripts/seed_templates.py",
+          "scripts/seed_tone_profiles.py",
+          "scripts/setup_dms.sh",
+          "scripts/setup_searxng.sh",
+          "scripts/stamp_version.py",
+          "scripts/start.sh",
+          "scripts/status.sh",
+          "scripts/stop.sh",
+          "scripts/sync_version.py"
+        ]
+      },
+      {
+        "name": "Scripts & Tools — manage.sh",
+        "slug": "scripts-tools-manage-sh",
+        "files": [
+          "manage.sh"
+        ]
+      },
+      {
+        "name": "Scripts & Tools — setup.sh",
+        "slug": "scripts-tools-setup-sh",
+        "files": [
+          "setup.sh"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Archive and Configuration",
+    "slug": "archive-and-configuration",
+    "files": [],
+    "children": [
+      {
+        "name": "Archive and Configuration — AGENTS.md",
+        "slug": "archive-and-configuration-agents-md",
+        "files": [
+          "AGENTS.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — CLAUDE.md",
+        "slug": "archive-and-configuration-claude-md",
+        "files": [
+          "CLAUDE.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — KNOWN_ISSUES.md",
+        "slug": "archive-and-configuration-known-issues-md",
+        "files": [
+          "KNOWN_ISSUES.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — README.md",
+        "slug": "archive-and-configuration-readme-md",
+        "files": [
+          "README.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — README.zh.md",
+        "slug": "archive-and-configuration-readme-zh-md",
+        "files": [
+          "README.zh.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — Makefile",
+        "slug": "archive-and-configuration-makefile",
+        "files": [
+          "Makefile"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — pyproject.toml",
+        "slug": "archive-and-configuration-pyproject-toml",
+        "files": [
+          "pyproject.toml"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — pyrightconfig.json",
+        "slug": "archive-and-configuration-pyrightconfig-json",
+        "files": [
+          "pyrightconfig.json"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — version",
+        "slug": "archive-and-configuration-version",
+        "files": [
+          "version"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — changelog.md",
+        "slug": "archive-and-configuration-changelog-md",
+        "files": [
+          "changelog.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — docs",
+        "slug": "archive-and-configuration-docs",
+        "files": [
+          "docs/PADDLEOCR_COMPATIBILITY_REPORT.md",
+          "docs/api-reference.json",
+          "docs/api-reference.md",
+          "docs/bidirectional-workflow-nodes-ui-and-usage-guide.md",
+          "docs/blueprint-canvas-phase1.md",
+          "docs/blueprint-canvas-phase2.md",
+          "docs/blueprint-canvas-phase3.md",
+          "docs/blueprint-canvas-phase4.md",
+          "docs/elevator-pitch.md",
+          "docs/module-administration.md",
+          "docs/module-development-guide.md",
+          "docs/technical_documentation.md",
+          "docs/user_manual.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — docs-adr",
+        "slug": "archive-and-configuration-docs-adr",
+        "files": [
+          "docs/adr/001-database-ssot.md",
+          "docs/adr/002-version-ssot.md",
+          "docs/adr/0042-rolle-typen-abstraktion.md",
+          "docs/adr/043-Open-Source-Documentation-Automation.md",
+          "docs/adr/2024-05-12-paddlepaddle-downgrade.md",
+          "docs/adr/2026-05-20_agents.md",
+          "docs/adr/2026-05-21_prompts.md",
+          "docs/adr/2026-05-22_debates.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — docs-api",
+        "slug": "archive-and-configuration-docs-api",
+        "files": [
+          "docs/api/backend.html",
+          "docs/api/backend/a2a.html",
+          "docs/api/backend/a2a/adapter.html",
+          "docs/api/backend/a2a/agent_card.html",
+          "docs/api/backend/a2a/client.html",
+          "docs/api/backend/a2a/config.html",
+          "docs/api/backend/a2a/exceptions.html",
+          "docs/api/backend/a2a/node.html",
+          "docs/api/backend/a2a/payload_translator.html",
+          "docs/api/backend/a2a/router.html",
+          "docs/api/backend/a2a/schemas.html",
+          "docs/api/backend/a2a/server.html",
+          "docs/api/backend/a2a/task_manager.html",
+          "docs/api/backend/a2a/url_validator.html",
+          "docs/api/backend/api.html",
+          "docs/api/backend/api/deps.html",
+          "docs/api/backend/api/errors.html",
+          "docs/api/backend/api/events.html",
+          "docs/api/backend/api/routers.html",
+          "docs/api/backend/api/routers/a2a_discovery.html",
+          "docs/api/backend/api/routers/argumentation_patterns.html",
+          "docs/api/backend/api/routers/audit.html",
+          "docs/api/backend/api/routers/blueprint_events.html",
+          "docs/api/backend/api/routers/blueprints.html",
+          "docs/api/backend/api/routers/canvas.html",
+          "docs/api/backend/api/routers/config.html",
+          "docs/api/backend/api/routers/debate_stream.html",
+          "docs/api/backend/api/routers/dms.html",
+          "docs/api/backend/api/routers/health.html",
+          "docs/api/backend/api/routers/input_composer.html",
+          "docs/api/backend/api/routers/llm_profiles.html",
+          "docs/api/backend/api/routers/modules.html",
+          "docs/api/backend/api/routers/optimization_proposals.html",
+          "docs/api/backend/api/routers/output_composer.html",
+          "docs/api/backend/api/routers/profiles.html",
+          "docs/api/backend/api/routers/projects.html",
+          "docs/api/backend/api/routers/role_definitions.html",
+          "docs/api/backend/api/routers/sessions.html",
+          "docs/api/backend/api/routers/system.html",
+          "docs/api/backend/api/routers/tone_profiles.html",
+          "docs/api/backend/api/routers/translation.html",
+          "docs/api/backend/api/routers/ui_i18n.html",
+          "docs/api/backend/api/routers/workflow_definitions.html",
+          "docs/api/backend/api/routers/workflow_exec.html",
+          "docs/api/backend/api/routers/workflow_reports.html",
+          "docs/api/backend/api/routers/workflow_templates.html",
+          "docs/api/backend/blueprints.html",
+          "docs/api/backend/core.html",
+          "docs/api/backend/core/config.html",
+          "docs/api/backend/core/profiles.html",
+          "docs/api/backend/main.html",
+          "docs/api/backend/models.html",
+          "docs/api/backend/modules.html",
+          "docs/api/backend/modules/installer.html",
+          "docs/api/backend/modules/models.html",
+          "docs/api/backend/modules/service.html",
+          "docs/api/backend/modules/validation.html",
+          "docs/api/backend/persistence.html",
+          "docs/api/backend/persistence/audit.html",
+          "docs/api/backend/persistence/backup.html",
+          "docs/api/backend/persistence/debate_store.html",
+          "docs/api/backend/persistence/project_store.html",
+          "docs/api/backend/repositories.html",
+          "docs/api/backend/repositories/profile_repo.html",
+          "docs/api/backend/repositories/proposal_repo.html",
+          "docs/api/backend/services.html",
+          "docs/api/backend/services/artifact_store.html",
+          "docs/api/backend/services/dms.html",
+          "docs/api/backend/services/doc_parser.html",
+          "docs/api/backend/services/input.html",
+          "docs/api/backend/services/llm_service.html",
+          "docs/api/backend/services/meta_workflow.html",
+          "docs/api/backend/services/module_profile_sync.html",
+          "docs/api/backend/services/output.html",
+          "docs/api/backend/services/prompt_service.html",
+          "docs/api/backend/services/render_engine.html",
+          "docs/api/backend/services/render_job_store.html",
+          "docs/api/backend/services/stt_service.html",
+          "docs/api/backend/services/tone_prompt_injector.html",
+          "docs/api/backend/services/web_search.html",
+          "docs/api/backend/workflow.html",
+          "docs/api/backend/workflow/audit_logger.html",
+          "docs/api/backend/workflow/debate_graph.html",
+          "docs/api/backend/workflow/hitl.html",
+          "docs/api/backend/workflow/hitl/agent_query.html",
+          "docs/api/backend/workflow/hitl/api.html",
+          "docs/api/backend/workflow/hitl/contracts.html",
+          "docs/api/backend/workflow/hitl/graph.html",
+          "docs/api/backend/workflow/hitl/nodes.html",
+          "docs/api/backend/workflow/hitl/round_manager.html",
+          "docs/api/backend/workflow/hitl/security.html",
+          "docs/api/backend/workflow/hitl/state.html",
+          "docs/api/backend/workflow/immutability.html",
+          "docs/api/backend/workflow/interjection.html",
+          "docs/api/backend/workflow/node_functions.html",
+          "docs/api/backend/workflow/nodes.html",
+          "docs/api/backend/workflow/report_generator.html",
+          "docs/api/backend/workflow/report_jobs.html",
+          "docs/api/backend/workflow/state.html",
+          "docs/api/backend/workflow/state_snapshot.html",
+          "docs/api/backend/workflow/workflow_compiler.html",
+          "docs/api/backend/workflow/workflow_routers.html",
+          "docs/api/backend/workflow/workflow_runner.html",
+          "docs/api/backend/workflow/workflow_state.html",
+          "docs/api/index.html"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — plans",
+        "slug": "archive-and-configuration-plans",
+        "files": [
+          "plans/2026-05-22_danwa-modules-init.md",
+          "plans/2026-05-22_danwa-modules-roadmap.md",
+          "plans/2026-05-23_kitsune-agent.md",
+          "plans/2026-05-24_bundle-composer.md",
+          "plans/bundle-architecture-plan.md",
+          "plans/bundle-architecture-todo.md",
+          "plans/documentation-automation-plan.md",
+          "plans/language-packs-as-modules.md",
+          "plans/nodejs-upgrade-impact.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive",
+        "slug": "archive-and-configuration-archive",
+        "files": [
+          "archive/MIGRATION_REPORT.md",
+          "archive/frontend-README.md",
+          "archive/frontend-README.zh.md",
+          "archive/project-structure.txt",
+          "archive/xiaomi-mimo-v2.5-pro.yaml.duplicate"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-chainlit",
+        "slug": "archive-and-configuration-archive-chainlit",
+        "files": [
+          "archive/chainlit/chainlit_app.py_v1",
+          "archive/chainlit/tests/test_dms_dashboard.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-config",
+        "slug": "archive-and-configuration-archive-config",
+        "files": [
+          "archive/config/llm_profiles.yaml",
+          "archive/config/llm_profiles.yaml_example",
+          "archive/config/prompt_variants.yaml_example",
+          "archive/config/prompts/assistant.md",
+          "archive/config/prompts/critic.md",
+          "archive/config/prompts/dms_context.md",
+          "archive/config/prompts/kitsune/kitsune-de.md",
+          "archive/config/prompts/moderator.md",
+          "archive/config/prompts/optimizer.md",
+          "archive/config/prompts/strategist.md",
+          "archive/config/settings.yaml_example"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-frontend",
+        "slug": "archive-and-configuration-archive-frontend",
+        "files": [
+          "archive/frontend/docs/technical_documentation.md",
+          "archive/frontend/docs/user_manual.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-modules",
+        "slug": "archive-and-configuration-archive-modules",
+        "files": [
+          "archive/modules/agent-argumentation-patterns/prompt-critic-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-critic-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-critic-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-critic-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-moderator-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-moderator-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-optimizer-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-optimizer-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-strategist-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-dialectic-strategist-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-moderator-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-moderator-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-optimizer-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-optimizer-de/profile.md",
+          "archive/modules/agent-argumentation-patterns/prompt-strategist-de/manifest.json",
+          "archive/modules/agent-argumentation-patterns/prompt-strategist-de/profile.md",
+          "archive/modules/agent-cores/agent-critic-default-de/manifest.json",
+          "archive/modules/agent-cores/agent-critic-default-de/profile.yaml",
+          "archive/modules/agent-cores/agent-moderator-default-de/manifest.json",
+          "archive/modules/agent-cores/agent-moderator-default-de/profile.yaml",
+          "archive/modules/agent-cores/agent-optimizer-default-de/manifest.json",
+          "archive/modules/agent-cores/agent-optimizer-default-de/profile.yaml",
+          "archive/modules/agent-cores/agent-strategist-default-de/manifest.json",
+          "archive/modules/agent-cores/agent-strategist-default-de/profile.yaml"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-patches",
+        "slug": "archive-and-configuration-archive-patches",
+        "files": [
+          "archive/patches/sprint_017_versionierung.patch"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-plans",
+        "slug": "archive-and-configuration-archive-plans",
+        "files": [
+          "archive/plans/2026-05-02_fastapi-langgraph-sse.md",
+          "archive/plans/2026-05-02_fastapi-ui-rewrite.md",
+          "archive/plans/2026-05-02_sprint1-skeleton.md",
+          "archive/plans/2026-05-02_sprint2-frontend.md",
+          "archive/plans/2026-05-02_sprint2b-e2e-tests.md",
+          "archive/plans/2026-05-02_sprint2c-extended-tests.md",
+          "archive/plans/2026-05-02_sprint2d-accessibility.md",
+          "archive/plans/2026-05-02_sprint2e-i18n.md",
+          "archive/plans/2026-05-02_sprint3-configuration-profiles.md",
+          "archive/plans/2026-05-04_enhanced-debate-feedback.md",
+          "archive/plans/2026-05-04_web-search-integration.md",
+          "archive/plans/2026-05-05_dms-ocr-rag-migration.md",
+          "archive/plans/2026-05-05_project-isolation.md",
+          "archive/plans/2026-05-06_workflow-visualization.md",
+          "archive/plans/2026-05-07_a2a-implementation-todo.md",
+          "archive/plans/2026-05-07_a2a-integration.md",
+          "archive/plans/2026-05-08_blueprint-canvas-phase1.md",
+          "archive/plans/2026-05-08_blueprint-canvas-phase2.md",
+          "archive/plans/2026-05-08_blueprint-canvas-phase3.md",
+          "archive/plans/2026-05-08_blueprint-canvas-phase4.md",
+          "archive/plans/2026-05-09_missing_links_2026-05-09.md",
+          "archive/plans/2026-05-09_workflow-graph-builder-master-todos.md",
+          "archive/plans/2026-05-09_workflow-graph-builder-phase1.md",
+          "archive/plans/2026-05-09_workflow-graph-builder-phase2.md",
+          "archive/plans/2026-05-09_workflow-graph-builder-phase7.md",
+          "archive/plans/2026-05-09_workflow-graph-builder-phase8.md",
+          "archive/plans/2026-05-10_code-review-2025-05-09.md",
+          "archive/plans/2026-05-10_code_review_2026-05-10.md",
+          "archive/plans/2026-05-10_input-composer-input-plugin-architektur.md",
+          "archive/plans/2026-05-10_output-composer-render-pipeline.md",
+          "archive/plans/2026-05-11_canvas-role-assignment.md",
+          "archive/plans/2026-05-11_mimo-tts-integration.md",
+          "archive/plans/2026-05-11_profile-service-db-ssot.md",
+          "archive/plans/2026-05-12_blueprint-debate-pipeline.md",
+          "archive/plans/2026-05-12_input-composer-workflow-bridge.md",
+          "archive/plans/2026-05-12_paddleocr-integration.md",
+          "archive/plans/2026-05-13_rolle-typen-abstraktion.md",
+          "archive/plans/2026-05-14_009-modularisierung-gesamtplan.md",
+          "archive/plans/2026-05-14_010-ssot-en-uebersetzungscache.md",
+          "archive/plans/2026-05-14_011-modulformat-import-engine.md",
+          "archive/plans/2026-05-14_012-uebersetzungscache.md",
+          "archive/plans/2026-05-14_013-modul-api-frontend.md",
+          "archive/plans/2026-05-14_014-migration-cleanup.md",
+          "archive/plans/2026-05-14_015-modulecosystem.md",
+          "archive/plans/2026-05-14_016-service-llm.md",
+          "archive/plans/2026-05-14_017-versionierung.md",
+          "archive/plans/2026-05-15_018-backup-strategie.md",
+          "archive/plans/2026-05-15_018-backup-strategie_vorig.md",
+          "archive/plans/2026-05-15_018-todo-liste-unimplementierte-elemente.md",
+          "archive/plans/2026-05-15_019-followup-debatte.md",
+          "archive/plans/2026-05-15_020-i18n-mehrsprachigkeit.md",
+          "archive/plans/2026-05-15_020-todo-liste-i18n.md",
+          "archive/plans/2026-05-15_missing-links-todo.md",
+          "archive/plans/2026-05-17_module-redesign.md",
+          "archive/plans/code-review-2025-05-09.md",
+          "archive/plans/missing-links-todo.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — archive-sisyphus",
+        "slug": "archive-and-configuration-archive-sisyphus",
+        "files": [
+          "archive/sisyphus/boulder.json",
+          "archive/sisyphus/evidence/final-qa/backend-verification.txt",
+          "archive/sisyphus/evidence/final-qa/minimal-ui-check.txt",
+          "archive/sisyphus/notepads/dms-integration/F3-FINAL-STATUS.md",
+          "archive/sisyphus/notepads/dms-integration/FINAL-STATUS.md",
+          "archive/sisyphus/notepads/dms-integration/audit_report.md",
+          "archive/sisyphus/notepads/dms-integration/blocker.md",
+          "archive/sisyphus/notepads/dms-integration/code_review.md",
+          "archive/sisyphus/notepads/dms-integration/decisions.md",
+          "archive/sisyphus/notepads/dms-integration/final-qa.md",
+          "archive/sisyphus/notepads/dms-integration/issues.md",
+          "archive/sisyphus/notepads/dms-integration/learnings.md",
+          "archive/sisyphus/notepads/dms-integration/problems.md",
+          "archive/sisyphus/notepads/dms-integration/scope_fidelity.md",
+          "archive/sisyphus/notepads/dms-integration/scope_fidelity_update.md",
+          "archive/sisyphus/plans/dms-integration.md",
+          "archive/sisyphus/plans/on-demand-replacement.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — config-prompts",
+        "slug": "archive-and-configuration-config-prompts",
+        "files": [
+          "config/prompts/kitsune/kitsune.md",
+          "config/prompts/kitsune/knowledge.txt"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — external_plugins",
+        "slug": "archive-and-configuration-external-plugins",
+        "files": [
+          "external_plugins/README.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — external_plugins-example_video_renderer",
+        "slug": "archive-and-configuration-external-plugins-example-video-ren",
+        "files": [
+          "external_plugins/example_video_renderer/__init__.py",
+          "external_plugins/example_video_renderer/manifest.json",
+          "external_plugins/example_video_renderer/plugin.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — profiles-agents",
+        "slug": "archive-and-configuration-profiles-agents",
+        "files": [
+          "profiles/agents/DEPRECATED.txt",
+          "profiles/agents/critic-example.yaml",
+          "profiles/agents/moderator-example.yaml",
+          "profiles/agents/optimizer-example.yaml",
+          "profiles/agents/strategist-example.yaml"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — profiles-argumentation-patterns",
+        "slug": "archive-and-configuration-profiles-argumentation-patterns",
+        "files": [
+          "profiles/argumentation-patterns/DEPRECATED.txt",
+          "profiles/argumentation-patterns/aristotelian/DEPRECATED.txt",
+          "profiles/argumentation-patterns/aristotelian/analyst-en.md",
+          "profiles/argumentation-patterns/aristotelian/analyst.md",
+          "profiles/argumentation-patterns/aristotelian/creative-en.md",
+          "profiles/argumentation-patterns/aristotelian/creative.md",
+          "profiles/argumentation-patterns/aristotelian/critic.md",
+          "profiles/argumentation-patterns/aristotelian/fact-checker-en.md",
+          "profiles/argumentation-patterns/aristotelian/fact-checker.md",
+          "profiles/argumentation-patterns/aristotelian/moderator.md",
+          "profiles/argumentation-patterns/aristotelian/optimizer-en.md",
+          "profiles/argumentation-patterns/aristotelian/optimizer.md",
+          "profiles/argumentation-patterns/aristotelian/strategist.md",
+          "profiles/argumentation-patterns/hegelian/DEPRECATED.txt",
+          "profiles/argumentation-patterns/hegelian/analyst-en.md",
+          "profiles/argumentation-patterns/hegelian/analyst.md",
+          "profiles/argumentation-patterns/hegelian/creative-en.md",
+          "profiles/argumentation-patterns/hegelian/creative.md",
+          "profiles/argumentation-patterns/hegelian/critic.md",
+          "profiles/argumentation-patterns/hegelian/fact-checker.md",
+          "profiles/argumentation-patterns/hegelian/moderator.md",
+          "profiles/argumentation-patterns/hegelian/optimizer.md",
+          "profiles/argumentation-patterns/hegelian/strategist.md",
+          "profiles/argumentation-patterns/kantian/DEPRECATED.txt",
+          "profiles/argumentation-patterns/kantian/analyst.md",
+          "profiles/argumentation-patterns/kantian/creative.md",
+          "profiles/argumentation-patterns/kantian/critic.md",
+          "profiles/argumentation-patterns/kantian/fact-checker.md",
+          "profiles/argumentation-patterns/kantian/moderator.md",
+          "profiles/argumentation-patterns/kantian/optimizer.md",
+          "profiles/argumentation-patterns/kantian/strategist.md",
+          "profiles/argumentation-patterns/socratic/DEPRECATED.txt",
+          "profiles/argumentation-patterns/socratic/analyst.md",
+          "profiles/argumentation-patterns/socratic/creative-en.md",
+          "profiles/argumentation-patterns/socratic/creative.md",
+          "profiles/argumentation-patterns/socratic/critic.md",
+          "profiles/argumentation-patterns/socratic/fact-checker-en.md",
+          "profiles/argumentation-patterns/socratic/fact-checker.md",
+          "profiles/argumentation-patterns/socratic/moderator-en.md",
+          "profiles/argumentation-patterns/socratic/moderator.md",
+          "profiles/argumentation-patterns/socratic/optimizer-en.md",
+          "profiles/argumentation-patterns/socratic/optimizer.md",
+          "profiles/argumentation-patterns/socratic/strategist.md",
+          "profiles/argumentation-patterns/steiner/DEPRECATED.txt",
+          "profiles/argumentation-patterns/steiner/analyst-en.md",
+          "profiles/argumentation-patterns/steiner/analyst.md",
+          "profiles/argumentation-patterns/steiner/creative-en.md",
+          "profiles/argumentation-patterns/steiner/creative.md",
+          "profiles/argumentation-patterns/steiner/critic-en.md",
+          "profiles/argumentation-patterns/steiner/critic.md",
+          "profiles/argumentation-patterns/steiner/fact-checker-en.md",
+          "profiles/argumentation-patterns/steiner/fact-checker.md",
+          "profiles/argumentation-patterns/steiner/moderator-en.md",
+          "profiles/argumentation-patterns/steiner/moderator.md",
+          "profiles/argumentation-patterns/steiner/optimizer-en.md",
+          "profiles/argumentation-patterns/steiner/optimizer.md",
+          "profiles/argumentation-patterns/steiner/strategist-en.md",
+          "profiles/argumentation-patterns/steiner/strategist.md",
+          "profiles/argumentation-patterns/stoic/DEPRECATED.txt",
+          "profiles/argumentation-patterns/stoic/analyst-en.md",
+          "profiles/argumentation-patterns/stoic/analyst.md",
+          "profiles/argumentation-patterns/stoic/creative-en.md",
+          "profiles/argumentation-patterns/stoic/creative.md",
+          "profiles/argumentation-patterns/stoic/critic.md",
+          "profiles/argumentation-patterns/stoic/fact-checker.md",
+          "profiles/argumentation-patterns/stoic/moderator-en.md",
+          "profiles/argumentation-patterns/stoic/moderator.md",
+          "profiles/argumentation-patterns/stoic/optimizer-en.md",
+          "profiles/argumentation-patterns/stoic/optimizer.md",
+          "profiles/argumentation-patterns/stoic/strategist.md",
+          "profiles/argumentation-patterns/utilitarian/DEPRECATED.txt",
+          "profiles/argumentation-patterns/utilitarian/analyst.md",
+          "profiles/argumentation-patterns/utilitarian/creative.md",
+          "profiles/argumentation-patterns/utilitarian/critic.md",
+          "profiles/argumentation-patterns/utilitarian/fact-checker.md",
+          "profiles/argumentation-patterns/utilitarian/moderator.md",
+          "profiles/argumentation-patterns/utilitarian/optimizer.md",
+          "profiles/argumentation-patterns/utilitarian/strategist.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — profiles-llm",
+        "slug": "archive-and-configuration-profiles-llm",
+        "files": [
+          "profiles/llm/DEPRECATED.txt"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — profiles-prompts",
+        "slug": "archive-and-configuration-profiles-prompts",
+        "files": [
+          "profiles/prompts/DEPRECATED.txt",
+          "profiles/prompts/README.md",
+          "profiles/prompts/default/DEPRECATED.txt",
+          "profiles/prompts/variants/DEPRECATED.txt",
+          "profiles/prompts/variants/dialectic/DEPRECATED.txt",
+          "profiles/prompts/variants/kantian/DEPRECATED.txt",
+          "profiles/prompts/variants/steiner/DEPRECATED.txt"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — profiles-workflow-variants",
+        "slug": "archive-and-configuration-profiles-workflow-variants",
+        "files": [
+          "profiles/workflow-variants/DEPRECATED.txt",
+          "profiles/workflow-variants/concise/default.md",
+          "profiles/workflow-variants/formal/default.md",
+          "profiles/workflow-variants/no_tables/critic.md",
+          "profiles/workflow-variants/no_tables/default.md",
+          "profiles/workflow-variants/no_tables/strategist.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — profiles-workflows",
+        "slug": "archive-and-configuration-profiles-workflows",
+        "files": [
+          "profiles/workflows/DEPRECATED.txt",
+          "profiles/workflows/dialectic/critic-en.md",
+          "profiles/workflows/dialectic/critic.md",
+          "profiles/workflows/dialectic/moderator-en.md",
+          "profiles/workflows/dialectic/moderator.md",
+          "profiles/workflows/dialectic/optimizer-en.md",
+          "profiles/workflows/dialectic/optimizer.md",
+          "profiles/workflows/dialectic/strategist-en.md",
+          "profiles/workflows/dialectic/strategist.md"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — schemas",
+        "slug": "archive-and-configuration-schemas",
+        "files": [
+          "schemas/module-manifest.json"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — src",
+        "slug": "archive-and-configuration-src",
+        "files": [
+          "src/__init__.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — src-config",
+        "slug": "archive-and-configuration-src-config",
+        "files": [
+          "src/config/prompt_variants.yaml",
+          "src/config/prompt_variants.yaml_example"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — src-core",
+        "slug": "archive-and-configuration-src-core",
+        "files": [
+          "src/core/__init__.py",
+          "src/core/custom_embedding.py",
+          "src/core/debate_engine.py",
+          "src/core/debate_engine.py_v1",
+          "src/core/llm_router.py",
+          "src/core/logging_config.py",
+          "src/core/memory.py",
+          "src/core/privacy.py",
+          "src/core/prompt_manager.py",
+          "src/core/prompt_registry.py",
+          "src/core/session_db.py",
+          "src/core/trace_logger.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — src-tools",
+        "slug": "archive-and-configuration-src-tools",
+        "files": [
+          "src/tools/__init__.py",
+          "src/tools/doc_parser.py",
+          "src/tools/report_generator.py",
+          "src/tools/web_search.py",
+          "src/tools/web_search.py_v1"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — src-ui",
+        "slug": "archive-and-configuration-src-ui",
+        "files": [
+          "src/ui/__init__.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — templates",
+        "slug": "archive-and-configuration-templates",
+        "files": [
+          "templates/DEPRECATED.txt",
+          "templates/dialectic_debate.json",
+          "templates/interview_workflow.json",
+          "templates/kantian_analysis.json",
+          "templates/mediation_workflow.json",
+          "templates/quick_review.json",
+          "templates/standard_debate.json",
+          "templates/streitgespraech_workflow.json"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — templates-print",
+        "slug": "archive-and-configuration-templates-print",
+        "files": [
+          "templates/print/_macros.html",
+          "templates/print/academic_debate.html",
+          "templates/print/css/academic_debate.css",
+          "templates/print/css/minimal.css",
+          "templates/print/i18n/de.json",
+          "templates/print/i18n/en.json",
+          "templates/print/minimal.html"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — tests-backend",
+        "slug": "archive-and-configuration-tests-backend",
+        "files": [
+          "tests/backend/conftest.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — tests-manager",
+        "slug": "archive-and-configuration-tests-manager",
+        "files": [
+          "tests/manager/__init__.py"
+        ]
+      },
+      {
+        "name": "Archive and Configuration — tests",
+        "slug": "archive-and-configuration-tests",
+        "files": [
+          "tests/test_debate_engine.py",
+          "tests/test_llm_router.py",
+          "tests/test_memory.py",
+          "tests/test_privacy.py",
+          "tests/test_prompt_manager.py",
+          "tests/test_prompt_manager_dms.py",
+          "tests/test_session_db.py",
+          "tests/test_trace_logger.py"
+        ]
+      }
+    ]
+  }
+]
