@@ -1,5 +1,5 @@
 <script>
-  import { healthStatus, appVersion } from '../lib/stores.js';
+  import { healthStatus } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import { getLLMActivity } from '../lib/api.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
@@ -131,14 +131,7 @@
     <!-- Language switcher -->
     <LanguageSwitcher />
 
-    <!-- Version badge -->
-    {#if $appVersion}
-      <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full" title={t('app.versionLabel')}>
-        v{$appVersion}
-      </span>
-    {/if}
-
-    <!-- Health indicator -->
+    <!-- Health indicator (includes version from backend) -->
     <div class="flex items-center space-x-2" aria-label="Backend status: {$healthStatus.status}">
       <span class="relative flex h-3 w-3">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full {statusColor} opacity-75"></span>
