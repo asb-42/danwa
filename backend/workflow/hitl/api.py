@@ -334,8 +334,11 @@ async def inject_context(
         },
     )
 
-    logger.info(
-        "Context injection queued: id=%s, debate=%s, target=%s",
+    # DIAGNOSTIC: Log that this stores in _interaction_log which is NOT consumed by workflow engine
+    logger.warning(
+        "DIAG HITL inject: id=%s, debate=%s, target=%s | "
+        "NOTE: stored in _interaction_log — this is NOT consumed by the workflow engine's agent_node_factory. "
+        "The workflow engine only consumes from interjection_service (POST /workflow-exec/{session_id}/interject).",
         interaction_id,
         debate_id,
         body.target_agent or "all_future",

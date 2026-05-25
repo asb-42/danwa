@@ -290,8 +290,14 @@ def get_workflow_templates_from_modules(modules_dir: Path = MODULES_DIR) -> list
         profile = _read_module_profile(mod["dir"], mod["manifest"])
         if profile is None:
             continue
+        profile.setdefault("id", mod["module_id"])
+        profile.setdefault("name", _localized(mod["manifest"].get("name"), mod["module_id"]))
+        profile.setdefault("description", "")
         profile.setdefault("category", "custom")
         profile.setdefault("tags", [])
+        profile.setdefault("placeholders", [])
+        profile.setdefault("is_system", True)
+        profile.setdefault("template_data", {})
         results.append(_mark_readonly(profile, mod["module_id"], mod["manifest"]))
     return results
 

@@ -508,6 +508,25 @@
     display: flex;
     flex-direction: column;
   }
+  /* SvelteFlow canvas dark mode */
+  :global(.dark .svelte-flow) {
+    background: #111827;
+  }
+  :global(.dark .svelte-flow__background) {
+    color: #374151;
+  }
+  :global(.dark .svelte-flow__controls button) {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+    fill: #e5e7eb;
+  }
+  :global(.dark .svelte-flow__controls button:hover) {
+    background: #374151;
+  }
+  :global(.dark .svelte-flow__minimap) {
+    background: #1f2937;
+  }
   .canvas-toolbar {
     position: absolute;
     top: 8px;
@@ -554,6 +573,19 @@
     color: white;
     border-color: #3b82f6;
   }
+  :global(.dark) .toolbar-btn-execute {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #93c5fd;
+  }
+  :global(.dark) .toolbar-btn-execute:hover {
+    background: #1e40af;
+    border-color: #60a5fa;
+  }
+  :global(.dark) .toolbar-btn-execute.active {
+    background: #3b82f6;
+    color: white;
+  }
   .toolbar-btn-reflect {
     background: #fefce8;
     border-color: #fde047;
@@ -567,6 +599,19 @@
     background: #eab308;
     color: white;
     border-color: #eab308;
+  }
+  :global(.dark) .toolbar-btn-reflect {
+    background: #422006;
+    border-color: #f59e0b;
+    color: #fde047;
+  }
+  :global(.dark) .toolbar-btn-reflect:hover {
+    background: #78350f;
+    border-color: #fbbf24;
+  }
+  :global(.dark) .toolbar-btn-reflect.active {
+    background: #eab308;
+    color: #1f2937;
   }
   .toolbar-btn-reflect:disabled {
     opacity: 0.5;
@@ -587,6 +632,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+  :global(.dark) .reflect-error {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
   }
   .reflect-error-dismiss {
     background: none;
@@ -678,7 +728,8 @@
   :global(.dark) :global(.port-prompt),
   :global(.dark) :global(.port-config),
   :global(.dark) :global(.port-sequence),
-  :global(.dark) :global(.port-feedback) {
+  :global(.dark) :global(.port-feedback),
+  :global(.dark) :global(.port-tone) {
     background: #1f2937 !important;
   }
 </style>

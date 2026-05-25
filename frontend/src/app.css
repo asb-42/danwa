@@ -27,6 +27,27 @@
     background-color: rgba(55, 65, 81, 0.5); /* gray-700/50 */
   }
 }
+
+/* SvelteFlow dark mode overrides */
+.dark .svelte-flow {
+  background: #111827 !important;
+}
+.dark .svelte-flow__background {
+  color: #374151;
+}
+.dark .svelte-flow__controls button {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+  fill: #e5e7eb;
+}
+.dark .svelte-flow__controls button:hover {
+  background: #374151;
+}
+.dark .svelte-flow__minimap {
+  background: #1f2937;
+}
+
 /* RTL-Layout-Support (Plan 20) */
 
 /* RTL-Layout-Support für Danwa (Plan 20)

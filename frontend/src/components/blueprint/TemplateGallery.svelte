@@ -53,9 +53,9 @@
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
-        tmpl.name.toLowerCase().includes(q) ||
-        tmpl.description.toLowerCase().includes(q) ||
-        tmpl.tags.some((tag) => tag.toLowerCase().includes(q))
+        (tmpl.name || '').toLowerCase().includes(q) ||
+        (tmpl.description || '').toLowerCase().includes(q) ||
+        (tmpl.tags || []).some((tag) => tag.toLowerCase().includes(q))
       );
     })
   );
@@ -150,7 +150,7 @@
                   </div>
                   <div class="card-name">{tmpl.name}</div>
                   <div class="card-desc">{tmpl.description}</div>
-                  {#if tmpl.tags.length > 0}
+                  {#if (tmpl.tags || []).length > 0}
                     <div class="card-tags">
                       {#each tmpl.tags as tag}
                         <span class="tag-badge">{tag}</span>
@@ -158,7 +158,7 @@
                     </div>
                   {/if}
                   <div class="card-meta">
-                    {tmpl.placeholders.length} {t('template.gallery.placeholders')}
+                    {(tmpl.placeholders || []).length} {t('template.gallery.placeholders')}
                   </div>
                 </button>
                 {#if !tmpl.is_system}

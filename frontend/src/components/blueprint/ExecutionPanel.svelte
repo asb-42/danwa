@@ -385,6 +385,7 @@
   :global(.dark) .execution-panel {
     background: #1f2937;
     border-color: #374151;
+    color: #e5e7eb;
   }
   .panel-header {
     display: flex;
@@ -393,6 +394,7 @@
     padding: 12px 16px;
     border-bottom: 1px solid #e5e7eb;
   }
+  :global(.dark) .panel-header { border-color: #374151; }
   .panel-title {
     font-size: 14px;
     font-weight: 600;
@@ -407,6 +409,8 @@
     padding: 4px;
   }
   .close-btn:hover { color: #374151; }
+  :global(.dark) .close-btn { color: #9ca3af; }
+  :global(.dark) .close-btn:hover { color: #e5e7eb; }
 
   .status-bar {
     display: flex;
@@ -478,6 +482,7 @@
     cursor: pointer;
     transition: all 0.15s ease;
   }
+  :global(.dark) .btn { border-color: #4b5563; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-primary {
     background: #3b82f6;
@@ -490,12 +495,24 @@
     color: #374151;
   }
   .btn-secondary:hover:not(:disabled) { border-color: #3b82f6; }
+  :global(.dark) .btn-secondary {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+  :global(.dark) .btn-secondary:hover:not(:disabled) { border-color: #60a5fa; }
   .btn-danger {
     background: white;
     color: #ef4444;
     border-color: #fecaca;
   }
   .btn-danger:hover:not(:disabled) { background: #fef2f2; }
+  :global(.dark) .btn-danger {
+    background: #374151;
+    color: #f87171;
+    border-color: #7f1d1d;
+  }
+  :global(.dark) .btn-danger:hover:not(:disabled) { background: #4b5563; }
   .btn-small {
     padding: 6px 12px;
     font-size: 11px;
@@ -516,11 +533,17 @@
     font-size: 12px;
     color: #991b1b;
   }
+  :global(.dark) .error-box {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
+  }
 
   .interjection-section {
     padding: 12px 16px;
     border-top: 1px solid #f3f4f6;
   }
+  :global(.dark) .interjection-section { border-color: #374151; }
   .interjection-label {
     font-size: 11px;
     font-weight: 500;
@@ -543,6 +566,12 @@
     outline: none;
   }
   .interjection-input:focus { border-color: #3b82f6; }
+  :global(.dark) .interjection-input {
+    background: #111827;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+  :global(.dark) .interjection-input:focus { border-color: #60a5fa; }
 
   .output-section {
     padding: 12px 16px;
@@ -550,6 +579,7 @@
     flex: 1;
     overflow-y: auto;
   }
+  :global(.dark) .output-section { border-color: #374151; }
   .output-title {
     font-size: 11px;
     font-weight: 500;
@@ -584,6 +614,7 @@
     color: #6b7280;
     text-transform: uppercase;
   }
+  :global(.dark) .output-role { color: #9ca3af; }
   .output-duration {
     font-size: 10px;
     color: #9ca3af;
@@ -603,6 +634,7 @@
     padding: 8px 16px;
     border-top: 1px solid #f3f4f6;
   }
+  :global(.dark) .state-section { border-color: #374151; }
   .btn-state {
     background: #8b5cf6;
     border-color: #8b5cf6;

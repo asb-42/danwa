@@ -68,12 +68,15 @@ class InterjectionService:
 
         async with self._lock:
             self._queues.setdefault(session_id, []).append(interjection)
+            queue_size = len(self._queues[session_id])
 
+        # DIAGNOSTIC: Log submission with queue size so we can trace if consume() ever picks it up
         logger.info(
-            "Interjection %s queued for session %s (source=%s)",
+            "DIAG submit(): interjection=%s session=%s source=%s queue_size=%d",
             interjection_id,
             session_id,
             source,
+            queue_size,
         )
         return interjection_id
 
@@ -92,6 +95,7 @@ class InterjectionService:
         """
         async with self._lock:
             queue = self._queues.get(session_id, [])
+            queue_size = len(queue)
             pending = [ij for ij in queue if ij.status == "pending"]
 
             results: list[dict[str, Any]] = []
@@ -106,13 +110,15 @@ class InterjectionService:
                     }
                 )
 
-        if results:
-            logger.info(
-                "Consumed %d interjections for session %s (node=%s)",
-                len(results),
-                session_id,
-                node_id,
-            )
+        # DIAGNOSTIC: Always log consume calls so we can trace the flow
+        logger.info(
+            "DIAG consume() called: session=%s node=%s | queue_size=%d pending=%d consumed=%d",
+            session_id,
+            node_id,
+            queue_size,
+            len(pending),
+            len(results),
+        )
         return results
 
     async def get_pending(self, session_id: str) -> list[dict[str, Any]]:

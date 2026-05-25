@@ -688,6 +688,14 @@ async def submit_interjection(
     for frontend visualization.
     """
     guard_mutable(session_id)
+    # DIAGNOSTIC: Check session status at interject time
+    current_status = get_session_status(session_id)
+    logger.info(
+        "DIAG interject endpoint: session=%s status=%s content_preview=%r",
+        session_id,
+        current_status,
+        body.content[:80],
+    )
     interjection_id = await interjection_service.submit(
         session_id=session_id,
         content=body.content,

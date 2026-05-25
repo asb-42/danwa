@@ -60,7 +60,10 @@ def list_workflow_templates(
     module_templates = get_workflow_templates_from_modules()
     if category:
         module_templates = [t for t in module_templates if t.get("category") == category]
-    return db_dicts + module_templates
+    # Deduplicate: DB templates take precedence over module templates
+    db_ids = {t.get("id") for t in db_dicts}
+    unique_modules = [t for t in module_templates if t.get("id") not in db_ids]
+    return db_dicts + unique_modules
 
 
 @router.get("/{template_id}", response_model=WorkflowTemplate)

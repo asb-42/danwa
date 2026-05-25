@@ -214,9 +214,34 @@
   function handleInstantiated(wf) {
     showInstantiateModal = false;
     selectedTemplateId = null;
-    // Navigate to the new workflow
     if (wf && wf.id) {
-      navigate(`blueprint/workflow/${wf.id}`);
+      // Convert WorkflowDefinition to canvas layout format and load directly
+      canvasStore.reset();
+      canvasStore.currentWorkflowId = wf.id;
+      canvasStore.currentLayoutName = wf.name;
+
+      // Convert WorkflowDefinition nodes/edges to layout format
+      const layoutData = {
+        nodes: (wf.nodes || []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          x: n.position?.x ?? 0,
+          y: n.position?.y ?? 0,
+          blueprint_id: n.agent_blueprint_id || n.bundle_id || n.id,
+          label: n.label || '',
+          config: n.config || {},
+          parent_id: n.parent_id || null,
+        })),
+        edges: (wf.edges || []).map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          type: e.type,
+          data: {},
+        })),
+      };
+      canvasStore.loadFromLayout(layoutData, {});
+      canvasStore.setMode('workflow');
     }
   }
 
@@ -325,17 +350,19 @@
   }
 
   async function handleStartDebate(params) {
-    if (!canvasStore.currentLayoutId) return;
-
     try {
-      // Save layout first if dirty
-      if (canvasStore.isDirty) {
-        await handleSaveLayout();
-      }
-
-      // Convert layout to workflow if not already linked
       let workflowId = canvasStore.currentWorkflowId;
+
+      // If no workflow yet, save layout and convert
       if (!workflowId) {
+        if (!canvasStore.currentLayoutId) return;
+
+        // Save layout first if dirty
+        if (canvasStore.isDirty) {
+          await handleSaveLayout();
+        }
+
+        // Convert layout to workflow
         const wf = await convertLayoutToWorkflow(canvasStore.currentLayoutId, {
           name: canvasStore.currentLayoutName || 'Untitled Workflow',
           max_rounds: params.maxRounds,
@@ -384,38 +411,40 @@
   <!-- Center: Canvas -->
   <main class="canvas-column">
     <!-- Compile/Clone/Save-as-Workflow toolbar -->
-    {#if canvasStore.currentLayoutId}
+    {#if canvasStore.currentLayoutId || canvasStore.currentWorkflowId}
       <div class="absolute top-2 right-2 z-10 flex items-center gap-2">
-        <button
-          class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors
-                 disabled:opacity-50 disabled:cursor-not-allowed"
-          onclick={handleCompile}
-          disabled={isCompiling}
-          title={t('blueprint.workflow.compile')}
-        >
-          {#if isCompiling}
-            <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-          {:else}
-            🔧
-          {/if}
-          {t('blueprint.workflow.compile')}
-        </button>
-        <button
-          class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                 bg-violet-600 text-white hover:bg-violet-700 transition-colors
-                 disabled:opacity-50 disabled:cursor-not-allowed"
-          onclick={handleOpenWorkflowDialog}
-          title={t('blueprint.workflow.saveAsWorkflow')}
-        >
-          💾 {t('blueprint.workflow.saveAsWorkflow')}
-        </button>
+        {#if canvasStore.currentLayoutId}
+          <button
+            class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                   bg-emerald-600 text-white hover:bg-emerald-700 transition-colors
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={handleCompile}
+            disabled={isCompiling}
+            title={t('blueprint.workflow.compile')}
+          >
+            {#if isCompiling}
+              <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            {:else}
+              🔧
+            {/if}
+            {t('blueprint.workflow.compile')}
+          </button>
+          <button
+            class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                   bg-violet-600 text-white hover:bg-violet-700 transition-colors
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={handleOpenWorkflowDialog}
+            title={t('blueprint.workflow.saveAsWorkflow')}
+          >
+            💾 {t('blueprint.workflow.saveAsWorkflow')}
+          </button>
+        {/if}
         <button
           class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
                  bg-indigo-600 text-white hover:bg-indigo-700 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleClone}
-          disabled={isCloning}
+          disabled={isCloning || !canvasStore.currentWorkflowId}
           title={t('blueprint.workflow.clone')}
         >
           {#if isCloning}
@@ -731,6 +760,7 @@
     font-weight: 600;
     color: #6b7280;
   }
+  :global(.dark) .dialog-label { color: #9ca3af; }
   .dialog-input {
     padding: 8px 10px;
     border: 1px solid #d1d5db;
@@ -755,6 +785,14 @@
     color: #6b7280;
     font-size: 13px;
     cursor: pointer;
+  }
+  :global(.dark) .dialog-btn-cancel {
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+  :global(.dark) .dialog-btn-cancel:hover {
+    border-color: #6b7280;
+    color: #e5e7eb;
   }
   .dialog-btn-save {
     padding: 8px 16px;
