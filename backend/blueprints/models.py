@@ -282,17 +282,20 @@ class RoleDefinition(BaseModel):
     def to_legacy(
         self,
         system_prompt: str = "",
+        llm_profile_id: str | None = None,
     ) -> AgentPersona:
         """Convert to ``backend.core.profiles.AgentPersona`` for backward compat.
 
         Args:
             system_prompt: The prompt content (resolved from PromptTemplate).
+            llm_profile_id: Optional LLM profile ID for the persona.
         """
         return AgentPersona(
             id=self.id.replace("_", "-"),
             name=self.name,
             role=self.role_type_id,  # type: ignore[arg-type]
             system_prompt=system_prompt or f"# {self.name}\n(No prompt configured)",
+            llm_profile_id=llm_profile_id,
             max_rounds=self.max_rounds,
             consensus_threshold=self.consensus_threshold,
             description=self.description,

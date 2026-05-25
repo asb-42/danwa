@@ -88,6 +88,9 @@ class AgentPersona(BaseModel):
     argumentation_pattern: str | None = None
     mode: str | None = None
 
+    # LLM profile binding
+    llm_profile_id: str | None = None
+
     # Metadata
     description: str | None = None
     tags: list[str] = []

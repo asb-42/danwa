@@ -77,7 +77,14 @@ class TestRenderJobEndpoints:
 
 class TestSessionSearchEndpoint:
     async def test_search_empty(self, client: AsyncClient):
-        res = await client.get("/api/v1/render-sessions?q=test")
+        # Create a project first
+        create = await client.post("/api/v1/projects", json={"name": "Test"})
+        assert create.status_code == 201
+        pid = create.json()["id"]
+        res = await client.get(
+            "/api/v1/render-sessions?q=test",
+            headers={"X-Project-Id": pid},
+        )
         assert res.status_code == 200
         assert isinstance(res.json(), list)
 

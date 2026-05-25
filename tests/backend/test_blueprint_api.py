@@ -928,10 +928,9 @@ class TestWorkflowDefinitionAPI:
 
     def test_pagination(self, client: TestClient) -> None:
         for i in range(3):
-            client.post(
-                "/api/v1/blueprints/workflows",
-                json=_sample_workflow(f"wf-{i}"),
-            )
+            wf = _sample_workflow(f"wf-{i}")
+            wf["name"] = f"Workflow {i}"
+            client.post("/api/v1/blueprints/workflows", json=wf)
         response = client.get("/api/v1/blueprints/workflows?limit=2&offset=0")
         assert response.status_code == 200
         assert len(response.json()) == 2

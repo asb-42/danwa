@@ -89,10 +89,10 @@ async def list_debates(
         req = d.get("request", {})
         if hasattr(req, "case"):
             case_text = req.case.text
-            language = getattr(req, "language", "de")
+            language = getattr(req, "language", "de") or "de"
         elif isinstance(req, dict):
             case_text = req.get("case", {}).get("text", "") if isinstance(req.get("case"), dict) else ""
-            language = req.get("language", "de")
+            language = req.get("language", "de") or "de"
         else:
             case_text = ""
             language = "de"

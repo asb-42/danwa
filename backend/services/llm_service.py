@@ -292,12 +292,14 @@ class LLMService:
                 finish_reason,
             )
 
-        # Extract real token usage
+        # Extract real token usage from JSON response body
         tokens_in = 0
         tokens_out = 0
-        if hasattr(response, "usage") and response.usage:
-            tokens_in = response.usage.prompt_tokens
-            tokens_out = response.usage.completion_tokens
+        if isinstance(data, dict):
+            usage = data.get("usage")
+            if usage:
+                tokens_in = usage.get("prompt_tokens", 0)
+                tokens_out = usage.get("completion_tokens", 0)
             logger.info(
                 "Tokens used: %d in / %d out",
                 tokens_in,
