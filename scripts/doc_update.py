@@ -69,25 +69,29 @@ def parse_sections(text: str) -> list[dict]:
         m = re.match(r"^(##\s+.+)$", line)
         if m:
             if current_heading is not None:
-                sections.append({
-                    "heading": current_heading,
-                    "heading_line": heading_line,
-                    "content": "\n".join(lines[current_start:i]),
-                    "start": current_start,
-                    "end": i,
-                })
+                sections.append(
+                    {
+                        "heading": current_heading,
+                        "heading_line": heading_line,
+                        "content": "\n".join(lines[current_start:i]),
+                        "start": current_start,
+                        "end": i,
+                    }
+                )
             current_heading = m.group(1)
             current_start = i
             heading_line = i
         elif i == len(lines) - 1 and current_heading is not None:
             # Last section until EOF
-            sections.append({
-                "heading": current_heading,
-                "heading_line": heading_line,
-                "content": "\n".join(lines[current_start:i + 1]),
-                "start": current_start,
-                "end": i + 1,
-            })
+            sections.append(
+                {
+                    "heading": current_heading,
+                    "heading_line": heading_line,
+                    "content": "\n".join(lines[current_start : i + 1]),
+                    "start": current_start,
+                    "end": i + 1,
+                }
+            )
 
     return sections
 
@@ -127,46 +131,48 @@ def build_prompt_surgical(
             lines.append(f"[{i}] {sec['heading']}: {snippet}")
         lines.append("")
 
-    lines.extend([
-        "--- AUFGABE ---",
-        "Analysiere ob eine der vorhandenen Sections aktualisiert werden muss,",
-        "oder ob neue Sections hinzugefügt werden sollten (basierend auf den",
-        "geänderten Dateien oben).",
-        "",
-        "Output-Format (JSON, NUR dieses JSON, keine Einleitung/Erklärung):",
-        "{",
-        '  "tech_doc_updates": [',
-        "    {",
-        '      "section_index": 3,',
-        '      "new_content": "<VOLLSTÄNDIGER neuer Inhalt dieser Section (inkl. Heading)>"',
-        "    }",
-        "  ],",
-        '  "tech_doc_insertions": [',
-        "    {",
-        '      "insert_after_heading": "## 5. Backend Architecture",',
-        '      "new_content": "<VOLLSTÄNDIGER Inhalt der neuen Section (inkl. ## Heading)>"',
-        "    }",
-        "  ],",
-        '  "user_manual_updates": [...],',
-        '  "user_manual_insertions": [...]',
-        "}",
-        "",
-        "Regeln:",
-        "- WENN eine Section unverändert bleiben kann: NICHT zurückgeben.",
-        "- 'new_content' ist der VOLLSTÄNDIGE Inhalt der aktualisierten/neuen Section (inkl. ## Heading).",
-        "- Füge <!-- UPDATED --> direkt nach dem Section-Heading ein bei geänderten Sections.",
-        "- 'section_index' bezieht sich auf die Nummer in [Klammern] oben.",
-        '- Wenn Insertion: "insert_after_heading" ist die EXAKTE Überschrift (inkl. "## ") nach der eingefügt werden soll.',
-        "- Bei neuem Section am Ende: insert_after_heading == \"<EOF>\"",
-        "- Felder für nicht angeforderte Dokumente weglassen oder leeres Array.",
-    ])
+    lines.extend(
+        [
+            "--- AUFGABE ---",
+            "Analysiere ob eine der vorhandenen Sections aktualisiert werden muss,",
+            "oder ob neue Sections hinzugefügt werden sollten (basierend auf den",
+            "geänderten Dateien oben).",
+            "",
+            "Output-Format (JSON, NUR dieses JSON, keine Einleitung/Erklärung):",
+            "{",
+            '  "tech_doc_updates": [',
+            "    {",
+            '      "section_index": 3,',
+            '      "new_content": "<VOLLSTÄNDIGER neuer Inhalt dieser Section (inkl. Heading)>"',
+            "    }",
+            "  ],",
+            '  "tech_doc_insertions": [',
+            "    {",
+            '      "insert_after_heading": "## 5. Backend Architecture",',
+            '      "new_content": "<VOLLSTÄNDIGER Inhalt der neuen Section (inkl. ## Heading)>"',
+            "    }",
+            "  ],",
+            '  "user_manual_updates": [...],',
+            '  "user_manual_insertions": [...]',
+            "}",
+            "",
+            "Regeln:",
+            "- WENN eine Section unverändert bleiben kann: NICHT zurückgeben.",
+            "- 'new_content' ist der VOLLSTÄNDIGE Inhalt der aktualisierten/neuen Section (inkl. ## Heading).",
+            "- Füge <!-- UPDATED --> direkt nach dem Section-Heading ein bei geänderten Sections.",
+            "- 'section_index' bezieht sich auf die Nummer in [Klammern] oben.",
+            '- Wenn Insertion: "insert_after_heading" ist die EXAKTE Überschrift (inkl. "## ") nach der eingefügt werden soll.',
+            '- Bei neuem Section am Ende: insert_after_heading == "<EOF>"',
+            "- Felder für nicht angeforderte Dokumente weglassen oder leeres Array.",
+        ]
+    )
 
     return "\n".join(lines)
 
 
 def apply_surgical_update(original: str, updates: list[dict], insertions: list[dict]) -> str:
     """Apply surgical section updates to original markdown text.
-    
+
     updates: list of {section_index, new_content}
     insertions: list of {insert_after_heading, new_content}
     """
@@ -179,11 +185,11 @@ def apply_surgical_update(original: str, updates: list[dict], insertions: list[d
     for up in updates_sorted:
         idx = up["section_index"]
         if idx < 0 or idx >= len(sections):
-            print(f"  [WARN] Section index {idx} out of range (max {len(sections)-1}), skipping")
+            print(f"  [WARN] Section index {idx} out of range (max {len(sections) - 1}), skipping")
             continue
         sec = sections[idx]
         new_lines = up["new_content"].split("\n")
-        lines[sec["start"]:sec["end"]] = new_lines
+        lines[sec["start"] : sec["end"]] = new_lines
         # Re-parse because lines changed
         sections = parse_sections("\n".join(lines))
 
