@@ -36,13 +36,14 @@
   let editError = $state(null);
 
   const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
-  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'tone-profiles', 'workflows', 'translations'];
+  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'prompt-modifiers', 'tone-profiles', 'workflows', 'translations'];
   const CATEGORY_LABELS = {
     'agents': 'Agent Cores',
     'llm-profiles': 'LLM Profiles',
     'role-types': 'Role Types',
     'tone-profiles': 'Tone Profiles',
     'prompts': 'Argumentation Patterns',
+    'prompt-modifiers': 'Prompt Modifiers',
     'workflows': 'Workflows',
     'translations': '🌐 Translations',
   };
@@ -108,6 +109,9 @@
         };
       } else {
         editForm = { ...profile };
+        if (Array.isArray(editForm.tags)) {
+          editForm.tags = editForm.tags.join(', ');
+        }
       }
       editError = null;
       editModalOpen = true;
@@ -133,7 +137,12 @@
     editSaving = true;
     editError = null;
     try {
-      await updateModuleProfile(editingModule.module_id, editForm);
+      const saveData = { ...editForm };
+      if (typeof saveData.tags === 'string') {
+        saveData.tags = saveData.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+      delete saveData.profile_type;
+      await updateModuleProfile(editingModule.module_id, saveData);
       statusMessage = 'Profile saved';
       closeEdit();
       await loadModules();
@@ -243,11 +252,10 @@
       return [
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'role', label: 'Role', type: 'text' },
-        { key: 'system_prompt', label: 'System Prompt', type: 'textarea' },
-        { key: 'llm_profile_id', label: 'LLM Profile', type: 'text' },
-        { key: 'max_rounds', label: 'Max Rounds', type: 'number' },
-        { key: 'consensus_threshold', label: 'Consensus Threshold', type: 'number', step: 0.1 },
         { key: 'description', label: 'Description', type: 'text' },
+        { key: 'content', label: 'System Prompt (Markdown)', type: 'markdown' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
       ];
     }
     if (type === 'role-type') {
@@ -266,12 +274,9 @@
       return [
         { key: 'name', label: 'Name', type: 'text' },
         { key: 'description', label: 'Description', type: 'text' },
-        { key: 'style', label: 'Style', type: 'text' },
-        { key: 'formality', label: 'Formality (0-1)', type: 'number', step: 0.1, min: 0, max: 1 },
-        { key: 'verbosity', label: 'Verbosity', type: 'text' },
-        { key: 'emotional_valence', label: 'Emotional Valence (-1 to 1)', type: 'number', step: 0.1, min: -1, max: 1 },
-        { key: 'rhetorical_mode', label: 'Rhetorical Mode', type: 'text' },
-        { key: 'custom_instructions', label: 'Custom Instructions', type: 'textarea' },
+        { key: 'content', label: 'Prompt (Markdown)', type: 'markdown' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
       ];
     }
     if (type === 'workflow-template') {
@@ -284,7 +289,20 @@
     }
     if (type === 'prompt-variant') {
       return [
-        { key: 'content', label: 'Prompt Content (Markdown)', type: 'markdown' },
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'content', label: 'Prompt (Markdown)', type: 'markdown' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
+      ];
+    }
+    if (type === 'prompt-modifier') {
+      return [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'content', label: 'Prompt (Markdown)', type: 'markdown' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
       ];
     }
     if (type === 'language-pack') {

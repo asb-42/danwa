@@ -10,6 +10,7 @@ from backend.modules.models import ModuleCategory, ModuleType
 _DIR_TO_TYPE: dict[str, ModuleType] = {
     "llm-profiles": ModuleType.LLM_PROFILE,
     "agent-argumentation-patterns": ModuleType.PROMPT_VARIANT,
+    "prompt-modifiers": ModuleType.PROMPT_MODIFIER,
     "workflows": ModuleType.WORKFLOW_TEMPLATE,
     "agent-bundles": ModuleType.BUNDLE,
     "ui-translations": ModuleType.LANGUAGE_PACK,
@@ -21,11 +22,12 @@ _DIR_TO_TYPE: dict[str, ModuleType] = {
 _DIR_TO_CATEGORY: dict[str, ModuleCategory] = {
     "llm-profiles": ModuleCategory.LLM_PROFILES,
     "agent-argumentation-patterns": ModuleCategory.PROMPTS,
+    "prompt-modifiers": ModuleCategory.PROMPT_MODIFIERS,
     "workflows": ModuleCategory.WORKFLOWS,
     "agent-bundles": ModuleCategory.BUNDLES,
     "ui-translations": ModuleCategory.TRANSLATIONS,
     "agent-tone-profiles": ModuleCategory.TONE_PROFILES,
-    "agent-prompt-modifiers": ModuleCategory.PROMPTS,
+    "agent-prompt-modifiers": ModuleCategory.PROMPT_MODIFIERS,
 }
 
 # Aliases: manifest "type" field → ModuleType (e.g. "agent-core" → AGENT_PERSONA)

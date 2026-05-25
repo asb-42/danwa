@@ -7,6 +7,7 @@ and discovering Danwa modules.
 from __future__ import annotations
 
 import io
+import json
 import logging
 import zipfile
 from typing import Any
@@ -112,12 +113,35 @@ async def get_module(module_id: str) -> dict[str, Any]:
 
 @router.get("/{module_id}/profile", response_model=dict[str, Any])
 async def get_module_profile(module_id: str) -> dict[str, Any]:
-    """Get the parsed profile data for a module."""
+    """Get the parsed profile data for a module, merged with manifest metadata."""
     svc = get_module_service()
-    profile = svc.get_profile(module_id)
-    if profile is None:
-        raise HTTPException(status_code=404, detail=f"Profile not found for module '{module_id}'")
-    return profile
+    info = svc.get(module_id)
+    if not info:
+        raise HTTPException(status_code=404, detail=f"Module '{module_id}' not found")
+    profile = svc.get_profile(module_id) or {}
+
+    manifest = {}
+    module_dir = svc._resolve_module_dir(module_id)
+    if module_dir:
+        manifest_path = module_dir / "manifest.json"
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+    return {
+        "module_id": module_id,
+        "name": info.name.get("en", info.name.get(list(info.name.keys())[0]) if info.name else module_id),
+        "description": info.description.get("en", info.description.get(list(info.description.keys())[0]) if info.description else ""),
+        "role": manifest.get("role", ""),
+        "type": info.type if isinstance(info.type, str) else info.type.value,
+        "version": info.version,
+        "language": info.language,
+        "tags": info.tags,
+        "profile_type": manifest.get("profile_format", "markdown"),
+        "content": profile.get("content", ""),
+    }
 
 
 class ProfileUpdateRequest(BaseModel):

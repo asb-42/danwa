@@ -630,7 +630,7 @@ class BlueprintRepository:
                     int(wf.is_locked),
                     wf.template_id,
                     json.dumps(wf.input_config) if wf.input_config is not None else None,
-                    json.dumps({k: v.model_dump() for k, v in wf.phase_configs.items()}) if wf.phase_configs else '{}',
+                    json.dumps({k: v.model_dump() for k, v in wf.phase_configs.items()}) if wf.phase_configs else "{}",
                 ),
             )
 

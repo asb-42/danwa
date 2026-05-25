@@ -32,6 +32,7 @@ class ModuleType(StrEnum):
 
 class ModuleCategory(StrEnum):
     PROMPTS = "prompts"
+    PROMPT_MODIFIERS = "prompt-modifiers"
     AGENTS = "agents"
     LLM_PROFILES = "llm-profiles"
     WORKFLOWS = "workflows"

@@ -286,8 +286,9 @@ class WorkflowDefinition(BaseModel):
     # --- Phase configuration ---
     phase_configs: dict[str, PhaseConfig] = Field(
         default_factory=dict,
-        description=("Phase configurations keyed by phase node ID. "
-                      "Each entry defines the name, assigned roles, max rounds, and color for a debate phase."),
+        description=(
+            "Phase configurations keyed by phase node ID. Each entry defines the name, assigned roles, max rounds, and color for a debate phase."
+        ),
     )
 
     # --- Structured graph representation (Phase 1) ---

@@ -23,9 +23,9 @@
   const TABS = [
     { id: 'llm-profiles', label: 'LLM Profiles' },
     { id: 'role-types', label: 'Agent Cores' },
-    { id: 'agents', label: 'Role Types' },
-    { id: 'tone-profiles', label: 'Tone Profiles' },
     { id: 'prompts', label: 'Argumentation Patterns' },
+    { id: 'tone-profiles', label: 'Tone Profiles' },
+    { id: 'prompt-modifiers', label: 'Prompt Modifiers' },
     { id: 'agent-bundles', label: 'Agent Bundles' },
     { id: 'workflows', label: 'Workflows' },
     { id: 'translations', label: '🌐 Translations' },
@@ -160,14 +160,14 @@
   {:else if activeTab === 'role-types'}
     <ModuleManager filterCategory="agents" />
 
-  {:else if activeTab === 'agents'}
-    <ModuleManager filterCategory="role-types" />
+  {:else if activeTab === 'prompts'}
+    <ModuleManager filterCategory="prompts" />
 
   {:else if activeTab === 'tone-profiles'}
     <ModuleManager filterCategory="tone-profiles" />
 
-  {:else if activeTab === 'prompts'}
-    <ModuleManager filterCategory="prompts" />
+  {:else if activeTab === 'prompt-modifiers'}
+    <ModuleManager filterCategory="prompt-modifiers" />
 
   {:else if activeTab === 'agent-bundles'}
     <div class="space-y-4">

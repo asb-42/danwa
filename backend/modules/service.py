@@ -348,7 +348,25 @@ class ModuleService:
         if not profile_file:
             return False
 
-        safe_data = {k: v for k, v in profile_data.items() if k != "id"}
+        # Fields that belong in manifest.json rather than the profile file
+        manifest_fields = {"name", "description", "role", "tags", "language", "version"}
+        manifest_dirty = False
+        for key in manifest_fields:
+            if key in profile_data:
+                val = profile_data[key]
+                # Wrap name/description into language dict if given as plain string
+                if key in ("name", "description") and isinstance(val, str):
+                    val = {"en": val}
+                manifest[key] = val
+                manifest_dirty = True
+
+        if manifest_dirty:
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+
+        safe_data = {k: v for k, v in profile_data.items() if k not in {"id"} | manifest_fields}
 
         profile_path = module_dir / profile_file
         if profile_format == "yaml":

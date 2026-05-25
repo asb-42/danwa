@@ -271,7 +271,7 @@ async def get_llm_profiles(**ctx: Any) -> list[dict[str, Any]]:
         "properties": {
             "category": {
                 "type": "string",
-                "enum": ["llm-profiles", "agents", "prompts", "tone-profiles", "workflows", "translations", "bundles"],
+                "enum": ["llm-profiles", "agents", "prompts", "prompt-modifiers", "tone-profiles", "workflows", "translations", "bundles"],
                 "description": "Optional category to filter by. Omit to list all.",
             },
         },

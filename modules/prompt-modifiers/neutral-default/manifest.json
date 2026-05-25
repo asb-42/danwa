@@ -9,7 +9,7 @@
   },
   "version": "1.0.0",
   "type": "prompt-modifier",
-  "category": "prompts",
+  "category": "prompt-modifiers",
   "author": {
     "name": "Danwa Community"
   },
