@@ -21,6 +21,8 @@
     return text;
   });
 
+  let { filterCategory } = $props();
+
   let modules = $state([]);
   let isLoading = $state(false);
   let statusMessage = $state('');
@@ -45,12 +47,22 @@
     'translations': '🌐 Translations',
   };
 
+  const filteredModules = $derived(
+    filterCategory
+      ? modules.filter(m => (m.category || 'other') === filterCategory)
+      : modules
+  );
+
   const groupedModules = $derived.by(() => {
     const groups = {};
-    for (const m of modules) {
+    const source = filterCategory ? filteredModules : modules;
+    for (const m of source) {
       const cat = m.category || 'other';
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(m);
+    }
+    if (filterCategory) {
+      return Object.entries(groups);
     }
     const ordered = [];
     for (const cat of CATEGORY_ORDER) {
@@ -334,10 +346,12 @@
   {:else}
     {#each groupedModules as [category, mods]}
       <div>
-        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 pb-1 border-b border-gray-200 dark:border-gray-700">
-          {CATEGORY_LABELS[category] || category}
-          <span class="text-sm font-normal text-gray-400 ml-2">({mods.length})</span>
-        </h3>
+        {#if !filterCategory}
+          <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 pb-1 border-b border-gray-200 dark:border-gray-700">
+            {CATEGORY_LABELS[category] || category}
+            <span class="text-sm font-normal text-gray-400 ml-2">({mods.length})</span>
+          </h3>
+        {/if}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
