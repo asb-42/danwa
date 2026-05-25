@@ -39,6 +39,7 @@ from backend.api.routers import (  # noqa: E402
     input_composer,
     llm_profiles,
     modules,
+    monitor,
     optimization_proposals,
     output_composer,
     profiles,
@@ -233,6 +234,9 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+
+    # --- LLM Activity Monitor ---
+    app.include_router(monitor.router, prefix="/api/v1/monitor", tags=["monitor"])
 
     # --- Blueprint Canvas ---
     app.include_router(blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"])

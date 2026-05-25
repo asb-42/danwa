@@ -111,17 +111,44 @@ class LLMService:
         temp = temperature if temperature is not None else self._profile.temperature
         tokens = max_tokens if max_tokens is not None else self._profile.max_tokens
 
-        # Route by protocol (Phase 8)
-        protocol = getattr(self._profile, "protocol", "litellm")
-        if protocol == "a2a":
-            return await self._generate_a2a(messages, temp, tokens, tools=tools)
-        # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
-        local_providers = {"local", "ollama", "opencode-zen", "opencode-go"}
-        if self._profile.provider.value in local_providers:
-            return await self._generate_local(messages, temp, tokens, tools=tools)
-        if self._profile.provider == LLMProvider.CLOUDFLARE:
-            return await self._generate_cloudflare(messages, temp, tokens)
-        return await self._generate_litellm(messages, temp, tokens, tools=tools)
+        # --- LLM Activity Tracking ---
+        from backend.services.llm_activity import llm_activity
+
+        provider_name = self._profile.provider.value if self._profile.provider else "unknown"
+        model_name = self._profile.model or self._profile.name
+        call_id = await llm_activity.start_call(
+            model=model_name,
+            provider=provider_name,
+        )
+
+        try:
+            # Route by protocol (Phase 8)
+            protocol = getattr(self._profile, "protocol", "litellm")
+            if protocol == "a2a":
+                result = await self._generate_a2a(messages, temp, tokens, tools=tools)
+            # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
+            elif self._profile.provider.value in {"local", "ollama", "opencode-zen", "opencode-go"}:
+                result = await self._generate_local(messages, temp, tokens, tools=tools)
+            elif self._profile.provider == LLMProvider.CLOUDFLARE:
+                result = await self._generate_cloudflare(messages, temp, tokens)
+            else:
+                result = await self._generate_litellm(messages, temp, tokens, tools=tools)
+
+            await llm_activity.end_call(
+                call_id,
+                tokens_in=result.tokens_in,
+                tokens_out=result.tokens_out,
+                status="completed",
+            )
+            return result
+
+        except Exception as exc:
+            await llm_activity.end_call(
+                call_id,
+                status="failed",
+                error=str(exc),
+            )
+            raise
 
     async def generate_with_fallback(
         self,

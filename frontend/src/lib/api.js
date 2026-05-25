@@ -966,3 +966,11 @@ export function quickAssistantChat(message, profileId = null) {
   if (profileId) params.append('profile_id', profileId);
   return request(`/api/v1/assistant/chat?${params}`, { method: 'POST' });
 }
+
+/**
+ * Get current LLM activity status (active calls, recent history, token totals).
+ * Designed to be polled every 3-5 seconds by the header indicator.
+ */
+export function getLLMActivity() {
+  return request('/api/v1/monitor/activity');
+}
