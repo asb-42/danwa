@@ -388,6 +388,7 @@ class CanvasLayoutNode(BaseModel):
     blueprint_id: str | None = None  # References AgentBlueprint.id
     label: str = ""
     agent_blueprint_id: str | None = None  # For workflow nodes referencing AgentBlueprint
+    parent_id: str | None = None  # Parent phase node ID (for phase container membership)
     config: dict[str, Any] = Field(default_factory=dict)
     data: dict[str, Any] = Field(default_factory=dict)  # Raw node data for round-tripping
 

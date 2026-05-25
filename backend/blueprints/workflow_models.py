@@ -33,10 +33,19 @@ WORKFLOW_NODE_TYPES: list[str] = [
     "wf-moderator",
     "wf-analyst",
     "wf-creative",
+    "wf-socratic-questioner",
+    "wf-expert-reviewer",
+    "wf-steel-manner",
+    "wf-devils-advocate",
+    "wf-troll",
+    "wf-mediator",
+    "wf-ethicist",
+    "wf-synthesizer",
     "wf-user-injection",
     "wf-gate",
     "wf-tone-profile",
     "wf-agent",  # Generic agent node referencing an AgentBundle
+    "wf-phase",  # Phase container node for multi-phase debates
 ]
 
 #: Node types that require an agent_blueprint_id or bundle_id reference.
@@ -48,6 +57,14 @@ AGENT_NODE_TYPES: list[str] = [
     "wf-moderator",
     "wf-analyst",
     "wf-creative",
+    "wf-socratic-questioner",
+    "wf-expert-reviewer",
+    "wf-steel-manner",
+    "wf-devils-advocate",
+    "wf-troll",
+    "wf-mediator",
+    "wf-ethicist",
+    "wf-synthesizer",
     "wf-agent",
 ]
 
@@ -75,14 +92,24 @@ class WorkflowNode(BaseModel):
         "wf-moderator",
         "wf-analyst",
         "wf-creative",
+        "wf-socratic-questioner",
+        "wf-expert-reviewer",
+        "wf-steel-manner",
+        "wf-devils-advocate",
+        "wf-troll",
+        "wf-mediator",
+        "wf-ethicist",
+        "wf-synthesizer",
         "wf-user-injection",
         "wf-gate",
         "wf-tone-profile",
         "wf-agent",
+        "wf-phase",
     ]
     label: str = ""
     agent_blueprint_id: str | None = None  # Required for legacy agent node types
     bundle_id: str | None = None  # Required for wf-agent type
+    parent_id: str | None = None  # Parent phase node ID (for phase container membership)
     config: dict[str, Any] = Field(default_factory=dict)
     position: dict[str, float] = Field(default_factory=dict)  # {x, y} for canvas
 
@@ -133,8 +160,16 @@ INJECTABLE_AGENT_NODE_TYPES: list[str] = [
     "wf-moderator",
     "wf-analyst",
     "wf-creative",
+    "wf-socratic-questioner",
+    "wf-expert-reviewer",
+    "wf-steel-manner",
+    "wf-devils-advocate",
+    "wf-troll",
+    "wf-mediator",
+    "wf-ethicist",
+    "wf-synthesizer",
     "wf-agent",
-    # Note: wf-input, wf-gate, wf-user-injection, wf-tone-profile cannot receive injects_config
+    # Note: wf-input, wf-gate, wf-phase, wf-user-injection, wf-tone-profile cannot receive injects_config
 ]
 
 
@@ -211,6 +246,21 @@ class InterjectionPoint(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PhaseConfig(BaseModel):
+    """Configuration for a single debate phase.
+
+    Maps a ``wf-phase`` node ID to its runtime configuration:
+    phase name, description, assigned roles, max rounds, and header color.
+    """
+
+    phase_node_id: str  # References WorkflowNode.id (a wf-phase node)
+    name: str = "Phase"
+    description: str = ""
+    roles: list[str] = Field(default_factory=list)  # Agent core role IDs
+    max_rounds: int = Field(default=3, ge=1, le=50)
+    color: str = "#6366f1"
+
+
 class WorkflowDefinition(BaseModel):
     """Defines a complete debate workflow.
 
@@ -218,7 +268,10 @@ class WorkflowDefinition(BaseModel):
     Does NOT duplicate blueprint data.
 
     The ``nodes`` and ``edges`` fields provide the structured graph
-    representation.  ``execution_order``, ``conditional_edges``, and
+    representation.  ``phase_configs`` maps phase node IDs to their
+    runtime configuration (name, roles, max rounds).
+
+    ``execution_order``, ``conditional_edges``, and
     ``interjection_points`` are retained for backward compatibility with
     the list-based representation.
     """
@@ -229,6 +282,13 @@ class WorkflowDefinition(BaseModel):
 
     # Layout reference
     canvas_layout_id: str | None = None  # References CanvasLayout.id
+
+    # --- Phase configuration ---
+    phase_configs: dict[str, PhaseConfig] = Field(
+        default_factory=dict,
+        description=("Phase configurations keyed by phase node ID. "
+                      "Each entry defines the name, assigned roles, max rounds, and color for a debate phase."),
+    )
 
     # --- Structured graph representation (Phase 1) ---
     nodes: list[WorkflowNode] = Field(default_factory=list)

@@ -29,6 +29,7 @@ from backend.blueprints.models import (
 from backend.blueprints.workflow_models import (
     ConditionalEdge,
     InterjectionPoint,
+    PhaseConfig,
     TemplatePlaceholder,
     TerminationCondition,
     WorkflowDefinition,
@@ -606,8 +607,8 @@ class BlueprintRepository:
                  tags_json, is_active, created_at, updated_at,
                  nodes_json, edges_json, entry_point,
                  termination_conditions_json, version, is_locked, template_id,
-                 input_config)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 input_config, phase_configs_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     wf.id,
                     wf.name,
@@ -629,6 +630,7 @@ class BlueprintRepository:
                     int(wf.is_locked),
                     wf.template_id,
                     json.dumps(wf.input_config) if wf.input_config is not None else None,
+                    json.dumps({k: v.model_dump() for k, v in wf.phase_configs.items()}) if wf.phase_configs else '{}',
                 ),
             )
 
@@ -683,6 +685,11 @@ class BlueprintRepository:
         input_config_raw = row["input_config"] if "input_config" in row.keys() else None
         input_config = json.loads(input_config_raw) if input_config_raw else None
 
+        # Phase configs (may be absent before migration v28)
+        phase_configs_raw = row["phase_configs_json"] if "phase_configs_json" in row.keys() else "{}"
+        phase_configs_data = json.loads(phase_configs_raw) if phase_configs_raw else {}
+        phase_configs = {k: PhaseConfig(**v) for k, v in phase_configs_data.items()}
+
         return WorkflowDefinition(
             id=row["id"],
             name=row["name"],
@@ -704,6 +711,7 @@ class BlueprintRepository:
             is_locked=bool(is_locked),
             template_id=template_id,
             input_config=input_config,
+            phase_configs=phase_configs,
         )
 
     # ------------------------------------------------------------------

@@ -94,6 +94,19 @@ class BlueprintCanvasStore {
     this.isDirty = true;
   }
 
+  /**
+   * Update position and parentId of a specific node atomically.
+   * @param {string} nodeId
+   * @param {{ x: number, y: number }} position
+   * @param {string|null} parentId
+   */
+  updateNode(nodeId, position, parentId) {
+    this.nodes = this.nodes.map((n) =>
+      n.id === nodeId ? { ...n, position, parentId } : n,
+    );
+    this.isDirty = true;
+  }
+
   // ─── Edge mutations ───────────────────────────────────────────────
 
   /**
@@ -147,6 +160,7 @@ class BlueprintCanvasStore {
         type: n.type,
         x: n.position?.x ?? 0,
         y: n.position?.y ?? 0,
+        parent_id: n.parentId || null,
         blueprint_id: n.data?.blueprint_id || n.id,
         // Persist workflow-relevant data for canvas-to-workflow conversion
         label: n.data?.label || n.data?.name || '',
@@ -187,10 +201,19 @@ class BlueprintCanvasStore {
       'wf-fact-checker': 'wf-fact-checker',
       'wf-analyst': 'wf-analyst',
       'wf-creative': 'wf-creative',
+      'wf-socratic-questioner': 'wf-socratic-questioner',
+      'wf-expert-reviewer': 'wf-expert-reviewer',
+      'wf-steel-manner': 'wf-steel-manner',
+      'wf-devils-advocate': 'wf-devils-advocate',
+      'wf-troll': 'wf-troll',
+      'wf-mediator': 'wf-mediator',
+      'wf-ethicist': 'wf-ethicist',
+      'wf-synthesizer': 'wf-synthesizer',
       'wf-user-injection': 'wf-user-injection',
       'wf-gate': 'wf-gate',
       'wf-tone-profile': 'wf-tone-profile',
       'wf-agent': 'wf-agent',
+      'wf-phase': 'wf-phase',
       'tone-profile': 'tone-profile',
     };
 
@@ -198,6 +221,7 @@ class BlueprintCanvasStore {
       id: n.id,
       type: nodeTypeMap[n.type] || n.type,
       position: { x: n.x ?? 0, y: n.y ?? 0 },
+      parentId: n.parent_id || null,
       data: {
         ...(entityDataMap[n.blueprint_id || n.id] || {}),
 

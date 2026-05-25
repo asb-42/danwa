@@ -136,6 +136,25 @@
     }
   }
 
+  /**
+   * Find a parent phase node that contains the given canvas position.
+   * @param {{ x: number, y: number }} point - Canvas-space position
+   * @returns {string|null} - Phase node ID or null
+   */
+  function findParentPhase(point) {
+    const phaseNodes = canvasStore.nodes.filter(n => n.type === 'wf-phase');
+    for (const pn of phaseNodes) {
+      const w = pn.width ?? pn.measured?.width ?? 300;
+      const h = pn.height ?? pn.measured?.height ?? 200;
+      const x = pn.position.x;
+      const y = pn.position.y;
+      if (point.x >= x && point.x <= x + w && point.y >= y && point.y <= y + h) {
+        return pn.id;
+      }
+    }
+    return null;
+  }
+
   async function handleDrop(event) {
     event.preventDefault();
     const nodeType = getNodeTypeFromDrop(event);
@@ -145,6 +164,18 @@
       x: event.clientX,
       y: event.clientY,
     });
+
+    const parentId = findParentPhase(position);
+
+    // If inside a phase, convert drop position to be relative to the parent
+    const adjustedPosition = { ...position };
+    if (parentId) {
+      const parentNode = canvasStore.nodes.find(n => n.id === parentId);
+      if (parentNode) {
+        adjustedPosition.x -= parentNode.position.x;
+        adjustedPosition.y -= parentNode.position.y;
+      }
+    }
 
     const entityId = getEntityIdFromDrop(event);
 
@@ -173,7 +204,8 @@
             break;
         }
         if (entityData) {
-          const entityNode = createEntityNode(nodeType, entityId, entityData, position);
+          const entityNode = createEntityNode(nodeType, entityId, entityData, adjustedPosition);
+          entityNode.parentId = parentId;
           canvasStore.addNode(entityNode);
           canvasStore.selectNode(entityNode.id);
         }
@@ -182,7 +214,8 @@
       }
     } else {
       // Draft node drop (new)
-      const draftNode = createDraftNode(nodeType, position);
+      const draftNode = createDraftNode(nodeType, adjustedPosition);
+      draftNode.parentId = parentId;
       canvasStore.addNode(draftNode);
       canvasStore.selectNode(draftNode.id);
     }
@@ -253,8 +286,42 @@
   }
 
   function handleNodeDragStop({ targetNode }) {
-    if (targetNode) {
-      canvasStore.updateNodePosition(targetNode.id, targetNode.position);
+    if (!targetNode) return;
+
+    const updatedPosition = { ...targetNode.position };
+
+    // Re-evaluate phase parentage on drag end
+    let newParentId = null;
+    if (targetNode.type !== 'wf-phase') {
+      const phaseNodes = canvasStore.nodes.filter(n => n.type === 'wf-phase' && n.id !== targetNode.id);
+      // Use absolute position on the canvas (relative position + parent offset)
+      const absPos = { ...updatedPosition };
+      if (targetNode.parentId) {
+        const currentParent = canvasStore.nodes.find(n => n.id === targetNode.parentId);
+        if (currentParent) {
+          absPos.x += currentParent.position.x;
+          absPos.y += currentParent.position.y;
+        }
+      }
+      for (const pn of phaseNodes) {
+        const w = pn.width ?? pn.measured?.width ?? 300;
+        const h = pn.height ?? pn.measured?.height ?? 200;
+        if (absPos.x >= pn.position.x && absPos.x <= pn.position.x + w &&
+            absPos.y >= pn.position.y && absPos.y <= pn.position.y + h) {
+          newParentId = pn.id;
+          // Convert position to be relative to new parent
+          updatedPosition.x = absPos.x - pn.position.x;
+          updatedPosition.y = absPos.y - pn.position.y;
+          break;
+        }
+      }
+    }
+
+    // Only update if something changed
+    if (newParentId !== targetNode.parentId ||
+        updatedPosition.x !== targetNode.position.x ||
+        updatedPosition.y !== targetNode.position.y) {
+      canvasStore.updateNode(targetNode.id, updatedPosition, newParentId);
     }
   }
 </script>

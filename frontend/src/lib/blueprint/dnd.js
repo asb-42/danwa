@@ -73,9 +73,57 @@ const DEFAULT_NODE_DATA = {
     label: 'User Input',
     config: { input_type: 'user_query' },
   },
+  'wf-fact-checker': {
+    label: 'Fact Checker',
+    agent_blueprint_id: null,
+  },
+  'wf-analyst': {
+    label: 'Analyst',
+    agent_blueprint_id: null,
+  },
+  'wf-creative': {
+    label: 'Creative',
+    agent_blueprint_id: null,
+  },
+  'wf-socratic-questioner': {
+    label: 'Socratic Questioner',
+    agent_blueprint_id: null,
+  },
+  'wf-expert-reviewer': {
+    label: 'Expert Reviewer',
+    agent_blueprint_id: null,
+  },
+  'wf-steel-manner': {
+    label: 'Steel Manner',
+    agent_blueprint_id: null,
+  },
+  'wf-devils-advocate': {
+    label: "Devil's Advocate",
+    agent_blueprint_id: null,
+  },
+  'wf-troll': {
+    label: 'Troll',
+    agent_blueprint_id: null,
+  },
+  'wf-mediator': {
+    label: 'Mediator',
+    agent_blueprint_id: null,
+  },
+  'wf-ethicist': {
+    label: 'Ethicist',
+    agent_blueprint_id: null,
+  },
+  'wf-synthesizer': {
+    label: 'Synthesizer',
+    agent_blueprint_id: null,
+  },
   'wf-gate': {
     label: 'Gate',
     config: { condition: '' },
+  },
+  'wf-phase': {
+    label: 'Debate Phase',
+    config: { color: '#6366f1', max_rounds: 3, roles: [] },
   },
   'wf-agent': {
     label: 'Agent (Bundle)',

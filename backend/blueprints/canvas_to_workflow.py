@@ -36,12 +36,24 @@ CANVAS_TO_WF_NODE_TYPE: dict[str, str] = {
     "wf-initialize": "wf-initialize",
     "wf-strategist": "wf-strategist",
     "wf-critic": "wf-critic",
+    "wf-fact-checker": "wf-fact-checker",
     "wf-optimizer": "wf-optimizer",
     "wf-moderator": "wf-moderator",
+    "wf-analyst": "wf-analyst",
+    "wf-creative": "wf-creative",
+    "wf-socratic-questioner": "wf-socratic-questioner",
+    "wf-expert-reviewer": "wf-expert-reviewer",
+    "wf-steel-manner": "wf-steel-manner",
+    "wf-devils-advocate": "wf-devils-advocate",
+    "wf-troll": "wf-troll",
+    "wf-mediator": "wf-mediator",
+    "wf-ethicist": "wf-ethicist",
+    "wf-synthesizer": "wf-synthesizer",
     "wf-user-injection": "wf-user-injection",
     "wf-gate": "wf-gate",
     "wf-tone-profile": "wf-tone-profile",
     "wf-agent": "wf-agent",
+    "wf-phase": "wf-phase",
 }
 
 # Asset-node types that should be resolved to their linked workflow node.
@@ -268,6 +280,9 @@ class CanvasToWorkflowConverter:
             # Position
             position = {"x": cn.x, "y": cn.y}
 
+            # Phase container membership (parent_id from canvas node)
+            parent_id = cn.parent_id or cn.data.get("parentId") or None
+
             try:
                 node = WorkflowNode(
                     id=node_id,
@@ -275,6 +290,7 @@ class CanvasToWorkflowConverter:
                     label=label,
                     agent_blueprint_id=agent_blueprint_id,
                     bundle_id=bundle_id,
+                    parent_id=parent_id,
                     config=config,
                     position=position,
                 )
