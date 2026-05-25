@@ -158,10 +158,10 @@
     <ModuleManager filterCategory="llm-profiles" />
 
   {:else if activeTab === 'role-types'}
-    <ModuleManager filterCategory="role-types" />
+    <ModuleManager filterCategory="agents" />
 
   {:else if activeTab === 'agents'}
-    <ModuleManager filterCategory="agents" />
+    <ModuleManager filterCategory="role-types" />
 
   {:else if activeTab === 'tone-profiles'}
     <ModuleManager filterCategory="tone-profiles" />

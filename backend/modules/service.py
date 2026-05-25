@@ -50,7 +50,13 @@ class ModuleService:
         self._registry_cache_ttl: int = 86400
 
     def _resolve_module_dir(self, module_id: str) -> Path | None:
-        """Find a module directory by ID, searching root and one level of subdirectories."""
+        """Find a module directory by ID, searching root and one level of subdirectories.
+
+        First tries direct path match (modules/<module_id>/manifest.json),
+        then falls back to reading all manifest.json files to check the
+        ``module_id`` field (since directory names may differ from the
+        module_id stored in the manifest).
+        """
         direct = self.modules_dir / module_id
         if (direct / "manifest.json").exists():
             return direct
@@ -59,6 +65,27 @@ class ModuleService:
                 candidate = subdir / module_id
                 if (candidate / "manifest.json").exists():
                     return candidate
+                # Also check the subdir itself as a module directory
+                manifest_path = subdir / "manifest.json"
+                if manifest_path.exists():
+                    try:
+                        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+                        if data.get("module_id") == module_id:
+                            return subdir
+                    except (json.JSONDecodeError, OSError):
+                        continue
+                # Check one more level (subdir/<child>/) for matching module_id
+                for child in sorted(subdir.iterdir()):
+                    if not child.is_dir() or child.name.startswith("."):
+                        continue
+                    child_manifest = child / "manifest.json"
+                    if child_manifest.exists():
+                        try:
+                            data = json.loads(child_manifest.read_text(encoding="utf-8"))
+                            if data.get("module_id") == module_id:
+                                return child
+                        except (json.JSONDecodeError, OSError):
+                            continue
         return None
 
     def discover_local(self) -> list[ModuleInfo]:
