@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
-  "module_id": "agent-optimizer-enhanced",
+  "module_id": "agent-socratic-questioner-default",
   "name": {
-    "en": "Default Optimizer Agent"
+    "en": "Default Socratic Questioner (EN)"
   },
   "version": "1.0.0",
   "type": "agent-core",
@@ -13,15 +13,14 @@
   "license": "CC-BY-4.0",
   "tags": [
     "default",
-    "refinement",
     "english"
   ],
   "language": "en",
   "description": {
-    "en": "The Optimizer is a synthesis specialist for argument refinement"
+    "en": "Probes assumptions and uncovers hidden premises through systematic Socratic questioning."
   },
-  "role": "optimizer",
-  "profile_id": "optimizer-enhanced",
+  "role": "socratic-questioner",
+  "profile_id": "socratic-questioner-default",
   "profile_file": "profile.md",
   "profile_format": "markdown"
 }

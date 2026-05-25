@@ -82,6 +82,7 @@
           route: 'manage',
         },
         { id: 'modules', label: t('nav.modules'), icon: '🧩', route: 'modules' },
+        { id: 'bundle-composer', label: t('nav.bundleComposer'), icon: '🧩', route: 'bundle-composer' },
         { id: 'translation', label: t('nav.translation'), icon: '🌐', route: 'translation' },
       ],
     },

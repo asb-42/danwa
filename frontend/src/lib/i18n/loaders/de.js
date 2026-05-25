@@ -29,6 +29,7 @@ export default {
   'nav.section.run': 'Run',
   'nav.section.build': 'Build',
   'nav.section.config': 'Konfigurieren',
+  'nav.section.manage': 'Verwaltung',
 
   'nav.section.configure': 'Einstellungen',
   'nav.roleTypes': 'Rollentypen',
@@ -768,6 +769,7 @@ export default {
   'translation.moduleLabel': 'Modul',
   'translation.addLanguage': 'Sprache hinzufügen',
   'translation.totalStrings': 'Gesamt',
+  'translation.translated': 'Übersetzt',
   'translation.missing': 'Fehlend',
   'translation.coverage': 'Abdeckung',
   'translation.lastUpdated': 'Zuletzt aktualisiert',

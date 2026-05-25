@@ -26,6 +26,15 @@ import ModeratorNode from '../../components/blueprint/nodes/ModeratorNode.svelte
 import FactCheckerNode from '../../components/blueprint/nodes/FactCheckerNode.svelte';
 import AnalystNode from '../../components/blueprint/nodes/AnalystNode.svelte';
 import CreativeNode from '../../components/blueprint/nodes/CreativeNode.svelte';
+import SocraticQuestionerNode from '../../components/blueprint/nodes/SocraticQuestionerNode.svelte';
+import ExpertReviewerNode from '../../components/blueprint/nodes/ExpertReviewerNode.svelte';
+import SteelMannerNode from '../../components/blueprint/nodes/SteelMannerNode.svelte';
+import DevilsAdvocateNode from '../../components/blueprint/nodes/DevilsAdvocateNode.svelte';
+import TrollNode from '../../components/blueprint/nodes/TrollNode.svelte';
+import MediatorNode from '../../components/blueprint/nodes/MediatorNode.svelte';
+import EthicistNode from '../../components/blueprint/nodes/EthicistNode.svelte';
+import SynthesizerNode from '../../components/blueprint/nodes/SynthesizerNode.svelte';
+import PhaseNode from '../../components/blueprint/nodes/PhaseNode.svelte';
 import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNode.svelte';
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
 import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
@@ -284,6 +293,145 @@ export function registerAllNodeTypes() {
       isDraft: true,
       label: 'Creative',
       agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-socratic-questioner',
+    component: SocraticQuestionerNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '❓',
+    labelKey: 'blueprint.palette.wfSocraticQuestioner',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Socratic Questioner',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-expert-reviewer',
+    component: ExpertReviewerNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🔬',
+    labelKey: 'blueprint.palette.wfExpertReviewer',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Expert Reviewer',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-steel-manner',
+    component: SteelMannerNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🛡️',
+    labelKey: 'blueprint.palette.wfSteelManner',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Steel Manner',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-devils-advocate',
+    component: DevilsAdvocateNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '👿',
+    labelKey: 'blueprint.palette.wfDevilsAdvocate',
+    defaultData: () => ({
+      isDraft: true,
+      label: "Devil's Advocate",
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-troll',
+    component: TrollNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🤡',
+    labelKey: 'blueprint.palette.wfTroll',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Troll',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-mediator',
+    component: MediatorNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🤝',
+    labelKey: 'blueprint.palette.wfMediator',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Mediator',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-ethicist',
+    component: EthicistNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '⚖️',
+    labelKey: 'blueprint.palette.wfEthicist',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Ethicist',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-synthesizer',
+    component: SynthesizerNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🔗',
+    labelKey: 'blueprint.palette.wfSynthesizer',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Synthesizer',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-phase',
+    component: PhaseNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '📋',
+    labelKey: 'blueprint.palette.wfPhase',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Phase',
+      phase_name: 'New Phase',
+      description: '',
+      roles: [],
+      max_rounds: 3,
+      color: '#6366f1',
     }),
     active: true,
   });

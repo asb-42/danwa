@@ -68,6 +68,17 @@ export const WORKFLOW_CONNECTION_RULES = {
   'wf-user-injection': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
   'wf-gate': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate', 'wf-tone-profile'],
   'wf-tone-profile': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-initialize', 'wf-gate', 'wf-user-injection'],
+  'wf-analyst': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-creative': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-socratic-questioner': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-expert-reviewer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-steel-manner': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-devils-advocate': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-troll': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-mediator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-ethicist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-synthesizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-phase': ['wf-phase', 'wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
 };
 
 /**
@@ -76,6 +87,9 @@ export const WORKFLOW_CONNECTION_RULES = {
  */
 export const INJECTABLE_AGENT_TYPES = [
   'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator',
+  'wf-analyst', 'wf-creative', 'wf-fact-checker',
+  'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner',
+  'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer',
 ];
 
 /**

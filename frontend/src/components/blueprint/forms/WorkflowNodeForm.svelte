@@ -18,7 +18,9 @@
 
   const AGENT_NODE_TYPES = [
     'wf-strategist', 'wf-critic', 'wf-fact-checker',
-    'wf-optimizer', 'wf-moderator', 'wf-analyst', 'wf-creative'
+    'wf-optimizer', 'wf-moderator', 'wf-analyst', 'wf-creative',
+    'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner',
+    'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer',
   ];
 
   const NODE_TYPE_LABELS = {
@@ -31,6 +33,14 @@
     'wf-moderator': '🎯 Moderator',
     'wf-analyst': '📊 Analyst',
     'wf-creative': '💡 Creative',
+    'wf-socratic-questioner': '❓ Socratic Questioner',
+    'wf-expert-reviewer': '🔬 Expert Reviewer',
+    'wf-steel-manner': '🛡️ Steel Manner',
+    'wf-devils-advocate': '👿 Devil\'s Advocate',
+    'wf-troll': '🤡 Troll',
+    'wf-mediator': '🤝 Mediator',
+    'wf-ethicist': '⚖️ Ethicist',
+    'wf-synthesizer': '🔗 Synthesizer',
     'wf-user-injection': '👤 User Injection',
     'wf-gate': '🔀 Gate',
   };
