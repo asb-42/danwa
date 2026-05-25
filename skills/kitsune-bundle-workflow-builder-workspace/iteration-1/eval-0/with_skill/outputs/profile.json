@@ -1,0 +1,13 @@
+{
+  "id": "bundle-ux-researcher",
+  "name": "UX Researcher",
+  "description": "Agent bundle for UX Research tasks in a debate setting.",
+  "llm_profile_id": "default",
+  "role_type_id": "analyst",
+  "composition": {
+    "agent_core_id": "analyst-default",
+    "argumentation_pattern_id": "strategist",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

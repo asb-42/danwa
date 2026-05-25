@@ -1,0 +1,18 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "bundle-ux-researcher",
+  "name": { "en": "UX Researcher" },
+  "description": { "en": "Agent bundle for UX Research tasks in a debate setting." },
+  "version": "1.0.0",
+  "type": "bundle",
+  "category": "bundles",
+  "author": { "name": "Danwa Community" },
+  "license": "CC-BY-4.0",
+  "tags": ["ux-researcher", "user-experience", "research", "debate"],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "dependencies": {
+    "agent-cores/analyst-default": ">=1.0.0"
+  }
+}

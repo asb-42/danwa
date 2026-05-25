@@ -1,0 +1,47 @@
+{
+  "run_id": "eval-1-without-skill",
+  "eval_id": 1,
+  "grade": "partial",
+  "expectations": [
+    {
+      "text": "Has 3 wf-phase nodes",
+      "passed": true,
+      "evidence": "Nodes phase-1, phase-2, phase-3 all type wf-phase"
+    },
+    {
+      "text": "Has 6 wf-agent nodes (2 per phase)",
+      "passed": true,
+      "evidence": "bundle-analyst-1, bundle-creative-thinker-1 (phase-1), bundle-strategist-1, bundle-devils-advocate-1 (phase-2), bundle-moderator-1, bundle-synthesizer-1 (phase-3)"
+    },
+    {
+      "text": "Has wf-gate nodes between phases",
+      "passed": true,
+      "evidence": "gate-1, gate-2 between phases"
+    },
+    {
+      "text": "All agent nodes have parent_id (not container) set",
+      "passed": false,
+      "evidence": "Uses 'container' field instead of 'parent_id'. E.g., \"container\": \"phase-1\" instead of \"parent_id\": \"phase-1\""
+    },
+    {
+      "text": "Agent nodes use correct bundle_id field",
+      "passed": false,
+      "evidence": "Uses 'agent_bundle_id' instead of 'bundle_id'. E.g., \"agent_bundle_id\": \"bundle-analyst\" instead of \"bundle_id\": \"bundle-analyst\""
+    },
+    {
+      "text": "Has termination_conditions with max_rounds and consensus_reached",
+      "passed": true,
+      "evidence": "max_rounds=5, consensus_reached=0.85"
+    },
+    {
+      "text": "entry_point references existing node",
+      "passed": true,
+      "evidence": "entry_point \"input-1\" matches node id \"input-1\""
+    },
+    {
+      "text": "No unnecessary placeholders for concrete bundles",
+      "passed": false,
+      "evidence": "Has 6 unnecessary placeholders for bundle references despite bundles being concrete filesystem modules"
+    }
+  ]
+}

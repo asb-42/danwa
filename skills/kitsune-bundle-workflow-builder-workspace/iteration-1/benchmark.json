@@ -1,0 +1,93 @@
+{
+  "skill_name": "kitsune-bundle-workflow-builder",
+  "configs": [
+    {
+      "name": "with-skill",
+      "eval_results": [
+        {
+          "eval_id": 0,
+          "eval_name": "create-ux-researcher-bundle",
+          "passed": 5,
+          "total": 6,
+          "pass_rate": 0.833,
+          "errors": ["role_type_id derived from agent_core_id instead of role name"]
+        },
+        {
+          "eval_id": 1,
+          "eval_name": "create-3-phase-template",
+          "passed": 8,
+          "total": 8,
+          "pass_rate": 1.0,
+          "errors": []
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "edit-bundle-analyst-pattern",
+          "passed": 2,
+          "total": 2,
+          "pass_rate": 1.0,
+          "errors": []
+        }
+      ],
+      "overall_pass_rate": 0.9375,
+      "total_assertions": 16,
+      "passed_assertions": 15
+    },
+    {
+      "name": "without-skill",
+      "eval_results": [
+        {
+          "eval_id": 0,
+          "eval_name": "create-ux-researcher-bundle",
+          "passed": 6,
+          "total": 6,
+          "pass_rate": 1.0,
+          "errors": []
+        },
+        {
+          "eval_id": 1,
+          "eval_name": "create-3-phase-template",
+          "passed": 5,
+          "total": 8,
+          "pass_rate": 0.625,
+          "errors": [
+            "Uses 'container' instead of 'parent_id'",
+            "Uses 'agent_bundle_id' instead of 'bundle_id'",
+            "Unnecessary placeholders for concrete bundle refs"
+          ]
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "edit-bundle-analyst-pattern",
+          "passed": 2,
+          "total": 2,
+          "pass_rate": 1.0,
+          "errors": []
+        }
+      ],
+      "overall_pass_rate": 0.8125,
+      "total_assertions": 16,
+      "passed_assertions": 13
+    }
+  ],
+  "summary": {
+    "with_skill_pass_rate": 0.9375,
+    "without_skill_pass_rate": 0.8125,
+    "delta": 0.125,
+    "observations": [
+      "With-skill: 15/16 assertions passed (93.75%) — role_type_id falsch aus agent_core abgeleitet",
+      "Without-skill: 13/16 assertions passed (81.25%) — richtige role_type_id, aber falsche Feldnamen",
+      "Template-Erstellung: with-skill 100% vs without-skill 62.5% — grösster Skill-Mehrwert",
+      "Without-skill used wrong field names: 'agent_bundle_id' instead of 'bundle_id', 'container' instead of 'parent_id'",
+      "Without-skill created unnecessary placeholders for concrete bundle references",
+      "Without-skill traf role_type_id intuitiv richtig (ux-researcher statt analyst)",
+      "With-skill hatte fehlerhafte Regel 'Nimm Teil vor erstem -' — jetzt korrigiert"
+    ],
+    "recommendations": [
+      "role_type_id = Rollenname, nicht agent_core_id-Derivat (in Skill korrigiert)",
+      "bundle_id und parent_id MÜSSEN auf oberster Node-Ebene (nie in config) — in Skill korrigiert",
+      "Gate→Phase/Output MUSS conditional sein (nie sequential) — in Skill präzisiert",
+      "Template-Knoten müssen label an oberster Ebene haben"
+    ]
+  }
+}

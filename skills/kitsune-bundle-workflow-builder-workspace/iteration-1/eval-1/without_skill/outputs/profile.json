@@ -1,0 +1,322 @@
+{
+  "id": "tpl-3-phase-debate",
+  "name": "3-Phasen-Debatte: Analyse \u2022 Diskussion \u2022 Entscheidung",
+  "description": "A structured three-phase debate workflow with phase containers, inter-phase gates, and round-based termination.",
+  "category": "system",
+  "tags": [
+    "3-phase",
+    "debate",
+    "structured",
+    "analyse-diskussion-entscheidung",
+    "gate-based"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Topic Input",
+        "position": {
+          "x": 100,
+          "y": 300
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Initialize Context",
+        "position": {
+          "x": 300,
+          "y": 300
+        }
+      },
+      {
+        "id": "phase-1",
+        "type": "wf-phase",
+        "label": "Phase 1: Analyse",
+        "config": {
+          "phase_id": "analyse",
+          "description": "Analyse des Themas aus verschiedenen Blickwinkeln"
+        },
+        "position": {
+          "x": 500,
+          "y": 200
+        }
+      },
+      {
+        "id": "bundle-analyst-1",
+        "type": "wf-agent",
+        "label": "Analyst",
+        "agent_bundle_id": "bundle-analyst",
+        "container": "phase-1",
+        "position": {
+          "x": 500,
+          "y": 100
+        }
+      },
+      {
+        "id": "bundle-creative-thinker-1",
+        "type": "wf-agent",
+        "label": "Creative Thinker",
+        "agent_bundle_id": "bundle-creative-thinker",
+        "container": "phase-1",
+        "position": {
+          "x": 500,
+          "y": 350
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Gate: Analyse \u2192 Diskussion",
+        "config": {
+          "condition": "phase_complete",
+          "phase": "analyse"
+        },
+        "position": {
+          "x": 750,
+          "y": 300
+        }
+      },
+      {
+        "id": "phase-2",
+        "type": "wf-phase",
+        "label": "Phase 2: Diskussion",
+        "config": {
+          "phase_id": "diskussion",
+          "description": "Diskussion und strategische Bewertung"
+        },
+        "position": {
+          "x": 950,
+          "y": 200
+        }
+      },
+      {
+        "id": "bundle-strategist-1",
+        "type": "wf-agent",
+        "label": "Strategist",
+        "agent_bundle_id": "bundle-strategist",
+        "container": "phase-2",
+        "position": {
+          "x": 950,
+          "y": 100
+        }
+      },
+      {
+        "id": "bundle-devils-advocate-1",
+        "type": "wf-agent",
+        "label": "Devil's Advocate",
+        "agent_bundle_id": "bundle-devils-advocate",
+        "container": "phase-2",
+        "position": {
+          "x": 950,
+          "y": 350
+        }
+      },
+      {
+        "id": "gate-2",
+        "type": "wf-gate",
+        "label": "Gate: Diskussion \u2192 Entscheidung",
+        "config": {
+          "condition": "phase_complete",
+          "phase": "diskussion"
+        },
+        "position": {
+          "x": 1200,
+          "y": 300
+        }
+      },
+      {
+        "id": "phase-3",
+        "type": "wf-phase",
+        "label": "Phase 3: Entscheidung",
+        "config": {
+          "phase_id": "entscheidung",
+          "description": "Entscheidungsfindung und Synthese"
+        },
+        "position": {
+          "x": 1400,
+          "y": 200
+        }
+      },
+      {
+        "id": "bundle-moderator-1",
+        "type": "wf-agent",
+        "label": "Moderator",
+        "agent_bundle_id": "bundle-moderator",
+        "container": "phase-3",
+        "position": {
+          "x": 1400,
+          "y": 100
+        }
+      },
+      {
+        "id": "bundle-synthesizer-1",
+        "type": "wf-agent",
+        "label": "Synthesizer",
+        "agent_bundle_id": "bundle-synthesizer",
+        "container": "phase-3",
+        "position": {
+          "x": 1400,
+          "y": 350
+        }
+      },
+      {
+        "id": "output-1",
+        "type": "wf-output",
+        "label": "Final Output",
+        "position": {
+          "x": 1650,
+          "y": 300
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-input-init",
+        "source": "input-1",
+        "target": "init-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-init-phase1",
+        "source": "init-1",
+        "target": "phase-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p1-analyst",
+        "source": "phase-1",
+        "target": "bundle-analyst-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p1-internal",
+        "source": "bundle-analyst-1",
+        "target": "bundle-creative-thinker-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p1-gate1",
+        "source": "bundle-creative-thinker-1",
+        "target": "gate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-gate1-phase2",
+        "source": "gate-1",
+        "target": "phase-2",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p2-strategist",
+        "source": "phase-2",
+        "target": "bundle-strategist-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p2-internal",
+        "source": "bundle-strategist-1",
+        "target": "bundle-devils-advocate-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p2-gate2",
+        "source": "bundle-devils-advocate-1",
+        "target": "gate-2",
+        "type": "sequential"
+      },
+      {
+        "id": "e-gate2-phase3",
+        "source": "gate-2",
+        "target": "phase-3",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p3-moderator",
+        "source": "phase-3",
+        "target": "bundle-moderator-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p3-internal",
+        "source": "bundle-moderator-1",
+        "target": "bundle-synthesizer-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-p3-output",
+        "source": "bundle-synthesizer-1",
+        "target": "output-1",
+        "type": "sequential"
+      },
+      {
+        "id": "e-gate1-feedback",
+        "source": "gate-1",
+        "target": "bundle-analyst-1",
+        "type": "feedback",
+        "label": "refine analysis"
+      },
+      {
+        "id": "e-gate2-feedback",
+        "source": "gate-2",
+        "target": "bundle-strategist-1",
+        "type": "feedback",
+        "label": "continue discussion"
+      },
+      {
+        "id": "e-output-loop",
+        "source": "output-1",
+        "target": "init-1",
+        "type": "feedback",
+        "label": "next round"
+      }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": 5,
+        "description": "Maximum debate rounds"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.85,
+        "description": "Consensus threshold to finalize decision"
+      }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "bundle-analyst",
+      "type": "bundle_ref",
+      "description": "Agent Bundle for the Analyst role (Phase 1)"
+    },
+    {
+      "key": "bundle-creative-thinker",
+      "type": "bundle_ref",
+      "description": "Agent Bundle for the Creative Thinker role (Phase 1)"
+    },
+    {
+      "key": "bundle-strategist",
+      "type": "bundle_ref",
+      "description": "Agent Bundle for the Strategist role (Phase 2)"
+    },
+    {
+      "key": "bundle-devils-advocate",
+      "type": "bundle_ref",
+      "description": "Agent Bundle for the Devil's Advocate role (Phase 2)"
+    },
+    {
+      "key": "bundle-moderator",
+      "type": "bundle_ref",
+      "description": "Agent Bundle for the Moderator role (Phase 3)"
+    },
+    {
+      "key": "bundle-synthesizer",
+      "type": "bundle_ref",
+      "description": "Agent Bundle for the Synthesizer role (Phase 3)"
+    }
+  ],
+  "is_system": true
+}

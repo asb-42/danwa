@@ -1,0 +1,57 @@
+{
+  "run_id": "iter2-eval-1-with-skill",
+  "eval_id": 1,
+  "grade": "pass",
+  "expectations": [
+    {
+      "text": "Has 3 wf-phase nodes",
+      "passed": true,
+      "evidence": "phase-1, phase-2, phase-3 all type wf-phase"
+    },
+    {
+      "text": "Has 6 wf-agent nodes (2 per phase)",
+      "passed": true,
+      "evidence": "agent-1-1, agent-1-2 (phase-1), agent-2-1, agent-2-2 (phase-2), agent-3-1, agent-3-2 (phase-3)"
+    },
+    {
+      "text": "Has wf-gate nodes between phases",
+      "passed": true,
+      "evidence": "gate-1 (phase-1→2), gate-2 (phase-2→3), gate-3 (phase-3→output)"
+    },
+    {
+      "text": "All agent nodes have parent_id at top level",
+      "passed": true,
+      "evidence": "All 6 agent nodes have parent_id as top-level field (parent_id: phase-1/2/3)"
+    },
+    {
+      "text": "bundle_id at top level of agent nodes (not in config)",
+      "passed": true,
+      "evidence": "All 6 agent nodes have bundle_id as top-level field, e.g., \"bundle_id\": \"bundle-analyst\""
+    },
+    {
+      "text": "Has termination_conditions with max_rounds and consensus_reached",
+      "passed": true,
+      "evidence": "max_rounds=5, consensus_reached=0.85"
+    },
+    {
+      "text": "entry_point references existing node",
+      "passed": true,
+      "evidence": "entry_point \"input-1\" matches node id \"input-1\""
+    },
+    {
+      "text": "No unnecessary placeholders",
+      "passed": true,
+      "evidence": "placeholders array is empty"
+    },
+    {
+      "text": "Gate→next phase edges use conditional type",
+      "passed": true,
+      "evidence": "gate-1→phase-2, gate-2→phase-3, gate-3→output all type conditional"
+    },
+    {
+      "text": "Gate→agent feedback edges present",
+      "passed": true,
+      "evidence": "6 feedback edges: gate-1→agent-1-1/1-2, gate-2→agent-2-1/2-2, gate-3→agent-3-1/3-2"
+    }
+  ]
+}

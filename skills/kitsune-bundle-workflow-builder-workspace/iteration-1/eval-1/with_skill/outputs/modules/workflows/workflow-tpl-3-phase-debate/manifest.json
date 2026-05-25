@@ -1,0 +1,13 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "workflow-tpl-3-phase-debate",
+  "name": {
+    "en": "3-Phasen-Debatten-Workflow"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": []
+}

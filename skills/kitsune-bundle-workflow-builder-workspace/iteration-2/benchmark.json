@@ -1,0 +1,53 @@
+{
+  "skill_name": "kitsune-bundle-workflow-builder",
+  "configs": [
+    {
+      "name": "with-skill (v2 — korrigiert)",
+      "eval_results": [
+        {
+          "eval_id": 0,
+          "eval_name": "create-ux-researcher-bundle",
+          "passed": 6,
+          "total": 6,
+          "pass_rate": 1.0,
+          "errors": []
+        },
+        {
+          "eval_id": 1,
+          "eval_name": "create-3-phase-template",
+          "passed": 10,
+          "total": 10,
+          "pass_rate": 1.0,
+          "errors": []
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "edit-bundle-analyst-pattern",
+          "passed": 2,
+          "total": 2,
+          "pass_rate": 1.0,
+          "errors": []
+        }
+      ],
+      "overall_pass_rate": 1.0,
+      "total_assertions": 18,
+      "passed_assertions": 18
+    }
+  ],
+  "summary": {
+    "iterations": {
+      "1_with_skill": 0.9375,
+      "1_without_skill": 0.8125,
+      "2_with_skill": 1.0
+    },
+    "improvement": "v1 93.75% → v2 100% (+6.25%)",
+    "observations": [
+      "Alle 18 Assertions bestanden (100%)",
+      "role_type_id jetzt korrekt: 'ux-researcher' statt 'analyst'",
+      "bundle_id auf oberster Node-Ebene, nicht in config",
+      "Gate→Phase Edges alle conditional",
+      "Keine unnötigen Platzhalter",
+      "Template mit 15 nodes, 23 edges, 3 phasen, korrektem edge-pattern"
+    ]
+  }
+}

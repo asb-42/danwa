@@ -1,0 +1,39 @@
+{
+  "run_id": "eval-0-with-skill",
+  "eval_id": 0,
+  "grade": "pass",
+  "expectations": [
+    {
+      "text": "Manifest type is 'bundle'",
+      "passed": true,
+      "evidence": "manifest.json type field: \"bundle\""
+    },
+    {
+      "text": "Manifest category is 'bundles'",
+      "passed": true,
+      "evidence": "manifest.json category field: \"bundles\""
+    },
+    {
+      "text": "Manifest profile_format is 'json'",
+      "passed": true,
+      "evidence": "manifest.json profile_format: \"json\""
+    },
+    {
+      "text": "Module ID starts with 'bundle-'",
+      "passed": true,
+      "evidence": "module_id: \"bundle-ux-researcher\""
+    },
+    {
+      "text": "Profile exists with valid JSON and composition",
+      "passed": true,
+      "evidence": "profile.json has id, role_type_id, composition with agent_core_id, argumentation_pattern_id, prompt_modifier_id"
+    },
+{
+      "text": "role_type_id matches bundle/role name",
+      "passed": false,
+      "evidence": "Bundle role is 'UX Researcher', role_type_id should be \"ux-researcher\" (existing convention: each bundle has unique role_type_id). Got \"analyst\" — incorrectly derived from agent_core_id."
+    }
+  ]
+}
+  ]
+}

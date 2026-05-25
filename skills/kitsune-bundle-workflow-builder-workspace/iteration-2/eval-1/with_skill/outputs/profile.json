@@ -1,0 +1,208 @@
+{
+  "id": "tpl-3-phase-debate",
+  "name": "3-Phasen Debatten-Workflow",
+  "description": "Ein dreiphasiger Debatten-Workflow mit Analyse, Diskussion und Entscheidung. Maximal 5 Runden oder vorzeitiger Stopp bei Konsens ≥ 0.85.",
+  "category": "system",
+  "tags": ["debate", "multi-agent", "3-phase", "consensus"],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Eingabe",
+        "position": { "x": 100, "y": 150 },
+        "config": {
+          "description": "Eingangsfrage oder Thema"
+        }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-init",
+        "label": "Initialisierung",
+        "position": { "x": 350, "y": 150 },
+        "config": {
+          "description": "Initialisiert den Workflow mit dem Eingabethema"
+        }
+      },
+      {
+        "id": "phase-1",
+        "type": "wf-phase",
+        "label": "Analyse",
+        "position": { "x": 0, "y": 0 },
+        "config": {
+          "phase_number": 1,
+          "description": "Analysephase: Problemstellung wird aus verschiedenen Perspektiven analysiert"
+        }
+      },
+      {
+        "id": "agent-1-1",
+        "type": "wf-agent",
+        "label": "Analyst",
+        "bundle_id": "bundle-analyst",
+        "parent_id": "phase-1",
+        "position": { "x": 300, "y": 80 },
+        "config": {
+          "description": "Führt strukturierte Analyse des Themas durch",
+          "bundle_config": {}
+        }
+      },
+      {
+        "id": "agent-1-2",
+        "type": "wf-agent",
+        "label": "Kreativdenker",
+        "bundle_id": "bundle-creative-thinker",
+        "parent_id": "phase-1",
+        "position": { "x": 300, "y": 220 },
+        "config": {
+          "description": "Bringt kreative und unkonventionelle Perspektiven ein",
+          "bundle_config": {}
+        }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Gate: Analyse → Diskussion",
+        "parent_id": "phase-1",
+        "position": { "x": 1200, "y": 150 },
+        "config": {
+          "condition": "round >= 5 OR consensus >= 0.85",
+          "condition_type": "threshold",
+          "description": "Nach Analyse prüfen, ob Fortschritt oder nächste Phase"
+        }
+      },
+      {
+        "id": "phase-2",
+        "type": "wf-phase",
+        "label": "Diskussion",
+        "position": { "x": 0, "y": 350 },
+        "config": {
+          "phase_number": 2,
+          "description": "Diskussionsphase: Strategien abwägen und Gegenargumente prüfen"
+        }
+      },
+      {
+        "id": "agent-2-1",
+        "type": "wf-agent",
+        "label": "Stratege",
+        "bundle_id": "bundle-strategist",
+        "parent_id": "phase-2",
+        "position": { "x": 300, "y": 430 },
+        "config": {
+          "description": "Entwickelt strategische Lösungsansätze",
+          "bundle_config": {}
+        }
+      },
+      {
+        "id": "agent-2-2",
+        "type": "wf-agent",
+        "label": "Advocatus Diaboli",
+        "bundle_id": "bundle-devils-advocate",
+        "parent_id": "phase-2",
+        "position": { "x": 300, "y": 570 },
+        "config": {
+          "description": "Hinterfragt kritisch alle Vorschläge und zeigt Risiken auf",
+          "bundle_config": {}
+        }
+      },
+      {
+        "id": "gate-2",
+        "type": "wf-gate",
+        "label": "Gate: Diskussion → Entscheidung",
+        "parent_id": "phase-2",
+        "position": { "x": 1200, "y": 500 },
+        "config": {
+          "condition": "round >= 5 OR consensus >= 0.85",
+          "condition_type": "threshold",
+          "description": "Nach Diskussion prüfen, ob Fortschritt oder nächste Phase"
+        }
+      },
+      {
+        "id": "phase-3",
+        "type": "wf-phase",
+        "label": "Entscheidung",
+        "position": { "x": 0, "y": 700 },
+        "config": {
+          "phase_number": 3,
+          "description": "Entscheidungsphase: Synthese und Moderation zur finalen Entscheidung"
+        }
+      },
+      {
+        "id": "agent-3-1",
+        "type": "wf-agent",
+        "label": "Moderator",
+        "bundle_id": "bundle-moderator",
+        "parent_id": "phase-3",
+        "position": { "x": 300, "y": 780 },
+        "config": {
+          "description": "Moderiert den Entscheidungsprozess und fasst Ergebnisse zusammen",
+          "bundle_config": {}
+        }
+      },
+      {
+        "id": "agent-3-2",
+        "type": "wf-agent",
+        "label": "Synthesizer",
+        "bundle_id": "bundle-synthesizer",
+        "parent_id": "phase-3",
+        "position": { "x": 300, "y": 920 },
+        "config": {
+          "description": "Führt finale Synthese aller bisherigen Ergebnisse durch",
+          "bundle_config": {}
+        }
+      },
+      {
+        "id": "gate-3",
+        "type": "wf-gate",
+        "label": "Gate: Entscheidung → Ausgabe",
+        "parent_id": "phase-3",
+        "position": { "x": 1200, "y": 850 },
+        "config": {
+          "condition": "round >= 5 OR consensus >= 0.85",
+          "condition_type": "threshold",
+          "description": "Nach Entscheidung prüfen, ob Ausgabe oder weitere Runde"
+        }
+      },
+      {
+        "id": "output-1",
+        "type": "wf-output",
+        "label": "Ausgabe",
+        "position": { "x": 1600, "y": 850 },
+        "config": {
+          "description": "Finales Ergebnis des Debatten-Workflows"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-input-init", "source": "input-1", "target": "init-1", "type": "sequential" },
+      { "id": "e-init-phase1", "source": "init-1", "target": "phase-1", "type": "sequential" },
+      { "id": "e-phase1-agent1", "source": "phase-1", "target": "agent-1-1", "type": "sequential" },
+      { "id": "e-phase1-agent2", "source": "phase-1", "target": "agent-1-2", "type": "sequential" },
+      { "id": "e-agent1-gate1", "source": "agent-1-1", "target": "gate-1", "type": "sequential" },
+      { "id": "e-agent2-gate1", "source": "agent-1-2", "target": "gate-1", "type": "sequential" },
+      { "id": "e-gate1-agent1", "source": "gate-1", "target": "agent-1-1", "type": "feedback" },
+      { "id": "e-gate1-agent2", "source": "gate-1", "target": "agent-1-2", "type": "feedback" },
+      { "id": "e-gate1-phase2", "source": "gate-1", "target": "phase-2", "type": "conditional" },
+      { "id": "e-phase2-agent3", "source": "phase-2", "target": "agent-2-1", "type": "sequential" },
+      { "id": "e-phase2-agent4", "source": "phase-2", "target": "agent-2-2", "type": "sequential" },
+      { "id": "e-agent3-gate2", "source": "agent-2-1", "target": "gate-2", "type": "sequential" },
+      { "id": "e-agent4-gate2", "source": "agent-2-2", "target": "gate-2", "type": "sequential" },
+      { "id": "e-gate2-agent3", "source": "gate-2", "target": "agent-2-1", "type": "feedback" },
+      { "id": "e-gate2-agent4", "source": "gate-2", "target": "agent-2-2", "type": "feedback" },
+      { "id": "e-gate2-phase3", "source": "gate-2", "target": "phase-3", "type": "conditional" },
+      { "id": "e-phase3-agent5", "source": "phase-3", "target": "agent-3-1", "type": "sequential" },
+      { "id": "e-phase3-agent6", "source": "phase-3", "target": "agent-3-2", "type": "sequential" },
+      { "id": "e-agent5-gate3", "source": "agent-3-1", "target": "gate-3", "type": "sequential" },
+      { "id": "e-agent6-gate3", "source": "agent-3-2", "target": "gate-3", "type": "sequential" },
+      { "id": "e-gate3-agent5", "source": "gate-3", "target": "agent-3-1", "type": "feedback" },
+      { "id": "e-gate3-agent6", "source": "gate-3", "target": "agent-3-2", "type": "feedback" },
+      { "id": "e-gate3-output", "source": "gate-3", "target": "output-1", "type": "conditional" }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      { "type": "max_rounds", "value": 5 },
+      { "type": "consensus_reached", "value": 0.85 }
+    ]
+  },
+  "placeholders": [],
+  "is_system": true
+}

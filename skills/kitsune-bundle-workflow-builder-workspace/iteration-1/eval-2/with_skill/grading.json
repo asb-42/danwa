@@ -1,0 +1,17 @@
+{
+  "run_id": "eval-2-with-skill",
+  "eval_id": 2,
+  "grade": "pass",
+  "expectations": [
+    {
+      "text": "argumentation_pattern_id changed from 'strategist' to 'debate-analyst'",
+      "passed": true,
+      "evidence": "composition.argumentation_pattern_id: \"debate-analyst\""
+    },
+    {
+      "text": "All other fields preserved unchanged",
+      "passed": true,
+      "evidence": "id, name, description, llm_profile_id, role_type_id, agent_core_id, prompt_modifier_id, is_active all match original"
+    }
+  ]
+}

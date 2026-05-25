@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "create-ux-researcher-bundle",
+  "prompt": "Ich brauche eine neue Rolle 'UX Researcher' für meine Debatte – bitte erstelle ein Bundle dafür. Der agent-core heisst 'analyst-default', das argumentation-pattern ist 'strategist', der prompt-modifier ist 'neutral-default'.",
+  "assertions": [
+    "Manifest type is 'bundle'",
+    "Manifest category is 'bundles'",
+    "Manifest profile_format is 'json'",
+    "Module ID starts with 'bundle-'",
+    "Profile exists with valid JSON and composition",
+    "role_type_id matches bundle/role name"
+  ]
+}

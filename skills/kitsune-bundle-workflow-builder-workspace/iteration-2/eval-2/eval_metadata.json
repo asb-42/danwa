@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "eval_name": "edit-bundle-analyst-pattern",
+  "prompt": "Ich habe ein bestehendes Bundle 'bundle-analyst' – ändere das argumentation-pattern von 'strategist' auf 'debate-analyst'. Die Datei liegt unter modules/agent-bundles/bundle-analyst/profile.json.",
+  "assertions": [
+    "argumentation_pattern_id changed to 'debate-analyst'",
+    "All other fields preserved unchanged"
+  ]
+}

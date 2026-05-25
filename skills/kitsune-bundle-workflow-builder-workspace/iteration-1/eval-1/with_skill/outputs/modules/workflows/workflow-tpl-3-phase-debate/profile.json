@@ -1,0 +1,321 @@
+{
+  "id": "tpl-3-phase-debate",
+  "name": "3-Phasen-Debatten-Workflow",
+  "description": "Dreiphasiger Debatten-Workflow: Analyse, Diskussion, Entscheidung mit je zwei Agenten und Qualitätsgates zwischen den Phasen.",
+  "category": "system",
+  "tags": ["debate", "multi-agent", "3-phase", "decision-making"],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "wf-input",
+        "config": {
+          "description": "Debattenthema eingeben",
+          "placeholder": "Geben Sie das zu debattierende Thema ein..."
+        },
+        "position": { "x": 100, "y": -100 }
+      },
+      {
+        "id": "init",
+        "type": "wf-initialize",
+        "config": {
+          "system_prompt": "Initialisiere den Debattierkontext mit dem gegebenen Thema und bereite die Analysephase vor."
+        },
+        "position": { "x": 350, "y": -100 }
+      },
+      {
+        "id": "phase-1",
+        "type": "wf-phase",
+        "config": {
+          "name": "Analyse",
+          "max_rounds": 5,
+          "objective": "Analysiere das Debattenthema aus verschiedenen Perspektiven"
+        },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "agent-analyst",
+        "type": "wf-agent",
+        "config": {
+          "bundle_id": "bundle-analyst",
+          "role": "Analyst",
+          "system_prompt": "Du bist ein Analyst. Untersuche das Thema systematisch und identifiziere alle relevanten Aspekte, Fakten und Zusammenhänge."
+        },
+        "position": { "x": 300, "y": 80 },
+        "parent_id": "phase-1"
+      },
+      {
+        "id": "agent-creative",
+        "type": "wf-agent",
+        "config": {
+          "bundle_id": "bundle-creative-thinker",
+          "role": "Creative Thinker",
+          "system_prompt": "Du bist ein kreativer Denker. Entwickle neue Perspektiven und unkonventionelle Ideen zum Debattenthema."
+        },
+        "position": { "x": 300, "y": 220 },
+        "parent_id": "phase-1"
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "config": {
+          "condition": "phase_1_analysis_complete",
+          "description": "Prüft, ob die Analysephase ausreichend abgeschlossen ist"
+        },
+        "position": { "x": 1200, "y": 0 }
+      },
+      {
+        "id": "phase-2",
+        "type": "wf-phase",
+        "config": {
+          "name": "Diskussion",
+          "max_rounds": 5,
+          "objective": "Führe eine kontroverse Diskussion mit Pro- und Kontra-Argumenten"
+        },
+        "position": { "x": 0, "y": 350 }
+      },
+      {
+        "id": "agent-strategist",
+        "type": "wf-agent",
+        "config": {
+          "bundle_id": "bundle-strategist",
+          "role": "Strategist",
+          "system_prompt": "Du bist ein Stratege. Formuliere strategische Argumente und baue eine schlüssige Position für die Debatte auf."
+        },
+        "position": { "x": 300, "y": 430 },
+        "parent_id": "phase-2"
+      },
+      {
+        "id": "agent-devils-advocate",
+        "type": "wf-agent",
+        "config": {
+          "bundle_id": "bundle-devils-advocate",
+          "role": "Devil's Advocate",
+          "system_prompt": "Du bist ein Advocatus Diaboli. Hinterfrage jede Position mit Gegenargumenten und decke Schwachstellen auf."
+        },
+        "position": { "x": 300, "y": 570 },
+        "parent_id": "phase-2"
+      },
+      {
+        "id": "gate-2",
+        "type": "wf-gate",
+        "config": {
+          "condition": "phase_2_discussion_complete",
+          "description": "Prüft, ob die Diskussion ausreichend Tiefe erreicht hat"
+        },
+        "position": { "x": 1200, "y": 350 }
+      },
+      {
+        "id": "phase-3",
+        "type": "wf-phase",
+        "config": {
+          "name": "Entscheidung",
+          "max_rounds": 5,
+          "objective": "Synthetisiere alle Argumente zu einer fundierten Entscheidung"
+        },
+        "position": { "x": 0, "y": 700 }
+      },
+      {
+        "id": "agent-moderator",
+        "type": "wf-agent",
+        "config": {
+          "bundle_id": "bundle-moderator",
+          "role": "Moderator",
+          "system_prompt": "Du bist ein Moderator. Leite den Entscheidungsprozess strukturiert und stelle sicher, dass alle Perspektiven berücksichtigt werden."
+        },
+        "position": { "x": 300, "y": 780 },
+        "parent_id": "phase-3"
+      },
+      {
+        "id": "agent-synthesizer",
+        "type": "wf-agent",
+        "config": {
+          "bundle_id": "bundle-synthesizer",
+          "role": "Synthesizer",
+          "system_prompt": "Du bist ein Synthesizer. Führe alle Argumente und Erkenntnisse zu einer kohärenten Schlussfolgerung zusammen."
+        },
+        "position": { "x": 300, "y": 920 },
+        "parent_id": "phase-3"
+      },
+      {
+        "id": "gate-3",
+        "type": "wf-gate",
+        "config": {
+          "condition": "phase_3_decision_reached",
+          "description": "Prüft, ob eine fundierte Entscheidung getroffen wurde"
+        },
+        "position": { "x": 1200, "y": 700 }
+      },
+      {
+        "id": "output",
+        "type": "wf-output",
+        "config": {
+          "format": "structured_report",
+          "description": "Abschließender Debattenbericht mit synthetisierter Entscheidung"
+        },
+        "position": { "x": 1600, "y": 700 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-input-init",
+        "source": "input",
+        "target": "init",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-init-analyst",
+        "source": "init",
+        "target": "agent-analyst",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-init-creative",
+        "source": "init",
+        "target": "agent-creative",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-analyst-gate1",
+        "source": "agent-analyst",
+        "target": "gate-1",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-creative-gate1",
+        "source": "agent-creative",
+        "target": "gate-1",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-gate1-analyst-fb",
+        "source": "gate-1",
+        "target": "agent-analyst",
+        "type": "feedback",
+        "config": {
+          "condition": "needs_more_analysis"
+        }
+      },
+      {
+        "id": "e-gate1-creative-fb",
+        "source": "gate-1",
+        "target": "agent-creative",
+        "type": "feedback",
+        "config": {
+          "condition": "needs_more_analysis"
+        }
+      },
+      {
+        "id": "e-gate1-phase2",
+        "source": "gate-1",
+        "target": "phase-2",
+        "type": "conditional",
+        "config": {
+          "condition": "phase_1_analysis_complete"
+        }
+      },
+      {
+        "id": "e-strategist-gate2",
+        "source": "agent-strategist",
+        "target": "gate-2",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-devils-gate2",
+        "source": "agent-devils-advocate",
+        "target": "gate-2",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-gate2-strategist-fb",
+        "source": "gate-2",
+        "target": "agent-strategist",
+        "type": "feedback",
+        "config": {
+          "condition": "needs_more_discussion"
+        }
+      },
+      {
+        "id": "e-gate2-devils-fb",
+        "source": "gate-2",
+        "target": "agent-devils-advocate",
+        "type": "feedback",
+        "config": {
+          "condition": "needs_more_discussion"
+        }
+      },
+      {
+        "id": "e-gate2-phase3",
+        "source": "gate-2",
+        "target": "phase-3",
+        "type": "conditional",
+        "config": {
+          "condition": "phase_2_discussion_complete"
+        }
+      },
+      {
+        "id": "e-moderator-gate3",
+        "source": "agent-moderator",
+        "target": "gate-3",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-synthesizer-gate3",
+        "source": "agent-synthesizer",
+        "target": "gate-3",
+        "type": "sequential",
+        "config": {}
+      },
+      {
+        "id": "e-gate3-moderator-fb",
+        "source": "gate-3",
+        "target": "agent-moderator",
+        "type": "feedback",
+        "config": {
+          "condition": "needs_more_deliberation"
+        }
+      },
+      {
+        "id": "e-gate3-synthesizer-fb",
+        "source": "gate-3",
+        "target": "agent-synthesizer",
+        "type": "feedback",
+        "config": {
+          "condition": "needs_more_deliberation"
+        }
+      },
+      {
+        "id": "e-gate3-output",
+        "source": "gate-3",
+        "target": "output",
+        "type": "conditional",
+        "config": {
+          "condition": "phase_3_decision_reached"
+        }
+      }
+    ],
+    "entry_point": "input",
+    "termination_conditions": [
+      {
+        "type": "max_rounds",
+        "value": 5,
+        "description": "Maximale Anzahl an Gesamtrunden bevor der Workflow beendet wird"
+      },
+      {
+        "type": "consensus_reached",
+        "value": 0.85,
+        "description": "Workflow beenden wenn ein Konsens von 85% erreicht ist"
+      }
+    ]
+  },
+  "placeholders": [],
+  "is_system": true
+}

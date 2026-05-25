@@ -1,0 +1,48 @@
+{
+  "skill_name": "kitsune-bundle-workflow-builder",
+  "evals": [
+    {
+      "id": 0,
+      "name": "create-ux-researcher-bundle",
+      "prompt": "Ich brauche eine neue Rolle 'UX Researcher' für meine Debatte – bitte erstelle ein Bundle dafür. Der agent-core heisst 'analyst-default', das argumentation-pattern ist 'strategist', der prompt-modifier ist 'neutral-default'.",
+      "expected_output": "Agent bundle module under modules/agent-bundles/bundle-ux-researcher/ with manifest.json and profile.json",
+      "files": [],
+      "assertions": [
+        "Manifest type is 'bundle'",
+        "Manifest category is 'bundles'",
+        "Manifest profile_format is 'json'",
+        "Module ID starts with 'bundle-'",
+        "Profile exists with valid JSON and composition",
+        "role_type_id correctly derived from agent_core_id"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "create-3-phase-template",
+      "prompt": "Baue ein 3-Phasen-Template: Phase 1 'Analyse' (2 Agenten: bundle-analyst, bundle-creative-thinker), Phase 2 'Diskussion' (2 Agenten: bundle-strategist, bundle-devils-advocate), Phase 3 'Entscheidung' (2 Agenten: bundle-moderator, bundle-synthesizer). Zwischen den Phasen soll je ein Gate sein, und am Ende ein Output. Termination nach max 5 Runden oder bei consensus 0.85.",
+      "expected_output": "Workflow template module under modules/workflows/workflow-tpl-3-phase-debate/ with manifest.json and profile.json containing template_data",
+      "files": [],
+      "assertions": [
+        "Has 3 wf-phase nodes",
+        "Has 6 wf-agent nodes (2 per phase)",
+        "Has wf-gate nodes between phases",
+        "All agent nodes have parent_id set",
+        "Agent nodes use bundle_id field",
+        "Has termination_conditions with max_rounds and consensus_reached",
+        "entry_point references existing node",
+        "No unnecessary placeholders for concrete bundles"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "edit-bundle-analyst-pattern",
+      "prompt": "Ich habe ein bestehendes Bundle 'bundle-analyst' – ändere das argumentation-pattern von 'strategist' auf 'debate-analyst'. Die Datei liegt unter modules/agent-bundles/bundle-analyst/profile.json.",
+      "expected_output": "Modified profile.json with argumentation_pattern_id changed to 'debate-analyst'",
+      "files": [],
+      "assertions": [
+        "argumentation_pattern_id changed from 'strategist' to 'debate-analyst'",
+        "All other fields preserved unchanged"
+      ]
+    }
+  ]
+}

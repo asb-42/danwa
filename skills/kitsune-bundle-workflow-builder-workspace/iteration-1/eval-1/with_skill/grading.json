@@ -1,0 +1,47 @@
+{
+  "run_id": "eval-1-with-skill",
+  "eval_id": 1,
+  "grade": "pass",
+  "expectations": [
+    {
+      "text": "Has 3 wf-phase nodes",
+      "passed": true,
+      "evidence": "Nodes phase-1, phase-2, phase-3 all type wf-phase"
+    },
+    {
+      "text": "Has 6 wf-agent nodes (2 per phase)",
+      "passed": true,
+      "evidence": "agent-analyst, agent-creative (phase-1), agent-strategist, agent-devils-advocate (phase-2), agent-moderator, agent-synthesizer (phase-3)"
+    },
+    {
+      "text": "Has wf-gate nodes between phases",
+      "passed": true,
+      "evidence": "gate-1 (between phase-1→2), gate-2 (between phase-2→3), gate-3 (before output)"
+    },
+    {
+      "text": "All agent nodes have parent_id set",
+      "passed": true,
+      "evidence": "All 6 agent nodes have parent_id referencing their phase: phase-1, phase-2, phase-3"
+    },
+    {
+      "text": "Agent nodes use bundle_id field",
+      "passed": true,
+      "evidence": "bundle_id present in config: bundle-analyst, bundle-creative-thinker, bundle-strategist, etc."
+    },
+    {
+      "text": "Has termination_conditions with max_rounds and consensus_reached",
+      "passed": true,
+      "evidence": "max_rounds=5, consensus_reached=0.85"
+    },
+    {
+      "text": "entry_point references existing node",
+      "passed": true,
+      "evidence": "entry_point \"input\" matches node id \"input\""
+    },
+    {
+      "text": "No unnecessary placeholders for concrete bundles",
+      "passed": true,
+      "evidence": "placeholders array is empty — correct since bundles are concrete filesystem refs"
+    }
+  ]
+}
