@@ -503,6 +503,7 @@ def agent_node_factory(
                 if meta.get("debate_id") and meta.get("interaction_id"):
                     try:
                         from backend.workflow.hitl.api import consume_inject
+
                         consume_inject(meta["debate_id"], meta["interaction_id"])
                     except Exception:
                         logger.debug(
