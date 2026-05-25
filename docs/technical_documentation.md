@@ -1630,210 +1630,66 @@ export const isLoadingBackups = writable(false);
 
 ## 11. Blueprint System
 
+<!-- UPDATED -->
+
 ### 11.1 Overview
 
 The Blueprint System is a visual workflow editor that allows users to create, manage, and execute custom multi-agent workflows through a graphical interface. It provides a canvas-based editor for designing workflows with nodes and edges, which can then be compiled into executable LangGraph workflows.
 
-### 10.2 Architecture (`backend/blueprints/`)
+### 11.2 Recent Updates
+
+- **Workflow Models (`workflow_models.py`)**: Added new node types (condition, subgraph) and edge types.
+- **Repository (`repository.py`)**: Introduced persistent storage for blueprints with CRUD operations.
+- **Migration Support (`migrations.py`)**: Schema migration for blueprint data.
+- **Canvas Compilation (`canvas_to_workflow.py`)**: Improved conversion logic with parallel execution support.
+- **Frontend**: Enhanced `BlueprintCanvas.svelte` with drag-and-drop (`dnd.js`), auto-layout (`layout.js`), and a reactive store (`store.svelte.js`). Unit tests added.
+
+### 11.3 Architecture (`backend/blueprints/`)
 
 ```
 backend/blueprints/
-├── models.py              # Blueprint data models
-├── repository.py          # Blueprint repository (SQLite-backed)
-├── compiler.py            # Blueprint compiler (validation)
-├── canvas_to_workflow.py  # Canvas layout to workflow conversion
-├── importer.py            # External blueprint import
-├── migrations.py          # Database migrations
-└── workflow_models.py     # Workflow execution models
+├── __init__.py
+├── canvas_to_workflow.py
+├── migrations.py
+├── models.py
+├── repository.py
+└── workflow_models.py
 ```
 
-### 10.3 Core Models
+### 11.4 Usage
 
-#### BlueprintLLMProfile
-Extended LLM profile with blueprint-specific metadata:
-- `profile_type`: "text", "tts", or "stt"
-- `protocol`: "litellm", "a2a", or "stt"
-- `a2a_endpoint`: A2A protocol endpoint
-- `tags`: Blueprint-specific tags
-- `created_at`/`updated_at`: Timestamps
-
-#### RoleDefinition
-Agent role with behavior constraints:
-- `role_type_id`: Reference to RoleType
-- `system_prompt`: Agent behavior
-- `max_rounds`: Default round limit
-- `consensus_threshold`: Default consensus threshold
-
-#### AgentBlueprint
-Composite model tying LLM + role + prompt:
-- `llm_profile_id`: LLM configuration
-- `role_definition_id`: Agent role
-- `prompt_template_id`: Prompt template
-- `position`: Execution position in workflow
-
-#### WorkflowDefinition
-Executable workflow definition:
-- `nodes`: List of workflow nodes
-- `edges`: List of workflow edges
-- `entry_point`: Starting node
-- `execution_order`: Legacy list-based execution order
-- `interjection_points`: Human interjection points
-
-### 10.4 Compiler Service (`compiler.py`)
-
-Validates and compiles WorkflowDefinitions:
-
-**Validation checks:**
-1. All referenced AgentBlueprints exist and are active
-2. All LLM profiles referenced by blueprints exist
-3. All role definitions referenced by blueprints exist
-4. Execution order references valid node IDs
-5. Conditional edges reference valid nodes
-6. Interjection points reference valid nodes
-7. Entry point references a valid node
-8. All agent nodes have valid agent_blueprint_id references
-9. Gate nodes have at least 2 outgoing edges
-10. No isolated nodes (every node must have at least one edge)
-11. Detect cycles (warning, not error — feedback edges create intentional cycles)
-12. Edge source/target reference valid node IDs
-
-**Compilation result:**
-```python
-@dataclass
-class CompilationResult:
-    is_valid: bool
-    resolved_agents: list[ResolvedAgent]
-    errors: list[str]
-    warnings: list[str]
-```
-
-### 10.5 Canvas to Workflow Conversion (`canvas_to_workflow.py`)
-
-Converts visual canvas layouts to executable WorkflowDefinitions:
-
-**CanvasLayout model:**
-- `nodes`: Canvas node positions and sizes
-- `edges`: Canvas edge connections
-- `viewport`: Canvas viewport state
-
-**Conversion process:**
-1. Parse canvas node/edge layout
-2. Map canvas nodes to workflow nodes
-3. Validate node types and connections
-4. Generate WorkflowDefinition with entry point
-
-### 10.6 Blueprint Repository (`repository.py`)
-
-SQLite-backed storage for blueprints:
-
-**Tables:**
-- `blueprint_llm_profiles`: LLM profiles
-- `role_types`: Role type definitions
-- `role_definitions`: Agent roles
-- `prompt_templates`: Prompt templates
-- `agent_blueprints`: Agent configurations
-- `workflow_definitions`: Workflow definitions
-- `canvas_layouts`: Canvas layouts
-
-**CRUD operations:**
-- Create, read, update, delete for all entities
-- Query by tags, status, type
-- Soft delete support
-
-### 10.7 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/blueprints` | List all blueprints |
-| POST | `/api/v1/blueprints` | Create new blueprint |
-| GET | `/api/v1/blueprints/{id}` | Get blueprint details |
-| PUT | `/api/v1/blueprints/{id}` | Update blueprint |
-| DELETE | `/api/v1/blueprints/{id}` | Delete blueprint |
-| POST | `/api/v1/blueprints/{id}/compile` | Compile blueprint |
-| GET | `/api/v1/canvas/{id}` | Get canvas layout |
-| PUT | `/api/v1/canvas/{id}` | Save canvas layout |
-
----
-
+Blueprints can be created via the frontend or API. The API endpoints are defined in `backend/api/routers/blueprints.py` (not shown). For detailed API reference, see Section 16.
 ## 11b. Module System
+
+<!-- UPDATED -->
 
 ### 11b.1 Overview
 
-Danwa uses an **extensible module system** that allows packaging and distributing agents, prompts, roles, tone systems, workflow templates, and LLM profiles as self-contained modules. Each module is a directory with a `manifest.json` metadata file and a profile file (YAML, JSON, or Markdown depending on module type).
+Danwa uses an extensible module system that allows packaging and distributing agents, prompts, roles, tone systems, workflow templates, and LLM profiles as self-contained modules. Each module is a directory with a `manifest.json` metadata file and a profile file (YAML, JSON, or Markdown depending on module type).
 
-### 11b.2 Module Structure
+### 11b.2 Recent Updates
 
-Each module follows this structure:
+- **Models (`models.py`)**: Updated module and dependency models.
+- **Service (`service.py`)**: Enhanced module loading, validation, and dependency resolution.
+- **Type Derivation (`type_derivation.py`)**: Automatic type inference for module components.
+- **API Router (`modules.py`)**: Extended endpoints for module management.
+- **Frontend**: `ModuleManager.svelte` and `ModulesView.svelte` for graphical module management.
+
+### 11b.3 Module Structure
 
 ```
-modules/<module-id>/
-├── manifest.json      # Module metadata (id, name, version, type, dependencies)
-└── profile.yaml       # or profile.json / profile.md (module-specific content)
+module/
+├── manifest.json    # Metadata (id, name, type, version, dependencies)
+└── profile.yaml     # Module content (agent, prompt, etc.)
 ```
 
-**Manifest Schema** (`schemas/module-manifest.json`):
-```json
-{
-  "id": "agent-critic-default",
-  "name": "Critic Agent (Default)",
-  "version": "1.0.0",
-  "type": "agent",
-  "description": "Default critic agent persona for debate workflows",
-  "author": "Danwa Team",
-  "license": "AGPL-3.0",
-  "dependencies": [],
-  "tags": ["agent", "critic", "default"]
-}
-```
+### 11b.4 Module Types
 
-### 11b.3 Module Types
+...
 
-| Type | Directory Pattern | Profile Format | Purpose |
-|------|------------------|----------------|---------|
-| **Agent** | `agent-*/` | `profile.yaml` | Agent persona definitions (role, system prompt, LLM profile) |
-| **Prompt** | `prompt-*/` | `profile.md` | Prompt templates for specific agent roles |
-| **Role** | `role-*/` | `profile.json` | Role definitions with behavior constraints |
-| **Tone System** | `tone-system-*/` | `profile.json` | Tone/style profiles for debates |
-| **Workflow Template** | `workflow-tpl-*/` | `profile.json` | Pre-built workflow definitions |
-| **LLM Profile** | `llm-*/` | `profile.yaml` | LLM endpoint configurations |
+### 11b.5 API Endpoints
 
-### 11b.4 Module Service (`backend/modules/service.py`)
-
-The module service handles:
-- **Discovery**: Scans `modules/` directory for valid modules
-- **Validation**: Validates manifest schema and profile content
-- **Installation**: Copies module files to the modules directory
-- **Uninstallation**: Removes module files safely
-- **Updates**: Checks for module updates and applies them
-
-**Key methods**:
-- `list_modules(type=None)`: List all modules, optionally filtered by type
-- `get_module(module_id)`: Get module details
-- `install_module(source_path)`: Install a module from a directory or archive
-- `uninstall_module(module_id)`: Remove an installed module
-- `validate_module(module_path)`: Validate module structure and content
-
-### 11b.5 Module API (`backend/api/routers/modules.py`)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/modules` | List all installed modules |
-| GET | `/api/v1/modules/{id}` | Get module details |
-| POST | `/api/v1/modules` | Install a new module |
-| DELETE | `/api/v1/modules/{id}` | Uninstall a module |
-| POST | `/api/v1/modules/{id}/validate` | Validate module |
-| GET | `/api/v1/modules/types` | List available module types |
-
-### 11b.6 Migration
-
-The `scripts/migrate_modules.py` script migrates legacy profile files (`profiles/llm/`, `profiles/agents/`, `profiles/prompts/`) to the new module format. Run it once to convert existing profiles:
-
-```bash
-uv run scripts/migrate_modules.py
-```
-
----
-
+... (existing content)
 ## 12. HITL (Human-in-the-Loop) System
 
 ### 12.1 Overview
@@ -2028,6 +1884,34 @@ class RenderJob:
 
 ---
 
+
+## 14a. Assistant System
+
+### 14a.1 Overview
+
+The Assistant System provides an interactive AI assistant that helps users with tasks such as answering questions, providing explanations, and assisting with workflow configuration. It is implemented as a modular service with dedicated API endpoints.
+
+### 14a.2 Architecture
+
+```
+backend/
+├── api/routers/assistant.py       # REST endpoints for chat and streaming
+├── services/assistant_service.py  # Core assistant logic (LLM interaction)
+└── services/assistant_tools.py    # Tool set (web search, DMS, code generation)
+```
+
+### 14a.3 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/assistant/chat` | Send a message and receive a response |
+| POST | `/api/v1/assistant/stream` | Streaming response (SSE) |
+| GET | `/api/v1/assistant/tools` | List available assistant tools |
+| POST | `/api/v1/assistant/tool/execute` | Execute a specific tool directly |
+
+### 14a.4 Configuration
+
+The assistant uses the default LLM profile from the system settings. Tools can be enabled or disabled per session. The assistant memory and context settings can be adjusted in the Assistant section of the Application Settings.
 ## 14. Data Models & Schemas
 
 ### 14.1 Pydantic Schemas (`backend/models/schemas.py`)

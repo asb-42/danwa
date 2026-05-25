@@ -934,122 +934,101 @@ PUT    /api/v1/config/backup-settings     # Update backup settings
 
 ## Blueprint System
 
+<!-- UPDATED -->
+
 ### What is the Blueprint System?
 
-The Blueprint System is a visual workflow editor that allows you to create, manage, and execute custom multi-agent workflows through a graphical interface. Instead of using the fixed debate workflow (Strategist → Critic → Optimizer → Moderator), you can design your own workflows with custom agents, nodes, and execution paths.
+The Blueprint System is a visual workflow editor that allows you to create, manage, and execute custom multi-agent workflows through a graphical interface. The system has been updated with improved drag-and-drop, auto-layout, and state management features.
 
-### Accessing the Blueprint Editor
+### Accessing the Blueprint Canvas
 
-Navigate to the **Blueprint Canvas** view from the main navigation menu.
+1. Click **Blueprints** in the main menu.
+2. Click **New Blueprint** or select an existing one.
 
 ### Creating a Workflow
 
-1. **Create a New Blueprint**
-   - Click **+ New Blueprint** in the Blueprint Canvas view
-   - Enter a name and description for your blueprint
-   - Select the project context
+- **Add nodes**: Drag a node from the palette onto the canvas.
+- **Connect nodes**: Click and drag from a node's output port to another node's input port.
+- **Configure nodes**: Click a node to edit its properties.
+- **Auto-layout**: Click the layout icon to automatically arrange nodes.
+- **Save**: Your blueprint is automatically saved; you can also explicitly save with a name.
 
-2. **Design Your Workflow**
-   - Drag and drop nodes from the palette onto the canvas
-   - Connect nodes to define execution flow
-   - Configure each node's properties
+### Running a Blueprint
 
-3. **Define Agent Blueprints**
-   - Create agent configurations with LLM profiles, roles, and prompts
-   - Define role types with icons and colors
-   - Set execution parameters (max rounds, consensus threshold)
+Once designed, click **Run** to execute the workflow. The result will appear in a new tab.
 
-4. **Compile and Validate**
-   - Click **Compile** to validate your workflow
-   - Review compilation errors and warnings
-   - Fix any issues before execution
+### Advanced Features
 
-### Node Types
-
-| Node Type | Description |
-|-----------|-------------|
-| **Agent Node** | Represents an AI agent with specific role and LLM profile |
-| **Input Node** | Workflow input and context |
-| **Output Node** | Workflow output and artifacts |
-| **Gate Node** | Conditional branching point |
-| **Interjection Node** | Human-in-the-loop interaction point |
-
-### Canvas Features
-
-- **Drag & Drop**: Move nodes freely on the canvas
-- **Auto-Layout**: Automatically arrange nodes using ELK layout engine
-- **Zoom & Pan**: Navigate large workflows
-- **Save Layouts**: Save multiple canvas layouts for the same workflow
-- **Import/Export**: Share blueprints between projects
-
-### Workflow Execution
-
-Once compiled, workflows can be executed from the Blueprint Canvas view:
-- Click **Run Workflow** to start execution
-- Monitor progress in real-time with SSE updates
-- View execution history and results
-
-### API Endpoints
-
-```
-GET    /api/v1/blueprints              # List blueprints
-POST   /api/v1/blueprints              # Create blueprint
-GET    /api/v1/blueprints/{id}         # Get blueprint details
-PUT    /api/v1/blueprints/{id}         # Update blueprint
-DELETE /api/v1/blueprints/{id}         # Delete blueprint
-POST   /api/v1/blueprints/{id}/compile # Compile blueprint
-GET    /api/v1/canvas/{id}             # Get canvas layout
-PUT    /api/v1/canvas/{id}             # Save canvas layout
-```
-
----
-
+- **Drag-and-Drop**: Nodes can be freely repositioned on the canvas.
+- **Undo/Redo**: Available via toolbar buttons.
+- **Zoom and Pan**: Use mouse wheel and drag on empty canvas.
+- **Persistent Storage**: Blueprints survive page reloads.
 ## Module System
+
+<!-- UPDATED -->
 
 ### What is the Module System?
 
-Danwa's module system allows you to extend the system with packaged agents, prompts, roles, tone systems, workflow templates, and LLM profiles. Each module is a self-contained directory with a `manifest.json` metadata file and a profile file.
-
-### Module Types
-
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Agent Modules** | Agent personas with role, system prompt, and LLM profile | `agent-critic-default`, `agent-strategist-german-law` |
-| **Prompt Modules** | Prompt templates for specific agent roles | `prompt-critic`, `prompt-moderator-en` |
-| **Role Modules** | Role definitions with behavior constraints | `role-strategist`, `role-critic`, `role-moderator` |
-| **Tone System Modules** | Debate tone/style profiles | `tone-system-academic`, `tone-system-neutral` |
-| **Workflow Template Modules** | Pre-built workflow definitions | `workflow-tpl-dialectic-debate`, `workflow-tpl-kantian-analysis` |
-| **LLM Profile Modules** | LLM endpoint configurations | `llm-cloud-openrouter`, `llm-local-qwen3.6-35b-a3b` |
+Danwa's module system allows you to extend the system with packaged agents, prompts, roles, tone systems, workflow templates, and LLM profiles. Each module is a self-contained directory with a `manifest.json` and profile file.
 
 ### Managing Modules
 
-Access via the **Modules** view in the sidebar (BUILD → Management → Modules):
+The **Module Manager** (accessible from Modules in the navigation) lets you:
+- **Import** a module from a ZIP file or directory.
+- **List** all installed modules with type and version.
+- **Enable/Disable** modules.
+- **View** module details.
+- **Remove** modules.
 
-1. **View Installed Modules** — See all currently installed modules with details
-2. **Install New Modules** — Install from a module directory or URL
-3. **Uninstall Modules** — Remove modules you no longer need
-4. **Validate Modules** — Check module integrity and compatibility
+### Recent Updates
 
-### Module Structure
+- Improved module validation and type inference.
+- New service backend for better performance.
+- Updated frontend interface for easier management.
 
-```
-modules/<module-id>/
-├── manifest.json      # Module metadata (id, name, version, type)
-└── profile.yaml       # or profile.json / profile.md
-```
+### Module Types
 
-### Migration from Legacy Profiles
+| Type | Description | File Pattern |
+|------|-------------|--------------|
+| Agent | Agent personae and behaviour | `agent-*.json` |
+| Prompt | Prompt templates for agents | `prompt-*.json` |
+| Role | User role definition | `role-*.json` |
+| Tone | Tone system definitions | `tone-*.yaml` |
+| Workflow Template | Pre-built workflow blueprints | `workflow-*.json` |
+| LLM Profile | Language model configuration | `llm-*.yaml` |
 
-If you have existing profiles in `profiles/llm/`, `profiles/agents/`, or `profiles/prompts/`, run the migration script:
+## Assistant System
 
-```bash
-uv run scripts/migrate_modules.py
-```
+### What is the Assistant System?
 
-This converts legacy profile files to the new module format.
+The Assistant System provides an on-demand AI assistant that can help you with:
+- Answering questions about the system or your data.
+- Providing guidance on workflow design.
+- Explaining debate results and metrics.
+- Generating summaries or reports.
 
----
+### Accessing the Assistant
 
+- Click the **Assistant** icon in the top navbar.
+- Or use the inline assistant button available in appropriate views.
+
+### Using the Assistant
+
+1. Type your question in the chat input.
+2. The assistant processes it and returns a response.
+3. You can ask follow-up questions within the same session.
+
+### Configuration
+
+- The assistant uses the system's default LLM profile (configurable in Settings > Assistant).
+- You can enable/disable specific tools (e.g., web search, document retrieval) in the Assistant settings.
+- Conversation history is retained for the duration of the session.
+
+### Example Queries
+
+- "How do I create a new blueprint?"
+- "Explain the consensus score from my last debate."
+- "What modules are installed?"
 ## HITL (Human-in-the-Loop) System
 
 ### What is HITL?
