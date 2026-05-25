@@ -1,0 +1,13 @@
+{
+  "id": "bundle-optimizer",
+  "name": "Optimizer (Default)",
+  "description": "Default agent bundle for the Optimizer role.",
+  "llm_profile_id": "default",
+  "role_type_id": "optimizer",
+  "composition": {
+    "agent_core_id": "optimizer-default",
+    "argumentation_pattern_id": "optimizer",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

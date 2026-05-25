@@ -1,0 +1,13 @@
+{
+  "id": "bundle-synthesizer",
+  "name": "Synthesizer (Default)",
+  "description": "Default agent bundle for the Synthesizer role.",
+  "llm_profile_id": "default",
+  "role_type_id": "synthesizer",
+  "composition": {
+    "agent_core_id": "synthesizer-default",
+    "argumentation_pattern_id": "steiner-strategist",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

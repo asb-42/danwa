@@ -1,0 +1,13 @@
+{
+  "id": "bundle-socratic-questioner",
+  "name": "Socratic Questioner (Default)",
+  "description": "Default agent bundle for the Socratic Questioner role.",
+  "llm_profile_id": "default",
+  "role_type_id": "socratic",
+  "composition": {
+    "agent_core_id": "socratic-questioner-default",
+    "argumentation_pattern_id": "dialectic-strategist",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

@@ -1,0 +1,13 @@
+{
+  "id": "bundle-strategist",
+  "name": "Strategist (Default)",
+  "description": "Default agent bundle for the Strategist role.",
+  "llm_profile_id": "default",
+  "role_type_id": "strategist",
+  "composition": {
+    "agent_core_id": "strategist-default",
+    "argumentation_pattern_id": "strategist",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

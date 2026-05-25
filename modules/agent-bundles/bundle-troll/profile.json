@@ -1,0 +1,13 @@
+{
+  "id": "bundle-troll",
+  "name": "Troll (Default)",
+  "description": "Default agent bundle for the Troll role.",
+  "llm_profile_id": "default",
+  "role_type_id": "troll",
+  "composition": {
+    "agent_core_id": "troll-default",
+    "argumentation_pattern_id": "kantian-critic",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

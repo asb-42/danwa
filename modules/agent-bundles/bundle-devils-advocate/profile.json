@@ -1,0 +1,13 @@
+{
+  "id": "bundle-devils-advocate",
+  "name": "Devil\u2019s Advocate (Default)",
+  "description": "Default agent bundle for the Devil\u2019s Advocate role.",
+  "llm_profile_id": "default",
+  "role_type_id": "devils",
+  "composition": {
+    "agent_core_id": "devils-advocate-default",
+    "argumentation_pattern_id": "critic",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

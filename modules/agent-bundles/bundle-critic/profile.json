@@ -1,0 +1,13 @@
+{
+  "id": "bundle-critic",
+  "name": "Critic (Default)",
+  "description": "Default agent bundle for the Critic role.",
+  "llm_profile_id": "default",
+  "role_type_id": "critic",
+  "composition": {
+    "agent_core_id": "critic-default",
+    "argumentation_pattern_id": "critic",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

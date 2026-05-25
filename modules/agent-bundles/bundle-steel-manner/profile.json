@@ -1,0 +1,13 @@
+{
+  "id": "bundle-steel-manner",
+  "name": "Steel-manner (Default)",
+  "description": "Default agent bundle for the Steel-manner role.",
+  "llm_profile_id": "default",
+  "role_type_id": "steel",
+  "composition": {
+    "agent_core_id": "steel-manner-default",
+    "argumentation_pattern_id": "steiner-critic",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

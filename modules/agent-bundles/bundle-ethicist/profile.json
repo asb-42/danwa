@@ -1,0 +1,13 @@
+{
+  "id": "bundle-ethicist",
+  "name": "Ethicist (Default)",
+  "description": "Default agent bundle for the Ethicist role.",
+  "llm_profile_id": "default",
+  "role_type_id": "ethicist",
+  "composition": {
+    "agent_core_id": "ethicist-default",
+    "argumentation_pattern_id": "kantian-strategist",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

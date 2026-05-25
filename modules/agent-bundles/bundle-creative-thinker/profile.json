@@ -1,0 +1,13 @@
+{
+  "id": "bundle-creative-thinker",
+  "name": "Creative Thinker (Default)",
+  "description": "Default agent bundle for the Creative Thinker role.",
+  "llm_profile_id": "default",
+  "role_type_id": "creative",
+  "composition": {
+    "agent_core_id": "creative-thinker-default",
+    "argumentation_pattern_id": "strategist",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

@@ -1,0 +1,13 @@
+{
+  "id": "bundle-moderator",
+  "name": "Moderator (Default)",
+  "description": "Default agent bundle for the Moderator role.",
+  "llm_profile_id": "default",
+  "role_type_id": "moderator",
+  "composition": {
+    "agent_core_id": "moderator-default",
+    "argumentation_pattern_id": "moderator",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

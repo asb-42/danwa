@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "bundle-strategist",
+  "name": {
+    "en": "Strategist (Default)"
+  },
+  "description": {
+    "en": "Default agent bundle for the Strategist role \u2014 used in multi-phase debate workflows."
+  },
+  "version": "1.0.0",
+  "type": "bundle",
+  "category": "bundles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "strategist",
+    "default",
+    "multi-phase"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "dependencies": {
+    "agent-cores/strategist-default": ">=1.0.0"
+  }
+}

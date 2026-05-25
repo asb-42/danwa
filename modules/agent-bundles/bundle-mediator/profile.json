@@ -1,0 +1,13 @@
+{
+  "id": "bundle-mediator",
+  "name": "Mediator (Default)",
+  "description": "Default agent bundle for the Mediator role.",
+  "llm_profile_id": "default",
+  "role_type_id": "mediator",
+  "composition": {
+    "agent_core_id": "mediator-default",
+    "argumentation_pattern_id": "moderator",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

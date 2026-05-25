@@ -14,6 +14,7 @@
   import { createDraftNode, getNodeTypeFromDrop, getEntityIdFromDrop, createEntityNode } from '../../lib/blueprint/dnd.js';
   import {
     getAgentBlueprint,
+    getAgentBundle,
     getBlueprintLLMProfile,
     getRoleDefinition,
     getPromptTemplate,
@@ -202,12 +203,34 @@
           case 'tone-profile':
             entityData = await getToneProfile(entityId);
             break;
+          case 'agent-bundle':
+            entityData = await getAgentBundle(entityId);
+            break;
         }
         if (entityData) {
-          const entityNode = createEntityNode(nodeType, entityId, entityData, adjustedPosition);
-          entityNode.parentId = parentId;
-          canvasStore.addNode(entityNode);
-          canvasStore.selectNode(entityNode.id);
+          if (nodeType === 'agent-bundle') {
+            const bundleNode = {
+              id: `entity-${entityId}`,
+              type: 'wf-agent',
+              position: adjustedPosition,
+              data: {
+                isDraft: false,
+                bundle_id: entityId,
+                label: entityData.name || entityId,
+                role_type_icon: '\u{1F464}',
+                role_type_name: '',
+                role_type_color: '#8b5cf6',
+              },
+            };
+            bundleNode.parentId = parentId;
+            canvasStore.addNode(bundleNode);
+            canvasStore.selectNode(bundleNode.id);
+          } else {
+            const entityNode = createEntityNode(nodeType, entityId, entityData, adjustedPosition);
+            entityNode.parentId = parentId;
+            canvasStore.addNode(entityNode);
+            canvasStore.selectNode(entityNode.id);
+          }
         }
       } catch (err) {
         console.warn('[BlueprintCanvas] Failed to load entity for drop:', err);

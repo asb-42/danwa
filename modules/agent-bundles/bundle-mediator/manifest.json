@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "bundle-mediator",
+  "name": {
+    "en": "Mediator (Default)"
+  },
+  "description": {
+    "en": "Default agent bundle for the Mediator role \u2014 used in multi-phase debate workflows."
+  },
+  "version": "1.0.0",
+  "type": "bundle",
+  "category": "bundles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "mediator",
+    "default",
+    "multi-phase"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "dependencies": {
+    "agent-cores/mediator-default": ">=1.0.0"
+  }
+}

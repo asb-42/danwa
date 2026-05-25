@@ -1,0 +1,13 @@
+{
+  "id": "bundle-fact-checker",
+  "name": "Fact Checker (Default)",
+  "description": "Default agent bundle for the Fact Checker role.",
+  "llm_profile_id": "default",
+  "role_type_id": "fact",
+  "composition": {
+    "agent_core_id": "fact-checker-default",
+    "argumentation_pattern_id": "critic",
+    "prompt_modifier_id": "prompt-modifier-neutral-default"
+  },
+  "is_active": true
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "bundle-devils-advocate",
+  "name": {
+    "en": "Devil\u2019s Advocate (Default)"
+  },
+  "description": {
+    "en": "Default agent bundle for the Devil\u2019s Advocate role \u2014 used in multi-phase debate workflows."
+  },
+  "version": "1.0.0",
+  "type": "bundle",
+  "category": "bundles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "devils-advocate",
+    "default",
+    "multi-phase"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "dependencies": {
+    "agent-cores/devils-advocate-default": ">=1.0.0"
+  }
+}
