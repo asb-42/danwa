@@ -497,6 +497,20 @@ def agent_node_factory(
                 len(interjection_queue),
             )
 
+            # Mark HITL interactions as consumed so the UI reflects the status change
+            for inj in interjection_queue:
+                meta = inj.get("metadata", {})
+                if meta.get("debate_id") and meta.get("interaction_id"):
+                    try:
+                        from backend.workflow.hitl.api import consume_inject
+                        consume_inject(meta["debate_id"], meta["interaction_id"])
+                    except Exception:
+                        logger.debug(
+                            "Failed to mark HITL interaction %s as consumed",
+                            meta.get("interaction_id"),
+                            exc_info=True,
+                        )
+
         if language == "en":
             user_prompt += "\n\nPlease respond in English."
         else:

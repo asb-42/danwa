@@ -6,6 +6,7 @@
     listComposerComponents,
     previewComposition,
     createComposerBundle,
+    updateComposerBundle,
     getComposerBundle,
     listComposerBundles,
     exportComposerBundle,
@@ -97,7 +98,7 @@
     if (!bundleName.trim()) return;
     isSaving = true;
     try {
-      const bundle = await createComposerBundle({
+      const payload = {
         name: bundleName.trim(),
         description: bundleDescription.trim(),
         composition: {
@@ -107,11 +108,19 @@
           prompt_modifier_id: selectedPromptModifier,
         },
         llm_profile_id: selectedLLMProfile,
-      });
-      savedBundleId = bundle.id;
-      statusMessage = `Bundle "${bundle.name}" created (id: ${bundle.id})`;
-      bundleName = '';
-      bundleDescription = '';
+      };
+
+      let bundle;
+      if (savedBundleId) {
+        // Update existing bundle
+        bundle = await updateComposerBundle(savedBundleId, payload);
+        statusMessage = `Bundle "${bundle.name}" updated (id: ${bundle.id})`;
+      } else {
+        // Create new bundle
+        bundle = await createComposerBundle(payload);
+        savedBundleId = bundle.id;
+        statusMessage = `Bundle "${bundle.name}" created (id: ${bundle.id})`;
+      }
       await loadBundles();
     } catch (e) {
       error.set(e.message);
@@ -132,7 +141,8 @@
       selectedLLMProfile = bundle.llm_profile_id || '';
       bundleName = bundle.name || '';
       bundleDescription = bundle.description || '';
-      statusMessage = `Loaded bundle "${bundle.name}"`;
+      savedBundleId = bundle.id;
+      statusMessage = `Loaded bundle "${bundle.name}" — editing`;
       previewPrompt = '';
     } catch (e) {
       error.set(e.message);
@@ -148,6 +158,19 @@
     } catch (e) {
       error.set(e.message);
     }
+  }
+
+  function handleNewBundle() {
+    savedBundleId = null;
+    bundleName = '';
+    bundleDescription = '';
+    selectedAgentCore = '';
+    selectedArgPattern = '';
+    selectedToneProfile = '';
+    selectedPromptModifier = '';
+    selectedLLMProfile = '';
+    previewPrompt = '';
+    statusMessage = '';
   }
 
   async function handleImport() {
@@ -250,7 +273,17 @@
         </button>
 
         <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-          <h3 class="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3">Save as Bundle</h3>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-md font-semibold text-gray-700 dark:text-gray-300">{savedBundleId ? 'Edit Bundle' : 'Save as Bundle'}</h3>
+            {#if savedBundleId}
+              <button
+                class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                onclick={handleNewBundle}
+              >
+                + New Bundle
+              </button>
+            {/if}
+          </div>
           <input
             class="w-full px-3 py-2 mb-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm"
             placeholder="Bundle name"
@@ -263,11 +296,11 @@
             bind:value={bundleDescription}
           ></textarea>
           <button
-            class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            class="w-full px-4 py-2 {savedBundleId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
             onclick={handleSave}
             disabled={isSaving || !bundleName.trim()}
           >
-            {isSaving ? 'Saving...' : 'Save Bundle'}
+            {isSaving ? 'Saving...' : savedBundleId ? 'Update Bundle' : 'Save Bundle'}
           </button>
         </div>
       </div>

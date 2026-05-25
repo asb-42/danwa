@@ -93,6 +93,22 @@
     border-color: #667eea;
   }
 
+  :global(.dark) .kitsune-toggle {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  :global(.dark) .kitsune-toggle:hover {
+    background: #4b5563;
+  }
+
+  :global(.dark) .kitsune-toggle.active {
+    background: #667eea;
+    color: white;
+    border-color: #818cf8;
+  }
+
   .kitsune-icon {
     font-size: 16px;
   }

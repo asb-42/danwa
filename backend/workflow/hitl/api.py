@@ -334,15 +334,34 @@ async def inject_context(
         },
     )
 
-    # DIAGNOSTIC: Log that this stores in _interaction_log which is NOT consumed by workflow engine
-    logger.warning(
-        "DIAG HITL inject: id=%s, debate=%s, target=%s | "
-        "NOTE: stored in _interaction_log — this is NOT consumed by the workflow engine's agent_node_factory. "
-        "The workflow engine only consumes from interjection_service (POST /workflow-exec/{session_id}/interject).",
-        interaction_id,
-        debate_id,
-        body.target_agent or "all_future",
-    )
+    # Bridge to workflow interjection_service so agent nodes can consume this injection
+    try:
+        from backend.workflow.interjection import interjection_service
+
+        await interjection_service.submit(
+            session_id=session_id,
+            content=body.content,
+            source="hitl",
+            metadata={
+                "interaction_id": interaction_id,
+                "debate_id": debate_id,
+                "target_agent": body.target_agent,
+                "priority": body.priority,
+            },
+        )
+        logger.info(
+            "HITL inject bridged to workflow interjection_service: interaction=%s, session=%s, target=%s",
+            interaction_id,
+            session_id,
+            body.target_agent or "all_future",
+        )
+    except Exception:
+        logger.error(
+            "Failed to bridge HITL inject %s to workflow interjection_service for session %s",
+            interaction_id,
+            session_id,
+            exc_info=True,
+        )
 
     return InjectResponse(
         interaction_id=interaction_id,
