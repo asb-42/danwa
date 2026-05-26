@@ -104,6 +104,7 @@ class BundleResolver:
             prompt_template=prompt_template,
             tone_profile=tone_profile,
             system_prompt=system_prompt,
+            model_params=bundle.model_params,
         )
 
     @staticmethod

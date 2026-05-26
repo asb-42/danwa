@@ -74,6 +74,7 @@ class LLMService:
         temperature: float | None = None,
         max_tokens: int | None = None,
         tools: list[dict[str, Any]] | None = None,
+        extra_kwargs: dict[str, Any] | None = None,
     ) -> GenerationResult:
         """Generate text using the configured LLM.
 
@@ -128,11 +129,11 @@ class LLMService:
                 result = await self._generate_a2a(messages, temp, tokens, tools=tools)
             # Route: local/OpenAI-compatible providers → direct HTTP, cloud providers → litellm
             elif self._profile.provider.value in {"local", "ollama", "opencode-zen", "opencode-go"}:
-                result = await self._generate_local(messages, temp, tokens, tools=tools)
+                result = await self._generate_local(messages, temp, tokens, tools=tools, extra_kwargs=extra_kwargs)
             elif self._profile.provider == LLMProvider.CLOUDFLARE:
-                result = await self._generate_cloudflare(messages, temp, tokens)
+                result = await self._generate_cloudflare(messages, temp, tokens, extra_kwargs=extra_kwargs)
             else:
-                result = await self._generate_litellm(messages, temp, tokens, tools=tools)
+                result = await self._generate_litellm(messages, temp, tokens, tools=tools, extra_kwargs=extra_kwargs)
 
             await llm_activity.end_call(
                 call_id,
@@ -194,6 +195,7 @@ class LLMService:
         temperature: float,
         max_tokens: int,
         tools: list[dict[str, Any]] | None = None,
+        extra_kwargs: dict[str, Any] | None = None,
     ) -> GenerationResult:
         """Call a local OpenAI-compatible endpoint directly via httpx.
 
@@ -224,6 +226,12 @@ class LLMService:
 
         if tools:
             payload["tools"] = tools
+
+        if extra_kwargs:
+            allowed = {"temperature", "top_p", "top_k", "frequency_penalty", "presence_penalty", "seed", "stop"}
+            for k, v in extra_kwargs.items():
+                if k in allowed and v is not None:
+                    payload[k] = v
 
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if api_key:
@@ -347,6 +355,7 @@ class LLMService:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
+        extra_kwargs: dict[str, Any] | None = None,
     ) -> GenerationResult:
         """Call Cloudflare Workers AI via direct HTTP.
 
@@ -374,6 +383,12 @@ class LLMService:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+
+        if extra_kwargs:
+            allowed = {"temperature", "top_p", "top_k", "frequency_penalty", "presence_penalty", "seed", "stop"}
+            for k, v in extra_kwargs.items():
+                if k in allowed and v is not None:
+                    payload[k] = v
 
         headers: dict[str, str] = {
             "Content-Type": "application/json",
@@ -416,6 +431,7 @@ class LLMService:
         temperature: float,
         max_tokens: int,
         tools: list[dict[str, Any]] | None = None,
+        extra_kwargs: dict[str, Any] | None = None,
     ) -> GenerationResult:
         """Call a cloud LLM via litellm (OpenRouter, OpenAI, Anthropic, etc.)."""
         try:
@@ -449,6 +465,15 @@ class LLMService:
 
         if self._profile.api_base:
             kwargs["api_base"] = self._profile.api_base
+
+        if extra_kwargs:
+            # Whitelist which params we allow from bundles
+            allowed = {"temperature", "top_p", "top_k", "frequency_penalty", "presence_penalty", "seed", "stop"}
+            for k, v in extra_kwargs.items():
+                if k in allowed and v is not None:
+                    kwargs[k] = v
+                    if k == "temperature":
+                        temperature = v  # update local var for logging
 
         logger.info(
             "LLM call (litellm): model=%s, temp=%.2f, max_tokens=%d",

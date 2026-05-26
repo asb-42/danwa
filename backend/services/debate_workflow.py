@@ -280,6 +280,7 @@ def build_agent_profile_from_bundles(bundle_ids: list[str]) -> list[dict]:
                     "temperature": resolved.llm_profile.temperature,
                     "bundle_id": bid,
                     "system_prompt": resolved.system_prompt,
+                    "model_params": resolved.model_params,
                 }
             )
         except Exception as exc:

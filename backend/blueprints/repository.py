@@ -1000,6 +1000,7 @@ class BlueprintRepository:
     def save_bundle(self, bundle: AgentBundle) -> None:
         """Insert or replace an agent bundle."""
         composition_json = json.dumps(bundle.composition.model_dump()) if bundle.composition else None
+        model_params_json = json.dumps(bundle.model_params) if bundle.model_params else "{}"
         with self._connect() as conn:
             conn.execute(
                 """
@@ -1007,8 +1008,8 @@ class BlueprintRepository:
                     (id, name, description, llm_profile_id, role_type_id,
                      role_definition_id, prompt_template_id, tone_profile_id,
                      persona_id, tags_json, is_active, created_at, updated_at,
-                     composition_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     composition_json, model_params_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     bundle.id,
@@ -1025,6 +1026,7 @@ class BlueprintRepository:
                     bundle.created_at.isoformat(),
                     bundle.updated_at.isoformat(),
                     composition_json,
+                    model_params_json,
                 ),
             )
         logger.debug("Saved agent bundle %s", bundle.id)
@@ -1076,6 +1078,15 @@ class BlueprintRepository:
                     composition = BundleComposition(**parsed)
             except (json.JSONDecodeError, TypeError):
                 logger.debug("Failed to parse composition_json for bundle %s", row["id"])
+        model_params = {}
+        model_params_raw = row["model_params_json"] if "model_params_json" in row.keys() else None
+        if model_params_raw:
+            try:
+                parsed = json.loads(model_params_raw)
+                if parsed and isinstance(parsed, dict):
+                    model_params = parsed
+            except (json.JSONDecodeError, TypeError):
+                logger.debug("Failed to parse model_params_json for bundle %s", row["id"])
         return AgentBundle(
             id=row["id"],
             name=row["name"],
@@ -1091,4 +1102,5 @@ class BlueprintRepository:
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
             composition=composition,
+            model_params=model_params,
         )

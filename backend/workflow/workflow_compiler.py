@@ -61,6 +61,7 @@ class ResolvedAgentConfig:
     argumentation_pattern: str = ""
     mode: str = ""
     system_prompt: str = ""  # Assembled system prompt (from Bundle or legacy assembly)
+    model_params: dict = field(default_factory=dict)  # LLM inference overrides (top_p, frequency_penalty, etc.)
 
 
 @dataclass
@@ -145,6 +146,7 @@ class WorkflowCompiler:
                         "argumentation_pattern": config.argumentation_pattern,
                         "mode": config.mode,
                         "system_prompt": config.system_prompt,
+                        "model_params": config.model_params,
                     }
                     result.resolved_agents.append(config)
 
@@ -261,6 +263,7 @@ class WorkflowCompiler:
             argumentation_pattern=resolved.role_definition.argumentation_pattern or "" if resolved.role_definition else "",
             mode=resolved.role_definition.mode or "" if resolved.role_definition else "",
             system_prompt=resolved.system_prompt,
+            model_params=resolved.model_params,
         )
 
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:

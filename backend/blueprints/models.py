@@ -542,6 +542,11 @@ class AgentBundle(BaseModel):
     composition: BundleComposition | None = None
     # When set: system_prompt is assembled via ComposerService from module IDs
     # When None: legacy path via BundleResolver._assemble_system_prompt()
+    # LLM generation parameters (override LLM profile defaults at inference time)
+    model_params: dict = Field(
+        default_factory=dict,
+        description="LLM inference overrides (temperature, top_p, top_k, frequency_penalty, presence_penalty, etc.)",
+    )
     # Metadata
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True
@@ -569,3 +574,7 @@ class ResolvedBundle(BaseModel):
     prompt_template: PromptTemplate | None = None
     tone_profile: ToneProfile | None = None
     system_prompt: str = ""
+    model_params: dict = Field(
+        default_factory=dict,
+        description="LLM inference overrides (temperature, top_p, etc.)",
+    )

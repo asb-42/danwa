@@ -532,6 +532,7 @@ def _import_bundle_entity(
         composition=composition,
         tags=raw.get("tags", []),
         is_active=raw.get("is_active", True),
+        model_params=raw.get("model_params", {}),
     )
 
     if not existing or strategy == ImportConflictStrategy.OVERWRITE:

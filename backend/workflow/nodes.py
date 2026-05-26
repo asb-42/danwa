@@ -338,6 +338,7 @@ async def run_agent_node(state: DebateState) -> dict:
             prompt=user_prompt,
             system_prompt=system_prompt,
             temperature=agent.get("temperature", 0.7),
+            extra_kwargs=agent.get("model_params"),
         )
         content = gen_result.content
         tokens_in = gen_result.tokens_in

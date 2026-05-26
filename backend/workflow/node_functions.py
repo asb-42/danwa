@@ -403,6 +403,7 @@ def agent_node_factory(
     role = resolved_config.get("role", node_type.replace("wf-", ""))
     llm_profile_id = resolved_config.get("llm_profile_id", "")
     resolved_config.get("blueprint_name", role)
+    model_params = resolved_config.get("model_params", {}) or {}
 
     # Extract tone_profile_source_node_id from resolved config
     tone_profile_source_node_id = resolved_config.get("tone_profile_source_node_id")
@@ -564,6 +565,8 @@ def agent_node_factory(
             gen_result = await llm_service.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
+                temperature=model_params.get("temperature"),
+                extra_kwargs=model_params,
             )
             content = gen_result.content
 
