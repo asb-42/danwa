@@ -352,10 +352,11 @@ async def search_sessions(
                 continue
             session_id = did
 
-        # Filter by query
+        # Filter by query (match debate_id, title, or session_id)
         if q:
             q_lower = q.lower()
-            if q_lower not in did.lower() and q_lower not in title.lower():
+            sid = d.get("session_id", "") or ""
+            if q_lower not in did.lower() and q_lower not in title.lower() and q_lower not in sid.lower():
                 continue
 
         results.append(

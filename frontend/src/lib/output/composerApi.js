@@ -5,7 +5,15 @@
  * Optimization Proposal REST endpoints.
  */
 
+import { get } from 'svelte/store';
+import { activeProject } from '../stores.js';
+
 const BASE = '/api/v1';
+
+function projectHeaders() {
+  const projectId = get(activeProject)?.id;
+  return projectId ? { 'X-Project-Id': projectId } : {};
+}
 
 /**
  * List all registered output plugins with their config schemas.
@@ -183,7 +191,9 @@ export async function listTTSVoices(params = {}) {
  */
 export async function searchSessions(query = '', limit = 20) {
   const qs = new URLSearchParams({ q: query, limit: String(limit) });
-  const res = await fetch(`${BASE}/render-sessions?${qs}`);
+  const res = await fetch(`${BASE}/render-sessions?${qs}`, {
+    headers: { ...projectHeaders() },
+  });
   if (!res.ok) throw new Error(`Search sessions failed: ${res.status}`);
   return res.json();
 }
