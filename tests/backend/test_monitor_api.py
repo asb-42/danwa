@@ -35,7 +35,7 @@ class TestMonitorActivityEndpoint:
         import asyncio
 
         # Simulate active call
-        asyncio.get_event_loop().run_until_complete(fresh_tracker.start_call(model="gpt-4", provider="openai"))
+        asyncio.run(fresh_tracker.start_call(model="gpt-4", provider="openai"))
 
         with patch("backend.api.routers.monitor.llm_activity", fresh_tracker):
             response = client.get("/api/v1/monitor/activity")
@@ -54,7 +54,7 @@ class TestMonitorActivityEndpoint:
             cid = await fresh_tracker.start_call(model="claude-3", provider="anthropic")
             await fresh_tracker.end_call(cid, tokens_in=150, tokens_out=75, status="completed", session_id="s1")
 
-        asyncio.get_event_loop().run_until_complete(_setup())
+        asyncio.run(_setup())
 
         with patch("backend.api.routers.monitor.llm_activity", fresh_tracker):
             response = client.get("/api/v1/monitor/activity")
@@ -76,7 +76,7 @@ class TestMonitorActivityEndpoint:
             cid = await fresh_tracker.start_call(model="gpt-4", provider="openai")
             await fresh_tracker.end_call(cid, status="failed", error="Connection refused")
 
-        asyncio.get_event_loop().run_until_complete(_setup())
+        asyncio.run(_setup())
 
         with patch("backend.api.routers.monitor.llm_activity", fresh_tracker):
             response = client.get("/api/v1/monitor/activity")
@@ -97,7 +97,7 @@ class TestMonitorActivityEndpoint:
             # Still active call
             await fresh_tracker.start_call(model="claude-3", provider="anthropic")
 
-        asyncio.get_event_loop().run_until_complete(_setup())
+        asyncio.run(_setup())
 
         with patch("backend.api.routers.monitor.llm_activity", fresh_tracker):
             response = client.get("/api/v1/monitor/activity")
