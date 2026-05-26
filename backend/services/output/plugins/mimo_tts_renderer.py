@@ -23,6 +23,7 @@ from pathlib import Path
 
 import httpx
 
+from backend.services.output.base import ProgressCallback, _noop_progress
 from backend.services.output.plugins.audio_helpers import (
     check_ffmpeg,
     concat_audio,
@@ -76,6 +77,8 @@ class MiMoTTSRenderer:
         output_format: str = "wav",
         bitrate: str = "128k",
         keep_segments: bool = False,
+        *,
+        progress_callback: ProgressCallback = _noop_progress,
     ) -> Path:
         """Render the TTS script to an audio file.
 
@@ -86,6 +89,8 @@ class MiMoTTSRenderer:
             output_format: Target audio format (wav/mp3).
             bitrate: Audio bitrate for ffmpeg concat (e.g. "128k").
             keep_segments: Whether to keep individual segment files.
+            progress_callback: Async callback ``(current, total)`` for
+                tracking render progress.
 
         Returns:
             Path to the generated audio file.
@@ -99,6 +104,7 @@ class MiMoTTSRenderer:
         # 1. Render each segment
         segment_files: list[Path] = []
         total = len(script.segments)
+        await progress_callback(0, total)
         for i, seg in enumerate(script.segments):
             seg_file = segments_dir / f"{seg.id}.wav"
 
@@ -119,6 +125,7 @@ class MiMoTTSRenderer:
                 output_path=seg_file,
             )
             segment_files.append(seg_file)
+            await progress_callback(i + 1, total)
 
             # Generate silence for pause_after_ms
             if seg.pause_after_ms > 0 and i < len(script.segments) - 1:
@@ -164,6 +171,8 @@ class MiMoTTSRenderer:
             style_hint: Natural language style description (user message).
             output_path: Output .wav file path.
         """
+        from backend.services.llm_activity import llm_activity
+
         url = f"{self._api_base}/chat/completions"
 
         # Build messages per MiMo TTS Call Rules
@@ -211,29 +220,55 @@ class MiMoTTSRenderer:
             style_hint[:50] if style_hint else "(none)",
         )
 
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            if response.status_code != 200:
-                body = response.text[:500]
-                raise RuntimeError(f"MiMo TTS API returned {response.status_code}: {body}")
-
-        data = response.json()
-
-        # Extract base64 audio from response
-        try:
-            message = data["choices"][0]["message"]
-            audio_data = message["audio"]["data"]
-        except (KeyError, IndexError) as exc:
-            raise RuntimeError(f"MiMo TTS API returned unexpected response structure: {exc}. Response (truncated): {str(data)[:500]}")
-
-        # Decode and write WAV file
-        await decode_base64_audio(audio_data, output_path)
-
-        logger.debug(
-            "MiMo TTS segment rendered: %s → %s",
-            text[:50],
-            output_path,
+        call_id = await llm_activity.start_call(
+            model=self._model,
+            provider="xiaomi_mimo",
         )
+
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                response = await client.post(url, json=payload, headers=headers)
+                if response.status_code != 200:
+                    body = response.text[:500]
+                    raise RuntimeError(f"MiMo TTS API returned {response.status_code}: {body}")
+
+            data = response.json()
+
+            # Extract base64 audio from response
+            try:
+                message = data["choices"][0]["message"]
+                audio_data = message["audio"]["data"]
+            except (KeyError, IndexError) as exc:
+                raise RuntimeError(f"MiMo TTS API returned unexpected response structure: {exc}. Response (truncated): {str(data)[:500]}")
+
+            # Track usage if available
+            usage = data.get("usage", {})
+            tokens_in = usage.get("prompt_tokens", 0)
+            tokens_out = usage.get("completion_tokens", 0)
+
+            await llm_activity.end_call(
+                call_id,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                status="completed",
+            )
+
+            # Decode and write WAV file
+            await decode_base64_audio(audio_data, output_path)
+
+            logger.debug(
+                "MiMo TTS segment rendered: %s → %s",
+                text[:50],
+                output_path,
+            )
+
+        except Exception as exc:
+            await llm_activity.end_call(
+                call_id,
+                status="failed",
+                error=str(exc),
+            )
+            raise
 
 
 # ---------------------------------------------------------------------------

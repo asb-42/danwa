@@ -147,6 +147,14 @@ class RenderEngineService:
             # Instantiate plugin (stateless — fresh instance per call)
             plugin = plugin_cls()
 
+            # Build progress callback that writes to the job store
+            async def _update_progress(current: int, total: int) -> None:
+                self.job_store.update_job(
+                    job_id,
+                    progress_current=current,
+                    progress_total=total,
+                )
+
             # Render
             output_dir = self.output_dir
             output_paths = await plugin.render(
@@ -154,6 +162,7 @@ class RenderEngineService:
                 config=config,
                 job_id=job_id,
                 output_dir=output_dir,
+                progress_callback=_update_progress,
             )
 
             # Record success

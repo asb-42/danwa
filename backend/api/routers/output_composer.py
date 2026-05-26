@@ -93,6 +93,8 @@ class RenderJobStatusResponse(BaseModel):
     created_at: str
     started_at: str | None = None
     completed_at: str | None = None
+    progress_current: int = 0
+    progress_total: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +173,8 @@ async def get_render_job_status(job_id: str) -> RenderJobStatusResponse:
         created_at=job.created_at.isoformat(),
         started_at=job.started_at.isoformat() if job.started_at else None,
         completed_at=job.completed_at.isoformat() if job.completed_at else None,
+        progress_current=job.progress_current,
+        progress_total=job.progress_total,
     )
 
 

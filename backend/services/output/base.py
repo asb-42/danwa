@@ -9,11 +9,19 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import ClassVar
+from typing import Callable, ClassVar, Coroutine
 
 from pydantic import BaseModel
 
 from backend.models.artifact import DebateArtifact
+
+ProgressCallback = Callable[[int, int], Coroutine[None, None, None]]
+"""Async callback ``(current: int, total: int) -> None`` for render progress."""
+
+
+async def _noop_progress(current: int, total: int) -> None:
+    """Default no-op progress callback."""
+    pass
 
 
 class OutputPlugin(ABC):
@@ -48,6 +56,8 @@ class OutputPlugin(ABC):
         config: BaseModel,
         job_id: str,
         output_dir: Path,
+        *,
+        progress_callback: ProgressCallback = None,
     ) -> list[Path]:
         """Render the artifact to one or more output files.
 
@@ -59,6 +69,8 @@ class OutputPlugin(ABC):
                 be placed in ``output_dir / job_id /``.
             output_dir: Root output directory.  The implementation must
                 create ``output_dir / job_id /`` if it does not exist.
+            progress_callback: Optional async callback ``(current, total)``
+                for reporting render progress to the job store.
 
         Returns:
             List of paths to the generated output files.

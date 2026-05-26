@@ -10,7 +10,7 @@ from typing import ClassVar
 from pydantic import BaseModel, Field
 
 from backend.models.artifact import DebateArtifact
-from backend.services.output.base import OutputPlugin
+from backend.services.output.base import OutputPlugin, ProgressCallback, _noop_progress
 from backend.services.output.plugins.tts_script_engine import TTSScriptEngine
 from backend.services.output.registry import register_plugin
 
@@ -102,6 +102,8 @@ class TTSOutputPlugin(OutputPlugin):
         config: BaseModel,
         job_id: str,
         output_dir: Path,
+        *,
+        progress_callback: ProgressCallback = _noop_progress,
     ) -> list[Path]:
         """Render artifact to MP3/WAV audio file.
 
@@ -110,6 +112,8 @@ class TTSOutputPlugin(OutputPlugin):
             config: Validated ``TTSPluginConfig``.
             job_id: Render job ID.
             output_dir: Root output directory.
+            progress_callback: Async callback ``(current, total)`` for
+                tracking render progress.
 
         Returns:
             List containing the generated audio file path.
@@ -231,6 +235,7 @@ class TTSOutputPlugin(OutputPlugin):
                 output_format="wav",
                 bitrate=config.bitrate,
                 keep_segments=config.keep_segments,
+                progress_callback=progress_callback,
             )
 
             # Convert WAV → MP3 if user requested MP3

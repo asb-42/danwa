@@ -24,6 +24,8 @@ export function createRenderJobTracker(jobId) {
   let outputFiles = $state([]);
   let error = $state(null);
   let loading = $state(true);
+  let progressCurrent = $state(0);
+  let progressTotal = $state(0);
   let intervalId = null;
 
   const terminalStatuses = new Set(['completed', 'failed']);
@@ -34,6 +36,8 @@ export function createRenderJobTracker(jobId) {
       status = data.status;
       outputFiles = data.output_files || [];
       error = data.error_message || null;
+      progressCurrent = data.progress_current || 0;
+      progressTotal = data.progress_total || 0;
       loading = false;
 
       // Persist terminal status to localStorage
@@ -77,6 +81,8 @@ export function createRenderJobTracker(jobId) {
     get outputFiles() { return outputFiles; },
     get error() { return error; },
     get loading() { return loading; },
+    get progressCurrent() { return progressCurrent; },
+    get progressTotal() { return progressTotal; },
     stop,
   };
 }

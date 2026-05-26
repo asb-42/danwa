@@ -13,7 +13,7 @@ import jinja2
 from pydantic import BaseModel, Field
 
 from backend.models.artifact import DebateArtifact
-from backend.services.output.base import OutputPlugin
+from backend.services.output.base import OutputPlugin, ProgressCallback, _noop_progress
 from backend.services.output.plugins.print_layout_engine import PrintLayoutEngine
 from backend.services.output.plugins.print_models import PrintDocument
 from backend.services.output.registry import register_plugin
@@ -82,6 +82,8 @@ class PrintOutputPlugin(OutputPlugin):
         config: BaseModel,
         job_id: str,
         output_dir: Path,
+        *,
+        progress_callback: ProgressCallback = _noop_progress,
     ) -> list[Path]:
         """Render artifact to PDF, DOCX, ODT, and/or Markdown.
 
@@ -90,6 +92,8 @@ class PrintOutputPlugin(OutputPlugin):
             config: Validated ``PrintPluginConfig``.
             job_id: Render job ID.
             output_dir: Root output directory.
+            progress_callback: Async callback ``(current, total)`` for
+                tracking render progress.
 
         Returns:
             List of generated file paths.

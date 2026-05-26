@@ -48,6 +48,8 @@ class RenderJobStore:
             error_message=row["error_message"],
             output_files=json.loads(row["output_files"] or "[]"),
             artifact_snapshot_hash=row["artifact_snapshot_hash"] or "",
+            progress_current=row["progress_current"] or 0,
+            progress_total=row["progress_total"] or 0,
         )
 
     def create_job(self, job: RenderJob) -> None:
@@ -62,8 +64,9 @@ class RenderJobStore:
                 INSERT INTO render_jobs
                     (id, session_id, plugin_key, config, status,
                      output_files, error_message, artifact_snapshot_hash,
-                     created_at, started_at, completed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     created_at, started_at, completed_at,
+                     progress_current, progress_total)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
@@ -77,6 +80,8 @@ class RenderJobStore:
                     job.created_at.isoformat(),
                     job.started_at.isoformat() if job.started_at else None,
                     job.completed_at.isoformat() if job.completed_at else None,
+                    job.progress_current,
+                    job.progress_total,
                 ),
             )
         logger.info("RenderJob %s created for session %s", job.id, job.session_id)
@@ -105,6 +110,8 @@ class RenderJobStore:
         error_message: str | None = None,
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
+        progress_current: int | None = None,
+        progress_total: int | None = None,
     ) -> None:
         """Update fields on a render job.
 
@@ -117,6 +124,8 @@ class RenderJobStore:
             error_message: Error message (for failed jobs).
             started_at: When execution started.
             completed_at: When execution completed.
+            progress_current: Number of items processed so far.
+            progress_total: Total number of items to process.
         """
         updates: list[str] = []
         params: list[Any] = []
@@ -136,6 +145,12 @@ class RenderJobStore:
         if completed_at is not None:
             updates.append("completed_at = ?")
             params.append(completed_at.isoformat())
+        if progress_current is not None:
+            updates.append("progress_current = ?")
+            params.append(progress_current)
+        if progress_total is not None:
+            updates.append("progress_total = ?")
+            params.append(progress_total)
 
         if not updates:
             return

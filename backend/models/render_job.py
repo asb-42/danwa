@@ -37,3 +37,5 @@ class RenderJob(BaseModel):
     error_message: str | None = None
     output_files: list[str] = Field(default_factory=list)
     artifact_snapshot_hash: str = ""  # SHA-256 of DebateArtifact JSON
+    progress_current: int = 0  # number of items processed so far
+    progress_total: int = 0  # total number of items to process

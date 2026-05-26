@@ -935,4 +935,17 @@ export default {
   'kitsune.open': 'Open',
   'kitsune.minimize': 'Minimize',
 
+  'renderJob.status.queued': 'Queued',
+  'renderJob.status.running': 'Running…',
+  'renderJob.status.completed': 'Completed',
+  'renderJob.status.failed': 'Failed',
+  'renderJob.loading': 'Loading status…',
+  'renderJob.artifactLoaded': 'Artifact loaded',
+  'renderJob.generating': 'Generating output…',
+  'renderJob.progress': 'Processing segment {current} of {total}',
+  'renderJob.error': 'Error',
+  'renderJob.download': 'Download',
+  'renderJob.queued': 'Waiting to be processed…',
+
 };
+

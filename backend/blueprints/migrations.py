@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 29
+SCHEMA_VERSION = 30
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -1015,6 +1015,21 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                 logger.info("Migration v29 applied successfully")
             except sqlite3.OperationalError as exc:
                 logger.debug("Migration v29 skipped: %s", exc)
+
+        # ── V30 — progress columns on render_jobs ──
+        if current < 30:
+            logger.info("Applying migration v30: progress columns on render_jobs")
+            try:
+                conn.execute("ALTER TABLE render_jobs ADD COLUMN progress_current INTEGER DEFAULT 0")
+            except sqlite3.OperationalError as exc:
+                logger.debug("render_jobs.progress_current column already exists: %s", exc)
+            try:
+                conn.execute("ALTER TABLE render_jobs ADD COLUMN progress_total INTEGER DEFAULT 0")
+            except sqlite3.OperationalError as exc:
+                logger.debug("render_jobs.progress_total column already exists: %s", exc)
+            _record_version(conn, 30, "Add progress_current and progress_total columns to render_jobs for real-time progress tracking")
+            conn.commit()
+            logger.info("Migration v30 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)
