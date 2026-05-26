@@ -22,6 +22,25 @@
 
   const STORAGE_KEY = 'danwa.activeRenderJob';
 
+  // -- Style hint constants for help boxes --
+  const MIMO_STYLE_HINTS_EN = [
+    { keyword: 'calm, professional', desc: 'Ruhig, sachlich — für Analysen' },
+    { keyword: 'enthusiastic, energetic', desc: 'Lebhaft, energisch — für kreative Inhalte' },
+    { keyword: 'warm, friendly', desc: 'Warmherzig — für Erklärungen' },
+    { keyword: 'serious, authoritative', desc: 'Autoritär — für kritische Punkte' },
+    { keyword: 'conversational, casual', desc: 'Locker, gesprächig — für Diskussionen' },
+    { keyword: 'slow, educational', desc: 'Langsam, deutlich — für Bildungsinhalte' },
+  ];
+
+  const MIMO_STYLE_HINTS_ZH = [
+    { keyword: '平静专业的语气', desc: 'Ruhig, professionell — für Analysen' },
+    { keyword: '热情充满活力', desc: 'Lebhaft, energisch — für kreative Inhalte' },
+    { keyword: '温暖友好的语调', desc: 'Warmherzig — für Erklärungen' },
+    { keyword: '严肃权威的语气', desc: 'Autoritär — für kritische Punkte' },
+    { keyword: '自然随意的对话风格', desc: 'Locker — für Diskussionen' },
+    { keyword: '缓慢清晰的教学风格', desc: 'Langsam, deutlich — für Bildungsinhalte' },
+  ];
+
   // State
   let plugins = $state([]);
   let selectedPlugin = $state(null);
@@ -36,20 +55,63 @@
   let tracker = $state(null);
   let searchLoading = $state(false);
   let ttsVoices = $state([]);
+  let sessionAgents = $state([]);
 
   let searchTimeout = null;
 
-  // Load voices when TTS plugin is selected or engine changes
-  let _lastVoiceEngine = null;
+  // Derived: which voice engine is selected
+  let voiceEngine = $derived(
+    selectedPlugin?.plugin_key === 'tts' ? (configValues.engine || 'edge_tts') : null
+  );
+  let voiceLanguage = $derived(
+    selectedPlugin?.plugin_key === 'tts' ? (configValues.language || '') : ''
+  );
+
+  // Derived: MiMo language warning
+  let mimoWarning = $derived(
+    voiceEngine === 'mimo_tts' && voiceLanguage && !['en', 'zh'].includes(voiceLanguage)
+      ? `MiMo TTS unterstützt nur en und zh. Sprache "${voiceLanguage}" hat keine passenden Stimmen.`
+      : null
+  );
+
+  // Derived: which style hints to show
+  let activeStyleHints = $derived(
+    voiceEngine === 'mimo_tts' && voiceLanguage === 'zh'
+      ? MIMO_STYLE_HINTS_ZH
+      : voiceEngine === 'mimo_tts' && (!voiceLanguage || voiceLanguage === 'en')
+        ? MIMO_STYLE_HINTS_EN
+        : null
+  );
+
+  // Load voices when TTS plugin is selected, engine changes, or language changes
   $effect(() => {
-    const engine = configValues.engine;
-    if (selectedPlugin?.plugin_key === 'tts' && engine && engine !== _lastVoiceEngine) {
-      _lastVoiceEngine = engine;
-      const url = engine === 'mimo_tts'
-        ? '/api/v1/tts-voices?engine=mimo_tts'
-        : '/api/v1/tts-voices';
-      fetch(url).then(r => r.json()).then(v => { ttsVoices = v; }).catch(() => { ttsVoices = []; });
-    }
+    if (!voiceEngine) return;
+    const params = new URLSearchParams();
+    if (voiceEngine === 'mimo_tts') params.set('engine', 'mimo_tts');
+    if (voiceLanguage) params.set('language', voiceLanguage);
+    fetch(`/api/v1/tts-voices?${params}`)
+      .then(r => r.json())
+      .then(v => { ttsVoices = v; })
+      .catch(() => { ttsVoices = []; });
+  });
+
+  // Load agent roles when a session is selected
+  $effect(() => {
+    if (!selectedSessionId) return;
+    fetch(`/api/v1/render-sessions/${selectedSessionId}/agents`)
+      .then(r => r.json())
+      .then(agents => {
+        sessionAgents = agents;
+        // Pre-populate voice_mapping with detected agent roles
+        if (agents.length > 0 && selectedPlugin?.plugin_key === 'tts') {
+          const mapping = {};
+          for (const a of agents) {
+            mapping[a.agent_name] = '';
+          }
+          configValues = { ...configValues, voice_mapping: mapping };
+        }
+      })
+      .catch(() => { sessionAgents = []; });
   });
 
   // Restore active job from localStorage on mount
@@ -280,9 +342,36 @@
               mapping={configValues.voice_mapping || {}}
               voices={ttsVoices}
               defaultVoice={configValues.default_voice || ''}
+              engine={voiceEngine}
+              {sessionAgents}
               onchange={(m) => { configValues = { ...configValues, voice_mapping: m }; }}
             />
           </div>
+
+          <!-- MiMo language warning -->
+          {#if mimoWarning}
+            <div class="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 text-xs text-amber-700 dark:text-amber-300">
+              ⚠️ {mimoWarning}
+            </div>
+          {/if}
+
+          <!-- Style hint help (MiMo only) -->
+          {#if activeStyleHints}
+            <details class="group mt-3">
+              <summary class="text-xs text-gray-500 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 list-none flex items-center gap-1 select-none">
+                <span class="transition-transform group-open:rotate-90 text-xs">▶</span>
+                <span class="font-medium">Style Hints für MiMo TTS ({voiceLanguage === 'zh' ? '中文' : 'English'})</span>
+              </summary>
+              <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {#each activeStyleHints as hint}
+                  <div class="flex items-start gap-2 p-1.5 rounded bg-gray-50 dark:bg-gray-800/50">
+                    <code class="shrink-0 text-xs px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">{hint.keyword}</code>
+                    <span class="text-xs text-gray-600 dark:text-gray-400">{hint.desc}</span>
+                  </div>
+                {/each}
+              </div>
+            </details>
+          {/if}
         {/if}
       </div>
     </div>

@@ -2,8 +2,8 @@
      Shows a table with Agent → Voice dropdowns loaded from the TTS voices API.
      Svelte 5 runes. -->
 <script>
-  /** @type {{ mapping: Record<string, string>, voices: Array<{voice_id: string, name: string, language: string, gender: string}>, defaultVoice: string, onchange: (m: Record<string, string>) => void }} */
-  let { mapping = $bindable({}), voices = [], defaultVoice = '', onchange } = $props();
+  /** @type {{ mapping: Record<string, string>, voices: Array<{voice_id: string, name: string, language: string, gender: string}>, defaultVoice: string, engine: string | null, sessionAgents: Array<{role_type: string, agent_name: string}>, onchange: (m: Record<string, string>) => void }} */
+  let { mapping = $bindable({}), voices = [], defaultVoice = '', engine = null, sessionAgents = [], onchange } = $props();
 
   let agentName = $state('');
 
@@ -24,6 +24,12 @@
 
   function updateVoice(key, voiceId) {
     mapping = { ...mapping, [key]: voiceId };
+    onchange?.(mapping);
+  }
+
+  function addAgent(agentName) {
+    if (!agentName || agentName in mapping) return;
+    mapping = { ...mapping, [agentName]: defaultVoice || '' };
     onchange?.(mapping);
   }
 </script>
@@ -60,7 +66,7 @@
                 {/if}
                 {#each voices as v}
                   <option value={v.voice_id} selected={v.voice_id === voiceId}>
-                    {v.name} ({v.language}) [{v.gender}]
+                    {v.name} ({v.language}) [{v.gender}] · {engine || 'edge_tts'}
                   </option>
                 {/each}
               </select>
@@ -81,7 +87,27 @@
     <p class="text-xs text-gray-400 italic">No voice mappings configured.</p>
   {/if}
 
-  <!-- Add new agent -->
+  <!-- Quick-add buttons from session agents -->
+  {#if sessionAgents.length > 0}
+    <div class="pt-1">
+      <p class="text-xs text-gray-400 mb-1">Agenten aus dieser Session:</p>
+      <div class="flex flex-wrap gap-1">
+        {#each sessionAgents as a}
+          <button
+            type="button"
+            disabled={a.agent_name in mapping}
+            onclick={() => addAgent(a.agent_name)}
+            class="text-xs px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600
+              {a.agent_name in mapping
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 cursor-pointer'}"
+          >{a.agent_name} <span class="text-gray-400 ml-0.5">({a.role_type})</span></button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Add new agent (manual) -->
   <div class="flex gap-2 pt-1">
     <input
       type="text"

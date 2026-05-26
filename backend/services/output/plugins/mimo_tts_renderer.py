@@ -245,6 +245,10 @@ MIMO_VOICES = [
     {"voice_id": "Chloe", "name": "Chloe", "language": "en", "gender": "Female"},
     {"voice_id": "Milo", "name": "Milo", "language": "en", "gender": "Male"},
     {"voice_id": "Dean", "name": "Dean", "language": "en", "gender": "Male"},
+    {"voice_id": "冰糖", "name": "冰糖", "language": "zh", "gender": "Female"},
+    {"voice_id": "茉莉", "name": "茉莉", "language": "zh", "gender": "Female"},
+    {"voice_id": "苏打", "name": "苏打", "language": "zh", "gender": "Male"},
+    {"voice_id": "白桦", "name": "白桦", "language": "zh", "gender": "Male"},
 ]
 
 

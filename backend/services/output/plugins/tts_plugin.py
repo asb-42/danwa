@@ -178,13 +178,19 @@ class TTSOutputPlugin(OutputPlugin):
         # Resolve default_voice for MiMo engine (edge-tts voice names are invalid)
         default_voice = config.default_voice
         if config.engine == TTSEngine.MIMO_TTS:
-            mimo_valid = {"Mia", "Chloe", "Milo", "Dean"}
+            mimo_valid = {"Mia", "Chloe", "Milo", "Dean", "冰糖", "茉莉", "苏打", "白桦"}
             if default_voice not in mimo_valid:
-                default_voice = "Mia"
+                # Pick language-appropriate default
+                zh_voices = {"冰糖", "茉莉", "苏打", "白桦"}
+                if config.language and config.language.startswith("zh") and zh_voices:
+                    default_voice = "bing_tang"
+                else:
+                    default_voice = "Mia"
                 logger.info(
-                    "MiMo TTS: overriding default_voice from '%s' to '%s'",
+                    "MiMo TTS: overriding default_voice from '%s' to '%s' (language=%s)",
                     config.default_voice,
                     default_voice,
+                    config.language,
                 )
 
         # 1. Transform artifact → TTSScript

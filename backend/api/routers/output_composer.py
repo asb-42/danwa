@@ -248,6 +248,36 @@ async def delete_render_job(job_id: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Session Agent Roles (for TTS voice mapping pre-fill)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/render-sessions/{session_id}/agents")
+async def get_session_agents(session_id: str) -> list[dict]:
+    """Return unique agent roles from a completed session's artifact.
+
+    Used by the frontend to pre-populate the TTS voice mapping editor.
+
+    Returns:
+        List of ``{"role_type": str, "agent_name": str}`` from the
+        debate transcript.
+    """
+    artifact_store = _get_engine().artifact_store
+    artifact = artifact_store.get(session_id)
+    if not artifact:
+        return []
+
+    seen: set[tuple[str, str]] = set()
+    agents: list[dict] = []
+    for turn in artifact.transcript:
+        key = (turn.role_type, turn.agent_name)
+        if key not in seen:
+            seen.add(key)
+            agents.append({"role_type": turn.role_type, "agent_name": turn.agent_name})
+    return agents
+
+
+# ---------------------------------------------------------------------------
 # TTS Voices
 # ---------------------------------------------------------------------------
 
