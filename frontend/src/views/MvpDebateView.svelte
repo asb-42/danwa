@@ -11,6 +11,8 @@
   import PauseControls from '../components/hitl/PauseControls.svelte';
   import AgentQueryModal from '../components/hitl/AgentQueryModal.svelte';
   import InteractionTimeline from '../components/hitl/InteractionTimeline.svelte';
+  import DebateActivityStrip from '../components/debate/DebateActivityStrip.svelte';
+  import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
 
   let { debateId: externalDebateId = null, navigate = () => {} } = $props();
 
@@ -82,6 +84,18 @@
   let totalTokens = $state(0);
   let expandedOutputs = $state(new Set());
   let activityText = $state('');
+
+  // Activity strip state (adapted from legacy DebateView)
+  let currentActivity = $state(null);
+  let isConnected = $state(false);
+  let cumulativeTokens = $state(0);
+  let processingStartTime = $state(null);
+  let processingElapsed = $state(0);
+  let processingTimer = $state(null);
+  let workflowPhase = $state(null);
+  let workflowStartTime = $state(null);
+  let workflowElapsed = $state(0);
+  let workflowTimer = $state(null);
 
   let startTime = null;           // not reactive — internal timer bookkeeping
   let timerInterval = null;       // not reactive — internal timer bookkeeping
@@ -243,10 +257,86 @@
       .replace(/\n/g, '<br>');
   }
 
+  // --- Legacy-adapted UI helpers ---
+
+  function roleEmoji(role) {
+    const agent = AGENTS.find(a => a.role === role);
+    return agent ? agent.icon : '🤖';
+  }
+
+  function roleColor(role) {
+    switch (role) {
+      case 'strategist': return 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-600';
+      case 'critic': return 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-600';
+      case 'optimizer': return 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-600';
+      case 'moderator': return 'border-purple-400 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-600';
+      default: return 'border-gray-400 bg-gray-50 dark:bg-gray-800 dark:border-gray-600';
+    }
+  }
+
+  function roleHeaderColor(role) {
+    switch (role) {
+      case 'strategist': return 'text-blue-700 dark:text-blue-300';
+      case 'critic': return 'text-red-700 dark:text-red-300';
+      case 'optimizer': return 'text-amber-700 dark:text-amber-300';
+      case 'moderator': return 'text-purple-700 dark:text-purple-300';
+      default: return 'text-gray-700 dark:text-gray-300';
+    }
+  }
+
+  function formatElapsed(ms) {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  function startProcessingTimer() {
+    processingStartTime = Date.now();
+    processingElapsed = 0;
+    if (processingTimer) clearInterval(processingTimer);
+    processingTimer = setInterval(() => {
+      processingElapsed = Date.now() - processingStartTime;
+    }, 100);
+  }
+
+  function stopProcessingTimer() {
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
+  }
+
+  function startWorkflowTimer() {
+    workflowStartTime = Date.now();
+    workflowElapsed = 0;
+    if (workflowTimer) clearInterval(workflowTimer);
+    workflowTimer = setInterval(() => {
+      workflowElapsed = Date.now() - workflowStartTime;
+    }, 200);
+  }
+
+  function stopWorkflowTimer() {
+    if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
+  }
+
+  // Derived state for DebateActivityStrip
+  let liveOutputsByRound = $derived(nodeOutputs.reduce((acc, output) => {
+    if (!acc[output.round]) acc[output.round] = [];
+    acc[output.round].push(output);
+    return acc;
+  }, {}));
+
+  let agentCount = $derived(currentActivity?.agent_total || 4);
+  let activeAgentIndex = $derived(currentActivity?.agent_index ?? -1);
+  let completedInRound = $derived(nodeOutputs.filter(o => o.round === currentRound).length);
+  let isProcessing = $derived(status === 'running' && currentActivity !== null);
+  let isBetweenAgents = $derived(status === 'running' && currentActivity === null && nodeOutputs.length > 0);
+  let debateForStrip = $derived({ status, current_round: currentRound });
+
   function connectSSE(sid) {
     cleanupSSE = createWorkflowSSE(sid, {
+      onOpen: () => { isConnected = true; },
+      onClose: () => { isConnected = false; },
       onWorkflowStarted: () => {
         status = 'running';
+        workflowPhase = { type: 'workflow_started' };
+        startWorkflowTimer();
       },
       onNodeStart: (data) => {
         try {
@@ -254,6 +344,15 @@
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
           activityText = `${agentLabel} starting…`;
           nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
+          workflowPhase = {
+            type: 'agent_preparing',
+            phase: 'resolving_profile',
+            role: data.role,
+            round: data.round || currentRound,
+            agent_index: data.agent_index ?? 0,
+            agent_total: data.agent_total ?? 4,
+          };
+          if (!workflowTimer) startWorkflowTimer();
         } catch (e) { console.warn('[MvpDebateView] onNodeStart error:', e); }
       },
       onLLMCallStarted: (data) => {
@@ -261,6 +360,26 @@
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
           const llmName = getProfileName(data.llm_profile_id);
           activityText = `🧠 ${agentLabel} → ${llmName} (Round ${data.round || currentRound})…`;
+          currentActivity = {
+            role: data.role,
+            round: data.round || currentRound,
+            llm_profile_id: data.llm_profile_id,
+            model: data.model || '',
+            provider: data.provider || '',
+            agent_index: data.agent_index ?? 0,
+            agent_total: data.agent_total ?? 4,
+          };
+          workflowPhase = {
+            type: 'llm_call_started',
+            role: data.role,
+            model: data.model || '',
+            provider: data.provider || '',
+            round: data.round || currentRound,
+            agent_index: data.agent_index ?? 0,
+            agent_total: data.agent_total ?? 4,
+          };
+          stopWorkflowTimer();
+          startProcessingTimer();
         } catch (e) { console.warn('[MvpDebateView] onLLMCallStarted error:', e); }
       },
       onWebSearch: (data) => {
@@ -270,6 +389,9 @@
       },
       onNodeComplete: (data) => {
         try {
+          const tokensUsed = data.tokens_used || 0;
+          const model = currentActivity?.model || data.model || '';
+          const profile = currentActivity?.llm_profile_id || '';
           nodeOutputs = [...nodeOutputs, {
             nodeId: data.node_id,
             nodeType: data.node_type,
@@ -277,14 +399,21 @@
             content: data.content,
             durationMs: data.duration_ms,
             round: data.round,
-            tokensUsed: data.tokens_used || 0,
+            tokensUsed,
+            model,
+            profile,
           }];
           nodeStatuses = { ...nodeStatuses, [data.node_id]: 'completed' };
           if (data.consensus !== undefined) { consensus = data.consensus; hasReceivedConsensus = true; }
           if (data.round !== undefined) currentRound = data.round;
+          cumulativeTokens += tokensUsed;
           totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
-          activityText = `✓ ${agentLabel} completed (${formatDuration(data.duration_ms)}, ${data.tokens_used || 0} tokens)`;
+          activityText = `✓ ${agentLabel} completed (${formatDuration(data.duration_ms)}, ${tokensUsed} tokens)`;
+          currentActivity = null;
+          workflowPhase = null;
+          stopProcessingTimer();
+          stopWorkflowTimer();
         } catch (e) { console.warn('[MvpDebateView] onNodeComplete error:', e); }
       },
       onRoundUpdate: (data) => {
@@ -294,6 +423,10 @@
           hasReceivedConsensus = true;
         }
         totalTokens = data.total_tokens ?? totalTokens;
+        currentActivity = null;
+        workflowPhase = null;
+        stopProcessingTimer();
+        stopWorkflowTimer();
       },
       onConsensusReached: (data) => {
         if (data.score !== undefined && data.score !== null) {
@@ -306,12 +439,20 @@
         status = 'failed';
         stopTimer();
         activityText = '';
+        currentActivity = null;
+        workflowPhase = null;
+        stopProcessingTimer();
+        stopWorkflowTimer();
         nodeStatuses = { ...nodeStatuses, [data.node_id]: 'failed' };
       },
       onWorkflowComplete: (data) => {
         status = 'completed';
         stopTimer();
         activityText = '';
+        currentActivity = null;
+        workflowPhase = null;
+        stopProcessingTimer();
+        stopWorkflowTimer();
         if (data.final_consensus !== undefined) { consensus = data.final_consensus; hasReceivedConsensus = true; }
         // Proactively close SSE to prevent stale connections from freezing the UI
         if (cleanupSSE) { cleanupSSE(); cleanupSSE = null; }
@@ -427,6 +568,16 @@
     totalTokens = 0;
     expandedOutputs = new Set();
     activityText = '';
+    currentActivity = null;
+    isConnected = false;
+    cumulativeTokens = 0;
+    processingStartTime = null;
+    processingElapsed = 0;
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
+    workflowPhase = null;
+    workflowStartTime = null;
+    workflowElapsed = 0;
+    if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
     debateId = null;
 
     const profileMap = {};
@@ -535,6 +686,16 @@
     totalTokens = 0;
     expandedOutputs = new Set();
     activityText = '';
+    currentActivity = null;
+    isConnected = false;
+    cumulativeTokens = 0;
+    processingStartTime = null;
+    processingElapsed = 0;
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
+    workflowPhase = null;
+    workflowStartTime = null;
+    workflowElapsed = 0;
+    if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
     stopTimer();
   }
 
@@ -556,6 +717,8 @@
   $effect(() => {
     return () => {
       stopTimer();
+      if (processingTimer) clearInterval(processingTimer);
+      if (workflowTimer) clearInterval(workflowTimer);
       if (cleanupSSE) cleanupSSE();
       if (hitlPollTimer) clearInterval(hitlPollTimer);
     };
@@ -985,6 +1148,12 @@
       <div class="status-bar status-{status}">
         <span class="status-dot"></span>
         <span class="status-text">{status}</span>
+        {#if isConnected}
+          <span class="sse-badge" title="SSE connected">
+            <span class="sse-dot"></span>
+            <span class="sse-label">SSE</span>
+          </span>
+        {/if}
         {#if debateId}
           <span class="debate-id clickable" title="Debate ID: {debateId}" onclick={() => navigator.clipboard?.writeText(debateId)} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') navigator.clipboard?.writeText(debateId); }}>ID: {debateId}</span>
         {/if}
@@ -993,11 +1162,21 @@
         {/if}
       </div>
 
-      {#if activityText && status === 'running'}
-        <div class="activity-bar">
-          <span class="activity-spinner"></span>
-          <span class="activity-text">{activityText}</span>
-        </div>
+      {#if status === 'running'}
+        <DebateActivityStrip
+          currentDebate={debateForStrip}
+          {currentActivity}
+          {workflowPhase}
+          liveOutputs={nodeOutputs}
+          {isProcessing}
+          {isBetweenAgents}
+          {processingElapsed}
+          {workflowElapsed}
+          {cumulativeTokens}
+          {agentCount}
+          {activeAgentIndex}
+          {completedInRound}
+        />
       {/if}
 
       <div class="metrics-grid">
@@ -1084,40 +1263,98 @@
         <InteractionTimeline {debateId} />
       {/if}
 
-      {#if nodeOutputs.length > 0}
+      {#if nodeOutputs.length > 0 || status === 'running'}
         <div class="outputs-section">
           <h4 class="outputs-title">Agent Outputs ({nodeOutputs.length})</h4>
           <div class="outputs-list">
-            {#each nodeOutputs as output, idx}
-              {@const key = `output-${idx}`}
-              {@const isExpanded = expandedOutputs.has(key)}
-              {@const isLong = output.content?.length > 400}
-              <div class="output-item">
-                <div class="output-header">
-                  <span class="output-role">{output.role || output.nodeType}</span>
-                  <span class="output-meta">
-                    {#if output.round}Round {output.round} · {/if}
-                    {formatDuration(output.durationMs)} ·
-                    {output.tokensUsed || 0} tokens
-                  </span>
-                </div>
-                <div class="output-content markdown-rendered">
-                  {#if isLong && !isExpanded}
-                    {@html renderMarkdown(output.content.substring(0, 400) + '…')}
-                    <button class="expand-btn" onclick={() => expandedOutputs = new Set([...expandedOutputs, key])}>
-                      ▼ Show full response ({output.content.length} chars)
-                    </button>
-                  {:else}
-                    {@html renderMarkdown(output.content)}
-                    {#if isLong}
-                      <button class="expand-btn" onclick={() => { const next = new Set(expandedOutputs); next.delete(key); expandedOutputs = next; }}>
-                        ▲ Collapse
-                      </button>
-                    {/if}
-                  {/if}
+            {#each Object.entries(liveOutputsByRound) as [round, outputs]}
+              <div class="round-group">
+                <div class="round-label">Round {round}</div>
+                <div class="round-outputs">
+                  {#each outputs as output, i}
+                    {@const key = `out-r${output.round}-${output.role}-${i}`}
+                    {@const isExpanded = expandedOutputs.has(key)}
+                    {@const isLong = output.content?.length > 400}
+                    <div class="output-card border-l-4 {roleColor(output.role)} p-4">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                          <span class="font-semibold text-sm {roleHeaderColor(output.role)}">
+                            {roleEmoji(output.role)} {output.role}
+                          </span>
+                          {#if output.model}
+                            <span class="output-model">{output.model}</span>
+                          {:else if output.profile}
+                            <span class="output-model">{getProfileName(output.profile)}</span>
+                          {/if}
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                          {#if output.durationMs}
+                            <span class="font-mono">⏱ {formatElapsed(output.durationMs)}</span>
+                          {/if}
+                          <span>{output.tokensUsed || 0} tokens</span>
+                        </div>
+                      </div>
+                      <div class="text-sm text-gray-700 dark:text-gray-300">
+                        {#if isLong && !isExpanded}
+                          <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
+                          <button class="expand-btn" onclick={() => expandedOutputs = new Set([...expandedOutputs, key])}>
+                            ▼ Show full response ({output.content.length} chars)
+                          </button>
+                        {:else}
+                          <MarkdownRenderer content={output.content} />
+                          {#if isLong}
+                            <button class="expand-btn" onclick={() => { const next = new Set(expandedOutputs); next.delete(key); expandedOutputs = next; }}>
+                              ▲ Collapse
+                            </button>
+                          {/if}
+                        {/if}
+                      </div>
+                    </div>
+                  {/each}
                 </div>
               </div>
             {/each}
+
+            <!-- Thinking indicator (bouncing dots) -->
+            {#if currentActivity}
+              <div class="thinking-card border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <div class="flex items-center gap-2">
+                  <span class="animate-pulse w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span class="font-semibold text-sm text-blue-700 dark:text-blue-300">
+                    {roleEmoji(currentActivity.role)} {currentActivity.role}
+                  </span>
+                  <span class="text-xs text-blue-500 dark:text-blue-400">— Round {currentActivity.round} — thinking</span>
+                </div>
+                <div class="mt-2 flex gap-1">
+                  <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                  <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                  <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                </div>
+              </div>
+            {/if}
+
+            {#if nodeOutputs.length === 0 && !currentActivity}
+              <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-8">Waiting for agent outputs...</p>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Consensus progress bar -->
+      {#if hasReceivedConsensus}
+        <div class="consensus-bar-wrapper">
+          <div class="flex items-center justify-between mb-1">
+            <span class="consensus-label">Consensus</span>
+            <span class="consensus-pct">{(consensus * 100).toFixed(1)}%</span>
+          </div>
+          <div class="consensus-track">
+            <div
+              class="consensus-fill"
+              class:consensus-low={consensus < 0.5}
+              class:consensus-mid={consensus >= 0.5 && consensus < 0.8}
+              class:consensus-high={consensus >= 0.8}
+              style="width: {Math.max(2, consensus * 100)}%"
+            ></div>
           </div>
         </div>
       {/if}
@@ -1910,5 +2147,129 @@
     background: #14532d;
     border-color: #16a34a;
     color: #4ade80;
+  }
+
+  /* SSE connection indicator */
+  .sse-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #166534;
+    margin-left: 8px;
+  }
+  :global(.dark) .sse-badge {
+    background: #14532d;
+    border-color: #22c55e;
+    color: #bbf7d0;
+  }
+  .sse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 1.5s infinite;
+  }
+  .sse-label {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Output cards - round grouping */
+  .round-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .round-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 4px 10px;
+    border-radius: 4px;
+    align-self: flex-start;
+  }
+  :global(.dark) .round-label {
+    background: #374151;
+    color: #9ca3af;
+  }
+  .round-outputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .output-card {
+    border-radius: 8px;
+    background: white;
+  }
+  :global(.dark) .output-card {
+    background: #1f2937;
+  }
+  .output-model {
+    font-size: 11px;
+    font-family: monospace;
+    color: #9ca3af;
+  }
+
+  /* Thinking indicator card */
+  .thinking-card {
+    border-radius: 8px;
+  }
+
+  /* Consensus bar */
+  .consensus-bar-wrapper {
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+  :global(.dark) .consensus-bar-wrapper {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  .consensus-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+  }
+  :global(.dark) .consensus-label { color: #9ca3af; }
+  .consensus-pct {
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+    font-variant-numeric: tabular-nums;
+  }
+  :global(.dark) .consensus-pct { color: #e5e7eb; }
+  .consensus-track {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  :global(.dark) .consensus-track { background: #374151; }
+  .consensus-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .consensus-low { background: #ef4444; }
+  .consensus-mid { background: #f59e0b; }
+  .consensus-high { background: #22c55e; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
   }
 </style>
