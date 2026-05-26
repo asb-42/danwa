@@ -22,23 +22,40 @@
 
   const STORAGE_KEY = 'danwa.activeRenderJob';
 
-  // -- Style hint constants for help boxes --
-  const MIMO_STYLE_HINTS_EN = [
-    { keyword: 'calm, professional', desc: 'Ruhig, sachlich — für Analysen' },
-    { keyword: 'enthusiastic, energetic', desc: 'Lebhaft, energisch — für kreative Inhalte' },
-    { keyword: 'warm, friendly', desc: 'Warmherzig — für Erklärungen' },
-    { keyword: 'serious, authoritative', desc: 'Autoritär — für kritische Punkte' },
-    { keyword: 'conversational, casual', desc: 'Locker, gesprächig — für Diskussionen' },
-    { keyword: 'slow, educational', desc: 'Langsam, deutlich — für Bildungsinhalte' },
-  ];
-
-  const MIMO_STYLE_HINTS_ZH = [
-    { keyword: '平静专业的语气', desc: 'Ruhig, professionell — für Analysen' },
-    { keyword: '热情充满活力', desc: 'Lebhaft, energisch — für kreative Inhalte' },
-    { keyword: '温暖友好的语调', desc: 'Warmherzig — für Erklärungen' },
-    { keyword: '严肃权威的语气', desc: 'Autoritär — für kritische Punkte' },
-    { keyword: '自然随意的对话风格', desc: 'Locker — für Diskussionen' },
-    { keyword: '缓慢清晰的教学风格', desc: 'Langsam, deutlich — für Bildungsinhalte' },
+  // -- MiMo TTS Style Types (categorized reference) --
+  const MIMO_STYLE_TYPES = [
+    {
+      category: 'Basic Emotions',
+      items: ['Happy', 'Sad', 'Angry', 'Fearful', 'Amazed', 'Excited', 'Wronged', 'Calm', 'Indifferent'],
+    },
+    {
+      category: 'Complex Emotions',
+      items: ['Melancholy', 'Relieved', 'Helpless', 'Guilty', 'Jealous', 'Tired', 'Apprehensive', 'Emotional'],
+    },
+    {
+      category: 'Overall Tone',
+      items: ['Gentle', 'Cold', 'Lively', 'Serious', 'Lazy', 'Playful', 'Deep', 'Capable', 'Sharp'],
+    },
+    {
+      category: 'Timbre Positioning',
+      items: ['Magnetic', 'Mellow', 'Clear', 'Ethereal', 'Innocent', 'Old', 'Sweet', 'Hoarse', 'Elegant'],
+    },
+    {
+      category: 'Character Tone',
+      items: ['Clamp voice', 'Big Sister voice', 'Shota voice', 'Uncle voice', 'Taiwanese accent'],
+    },
+    {
+      category: 'Dialect',
+      items: ['Northeast dialect', 'Sichuan dialect', 'Henan dialect', 'Cantonese'],
+    },
+    {
+      category: 'Role-playing',
+      items: ['Sun Wukong', 'Lin Daiyu'],
+    },
+    {
+      category: 'Singing',
+      items: ['singing'],
+    },
   ];
 
   // State
@@ -74,14 +91,8 @@
       : null
   );
 
-  // Derived: which style hints to show
-  let activeStyleHints = $derived(
-    voiceEngine === 'mimo_tts' && voiceLanguage === 'zh'
-      ? MIMO_STYLE_HINTS_ZH
-      : voiceEngine === 'mimo_tts' && (!voiceLanguage || voiceLanguage === 'en')
-        ? MIMO_STYLE_HINTS_EN
-        : null
-  );
+  // Derived: show style type reference for MiMo
+  let showStyleTypes = $derived(voiceEngine === 'mimo_tts');
 
   // Load voices when TTS plugin is selected, engine changes, or language changes
   $effect(() => {
@@ -355,18 +366,23 @@
             </div>
           {/if}
 
-          <!-- Style hint help (MiMo only) -->
-          {#if activeStyleHints}
+          <!-- MiMo Style Type Reference (collapsible) -->
+          {#if showStyleTypes}
             <details class="group mt-3">
               <summary class="text-xs text-gray-500 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 list-none flex items-center gap-1 select-none">
                 <span class="transition-transform group-open:rotate-90 text-xs">▶</span>
-                <span class="font-medium">Style Hints für MiMo TTS ({voiceLanguage === 'zh' ? '中文' : 'English'})</span>
+                <span class="font-medium">MiMo TTS Style Types</span>
+                <span class="text-gray-400 ml-1">— Kategorie + Beispielwerte für default_style_hint</span>
               </summary>
-              <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {#each activeStyleHints as hint}
-                  <div class="flex items-start gap-2 p-1.5 rounded bg-gray-50 dark:bg-gray-800/50">
-                    <code class="shrink-0 text-xs px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">{hint.keyword}</code>
-                    <span class="text-xs text-gray-600 dark:text-gray-400">{hint.desc}</span>
+              <div class="mt-2 space-y-3">
+                {#each MIMO_STYLE_TYPES as group}
+                  <div>
+                    <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{group.category}</p>
+                    <div class="flex flex-wrap gap-1">
+                      {#each group.items as item}
+                        <code class="text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{item}</code>
+                      {/each}
+                    </div>
                   </div>
                 {/each}
               </div>
