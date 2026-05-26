@@ -186,6 +186,12 @@ class StartMvpDebateRequest(BaseModel):
         description="Include results from previous completed debates as RAG context",
     )
 
+    # --- Extra rounds ---
+    enable_extra_rounds: bool = Field(
+        default=False,
+        description="If true, allow requesting additional rounds when consensus is not reached",
+    )
+
 
 class StartMvpDebateResponse(BaseModel):
     """Response after starting an MVP debate."""
@@ -342,6 +348,8 @@ async def start_mvp_debate(
         "status": "running",
         "is_paused": False,
         "pause_event": get_pause_event(session_id),
+        "enable_extra_rounds": body.enable_extra_rounds,
+        "extension_granted": None,
     }
 
     set_session_status(session_id, "running")

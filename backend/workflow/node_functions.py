@@ -7,6 +7,7 @@ merges into the shared ``WorkflowState``.  Agent nodes resolve their
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from collections.abc import Callable
@@ -747,6 +748,69 @@ def moderator_node_factory(
         result["final_consensus"] = round(consensus, 2)
         # Increment current_round so the feedback router can cap at max_rounds
         result["current_round"] = next_round
+
+        # --- Extension request (extra rounds) for MVP debates ---
+        enable_extra = state.get("enable_extra_rounds", False)
+        if enable_extra and current_round >= max_rounds and current_round <= max_rounds + 2:
+            extension_granted = state.get("extension_granted")
+            if extension_granted is None and consensus < threshold:
+                debate_id = state.get("debate_id", "")
+                session_id = state.get("session_id", "")
+                project_id = state.get("project_id", "")
+                logger.info(
+                    "Moderator: requesting extension for debate %s (round %d/%d, consensus=%.2f)",
+                    debate_id,
+                    current_round,
+                    max_rounds,
+                    consensus,
+                )
+
+                # Publish SSE event for the frontend
+                await publish_async(
+                    session_id,
+                    "extension_request",
+                    {
+                        "type": "extension_request",
+                        "debate_id": debate_id,
+                        "session_id": session_id,
+                        "current_consensus": round(consensus, 3),
+                        "threshold": threshold,
+                        "current_round": current_round,
+                        "max_rounds": max_rounds,
+                    },
+                )
+
+                # Poll debate store for user decision (up to 5 minutes)
+                if debate_id:
+                    from backend.api.deps import get_debate_store_for_project
+                    from backend.persistence.project_store import ProjectStore
+                    from backend.workflow.workflow_runner import is_cancelled
+
+                    project_store = ProjectStore()
+                    try:
+                        debate_store = get_debate_store_for_project(project_id, project_store)
+                        poll_deadline = time.monotonic() + 300  # 5 min timeout
+                        while time.monotonic() < poll_deadline:
+                            if is_cancelled(session_id):
+                                logger.info("Extension poll cancelled for session %s", session_id)
+                                result["extension_granted"] = False
+                                break
+                            debate = debate_store.get(debate_id)
+                            if debate and debate.get("extension_granted") is not None:
+                                result["extension_granted"] = debate["extension_granted"]
+                                logger.info(
+                                    "Extension decision received: %s",
+                                    "granted" if result["extension_granted"] else "denied",
+                                )
+                                break
+                            await asyncio.sleep(2)
+                        else:
+                            # Timeout — treat as denied
+                            logger.info("Extension poll timed out for debate %s — denying", debate_id)
+                            result["extension_granted"] = False
+                    except Exception:
+                        logger.warning("Extension poll failed for debate %s", debate_id, exc_info=True)
+                        result["extension_granted"] = False
 
         logger.info(
             "Moderator (node %s, round %d): consensus=%.2f, next_round=%d, max_rounds=%d",

@@ -11,7 +11,7 @@ import { request } from './api.js';
  * Start executing a workflow definition.
  * @param {string} workflowId - The workflow definition ID.
  * @param {string} context - The debate topic / context.
- * @param {{ language?: string, projectId?: string, maxRounds?: number, threshold?: number }} [options]
+ * @param {{ language?: string, projectId?: string, maxRounds?: number, threshold?: number, documentIds?: string[], ragAutoRetrieve?: boolean, includeDebateResults?: boolean }} [options]
  * @returns {Promise<{ session_id: string, status: string }>}
  */
 export function startWorkflow(workflowId, context, options = {}) {
@@ -23,6 +23,9 @@ export function startWorkflow(workflowId, context, options = {}) {
       project_id: options.projectId || 'default',
       max_rounds: options.maxRounds || 10,
       threshold: options.threshold || 0.7,
+      document_ids: options.documentIds || [],
+      rag_auto_retrieve: options.ragAutoRetrieve || false,
+      include_debate_results: options.includeDebateResults || false,
     }),
   });
 }
@@ -95,6 +98,7 @@ export function startMvpDebate({
   documentIds = [],
   ragAutoRetrieve = false,
   includeDebateResults = false,
+  enableExtraRounds = false,
 }) {
   return request('/api/v1/workflow-exec/mvp/start', {
     method: 'POST',
@@ -113,6 +117,7 @@ export function startMvpDebate({
       document_ids: documentIds,
       rag_auto_retrieve: ragAutoRetrieve,
       include_debate_results: includeDebateResults,
+      enable_extra_rounds: enableExtraRounds,
     }),
   });
 }

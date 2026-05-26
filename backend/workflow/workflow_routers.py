@@ -61,7 +61,9 @@ def route_feedback(
     """Factory that returns a router for feedback (back) edges.
 
     Returns ``"continue"`` if the current round is below ``max_rounds``,
-    otherwise returns ``"exit"`` to break the loop.
+    or in the extension zone (``max_rounds + 2``) when ``enable_extra_rounds``
+    is True and ``extension_granted`` is also True.
+    Otherwise returns ``"exit"`` to break the loop.
 
     Args:
         max_rounds: Maximum number of rounds before forcing exit.
@@ -72,9 +74,30 @@ def route_feedback(
 
     def _router(state: WorkflowState) -> str:
         current_round = state.get("current_round", 1)
+        enable_extra = state.get("enable_extra_rounds", False)
+
+        # Normal round budget
         if current_round <= max_rounds:
             logger.info("Feedback loop: round %d <= max %d, continuing", current_round, max_rounds)
             return "continue"
+
+        # Extension zone — allow up to max_rounds + 2 if extension was granted
+        if enable_extra and current_round <= max_rounds + 2:
+            extension_granted = state.get("extension_granted")
+            if extension_granted is True:
+                logger.info(
+                    "Feedback loop: extra round %d (of max %d+2) granted, continuing",
+                    current_round,
+                    max_rounds,
+                )
+                return "continue"
+            logger.info(
+                "Feedback loop: extra round %d (of max %d+2) not granted, exiting",
+                current_round,
+                max_rounds,
+            )
+            return "exit"
+
         logger.info("Feedback loop: round %d > max %d, exiting", current_round, max_rounds)
         return "exit"
 

@@ -54,6 +54,7 @@
   let selectedDocumentIds = $state([]);
   let ragAutoRetrieve = $state(false);
   let includeDebateResults = $state(false);
+  let enableExtraRounds = $state(false);
 
   // Interjection
   let interjectionText = $state('');
@@ -461,6 +462,7 @@
         documentIds: selectedDocumentIds,
         ragAutoRetrieve,
         includeDebateResults,
+        enableExtraRounds,
       });
       sessionId = result.session_id;
       debateId = result.debate_id;
@@ -831,6 +833,23 @@
           </div>
         </div>
       {/if}
+
+      <!-- Extension / Extra Rounds -->
+      <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={enableExtraRounds}
+            class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm text-gray-700 dark:text-gray-300">
+            {t('debate.enableExtraRounds')}
+          </span>
+        </label>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
+          {t('debate.extensionRequest', { rounds: maxRounds, current: '…', threshold })}
+        </p>
+      </div>
 
       <div class="agent-nodes">
         {#each AGENTS as agent, idx}

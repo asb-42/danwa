@@ -166,6 +166,9 @@
           projectId: projectId || 'default',
           maxRounds: maxRounds,
           threshold: consensusThreshold,
+          documentIds: selectedDocumentIds,
+          ragAutoRetrieve: ragAutoRetrieve,
+          includeDebateResults: includeDebateResults,
         });
         caseText = '';
         selectedDocumentIds = [];

@@ -377,6 +377,9 @@
         language: params.language,
         maxRounds: params.maxRounds,
         threshold: params.consensusThreshold,
+        documentIds: params.documentIds || [],
+        ragAutoRetrieve: params.ragAutoRetrieve ?? false,
+        includeDebateResults: params.includeDebateResults ?? false,
       });
 
       // Close run dialog, open execution panel with session ID
@@ -386,6 +389,9 @@
         language: params.language,
         maxRounds: params.maxRounds,
         threshold: params.consensusThreshold,
+        documentIds: params.documentIds || [],
+        ragAutoRetrieve: params.ragAutoRetrieve ?? false,
+        includeDebateResults: params.includeDebateResults ?? false,
       };
       executionSessionId = result.session_id;
       showExecutionPanel = true;
