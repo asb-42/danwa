@@ -72,6 +72,7 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 - **Tone Profiles** - Configure debate tone and style for different use cases
 - **Role Definitions** - Define custom agent roles with specific behaviors and constraints
 - **Workflow Templates** - Pre-built workflow templates for common use cases
+- **Per-Agent LLM Parameters** - Override temperature, top_p, top_k, frequency_penalty, presence_penalty per agent in a blueprint
 - **Diff & Replay Views** - Compare debate sessions and replay past executions with timeline navigation
 
 ## Technology Stack

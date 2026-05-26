@@ -215,6 +215,7 @@ def _serialize_bundle(b: AgentBundle) -> dict:
         "persona_id": b.persona_id,
         "tags": b.tags,
         "is_active": b.is_active,
+        "model_params": b.model_params,
     }
     if b.composition:
         d["composition"] = b.composition.model_dump()

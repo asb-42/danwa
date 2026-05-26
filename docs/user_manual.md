@@ -379,6 +379,48 @@ Access via the Config navigation item:
 | **Prompt Variant** | Prompt strategy | `default` |
 | **Language** | UI & debate language | 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) |
 
+### MVP Debate View
+
+The MVP (Minimum Viable Product) debate view provides a lightweight, focused debate interface with real-time feedback:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ⚡ MVP Debate [SSE ●]                              │
+├─────────────────────────────────────────────────────┤
+│  Topic: Analyze the impact of AI on education...   │
+├─────────────────────────────────────────────────────┤
+│  Round 1/3                                         │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 🟢 Strategist (Claude 3.6 Sonnet)          │   │
+│  │ ─────────────────────────────────────────── │   │
+│  │ [Analysis output in Markdown...]            │   │
+│  └─────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 🔴 Critic (GPT-4o)                          │   │
+│  │ ─────────────────────────────────────────── │   │
+│  │ [Critique output in Markdown...]            │   │
+│  └─────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 🔵 Optimizer (Grok 4.2)                     │   │
+│  │ ─────────────────────────────────────────── │   │
+│  │ ⏳ Thinking...                              │   │
+│  └─────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────┤
+│  Consensus: ████████████░░░░░░ 62%                  │
+│  Tokens: 1,245 in / 3,890 out                       │
+└─────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- **Role-colored cards**: Each agent has a distinct color (green=strategist, red=critic, blue=optimizer, orange=moderator)
+- **Activity strip**: Per-agent progress with role verb animation (Analyzing..., Critiquing..., Synthesizing..., Scoring...)
+- **Thinking indicator**: Pulsing dot + bouncing dots while agent generates
+- **Consensus bar**: Color-coded progress bar (red <50%, amber 50–80%, green ≥80%)
+- **SSE indicator**: Green pulsing dot when connected to real-time stream
+- **Markdown rendering**: Agent outputs rendered as formatted Markdown
+- **Timer**: Processing timer per round/agent
+- **Token counter**: Real-time token usage display
+
 ### Audit View
 
 View complete audit trails for past sessions:
@@ -956,6 +998,22 @@ The Blueprint System is a visual workflow editor that allows you to create, mana
 ### Running a Blueprint
 
 Once designed, click **Run** to execute the workflow. The result will appear in a new tab.
+
+### Per-Agent LLM Parameters
+
+Each agent blueprint can now specify **per-agent LLM inference overrides** that fine-tune generation behavior independently per agent in a workflow:
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `temperature` | float | Sampling temperature (0.0–2.0) | `0.9` for creative agents |
+| `top_p` | float | Nucleus sampling threshold | `0.95` |
+| `top_k` | int | Top-K sampling | `40` |
+| `frequency_penalty` | float | Penalize repetition (-2.0–2.0) | `0.3` |
+| `presence_penalty` | float | Penalize topic reuse (-2.0–2.0) | `0.2` |
+| `seed` | int | Random seed for reproducibility | `42` |
+| `stop` | string/list | Stop sequences | `["\n\n"]` |
+
+These overrides are applied **per agent** at inference time — each agent in the same workflow can have different parameters. If left empty, the LLM profile defaults are used.
 
 ### Advanced Features
 

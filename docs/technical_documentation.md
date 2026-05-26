@@ -686,16 +686,43 @@ initialize → run_agent ⟲ (next_agent / check_consensus)
 
 ### 5.4 LLM Service (`backend/services/llm_service.py`)
 
-The LLM service supports two routing modes:
+The `generate()` method is the main entry point and supports **extra_kwargs** — a whitelist-based mechanism for per-call LLM parameter overrides from Agent Bundles:
+
+```python
+async def generate(
+    self,
+    prompt: str,
+    system_prompt: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    tools: list[dict[str, Any]] | None = None,
+    extra_kwargs: dict[str, Any] | None = None,  # Per-call LLM overrides
+) -> GenerationResult
+```
+
+The `extra_kwargs` dict is filtered against an **allowed whitelist** before being merged into the payload. Only explicitly permitted keys can override LLM profile defaults:
+
+```python
+allowed = {"temperature", "top_p", "top_k", "frequency_penalty",
+           "presence_penalty", "seed", "stop"}
+for k, v in extra_kwargs.items():
+    if k in allowed and v is not None:
+        payload[k] = v
+```
+
+This prevents arbitrary parameter injection through bundles while still allowing fine-grained control. The `temperature` key in `extra_kwargs` takes precedence over the dedicated `temperature` parameter (last write wins in kwargs merge).
+
+The service supports the following routing modes:
 
 #### 5.4.1 Local Providers (OpenAI-compatible endpoints)
 
-Direct HTTP calls to local LLM servers (LM Studio, Ollama, etc.):
+Direct HTTP calls to local LLM servers (LM Studio, Ollama, etc.), passing `extra_kwargs` into the request payload:
 
 ```python
-async def _generate_local(self, messages, temperature, max_tokens):
+async def _generate_local(self, messages, temperature, max_tokens, extra_kwargs=None):
     url = f"{self._profile.api_base}/v1/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    # extra_kwargs merged into payload (whitelist-filtered)
     response = await httpx.AsyncClient().post(url, json=payload, headers=headers)
     return GenerationResult(content=..., tokens_in=..., tokens_out=...)
 ```
@@ -705,7 +732,7 @@ async def _generate_local(self, messages, temperature, max_tokens):
 Uses LiteLLM for unified access to OpenRouter, OpenAI, Anthropic, etc.:
 
 ```python
-async def _generate_litellm(self, messages, temperature, max_tokens):
+async def _generate_litellm(self, messages, temperature, max_tokens, extra_kwargs=None):
     model_name = f"{provider}/{model}"  # e.g., "openrouter/anthropic/claude-3.5-sonnet"
     response = await litellm.acompletion(
         model=model_name,
@@ -713,11 +740,16 @@ async def _generate_litellm(self, messages, temperature, max_tokens):
         temperature=temperature,
         max_tokens=max_tokens,
         api_key=os.getenv(self._profile.api_key_env),
+        **(extra_kwargs or {}),  # Whitlelist-filtered overrides
     )
     return GenerationResult(...)
 ```
 
-#### 5.4.3 GenerationResult
+#### 5.4.3 Cloudflare Provider
+
+Accepts `extra_kwargs` with the same whitelist mechanism.
+
+#### 5.4.4 GenerationResult
 
 ```python
 @dataclass
@@ -728,6 +760,8 @@ class GenerationResult:
     duration_ms: int = 0
     model: str = ""
 ```
+
+**Note**: `generate_with_fallback()` does NOT pass `extra_kwargs` — A2A fallback calls use profile defaults only.
 
 ---
 
@@ -845,6 +879,7 @@ The frontend is built with **Svelte 5** using runes (`$state`, `$derived`, `$eff
 |------|------|---------|
 | Dashboard | `Dashboard.svelte` | Session history, quick actions, stats |
 | Debate | `DebateView.svelte` | New debate form, live workflow visualization, results |
+| MVP Debate | `MvpDebateView.svelte` | Lightweight debate view with role-colored cards, activity strip, consensus bar, SSE status |
 | Audit | `AuditView.svelte` | Audit trail viewer, timeline, raw JSONL |
 | Config | `ConfigView.svelte` | LLM profiles, agent personas, prompt variants |
 | Projects | `ProjectsView.svelte` | Project management, isolation settings |
@@ -859,6 +894,7 @@ The frontend is built with **Svelte 5** using runes (`$state`, `$derived`, `$eff
 | WorkflowGraph | `WorkflowGraph.svelte` | Interactive debate graph visualization |
 | ConsensusPanel | `ConsensusPanel.svelte` | Real-time consensus score display |
 | DebateTimeline | `DebateTimeline.svelte` | Round-by-round timeline |
+| DebateActivityStrip | `DebateActivityStrip.svelte` | Per-agent activity progress, role verb animation, model/provider info, token counter |
 | AuditTrail | `AuditTrail.svelte` | Audit event list with filtering |
 | DocumentUploader | `DocumentUploader.svelte` | Drag-and-drop file upload |
 | MarkdownRenderer | `MarkdownRenderer.svelte` | Renders Markdown with `marked` |
@@ -1477,7 +1513,7 @@ Each backup contains a `metadata.json` file:
     "total_bytes": 83886080,
     "paths_included": ["data/", "config/"],
     "db_schema_versions": {
-        "audit.db": "v25",
+        "audit.db": "v29",
         "blueprints.db": "v1"
     },
     "settings": {
@@ -1649,14 +1685,114 @@ The Blueprint System is a visual workflow editor that allows users to create, ma
 ```
 backend/blueprints/
 ├── __init__.py
+├── bundle_io.py          # Bundle import/export (supports model_params)
 ├── canvas_to_workflow.py
-├── migrations.py
-├── models.py
-├── repository.py
-└── workflow_models.py
+├── compiler.py
+├── importer.py
+├── migrations.py         # Schema migrations (V29: model_params_json)
+├── models.py             # AgentBundle, ResolvedBundle (with model_params)
+├── repository.py         # CRUD with model_params_json serialization
+├── resolver.py           # Resolves bundles (copies model_params → ResolvedBundle)
+├── workflow_models.py
+└── ...
 ```
 
-### 11.4 Usage
+### 11.4 Per-Bundle LLM Parameters (`model_params`)
+
+Each `AgentBundle` can specify **per-bundle LLM inference overrides** via the `model_params` field. These override the LLM profile defaults at inference time for that specific agent, enabling fine-grained control of generation behavior per agent in a workflow.
+
+#### 11.4.1 Data Flow
+
+```
+AgentBundle.model_params
+    ↓
+BundleResolver.resolve() → ResolvedBundle.model_params
+    ↓
+WorkflowCompiler → ResolvedAgentConfig.model_params
+    ↓
+agent_node_factory() → extra_kwargs
+    ↓
+LLMService.generate(extra_kwargs=...)
+    ↓
+_generate_local / _generate_litellm / _generate_cloudflare
+    (whitelist-filtered into request payload)
+```
+
+#### 11.4.2 Supported Parameters
+
+Only the following keys are allowed through the whitelist in `LLMService`:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `temperature` | float | Sampling temperature (0.0–2.0) — overrides both the dedicated param and profile default |
+| `top_p` | float | Nucleus sampling threshold (0.0–1.0) |
+| `top_k` | int | Top-K sampling |
+| `frequency_penalty` | float | Frequency penalty (-2.0–2.0) |
+| `presence_penalty` | float | Presence penalty (-2.0–2.0) |
+| `seed` | int | Random seed for reproducible generation |
+| `stop` | str \| list[str] | Stop sequences |
+
+Any other keys in `model_params` are silently ignored at the LLM layer.
+
+#### 11.4.3 AgentBundle Model
+
+```python
+class AgentBundle(BaseModel):
+    # ... standard fields ...
+    model_params: dict = Field(
+        default_factory=dict,
+        description="LLM inference overrides (temperature, top_p, "
+                    "top_k, frequency_penalty, presence_penalty, etc.)",
+    )
+```
+
+#### 11.4.4 ResolvedAgentConfig
+
+```python
+@dataclass
+class ResolvedAgentConfig:
+    # ... standard fields ...
+    model_params: dict = field(default_factory=dict)
+```
+
+#### 11.4.5 Bundle Profile JSON Format
+
+When defining bundle profiles (e.g., in `modules/agent-*/` or via import/export), the `model_params` field is optional:
+
+```json
+{
+    "id": "my-bundle",
+    "name": "Creative Strategist",
+    "model_params": {
+        "temperature": 0.9,
+        "top_p": 0.95,
+        "frequency_penalty": 0.3
+    }
+}
+```
+
+If omitted or empty (`{}`), the LLM profile defaults are used with no overrides.
+
+#### 11.4.6 Persistence
+
+- **Database**: Stored as JSON text in the `model_params_json` column of `agent_bundles` (migration V29)
+- **Repository**: `save_bundle()` serializes via `json.dumps()`, `_row_to_bundle()` deserializes via `json.loads()`
+- **Import/Export**: `bundle_io.py` serializes `model_params` in export and reads `model_params` on import
+
+#### 11.4.7 Workflow Paths
+
+Both workflow paths pass `model_params` through to `LLMService.generate()`:
+
+- **Old workflow** (`nodes.py`): `agent["model_params"]` → `extra_kwargs=agent.get("model_params")`
+- **New workflow** (`node_functions.py`): `resolved_config["model_params"]` → `agent_node_factory()` extracts `model_params` and passes as `extra_kwargs` to `generate()`
+
+#### 11.4.8 Important Notes
+
+- `generate_with_fallback()` does NOT pass `extra_kwargs` — fallback calls use profile defaults
+- `_generate_a2a()` does NOT accept `extra_kwargs` — A2A protocol nodes cannot receive per-bundle overrides (no A2A bundles exist yet)
+- The `temperature` parameter via `extra_kwargs` takes precedence over both the dedicated `temperature` parameter and the LLM profile default
+
+### 11.5 Usage
 
 Blueprints can be created via the frontend or API. The API endpoints are defined in `backend/api/routers/blueprints.py` (not shown). For detailed API reference, see Section 16.
 ## 11b. Module System
@@ -1913,6 +2049,79 @@ backend/
 
 The assistant uses the default LLM profile from the system settings. Tools can be enabled or disabled per session. The assistant memory and context settings can be adjusted in the Assistant section of the Application Settings.
 ## 14. Data Models & Schemas
+
+### 14.0 Blueprint Models (`backend/blueprints/models.py`)
+
+#### 14.0.1 AgentBundle
+
+The `AgentBundle` is the composite model that ties LLM profile, role type, prompt, and tone together for a single agent in a workflow. It now supports per-bundle LLM inference overrides:
+
+```python
+class AgentBundle(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    llm_profile_id: str
+    role_type_id: str
+    role_definition_id: str | None = None
+    prompt_template_id: str | None = None
+    tone_profile_id: str | None = None
+    persona_id: str | None = None
+    composition: BundleComposition | None = None
+    model_params: dict = Field(
+        default_factory=dict,
+        description="LLM inference overrides (temperature, top_p, "
+                    "top_k, frequency_penalty, presence_penalty, etc.)",
+    )
+    tags: list[str] = Field(default_factory=list)
+    is_active: bool = True
+```
+
+#### 14.0.2 ResolvedBundle
+
+Produced by `BundleResolver.resolve()` — contains all referenced entities inline, including resolved LLM parameters:
+
+```python
+class ResolvedBundle(BaseModel):
+    bundle_id: str
+    bundle_name: str
+    llm_profile: BlueprintLLMProfile
+    role_type: RoleType
+    role_definition: RoleDefinition | None = None
+    prompt_template: PromptTemplate | None = None
+    tone_profile: ToneProfile | None = None
+    system_prompt: str = ""
+    model_params: dict = Field(
+        default_factory=dict,
+        description="LLM inference overrides (temperature, top_p, etc.)",
+    )
+```
+
+#### 14.0.3 ResolvedAgentConfig
+
+Used by the `WorkflowCompiler` to carry resolved configuration to agent node functions:
+
+```python
+@dataclass
+class ResolvedAgentConfig:
+    node_id: str
+    blueprint_id: str
+    blueprint_name: str
+    llm_profile_id: str
+    llm_model: str
+    role_definition_id: str
+    role: str
+    prompt_template_id: str | None = None
+    role_type_name: str = ""
+    role_type_icon: str = "👤"
+    role_type_color: str = "#8b5cf6"
+    default_max_rounds: int = 5
+    default_consensus_threshold: float = 0.9
+    argumentation_pattern: str = ""
+    mode: str = ""
+    system_prompt: str = ""
+    model_params: dict = field(default_factory=dict)
+```
 
 ### 14.1 Pydantic Schemas (`backend/models/schemas.py`)
 
