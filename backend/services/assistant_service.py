@@ -417,6 +417,7 @@ class AssistantService:
                     temperature=0.7,
                     max_tokens=2000,
                     tools=tool_defs if tool_defs else None,
+                    context="Assistant",
                 )
             except Exception as e:
                 logger.error(f"LLM call failed: {e}", exc_info=True)

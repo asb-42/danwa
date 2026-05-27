@@ -29,6 +29,7 @@ class LLMCall:
     duration_ms: int = 0
     status: str = "running"  # "running" | "completed" | "failed"
     error: str = ""
+    context: str = ""  # e.g. "Debate", "Translate", "TTS"
 
 
 class LLMActivityTracker:
@@ -51,8 +52,15 @@ class LLMActivityTracker:
         model: str,
         provider: str = "",
         session_id: str = "",
+        context: str = "",
     ) -> str:
         """Record the start of an LLM call.
+
+        Args:
+            model: Model name.
+            provider: Provider identifier.
+            session_id: Optional session ID for token tracking.
+            context: What this call is for (e.g. "Debate", "Translate", "TTS").
 
         Returns:
             A unique call_id for this invocation.
@@ -65,6 +73,7 @@ class LLMActivityTracker:
                 model=model,
                 provider=provider,
                 started_at=time.monotonic(),
+                context=context,
             )
             self._active[call_id] = call
             if session_id:
@@ -119,6 +128,7 @@ class LLMActivityTracker:
                         "call_id": call.call_id,
                         "model": call.model,
                         "provider": call.provider,
+                        "context": call.context,
                         "elapsed_s": round(elapsed_s, 1),
                     }
                 )

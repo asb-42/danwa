@@ -228,6 +228,7 @@ Respond with ONLY a valid JSON object:
                 system_prompt="You are a translation quality evaluator. Only respond with valid JSON.",
                 temperature=0.1,
                 max_tokens=256,
+                context="Quality Check",
             )
             import re
 
@@ -406,6 +407,7 @@ Respond with ONLY a valid JSON object:
                                 f"Preserve technical terms and placeholder variables.",
                                 temperature=0.3,
                                 max_tokens=max(512, len(source_content) // 2),
+                                context="Translate",
                             )
                             if forward_result and forward_result.content.strip():
                                 break
@@ -445,6 +447,7 @@ Respond with ONLY a valid JSON object:
                             system_prompt="You are a professional translator translating back to English for quality verification.",
                             temperature=0.3,
                             max_tokens=max(512, len(translated_content) // 2),
+                            context="Back-Translate",
                         )
                         back_translation = back_result.content.strip()
 

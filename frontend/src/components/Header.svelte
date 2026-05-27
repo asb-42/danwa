@@ -101,7 +101,10 @@
           <span class="llm-pulse"></span>
           <span class="llm-text">
             {#if primaryActive}
-              {primaryActive.model}
+              {#if primaryActive.context}
+                <span class="llm-context">{primaryActive.context}</span>
+              {/if}
+              <span class="llm-model">{primaryActive.model}</span>
               <span class="llm-elapsed">· {fmtElapsed(primaryActive.elapsed_s)}</span>
             {:else}
               Contacting LLM…
@@ -231,10 +234,7 @@
     border: 1px solid #bbf7d0;
     color: #166534;
     transition: all 0.3s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 400px;
+    max-width: 600px;
   }
 
   .llm-activity.active {
@@ -316,8 +316,21 @@
 
   .llm-text {
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .llm-context {
+    font-weight: 600;
+    opacity: 0.9;
+  }
+
+  .llm-model {
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 300px;
   }
 
   .llm-elapsed {
@@ -380,7 +393,10 @@
 
   @media (max-width: 900px) {
     .llm-activity {
-      max-width: 200px;
+      max-width: 350px;
+    }
+    .llm-model {
+      max-width: 160px;
     }
   }
 

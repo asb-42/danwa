@@ -75,6 +75,7 @@ class LLMService:
         max_tokens: int | None = None,
         tools: list[dict[str, Any]] | None = None,
         extra_kwargs: dict[str, Any] | None = None,
+        context: str = "",
     ) -> GenerationResult:
         """Generate text using the configured LLM.
 
@@ -120,6 +121,7 @@ class LLMService:
         call_id = await llm_activity.start_call(
             model=model_name,
             provider=provider_name,
+            context=context,
         )
 
         try:
@@ -592,6 +594,7 @@ class LLMService:
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        context: str = "",
     ) -> GenerationResult:
         """Synchronous wrapper around async generate().
 
@@ -605,7 +608,7 @@ class LLMService:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(self.generate(prompt, system_prompt, temperature, max_tokens))
+                return loop.run_until_complete(self.generate(prompt, system_prompt, temperature, max_tokens, context=context))
             finally:
                 loop.close()
 

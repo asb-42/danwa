@@ -223,6 +223,7 @@ class MiMoTTSRenderer:
         call_id = await llm_activity.start_call(
             model=self._model,
             provider="xiaomi_mimo",
+            context="TTS",
         )
 
         try:

@@ -582,6 +582,7 @@ class UITranslationService:
                 system_prompt=system_prompt,
                 temperature=0.2,
                 max_tokens=thinking_budget,
+                context="Translate",
             )
             translated = result.content.strip()
             if not translated:

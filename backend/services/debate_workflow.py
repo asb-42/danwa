@@ -455,6 +455,7 @@ async def generate_debate_title(
             system_prompt=system_prompt,
             temperature=0.1,
             max_tokens=100,
+            context="Debate",
             stop=["\n\n", "---", "Titel:", "Title:"],
         )
 
