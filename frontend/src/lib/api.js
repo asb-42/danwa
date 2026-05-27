@@ -385,6 +385,14 @@ export function addDocumentToRAG(documentId) {
   });
 }
 
+export function analyzeDocuments() {
+  return request('/api/v1/dms/analyze', { method: 'POST' });
+}
+
+export function getAnalysis() {
+  return request('/api/v1/dms/analyze');
+}
+
 export function removeDocumentFromRAG(documentId) {
   return request(`/api/v1/dms/documents/${documentId}/rag`, {
     method: 'DELETE',

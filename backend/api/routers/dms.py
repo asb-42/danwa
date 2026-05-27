@@ -7,7 +7,14 @@ import tempfile
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from backend.api.deps import get_project_id, get_project_store
+from backend.api.deps import get_profile_service_for_project, get_project_id, get_project_store
+from backend.services.dms.document_analyzer import (
+    analyze_documents as run_document_analysis,
+)
+from backend.services.dms.document_analyzer import (
+    load_analysis,
+    save_analysis,
+)
 from backend.services.dms.service import get_dms_for_project
 
 logger = logging.getLogger(__name__)
@@ -267,3 +274,62 @@ def ocr_status():
         logger.debug("Tesseract check failed: %s", e)
 
     return {"available": False, "engine": None}
+
+
+@router.post("/analyze")
+def analyze_documents(
+    project_id: str = Depends(get_project_id),
+    project_store=Depends(get_project_store),
+):
+    """Analyze all documents in the project and produce a structured case analysis.
+
+    Uses the utility LLM to summarize, extract key facts, parties,
+    timeline, and issues from all uploaded documents.
+    """
+    try:
+        dms = get_dms_for_project(project_id, project_store=project_store)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    documents = dms.list_documents(project_id)
+    if not documents:
+        raise HTTPException(status_code=400, detail="No documents to analyze")
+
+    document_texts = []
+    for doc in documents:
+        content = dms.get_document_content(doc["id"])
+        text = (content or {}).get("text_content", "")
+        if text:
+            document_texts.append({"filename": doc.get("filename", "unknown"), "text": text})
+
+    if not document_texts:
+        raise HTTPException(status_code=400, detail="No extractable text found in documents")
+
+    profile_service = get_profile_service_for_project(project_id, project_store)
+
+    analysis = run_document_analysis(document_texts, profile_service=profile_service)
+    if "error" in analysis:
+        raise HTTPException(status_code=500, detail=analysis["error"])
+
+    project_dir = project_store.get_project_dir(project_id)
+    save_analysis(project_dir, analysis)
+
+    return {"status": "ok", "analysis": analysis}
+
+
+@router.get("/analyze")
+def get_analysis(
+    project_id: str = Depends(get_project_id),
+    project_store=Depends(get_project_store),
+):
+    """Get the stored document analysis for the current project."""
+    project = project_store.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project_dir = project_store.get_project_dir(project_id)
+    analysis = load_analysis(project_dir)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="No analysis found. Run analysis first.")
+
+    return {"status": "ok", "analysis": analysis}

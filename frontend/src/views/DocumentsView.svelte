@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { activeProject } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis } from '../lib/api.js';
 
   let { navigate } = $props();
 
@@ -284,6 +284,41 @@
     }
   }
 
+  // Analysis tab
+  let activeTab = $state('documents');
+  let analysis = $state(null);
+  let analysisLoading = $state(false);
+  let analysisError = $state('');
+
+  async function loadAnalysis() {
+    analysisLoading = true;
+    analysisError = '';
+    analysis = null;
+    try {
+      const res = await getAnalysis();
+      analysis = res.analysis;
+    } catch (e) {
+      analysisError = e.message;
+      analysis = null;
+    } finally {
+      analysisLoading = false;
+    }
+  }
+
+  async function runAnalysis() {
+    analysisLoading = true;
+    analysisError = '';
+    analysis = null;
+    try {
+      const res = await analyzeDocuments();
+      analysis = res.analysis;
+    } catch (e) {
+      analysisError = e.message;
+    } finally {
+      analysisLoading = false;
+    }
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return '—';
     try {
@@ -318,8 +353,19 @@
     <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
       {t('documents.title')}
     </h1>
+    <div class="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+      <button
+        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {activeTab === 'documents' ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}"
+        onclick={() => activeTab = 'documents'}
+      >📄 Documents</button>
+      <button
+        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {activeTab === 'analysis' ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}"
+        onclick={() => { activeTab = 'analysis'; loadAnalysis(); }}
+      >📊 Analysis</button>
+    </div>
   </div>
 
+{#if activeTab === 'documents'}
   {#if error}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300" role="alert">
       {error}
@@ -557,6 +603,143 @@
       </table>
     </div>
   {/if}
+
+{:else}
+  <!-- Analysis Tab -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-gray-800 dark:text-white">📊 Case Analysis</h2>
+      {#if analysis}
+        <button
+          class="px-3 py-1.5 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+          onclick={runAnalysis}
+          disabled={analysisLoading}
+        >🔄 Re-analyze</button>
+      {/if}
+    </div>
+
+    {#if !analysis && !analysisLoading}
+      <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+        <p class="text-4xl mb-3">📊</p>
+        <p class="font-medium mb-1">No analysis yet</p>
+        <p class="text-sm mb-4">Analyze all documents in this project to get a structured case summary for the debate.</p>
+        <button
+          class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+          onclick={runAnalysis}
+          disabled={analysisLoading}
+        >🚀 Analyze documents</button>
+      </div>
+    {/if}
+
+    {#if analysisLoading && !analysis}
+      <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+        <span class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block mb-3"></span>
+        <p>Analyzing documents…</p>
+        <p class="text-sm mt-1">This may take a moment depending on document volume.</p>
+      </div>
+    {/if}
+
+    {#if analysis}
+      <div class="space-y-4">
+        <!-- Case Summary -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📋 Case Summary</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{analysis.case_summary || '—'}</div>
+        </div>
+
+        <!-- Key Facts -->
+        {#if analysis.key_facts?.length}
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">🔑 Key Facts</h3>
+            <ul class="list-disc list-inside space-y-1 text-sm text-gray-700 dark:text-gray-300">
+              {#each analysis.key_facts as fact}
+                <li>{fact}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+
+        <!-- Parties -->
+        {#if analysis.parties?.length}
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">👥 Parties</h3>
+            <div class="grid gap-3 sm:grid-cols-2">
+              {#each analysis.parties as party}
+                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                  <p class="font-medium text-sm text-gray-800 dark:text-gray-200">{party.name}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{party.role}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400">{party.positions}</p>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Timeline -->
+        {#if analysis.timeline?.length}
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📅 Timeline</h3>
+            <div class="space-y-2">
+              {#each analysis.timeline as entry}
+                <div class="flex gap-3 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                  <span class="text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap mt-0.5">{entry.date}</span>
+                  <span class="text-sm text-gray-700 dark:text-gray-300">{entry.event}</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Key Issues -->
+        {#if analysis.key_issues?.length}
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">⚡ Key Issues</h3>
+            <ul class="list-disc list-inside space-y-1 text-sm text-gray-700 dark:text-gray-300">
+              {#each analysis.key_issues as issue}
+                <li>{issue}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+
+        <!-- Document Summaries -->
+        {#if analysis.documents?.length}
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📄 Document Summaries</h3>
+            <div class="space-y-3">
+              {#each analysis.documents as d}
+                <details class="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <summary class="px-3 py-2 text-sm font-medium text-gray-800 dark:text-gray-200 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">{d.filename}</summary>
+                  <div class="px-3 pb-3">
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mt-2">{d.summary}</p>
+                    {#if d.key_excerpts?.length}
+                      <div class="mt-2 space-y-1">
+                        {#each d.key_excerpts as excerpt}
+                          <blockquote class="border-l-2 border-amber-400 pl-3 text-xs text-gray-600 dark:text-gray-400 italic">"{excerpt}"</blockquote>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                </details>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Metadata -->
+        {#if analysis._model}
+          <div class="text-xs text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700 pt-3 mt-4">
+            Analyzed by {analysis._model} · {analysis._tokens_out || '?'} tokens · {(analysis._duration_ms / 1000).toFixed(1)}s
+          </div>
+        {/if}
+      </div>
+    {/if}
+
+    {#if analysisError}
+      <div class="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">{analysisError}</div>
+    {/if}
+  </div>
+{/if}
 </div>
 
 <!-- Document Viewer Modal -->
