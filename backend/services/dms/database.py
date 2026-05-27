@@ -48,6 +48,7 @@ class DMSDB:
                 word_count INTEGER,
                 char_count INTEGER,
                 uploaded_at TEXT,
+                updated_at TEXT,
                 ocr_used INTEGER DEFAULT 0,
                 metadata_json TEXT,
                 FOREIGN KEY(project_id) REFERENCES projects(id)
@@ -85,6 +86,8 @@ class DMSDB:
             self.conn.execute("ALTER TABLE documents ADD COLUMN original_filename TEXT")
         if "file_size" not in existing_cols:
             self.conn.execute("ALTER TABLE documents ADD COLUMN file_size INTEGER DEFAULT 0")
+        if "updated_at" not in existing_cols:
+            self.conn.execute("ALTER TABLE documents ADD COLUMN updated_at TEXT")
 
     # -- projects --
 
@@ -140,8 +143,8 @@ class DMSDB:
         self.conn.execute(
             """INSERT INTO documents
             (id, project_id, filename, original_filename, file_path, file_type, file_size,
-             page_count, word_count, char_count, uploaded_at, ocr_used, metadata_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             page_count, word_count, char_count, uploaded_at, updated_at, ocr_used, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 doc_id,
                 project_id,
@@ -153,6 +156,7 @@ class DMSDB:
                 page_count,
                 word_count,
                 char_count,
+                now,
                 now,
                 int(ocr_used),
                 metadata_json,

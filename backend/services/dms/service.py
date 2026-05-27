@@ -276,11 +276,21 @@ class DMS:
 
         # Re-chunk and re-index
         chunk_ids = self.rag_pipeline.process_document(document_id, text)
+
+        # Update timestamps
+        now = __import__("datetime").datetime.now().isoformat()
+        self.db.conn.execute(
+            "UPDATE documents SET updated_at = ?, word_count = ?, char_count = ? WHERE id = ?",
+            (now, len(text.split()), len(text), document_id),
+        )
+        self.db.conn.commit()
+
         return {
             "document_id": document_id,
             "chunk_count": len(chunk_ids),
             "char_count": len(text),
             "word_count": len(text.split()),
+            "updated_at": now,
         }
 
     # --- RAG operations ---

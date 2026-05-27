@@ -525,6 +525,9 @@
               {t('documents.uploadedAt')}
             </th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Updated
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               {t('documents.ragStatus')}
             </th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -557,6 +560,13 @@
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                 {formatDate(doc.uploaded_at)}
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm {doc.updated_at && doc.updated_at !== doc.uploaded_at ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}">
+                {#if doc.updated_at && doc.updated_at !== doc.uploaded_at}
+                  {formatDate(doc.updated_at)} ✏️
+                {:else}
+                  —
+                {/if}
               </td>
               <td class="px-4 py-3 whitespace-nowrap">
                 <button
