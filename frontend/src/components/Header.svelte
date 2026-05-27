@@ -235,6 +235,7 @@
     color: #166534;
     transition: all 0.3s;
     max-width: 600px;
+    white-space: nowrap;
   }
 
   .llm-activity.active {
