@@ -8,8 +8,9 @@ All output plugins must subclass ``OutputPlugin`` and implement the
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Callable, ClassVar, Coroutine
+from typing import ClassVar
 
 from pydantic import BaseModel
 
