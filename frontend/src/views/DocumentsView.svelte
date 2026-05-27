@@ -296,36 +296,9 @@
     </div>
   {/if}
   {#each uploadResults as r}
+    <!-- svelte-ignore a11y_no_redundant_roles -->
     <div
-      class="rounded-lg px-4 py-3 text-sm flex items-center gap-2"
-      class:bg-green-50={r.status === 'success'}
-      class:dark:bg-green-900/20={r.status === 'success'}
-      class:border={r.status === 'success'}
-      class:border-green-200={r.status === 'success'}
-      class:dark:border-green-800={r.status === 'success'}
-      class:text-green-700={r.status === 'success'}
-      class:dark:text-green-300={r.status === 'success'}
-      class:bg-orange-50={r.status === 'warning'}
-      class:dark:bg-orange-900/20={r.status === 'warning'}
-      class:border={r.status === 'warning'}
-      class:border-orange-200={r.status === 'warning'}
-      class:dark:border-orange-800={r.status === 'warning'}
-      class:text-orange-700={r.status === 'warning'}
-      class:dark:text-orange-300={r.status === 'warning'}
-      class:bg-red-50={r.status === 'error'}
-      class:dark:bg-red-900/20={r.status === 'error'}
-      class:border={r.status === 'error'}
-      class:border-red-200={r.status === 'error'}
-      class:dark:border-red-800={r.status === 'error'}
-      class:text-red-700={r.status === 'error'}
-      class:dark:text-red-300={r.status === 'error'}
-      class:bg-blue-50={r.status === 'uploading'}
-      class:dark:bg-blue-900/20={r.status === 'uploading'}
-      class:border={r.status === 'uploading'}
-      class:border-blue-200={r.status === 'uploading'}
-      class:dark:border-blue-800={r.status === 'uploading'}
-      class:text-blue-700={r.status === 'uploading'}
-      class:dark:text-blue-300={r.status === 'uploading'}
+      class="rounded-lg px-4 py-3 text-sm flex items-center gap-2 {r.status === 'success' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300' : r.status === 'warning' ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300' : r.status === 'error' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'}"
       role="status"
     >
       {#if r.status === 'uploading'}
