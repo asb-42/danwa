@@ -271,6 +271,7 @@ async def start_mvp_debate(
                 document_ids=body.document_ids or None,
                 rag_auto_retrieve=body.rag_auto_retrieve,
                 include_debate_results=body.include_debate_results,
+                project_store=project_store,
             )
         except Exception:
             logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
@@ -475,6 +476,7 @@ async def start_workflow(
                 case_text=body.context,
                 document_ids=body.document_ids,
                 rag_auto_retrieve=body.rag_auto_retrieve,
+                project_store=project_store,
             )
             if rag_context:
                 logger.info(
