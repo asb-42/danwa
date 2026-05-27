@@ -130,17 +130,29 @@ def _clean_json(text: str) -> str:
 
 def _parse_json(text: str) -> dict | None:
     """Attempt to parse JSON with progressively more aggressive cleaning."""
-    candidates = [text, _clean_json(text)]
-    for candidate in candidates:
+    # Strategy 1: raw text
+    for candidate in [text, _clean_json(text)]:
         try:
             return json.loads(candidate)
         except json.JSONDecodeError:
             continue
-    # Last resort: try to find any valid JSON object via brute force
-    # (some LLMs produce multiple braces, control chars, etc.)
+    # Strategy 2: strip control characters
     try:
         return json.loads(_clean_json(re.sub(r"[\x00-\x1f]", "", text)))
     except (json.JSONDecodeError, ValueError):
+        pass
+    # Strategy 3: try ast.literal_eval (handles trailing commas,
+    # single-quoted strings, and some other leniencies)
+    import ast
+
+    try:
+        fixed = text.replace("'", '"')
+        fixed = re.sub(r",\s*([}\]])", r"\1", fixed)
+        fixed = re.sub(r"(?<!\")(\btrue\b)(?!\")", "True", fixed, flags=re.IGNORECASE)
+        fixed = re.sub(r"(?<!\")(\bfalse\b)(?!\")", "False", fixed, flags=re.IGNORECASE)
+        fixed = re.sub(r"(?<!\")(\bnull\b)(?!\")", "None", fixed, flags=re.IGNORECASE)
+        return ast.literal_eval(fixed)
+    except (ValueError, SyntaxError, MemoryError):
         return None
 
 
@@ -151,11 +163,42 @@ def _call_llm(
     profile_id: str | None = None,
     timeout: int = 180,
 ) -> dict[str, Any]:
-    """Call the LLM and parse the JSON response. Returns parsed analysis or error dict."""
+    """Call the LLM and parse the JSON response. Returns parsed analysis or error dict.
+    Retries once if JSON parsing fails, asking the LLM to fix the formatting.
+    """
     llm_profile_id = profile_id or select_service_llm(profile_service)
-
     llm = LLMService(profile_id=llm_profile_id, profile_service=profile_service)
 
+    result = _generate_with_retry(llm, user_prompt, system_prompt)
+    if "error" in result:
+        return result
+
+    content = result["content"]
+    extracted = _extract_json(content)
+    if not extracted:
+        logger.error("No JSON found in LLM response")
+        return {"error": "Analysis produced unexpected output", "raw": content[:500]}
+
+    analysis = _parse_json(extracted)
+    if not analysis:
+        logger.warning("Initial JSON parse failed, requesting LLM to fix formatting")
+        fixed = _request_json_fix(llm, content)
+        if fixed and "error" not in fixed:
+            analysis = fixed
+        else:
+            logger.error("Failed to parse analysis JSON after retry")
+            return {"error": "Analysis produced unparseable JSON", "raw": content[:500]}
+
+    analysis["_model"] = result["model"]
+    analysis["_tokens_in"] = result["tokens_in"]
+    analysis["_tokens_out"] = result["tokens_out"]
+    analysis["_duration_ms"] = result["duration_ms"]
+
+    return analysis
+
+
+def _generate_with_retry(llm: LLMService, user_prompt: str, system_prompt: str, timeout: int = 180) -> dict[str, Any]:
+    """Call generate_sync and return a dict with content/metadata or error."""
     try:
         result = llm.generate_sync(
             prompt=user_prompt,
@@ -164,27 +207,42 @@ def _call_llm(
             max_tokens=8192,
             context="Document Analysis",
         )
+        return {
+            "content": result.content.strip(),
+            "model": result.model,
+            "tokens_in": result.tokens_in,
+            "tokens_out": result.tokens_out,
+            "duration_ms": result.duration_ms,
+        }
     except Exception as e:
         logger.error("LLM analysis failed: %s", e)
         return {"error": f"Analysis failed: {e}"}
 
-    content = result.content.strip()
-    extracted = _extract_json(content)
+
+def _request_json_fix(llm: LLMService, malformed: str) -> dict | None:
+    """Ask the LLM to fix malformed JSON and return valid JSON only."""
+    fix_prompt = (
+        "The following text is supposed to be valid JSON but has a syntax error. "
+        "Fix the JSON and return ONLY the corrected JSON object — no markdown, no explanations.\n\n" + malformed[:30000]
+    )
+    fix_system = "You fix JSON syntax errors. Return ONLY valid JSON, no markdown, no explanations."
+    try:
+        result = llm.generate_sync(
+            prompt=fix_prompt,
+            system_prompt=fix_system,
+            temperature=0.0,
+            max_tokens=8192,
+            context="Document Analysis (JSON fix)",
+        )
+    except Exception as e:
+        logger.warning("JSON fix LLM call failed: %s", e)
+        return None
+
+    fixed_content = result.content.strip()
+    extracted = _extract_json(fixed_content)
     if not extracted:
-        logger.error("No JSON found in LLM response")
-        return {"error": "Analysis produced unexpected output", "raw": content[:500]}
-
-    analysis = _parse_json(extracted)
-    if not analysis:
-        logger.error("Failed to parse analysis JSON")
-        return {"error": "Analysis produced unparseable JSON", "raw": content[:500]}
-
-    analysis["_model"] = result.model
-    analysis["_tokens_in"] = result.tokens_in
-    analysis["_tokens_out"] = result.tokens_out
-    analysis["_duration_ms"] = result.duration_ms
-
-    return analysis
+        return None
+    return _parse_json(extracted)
 
 
 def analyze_documents(
