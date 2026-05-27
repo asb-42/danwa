@@ -24,5 +24,7 @@
   "description": {
     "en": "A conflict resolution workflow where a Mediator facilitates dialogue between opposing parties (represented by Strategist and Critic perspectives). The Mediator guides toward common ground and a mutually acceptable resolution."
   },
-  "checksum": "1f3e4e031ddfd67eb59db8684fe8ede713c5a6824c723eb10858bcfd07ba398e"
+  "checksum": "1f3e4e031ddfd67eb59db8684fe8ede713c5a6824c723eb10858bcfd07ba398e",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-05-21T14:39:38+02:00"
 }

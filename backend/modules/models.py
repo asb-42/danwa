@@ -230,6 +230,7 @@ class ModuleInfo(BaseModel):
     installed: bool = False
     enabled: bool = True
     installed_at: datetime | None = None
+    created_at: datetime | None = None
     updated_at: datetime | None = None
     dependencies: dict[str, str] = Field(default_factory=dict)
     file_count: int = 0

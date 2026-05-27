@@ -25,5 +25,7 @@
   "description": {
     "en": "A three-stage dialectical workflow following Hegel's method. The Strategist formulates the thesis (These), the Critic develops the antithesis (Antithese), and the Optimizer synthesizes both into a higher unity (synthesis/Aufhebung). Supports multiple rounds of dialectical refinement."
   },
-  "checksum": "04328f9980020eaf1219fe38047b0d4e94f0ba9857a769e26315df78d9e26714"
+  "checksum": "04328f9980020eaf1219fe38047b0d4e94f0ba9857a769e26315df78d9e26714",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-05-21T14:39:38+02:00"
 }

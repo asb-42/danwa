@@ -25,5 +25,7 @@
   "profile_file": "profile.json",
   "profile_format": "json",
   "files": [],
-  "checksum": ""
+  "checksum": "",
+  "created_at": "2026-05-25T05:49:22+02:00",
+  "updated_at": "2026-05-25T05:49:22+02:00"
 }

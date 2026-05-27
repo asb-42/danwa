@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "module_id": "agent-optimizer-default-en",
   "name": {
-    "en": "Default Optimizer (EN)"
+    "en": "Default Optimizer"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -18,10 +18,13 @@
   ],
   "language": "en",
   "description": {
-    "en": "Synthesis specialist for argument refinement (English)"
+    "en": "Synthesis specialist for argument refinement"
   },
   "role": "optimizer",
   "profile_id": "optimizer-default-en",
   "profile_file": "profile.md",
-  "profile_format": "markdown"
+  "profile_format": "markdown",
+  "checksum": "4081d545cf842a6493aadb8c2160f4ce9622c15e0f5b0dd795cced78251f27b3",
+  "updated_at": "2026-05-26T10:33:28.836746+00:00",
+  "created_at": "2026-05-17T03:22:25+02:00"
 }

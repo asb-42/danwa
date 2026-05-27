@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "module_id": "agent-moderator-default-en",
   "name": {
-    "en": "Default Moderator (EN)"
+    "en": "Default Moderator"
   },
   "version": "1.0.0",
   "type": "agent-persona",
@@ -18,10 +18,13 @@
   ],
   "language": "en",
   "description": {
-    "en": "Neutral moderator for consensus evaluation (English)"
+    "en": "Neutral moderator for consensus evaluation"
   },
   "role": "moderator",
   "profile_id": "moderator-default-en",
   "profile_file": "profile.md",
-  "profile_format": "markdown"
+  "profile_format": "markdown",
+  "checksum": "90aa94838e4f26857b2d11f11f82b97cc2be528312a33146c97fa2dbb8cd5e91",
+  "updated_at": "2026-05-26T10:33:16.236479+00:00",
+  "created_at": "2026-05-17T03:22:25+02:00"
 }

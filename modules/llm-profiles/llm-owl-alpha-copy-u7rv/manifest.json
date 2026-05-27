@@ -16,5 +16,7 @@
   "profile_file": "profile.yaml",
   "profile_format": "yaml",
   "files": [],
-  "checksum": "824783eb684615ccf26d8e62d97a1f43151ec1acfe9b6cf395a2a1f15011b0f4"
+  "checksum": "824783eb684615ccf26d8e62d97a1f43151ec1acfe9b6cf395a2a1f15011b0f4",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-05-21T14:39:38+02:00"
 }

@@ -140,7 +140,8 @@ class ModuleService:
                     "installed": True,
                     "enabled": db_info.get("enabled", True),
                     "installed_at": db_info.get("installed_at"),
-                    "updated_at": db_info.get("updated_at"),
+                    "created_at": str(mod.created_at) if mod.created_at else None,
+                    "updated_at": str(mod.updated_at) if mod.updated_at else None,
                     "dependencies": mod.dependencies,
                     "file_count": mod.file_count,
                     "profile_preview": mod.profile_preview,
@@ -171,6 +172,7 @@ class ModuleService:
                         "installed": True,
                         "enabled": db_info.get("enabled", True),
                         "installed_at": db_info.get("installed_at"),
+                        "created_at": db_info.get("created_at"),
                         "updated_at": db_info.get("updated_at"),
                         "dependencies": db_info.get("dependencies", {}),
                         "file_count": db_info.get("file_count", 0),
@@ -399,6 +401,9 @@ class ModuleService:
         manifest_path = dst_dir / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["module_id"] = new_id
+        if "created_at" not in manifest:
+            manifest["created_at"] = datetime.now(UTC).isoformat()
+        manifest["updated_at"] = datetime.now(UTC).isoformat()
         if new_name:
             manifest["name"]["en"] = new_name
             manifest["name"]["de"] = new_name
@@ -559,6 +564,17 @@ class ModuleService:
         parent = parent_dir_name(module_dir, self.modules_dir)
         module_id = manifest_data.get("module_id", module_dir.name)
 
+        # Parse manifest timestamps, fall back to DB timestamps
+        manifest_created = manifest_data.get("created_at")
+        manifest_updated = manifest_data.get("updated_at")
+        try:
+            from datetime import datetime
+            manifest_created = datetime.fromisoformat(manifest_created) if manifest_created else None
+            manifest_updated = datetime.fromisoformat(manifest_updated) if manifest_updated else None
+        except (ValueError, TypeError):
+            manifest_created = None
+            manifest_updated = None
+
         return ModuleInfo(
             module_id=module_id,
             name=manifest_data.get("name", {}),
@@ -574,7 +590,8 @@ class ModuleService:
             installed=True,
             enabled=db_info.get("enabled", True) if db_info else True,
             installed_at=db_info.get("installed_at") if db_info else None,
-            updated_at=db_info.get("updated_at") if db_info else None,
+            created_at=manifest_created,
+            updated_at=manifest_updated or (db_info.get("updated_at") if db_info else None),
             dependencies=manifest_data.get("dependencies", {}),
             file_count=file_count,
             profile_preview=profile_preview,

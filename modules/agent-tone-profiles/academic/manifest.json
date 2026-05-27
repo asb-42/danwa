@@ -20,5 +20,7 @@
     "en": "A formal, evidence-based debate style. Agents cite sources, use precise language, and maintain scholarly decorum."
   },
   "checksum": "fc4a711cbcc898f832885f3c7e371d3b1d73363e9537f23f1e780e8967464349",
-  "profile_id": "system-academic"
+  "profile_id": "system-academic",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-05-24T16:38:10+02:00"
 }

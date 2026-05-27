@@ -24,5 +24,7 @@
   "description": {
     "en": "A lightweight single-agent review with optional user injection. Fast turnaround for simple tasks."
   },
-  "checksum": "8795c024c49c14805ffc2f86c5a50307ae54b9efb46a1f7262e0c703da3aac48"
+  "checksum": "8795c024c49c14805ffc2f86c5a50307ae54b9efb46a1f7262e0c703da3aac48",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-05-21T14:39:38+02:00"
 }

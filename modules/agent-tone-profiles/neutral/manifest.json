@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "module_id": "neutral",
   "name": {
-    "en": "Neutral / Sachlich"
+    "en": "Neutral / Objective"
   },
   "version": "1.0.0",
   "type": "tone-profile",
@@ -19,6 +19,9 @@
   "description": {
     "en": "A balanced, objective debate style. Agents present facts and arguments without emotional coloring."
   },
-  "checksum": "e71bdf6c6238ccca031557970252e3aee7d13ca0db2eb4db60fb1de3a0ed76f9",
-  "profile_id": "system-neutral"
+  "checksum": "a6fe4d3f65a97a25737aa1aac47a9a763b8cb924676351cc27cc3dea4acfb708",
+  "profile_id": "system-neutral",
+  "role": "",
+  "updated_at": "2026-05-26T10:37:30.513058+00:00",
+  "created_at": "2026-05-17T03:22:25+02:00"
 }

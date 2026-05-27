@@ -389,6 +389,8 @@
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Type</th>
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Version</th>
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Tags</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide whitespace-nowrap">Created</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide whitespace-nowrap">Updated</th>
                   <th class="text-right px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
@@ -414,6 +416,20 @@
                           <span class="text-gray-400 dark:text-gray-500">—</span>
                         {/if}
                       </div>
+                    </td>
+                    <td class="px-4 py-2.5 text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap">
+                      {#if mod.created_at}
+                        {new Date(mod.created_at).toLocaleDateString()}
+                      {:else}
+                        <span class="text-gray-300 dark:text-gray-600">—</span>
+                      {/if}
+                    </td>
+                    <td class="px-4 py-2.5 text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap">
+                      {#if mod.updated_at}
+                        {new Date(mod.updated_at).toLocaleDateString()}
+                      {:else}
+                        <span class="text-gray-300 dark:text-gray-600">—</span>
+                      {/if}
                     </td>
                     <td class="px-4 py-2.5 text-right">
                       <div class="flex items-center justify-end gap-1">
