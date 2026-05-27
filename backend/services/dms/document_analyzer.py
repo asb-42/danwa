@@ -43,11 +43,11 @@ Rules:
 def select_service_llm(profile_service: ProfileService) -> str:
     """Select a suitable LLM profile for document analysis."""
     for p in profile_service.list_llm_profiles():
-        if p.is_service_llm_eligible and p.provider and ("openrouter" in p.provider.lower() or "openai" in p.provider.lower()):
-            if p.context_length and p.context_length >= 128000:
+        if p.service_eligible and p.provider and ("openrouter" in p.provider.lower() or "openai" in p.provider.lower()):
+            if p.context_window and p.context_window >= 128000:
                 return p.id
     for p in profile_service.list_llm_profiles():
-        if p.is_service_llm_eligible:
+        if p.service_eligible:
             return p.id
     profiles = profile_service.list_llm_profiles()
     if profiles:
