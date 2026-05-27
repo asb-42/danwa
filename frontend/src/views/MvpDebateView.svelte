@@ -650,6 +650,14 @@
     }
   }
 
+  function toggleSelectAll() {
+    if (selectedDocumentIds.length === availableDocuments.length) {
+      selectedDocumentIds = [];
+    } else {
+      selectedDocumentIds = availableDocuments.map(d => d.id);
+    }
+  }
+
   async function handleSendInterjection() {
     if (!interjectionText.trim() || !sessionId) return;
     sendingInterjection = true;
@@ -969,7 +977,13 @@
         <div class="dms-section">
           <div class="flex items-center justify-between mb-2">
             <span class="form-label">DMS Documents (RAG Context)</span>
-            <span class="text-xs text-gray-500">{selectedDocumentIds.length} selected</span>
+            <div class="flex items-center gap-2">
+              <button
+                class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                onclick={toggleSelectAll}
+              >{selectedDocumentIds.length === availableDocuments.length ? 'Deselect all' : 'Select all'}</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDocumentIds.length} selected</span>
+            </div>
           </div>
           <div class="dms-doc-list">
             {#each availableDocuments as doc (doc.id)}
@@ -987,11 +1001,11 @@
           <div class="dms-options">
             <label class="dms-option">
               <input type="checkbox" bind:checked={ragAutoRetrieve} class="dms-checkbox" />
-              <span class="text-sm text-gray-700">Auto-retrieve relevant chunks</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300">Auto-retrieve relevant chunks</span>
             </label>
             <label class="dms-option">
               <input type="checkbox" bind:checked={includeDebateResults} class="dms-checkbox" />
-              <span class="text-sm text-gray-700">Include previous debate results</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300">Include previous debate results</span>
             </label>
           </div>
         </div>
