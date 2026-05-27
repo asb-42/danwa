@@ -1,6 +1,6 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
-  import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
+  import { getLLMProfiles, getDebate, getDocuments, getDebates } from '../lib/api.js';
   import { startMvpDebate, submitInterjection, getAgentCores, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject, userLanguage } from '../lib/stores.js';
@@ -56,6 +56,42 @@
   let selectedDocumentIds = $state([]);
   let ragAutoRetrieve = $state(false);
   let includeDebateResults = $state(false);
+  let completedDebates = $state([]);
+  let selectedDebateIds = $state([]);
+  let loadingCompletedDebates = $state(false);
+
+  $effect(() => {
+    if (includeDebateResults && completedDebates.length === 0 && !loadingCompletedDebates) {
+      loadCompletedDebates();
+    }
+    if (!includeDebateResults) {
+      selectedDebateIds = [];
+    }
+  });
+
+  async function loadCompletedDebates() {
+    if (loadingCompletedDebates) return;
+    loadingCompletedDebates = true;
+    try {
+      const res = await getDebates(100, { status: 'completed' });
+      completedDebates = res || [];
+      selectedDebateIds = completedDebates.map(d => d.debate_id);
+    } catch (e) {
+      console.warn('Failed to load completed debates:', e);
+      completedDebates = [];
+    } finally {
+      loadingCompletedDebates = false;
+    }
+  }
+
+  function toggleDebateSelection(debateId) {
+    const idx = selectedDebateIds.indexOf(debateId);
+    if (idx >= 0) {
+      selectedDebateIds = selectedDebateIds.filter(id => id !== debateId);
+    } else {
+      selectedDebateIds = [...selectedDebateIds, debateId];
+    }
+  }
   let enableExtraRounds = $state(false);
 
   // Interjection
@@ -613,6 +649,7 @@
         documentIds: selectedDocumentIds,
         ragAutoRetrieve,
         includeDebateResults,
+        debateResultIds: selectedDebateIds,
         enableExtraRounds,
       });
       sessionId = result.session_id;
@@ -1007,6 +1044,34 @@
               <input type="checkbox" bind:checked={includeDebateResults} class="dms-checkbox" />
               <span class="text-sm text-gray-700 dark:text-gray-300">Include previous debate results</span>
             </label>
+            {#if includeDebateResults}
+              <div class="dms-debate-list">
+                {#if loadingCompletedDebates}
+                  <span class="text-xs text-gray-500 dark:text-gray-400">Loading debates...</span>
+                {:else if completedDebates.length === 0}
+                  <span class="text-xs text-gray-500 dark:text-gray-400">No completed debates found in this project.</span>
+                {:else}
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDebateIds.length} of {completedDebates.length} selected</span>
+                    <button
+                      class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      onclick={() => { selectedDebateIds = selectedDebateIds.length === completedDebates.length ? [] : completedDebates.map(d => d.debate_id); }}
+                    >{selectedDebateIds.length === completedDebates.length ? 'Deselect all' : 'Select all'}</button>
+                  </div>
+                  {#each completedDebates as debate (debate.debate_id)}
+                    <label class="dms-debate-item">
+                      <input
+                        type="checkbox"
+                        checked={selectedDebateIds.includes(debate.debate_id)}
+                        onchange={() => toggleDebateSelection(debate.debate_id)}
+                        class="dms-checkbox"
+                      />
+                      <span class="dms-debate-name">{debate.title || debate.debate_id.slice(0, 12)}</span>
+                    </label>
+                  {/each}
+                {/if}
+              </div>
+            {/if}
           </div>
         </div>
       {/if}
@@ -1956,6 +2021,37 @@
     gap: 8px;
     cursor: pointer;
   }
+  .dms-debate-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+    padding: 8px 10px;
+    margin-top: 4px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+  :global(.dark) .dms-debate-list {
+    background: #111827;
+    border-color: #374151;
+  }
+  .dms-debate-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 3px 0;
+  }
+  .dms-debate-name {
+    font-size: 12px;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  :global(.dark) .dms-debate-name { color: #d1d5db; }
 
   /* Interjection area */
   .interjection-area {

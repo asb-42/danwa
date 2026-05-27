@@ -300,6 +300,7 @@ def resolve_rag_context(
     document_ids: list[str] | None = None,
     rag_auto_retrieve: bool = False,
     include_debate_results: bool = False,
+    debate_result_ids: list[str] | None = None,
     project_store: ProjectStore | None = None,
     store: DebateStore | None = None,
 ) -> tuple[str, int]:
@@ -374,10 +375,27 @@ def resolve_rag_context(
             proj_store = DebateStore(data_dir=project_dir / "debates")
 
             debates = proj_store.list_all(limit=50)
+
+            if debate_result_ids:
+                debate_ids_set = set(debate_result_ids)
+                debates = [d for d in debates if d.get("debate_id") in debate_ids_set]
+                logger.info(
+                    "Including %d specific debate result(s) for project %s",
+                    len(debates),
+                    project_id,
+                )
+            else:
+                logger.info(
+                    "Auto-selecting up to 5 recent completed debates for project %s",
+                    project_id,
+                )
+
             debate_count = 0
 
             for d in debates:
                 if d.get("status") in ("completed",) and d.get("debate_id"):
+                    if debate_result_ids and d.get("debate_id") not in debate_ids_set:
+                        continue
                     transcript = _build_transcript_for_followup(d)
                     summary = _generate_rag_friendly_summary(transcript)
                     from backend.services.dms.chunker import TextChunker
@@ -388,7 +406,7 @@ def resolve_rag_context(
                     all_chunks.extend(chunks[:3])
 
                     debate_count += 1
-                    if debate_count >= 5:
+                    if not debate_result_ids and debate_count >= 5:
                         break
         except Exception as exc:
             logger.warning("Failed to include debate results in RAG context: %s", exc)

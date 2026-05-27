@@ -98,6 +98,7 @@ export function startMvpDebate({
   documentIds = [],
   ragAutoRetrieve = false,
   includeDebateResults = false,
+  debateResultIds = [],
   enableExtraRounds = false,
 }) {
   return request('/api/v1/workflow-exec/mvp/start', {
@@ -117,6 +118,7 @@ export function startMvpDebate({
       document_ids: documentIds,
       rag_auto_retrieve: ragAutoRetrieve,
       include_debate_results: includeDebateResults,
+      debate_result_ids: debateResultIds,
       enable_extra_rounds: enableExtraRounds,
     }),
   });

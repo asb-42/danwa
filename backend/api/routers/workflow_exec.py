@@ -185,6 +185,10 @@ class StartMvpDebateRequest(BaseModel):
         default=False,
         description="Include results from previous completed debates as RAG context",
     )
+    debate_result_ids: list[str] = Field(
+        default_factory=list,
+        description="Specific debate IDs to include when include_debate_results is true. If empty, auto-selects up to 5 recent completed debates.",
+    )
 
     # --- Extra rounds ---
     enable_extra_rounds: bool = Field(
@@ -271,6 +275,7 @@ async def start_mvp_debate(
                 document_ids=body.document_ids or None,
                 rag_auto_retrieve=body.rag_auto_retrieve,
                 include_debate_results=body.include_debate_results,
+                debate_result_ids=body.debate_result_ids or None,
                 project_store=project_store,
             )
         except Exception:
