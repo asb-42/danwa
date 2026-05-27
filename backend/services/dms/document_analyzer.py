@@ -41,13 +41,22 @@ Rules:
 
 
 def select_service_llm(profile_service: ProfileService) -> str:
-    """Select a suitable LLM profile for document analysis."""
+    """Select a suitable LLM profile for document analysis.
+
+    Follows the same selection order as the rest of the codebase:
+    1. Configured ``service_llm_profile_id`` (if eligible).
+    2. First service-eligible profile.
+    3. First available profile.
+    """
+    from backend.core.config import is_service_llm_eligible, settings
+
+    if settings.service_llm_profile_id:
+        preferred = profile_service.get_llm_profile(settings.service_llm_profile_id)
+        if preferred and is_service_llm_eligible(preferred)[0]:
+            return settings.service_llm_profile_id
+
     for p in profile_service.list_llm_profiles():
-        if p.service_eligible and p.provider and ("openrouter" in p.provider.lower() or "openai" in p.provider.lower()):
-            if p.context_window and p.context_window >= 128000:
-                return p.id
-    for p in profile_service.list_llm_profiles():
-        if p.service_eligible:
+        if is_service_llm_eligible(p)[0]:
             return p.id
     profiles = profile_service.list_llm_profiles()
     if profiles:
