@@ -5,6 +5,7 @@ import os
 import tempfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from backend.api.deps import get_project_id, get_project_store
 from backend.services.dms.service import get_dms_for_project
@@ -12,6 +13,10 @@ from backend.services.dms.service import get_dms_for_project
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class MoveDocumentRequest(BaseModel):
+    target_project_id: str
 
 
 # --- Documents ---
@@ -105,6 +110,35 @@ def delete_document(
     if result:
         return {"status": "ok", "deleted": document_id}
     raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found")
+
+
+@router.post("/documents/{document_id}/move")
+def move_document(
+    document_id: str,
+    body: MoveDocumentRequest,
+    project_id: str = Depends(get_project_id),
+    project_store=Depends(get_project_store),
+):
+    """Move a document to another project.
+
+    Source project is determined by the ``X-Project-Id`` header.
+    The document is removed from the source project's DMS and
+    re-created in the target project's DMS (with a new document ID).
+    """
+    if body.target_project_id == project_id:
+        raise HTTPException(status_code=400, detail="Source and target project are the same")
+
+    try:
+        src_dms = get_dms_for_project(project_id, project_store=project_store)
+        tgt_dms = get_dms_for_project(body.target_project_id, project_store=project_store)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    success = src_dms.move_document_to(document_id, tgt_dms, body.target_project_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found or move failed")
+
+    return {"status": "ok", "moved": document_id, "target_project_id": body.target_project_id}
 
 
 # --- RAG Context ---

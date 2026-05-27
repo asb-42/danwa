@@ -159,6 +159,7 @@ reports/
 
 # Module exports (user-generated ZIP files)
 exports/
+modules/agent-bundles/
 
 # Environment specific / User config (never commit real credentials)
 settings.yaml

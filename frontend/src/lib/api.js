@@ -365,6 +365,13 @@ export function deleteDocument(documentId) {
   });
 }
 
+export function moveDocument(documentId, targetProjectId) {
+  return request(`/api/v1/dms/documents/${documentId}/move`, {
+    method: 'POST',
+    body: JSON.stringify({ target_project_id: targetProjectId }),
+  });
+}
+
 export function addDocumentToRAG(documentId) {
   return request(`/api/v1/dms/documents/${documentId}/rag`, {
     method: 'POST',

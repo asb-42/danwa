@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { activeProject } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects } from '../lib/api.js';
 
   let { navigate } = $props();
 
@@ -155,6 +155,49 @@
     } catch (e) {
       error = e.message;
     }
+  }
+
+  // Move document state
+  let moveDialogOpen = $state(false);
+  let moveDoc = $state(null);
+  let moveProjects = $state([]);
+  let moveTargetId = $state('');
+  let moveSaving = $state(false);
+  let moveError = $state('');
+
+  async function openMoveDialog(doc) {
+    moveDoc = doc;
+    moveTargetId = '';
+    moveError = '';
+    moveSaving = false;
+    try {
+      const allProjects = await getProjects();
+      moveProjects = allProjects.filter(p => p.id !== projectId);
+    } catch (e) {
+      moveError = 'Failed to load projects';
+    }
+    moveDialogOpen = true;
+  }
+
+  async function confirmMove() {
+    if (!moveTargetId || !moveDoc) return;
+    moveSaving = true;
+    moveError = '';
+    try {
+      await moveDocument(moveDoc.id, moveTargetId);
+      documents = documents.filter(d => d.id !== moveDoc.id);
+      moveDialogOpen = false;
+      moveDoc = null;
+    } catch (e) {
+      moveError = e.message;
+    } finally {
+      moveSaving = false;
+    }
+  }
+
+  function closeMoveDialog() {
+    moveDialogOpen = false;
+    moveDoc = null;
   }
 
   async function viewDocument(doc) {
@@ -416,6 +459,13 @@
                   👁️
                 </button>
                 <button
+                  class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                  onclick={() => openMoveDialog(doc)}
+                  title="Move to another project"
+                >
+                  📦
+                </button>
+                <button
                   class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                   onclick={() => handleDelete(doc)}
                   title={t('documents.delete')}
@@ -501,6 +551,58 @@
             </div>
           {/if}
         {/if}
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Move Document Dialog -->
+{#if moveDialogOpen && moveDoc}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_interactive_supports_focus -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeMoveDialog(); }} role="dialog" aria-modal="true" tabindex="-1">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+      <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+        Move Document
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Move <strong>{moveDoc.filename}</strong> to another project:
+      </p>
+
+      {#if moveError}
+        <div class="mb-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded">{moveError}</div>
+      {/if}
+
+      <div class="space-y-2 mb-6 max-h-48 overflow-y-auto">
+        {#each moveProjects as p}
+          <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer {moveTargetId === p.id ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300 dark:ring-blue-700' : ''}">
+            <input type="radio" name="targetProject" value={p.id} bind:group={moveTargetId} class="accent-blue-600" />
+            <div>
+              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{p.name}</span>
+              {#if p.description}
+                <p class="text-xs text-gray-400 dark:text-gray-500">{p.description}</p>
+              {/if}
+            </div>
+          </label>
+        {/each}
+        {#if moveProjects.length === 0 && !moveError}
+          <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No other projects available</p>
+        {/if}
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button
+          class="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          onclick={closeMoveDialog}
+        >
+          Cancel
+        </button>
+        <button
+          class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+          disabled={!moveTargetId || moveSaving}
+          onclick={confirmMove}
+        >
+          {moveSaving ? 'Moving…' : 'Move'}
+        </button>
       </div>
     </div>
   </div>
