@@ -86,6 +86,10 @@ async def upload_document(
             "document_id": doc_id,
             "filename": original_filename,
             "chunk_count": result.get("chunk_count", 0),
+            "ocr_used": result.get("ocr_used", False),
+            "ocr_engine": result.get("ocr_engine"),
+            "char_count": result.get("char_count", 0),
+            "word_count": result.get("word_count", 0),
         }
     finally:
         # Clean up temp file

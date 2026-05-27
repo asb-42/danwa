@@ -85,25 +85,60 @@
     }
   });
 
-  let uploadSuccess = $state('');
+  let uploadResults = $state([]);
 
   async function handleUpload(files) {
     if (!files || files.length === 0) return;
     uploading = true;
     error = '';
-    uploadSuccess = '';
+    uploadResults = [];
     try {
-      let count = 0;
       for (const file of files) {
-        await uploadDocument(file);
-        count++;
+        const ext = file.name.split('.').pop().toLowerCase();
+        const isImage = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'].includes(ext);
+
+        uploadResults = [...uploadResults, {
+          filename: file.name,
+          status: 'uploading',
+          message: isImage ? `${file.name} — Upload läuft…` : `${file.name} — Upload läuft…`,
+        }];
+
+        let res;
+        try {
+          res = await uploadDocument(file);
+        } catch (e) {
+          uploadResults = uploadResults.map(r =>
+            r.filename === file.name ? { ...r, status: 'error', message: `${file.name} — ${e.message}` } : r
+          );
+          continue;
+        }
+
+        if (res.ocr_used) {
+          const engine = res.ocr_engine === 'tesseract' ? 'Tesseract' : res.ocr_engine || 'OCR';
+          uploadResults = uploadResults.map(r =>
+            r.filename === file.name
+              ? {
+                  ...r,
+                  status: 'success',
+                  message: `${file.name} — ${engine}: ${res.char_count} Zeichen, ${res.word_count} Wörter, ${res.chunk_count} Chunks`,
+                }
+              : r
+          );
+        } else if (isImage) {
+          uploadResults = uploadResults.map(r =>
+            r.filename === file.name
+              ? { ...r, status: 'warning', message: `${file.name} — Keine Texterkennung (OCR nicht verfügbar), ${res.chunk_count} Chunks` }
+              : r
+          );
+        } else {
+          uploadResults = uploadResults.map(r =>
+            r.filename === file.name
+              ? { ...r, status: 'success', message: `${file.name} — ${res.char_count} Zeichen, ${res.word_count} Wörter, ${res.chunk_count} Chunks` }
+              : r
+          );
+        }
       }
       await loadDocuments();
-      uploadSuccess = count === 1
-        ? `✅ "${files[0].name}" ${t('documents.uploadSuccess')}`
-        : `✅ ${count} ${t('documents.uploadSuccess')}`;
-      // Auto-clear success message after 5 seconds
-      setTimeout(() => { uploadSuccess = ''; }, 5000);
     } catch (e) {
       error = e.message || t('documents.uploadError');
     } finally {
@@ -260,11 +295,51 @@
       {error}
     </div>
   {/if}
-  {#if uploadSuccess}
-    <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300" role="status">
-      {uploadSuccess}
+  {#each uploadResults as r}
+    <div
+      class="rounded-lg px-4 py-3 text-sm flex items-center gap-2"
+      class:bg-green-50={r.status === 'success'}
+      class:dark:bg-green-900/20={r.status === 'success'}
+      class:border={r.status === 'success'}
+      class:border-green-200={r.status === 'success'}
+      class:dark:border-green-800={r.status === 'success'}
+      class:text-green-700={r.status === 'success'}
+      class:dark:text-green-300={r.status === 'success'}
+      class:bg-orange-50={r.status === 'warning'}
+      class:dark:bg-orange-900/20={r.status === 'warning'}
+      class:border={r.status === 'warning'}
+      class:border-orange-200={r.status === 'warning'}
+      class:dark:border-orange-800={r.status === 'warning'}
+      class:text-orange-700={r.status === 'warning'}
+      class:dark:text-orange-300={r.status === 'warning'}
+      class:bg-red-50={r.status === 'error'}
+      class:dark:bg-red-900/20={r.status === 'error'}
+      class:border={r.status === 'error'}
+      class:border-red-200={r.status === 'error'}
+      class:dark:border-red-800={r.status === 'error'}
+      class:text-red-700={r.status === 'error'}
+      class:dark:text-red-300={r.status === 'error'}
+      class:bg-blue-50={r.status === 'uploading'}
+      class:dark:bg-blue-900/20={r.status === 'uploading'}
+      class:border={r.status === 'uploading'}
+      class:border-blue-200={r.status === 'uploading'}
+      class:dark:border-blue-800={r.status === 'uploading'}
+      class:text-blue-700={r.status === 'uploading'}
+      class:dark:text-blue-300={r.status === 'uploading'}
+      role="status"
+    >
+      {#if r.status === 'uploading'}
+        <span class="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+      {:else if r.status === 'success'}
+        <span>✅</span>
+      {:else if r.status === 'warning'}
+        <span>⚠️</span>
+      {:else}
+        <span>❌</span>
+      {/if}
+      <span>{r.message}</span>
     </div>
-  {/if}
+  {/each}
 
   <!-- Upload area -->
   <div

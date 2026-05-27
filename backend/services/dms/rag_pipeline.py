@@ -4,6 +4,7 @@ Migrated from src/dms/rag_pipeline.py.
 """
 
 import logging
+from typing import Any
 
 from backend.services.dms.chunker import TextChunker
 from backend.services.dms.database import DMSDB
@@ -84,16 +85,40 @@ class RAGPipeline:
         logger.info("Processed document %s, generated %d chunks", doc_id, len(chunk_ids))
         return chunk_ids
 
-    async def process_file(self, doc_id: str, file_path: str) -> list[str]:
+    async def process_file(self, doc_id: str, file_path: str) -> dict[str, Any]:
         """Process a file: extract text, then chunk and index.
+
+        Returns a dict with keys:
+          - chunk_ids (list[str])
+          - ocr_used (bool)
+          - ocr_engine (str | None)
+          - char_count (int)
+          - word_count (int)
 
         Raises:
             ValueError: If the file cannot be processed (e.g. image without OCR).
         """
         logger.info("Processing file %s for document %s", file_path, doc_id)
-        result = await self.document_processor.process_file(file_path)
-        text = result.get("text", "")
+        proc_result = await self.document_processor.process_file(file_path)
+        text = proc_result.get("text", "")
+        meta = proc_result.get("metadata", {})
+        ocr_used = proc_result.get("ocr_used", False)
+
         if not text:
             logger.warning("No text extracted from file %s", file_path)
-            return []
-        return self.process_document(doc_id, text)
+            return {
+                "chunk_ids": [],
+                "ocr_used": ocr_used,
+                "ocr_engine": meta.get("ocr_engine"),
+                "char_count": 0,
+                "word_count": 0,
+            }
+
+        chunk_ids = self.process_document(doc_id, text)
+        return {
+            "chunk_ids": chunk_ids,
+            "ocr_used": ocr_used,
+            "ocr_engine": meta.get("ocr_engine"),
+            "char_count": meta.get("char_count", len(text)),
+            "word_count": meta.get("word_count", len(text.split())),
+        }

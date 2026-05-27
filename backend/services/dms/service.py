@@ -110,7 +110,7 @@ class DMS:
             return {"doc_id": "", "error": f"Database error: {e}", "chunk_count": 0}
 
         # Process file (extract text, chunk, index)
-        chunk_ids: list[str] = []
+        proc_result: dict[str, Any] = {}
         processing_error: str | None = None
         try:
             asyncio.get_running_loop()
@@ -120,7 +120,7 @@ class DMS:
             try:
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     future = pool.submit(asyncio.run, self.rag_pipeline.process_file(doc_id, file_path))
-                    chunk_ids = future.result(timeout=300)
+                    proc_result = future.result(timeout=300)
             except concurrent.futures.TimeoutError:
                 processing_error = "Document processing timed out (5 minutes). OCR model download may be in progress."
                 logger.error("Timeout processing document %s", doc_id)
@@ -136,7 +136,7 @@ class DMS:
         except RuntimeError:
             # No running loop — safe to call asyncio.run directly
             try:
-                chunk_ids = asyncio.run(self.rag_pipeline.process_file(doc_id, file_path))
+                proc_result = asyncio.run(self.rag_pipeline.process_file(doc_id, file_path))
             except ValueError as e:
                 processing_error = str(e)
                 logger.warning("Processing error for document %s: %s", doc_id, e)
@@ -147,7 +147,11 @@ class DMS:
         return {
             "doc_id": doc_id,
             "error": processing_error,
-            "chunk_count": len(chunk_ids) if chunk_ids else 0,
+            "chunk_count": len(proc_result.get("chunk_ids", [])),
+            "ocr_used": proc_result.get("ocr_used", False),
+            "ocr_engine": proc_result.get("ocr_engine"),
+            "char_count": proc_result.get("char_count", 0),
+            "word_count": proc_result.get("word_count", 0),
         }
 
     def move_document_to(self, document_id: str, target_dms: "DMS", target_project_id: str) -> bool:
