@@ -176,10 +176,29 @@ class DMSDB:
         return [dict(row) for row in cursor.fetchall()]
 
     def delete_document(self, doc_id: str) -> bool:
-        self.conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (doc_id,))
-        self.conn.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+        try:
+            self.conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (doc_id,))
+            self.conn.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error:
+            self.conn.rollback()
+            raise
+
+    def update_document_metadata(self, doc_id: str, **kwargs) -> None:
+        """Update specific metadata fields on a document.
+
+        Allowed fields: updated_at, word_count, char_count, filename, file_size.
+        Raises ValueError if no valid fields are provided.
+        """
+        allowed = {"updated_at", "word_count", "char_count", "filename", "file_size"}
+        updates = {k: v for k, v in kwargs.items() if k in allowed}
+        if not updates:
+            return
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        values = list(updates.values()) + [doc_id]
+        self.conn.execute(f"UPDATE documents SET {set_clause} WHERE id = ?", values)
         self.conn.commit()
-        return True
 
     def delete_document_chunks(self, doc_id: str) -> None:
         """Delete all chunks for a document (keeps the document record)."""

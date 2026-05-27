@@ -352,7 +352,10 @@ async def analyze_documents(
         if "error" in analysis:
             raise HTTPException(status_code=500, detail=analysis["error"])
 
-        save_analysis(project_dir, analysis)
+        try:
+            save_analysis(project_dir, analysis)
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save analysis: {e}")
         return {"status": "ok", "mode": "update", "analysis": analysis}
 
     # full mode
@@ -370,7 +373,10 @@ async def analyze_documents(
     if "error" in analysis:
         raise HTTPException(status_code=500, detail=analysis["error"])
 
-    save_analysis(project_dir, analysis)
+    try:
+        save_analysis(project_dir, analysis)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save analysis: {e}")
 
     return {"status": "ok", "mode": "full", "analysis": analysis}
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -104,6 +105,30 @@ def _build_update_system_prompt(language: str) -> str:
     )
 
 
+def _sanitize_for_prompt(text: str) -> str:
+    """Neutralize common prompt-injection patterns in user-provided document text.
+
+    This is a defense-in-depth measure — not a complete solution. Structured
+    prompt delimiters (XML tags) in the system prompt provide the primary boundary.
+    """
+    text = re.sub(
+        r"(?i)(ignore|disregard|forget)\s+(all|previous|above|prior)\s+(instructions?|prompts?|rules?)",
+        "[REDACTED]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)you\s+are\s+now\s+(a|an|the)",
+        "[REDACTED]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)(system|assistant)\s*:\s*",
+        "[REDACTED] ",
+        text,
+    )
+    return text
+
+
 def _extract_json(text: str) -> str | None:
     """Extract a JSON object from LLM output, handling markdown fences and noise."""
     # 1. Try content between ```json ... ``` fences
@@ -114,10 +139,32 @@ def _extract_json(text: str) -> str | None:
     m = re.search(r"```\s*\n?(\{.*?\})\n?\s*```", text, re.DOTALL)
     if m:
         return m.group(1)
-    # 3. Try first { ... } block (greedy — outermost object)
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if m:
-        return m.group()
+    # 3. Find outermost balanced JSON object
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape_next = False
+    for i in range(start, len(text)):
+        c = text[i]
+        if escape_next:
+            escape_next = False
+            continue
+        if c == "\\" and in_string:
+            escape_next = True
+            continue
+        if c == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
     return None
 
 
@@ -185,26 +232,40 @@ def _call_llm(
     return analysis
 
 
-def _generate_with_retry(llm: LLMService, user_prompt: str, system_prompt: str, timeout: int = 180) -> dict[str, Any]:
-    """Call generate_sync and return a dict with content/metadata or error."""
-    try:
-        result = llm.generate_sync(
-            prompt=user_prompt,
-            system_prompt=system_prompt,
-            temperature=0.1,
-            max_tokens=8192,
-            context="Document Analysis",
-        )
-        return {
-            "content": result.content.strip(),
-            "model": result.model,
-            "tokens_in": result.tokens_in,
-            "tokens_out": result.tokens_out,
-            "duration_ms": result.duration_ms,
-        }
-    except Exception as e:
-        logger.error("LLM analysis failed: %s", e)
-        return {"error": f"Analysis failed: {e}"}
+def _generate_with_retry(
+    llm: LLMService,
+    user_prompt: str,
+    system_prompt: str,
+    timeout: int = 180,
+    max_retries: int = 2,
+    base_delay: float = 2.0,
+) -> dict[str, Any]:
+    """Call generate_sync with retry on transient failures. Returns dict with content/metadata or error."""
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            result = llm.generate_sync(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.1,
+                max_tokens=8192,
+                context="Document Analysis",
+            )
+            return {
+                "content": result.content.strip(),
+                "model": result.model,
+                "tokens_in": result.tokens_in,
+                "tokens_out": result.tokens_out,
+                "duration_ms": result.duration_ms,
+            }
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                delay = base_delay * (2**attempt)
+                logger.warning("LLM call attempt %d failed, retrying in %.1fs: %s", attempt + 1, delay, e)
+                time.sleep(delay)
+    logger.error("LLM analysis failed after %d attempts: %s", max_retries + 1, last_error)
+    return {"error": f"Analysis failed after {max_retries + 1} attempts: {last_error}"}
 
 
 def _request_json_fix(llm: LLMService, malformed: str) -> dict | None:
@@ -263,7 +324,7 @@ def analyze_documents(
 
     doc_texts_str = ""
     for i, doc in enumerate(document_texts):
-        text = doc.get("text", "")[:20000]
+        text = _sanitize_for_prompt(doc.get("text", "")[:20000])
         doc_texts_str += f"\n--- Document {i + 1}: {doc.get('filename', 'unknown')} ---\n{text}\n"
 
     user_prompt = f"""Analyze the following {len(document_texts)} document(s) and produce a structured case analysis:
@@ -310,7 +371,7 @@ def update_analysis(
 
     doc_texts_str = ""
     for i, doc in enumerate(new_document_texts):
-        text = doc.get("text", "")[:20000]
+        text = _sanitize_for_prompt(doc.get("text", "")[:20000])
         doc_texts_str += f"\n--- Document {i + 1}: {doc.get('filename', 'unknown')} ---\n{text}\n"
 
     user_prompt = f"""Here is the existing case analysis:
@@ -344,10 +405,11 @@ def load_analysis(project_dir: str | Path) -> dict[str, Any] | None:
 
 
 def save_analysis(project_dir: str | Path, analysis: dict[str, Any]) -> None:
-    """Save analysis JSON to the project directory."""
+    """Save analysis JSON to the project directory.
+
+    Raises:
+        OSError: If the file cannot be written.
+    """
     path = Path(project_dir) / "analysis.json"
-    try:
-        path.write_text(json.dumps(analysis, ensure_ascii=False, indent=2), encoding="utf-8")
-        logger.info("Saved analysis to %s", path)
-    except OSError as e:
-        logger.error("Failed to save analysis to %s: %s", path, e)
+    path.write_text(json.dumps(analysis, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info("Saved analysis to %s", path)

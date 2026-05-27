@@ -414,6 +414,9 @@ def resolve_rag_context(
                 )
 
             debate_count = 0
+            from backend.services.dms.chunker import TextChunker
+
+            chunker = TextChunker()
 
             for d in debates:
                 if d.get("status") in ("completed",) and d.get("debate_id"):
@@ -421,9 +424,6 @@ def resolve_rag_context(
                         continue
                     transcript = _build_transcript_for_followup(d)
                     summary = _generate_rag_friendly_summary(transcript)
-                    from backend.services.dms.chunker import TextChunker
-
-                    chunker = TextChunker()
                     raw_chunks = chunker.chunk(summary)
                     chunks = [{"text": t, "document_id": f"debate_result_{d.get('debate_id', '')[:8]}"} for t in raw_chunks]
                     all_chunks.extend(chunks[:3])
@@ -1310,6 +1310,9 @@ def resolve_rag_context_with_debate_results(
 
             debates = project_store.list_all(limit=50)
             debate_count = 0
+            from backend.services.dms.chunker import TextChunker
+
+            chunker = TextChunker()
 
             for d in debates:
                 if d.get("status") in ("completed",) and d.get("debate_id") != "":
@@ -1321,10 +1324,6 @@ def resolve_rag_context_with_debate_results(
                     # Baue Zusammenfassung
                     summary = _generate_rag_friendly_summary(transcript)
 
-                    # Chunke die Zusammenfassung
-                    from backend.services.dms.chunker import TextChunker
-
-                    chunker = TextChunker()
                     raw_chunks = chunker.chunk(summary)
                     chunks = [{"text": t, "document_id": f"debate_result_{d.get('debate_id', '')[:8]}"} for t in raw_chunks]
                     all_chunks.extend(chunks[:3])  # Max 3 Chunks pro Debatte

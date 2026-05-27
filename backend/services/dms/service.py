@@ -7,6 +7,7 @@ Factory function get_dms_for_project() provides project-scoped instances.
 import asyncio
 import logging
 import threading
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -208,20 +209,20 @@ class DMS:
                     chunks=chunk_dicts,
                     project_id=target_project_id,
                 )
-                for i, ct in enumerate(chunk_texts):
-                    target_dms.db.add_chunk(
-                        document_id=new_doc_id,
-                        chunk_index=i,
-                        text=ct,
-                        page=0,
-                        metadata_json=str(
-                            {
-                                "file_name": doc["filename"],
-                                "upload_date": doc.get("uploaded_at", ""),
-                                "project_id": target_project_id,
-                            }
-                        ),
-                    )
+                metadata = str(
+                    {
+                        "file_name": doc["filename"],
+                        "upload_date": doc.get("uploaded_at", ""),
+                        "project_id": target_project_id,
+                    }
+                )
+                target_dms.db.conn.executemany(
+                    """INSERT INTO document_chunks
+                    (id, document_id, chunk_index, text, embedding_id, page, metadata_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    [(str(uuid.uuid4())[:8], new_doc_id, i, ct, "", 0, metadata) for i, ct in enumerate(chunk_texts)],
+                )
+                target_dms.db.conn.commit()
                 logger.info("Indexed %d chunks for document %s in target project", len(chunk_texts), new_doc_id)
         except Exception as e:
             logger.error("Failed to index chunks in target DMS, cleaning up target document %s: %s", new_doc_id, e)
@@ -306,11 +307,12 @@ class DMS:
 
         # Update timestamps
         now = datetime.now().isoformat()
-        self.db.conn.execute(
-            "UPDATE documents SET updated_at = ?, word_count = ?, char_count = ? WHERE id = ?",
-            (now, len(text.split()), len(text), document_id),
+        self.db.update_document_metadata(
+            document_id,
+            updated_at=now,
+            word_count=len(text.split()),
+            char_count=len(text),
         )
-        self.db.conn.commit()
 
         return {
             "document_id": document_id,
@@ -408,46 +410,46 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
     Factory function used by both the DMS router and the debate router.
     Loads DMS configuration (including OCR settings) and passes it through
     to ``DocumentProcessor``.
+
+    The entire check-then-create-then-insert sequence is protected by
+    ``_dms_cache_lock`` to prevent duplicate instances under concurrent access.
     """
     with _dms_cache_lock:
         if project_id in _dms_cache:
             return _dms_cache[project_id]
 
-    if project_store is None:
-        from backend.api.deps import get_project_store
+        if project_store is None:
+            from backend.api.deps import get_project_store
 
-        project_store = get_project_store()
+            project_store = get_project_store()
 
-    project = project_store.get(project_id)
-    if not project:
-        raise ValueError(f"Project not found: {project_id}")
+        project = project_store.get(project_id)
+        if not project:
+            raise ValueError(f"Project not found: {project_id}")
 
-    project_dir = project_store.get_project_dir(project_id)
-    dms_dir = project_dir / "dms"
-    dms_dir.mkdir(parents=True, exist_ok=True)
+        project_dir = project_store.get_project_dir(project_id)
+        dms_dir = project_dir / "dms"
+        dms_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load DMS config (includes ocr_enabled, ocr_device, etc.)
-    from backend.services.dms.config import load_dms_config
+        from backend.services.dms.config import load_dms_config
 
-    try:
-        dms_config = load_dms_config()
-    except Exception:
-        dms_config = {}
+        try:
+            dms_config = load_dms_config()
+        except Exception:
+            dms_config = {}
 
-    dms = DMS(
-        db_path=str(dms_dir / "dms.db"),
-        chroma_path=str(dms_dir / "chroma_db"),
-        config=dms_config,
-    )
-
-    # Ensure the project exists in the DMS database (required for FK constraint)
-    if not dms.db.get_project(project_id):
-        dms.db.conn.execute(
-            "INSERT OR IGNORE INTO projects (id, name, description, created_at, metadata_json) VALUES (?, ?, ?, ?, ?)",
-            (project_id, project.name, "", datetime.now().isoformat(), ""),
+        dms = DMS(
+            db_path=str(dms_dir / "dms.db"),
+            chroma_path=str(dms_dir / "chroma_db"),
+            config=dms_config,
         )
-        dms.db.conn.commit()
 
-    with _dms_cache_lock:
+        if not dms.db.get_project(project_id):
+            dms.db.conn.execute(
+                "INSERT OR IGNORE INTO projects (id, name, description, created_at, metadata_json) VALUES (?, ?, ?, ?, ?)",
+                (project_id, project.name, "", datetime.now().isoformat(), ""),
+            )
+            dms.db.conn.commit()
+
         _dms_cache[project_id] = dms
-    return dms
+        return dms
