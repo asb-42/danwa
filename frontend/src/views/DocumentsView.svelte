@@ -414,7 +414,7 @@
               <td class="px-4 py-3 whitespace-nowrap">
                 <div class="flex items-center">
                   <span class="text-lg mr-2">{getFileIcon(doc.filename)}</span>
-                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate max-w-[200px]" title={doc.filename}>
+                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200" title={doc.filename}>
                     {doc.filename}
                   </span>
                 </div>
