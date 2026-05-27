@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { activeProject } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects } from '../lib/api.js';
 
   let { navigate } = $props();
 
@@ -252,6 +252,33 @@
   function closeViewer() {
     viewingDoc = null;
     viewingDocContent = null;
+    editingText = null;
+  }
+
+  // Edit text state
+  let editingText = $state(null);
+  let editSaving = $state(false);
+
+  function startEditing() {
+    editingText = viewingDocContent?.text_content || '';
+  }
+
+  function cancelEditing() {
+    editingText = null;
+  }
+
+  async function saveEditing() {
+    if (!viewingDoc || editingText == null) return;
+    editSaving = true;
+    try {
+      await updateDocumentText(viewingDoc.id, editingText);
+      viewingDocContent = await getDocument(viewingDoc.id);
+      editingText = null;
+    } catch (e) {
+      error = e.message;
+    } finally {
+      editSaving = false;
+    }
   }
 
   function formatDate(dateStr) {
@@ -589,13 +616,42 @@
           </div>
 
           <!-- Document text content -->
-          {#if viewingDocContent.text_content}
+          {#if editingText != null}
+            <textarea
+              bind:value={editingText}
+              class="w-full h-96 p-4 text-sm font-mono leading-relaxed border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 resize-y"
+            ></textarea>
+            <div class="flex justify-end gap-2 mt-3">
+              <button
+                class="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                onclick={cancelEditing}
+              >Cancel</button>
+              <button
+                class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                disabled={editSaving}
+                onclick={saveEditing}
+              >
+                {#if editSaving}
+                  <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                {/if}
+                Save
+              </button>
+            </div>
+          {:else if viewingDocContent.text_content}
             <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <pre class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-mono leading-relaxed">{viewingDocContent.text_content}</pre>
             </div>
           {:else}
             <div class="text-center py-8 text-gray-500 dark:text-gray-400">
               {t('documents.noContent')}
+            </div>
+          {/if}
+          {#if editingText == null && viewingDocContent.text_content}
+            <div class="flex justify-end mt-3">
+              <button
+                class="px-4 py-2 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                onclick={startEditing}
+              >✏️ Edit text</button>
             </div>
           {/if}
         {/if}

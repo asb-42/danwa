@@ -365,6 +365,13 @@ export function deleteDocument(documentId) {
   });
 }
 
+export function updateDocumentText(documentId, text) {
+  return request(`/api/v1/dms/documents/${documentId}/text`, {
+    method: 'PUT',
+    body: JSON.stringify({ text }),
+  });
+}
+
 export function moveDocument(documentId, targetProjectId) {
   return request(`/api/v1/dms/documents/${documentId}/move`, {
     method: 'POST',

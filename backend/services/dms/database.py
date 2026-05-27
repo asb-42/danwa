@@ -176,6 +176,11 @@ class DMSDB:
         self.conn.commit()
         return True
 
+    def delete_document_chunks(self, doc_id: str) -> None:
+        """Delete all chunks for a document (keeps the document record)."""
+        self.conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (doc_id,))
+        self.conn.commit()
+
     # -- document_chunks --
 
     def add_chunk(

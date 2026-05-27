@@ -19,6 +19,10 @@ class MoveDocumentRequest(BaseModel):
     target_project_id: str
 
 
+class UpdateDocumentTextRequest(BaseModel):
+    text: str
+
+
 # --- Documents ---
 
 
@@ -50,6 +54,24 @@ def get_document(
     if not doc:
         raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found")
     return doc
+
+
+@router.put("/documents/{document_id}/text")
+def update_document_text(
+    document_id: str,
+    body: UpdateDocumentTextRequest,
+    project_id: str = Depends(get_project_id),
+    project_store=Depends(get_project_store),
+):
+    """Update the extracted text of a document (re-chunks and re-indexes)."""
+    try:
+        dms = get_dms_for_project(project_id, project_store=project_store)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Project not found")
+    result = dms.update_document_text(document_id, body.text)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found")
+    return result
 
 
 @router.post("/documents")

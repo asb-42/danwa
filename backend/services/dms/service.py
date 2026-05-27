@@ -264,6 +264,25 @@ class DMS:
             "chunk_count": len(chunks),
         }
 
+    def update_document_text(self, document_id: str, text: str) -> dict[str, Any] | None:
+        """Replace document text: re-chunks and re-indexes. Returns updated content or None if not found."""
+        doc = self.db.get_document(document_id)
+        if not doc:
+            return None
+
+        # Delete old chunks from DB and vector store
+        self.db.delete_document_chunks(document_id)
+        self.vector_store.delete_document_chunks(document_id)
+
+        # Re-chunk and re-index
+        chunk_ids = self.rag_pipeline.process_document(document_id, text)
+        return {
+            "document_id": document_id,
+            "chunk_count": len(chunk_ids),
+            "char_count": len(text),
+            "word_count": len(text.split()),
+        }
+
     # --- RAG operations ---
 
     def get_rag_context(self, query: str, project_id: str | None = None, k: int = 5) -> list[dict[str, Any]]:
