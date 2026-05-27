@@ -191,8 +191,8 @@ class DocumentProcessor:
 
             ocr_lang = self.config.get("ocr_lang", "deu+eng")
             available = pytesseract.get_languages()
-            requested = [l.strip() for part in ocr_lang.split("+") for l in part.split(",") if l.strip()]
-            missing = [l for l in requested if l not in available]
+            requested = [lang.strip() for part in ocr_lang.split("+") for lang in part.split(",") if lang.strip()]
+            missing = [lang for lang in requested if lang not in available]
             if missing:
                 logger.warning(
                     "Tesseract language pack(s) not installed: %s. "
