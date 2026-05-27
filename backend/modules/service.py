@@ -569,6 +569,7 @@ class ModuleService:
         manifest_updated = manifest_data.get("updated_at")
         try:
             from datetime import datetime
+
             manifest_created = datetime.fromisoformat(manifest_created) if manifest_created else None
             manifest_updated = datetime.fromisoformat(manifest_updated) if manifest_updated else None
         except (ValueError, TypeError):
