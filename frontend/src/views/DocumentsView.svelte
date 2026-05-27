@@ -274,9 +274,10 @@
     if (!viewingDoc || editingText == null) return;
     editSaving = true;
     try {
-      await updateDocumentText(viewingDoc.id, editingText);
+      const result = await updateDocumentText(viewingDoc.id, editingText);
       viewingDocContent = await getDocument(viewingDoc.id);
       editingText = null;
+      documents = documents.map(d => d.id === viewingDoc.id ? { ...d, updated_at: result.updated_at } : d);
     } catch (e) {
       error = e.message;
     } finally {
