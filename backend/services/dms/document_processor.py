@@ -104,7 +104,7 @@ class DocumentProcessor:
 
         try:
             img = Image.open(file_path)
-            text = pytesseract.image_to_string(img)
+            text = pytesseract.image_to_string(img, lang='deu+eng')
             metadata = self._build_metadata(file_path, text, ocr_used=True)
             return {"text": text, "metadata": metadata, "ocr_used": True}
         except Exception as exc:
