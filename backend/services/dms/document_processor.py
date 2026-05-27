@@ -104,7 +104,7 @@ class DocumentProcessor:
 
         try:
             img = Image.open(file_path)
-            text = pytesseract.image_to_string(img, lang='deu+eng')
+            text = pytesseract.image_to_string(img, lang=self.config.get("ocr_lang", "deu+eng"))
             metadata = self._build_metadata(file_path, text, ocr_used=True)
             return {"text": text, "metadata": metadata, "ocr_used": True}
         except Exception as exc:
@@ -188,6 +188,22 @@ class DocumentProcessor:
 
             pytesseract.get_tesseract_version()
             logger.info("Tesseract OCR available via pytesseract: %s", pytesseract.get_tesseract_version())
+
+            ocr_lang = self.config.get("ocr_lang", "deu+eng")
+            available = pytesseract.get_languages()
+            requested = [l.strip() for part in ocr_lang.split("+") for l in part.split(",") if l.strip()]
+            missing = [l for l in requested if l not in available]
+            if missing:
+                logger.warning(
+                    "Tesseract language pack(s) not installed: %s. "
+                    "Install with: sudo apt install tesseract-ocr-%s  "
+                    "(or the equivalent package for your distribution). "
+                    "Configured ocr_lang='%s', available: %s",
+                    ", ".join(missing),
+                    " ".join(missing),
+                    ocr_lang,
+                    available,
+                )
             return True
         except Exception as e:
             logger.warning("Tesseract OCR not available: %s", e)

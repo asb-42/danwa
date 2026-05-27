@@ -13,6 +13,7 @@ DEFAULT_DMS_CONFIG = {
     "embedding_model": "intfloat/multilingual-e5-small",
     "ocr_enabled": True,
     "ocr_device": "cpu",
+    "ocr_lang": "deu+eng",
     "max_file_size_mb": 50,
     "chroma_collection": "document_chunks",
     "memory_dir": "memory",
