@@ -328,12 +328,6 @@
     opacity: 0.9;
   }
 
-  .llm-model {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 300px;
-  }
-
   .llm-elapsed {
     font-weight: 400;
     opacity: 0.7;
@@ -395,9 +389,6 @@
   @media (max-width: 900px) {
     .llm-activity {
       max-width: 350px;
-    }
-    .llm-model {
-      max-width: 160px;
     }
   }
 
