@@ -201,11 +201,13 @@ class DMS:
                     chunk_index=i,
                     text=ct,
                     page=0,
-                    metadata_json=str({
-                        "file_name": doc["filename"],
-                        "upload_date": doc.get("uploaded_at", ""),
-                        "project_id": target_project_id,
-                    }),
+                    metadata_json=str(
+                        {
+                            "file_name": doc["filename"],
+                            "upload_date": doc.get("uploaded_at", ""),
+                            "project_id": target_project_id,
+                        }
+                    ),
                 )
             logger.info("Indexed %d chunks for document %s in target project", len(chunk_texts), new_doc_id)
 
@@ -213,8 +215,11 @@ class DMS:
         self.delete_document(document_id)
         logger.info(
             "Moved document %s (%s) from project %s to project %s as %s",
-            document_id, doc.get("filename"),
-            doc["project_id"], target_project_id, new_doc_id,
+            document_id,
+            doc.get("filename"),
+            doc["project_id"],
+            target_project_id,
+            new_doc_id,
         )
         return True
 
