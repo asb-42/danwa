@@ -470,8 +470,12 @@
                         </button>
                         {#if TRANSLATABLE_TYPES.includes(mod.type)}
                           <button
-                            class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
-                            onclick={() => handleTranslate(mod)}
+                            class="px-2.5 py-1 text-xs rounded transition-colors {mod.language === 'en'
+                              ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                              : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50'}"
+                            onclick={() => mod.language !== 'en' && handleTranslate(mod)}
+                            disabled={mod.language === 'en'}
+                            title={mod.language === 'en' ? 'English is the source language (SSOT)' : 'Translate module'}
                           >
                             Translate
                           </button>

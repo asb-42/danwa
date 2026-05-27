@@ -440,25 +440,32 @@
                     📦 Export
                   </button>
                   <button
-                    class="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors disabled:opacity-50"
-                    disabled={wipingLocale === locale.code || activeJobId !== null}
-                    onclick={() => wipeLocaleHandler(locale.code)}
-                    title="Delete all translations for this locale"
+                    class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-50 {locale.code === 'en'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/50'}"
+                    disabled={wipingLocale === locale.code || activeJobId !== null || locale.code === 'en'}
+                    onclick={() => locale.code !== 'en' && wipeLocaleHandler(locale.code)}
+                    title={locale.code === 'en' ? 'Cannot wipe source language' : 'Delete all translations for this locale'}
                   >
                     {wipingLocale === locale.code ? '⏳ Wiping…' : '🗑️ Wipe'}
                   </button>
                   <button
-                    class="px-2.5 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors disabled:opacity-50"
-                    disabled={translatingLocale === locale.code || activeJobId !== null}
-                    onclick={() => translateLocale(locale.code, false)}
+                    class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-50 {locale.code === 'en'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800/50'}"
+                    disabled={translatingLocale === locale.code || activeJobId !== null || locale.code === 'en'}
+                    onclick={() => locale.code !== 'en' && translateLocale(locale.code, false)}
+                    title={locale.code === 'en' ? 'English is the source language (SSOT)' : 'Translate with LLM'}
                   >
                     {translatingLocale === locale.code ? '⏳ ' + t('translation.translating') : '🤖 ' + t('translation.llm')}
                   </button>
                   <button
-                    class="px-2.5 py-1 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded hover:bg-violet-200 dark:hover:bg-violet-800/50 transition-colors disabled:opacity-50"
-                    disabled={translatingLocale === locale.code || activeJobId !== null}
-                    onclick={() => translateLocale(locale.code, true)}
-                    title="Wipe existing translations, then translate all strings fresh"
+                    class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-50 {locale.code === 'en'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/50'}"
+                    disabled={translatingLocale === locale.code || activeJobId !== null || locale.code === 'en'}
+                    onclick={() => locale.code !== 'en' && translateLocale(locale.code, true)}
+                    title={locale.code === 'en' ? 'English is the source language (SSOT)' : 'Wipe existing translations, then translate all strings fresh'}
                   >
                     {translatingLocale === locale.code ? '⏳ ' + t('translation.translating') : '🔄 ' + t('translation.llm') + ' + Wipe'}
                   </button>
