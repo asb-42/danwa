@@ -404,7 +404,7 @@ export function getManualRAGDocuments() {
 }
 
 export function searchRAG(query, limit = 5) {
-  return request(`/api/v1/dms/rag/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  return request(`/api/v1/dms/rag/search?query=${encodeURIComponent(query)}&k=${limit}`);
 }
 
 export function getOcrStatus() {

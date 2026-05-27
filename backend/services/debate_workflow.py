@@ -78,6 +78,60 @@ def enqueue_oob(debate_id: str, entry: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Document analysis formatting helper
+# ---------------------------------------------------------------------------
+
+
+def _format_analysis_for_rag(analysis: dict) -> str:
+    """Format a document analysis dict as RAG context text.
+
+    Shared helper used by ``resolve_rag_context`` and
+    ``resolve_rag_context_with_debate_results``.
+    """
+    parts = [
+        "=== DOCUMENT ANALYSIS ===",
+        "The following is a structured case analysis of the uploaded documents. "
+        "Use it as your PRIMARY source of case context — it summarizes the key facts, "
+        "parties, timeline, and issues. The raw document excerpts below are for "
+        "fact-checking and finding exact quotes.",
+        "",
+        f"Case Summary: {analysis.get('case_summary', '')}",
+    ]
+    if analysis.get("key_facts"):
+        parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
+    if analysis.get("parties"):
+        lines = [f"  {p['name']} ({p['role']}): {p['positions']}" for p in analysis["parties"]]
+        parts.append("Parties:\n" + "\n".join(lines))
+    if analysis.get("timeline"):
+        lines = [f"  {t['date']} — {t['event']}" for t in analysis["timeline"]]
+        parts.append("Timeline:\n" + "\n".join(lines))
+    if analysis.get("key_issues"):
+        parts.append("Key Issues:\n- " + "\n- ".join(analysis["key_issues"]))
+    return "\n\n".join(parts)
+
+
+def _load_analysis_text(project_id: str, project_store=None) -> str:
+    """Load and format document analysis for a project, or return empty string."""
+    from backend.services.dms.document_analyzer import load_analysis
+
+    try:
+        if project_store:
+            project_dir = project_store.get_project_dir(project_id)
+        else:
+            from backend.persistence.project_store import ProjectStore
+
+            ps = ProjectStore()
+            project_dir = ps.get_project_dir(project_id)
+        analysis = load_analysis(project_dir)
+        if analysis and "error" not in analysis:
+            logger.info("Loaded document analysis for project %s", project_id)
+            return _format_analysis_for_rag(analysis)
+    except Exception as exc:
+        logger.debug("Could not load document analysis for project %s: %s", project_id, exc)
+    return ""
+
+
+# ---------------------------------------------------------------------------
 # Request field extraction helpers
 # ---------------------------------------------------------------------------
 
@@ -310,38 +364,7 @@ def resolve_rag_context(
     """
     from backend.services.dms.service import get_dms_for_project
 
-    # Load optional document analysis (case summary from DocumentAnalyzer)
-    analysis_text = ""
-    if project_store:
-        try:
-            project_dir = project_store.get_project_dir(project_id)
-            from backend.services.dms.document_analyzer import load_analysis
-
-            analysis = load_analysis(project_dir)
-            if analysis and "error" not in analysis:
-                parts = [
-                    "=== DOCUMENT ANALYSIS ===",
-                    "The following is a structured case analysis of the uploaded documents. "
-                    "Use it as your PRIMARY source of case context — it summarizes the key facts, "
-                    "parties, timeline, and issues. The raw document excerpts below are for "
-                    "fact-checking and finding exact quotes.",
-                    "",
-                    f"Case Summary: {analysis.get('case_summary', '')}",
-                ]
-                if analysis.get("key_facts"):
-                    parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
-                if analysis.get("parties"):
-                    lines = [f"  {p['name']} ({p['role']}): {p['positions']}" for p in analysis["parties"]]
-                    parts.append("Parties:\n" + "\n".join(lines))
-                if analysis.get("timeline"):
-                    lines = [f"  {t['date']} — {t['event']}" for t in analysis["timeline"]]
-                    parts.append("Timeline:\n" + "\n".join(lines))
-                if analysis.get("key_issues"):
-                    parts.append("Key Issues:\n- " + "\n- ".join(analysis["key_issues"]))
-                analysis_text = "\n\n".join(parts)
-                logger.info("Loaded document analysis for project %s", project_id)
-        except Exception as exc:
-            logger.debug("Could not load document analysis for project %s: %s", project_id, exc)
+    analysis_text = _load_analysis_text(project_id, project_store)
 
     try:
         dms = get_dms_for_project(project_id, project_store)
@@ -1120,86 +1143,66 @@ async def on_debate_completed(debate_id: str, project_id: str):
     from backend.services.dms.service import get_dms_for_project
     from backend.workflow.report_generator import WorkflowReportGenerator
 
-    # Use project store to get correct DMS for the project
-
-    # Use project store to get correct DMS for the project
     ps = ProjectStore()
-    original_project_id = project_id
-    try:
-        get_dms_for_project(project_id, ps)
-    except Exception:
-        # Fallback to default project
-        get_dms_for_project("_default", ps)
 
+    # Resolve DMS for the given project (fallback to _default)
     try:
-        ps_for_debate = ProjectStore()
-        for proj in ps_for_debate.list_all():
-            pdir = ps_for_debate.get_project_dir(proj.id)
-            store_check = DebateStore(data_dir=pdir / "debates")
-            debate = store_check.get(debate_id)
-            if debate:
-                original_project_id = proj.id
-                break
+        dms = get_dms_for_project(project_id, ps)
     except Exception:
-        pass
+        try:
+            dms = get_dms_for_project("_default", ps)
+            project_id = "_default"
+        except Exception:
+            logger.warning("Could not initialize DMS for debate completion callback")
+            return None
 
+    # Look up the debate directly in the known project
     debate_data = None
     try:
-        ps2 = ProjectStore()
-        for proj in ps2.list_all():
-            pdir = ps2.get_project_dir(proj.id)
-            s = DebateStore(data_dir=pdir / "debates")
-            d = s.get(debate_id)
-            if d:
-                debate_data = d
-                original_project_id = proj.id
-                break
+        project_dir = ps.get_project_dir(project_id)
+        store = DebateStore(data_dir=project_dir / "debates")
+        debate_data = store.get(debate_id)
     except Exception:
         pass
 
     if not debate_data:
-        # Try default project
-        default_store = DebateStore()
-        debate_data = default_store.get(debate_id)
+        # Fallback: try default project store
+        try:
+            default_store = DebateStore()
+            debate_data = default_store.get(debate_id)
+        except Exception:
+            pass
 
     if not debate_data:
         logger.warning("Debate %s not found for RAG document creation", debate_id)
         return None
 
-    try:
-        dms2 = get_dms_for_project(original_project_id)
-    except Exception:
-        try:
-            dms2 = get_dms_for_project("_default")
-        except Exception:
-            logger.warning("Could not initialize DMS for debate completion callback")
-            return None
-
     transcript = WorkflowReportGenerator._build_transcript(debate_data)
     document_text = _generate_rag_friendly_summary(transcript)
 
     try:
-        doc_id = await dms2.db.add_document(
-            project_id=original_project_id,
+        doc = dms.db.add_document(
+            project_id=project_id,
             filename=f"debate_{debate_id[:8]}.md",
             file_path="",
             file_type="md",
             file_size=len(document_text),
             original_filename=f"Debatte: {debate_data.get('title', 'unbenannt')}",
         )
+        doc_id = doc["id"]
 
         # Write content to the document file path if available
-        doc_entry = dms2.db.get_document(doc_id)
+        doc_entry = dms.db.get_document(doc_id)
         if doc_entry and doc_entry.get("file_path"):
             from pathlib import Path as PLPath
 
             PLPath(doc_entry["file_path"]).parent.mkdir(parents=True, exist_ok=True)
             PLPath(doc_entry["file_path"]).write_text(document_text, encoding="utf-8")
-            # Process the file for RAG indexing
-            chunk_ids = await dms2.rag_pipeline.process_file(doc_id, doc_entry["file_path"])
-            logger.info("Created DMS document %s for debate %s (%d chunks)", doc_id, debate_id, len(chunk_ids))
+            proc_result = await dms.rag_pipeline.process_file(doc_id, doc_entry["file_path"])
+            chunk_count = len(proc_result.get("chunk_ids", []))
+            logger.info("Created DMS document %s for debate %s (%d chunks)", doc_id, debate_id, chunk_count)
         else:
-            chunk_ids = dms2.rag_pipeline.process_document(doc_id, document_text)
+            chunk_ids = dms.rag_pipeline.process_document(doc_id, document_text)
             logger.info("Created DMS document %s for debate %s (%d chunks)", doc_id, debate_id, len(chunk_ids))
 
         return doc_id
@@ -1264,38 +1267,7 @@ def resolve_rag_context_with_debate_results(
     """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3)."""
     from backend.services.dms.service import get_dms_for_project
 
-    # Load optional document analysis
-    analysis_text = ""
-    try:
-        from backend.persistence.project_store import ProjectStore
-        from backend.services.dms.document_analyzer import load_analysis
-
-        ps = ProjectStore()
-        project_dir = ps.get_project_dir(project_id)
-        analysis = load_analysis(project_dir)
-        if analysis and "error" not in analysis:
-            parts = [
-                "=== DOCUMENT ANALYSIS ===",
-                "The following is a structured case analysis of the uploaded documents. "
-                "Use it as your PRIMARY source of case context — it summarizes the key facts, "
-                "parties, timeline, and issues. The raw document excerpts below are for "
-                "fact-checking and finding exact quotes.",
-                "",
-                f"Case Summary: {analysis.get('case_summary', '')}",
-            ]
-            if analysis.get("key_facts"):
-                parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
-            if analysis.get("parties"):
-                lines = [f"  {p['name']} ({p['role']}): {p['positions']}" for p in analysis["parties"]]
-                parts.append("Parties:\n" + "\n".join(lines))
-            if analysis.get("timeline"):
-                lines = [f"  {t['date']} — {t['event']}" for t in analysis["timeline"]]
-                parts.append("Timeline:\n" + "\n".join(lines))
-            if analysis.get("key_issues"):
-                parts.append("Key Issues:\n- " + "\n- ".join(analysis["key_issues"]))
-            analysis_text = "\n\n".join(parts)
-    except Exception as exc:
-        logger.debug("Could not load document analysis for project %s: %s", project_id, exc)
+    analysis_text = _load_analysis_text(project_id)
 
     try:
         dms = get_dms_for_project(project_id)

@@ -1,5 +1,6 @@
 """API router for Document Management System (documents, RAG)."""
 
+import asyncio
 import logging
 import os
 import tempfile
@@ -101,6 +102,23 @@ async def upload_document(
     suffix = os.path.splitext(original_filename)[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await file.read()
+
+        # Check file size against DMS config limit
+        from backend.services.dms.config import load_dms_config
+
+        try:
+            dms_config = load_dms_config()
+            max_bytes = dms_config.get("max_file_size_mb", 50) * 1024 * 1024
+        except Exception:
+            max_bytes = 50 * 1024 * 1024  # 50 MB default
+
+        if len(content) > max_bytes:
+            os.unlink(tmp.name)
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large ({len(content)} bytes). Maximum allowed: {max_bytes // (1024 * 1024)} MB",
+            )
+
         tmp.write(content)
         tmp_path = tmp.name
 
@@ -278,7 +296,7 @@ def ocr_status():
 
 
 @router.post("/analyze")
-def analyze_documents(
+async def analyze_documents(
     language: str = Query("de", description="Language for analysis content (e.g. 'de', 'en')"),
     mode: str = Query("full", description="Analysis mode: 'full' (regenerate all) or 'update' (merge new docs only)"),
     project_id: str = Depends(get_project_id),
@@ -330,7 +348,7 @@ def analyze_documents(
         if not document_texts:
             return {"status": "ok", "message": "No extractable text in new documents", "analysis": existing}
 
-        analysis = update_analysis(existing, document_texts, profile_service=profile_service, language=language)
+        analysis = await asyncio.to_thread(update_analysis, existing, document_texts, profile_service=profile_service, language=language)
         if "error" in analysis:
             raise HTTPException(status_code=500, detail=analysis["error"])
 
@@ -348,7 +366,7 @@ def analyze_documents(
     if not document_texts:
         raise HTTPException(status_code=400, detail="No extractable text found in documents")
 
-    analysis = run_document_analysis(document_texts, profile_service=profile_service, language=language)
+    analysis = await asyncio.to_thread(run_document_analysis, document_texts, profile_service=profile_service, language=language)
     if "error" in analysis:
         raise HTTPException(status_code=500, detail=analysis["error"])
 

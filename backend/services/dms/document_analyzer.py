@@ -141,19 +141,7 @@ def _parse_json(text: str) -> dict | None:
         return json.loads(_clean_json(re.sub(r"[\x00-\x1f]", "", text)))
     except (json.JSONDecodeError, ValueError):
         pass
-    # Strategy 3: try ast.literal_eval (handles trailing commas,
-    # single-quoted strings, and some other leniencies)
-    import ast
-
-    try:
-        fixed = text.replace("'", '"')
-        fixed = re.sub(r",\s*([}\]])", r"\1", fixed)
-        fixed = re.sub(r"(?<!\")(\btrue\b)(?!\")", "True", fixed, flags=re.IGNORECASE)
-        fixed = re.sub(r"(?<!\")(\bfalse\b)(?!\")", "False", fixed, flags=re.IGNORECASE)
-        fixed = re.sub(r"(?<!\")(\bnull\b)(?!\")", "None", fixed, flags=re.IGNORECASE)
-        return ast.literal_eval(fixed)
-    except (ValueError, SyntaxError, MemoryError):
-        return None
+    return None
 
 
 def _call_llm(
