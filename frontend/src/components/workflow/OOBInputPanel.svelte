@@ -32,9 +32,8 @@
     { value: 'current_active', label: t('oob.targetCurrent') },
   ]);
 
-  let rt = $derived(workflowStore.runtime);
   let pendingCount = $derived(workflowStore.pendingOOBCount);
-  let isVisible = $derived(rt.status === 'running' || rt.status === 'waiting_for_user');
+  let isVisible = $derived(workflowStore.runtimeStatus === 'running' || workflowStore.runtimeStatus === 'waiting_for_user');
 
   let submitError = $state('');
   let isSubmitting = $state(false);
@@ -48,7 +47,7 @@
       ? { type: 'next_agent', current_agent_role: getCurrentRole() }
       : targetRole === 'current_active'
         ? { type: 'current_active' }
-        : { type: 'specific_agent', agent_role: targetRole, round: rt.currentRound };
+        : { type: 'specific_agent', agent_role: targetRole, round: workflowStore.runtimeCurrentRound };
 
     const trimmedContent = content.trim();
 
@@ -69,12 +68,12 @@
   }
 
   function getCurrentRole() {
-    if (!rt.activeNodeId) return 'moderator';
-    const match = rt.activeNodeId.match(/^(\w+)_r\d+$/);
+    if (!workflowStore.runtimeActiveNodeId) return 'moderator';
+    const match = workflowStore.runtimeActiveNodeId.match(/^(\w+)_r\d+$/);
     if (match && ['strategist', 'critic', 'optimizer', 'moderator'].includes(match[1])) return match[1];
     // Fallback: find last known agent from execution path
-    for (let i = rt.executionPath.length - 1; i >= 0; i--) {
-      const m = rt.executionPath[i].match(/^(\w+)_r\d+$/);
+    for (let i = workflowStore.runtimeExecutionPath.length - 1; i >= 0; i--) {
+      const m = workflowStore.runtimeExecutionPath[i].match(/^(\w+)_r\d+$/);
       if (m && ['strategist', 'critic', 'optimizer', 'moderator'].includes(m[1])) return m[1];
     }
     return 'moderator';
@@ -128,7 +127,7 @@
 
     <p class="oob-hint">{t('oob.shortcut')}</p>
 
-    {#if rt.status === 'waiting_for_user'}
+    {#if workflowStore.runtimeStatus === 'waiting_for_user'}
       <div class="oob-warning">
         ⚠️ {t('oob.waitingWarning')}
       </div>
