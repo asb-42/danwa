@@ -4,7 +4,7 @@ import logging
 import os
 import tempfile
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from backend.api.deps import get_profile_service_for_project, get_project_id, get_project_store
@@ -14,6 +14,7 @@ from backend.services.dms.document_analyzer import (
 from backend.services.dms.document_analyzer import (
     load_analysis,
     save_analysis,
+    update_analysis,
 )
 from backend.services.dms.service import get_dms_for_project
 
@@ -278,13 +279,20 @@ def ocr_status():
 
 @router.post("/analyze")
 def analyze_documents(
+    language: str = Query("de", description="Language for analysis content (e.g. 'de', 'en')"),
+    mode: str = Query("full", description="Analysis mode: 'full' (regenerate all) or 'update' (merge new docs only)"),
     project_id: str = Depends(get_project_id),
     project_store=Depends(get_project_store),
 ):
-    """Analyze all documents in the project and produce a structured case analysis.
+    """Analyze documents in the project and produce a structured case analysis.
 
     Uses the utility LLM to summarize, extract key facts, parties,
     timeline, and issues from all uploaded documents.
+
+    Two modes:
+    - ``full`` (default): Re-analyze all documents from scratch.
+    - ``update``: Merge new documents into an existing analysis without
+      re-processing already analyzed documents.
     """
     try:
         dms = get_dms_for_project(project_id, project_store=project_store)
@@ -295,6 +303,41 @@ def analyze_documents(
     if not documents:
         raise HTTPException(status_code=400, detail="No documents to analyze")
 
+    profile_service = get_profile_service_for_project(project_id, project_store)
+    project_dir = project_store.get_project_dir(project_id)
+
+    if mode == "update":
+        existing = load_analysis(project_dir)
+        if not existing:
+            raise HTTPException(
+                status_code=400,
+                detail="No existing analysis found. Run full analysis first.",
+            )
+
+        known_filenames = {d.get("filename", "") for d in existing.get("documents", [])}
+        new_documents = [d for d in documents if d.get("filename", "") not in known_filenames]
+
+        if not new_documents:
+            return {"status": "ok", "message": "No new documents to analyze", "analysis": existing}
+
+        document_texts = []
+        for doc in new_documents:
+            content = dms.get_document_content(doc["id"])
+            text = (content or {}).get("text_content", "")
+            if text:
+                document_texts.append({"filename": doc.get("filename", "unknown"), "text": text})
+
+        if not document_texts:
+            return {"status": "ok", "message": "No extractable text in new documents", "analysis": existing}
+
+        analysis = update_analysis(existing, document_texts, profile_service=profile_service, language=language)
+        if "error" in analysis:
+            raise HTTPException(status_code=500, detail=analysis["error"])
+
+        save_analysis(project_dir, analysis)
+        return {"status": "ok", "mode": "update", "analysis": analysis}
+
+    # full mode
     document_texts = []
     for doc in documents:
         content = dms.get_document_content(doc["id"])
@@ -305,16 +348,13 @@ def analyze_documents(
     if not document_texts:
         raise HTTPException(status_code=400, detail="No extractable text found in documents")
 
-    profile_service = get_profile_service_for_project(project_id, project_store)
-
-    analysis = run_document_analysis(document_texts, profile_service=profile_service)
+    analysis = run_document_analysis(document_texts, profile_service=profile_service, language=language)
     if "error" in analysis:
         raise HTTPException(status_code=500, detail=analysis["error"])
 
-    project_dir = project_store.get_project_dir(project_id)
     save_analysis(project_dir, analysis)
 
-    return {"status": "ok", "analysis": analysis}
+    return {"status": "ok", "mode": "full", "analysis": analysis}
 
 
 @router.get("/analyze")

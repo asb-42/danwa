@@ -385,8 +385,8 @@ export function addDocumentToRAG(documentId) {
   });
 }
 
-export function analyzeDocuments() {
-  return request('/api/v1/dms/analyze', { method: 'POST' });
+export function analyzeDocuments({ language = 'de', mode = 'full' } = {}) {
+  return request(`/api/v1/dms/analyze?language=${language}&mode=${mode}`, { method: 'POST' });
 }
 
 export function getAnalysis() {

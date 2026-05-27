@@ -306,12 +306,13 @@
     }
   }
 
-  async function runAnalysis() {
+  async function runAnalysis(mode = 'full') {
     analysisLoading = true;
     analysisError = '';
     analysis = null;
     try {
-      const res = await analyzeDocuments();
+      const lang = i18n.getLocale() || 'de';
+      const res = await analyzeDocuments({ language: lang, mode });
       analysis = res.analysis;
     } catch (e) {
       analysisError = e.message;
@@ -621,11 +622,18 @@
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-gray-800 dark:text-white">📊 Case Analysis</h2>
       {#if analysis}
-        <button
-          class="px-3 py-1.5 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-          onclick={runAnalysis}
-          disabled={analysisLoading}
-        >🔄 Re-analyze</button>
+        <div class="flex gap-2">
+          <button
+            class="px-3 py-1.5 text-sm rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            onclick={() => runAnalysis('update')}
+            disabled={analysisLoading}
+          >➕ Update</button>
+          <button
+            class="px-3 py-1.5 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+            onclick={() => runAnalysis('full')}
+            disabled={analysisLoading}
+          >🔄 Re-analyze</button>
+        </div>
       {/if}
     </div>
 
@@ -636,7 +644,7 @@
         <p class="text-sm mb-4">Analyze all documents in this project to get a structured case summary for the debate.</p>
         <button
           class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-          onclick={runAnalysis}
+          onclick={() => runAnalysis('full')}
           disabled={analysisLoading}
         >🚀 Analyze documents</button>
       </div>
