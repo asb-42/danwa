@@ -309,6 +309,31 @@ def resolve_rag_context(
     """
     from backend.services.dms.service import get_dms_for_project
 
+    # Load optional document analysis (case summary from DocumentAnalyzer)
+    analysis_text = ""
+    if project_store:
+        try:
+            project_dir = project_store.get_project_dir(project_id)
+            from backend.services.dms.document_analyzer import load_analysis
+
+            analysis = load_analysis(project_dir)
+            if analysis and "error" not in analysis:
+                parts = [f"DOCUMENT ANALYSIS — {analysis.get('case_summary', '')}"]
+                if analysis.get("key_facts"):
+                    parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
+                if analysis.get("parties"):
+                    lines = [f"  {p['name']} ({p['role']}): {p['positions']}" for p in analysis["parties"]]
+                    parts.append("Parties:\n" + "\n".join(lines))
+                if analysis.get("timeline"):
+                    lines = [f"  {t['date']} — {t['event']}" for t in analysis["timeline"]]
+                    parts.append("Timeline:\n" + "\n".join(lines))
+                if analysis.get("key_issues"):
+                    parts.append("Key Issues:\n- " + "\n- ".join(analysis["key_issues"]))
+                analysis_text = "\n\n".join(parts)
+                logger.info("Loaded document analysis for project %s", project_id)
+        except Exception as exc:
+            logger.debug("Could not load document analysis for project %s: %s", project_id, exc)
+
     try:
         dms = get_dms_for_project(project_id, project_store)
     except Exception as exc:
@@ -374,6 +399,10 @@ def resolve_rag_context(
     else:
         rag_context = dms.format_rag_context(unique_chunks)
     doc_count = len(document_ids) if document_ids else 0
+
+    if analysis_text:
+        rag_context = f"{analysis_text}\n\n=== DOCUMENT EXCERPTS ===\n\n{rag_context}" if rag_context else analysis_text
+        logger.info("Prepended document analysis to RAG context for project %s", project_id)
 
     logger.info(
         "RAG context resolved for project %s: %d unique chunks from %d documents",
@@ -1204,6 +1233,31 @@ def resolve_rag_context_with_debate_results(
     """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3)."""
     from backend.services.dms.service import get_dms_for_project
 
+    # Load optional document analysis
+    analysis_text = ""
+    try:
+        from backend.persistence.project_store import ProjectStore
+        from backend.services.dms.document_analyzer import load_analysis
+
+        ps = ProjectStore()
+        project_dir = ps.get_project_dir(project_id)
+        analysis = load_analysis(project_dir)
+        if analysis and "error" not in analysis:
+            parts = [f"DOCUMENT ANALYSIS — {analysis.get('case_summary', '')}"]
+            if analysis.get("key_facts"):
+                parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
+            if analysis.get("parties"):
+                lines = [f"  {p['name']} ({p['role']}): {p['positions']}" for p in analysis["parties"]]
+                parts.append("Parties:\n" + "\n".join(lines))
+            if analysis.get("timeline"):
+                lines = [f"  {t['date']} — {t['event']}" for t in analysis["timeline"]]
+                parts.append("Timeline:\n" + "\n".join(lines))
+            if analysis.get("key_issues"):
+                parts.append("Key Issues:\n- " + "\n- ".join(analysis["key_issues"]))
+            analysis_text = "\n\n".join(parts)
+    except Exception as exc:
+        logger.debug("Could not load document analysis for project %s: %s", project_id, exc)
+
     try:
         dms = get_dms_for_project(project_id)
     except Exception:
@@ -1281,4 +1335,8 @@ def resolve_rag_context_with_debate_results(
             unique_chunks.append(chunk)
 
     rag_context = dms.format_rag_context(unique_chunks)
+
+    if analysis_text:
+        rag_context = f"{analysis_text}\n\n=== DOCUMENT EXCERPTS ===\n\n{rag_context}" if rag_context else analysis_text
+
     return rag_context, len(unique_chunks)
