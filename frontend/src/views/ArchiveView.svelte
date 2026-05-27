@@ -326,8 +326,8 @@
                 <p class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
                   {debate.title}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
-                  {debate.case_preview || debate.debate_id.substring(0, 16)}
+                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">
+                  {debate.case_text || debate.case_preview || debate.debate_id.substring(0, 16)}
                 </p>
               {:else}
                 <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">

@@ -281,6 +281,12 @@ async def start_mvp_debate(
         except Exception:
             logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
 
+    logger.info(
+        "MVP debate RAG context for project %s: %d chars",
+        effective_project_id,
+        len(rag_context),
+    )
+
     llm_assignments = {agent.node_id.replace("node-", ""): agent.llm_profile_id for agent in compiled.resolved_agents}
 
     # --- Phase 2: Compose system_prompt from up to 4 modular components ---

@@ -785,6 +785,13 @@
     </p>
   </div>
 
+  {#if topic && debateId}
+    <div class="case-text-section">
+      <h4 class="case-text-heading">📋 {t('debate.caseLabel')}</h4>
+      <p class="case-text-content">{topic}</p>
+    </div>
+  {/if}
+
   {#if isLoadingDebate}
     <div class="loading-section">
       <div class="flex items-center justify-center py-12">
@@ -2377,6 +2384,37 @@
   .consensus-low { background: #ef4444; }
   .consensus-mid { background: #f59e0b; }
   .consensus-high { background: #22c55e; }
+
+  .case-text-section {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  :global(.dark) .case-text-section {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  .case-text-heading {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  :global(.dark) .case-text-heading { color: #9ca3af; }
+  .case-text-content {
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  :global(.dark) .case-text-content { color: #d1d5db; }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }

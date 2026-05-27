@@ -35,6 +35,8 @@ class WorkflowState(TypedDict, total=False):
     project_id: str
     context: str  # User case text / input
     language: str
+    search_mode: str  # 'off', 'optional', 'required'
+    rag_context: str  # Document analysis + RAG document excerpts
 
     # --- Workflow structure (resolved at compile time) ---
     node_sequence: list[str]  # Ordered node IDs from topological sort
