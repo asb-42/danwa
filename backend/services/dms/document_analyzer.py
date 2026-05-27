@@ -104,6 +104,46 @@ def _build_update_system_prompt(language: str) -> str:
     )
 
 
+def _extract_json(text: str) -> str | None:
+    """Extract a JSON object from LLM output, handling markdown fences and noise."""
+    # 1. Try content between ```json ... ``` fences
+    m = re.search(r"```(?:json)?\s*\n?(\{.*?\})\n?\s*```", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    # 2. Try content between ``` ... ``` (any fence)
+    m = re.search(r"```\s*\n?(\{.*?\})\n?\s*```", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    # 3. Try first { ... } block (greedy — outermost object)
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        return m.group()
+    return None
+
+
+def _clean_json(text: str) -> str:
+    """Strip trailing commas before ] or } so json.loads can handle them."""
+    # Remove trailing commas: ,] -> ], ,} -> }
+    cleaned = re.sub(r",\s*([}\]])", r"\1", text)
+    return cleaned
+
+
+def _parse_json(text: str) -> dict | None:
+    """Attempt to parse JSON with progressively more aggressive cleaning."""
+    candidates = [text, _clean_json(text)]
+    for candidate in candidates:
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    # Last resort: try to find any valid JSON object via brute force
+    # (some LLMs produce multiple braces, control chars, etc.)
+    try:
+        return json.loads(_clean_json(re.sub(r"[\x00-\x1f]", "", text)))
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
 def _call_llm(
     user_prompt: str,
     system_prompt: str,
@@ -129,16 +169,15 @@ def _call_llm(
         return {"error": f"Analysis failed: {e}"}
 
     content = result.content.strip()
-    json_match = re.search(r"\{.*\}", content, re.DOTALL)
-    if not json_match:
+    extracted = _extract_json(content)
+    if not extracted:
         logger.error("No JSON found in LLM response")
         return {"error": "Analysis produced unexpected output", "raw": content[:500]}
 
-    try:
-        analysis = json.loads(json_match.group())
-    except json.JSONDecodeError as e:
-        logger.error("Failed to parse analysis JSON: %s", e)
-        return {"error": f"Failed to parse analysis: {e}", "raw": content[:500]}
+    analysis = _parse_json(extracted)
+    if not analysis:
+        logger.error("Failed to parse analysis JSON")
+        return {"error": "Analysis produced unparseable JSON", "raw": content[:500]}
 
     analysis["_model"] = result.model
     analysis["_tokens_in"] = result.tokens_in
