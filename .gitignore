@@ -263,3 +263,4 @@ pids/
 docs/.last-doc-update
 docs/.last-adr-check
 tmp/
+modules/prompt-modifier-text-only/
