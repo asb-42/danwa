@@ -318,7 +318,15 @@ def resolve_rag_context(
 
             analysis = load_analysis(project_dir)
             if analysis and "error" not in analysis:
-                parts = [f"DOCUMENT ANALYSIS — {analysis.get('case_summary', '')}"]
+                parts = [
+                    "=== DOCUMENT ANALYSIS ===",
+                    "The following is a structured case analysis of the uploaded documents. "
+                    "Use it as your PRIMARY source of case context — it summarizes the key facts, "
+                    "parties, timeline, and issues. The raw document excerpts below are for "
+                    "fact-checking and finding exact quotes.",
+                    "",
+                    f"Case Summary: {analysis.get('case_summary', '')}",
+                ]
                 if analysis.get("key_facts"):
                     parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
                 if analysis.get("parties"):
@@ -338,6 +346,8 @@ def resolve_rag_context(
         dms = get_dms_for_project(project_id, project_store)
     except Exception as exc:
         logger.warning("Could not initialize DMS for project %s: %s", project_id, exc)
+        if analysis_text:
+            return analysis_text, 0
         return "", 0
 
     all_chunks: list[dict] = []
@@ -384,6 +394,9 @@ def resolve_rag_context(
             logger.warning("Failed to include debate results in RAG context: %s", exc)
 
     if not all_chunks:
+        if analysis_text:
+            logger.info("Document analysis available but no chunks — returning analysis-only RAG context")
+            return analysis_text, 0
         return "", 0
 
     seen_texts: set[str] = set()
@@ -1243,7 +1256,15 @@ def resolve_rag_context_with_debate_results(
         project_dir = ps.get_project_dir(project_id)
         analysis = load_analysis(project_dir)
         if analysis and "error" not in analysis:
-            parts = [f"DOCUMENT ANALYSIS — {analysis.get('case_summary', '')}"]
+            parts = [
+                "=== DOCUMENT ANALYSIS ===",
+                "The following is a structured case analysis of the uploaded documents. "
+                "Use it as your PRIMARY source of case context — it summarizes the key facts, "
+                "parties, timeline, and issues. The raw document excerpts below are for "
+                "fact-checking and finding exact quotes.",
+                "",
+                f"Case Summary: {analysis.get('case_summary', '')}",
+            ]
             if analysis.get("key_facts"):
                 parts.append("Key Facts:\n- " + "\n- ".join(analysis["key_facts"]))
             if analysis.get("parties"):
@@ -1261,6 +1282,8 @@ def resolve_rag_context_with_debate_results(
     try:
         dms = get_dms_for_project(project_id)
     except Exception:
+        if analysis_text:
+            return analysis_text, 0
         return "", 0
 
     all_chunks = []
@@ -1323,6 +1346,9 @@ def resolve_rag_context_with_debate_results(
             logger.warning("Failed to include debate results in RAG context: %s", exc)
 
     if not all_chunks:
+        if analysis_text:
+            logger.info("Document analysis available but no chunks — returning analysis-only RAG context")
+            return analysis_text, 0
         return "", 0
 
     # Deduplizierung
