@@ -267,7 +267,7 @@ export function formatList(items) {
  */
 export async function discoverLanguagePacks() {
   try {
-    const res = await fetch('/api/v1/modules?category=translations');
+    const res = await fetch('/api/v1/modules/?category=translations');
     if (!res.ok) return;
     const modules = await res.json();
     for (const mod of modules) {
