@@ -250,6 +250,9 @@
   }
 
   function closeViewer() {
+    if (editingText != null && editingText !== viewingDocContent?.text_content) {
+      if (!confirm('Unsaved changes will be lost. Close anyway?')) return;
+    }
     viewingDoc = null;
     viewingDocContent = null;
     editingText = null;
@@ -558,7 +561,6 @@
 
 <!-- Document Viewer Modal -->
 {#if viewingDoc}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_interactive_supports_focus -->
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeViewer(); }} role="dialog" aria-modal="true" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col">
       <!-- Header -->
