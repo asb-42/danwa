@@ -386,10 +386,7 @@ def get_ocr_settings():
     """Get current OCR configuration from settings.yaml (merged with defaults)."""
     settings = _load_settings()
     dms_config = {**DEFAULT_DMS_CONFIG, **(settings.get("dms") or {})}
-    return {
-        key: dms_config[key]
-        for key in ("ocr_enabled", "ocr_device", "ocr_lang", "ocr_preferred_engine")
-    }
+    return {key: dms_config[key] for key in ("ocr_enabled", "ocr_device", "ocr_lang", "ocr_preferred_engine")}
 
 
 class OcrSettingsBody(BaseModel):

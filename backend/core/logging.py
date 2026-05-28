@@ -36,9 +36,7 @@ def setup_logging(debug: bool = False) -> None:
 
     structlog.configure(
         processors=[*shared_processors, renderer],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            logging.DEBUG if debug else logging.INFO
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG if debug else logging.INFO),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
         cache_logger_on_first_use=True,
@@ -54,8 +52,12 @@ def setup_logging(debug: bool = False) -> None:
 
     # Suppress noisy third-party loggers
     for name in [
-        "httpx", "httpcore", "litellm", "python_multipart",
-        "chromadb", "chromadb.utils.embedding_functions",
+        "httpx",
+        "httpcore",
+        "litellm",
+        "python_multipart",
+        "chromadb",
+        "chromadb.utils.embedding_functions",
         "uvicorn.access",
     ]:
         logging.getLogger(name).setLevel(logging.WARNING)

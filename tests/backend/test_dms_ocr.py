@@ -510,6 +510,7 @@ class TestDocumentProcessorPreferredEngine:
             processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_preferred_engine": "paddleocr"})
 
         assert processor._ocr_engine == "paddleocr"
+
     """Tests for DMS config flowing to DocumentProcessor."""
 
     def test_default_config_has_ocr_enabled(self):

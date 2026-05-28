@@ -70,8 +70,14 @@ class TenantStore:
     def update(self, tenant_id: str, **kwargs) -> Tenant | None:
         """Update specific fields on a tenant."""
         allowed = {
-            "name", "plan", "max_projects", "max_concurrent_debates",
-            "max_documents", "max_storage_mb", "settings", "is_active",
+            "name",
+            "plan",
+            "max_projects",
+            "max_concurrent_debates",
+            "max_documents",
+            "max_storage_mb",
+            "settings",
+            "is_active",
         }
         updates = {}
         for k, v in kwargs.items():

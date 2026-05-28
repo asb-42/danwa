@@ -107,9 +107,9 @@ class Settings(BaseSettings):
     # --- Rate Limiting ---
     rate_limit_enabled: bool = True
     rate_limit_default: str = "60/minute"  # Default API rate limit
-    rate_limit_debate: str = "10/hour"     # Debate creation limit
-    rate_limit_upload: str = "20/hour"     # Document upload limit
-    rate_limit_analysis: str = "5/hour"    # LLM analysis limit
+    rate_limit_debate: str = "10/hour"  # Debate creation limit
+    rate_limit_upload: str = "20/hour"  # Document upload limit
+    rate_limit_analysis: str = "5/hour"  # LLM analysis limit
 
     # --- Observability ---
     prometheus_enabled: bool = True

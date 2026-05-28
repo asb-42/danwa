@@ -64,8 +64,7 @@ async def _run_workflow_async(session_id: str, workflow_id: str, project_id: str
     # For Phase 3, debate tasks are the primary Celery target.
     # Workflow tasks should use BackgroundTasks until full serialization is implemented.
     raise NotImplementedError(
-        "Workflow tasks via Celery require full state serialization. "
-        "Use BackgroundTasks for workflows with complex initial_state."
+        "Workflow tasks via Celery require full state serialization. Use BackgroundTasks for workflows with complex initial_state."
     )
 
 
