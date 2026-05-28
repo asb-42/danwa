@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     backup_encrypt: bool = False
     backup_dir: Path = Path("data/backups")
 
+    # --- Authentication (JWT) ---
+    jwt_secret_key: str = ""  # MUST be set in production via DANWA_JWT_SECRET_KEY
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 480  # 8 hours
+    jwt_refresh_token_expire_days: int = 30
+    auth_enabled: bool = True  # Set to False to disable auth (dev mode)
+
 
 def is_service_llm_eligible(profile) -> tuple[bool, str]:
     """Check whether an LLM profile is suitable as a service LLM.

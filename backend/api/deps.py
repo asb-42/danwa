@@ -8,7 +8,9 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError
 
 from backend.blueprints.repository import BlueprintRepository
 from backend.core.config import Settings, settings
@@ -18,6 +20,8 @@ from backend.persistence.project_store import ProjectStore
 from backend.workflow.debate_graph import debate_graph
 
 _SETTINGS_PATH = Path("config/settings.yaml")
+
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @lru_cache
@@ -111,3 +115,81 @@ async def get_project_id(
     This is a required dependency for all project-scoped endpoints.
     """
     return x_project_id
+
+
+# ---------------------------------------------------------------------------
+# User Store
+# ---------------------------------------------------------------------------
+
+
+@lru_cache
+def get_user_store():
+    """Singleton UserStore instance."""
+    from backend.persistence.user_store import UserStore
+
+    return UserStore()
+
+
+# ---------------------------------------------------------------------------
+# Authentication dependencies
+# ---------------------------------------------------------------------------
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+):
+    """Validate JWT bearer token and return the authenticated user.
+
+    If auth_enabled is False, returns a synthetic admin user (dev mode).
+    If no credentials are provided and auth is enabled, raises 401.
+    """
+    from backend.core.security import decode_token
+    from backend.models.user import User
+
+    if not settings.auth_enabled:
+        # Dev mode: return synthetic admin user
+        return User(
+            id="dev-user",
+            email="dev@danwa.local",
+            display_name="Dev User",
+            password_hash="",
+            role="admin",
+            tenant_id="_default",
+        )
+
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        token_data = decode_token(credentials.credentials)
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+    if token_data.token_type != "access":
+        raise HTTPException(status_code=401, detail="Token is not an access token")
+
+    user_store = get_user_store()
+    user = user_store.get(token_data.user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+
+    return user
+
+
+def require_role(*roles: str):
+    """Dependency factory for role-based access control.
+
+    Usage:
+        @router.post("/admin-only")
+        async def admin_endpoint(user = Depends(require_role("admin"))):
+            ...
+    """
+
+    def _check_role(user=Depends(get_current_user)):
+        if user.role not in roles:
+            raise HTTPException(status_code=403, detail=f"Requires role: {', '.join(roles)}")
+        return user
+
+    return _check_role
