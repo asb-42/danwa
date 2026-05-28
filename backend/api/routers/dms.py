@@ -268,7 +268,8 @@ def ocr_status():
 
     Returns:
         Dict with ``available`` (bool) and ``engine`` (str or null)
-        indicating the available OCR engine ("paddleocr" or "tesseract").
+        indicating the available OCR engine ("paddleocr", "easyocr",
+        "tesseract", or null).
     """
     # Try PaddleOCR first
     try:
@@ -281,7 +282,17 @@ def ocr_status():
         if "PDX has already been initialized" in str(e) or "paddle is unexpectedly loaded" in str(e):
             logger.warning("PaddleX/PaddleOCR initialization conflict - OCR may still be available: %s", e)
             return {"available": True, "engine": "paddleocr"}
-        # Fall through to tesseract check
+        # Fall through to next check
+
+    # Try EasyOCR
+    try:
+        import easyocr  # noqa: F401
+
+        return {"available": True, "engine": "easyocr"}
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.debug("EasyOCR check failed: %s", e)
 
     # Fallback: Try tesseract
     try:

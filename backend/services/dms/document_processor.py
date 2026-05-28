@@ -1,4 +1,4 @@
-"""Document processor — file parsing with optional OCR (PaddleOCR or Tesseract)."""
+"""Document processor — file parsing with optional OCR (PaddleOCR, EasyOCR, Tesseract)."""
 
 import asyncio
 import importlib
@@ -16,14 +16,15 @@ class DocumentProcessor:
     """Processes documents: file parsing with optional OCR for images.
 
     Supports multiple OCR engines with fallback chain:
-    1. PaddleOCR (if available)
-    2. Tesseract via pytesseract (if available)
+    1. PaddleOCR (if available, recommended)
+    2. EasyOCR (if available, fallback to PaddleOCR)
+    3. Tesseract via pytesseract (if available, tertiary fallback)
     """
 
     def __init__(self, config: dict | None = None):
         self.config = config or {}
         self._ocr = None
-        self._ocr_engine = None  # "paddleocr" or "tesseract" or None
+        self._ocr_engine = None  # "paddleocr", "easyocr", "tesseract", or None
         self._parser = DocumentParser()
         if self.config.get("ocr_enabled", False):
             self._initialize_ocr_sync()
@@ -77,6 +78,8 @@ class DocumentProcessor:
         try:
             if self._ocr_engine == "paddleocr":
                 return await self._process_with_paddle(file_path, ocr)
+            elif self._ocr_engine == "easyocr":
+                return await self._process_with_easyocr(file_path, ocr)
             elif self._ocr_engine == "tesseract":
                 return await self._process_with_tesseract(file_path, ocr)
             else:
@@ -112,22 +115,44 @@ class DocumentProcessor:
             return await self._process_with_existing(file_path)
 
     def _initialize_ocr_sync(self):
-        """Initialize OCR engine synchronously. Tries PaddleOCR first, then Tesseract."""
-        self._ocr = self._try_init_paddleocr()
-        if self._ocr is not None:
-            self._ocr_engine = "paddleocr"
-            return
+        """Initialize OCR engine synchronously.
 
-        self._ocr = self._try_init_tesseract()
-        if self._ocr is not None:
-            self._ocr_engine = "tesseract"
-            return
+        Fallback chain respects ``ocr_preferred_engine`` config:
+        - ``"auto"`` (default): PaddleOCR → EasyOCR → Tesseract
+        - specific engine: try it first, then fallback to the rest
+        """
+        preferred = self.config.get("ocr_preferred_engine", "auto")
+
+        if preferred == "auto":
+            engines = ["paddleocr", "easyocr", "tesseract"]
+        elif preferred == "paddleocr":
+            engines = ["paddleocr", "easyocr", "tesseract"]
+        elif preferred == "easyocr":
+            engines = ["easyocr", "paddleocr", "tesseract"]
+        elif preferred == "tesseract":
+            engines = ["tesseract", "paddleocr", "easyocr"]
+        else:
+            engines = ["paddleocr", "easyocr", "tesseract"]
+
+        init_map = {
+            "paddleocr": self._try_init_paddleocr,
+            "easyocr": self._try_init_easyocr,
+            "tesseract": self._try_init_tesseract,
+        }
+
+        for engine in engines:
+            ocr = init_map[engine]()
+            if ocr is not None:
+                self._ocr = ocr
+                self._ocr_engine = engine
+                return
 
         self._ocr = None
         self._ocr_engine = None
         logger.warning(
-            "No OCR engine available. Install paddleocr (recommended) or ensure "
-            "tesseract is installed with pytesseract Python package for OCR support."
+            "No OCR engine available. Install paddleocr (recommended), "
+            "easyocr, or ensure tesseract is installed with pytesseract "
+            "Python package for OCR support."
         )
 
     def _try_init_paddleocr(self):
@@ -209,12 +234,44 @@ class DocumentProcessor:
             logger.warning("Tesseract OCR not available: %s", e)
             return None
 
+    def _try_init_easyocr(self):
+        """Attempt to initialize EasyOCR.
+
+        EasyOCR is tried as the secondary fallback (after PaddleOCR). It
+        pulls in PyTorch so it is not a lightweight dependency.
+        """
+        try:
+            import easyocr
+
+            lang = self.config.get("ocr_lang", "deu+eng")
+            langs = [l.replace("deu", "de").replace("eng", "en") for l in lang.replace("+", " ").split()]
+            reader = easyocr.Reader(langs, gpu=("gpu" in self.config.get("ocr_device", "cpu")))
+            logger.info("EasyOCR initialized (langs=%s, gpu=%s)", langs, "gpu" in self.config.get("ocr_device", "cpu"))
+            return reader
+        except ImportError:
+            logger.info("EasyOCR not installed — skipping")
+            return None
+        except Exception as e:
+            logger.warning("EasyOCR initialization failed: %s", e)
+            return None
+
+    async def _process_with_easyocr(self, file_path: str, reader) -> dict[str, Any]:
+        """Process with EasyOCR."""
+        try:
+            results = await asyncio.to_thread(reader.readtext, file_path)
+            text = "\n".join(r[1] for r in results).strip()
+            metadata = self._build_metadata(file_path, text, ocr_used=True)
+            return {"text": text, "metadata": metadata, "ocr_used": True}
+        except Exception as exc:
+            logger.warning("EasyOCR failed for %s: %s", file_path, exc)
+            return await self._process_with_existing(file_path)
+
     def _get_ocr(self):
         """Get the OCR instance, initializing if needed (fallback for async contexts)."""
         if self._ocr is None:
             logger.warning("OCR not initialized synchronously, falling back to async initialization")
             self._initialize_ocr_sync()
-        if self._ocr_engine == "tesseract":
+        if self._ocr_engine in ("tesseract",):
             return True
         return self._ocr if self._ocr is not False and self._ocr is not None else None
 

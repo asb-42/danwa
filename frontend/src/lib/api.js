@@ -412,6 +412,19 @@ export function getOcrStatus() {
 }
 
 
+export function getOcrSettings() {
+  return request('/api/v1/config/ocr-settings');
+}
+
+
+export function updateOcrSettings(settings) {
+  return request('/api/v1/config/ocr-settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
+}
+
+
 export function assignDocumentsToDebate(debateId, documentIds, ragAutoRetrieve = false) {
   return request(`/api/v1/debate/${debateId}/documents`, {
     method: 'PUT',

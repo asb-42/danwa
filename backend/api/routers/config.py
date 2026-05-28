@@ -22,6 +22,7 @@ from backend.core.config import is_service_llm_eligible
 from backend.core.config import settings as app_settings
 from backend.persistence.backup import BackupResult, BackupService, VerificationResult
 from backend.persistence.project_store import ProjectStore
+from backend.services.dms.config import DEFAULT_DMS_CONFIG
 from backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
@@ -375,6 +376,47 @@ def _apply_retention(service: BackupService) -> None:
                 logger.info("Old backup removed: %s", b.backup_id)
         except OSError as exc:
             logger.warning("Could not delete backup %s: %s", b.backup_id, exc)
+
+
+# --- OCR Settings ---
+
+
+@router.get("/ocr-settings")
+def get_ocr_settings():
+    """Get current OCR configuration from settings.yaml (merged with defaults)."""
+    settings = _load_settings()
+    dms_config = {**DEFAULT_DMS_CONFIG, **(settings.get("dms") or {})}
+    return {
+        key: dms_config[key]
+        for key in ("ocr_enabled", "ocr_device", "ocr_lang", "ocr_preferred_engine")
+    }
+
+
+class OcrSettingsBody(BaseModel):
+    """Request body for OCR settings update.
+
+    Only `ocr_preferred_engine` is user-configurable via the UI.
+    """
+
+    ocr_preferred_engine: str | None = None
+
+
+@router.put("/ocr-settings")
+def update_ocr_settings(body: OcrSettingsBody):
+    """Update OCR settings in settings.yaml."""
+    valid_engines = {"auto", "paddleocr", "easyocr", "tesseract"}
+    if body.ocr_preferred_engine not in valid_engines:
+        raise HTTPException(
+            status_code=400,
+            detail=f"ocr_preferred_engine must be one of: {', '.join(sorted(valid_engines))}",
+        )
+    settings = _load_settings()
+    if "dms" not in settings:
+        settings["dms"] = {}
+    settings["dms"]["ocr_preferred_engine"] = body.ocr_preferred_engine
+    _save_settings(settings)
+    logger.info("OCR preferred engine set to: %s", body.ocr_preferred_engine)
+    return {"status": "ok", "ocr_preferred_engine": body.ocr_preferred_engine}
 
 
 # --- Utility LLM (Sprint 16) ---

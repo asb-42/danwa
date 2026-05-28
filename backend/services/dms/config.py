@@ -14,6 +14,7 @@ DEFAULT_DMS_CONFIG = {
     "ocr_enabled": True,
     "ocr_device": "cpu",
     "ocr_lang": "deu+eng",
+    "ocr_preferred_engine": "auto",
     "max_file_size_mb": 50,
     "chroma_collection": "document_chunks",
     "memory_dir": "memory",

@@ -15,6 +15,9 @@
     createBackup as apiCreateBackup,
     getBackups,
     restoreBackup,
+    getOcrSettings,
+    updateOcrSettings,
+    getOcrStatus,
   } from '../lib/api.js';
 
   let t = $derived((key, params = {}) => {
@@ -42,6 +45,13 @@
   let isLoadingSettings = $state(false);
   let isSavingSettings = $state(false);
   let settingsMessage = $state('');
+
+  // OCR tab state
+  let ocrSettings = $state({});
+  let ocrStatus = $state(null);
+  let isLoadingOcr = $state(false);
+  let isSavingOcr = $state(false);
+  let ocrMessage = $state('');
 
   // Backup tab state
   let backupSettings = $state({});
@@ -202,8 +212,66 @@
     finally { isSavingSettings = false; }
   }
 
+  // --- OCR Handlers ---
+  async function loadOcrTab() {
+    isLoadingOcr = true;
+    try {
+      ocrSettings = await getOcrSettings();
+      ocrStatus = await getOcrStatus();
+    } catch (e) {
+      error.set(e.message);
+    } finally {
+      isLoadingOcr = false;
+    }
+  }
+
+  async function handleSaveOcrSettings() {
+    isSavingOcr = true;
+    ocrMessage = '';
+    try {
+      await updateOcrSettings({ ocr_preferred_engine: ocrSettings.ocr_preferred_engine });
+      ocrMessage = '✓ ' + (t('ocr.saved') || 'OCR settings saved');
+      await loadOcrTab();
+    } catch (e) {
+      error.set(e.message);
+    } finally {
+      isSavingOcr = false;
+    }
+  }
+
+  function ocrEngineMeta(engine) {
+    const meta = {
+      auto: {
+        label: t('ocr.engineAuto') || 'Auto (Fallback chain)',
+        hint: t('ocr.engineAutoHint') || 'PaddleOCR → EasyOCR → Tesseract — tries each engine in order',
+        requirements: t('ocr.reqAuto') || 'No specific requirements; uses whatever is available.',
+        icon: '⚡',
+      },
+      paddleocr: {
+        label: t('ocr.enginePaddle') || 'PaddleOCR',
+        hint: t('ocr.enginePaddleHint') || 'Best accuracy, CUDA acceleration supported',
+        requirements: t('ocr.reqPaddle') || 'Install: pip install paddlepaddle paddleocr. See scripts/setup_dms.sh. GPU: CUDA-compatible NVIDIA GPU + nvidia-docker.',
+        icon: '📖',
+      },
+      easyocr: {
+        label: t('ocr.engineEasy') || 'EasyOCR',
+        hint: t('ocr.engineEasyHint') || 'Good accuracy, GPU recommended',
+        requirements: t('ocr.reqEasy') || 'Install: pip install easyocr. GPU strongly recommended (PyTorch with CUDA); CPU works but is slow for large documents.',
+        icon: '📖',
+      },
+      tesseract: {
+        label: t('ocr.engineTesseract') || 'Tesseract',
+        hint: t('ocr.engineTesseractHint') || 'Lightweight, always available as fallback',
+        requirements: t('ocr.reqTesseract') || 'Install Tesseract system package:\n  • Debian/Ubuntu: sudo apt install tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng\n  • macOS: brew install tesseract\n  • Windows: download from GitHub UB-Mannheim/tesseract',
+        icon: '📖',
+      },
+    };
+    return meta[engine] || meta.auto;
+  }
+
   $effect(() => {
     if (activeTab === 'settings' && !settingsLoaded) loadSettings();
+    if (activeTab === 'ocr') loadOcrTab();
   });
 </script>
 
@@ -226,7 +294,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Configuration tabs">
-      {#each ['backup', 'settings', 'system'] as tab}
+      {#each ['backup', 'settings', 'ocr', 'system'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -236,6 +304,7 @@
         >
           {#if tab === 'backup'}📦 {t('backup.title')}
           {:else if tab === 'settings'}⚙️ {t('settings.title')}
+          {:else if tab === 'ocr'}🔍 {t('ocr.title') || 'OCR Engine'}
           {:else if tab === 'system'}🖥️ System
           {/if}
         </button>
@@ -435,6 +504,82 @@
       {#if !settingsLoaded && !isLoadingSettings}
         <div class="flex items-center justify-center h-32">
           <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+        </div>
+      {/if}
+    </div>
+
+  <!-- OCR Engine Tab -->
+  {:else if activeTab === 'ocr'}
+    <div class="space-y-4">
+      {#if isLoadingOcr}
+        <div class="flex items-center justify-center h-32">
+          <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
+        </div>
+      {:else}
+        {#if ocrMessage}
+          <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300" role="status">
+            {ocrMessage}
+          </div>
+        {/if}
+
+        <!-- Current OCR status -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('ocr.status') || 'OCR Status'}</h3>
+          {#if ocrStatus}
+            <div class="flex items-center gap-2 mb-2">
+              {#if ocrStatus.available}
+                <span class="inline-block w-3 h-3 rounded-full bg-green-500" title="available"></span>
+                <span class="text-sm text-gray-700 dark:text-gray-300">
+                  {t('ocr.available') || 'OCR engine available'}: <strong>{ocrStatus.engine || '—'}</strong>
+                </span>
+              {:else}
+                <span class="inline-block w-3 h-3 rounded-full bg-red-500" title="unavailable"></span>
+                <span class="text-sm text-gray-700 dark:text-gray-300">{t('ocr.unavailable') || 'No OCR engine available'}</span>
+              {/if}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Preferred engine selection -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('ocr.preferredEngine') || 'Preferred OCR Engine'}</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('ocr.preferredHint') || 'Select which OCR engine to prefer. "Auto" uses the built-in fallback chain. The selected engine will be tried first; if unavailable, the remaining engines are tried in order.'}</p>
+
+          <div class="space-y-3">
+            {#each ['auto', 'paddleocr', 'easyocr', 'tesseract'] as engine}
+              {@const meta = ocrEngineMeta(engine)}
+              <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                {ocrSettings.ocr_preferred_engine === engine
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'}"
+              >
+                <input
+                  type="radio"
+                  name="ocr-engine"
+                  value={engine}
+                  checked={ocrSettings.ocr_preferred_engine === engine}
+                  onchange={() => ocrSettings = { ...ocrSettings, ocr_preferred_engine: engine }}
+                  class="mt-1 text-blue-600 focus:ring-blue-500"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-800 dark:text-white">{meta.icon} {meta.label}</div>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{meta.hint}</p>
+                  {#if ocrSettings.ocr_preferred_engine === engine}
+                    <div class="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-200 whitespace-pre-line">
+                      <strong>{t('ocr.requirements') || 'System requirements'}:</strong><br>
+                      {meta.requirements}
+                    </div>
+                  {/if}
+                </div>
+              </label>
+            {/each}
+          </div>
+
+          <div class="flex justify-end pt-4">
+            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveOcrSettings} disabled={isSavingOcr}>
+              {isSavingOcr ? '...' : t('common.save')}
+            </button>
+          </div>
         </div>
       {/if}
     </div>
