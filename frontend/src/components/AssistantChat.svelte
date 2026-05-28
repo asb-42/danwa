@@ -7,9 +7,12 @@
     deleteAssistantSession,
     sendAssistantMessage,
   } from '../lib/api.js';
-  import { marked } from 'marked';
   import { i18n } from '../lib/i18n/index.js';
   import { locale } from '../lib/i18n/index.js';
+  import AssistantSessionList from './assistant/AssistantSessionList.svelte';
+  import AssistantMessageBubble from './assistant/AssistantMessageBubble.svelte';
+  import AssistantTypingIndicator from './assistant/AssistantTypingIndicator.svelte';
+  import AssistantInputBar from './assistant/AssistantInputBar.svelte';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -145,7 +148,6 @@
       const response = await sendAssistantMessage(currentSession.id, msgToSend);
 
       if (response.messages && Array.isArray(response.messages)) {
-        // New format: array of all messages from this turn
         const newMsgs = response.messages.map(m => ({
           role: m.role,
           content: m.content,
@@ -156,7 +158,6 @@
         }));
         messages = [...messages, ...newMsgs];
       } else if (response.content) {
-        // Legacy format: single message
         messages = [...messages, {
           role: 'assistant',
           content: response.content,
@@ -168,17 +169,9 @@
       scrollToBottom();
     } catch (e) {
       error = e.message || 'Failed to send message';
-      // Remove the user message on error
       messages = messages.slice(0, -1);
     } finally {
       isLoading = false;
-    }
-  }
-
-  function handleKeydown(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      sendMessage();
     }
   }
 
@@ -188,11 +181,6 @@
         chatContainer.scrollTop = chatContainer.scrollHeight;
       }
     }, 50);
-  }
-
-  function renderMarkdown(text) {
-    if (!text) return '';
-    return marked.parse(text);
   }
 
   // Resize handlers
@@ -422,25 +410,14 @@
       <div class="resize-handle resize-handle--bottom" onmousedown={startResizeBottom} ontouchstart={startResizeBottom}></div>
 
       <div class="chat-body">
-        <!-- Session sidebar -->
-        <div class="session-sidebar">
-          <div class="session-header">
-            <span>{t('kitsune.sessions')}</span>
-            <button class="btn-new" onclick={createNewSession} title={t('kitsune.newSession')}>+</button>
-          </div>
-          <div class="session-list">
-            {#each sessions as session (session.id)}
-              <div
-                class="session-item"
-                class:active={currentSession?.id === session.id}
-                onclick={() => selectSession(session)}
-              >
-                <span class="session-title">{session.title || t('kitsune.newSession')}</span>
-                <button class="btn-delete" onclick={(e) => deleteSession(session, e)}>×</button>
-              </div>
-            {/each}
-          </div>
-        </div>
+        <AssistantSessionList
+          {sessions}
+          activeSessionId={currentSession?.id}
+          onSelect={selectSession}
+          onNew={createNewSession}
+          onDelete={deleteSession}
+          {t}
+        />
 
         <!-- Chat area -->
         <div class="chat-area">
@@ -458,43 +435,12 @@
               </div>
             {:else}
               {#each messages as message (message.timestamp + '-' + message.role + '-' + (message.tool_call_id || ''))}
-                <div class="message"
-                     class:user={message.role === 'user'}
-                     class:assistant={message.role === 'assistant'}
-                     class:tool={message.role === 'tool'}>
-                  <div class="message-content">
-                    {#if message.role === 'assistant'}
-                      <div class="markdown-content">{@html renderMarkdown(message.content)}</div>
-                    {:else if message.role === 'tool'}
-                      <div class="tool-result">
-                        <span class="tool-badge">
-                          🔧 {message.tool_name || 'Tool'}
-                        </span>
-                        <pre class="tool-output">{message.content}</pre>
-                      </div>
-                    {:else}
-                      <p>{message.content}</p>
-                    {/if}
-                  </div>
-                  <div class="message-meta">
-                    {#if message.model}
-                      <span class="model-badge">{message.model}</span>
-                    {/if}
-                  </div>
-                </div>
+                <AssistantMessageBubble {message} />
               {/each}
             {/if}
 
             {#if isLoading}
-              <div class="message assistant">
-                <div class="message-content">
-                  <div class="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                </div>
-              </div>
+              <AssistantTypingIndicator />
             {/if}
 
             {#if error}
@@ -503,23 +449,12 @@
           </div>
 
           <!-- Input area -->
-          <div class="input-area">
-            <textarea
-              bind:value={newMessage}
-              onkeydown={handleKeydown}
-              placeholder={t('kitsune.placeholder')}
-              rows="1"
-              disabled={isLoading}
-            ></textarea>
-            <button
-              class="btn-send"
-              onclick={sendMessage}
-              disabled={!newMessage.trim() || isLoading || !currentSession}
-              title={!currentSession ? 'No active session' : ''}
-            >
-              ➤
-            </button>
-          </div>
+          <AssistantInputBar
+            bind:value={newMessage}
+            disabled={isLoading}
+            placeholder={t('kitsune.placeholder')}
+            onSend={sendMessage}
+          />
         </div>
       </div>
     {/if}
@@ -670,96 +605,6 @@
     overflow: hidden;
   }
 
-  .session-sidebar {
-    width: 180px;
-    border-right: 1px solid #e5e7eb;
-    display: flex;
-    flex-direction: column;
-    background: #f9fafb;
-  }
-
-  .session-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .btn-new {
-    background: #667eea;
-    color: white;
-    border: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn-new:hover {
-    background: #5568d3;
-  }
-
-  .session-list {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .session-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid #f3f4f6;
-    transition: background 0.2s;
-  }
-
-  .session-item:hover {
-    background: #f3f4f6;
-  }
-
-  .session-item.active {
-    background: #e0e7ff;
-    border-left: 3px solid #667eea;
-  }
-
-  .session-title {
-    font-size: 12px;
-    color: #374151;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-  }
-
-  .btn-delete {
-    background: none;
-    border: none;
-    color: #9ca3af;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 0 4px;
-    opacity: 0;
-    transition: opacity 0.2s, color 0.2s;
-  }
-
-  .session-item:hover .btn-delete {
-    opacity: 1;
-  }
-
-  .btn-delete:hover {
-    color: #ef4444;
-  }
-
   .chat-area {
     flex: 1;
     display: flex;
@@ -801,167 +646,6 @@
     margin: 4px 0;
   }
 
-  .message {
-    display: flex;
-    flex-direction: column;
-    max-width: 80%;
-  }
-
-  .message.user {
-    align-self: flex-end;
-  }
-
-  .message.assistant {
-    align-self: flex-start;
-  }
-
-  .message-content {
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .message.user .message-content {
-    background: #667eea;
-    color: white;
-    border-bottom-right-radius: 4px;
-  }
-
-  .message.assistant .message-content {
-    background: #f3f4f6;
-    color: #1f2937;
-    border-bottom-left-radius: 4px;
-  }
-
-  .message.tool {
-    align-self: center;
-    max-width: 90%;
-  }
-
-  .message.tool .message-content {
-    background: #fef3c7;
-    color: #92400e;
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  .tool-result {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .tool-badge {
-    font-size: 11px;
-    font-weight: 600;
-    opacity: 0.8;
-  }
-
-  .tool-output {
-    font-size: 11px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 100px;
-    overflow-y: auto;
-    margin: 0;
-    background: rgba(0,0,0,0.05);
-    padding: 4px 6px;
-    border-radius: 4px;
-  }
-
-  .markdown-content {
-    font-size: 14px;
-  }
-
-  .markdown-content :global(p) {
-    margin: 0 0 8px 0;
-  }
-
-  .markdown-content :global(p:last-child) {
-    margin-bottom: 0;
-  }
-
-  .markdown-content :global(ul),
-  .markdown-content :global(ol) {
-    margin: 8px 0;
-    padding-left: 20px;
-  }
-
-  .markdown-content :global(li) {
-    margin: 2px 0;
-  }
-
-  .markdown-content :global(code) {
-    background: #e5e7eb;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 13px;
-  }
-
-  .markdown-content :global(pre) {
-    background: #1f2937;
-    color: #f9fafb;
-    padding: 12px;
-    border-radius: 6px;
-    overflow-x: auto;
-    margin: 8px 0;
-  }
-
-  .markdown-content :global(pre code) {
-    background: none;
-    padding: 0;
-    color: inherit;
-  }
-
-  .message-meta {
-    margin-top: 4px;
-    font-size: 11px;
-    color: #9ca3af;
-  }
-
-  .model-badge {
-    background: #e5e7eb;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-  }
-
-  .typing-indicator {
-    display: flex;
-    gap: 4px;
-    padding: 4px 0;
-  }
-
-  .typing-indicator span {
-    width: 6px;
-    height: 6px;
-    background: #9ca3af;
-    border-radius: 50%;
-    animation: typing 1.4s infinite;
-  }
-
-  .typing-indicator span:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-
-  .typing-indicator span:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-
-  @keyframes typing {
-    0%, 60%, 100% {
-      transform: translateY(0);
-      opacity: 0.4;
-    }
-    30% {
-      transform: translateY(-6px);
-      opacity: 1;
-    }
-  }
-
   .error-message {
     background: #fee2e2;
     color: #dc2626;
@@ -969,61 +653,6 @@
     border-radius: 6px;
     font-size: 13px;
     text-align: center;
-  }
-
-  .input-area {
-    display: flex;
-    gap: 8px;
-    padding: 12px 16px;
-    border-top: 1px solid #e5e7eb;
-    background: white;
-  }
-
-  .input-area textarea {
-    flex: 1;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 14px;
-    resize: none;
-    outline: none;
-    font-family: inherit;
-    max-height: 100px;
-    overflow-y: auto;
-  }
-
-  .input-area textarea:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-  }
-
-  .input-area textarea:disabled {
-    background: #f9fafb;
-    cursor: not-allowed;
-  }
-
-  .btn-send {
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    width: 40px;
-    height: 40px;
-    cursor: pointer;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-  }
-
-  .btn-send:hover:not(:disabled) {
-    background: #5568d3;
-  }
-
-  .btn-send:disabled {
-    background: #e5e7eb;
-    cursor: not-allowed;
   }
 
   :global(.dark) .assistant-chat {
@@ -1044,33 +673,6 @@
     background: rgba(96, 165, 250, 0.3);
   }
 
-  :global(.dark) .session-sidebar {
-    background: #374151;
-    border-right-color: #4b5563;
-  }
-
-  :global(.dark) .session-header {
-    color: #e5e7eb;
-    border-bottom-color: #4b5563;
-  }
-
-  :global(.dark) .session-item {
-    border-bottom-color: #374151;
-  }
-
-  :global(.dark) .session-item:hover {
-    background: #4b5563;
-  }
-
-  :global(.dark) .session-item.active {
-    background: #1e3a5f;
-    border-left-color: #60a5fa;
-  }
-
-  :global(.dark) .session-title {
-    color: #d1d5db;
-  }
-
   :global(.dark) .welcome-message {
     color: #9ca3af;
   }
@@ -1079,60 +681,9 @@
     color: #e5e7eb;
   }
 
-  :global(.dark) .message.assistant .message-content {
-    background: #374151;
-    color: #e5e7eb;
-  }
-
-  :global(.dark) .message.tool .message-content {
-    background: #78350f;
-    color: #fde68a;
-  }
-
-  :global(.dark) .tool-output {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  :global(.dark) .markdown-content :global(code) {
-    background: #4b5563;
-  }
-
-  :global(.dark) .model-badge {
-    background: #4b5563;
-    color: #d1d5db;
-  }
-
   :global(.dark) .error-message {
     background: #7f1d1d;
     color: #fca5a5;
-  }
-
-  :global(.dark) .input-area {
-    background: #1f2937;
-    border-top-color: #4b5563;
-  }
-
-  :global(.dark) .input-area textarea {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-
-  :global(.dark) .input-area textarea:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-  }
-
-  :global(.dark) .input-area textarea:disabled {
-    background: #1f2937;
-  }
-
-  :global(.dark) .btn-send:disabled {
-    background: #4b5563;
-  }
-
-  :global(.dark) .typing-indicator span {
-    background: #6b7280;
   }
 
   @media (max-width: 768px) {
@@ -1148,10 +699,6 @@
       width: 100% !important;
       max-width: 100%;
       border-radius: 0;
-    }
-
-    .session-sidebar {
-      width: 140px;
     }
 
     .resize-handle--left,

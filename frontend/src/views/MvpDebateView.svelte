@@ -1,7 +1,7 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
-  import { getLLMProfiles, getDebate, getDocuments, getDebates } from '../lib/api.js';
-  import { startMvpDebate, submitInterjection, getAgentCores, getCompositionComponents } from '../lib/workflowExec.js';
+  import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
+  import { startMvpDebate, submitInterjection, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject, userLanguage } from '../lib/stores.js';
 
@@ -12,7 +12,11 @@
   import AgentQueryModal from '../components/hitl/AgentQueryModal.svelte';
   import InteractionTimeline from '../components/hitl/InteractionTimeline.svelte';
   import DebateActivityStrip from '../components/debate/DebateActivityStrip.svelte';
-  import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
+  import DebateSetupForm from '../components/debate/DebateSetupForm.svelte';
+  import DebateReviewPanel from '../components/debate/DebateReviewPanel.svelte';
+  import DebateTranscript from '../components/debate/DebateTranscript.svelte';
+  import DebateInterjection from '../components/debate/DebateInterjection.svelte';
+  import DebateActivityLog from '../components/debate/DebateActivityLog.svelte';
 
   let { debateId: externalDebateId = null, navigate = () => {} } = $props();
 
@@ -31,76 +35,35 @@
     { role: 'moderator', label: t('mvpDebate.agent.moderator'), icon: '🎯', color: '#8b5cf6', desc: t('mvpDebate.agentDesc.moderator') },
   ];
 
-  let topic = $state('');
-  let maxRounds = $state(5);
-  let threshold = $state(0.9);
+  let config = $state({
+    topic: '',
+    maxRounds: 5,
+    threshold: 0.9,
+    searchMode: 'off',
+    selectedDocumentIds: [],
+    ragAutoRetrieve: false,
+    includeDebateResults: false,
+    selectedDebateIds: [],
+    enableExtraRounds: false,
+    llmAssignments: {},
+    agentCoreAssignments: {},
+    argumentationPatternAssignments: {},
+    toneProfileAssignments: {},
+    promptModifierAssignments: {},
+  });
+
   let llmProfiles = $state([]);
-  let llmAssignments = $state({});
   let isLoadingProfiles = $state(true);
   let isLoadingDebate = $state(false);
 
-  // Composition selection (Phase 2 — 4 component types)
   let agentCores = $state([]);
   let argumentationPatterns = $state([]);
   let toneProfiles = $state([]);
   let promptModifiers = $state([]);
-  let agentCoreAssignments = $state({});
-  let argumentationPatternAssignments = $state({});
-  let toneProfileAssignments = $state({});
-  let promptModifierAssignments = $state({});
   let isLoadingComponents = $state(true);
 
-  // New config fields
-  let searchMode = $state('off');
   let availableDocuments = $state([]);
-  let selectedDocumentIds = $state([]);
-  let ragAutoRetrieve = $state(false);
-  let includeDebateResults = $state(false);
-  let completedDebates = $state([]);
-  let selectedDebateIds = $state([]);
-  let loadingCompletedDebates = $state(false);
 
-  $effect(() => {
-    if (includeDebateResults && completedDebates.length === 0 && !loadingCompletedDebates) {
-      loadCompletedDebates();
-    }
-    if (!includeDebateResults) {
-      selectedDebateIds = [];
-    }
-  });
-
-  async function loadCompletedDebates() {
-    if (loadingCompletedDebates) return;
-    loadingCompletedDebates = true;
-    try {
-      const res = await getDebates(100, { status: 'completed' });
-      completedDebates = res || [];
-      selectedDebateIds = completedDebates.map(d => d.debate_id);
-    } catch (e) {
-      console.warn('Failed to load completed debates:', e);
-      completedDebates = [];
-    } finally {
-      loadingCompletedDebates = false;
-    }
-  }
-
-  function toggleDebateSelection(debateId) {
-    const idx = selectedDebateIds.indexOf(debateId);
-    if (idx >= 0) {
-      selectedDebateIds = selectedDebateIds.filter(id => id !== debateId);
-    } else {
-      selectedDebateIds = [...selectedDebateIds, debateId];
-    }
-  }
-  let enableExtraRounds = $state(false);
-
-  // Interjection
-  let interjectionText = $state('');
-  let sendingInterjection = $state(false);
-  let interjectionFeedback = $state('');      // Visual feedback for submitted interjections
-  let consumedInterjections = $state([]);     // Interjections consumed by agents
-
-  // Confirmation page
   let showConfirm = $state(false);
 
   let sessionId = $state(null);
@@ -119,9 +82,11 @@
   let llmAssignmentsResult = $state({});
   let totalTokens = $state(0);
   let expandedOutputs = $state(new Set());
-  let activityText = $state('');
 
-  // Activity strip state (adapted from legacy DebateView)
+  let interjectionFeedback = $state('');
+  let sendingInterjection = $state(false);
+  let consumedInterjections = $state([]);
+
   let currentActivity = $state(null);
   let isConnected = $state(false);
   let cumulativeTokens = $state(0);
@@ -133,12 +98,11 @@
   let workflowElapsed = $state(0);
   let workflowTimer = $state(null);
 
-  let startTime = null;           // not reactive — internal timer bookkeeping
-  let timerInterval = null;       // not reactive — internal timer bookkeeping
-  let hitlPollTimer = null;       // not reactive — polling interval ID, would create $effect loop
+  let startTime = null;
+  let timerInterval = null;
+  let hitlPollTimer = null;
 
   $effect(() => {
-    // Load LLM profiles and all composition components in parallel
     Promise.all([
       getLLMProfiles(),
       getCompositionComponents(),
@@ -149,23 +113,21 @@
         for (const agent of AGENTS) {
           defaults[agent.role] = profiles[0]?.id || '';
         }
-        llmAssignments = defaults;
+        config.llmAssignments = defaults;
 
-        // Composition components
         agentCores = components.agent_cores || [];
         argumentationPatterns = components.argumentation_patterns || [];
         toneProfiles = components.tone_profiles || [];
         promptModifiers = components.prompt_modifiers || [];
 
-        // Default: empty strings = use built-in defaults
         const emptyDefaults = {};
         for (const agent of AGENTS) {
           emptyDefaults[agent.role] = '';
         }
-        agentCoreAssignments = { ...emptyDefaults };
-        argumentationPatternAssignments = { ...emptyDefaults };
-        toneProfileAssignments = { ...emptyDefaults };
-        promptModifierAssignments = { ...emptyDefaults };
+        config.agentCoreAssignments = { ...emptyDefaults };
+        config.argumentationPatternAssignments = { ...emptyDefaults };
+        config.toneProfileAssignments = { ...emptyDefaults };
+        config.promptModifierAssignments = { ...emptyDefaults };
       })
       .catch((err) => {
         error = t('mvpDebate.error.loadProfiles', { error: err.message });
@@ -176,14 +138,12 @@
       });
   });
 
-  // Load available DMS documents for document selection
   $effect(() => {
     getDocuments()
       .then((docs) => { availableDocuments = docs; })
       .catch(() => { availableDocuments = []; });
   });
 
-  // Load existing debate when externalDebateId is provided
   $effect(() => {
     const eid = externalDebateId;
     if (!eid) return;
@@ -197,9 +157,9 @@
         const debate = await getDebate(eid);
         debateId = debate.debate_id;
         debateTitle = debate.title || '';
-        topic = debate.case_text || '';
-        maxRounds = debate.max_rounds || 5;
-        threshold = debate.consensus_score ?? 0.9;
+        config.topic = debate.case_text || '';
+        config.maxRounds = debate.max_rounds || 5;
+        config.threshold = debate.consensus_score ?? 0.9;
         status = debate.status;
         currentRound = debate.current_round || 0;
         if (debate.consensus_score !== null && debate.consensus_score !== undefined) {
@@ -210,7 +170,6 @@
         if (debate.session_id) {
           sessionId = debate.session_id;
 
-          // For completed/cancelled/failed debates, load the state snapshot
           if (debate.status === 'completed' || debate.status === 'cancelled' || debate.status === 'failed') {
             const { getWorkflowState } = await import('../lib/workflowExec.js');
             try {
@@ -230,7 +189,6 @@
             return;
           }
 
-          // For running debates, connect SSE
           if (debate.status === 'running' || debate.status === 'paused') {
             const { getWorkflowState } = await import('../lib/workflowExec.js');
             try {
@@ -293,33 +251,6 @@
       .replace(/\n/g, '<br>');
   }
 
-  // --- Legacy-adapted UI helpers ---
-
-  function roleEmoji(role) {
-    const agent = AGENTS.find(a => a.role === role);
-    return agent ? agent.icon : '🤖';
-  }
-
-  function roleColor(role) {
-    switch (role) {
-      case 'strategist': return 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-600';
-      case 'critic': return 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-600';
-      case 'optimizer': return 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-600';
-      case 'moderator': return 'border-purple-400 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-600';
-      default: return 'border-gray-400 bg-gray-50 dark:bg-gray-800 dark:border-gray-600';
-    }
-  }
-
-  function roleHeaderColor(role) {
-    switch (role) {
-      case 'strategist': return 'text-blue-700 dark:text-blue-300';
-      case 'critic': return 'text-red-700 dark:text-red-300';
-      case 'optimizer': return 'text-amber-700 dark:text-amber-300';
-      case 'moderator': return 'text-purple-700 dark:text-purple-300';
-      default: return 'text-gray-700 dark:text-gray-300';
-    }
-  }
-
   function formatElapsed(ms) {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
@@ -351,13 +282,6 @@
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
   }
 
-  // Derived state for DebateActivityStrip
-  let liveOutputsByRound = $derived(nodeOutputs.reduce((acc, output) => {
-    if (!acc[output.round]) acc[output.round] = [];
-    acc[output.round].push(output);
-    return acc;
-  }, {}));
-
   let agentCount = $derived(currentActivity?.agent_total || 4);
   let activeAgentIndex = $derived(currentActivity?.agent_index ?? -1);
   let completedInRound = $derived(nodeOutputs.filter(o => o.round === currentRound).length);
@@ -378,8 +302,7 @@
         try {
           currentNodeId = data.node_id || '';
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
-          activityText = t('mvpDebate.activity.agentStarting', { agent: agentLabel });
-          nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
+          currentActivity = null;
           workflowPhase = {
             type: 'agent_preparing',
             phase: 'resolving_profile',
@@ -388,6 +311,7 @@
             agent_index: data.agent_index ?? 0,
             agent_total: data.agent_total ?? 4,
           };
+          nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
           if (!workflowTimer) startWorkflowTimer();
         } catch (e) { console.warn('[MvpDebateView] onNodeStart error:', e); }
       },
@@ -395,7 +319,6 @@
         try {
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
           const llmName = getProfileName(data.llm_profile_id);
-          activityText = t('mvpDebate.activity.agentCalling', { agent: agentLabel, llm: llmName, round: data.round || currentRound });
           currentActivity = {
             role: data.role,
             round: data.round || currentRound,
@@ -420,7 +343,7 @@
       },
       onWebSearch: (data) => {
         try {
-          activityText = t('mvpDebate.activity.searching', { query: data.query || '' });
+          // activity text tracked via workflowPhase
         } catch (e) { console.warn('[MvpDebateView] onWebSearch error:', e); }
       },
       onNodeComplete: (data) => {
@@ -444,8 +367,6 @@
           if (data.round !== undefined) currentRound = data.round;
           cumulativeTokens += tokensUsed;
           totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
-          const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
-          activityText = t('mvpDebate.activity.agentCompleted', { agent: agentLabel, duration: formatDuration(data.duration_ms), tokens: tokensUsed });
           currentActivity = null;
           workflowPhase = null;
           stopProcessingTimer();
@@ -474,7 +395,6 @@
         error = data.error || t('mvpDebate.error.unknown');
         status = 'failed';
         stopTimer();
-        activityText = '';
         currentActivity = null;
         workflowPhase = null;
         stopProcessingTimer();
@@ -484,19 +404,16 @@
       onWorkflowComplete: (data) => {
         status = 'completed';
         stopTimer();
-        activityText = '';
         currentActivity = null;
         workflowPhase = null;
         stopProcessingTimer();
         stopWorkflowTimer();
         if (data.final_consensus !== undefined) { consensus = data.final_consensus; hasReceivedConsensus = true; }
-        // Proactively close SSE to prevent stale connections from freezing the UI
         if (cleanupSSE) { cleanupSSE(); cleanupSSE = null; }
       },
       onWorkflowPaused: () => { status = 'paused'; },
       onWorkflowResumed: () => { status = 'running'; },
       onError: (err) => { console.error('[MvpDebateView] SSE error:', err); },
-      // HITL event handlers
       onHITLQuery: (data) => {
         currentAgentQuery.set({
           interrupt_id: data.interrupt_id,
@@ -533,7 +450,6 @@
       onInterjectionReceived: (data) => {
         try {
           interjectionFeedback = t('mvpDebate.interjection.sent', { preview: `${(data.content || '').substring(0, 60)}${(data.content || '').length > 60 ? '…' : ''}` });
-          // Clear feedback after 5 seconds
           setTimeout(() => { if (interjectionFeedback.startsWith('✓ Sent:')) interjectionFeedback = ''; }, 5000);
         } catch (e) { console.warn('[MvpDebateView] onInterjectionReceived error:', e); }
       },
@@ -550,7 +466,6 @@
             contents: data.contents,
             timestamp: Date.now(),
           }];
-          // Clear feedback after 8 seconds
           setTimeout(() => { if (interjectionFeedback.startsWith('📨')) interjectionFeedback = ''; }, 8000);
           refreshHITLInteractions();
         } catch (e) { console.warn('[MvpDebateView] onInterjectionConsumed error:', e); }
@@ -577,8 +492,8 @@
   async function refreshHITLStatus() {
     if (!debateId) return;
     try {
-      const status = await getHITLStatus(debateId);
-      hitlStatus.set(status);
+      const s = await getHITLStatus(debateId);
+      hitlStatus.set(s);
     } catch { /* Silently fail */ }
   }
 
@@ -591,7 +506,7 @@
   }
 
   async function handleStart() {
-    if (!topic.trim()) return;
+    if (!config.topic.trim()) return;
     error = '';
     status = 'running';
     nodeOutputs = [];
@@ -603,7 +518,6 @@
     llmAssignmentsResult = {};
     totalTokens = 0;
     expandedOutputs = new Set();
-    activityText = '';
     currentActivity = null;
     isConnected = false;
     cumulativeTokens = 0;
@@ -618,39 +532,38 @@
 
     const profileMap = {};
     for (const agent of AGENTS) {
-      profileMap[agent.role] = llmAssignments[agent.role] || '';
+      profileMap[agent.role] = config.llmAssignments[agent.role] || '';
     }
 
-    // Build component maps: only include non-empty selections
     const coreMap = {};
     const argPatternMap = {};
     const toneMap = {};
     const modifierMap = {};
     for (const agent of AGENTS) {
-      if (agentCoreAssignments[agent.role]) coreMap[agent.role] = agentCoreAssignments[agent.role];
-      if (argumentationPatternAssignments[agent.role]) argPatternMap[agent.role] = argumentationPatternAssignments[agent.role];
-      if (toneProfileAssignments[agent.role]) toneMap[agent.role] = toneProfileAssignments[agent.role];
-      if (promptModifierAssignments[agent.role]) modifierMap[agent.role] = promptModifierAssignments[agent.role];
+      if (config.agentCoreAssignments[agent.role]) coreMap[agent.role] = config.agentCoreAssignments[agent.role];
+      if (config.argumentationPatternAssignments[agent.role]) argPatternMap[agent.role] = config.argumentationPatternAssignments[agent.role];
+      if (config.toneProfileAssignments[agent.role]) toneMap[agent.role] = config.toneProfileAssignments[agent.role];
+      if (config.promptModifierAssignments[agent.role]) modifierMap[agent.role] = config.promptModifierAssignments[agent.role];
     }
 
     try {
       const result = await startMvpDebate({
-        context: topic.trim(),
+        context: config.topic.trim(),
         language: $userLanguage || 'de',
-        maxRounds,
-        threshold,
+        maxRounds: config.maxRounds,
+        threshold: config.threshold,
         llmProfileIds: profileMap,
         agentCoreIds: coreMap,
         argumentationPatternIds: argPatternMap,
         toneProfileIds: toneMap,
         promptModifierIds: modifierMap,
         projectId: $activeProject?.id,
-        searchMode,
-        documentIds: selectedDocumentIds,
-        ragAutoRetrieve,
-        includeDebateResults,
-        debateResultIds: selectedDebateIds,
-        enableExtraRounds,
+        searchMode: config.searchMode,
+        documentIds: config.selectedDocumentIds,
+        ragAutoRetrieve: config.ragAutoRetrieve,
+        includeDebateResults: config.includeDebateResults,
+        debateResultIds: config.selectedDebateIds,
+        enableExtraRounds: config.enableExtraRounds,
       });
       sessionId = result.session_id;
       debateId = result.debate_id;
@@ -678,29 +591,11 @@
     }
   }
 
-  function toggleDocumentSelection(docId) {
-    const idx = selectedDocumentIds.indexOf(docId);
-    if (idx >= 0) {
-      selectedDocumentIds = selectedDocumentIds.filter(id => id !== docId);
-    } else {
-      selectedDocumentIds = [...selectedDocumentIds, docId];
-    }
-  }
-
-  function toggleSelectAll() {
-    if (selectedDocumentIds.length === availableDocuments.length) {
-      selectedDocumentIds = [];
-    } else {
-      selectedDocumentIds = availableDocuments.map(d => d.id);
-    }
-  }
-
-  async function handleSendInterjection() {
-    if (!interjectionText.trim() || !sessionId) return;
+  async function handleSendInterjection(text) {
+    if (!text || !sessionId) return;
     sendingInterjection = true;
     try {
-      await submitInterjection(sessionId, interjectionText.trim());
-      interjectionText = '';
+      await submitInterjection(sessionId, text);
     } catch (err) {
       console.error('Failed to send interjection:', err);
     } finally {
@@ -710,11 +605,34 @@
 
   function handleReset() {
     if (externalDebateId) {
-      // Came from archive — navigate back to fresh create page
       navigate('mvp-debate');
       return;
     }
     if (cleanupSSE) cleanupSSE();
+    config.topic = '';
+    config.maxRounds = 5;
+    config.threshold = 0.9;
+    config.searchMode = 'off';
+    config.selectedDocumentIds = [];
+    config.ragAutoRetrieve = false;
+    config.includeDebateResults = false;
+    config.selectedDebateIds = [];
+    config.enableExtraRounds = false;
+    const emptyDefaults = {};
+    for (const agent of AGENTS) {
+      emptyDefaults[agent.role] = '';
+    }
+    config.agentCoreAssignments = { ...emptyDefaults };
+    config.argumentationPatternAssignments = { ...emptyDefaults };
+    config.toneProfileAssignments = { ...emptyDefaults };
+    config.promptModifierAssignments = { ...emptyDefaults };
+    if (llmProfiles.length > 0) {
+      const defaults = {};
+      for (const agent of AGENTS) {
+        defaults[agent.role] = llmProfiles[0]?.id || '';
+      }
+      config.llmAssignments = defaults;
+    }
     sessionId = null;
     debateId = null;
     debateTitle = '';
@@ -730,7 +648,6 @@
     llmAssignmentsResult = {};
     totalTokens = 0;
     expandedOutputs = new Set();
-    activityText = '';
     currentActivity = null;
     isConnected = false;
     cumulativeTokens = 0;
@@ -741,10 +658,12 @@
     workflowStartTime = null;
     workflowElapsed = 0;
     if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
+    interjectionFeedback = '';
+    consumedInterjections = [];
+    sendingInterjection = false;
     stopTimer();
   }
 
-  // HITL polling when debate is running
   $effect(() => {
     if (status === 'running' && debateId) {
       refreshHITLStatus();
@@ -785,10 +704,10 @@
     </p>
   </div>
 
-  {#if topic && debateId}
+  {#if config.topic && debateId}
     <div class="case-text-section">
       <h4 class="case-text-heading">📋 {t('debate.caseLabel')}</h4>
-      <p class="case-text-content">{topic}</p>
+      <p class="case-text-content">{config.topic}</p>
     </div>
   {/if}
 
@@ -800,435 +719,37 @@
       </div>
     </div>
   {:else if showConfirm}
-    <!-- Confirmation / Parameter Summary Page -->
-    <div class="confirm-section">
-      <h3 class="confirm-title">{t('mvpDebate.confirm.title')}</h3>
-      <p class="confirm-subtitle">{t('mvpDebate.confirm.subtitle')}</p>
-
-      <div class="confirm-grid">
-        <!-- Topic -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.topic')}</span>
-          <p class="confirm-value confirm-topic">{topic}</p>
-        </div>
-
-        <!-- Round & Threshold -->
-        <div class="confirm-row">
-          <div class="confirm-card">
-            <span class="confirm-label">{t('mvpDebate.confirm.maxRounds')}</span>
-            <span class="confirm-value confirm-number">{maxRounds}</span>
-          </div>
-          <div class="confirm-card">
-            <span class="confirm-label">{t('mvpDebate.confirm.consensusThreshold')}</span>
-            <span class="confirm-value confirm-number">{(threshold * 100).toFixed(0)}%</span>
-          </div>
-        </div>
-
-        <!-- Agent → LLM Mapping -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.agentLlmMapping')}</span>
-          {#each AGENTS as agent}
-            {@const profile = llmProfiles.find(p => p.id === llmAssignments[agent.role])}
-            <div class="confirm-row-item">
-              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
-              {#if profile?.model}
-                <span class="confirm-llm-name">{profile.name} ({profile.model})</span>
-              {:else}
-                <span class="confirm-llm-name dimmed">{t('mvpDebate.confirm.autoAssigned')}</span>
-              {/if}
-            </div>
-          {/each}
-        </div>
-
-        <!-- Agent → Core Mapping -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.agentCoreMapping')}</span>
-          {#each AGENTS as agent}
-            {@const coreId = agentCoreAssignments[agent.role]}
-            {@const core = agentCores.find(c => c.id === coreId)}
-            <div class="confirm-row-item">
-              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
-              {#if core}
-                <span class="confirm-llm-name">{core.name}</span>
-              {:else}
-                <span class="confirm-llm-name dimmed">{t('mvpDebate.defaultBuiltIn')}</span>
-              {/if}
-            </div>
-          {/each}
-        </div>
-
-        <!-- Argumentation Patterns -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.argumentationPatterns')}</span>
-          {#each AGENTS as agent}
-            {@const patId = argumentationPatternAssignments[agent.role]}
-            {@const pat = argumentationPatterns.find(p => p.id === patId)}
-            <div class="confirm-row-item">
-              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
-              {#if pat}
-                <span class="confirm-llm-name">{pat.name}</span>
-              {:else}
-                <span class="confirm-llm-name dimmed">{t('mvpDebate.noneDefault')}</span>
-              {/if}
-            </div>
-          {/each}
-        </div>
-
-        <!-- Tone Profiles -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.toneProfiles')}</span>
-          {#each AGENTS as agent}
-            {@const toneId = toneProfileAssignments[agent.role]}
-            {@const tp = toneProfiles.find(p => p.id === toneId)}
-            <div class="confirm-row-item">
-              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
-              {#if tp}
-                <span class="confirm-llm-name">{tp.name}</span>
-              {:else}
-                <span class="confirm-llm-name dimmed">{t('mvpDebate.noneDefault')}</span>
-              {/if}
-            </div>
-          {/each}
-        </div>
-
-        <!-- Prompt Modifiers -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.promptModifiers')}</span>
-          {#each AGENTS as agent}
-            {@const modId = promptModifierAssignments[agent.role]}
-            {@const mod = promptModifiers.find(p => p.id === modId)}
-            <div class="confirm-row-item">
-              <span class="confirm-role-badge" style="background: {agent.color}22; color: {agent.color}">{agent.label}</span>
-              {#if mod}
-                <span class="confirm-llm-name">{mod.name}</span>
-              {:else}
-                <span class="confirm-llm-name dimmed">{t('mvpDebate.noneDefault')}</span>
-              {/if}
-            </div>
-          {/each}
-        </div>
-
-        <!-- Web Search -->
-        <div class="confirm-card">
-          <span class="confirm-label">{t('mvpDebate.confirm.webSearch')}</span>
-          <span class="confirm-value">
-            {#if searchMode === 'required'}{t('mvpDebate.searchModeRequiredDesc')}
-            {:else if searchMode === 'optional'}{t('mvpDebate.searchModeOptionalDesc')}
-            {:else}{t('mvpDebate.searchModeOffDesc')}{/if}
-          </span>
-        </div>
-
-        <!-- RAG / DMS Documents -->
-        {#if selectedDocumentIds.length > 0}
-          <div class="confirm-card">
-            <span class="confirm-label">{t('mvpDebate.confirm.ragContext', { count: selectedDocumentIds.length, plural: selectedDocumentIds.length > 1 ? 's' : '' })}</span>
-            <div class="confirm-value">
-              {#each selectedDocumentIds as docId}
-                {@const doc = availableDocuments.find(d => d.id === docId)}
-                <span class="confirm-doc">{doc?.filename || docId}</span>
-              {/each}
-              {#if ragAutoRetrieve}<span class="confirm-badge">{t('mvpDebate.confirm.autoRetrieve')}</span>{/if}
-              {#if includeDebateResults}<span class="confirm-badge">{t('mvpDebate.confirm.includeDebateResults')}</span>{/if}
-            </div>
-          </div>
-        {/if}
-
-        <!-- Language & Project -->
-        <div class="confirm-row">
-          <div class="confirm-card">
-            <span class="confirm-label">{t('mvpDebate.confirm.debateLanguage')}</span>
-            <span class="confirm-value">{($userLanguage || 'de').toUpperCase()}</span>
-          </div>
-          <div class="confirm-card">
-            <span class="confirm-label">{t('mvpDebate.confirm.activeProject')}</span>
-            <span class="confirm-value">{$activeProject?.name || '—'}</span>
-          </div>
-        </div>
-      </div>
-
-      {#if error}
-        <div class="error-box" role="alert">
-          <span class="error-icon">⚠️</span>
-          <span class="error-text">{error}</span>
-        </div>
-      {/if}
-
-      <div class="actions-row" style="gap: 12px;">
-        <button class="btn btn-cancel" onclick={() => { showConfirm = false; }}>
-          ← {t('mvpDebate.confirm.backToEdit')}
-        </button>
-        <button class="btn btn-start" onclick={() => { showConfirm = false; handleStart(); }}>
-          ▶ {t('mvpDebate.confirm.startDebate')}
-        </button>
-      </div>
-    </div>
+    <DebateReviewPanel
+      {config}
+      agents={AGENTS}
+      profiles={llmProfiles}
+      {agentCores}
+      {argumentationPatterns}
+      {toneProfiles}
+      {promptModifiers}
+      documents={availableDocuments}
+      {error}
+      onBack={() => { showConfirm = false; }}
+      onStart={() => { showConfirm = false; handleStart(); }}
+    />
 
   {:else if status === 'idle'}
-    <div class="config-section">
-      <div class="form-group">
-        <label for="mvp-topic" class="form-label">{t('mvpDebate.form.debateTopic')}</label>
-        <textarea
-          id="mvp-topic"
-          class="form-textarea"
-          placeholder={t('mvpDebate.form.topicPlaceholder')}
-          bind:value={topic}
-          disabled={isLoadingProfiles}
-        ></textarea>
-      </div>
+    <DebateSetupForm
+      bind:config
+      agents={AGENTS}
+      profiles={llmProfiles}
+      {agentCores}
+      {argumentationPatterns}
+      {toneProfiles}
+      {promptModifiers}
+      documents={availableDocuments}
+      {isLoadingProfiles}
+      {isLoadingComponents}
+      {error}
+      onReview={() => { showConfirm = true; }}
+    />
 
-      <div class="settings-row">
-        <div class="form-group">
-          <label for="mvp-rounds" class="form-label">{t('mvpDebate.form.maxRounds')}</label>
-          <input
-            id="mvp-rounds"
-            type="number"
-            class="form-input"
-            bind:value={maxRounds}
-            min="1"
-            max="50"
-          />
-        </div>
-        <div class="form-group">
-          <label for="mvp-threshold" class="form-label">{t('mvpDebate.form.consensusThreshold')}</label>
-          <input
-            id="mvp-threshold"
-            type="number"
-            class="form-input"
-            bind:value={threshold}
-            min="0"
-            max="1"
-            step="0.05"
-          />
-        </div>
-      </div>
-
-      <!-- Web Search Mode -->
-      <div class="form-group">
-        <label for="mvp-search-mode" class="form-label">{t('mvpDebate.form.webSearch')}</label>
-        <select
-          id="mvp-search-mode"
-          class="form-select"
-          bind:value={searchMode}
-        >
-          <option value="off">{t('mvpDebate.searchModeOffDesc')}</option>
-          <option value="optional">{t('mvpDebate.searchModeOptionalDesc')}</option>
-          <option value="required">{t('mvpDebate.searchModeRequiredDesc')}</option>
-        </select>
-      </div>
-
-      <!-- DMS Document Selection -->
-      {#if availableDocuments.length > 0}
-        <div class="dms-section">
-          <div class="flex items-center justify-between mb-2">
-            <span class="form-label">{t('mvpDebate.form.dmsDocuments')}</span>
-            <div class="flex items-center gap-2">
-              <button
-                class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                onclick={toggleSelectAll}
-              >{selectedDocumentIds.length === availableDocuments.length ? t('mvpDebate.form.deselectAll') : t('mvpDebate.form.selectAll')}</button>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDocumentIds.length} selected</span>
-            </div>
-          </div>
-          <div class="dms-doc-list">
-            {#each availableDocuments as doc (doc.id)}
-              <label class="dms-doc-item">
-                <input
-                  type="checkbox"
-                  checked={selectedDocumentIds.includes(doc.id)}
-                  onchange={() => toggleDocumentSelection(doc.id)}
-                  class="dms-checkbox"
-                />
-                <span class="dms-doc-name">{doc.filename}</span>
-              </label>
-            {/each}
-          </div>
-          <div class="dms-options">
-            <label class="dms-option">
-              <input type="checkbox" bind:checked={ragAutoRetrieve} class="dms-checkbox" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{t('mvpDebate.form.autoRetrieveChunks')}</span>
-            </label>
-            <label class="dms-option">
-              <input type="checkbox" bind:checked={includeDebateResults} class="dms-checkbox" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{t('mvpDebate.form.includePreviousDebates')}</span>
-            </label>
-            {#if includeDebateResults}
-              <div class="dms-debate-list">
-                {#if loadingCompletedDebates}
-                  <span class="text-xs text-gray-500 dark:text-gray-400">{t('mvpDebate.form.loadingDebates')}</span>
-                {:else if completedDebates.length === 0}
-                  <span class="text-xs text-gray-500 dark:text-gray-400">{t('mvpDebate.form.noCompletedDebates')}</span>
-                {:else}
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDebateIds.length} of {completedDebates.length} selected</span>
-                    <button
-                      class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      onclick={() => { selectedDebateIds = selectedDebateIds.length === completedDebates.length ? [] : completedDebates.map(d => d.debate_id); }}
-                    >{selectedDebateIds.length === completedDebates.length ? t('mvpDebate.form.deselectAll') : t('mvpDebate.form.selectAll')}</button>
-                  </div>
-                  {#each completedDebates as debate (debate.debate_id)}
-                    <label class="dms-debate-item">
-                      <input
-                        type="checkbox"
-                        checked={selectedDebateIds.includes(debate.debate_id)}
-                        onchange={() => toggleDebateSelection(debate.debate_id)}
-                        class="dms-checkbox"
-                      />
-                      <span class="dms-debate-name">{debate.title || debate.debate_id.slice(0, 12)}</span>
-                    </label>
-                  {/each}
-                {/if}
-              </div>
-            {/if}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Extension / Extra Rounds -->
-      <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={enableExtraRounds}
-            class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-          />
-          <span class="text-sm text-gray-700 dark:text-gray-300">
-            {t('debate.enableExtraRounds')}
-          </span>
-        </label>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
-          {t('debate.extensionRequest', { rounds: maxRounds, current: '…', threshold })}
-        </p>
-      </div>
-
-      <div class="agent-nodes">
-        {#each AGENTS as agent, idx}
-          <div class="agent-node" style="border-top-color: {agent.color}">
-            <div class="agent-header">
-              <div class="agent-badge" style="background: {agent.color}20; color: {agent.color}">
-                <span class="agent-icon">{agent.icon}</span>
-                <span class="agent-label">{agent.label}</span>
-              </div>
-              {#if nodeStatuses[`node-${agent.role}`]}
-                <span class="agent-status agent-status-{nodeStatuses[`node-${agent.role}`]}">
-                  {nodeStatuses[`node-${agent.role}`]}
-                </span>
-              {/if}
-            </div>
-            <p class="agent-desc">{agent.desc}</p>
-            <div class="agent-llm-select">
-              <label for="llm-{agent.role}" class="select-label">{t('mvpDebate.form.llmProfile')}</label>
-              {#if isLoadingProfiles}
-                <div class="select-loading">Loading profiles...</div>
-              {:else}
-                <select
-                  id="llm-{agent.role}"
-                  class="form-select"
-                  bind:value={llmAssignments[agent.role]}
-                >
-                  {#each llmProfiles as profile}
-                    <option value={profile.id}>{profile.name}</option>
-                  {/each}
-                </select>
-              {/if}
-            </div>
-
-            <div class="agent-core-select">
-              <label for="core-{agent.role}" class="select-label">Agent Core (optional)</label>
-              {#if isLoadingComponents}
-                <div class="select-loading">Loading...</div>
-              {:else}
-                <select
-                  id="core-{agent.role}"
-                  class="form-select"
-                  bind:value={agentCoreAssignments[agent.role]}
-                >
-                  <option value="">Default (built-in)</option>
-                  {#each agentCores.filter(c => c.role === agent.role) as core}
-                    <option value={core.id}>{core.name}</option>
-                  {/each}
-                </select>
-              {/if}
-            </div>
-
-            <div class="agent-pat-select">
-              <label for="pat-{agent.role}" class="select-label">Argumentation Pattern (optional)</label>
-              {#if isLoadingComponents}
-                <div class="select-loading">Loading...</div>
-              {:else}
-                <select
-                  id="pat-{agent.role}"
-                  class="form-select"
-                  bind:value={argumentationPatternAssignments[agent.role]}
-                >
-                  <option value="">Default (none)</option>
-                  {#each argumentationPatterns as pattern}
-                    <option value={pattern.id}>{pattern.name}</option>
-                  {/each}
-                </select>
-              {/if}
-            </div>
-
-            <div class="agent-tone-select">
-              <label for="tone-{agent.role}" class="select-label">Tone Profile (optional)</label>
-              {#if isLoadingComponents}
-                <div class="select-loading">Loading...</div>
-              {:else}
-                <select
-                  id="tone-{agent.role}"
-                  class="form-select"
-                  bind:value={toneProfileAssignments[agent.role]}
-                >
-                  <option value="">Default (none)</option>
-                  {#each toneProfiles as profile}
-                    <option value={profile.id}>{profile.name}</option>
-                  {/each}
-                </select>
-              {/if}
-            </div>
-
-            <div class="agent-mod-select">
-              <label for="mod-{agent.role}" class="select-label">Prompt Modifier (optional)</label>
-              {#if isLoadingComponents}
-                <div class="select-loading">Loading...</div>
-              {:else}
-                <select
-                  id="mod-{agent.role}"
-                  class="form-select"
-                  bind:value={promptModifierAssignments[agent.role]}
-                >
-                  <option value="">Default (none)</option>
-                  {#each promptModifiers as mod}
-                    <option value={mod.id}>{mod.name}</option>
-                  {/each}
-                </select>
-              {/if}
-            </div>
-          </div>
-          {#if idx < AGENTS.length - 1}
-            <div class="agent-arrow">→</div>
-          {/if}
-        {/each}
-      </div>
-
-      {#if error}
-        <div class="error-box" role="alert">
-          <span class="error-icon">⚠️</span>
-          <span class="error-text">{error}</span>
-        </div>
-      {/if}
-
-      <div class="actions-row">
-        <button
-          class="btn btn-start"
-          onclick={() => { if (topic.trim() && !isLoadingProfiles) showConfirm = true; }}
-          disabled={!topic.trim() || isLoadingProfiles}
-        >
-          ▶ Review & Start
-        </button>
-      </div>
-    </div>
-
-    {:else}
+  {:else}
     <AgentQueryModal debateId={debateId || ''} />
     <div class="execution-section">
       <div class="status-bar status-{status}">
@@ -1265,10 +786,19 @@
         />
       {/if}
 
+      {#if status === 'running' || status === 'paused'}
+        <DebateActivityLog
+          activityText={currentActivity ? t('mvpDebate.activity.agentCalling', { agent: AGENTS.find(a => a.role === currentActivity.role)?.label || currentActivity.role, llm: getProfileName(currentActivity.llm_profile_id), round: currentActivity.round }) : ''}
+          {consumedInterjections}
+          {isConnected}
+          isVisible={status === 'running' || status === 'paused'}
+        />
+      {/if}
+
       <div class="metrics-grid">
         <div class="metric">
           <span class="metric-label">Round</span>
-          <span class="metric-value">{currentRound}/{maxRounds}</span>
+          <span class="metric-value">{currentRound}/{config.maxRounds}</span>
         </div>
         <div class="metric">
           <span class="metric-label">Consensus</span>
@@ -1319,31 +849,12 @@
       {/if}
 
       {#if status === 'running' || status === 'paused'}
-        <div class="interjection-area">
-          <div class="interjection-input-row">
-            <input
-              type="text"
-              class="interjection-input"
-              bind:value={interjectionText}
-              placeholder={t('mvpDebate.interjectionPlaceholder')}
-              aria-label={t('mvpDebate.interjectionPlaceholder')}
-              onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendInterjection(); } }}
-              disabled={sendingInterjection}
-            />
-            <button
-              class="btn btn-interject"
-              onclick={handleSendInterjection}
-              disabled={!interjectionText.trim() || sendingInterjection}
-            >
-              Send
-            </button>
-          </div>
-          {#if interjectionFeedback}
-            <div class="interjection-feedback" class:consumed={interjectionFeedback.startsWith('📨')}>
-              {interjectionFeedback}
-            </div>
-          {/if}
-        </div>
+        <DebateInterjection
+          disabled={status !== 'running' && status !== 'paused'}
+          sending={sendingInterjection}
+          feedback={interjectionFeedback}
+          onSend={handleSendInterjection}
+        />
       {/if}
 
       {#if debateId}
@@ -1351,83 +862,16 @@
       {/if}
 
       {#if nodeOutputs.length > 0 || status === 'running'}
-        <div class="outputs-section">
-          <h4 class="outputs-title">Agent Outputs ({nodeOutputs.length})</h4>
-          <div class="outputs-list">
-            {#each Object.entries(liveOutputsByRound) as [round, outputs]}
-              <div class="round-group">
-                <div class="round-label">Round {round}</div>
-                <div class="round-outputs">
-                  {#each outputs as output, i}
-                    {@const key = `out-r${output.round}-${output.role}-${i}`}
-                    {@const isExpanded = expandedOutputs.has(key)}
-                    {@const isLong = output.content?.length > 400}
-                    <div class="output-card border-l-4 {roleColor(output.role)} p-4">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                          <span class="font-semibold text-sm {roleHeaderColor(output.role)}">
-                            {roleEmoji(output.role)} {output.role}
-                          </span>
-                          {#if output.model}
-                            <span class="output-model">{output.model}</span>
-                          {:else if output.profile}
-                            <span class="output-model">{getProfileName(output.profile)}</span>
-                          {/if}
-                        </div>
-                        <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                          {#if output.durationMs}
-                            <span class="font-mono">⏱ {formatElapsed(output.durationMs)}</span>
-                          {/if}
-                          <span>{output.tokensUsed || 0} tokens</span>
-                        </div>
-                      </div>
-                      <div class="text-sm text-gray-700 dark:text-gray-300">
-                        {#if isLong && !isExpanded}
-                          <MarkdownRenderer content={output.content.substring(0, 400) + '…'} />
-                          <button class="expand-btn" onclick={() => expandedOutputs = new Set([...expandedOutputs, key])}>
-                            ▼ Show full response ({output.content.length} chars)
-                          </button>
-                        {:else}
-                          <MarkdownRenderer content={output.content} />
-                          {#if isLong}
-                            <button class="expand-btn" onclick={() => { const next = new Set(expandedOutputs); next.delete(key); expandedOutputs = next; }}>
-                              ▲ Collapse
-                            </button>
-                          {/if}
-                        {/if}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/each}
-
-            <!-- Thinking indicator (bouncing dots) -->
-            {#if currentActivity}
-              <div class="thinking-card border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                <div class="flex items-center gap-2">
-                  <span class="animate-pulse w-3 h-3 bg-blue-500 rounded-full"></span>
-                  <span class="font-semibold text-sm text-blue-700 dark:text-blue-300">
-                    {roleEmoji(currentActivity.role)} {currentActivity.role}
-                  </span>
-                  <span class="text-xs text-blue-500 dark:text-blue-400">— Round {currentActivity.round} — thinking</span>
-                </div>
-                <div class="mt-2 flex gap-1">
-                  <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                  <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                  <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
-                </div>
-              </div>
-            {/if}
-
-            {#if nodeOutputs.length === 0 && !currentActivity}
-              <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-8">Waiting for agent outputs...</p>
-            {/if}
-          </div>
-        </div>
+        <DebateTranscript
+          agentOutputs={nodeOutputs}
+          agents={AGENTS}
+          {currentRound}
+          {currentActivity}
+          bind:expandedOutputs
+          {llmProfiles}
+        />
       {/if}
 
-      <!-- Consensus progress bar -->
       {#if hasReceivedConsensus}
         <div class="consensus-bar-wrapper">
           <div class="flex items-center justify-between mb-1">
@@ -1475,217 +919,50 @@
     margin: 0;
   }
 
-  .config-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .form-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .form-textarea {
-    padding: 10px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-    resize: vertical;
-    outline: none;
-    background: white;
-    color: #1f2937;
-  }
-  :global(.dark) .form-textarea {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-  .form-textarea:focus { border-color: #3b82f6; }
-
-  .form-input {
-    padding: 8px 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 14px;
-    width: 100px;
-    outline: none;
-    background: white;
-    color: #1f2937;
-  }
-  :global(.dark) .form-input {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-  .form-input:focus { border-color: #3b82f6; }
-
-  .settings-row {
-    display: flex;
-    gap: 16px;
-  }
-
-  .agent-nodes {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    align-items: center;
-  }
-
-  .agent-node {
-    width: 100%;
-    padding: 16px;
-    background: white;
+  .case-text-section {
+    background: #f9fafb;
     border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    border-top: 3px solid;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
   }
-  :global(.dark) .agent-node {
+  :global(.dark) .case-text-section {
     background: #1f2937;
     border-color: #374151;
   }
-
-  .agent-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .agent-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 6px;
+  .case-text-heading {
     font-size: 13px;
     font-weight: 600;
-  }
-  .agent-icon { font-size: 16px; }
-
-  .agent-desc {
-    font-size: 12px;
-    color: #9ca3af;
-    margin: 0;
-  }
-
-  .agent-llm-select {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .select-label {
-    font-size: 11px;
-    font-weight: 500;
     color: #6b7280;
-  }
-  .form-select {
-    padding: 8px 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 13px;
-    background: white;
-    color: #1f2937;
-    outline: none;
-    cursor: pointer;
-  }
-  :global(.dark) .form-select {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-  .form-select:focus { border-color: #3b82f6; }
-  .select-loading {
-    font-size: 12px;
-    color: #9ca3af;
-    font-style: italic;
-  }
-
-  .agent-arrow {
-    font-size: 20px;
-    color: #9ca3af;
-    padding: 4px 0;
-  }
-
-  .agent-status {
-    font-size: 10px;
-    font-weight: 600;
+    margin: 0 0 8px 0;
     text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 4px;
+    letter-spacing: 0.5px;
   }
-  .agent-status-running {
-    background: #dbeafe;
-    color: #1d4ed8;
-  }
-  .agent-status-completed {
-    background: #dcfce7;
-    color: #166534;
-  }
-  .agent-status-failed {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-
-  .error-box {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 14px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    font-size: 13px;
-    color: #991b1b;
-  }
-  :global(.dark) .error-box {
-    background: #451a1a;
-    border-color: #7f1d1d;
-    color: #fca5a5;
-  }
-
-  .actions-row {
-    display: flex;
-    justify-content: center;
-  }
-
-  .btn {
-    padding: 10px 24px;
-    border-radius: 8px;
-    border: none;
+  :global(.dark) .case-text-heading { color: #9ca3af; }
+  .case-text-content {
     font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
+    color: #374151;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
   }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-start {
-    background: #3b82f6;
-    color: white;
-  }
-  .btn-start:hover:not(:disabled) { background: #2563eb; }
-  .btn-cancel {
-    background: #ef4444;
-    color: white;
-  }
-  .btn-cancel:hover { background: #dc2626; }
-  .btn-reset {
-    background: #10b981;
-    color: white;
-  }
-  .btn-reset:hover { background: #059669; }
+  :global(.dark) .case-text-content { color: #d1d5db; }
 
-  /* Execution section */
+  .loading-section {
+    padding: 24px;
+  }
+  .loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
   .execution-section {
     display: flex;
     flex-direction: column;
@@ -1744,47 +1021,6 @@
   @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
-  }
-
-  .activity-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 8px;
-    font-size: 13px;
-    color: #1e40af;
-    animation: fadeIn 0.3s ease;
-  }
-  :global(.dark) .activity-bar {
-    background: #1e3a5f;
-    border-color: #2563eb;
-    color: #93c5fd;
-  }
-  .activity-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid #bfdbfe;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-  :global(.dark) .activity-spinner {
-    border-color: #1e3a5f;
-    border-top-color: #60a5fa;
-  }
-  .activity-text {
-    font-weight: 500;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 
   .metrics-grid {
@@ -1856,418 +1092,32 @@
     gap: 8px;
   }
 
-  .outputs-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .outputs-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #6b7280;
-    margin: 0;
-  }
-  .outputs-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 70vh;
-    overflow-y: auto;
-  }
-  .output-item {
-    padding: 12px;
-    background: white;
-    border: 1px solid #e5e7eb;
+  .btn {
+    padding: 10px 24px;
     border-radius: 8px;
-  }
-  :global(.dark) .output-item {
-    background: #1f2937;
-    border-color: #374151;
-  }
-  .output-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-  }
-  .output-role {
-    font-size: 12px;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-  }
-  .output-meta {
-    font-size: 11px;
-    color: #9ca3af;
-  }
-  .output-content {
-    font-size: 13px;
-    color: #374151;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  :global(.dark) .output-content { color: #d1d5db; }
-  .output-content.markdown-rendered {
-    white-space: normal;
-  }
-  .output-content.markdown-rendered :global(h2) {
-    font-size: 15px;
-    font-weight: 700;
-    margin: 8px 0 4px;
-  }
-  .output-content.markdown-rendered :global(h3) {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 6px 0 3px;
-  }
-  .output-content.markdown-rendered :global(h4) {
-    font-size: 13px;
-    font-weight: 600;
-    margin: 4px 0 2px;
-  }
-  .output-content.markdown-rendered :global(strong) {
-    font-weight: 700;
-  }
-  .output-content.markdown-rendered :global(code) {
-    background: #f3f4f6;
-    padding: 1px 4px;
-    border-radius: 3px;
-    font-size: 12px;
-    font-family: monospace;
-  }
-  :global(.dark) .output-content.markdown-rendered :global(code) {
-    background: #374151;
-  }
-  .output-content.markdown-rendered :global(li) {
-    margin-left: 16px;
-    list-style-type: disc;
-  }
-
-  .expand-btn {
-    display: block;
-    margin-top: 6px;
-    background: none;
     border: none;
-    color: #3b82f6;
-    font-size: 12px;
-    cursor: pointer;
-    padding: 2px 0;
-    text-decoration: underline dotted;
-  }
-  :global(.dark) .expand-btn { color: #60a5fa; }
-  .expand-btn:hover { color: #1d4ed8; }
-  :global(.dark) .expand-btn:hover { color: #93c5fd; }
-
-  .loading-section {
-    padding: 24px;
-  }
-  .loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 2px solid #e5e7eb;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* DMS Document Section */
-  .dms-section {
-    padding: 16px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  :global(.dark) .dms-section {
-    background: #1f2937;
-    border-color: #374151;
-  }
-  .dms-doc-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 140px;
-    overflow-y: auto;
-  }
-  .dms-doc-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    padding: 4px 0;
-  }
-  .dms-checkbox {
-    border-radius: 4px;
-    border: 1px solid #d1d5db;
-    accent-color: #3b82f6;
-  }
-  .dms-doc-name {
-    font-size: 13px;
-    color: #374151;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  :global(.dark) .dms-doc-name { color: #e5e7eb; }
-  .dms-options {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-top: 8px;
-    border-top: 1px solid #e5e7eb;
-  }
-  :global(.dark) .dms-options { border-color: #374151; }
-  .dms-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-  }
-  .dms-debate-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 140px;
-    overflow-y: auto;
-    padding: 8px 10px;
-    margin-top: 4px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-  }
-  :global(.dark) .dms-debate-list {
-    background: #111827;
-    border-color: #374151;
-  }
-  .dms-debate-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    padding: 3px 0;
-  }
-  .dms-debate-name {
-    font-size: 12px;
-    color: #374151;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  :global(.dark) .dms-debate-name { color: #d1d5db; }
-
-  /* Interjection area */
-  .interjection-area {
-    padding: 12px;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 8px;
-  }
-  :global(.dark) .interjection-area {
-    background: #164e63;
-    border-color: #155e75;
-  }
-  .interjection-input-row {
-    display: flex;
-    gap: 8px;
-  }
-  .interjection-input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
     font-size: 14px;
-    outline: none;
-    background: white;
-    color: #1f2937;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
   }
-  :global(.dark) .interjection-input {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-  .interjection-input:focus { border-color: #3b82f6; }
-  .btn-interject {
-    background: #0ea5e9;
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-start {
+    background: #3b82f6;
     color: white;
-    padding: 8px 20px;
-    border-radius: 8px;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
   }
-  .btn-interject:hover { background: #0284c7; }
-  .btn-interject:disabled { opacity: 0.5; cursor: not-allowed; }
-  .interjection-feedback {
-    margin-top: 8px;
-    padding: 6px 12px;
-    background: #dcfce7;
-    border: 1px solid #86efac;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #166534;
-    animation: fadeIn 0.3s ease-in;
+  .btn-start:hover:not(:disabled) { background: #2563eb; }
+  .btn-cancel {
+    background: #ef4444;
+    color: white;
   }
-  .interjection-feedback.consumed {
-    background: #dbeafe;
-    border-color: #93c5fd;
-    color: #1e40af;
+  .btn-cancel:hover { background: #dc2626; }
+  .btn-reset {
+    background: #10b981;
+    color: white;
   }
-  :global(.dark) .interjection-feedback {
-    background: #14532d;
-    border-color: #22c55e;
-    color: #bbf7d0;
-  }
-  :global(.dark) .interjection-feedback.consumed {
-    background: #1e3a5f;
-    border-color: #3b82f6;
-    color: #bfdbfe;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  .btn-reset:hover { background: #059669; }
 
-  /* Confirmation / Parameter Review */
-  .confirm-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 24px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-  }
-  :global(.dark) .confirm-section {
-    background: #1f2937;
-    border-color: #374151;
-  }
-  .confirm-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
-  }
-  :global(.dark) .confirm-title { color: #e5e7eb; }
-  .confirm-subtitle {
-    font-size: 13px;
-    color: #6b7280;
-    margin: 0;
-  }
-  .confirm-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .confirm-row {
-    display: flex;
-    gap: 12px;
-  }
-  .confirm-row .confirm-card { flex: 1; }
-  .confirm-card {
-    padding: 12px 16px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-  }
-  :global(.dark) .confirm-card {
-    background: #111827;
-    border-color: #374151;
-  }
-  .confirm-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-  }
-  .confirm-value {
-    font-size: 14px;
-    color: #1f2937;
-    word-break: break-word;
-  }
-  :global(.dark) .confirm-value { color: #e5e7eb; }
-  .confirm-topic {
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.5;
-  }
-  .confirm-number {
-    font-size: 20px;
-    font-weight: 700;
-    color: #3b82f6;
-  }
-  .confirm-agent-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 4px;
-  }
-  .confirm-agent-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-  }
-  .confirm-agent-icon { font-size: 16px; }
-  .confirm-agent-name {
-    font-weight: 600;
-    color: #374151;
-    min-width: 80px;
-  }
-  :global(.dark) .confirm-agent-name { color: #d1d5db; }
-  .confirm-arrow { color: #9ca3af; }
-  .confirm-llm-name {
-    font-weight: 500;
-    color: #3b82f6;
-  }
-  .confirm-llm-model {
-    font-size: 11px;
-    color: #9ca3af;
-    font-family: monospace;
-  }
-  .confirm-doc {
-    display: inline-block;
-    padding: 2px 8px;
-    margin: 2px 4px 2px 0;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 4px;
-    font-size: 12px;
-    color: #1e40af;
-  }
-  :global(.dark) .confirm-doc {
-    background: #1e3a5f;
-    border-color: #2563eb;
-    color: #93c5fd;
-  }
-  .confirm-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    margin-left: 6px;
-    background: #dcfce7;
-    border: 1px solid #86efac;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #166534;
-  }
-  :global(.dark) .confirm-badge {
-    background: #14532d;
-    border-color: #16a34a;
-    color: #4ade80;
-  }
-
-  /* SSE connection indicator */
   .sse-badge {
     display: inline-flex;
     align-items: center;
@@ -2298,52 +1148,6 @@
     letter-spacing: 0.5px;
   }
 
-  /* Output cards - round grouping */
-  .round-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .round-label {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #6b7280;
-    background: #f3f4f6;
-    padding: 4px 10px;
-    border-radius: 4px;
-    align-self: flex-start;
-  }
-  :global(.dark) .round-label {
-    background: #374151;
-    color: #9ca3af;
-  }
-  .round-outputs {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .output-card {
-    border-radius: 8px;
-    background: white;
-  }
-  :global(.dark) .output-card {
-    background: #1f2937;
-  }
-  .output-model {
-    font-size: 11px;
-    font-family: monospace;
-    color: #9ca3af;
-  }
-
-  /* Thinking indicator card */
-  .thinking-card {
-    border-radius: 8px;
-  }
-
-  /* Consensus bar */
   .consensus-bar-wrapper {
     padding: 12px 16px;
     background: white;
@@ -2386,37 +1190,9 @@
   .consensus-mid { background: #f59e0b; }
   .consensus-high { background: #22c55e; }
 
-  .case-text-section {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
-  :global(.dark) .case-text-section {
-    background: #1f2937;
-    border-color: #374151;
-  }
-  .case-text-heading {
-    font-size: 13px;
-    font-weight: 600;
-    color: #6b7280;
-    margin: 0 0 8px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  :global(.dark) .case-text-heading { color: #9ca3af; }
-  .case-text-content {
-    font-size: 14px;
-    color: #374151;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    margin: 0;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-  :global(.dark) .case-text-content { color: #d1d5db; }
-
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
