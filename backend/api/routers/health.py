@@ -28,8 +28,8 @@ async def health() -> JSONResponse:
     try:
         from backend.persistence.audit import AuditService
 
-        audit = AuditService()
-        audit.conn.execute("SELECT 1")
+        with AuditService()._connect() as conn:
+            conn.execute("SELECT 1")
         checks["sqlite"] = "ok"
     except Exception as e:
         logger.warning("SQLite health check failed: %s", e)
