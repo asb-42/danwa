@@ -17,8 +17,12 @@ from backend.models.user import User
 def app():
     application = create_app()
     _test_user = User(
-        id="test-user", email="test@danwa.local", display_name="Test User",
-        password_hash="", role="admin", tenant_id="_default",
+        id="test-user",
+        email="test@danwa.local",
+        display_name="Test User",
+        password_hash="",
+        role="admin",
+        tenant_id="_default",
     )
     application.dependency_overrides[get_current_user] = lambda: _test_user
     return application
