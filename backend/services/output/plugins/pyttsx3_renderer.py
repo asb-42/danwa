@@ -116,9 +116,7 @@ class Pyttsx3Renderer:
         try:
             import pyttsx3
         except ImportError:
-            raise RuntimeError(
-                "pyttsx3 is not installed. Install with: pip install pyttsx3>=2.90"
-            )
+            raise RuntimeError("pyttsx3 is not installed. Install with: pip install pyttsx3>=2.90")
 
         engine = pyttsx3.init()
         if voice_id:
