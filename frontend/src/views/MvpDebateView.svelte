@@ -25,10 +25,10 @@
   });
 
   const AGENTS = [
-    { role: 'strategist', label: 'Strategist', icon: '\u{1F9E0}', color: '#3b82f6', desc: 'Develops logical argumentation structure' },
-    { role: 'critic', label: 'Critic', icon: '\u{1F50D}', color: '#ef4444', desc: 'Identifies weaknesses and risks' },
-    { role: 'optimizer', label: 'Optimizer', icon: '\u26A1', color: '#10b981', desc: 'Synthesizes strategy and criticism' },
-    { role: 'moderator', label: 'Moderator', icon: '\u{1F3AF}', color: '#8b5cf6', desc: 'Evaluates consensus and scores' },
+    { role: 'strategist', label: t('mvpDebate.agent.strategist'), icon: '🧠', color: '#3b82f6', desc: t('mvpDebate.agentDesc.strategist') },
+    { role: 'critic', label: t('mvpDebate.agent.critic'), icon: '🔍', color: '#ef4444', desc: t('mvpDebate.agentDesc.critic') },
+    { role: 'optimizer', label: t('mvpDebate.agent.optimizer'), icon: '⚡', color: '#10b981', desc: t('mvpDebate.agentDesc.optimizer') },
+    { role: 'moderator', label: t('mvpDebate.agent.moderator'), icon: '🎯', color: '#8b5cf6', desc: t('mvpDebate.agentDesc.moderator') },
   ];
 
   let topic = $state('');
@@ -168,7 +168,7 @@
         promptModifierAssignments = { ...emptyDefaults };
       })
       .catch((err) => {
-        error = `Failed to load profiles: ${err.message}`;
+        error = t('mvpDebate.error.loadProfiles', { error: err.message });
       })
       .finally(() => {
         isLoadingProfiles = false;
@@ -245,7 +245,7 @@
           }
         }
       } catch (err) {
-        error = `Failed to load debate: ${err.message}`;
+        error = t('mvpDebate.error.loadDebate', { error: err.message });
         status = 'failed';
       } finally {
         isLoadingDebate = false;
@@ -378,7 +378,7 @@
         try {
           currentNodeId = data.node_id || '';
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
-          activityText = `${agentLabel} starting…`;
+          activityText = t('mvpDebate.activity.agentStarting', { agent: agentLabel });
           nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
           workflowPhase = {
             type: 'agent_preparing',
@@ -395,7 +395,7 @@
         try {
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
           const llmName = getProfileName(data.llm_profile_id);
-          activityText = `🧠 ${agentLabel} → ${llmName} (Round ${data.round || currentRound})…`;
+          activityText = t('mvpDebate.activity.agentCalling', { agent: agentLabel, llm: llmName, round: data.round || currentRound });
           currentActivity = {
             role: data.role,
             round: data.round || currentRound,
@@ -420,7 +420,7 @@
       },
       onWebSearch: (data) => {
         try {
-          activityText = `🔍 Searching: ${data.query || ''}…`;
+          activityText = t('mvpDebate.activity.searching', { query: data.query || '' });
         } catch (e) { console.warn('[MvpDebateView] onWebSearch error:', e); }
       },
       onNodeComplete: (data) => {
@@ -445,7 +445,7 @@
           cumulativeTokens += tokensUsed;
           totalTokens = nodeOutputs.reduce((sum, o) => sum + (o.tokensUsed || 0), 0);
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
-          activityText = `✓ ${agentLabel} completed (${formatDuration(data.duration_ms)}, ${tokensUsed} tokens)`;
+          activityText = t('mvpDebate.activity.agentCompleted', { agent: agentLabel, duration: formatDuration(data.duration_ms), tokens: tokensUsed });
           currentActivity = null;
           workflowPhase = null;
           stopProcessingTimer();
@@ -471,7 +471,7 @@
         }
       },
       onNodeError: (data) => {
-        error = data.error || 'Unknown error';
+        error = data.error || t('mvpDebate.error.unknown');
         status = 'failed';
         stopTimer();
         activityText = '';
@@ -532,7 +532,7 @@
       },
       onInterjectionReceived: (data) => {
         try {
-          interjectionFeedback = `✓ Sent: "${(data.content || '').substring(0, 60)}${(data.content || '').length > 60 ? '…' : ''}"`;
+          interjectionFeedback = t('mvpDebate.interjection.sent', { preview: `${(data.content || '').substring(0, 60)}${(data.content || '').length > 60 ? '…' : ''}` });
           // Clear feedback after 5 seconds
           setTimeout(() => { if (interjectionFeedback.startsWith('✓ Sent:')) interjectionFeedback = ''; }, 5000);
         } catch (e) { console.warn('[MvpDebateView] onInterjectionReceived error:', e); }
@@ -542,7 +542,7 @@
           const agentLabel = AGENTS.find(a => a.role === data.role)?.label || data.role;
           const contents = data.contents || [];
           const preview = contents.length > 0 ? `"${contents[0].substring(0, 80)}${contents[0].length > 80 ? '…' : ''}"` : '';
-          interjectionFeedback = `📨 ${agentLabel} received your input (Round ${data.round || '?'}) ${preview}`;
+          interjectionFeedback = t('mvpDebate.interjection.received', { agent: agentLabel, round: data.round || '?', preview });
           consumedInterjections = [...consumedInterjections, {
             role: data.role,
             round: data.round,
@@ -659,7 +659,7 @@
       startTimer();
       connectSSE(sessionId);
     } catch (err) {
-      error = err.message || 'Failed to start debate';
+      error = err.message || t('mvpDebate.error.startFailed');
       status = 'failed';
       stopTimer();
     }
@@ -674,7 +674,7 @@
       stopTimer();
       if (cleanupSSE) cleanupSSE();
     } catch (err) {
-      error = err.message || 'Failed to cancel';
+      error = err.message || t('mvpDebate.error.cancelFailed');
     }
   }
 
@@ -774,7 +774,7 @@
   <div class="view-header">
     <h1 class="view-title">
       <span class="title-icon">🏛️</span>
-      {debateTitle || 'MVP Debate Canvas'}
+      {debateTitle || t('mvpDebate.titleFallback')}
     </h1>
     <p class="view-subtitle">
       {#if debateTitle}
@@ -796,37 +796,37 @@
     <div class="loading-section">
       <div class="flex items-center justify-center py-12">
         <span class="loading-spinner"></span>
-        <span class="ml-3 text-gray-500 dark:text-gray-400 text-sm">Loading debate...</span>
+        <span class="ml-3 text-gray-500 dark:text-gray-400 text-sm">{t('mvpDebate.loadingDebate')}</span>
       </div>
     </div>
   {:else if showConfirm}
     <!-- Confirmation / Parameter Summary Page -->
     <div class="confirm-section">
-      <h3 class="confirm-title">📋 Debate Parameter Review</h3>
-      <p class="confirm-subtitle">Please review all parameters before starting the debate.</p>
+      <h3 class="confirm-title">{t('mvpDebate.confirm.title')}</h3>
+      <p class="confirm-subtitle">{t('mvpDebate.confirm.subtitle')}</p>
 
       <div class="confirm-grid">
         <!-- Topic -->
         <div class="confirm-card">
-          <span class="confirm-label">📝 Topic</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.topic')}</span>
           <p class="confirm-value confirm-topic">{topic}</p>
         </div>
 
         <!-- Round & Threshold -->
         <div class="confirm-row">
           <div class="confirm-card">
-            <span class="confirm-label">🔄 Max Rounds</span>
+            <span class="confirm-label">{t('mvpDebate.confirm.maxRounds')}</span>
             <span class="confirm-value confirm-number">{maxRounds}</span>
           </div>
           <div class="confirm-card">
-            <span class="confirm-label">🎯 Consensus Threshold</span>
+            <span class="confirm-label">{t('mvpDebate.confirm.consensusThreshold')}</span>
             <span class="confirm-value confirm-number">{(threshold * 100).toFixed(0)}%</span>
           </div>
         </div>
 
         <!-- Agent → LLM Mapping -->
         <div class="confirm-card">
-          <span class="confirm-label">🤖 Agent → LLM Mapping</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.agentLlmMapping')}</span>
           {#each AGENTS as agent}
             {@const profile = llmProfiles.find(p => p.id === llmAssignments[agent.role])}
             <div class="confirm-row-item">
@@ -834,7 +834,7 @@
               {#if profile?.model}
                 <span class="confirm-llm-name">{profile.name} ({profile.model})</span>
               {:else}
-                <span class="confirm-llm-name dimmed">Will be auto-assigned</span>
+                <span class="confirm-llm-name dimmed">{t('mvpDebate.confirm.autoAssigned')}</span>
               {/if}
             </div>
           {/each}
@@ -842,7 +842,7 @@
 
         <!-- Agent → Core Mapping -->
         <div class="confirm-card">
-          <span class="confirm-label">🧠 Agent → Core Mapping</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.agentCoreMapping')}</span>
           {#each AGENTS as agent}
             {@const coreId = agentCoreAssignments[agent.role]}
             {@const core = agentCores.find(c => c.id === coreId)}
@@ -851,7 +851,7 @@
               {#if core}
                 <span class="confirm-llm-name">{core.name}</span>
               {:else}
-                <span class="confirm-llm-name dimmed">Default (built-in)</span>
+                <span class="confirm-llm-name dimmed">{t('mvpDebate.defaultBuiltIn')}</span>
               {/if}
             </div>
           {/each}
@@ -859,7 +859,7 @@
 
         <!-- Argumentation Patterns -->
         <div class="confirm-card">
-          <span class="confirm-label">📐 Argumentation Patterns</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.argumentationPatterns')}</span>
           {#each AGENTS as agent}
             {@const patId = argumentationPatternAssignments[agent.role]}
             {@const pat = argumentationPatterns.find(p => p.id === patId)}
@@ -868,7 +868,7 @@
               {#if pat}
                 <span class="confirm-llm-name">{pat.name}</span>
               {:else}
-                <span class="confirm-llm-name dimmed">None (default)</span>
+                <span class="confirm-llm-name dimmed">{t('mvpDebate.noneDefault')}</span>
               {/if}
             </div>
           {/each}
@@ -876,7 +876,7 @@
 
         <!-- Tone Profiles -->
         <div class="confirm-card">
-          <span class="confirm-label">🎭 Tone Profiles</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.toneProfiles')}</span>
           {#each AGENTS as agent}
             {@const toneId = toneProfileAssignments[agent.role]}
             {@const tp = toneProfiles.find(p => p.id === toneId)}
@@ -885,7 +885,7 @@
               {#if tp}
                 <span class="confirm-llm-name">{tp.name}</span>
               {:else}
-                <span class="confirm-llm-name dimmed">None (default)</span>
+                <span class="confirm-llm-name dimmed">{t('mvpDebate.noneDefault')}</span>
               {/if}
             </div>
           {/each}
@@ -893,7 +893,7 @@
 
         <!-- Prompt Modifiers -->
         <div class="confirm-card">
-          <span class="confirm-label">✏️ Prompt Modifiers</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.promptModifiers')}</span>
           {#each AGENTS as agent}
             {@const modId = promptModifierAssignments[agent.role]}
             {@const mod = promptModifiers.find(p => p.id === modId)}
@@ -902,7 +902,7 @@
               {#if mod}
                 <span class="confirm-llm-name">{mod.name}</span>
               {:else}
-                <span class="confirm-llm-name dimmed">None (default)</span>
+                <span class="confirm-llm-name dimmed">{t('mvpDebate.noneDefault')}</span>
               {/if}
             </div>
           {/each}
@@ -910,25 +910,25 @@
 
         <!-- Web Search -->
         <div class="confirm-card">
-          <span class="confirm-label">🔍 Web Search</span>
+          <span class="confirm-label">{t('mvpDebate.confirm.webSearch')}</span>
           <span class="confirm-value">
-            {#if searchMode === 'required'}Required (auto-search before each agent)
-            {:else if searchMode === 'optional'}Optional (agents may request)
-            {:else}Off{/if}
+            {#if searchMode === 'required'}{t('mvpDebate.searchModeRequiredDesc')}
+            {:else if searchMode === 'optional'}{t('mvpDebate.searchModeOptionalDesc')}
+            {:else}{t('mvpDebate.searchModeOffDesc')}{/if}
           </span>
         </div>
 
         <!-- RAG / DMS Documents -->
         {#if selectedDocumentIds.length > 0}
           <div class="confirm-card">
-            <span class="confirm-label">📚 RAG Context ({selectedDocumentIds.length} document{selectedDocumentIds.length > 1 ? 's' : ''})</span>
+            <span class="confirm-label">{t('mvpDebate.confirm.ragContext', { count: selectedDocumentIds.length, plural: selectedDocumentIds.length > 1 ? 's' : '' })}</span>
             <div class="confirm-value">
               {#each selectedDocumentIds as docId}
                 {@const doc = availableDocuments.find(d => d.id === docId)}
                 <span class="confirm-doc">{doc?.filename || docId}</span>
               {/each}
-              {#if ragAutoRetrieve}<span class="confirm-badge">Auto-retrieve</span>{/if}
-              {#if includeDebateResults}<span class="confirm-badge">Include debate results</span>{/if}
+              {#if ragAutoRetrieve}<span class="confirm-badge">{t('mvpDebate.confirm.autoRetrieve')}</span>{/if}
+              {#if includeDebateResults}<span class="confirm-badge">{t('mvpDebate.confirm.includeDebateResults')}</span>{/if}
             </div>
           </div>
         {/if}
@@ -936,11 +936,11 @@
         <!-- Language & Project -->
         <div class="confirm-row">
           <div class="confirm-card">
-            <span class="confirm-label">🌐 Debate Language</span>
+            <span class="confirm-label">{t('mvpDebate.confirm.debateLanguage')}</span>
             <span class="confirm-value">{($userLanguage || 'de').toUpperCase()}</span>
           </div>
           <div class="confirm-card">
-            <span class="confirm-label">📁 Active Project</span>
+            <span class="confirm-label">{t('mvpDebate.confirm.activeProject')}</span>
             <span class="confirm-value">{$activeProject?.name || '—'}</span>
           </div>
         </div>
@@ -955,10 +955,10 @@
 
       <div class="actions-row" style="gap: 12px;">
         <button class="btn btn-cancel" onclick={() => { showConfirm = false; }}>
-          ← Back to Edit
+          ← {t('mvpDebate.confirm.backToEdit')}
         </button>
         <button class="btn btn-start" onclick={() => { showConfirm = false; handleStart(); }}>
-          ▶ Start Debate
+          ▶ {t('mvpDebate.confirm.startDebate')}
         </button>
       </div>
     </div>
@@ -966,11 +966,11 @@
   {:else if status === 'idle'}
     <div class="config-section">
       <div class="form-group">
-        <label for="mvp-topic" class="form-label">Debate Topic</label>
+        <label for="mvp-topic" class="form-label">{t('mvpDebate.form.debateTopic')}</label>
         <textarea
           id="mvp-topic"
           class="form-textarea"
-          placeholder="Enter your debate topic..."
+          placeholder={t('mvpDebate.form.topicPlaceholder')}
           bind:value={topic}
           disabled={isLoadingProfiles}
         ></textarea>
@@ -978,7 +978,7 @@
 
       <div class="settings-row">
         <div class="form-group">
-          <label for="mvp-rounds" class="form-label">Max Rounds</label>
+          <label for="mvp-rounds" class="form-label">{t('mvpDebate.form.maxRounds')}</label>
           <input
             id="mvp-rounds"
             type="number"
@@ -989,7 +989,7 @@
           />
         </div>
         <div class="form-group">
-          <label for="mvp-threshold" class="form-label">Consensus Threshold</label>
+          <label for="mvp-threshold" class="form-label">{t('mvpDebate.form.consensusThreshold')}</label>
           <input
             id="mvp-threshold"
             type="number"
@@ -1004,15 +1004,15 @@
 
       <!-- Web Search Mode -->
       <div class="form-group">
-        <label for="mvp-search-mode" class="form-label">Web Search</label>
+        <label for="mvp-search-mode" class="form-label">{t('mvpDebate.form.webSearch')}</label>
         <select
           id="mvp-search-mode"
           class="form-select"
           bind:value={searchMode}
         >
-          <option value="off">Off</option>
-          <option value="optional">Optional (agents may request)</option>
-          <option value="required">Required (auto-search before each agent)</option>
+          <option value="off">{t('mvpDebate.searchModeOffDesc')}</option>
+          <option value="optional">{t('mvpDebate.searchModeOptionalDesc')}</option>
+          <option value="required">{t('mvpDebate.searchModeRequiredDesc')}</option>
         </select>
       </div>
 
@@ -1020,12 +1020,12 @@
       {#if availableDocuments.length > 0}
         <div class="dms-section">
           <div class="flex items-center justify-between mb-2">
-            <span class="form-label">DMS Documents (RAG Context)</span>
+            <span class="form-label">{t('mvpDebate.form.dmsDocuments')}</span>
             <div class="flex items-center gap-2">
               <button
                 class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                 onclick={toggleSelectAll}
-              >{selectedDocumentIds.length === availableDocuments.length ? 'Deselect all' : 'Select all'}</button>
+              >{selectedDocumentIds.length === availableDocuments.length ? t('mvpDebate.form.deselectAll') : t('mvpDebate.form.selectAll')}</button>
               <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDocumentIds.length} selected</span>
             </div>
           </div>
@@ -1045,25 +1045,25 @@
           <div class="dms-options">
             <label class="dms-option">
               <input type="checkbox" bind:checked={ragAutoRetrieve} class="dms-checkbox" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">Auto-retrieve relevant chunks</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300">{t('mvpDebate.form.autoRetrieveChunks')}</span>
             </label>
             <label class="dms-option">
               <input type="checkbox" bind:checked={includeDebateResults} class="dms-checkbox" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">Include previous debate results</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300">{t('mvpDebate.form.includePreviousDebates')}</span>
             </label>
             {#if includeDebateResults}
               <div class="dms-debate-list">
                 {#if loadingCompletedDebates}
-                  <span class="text-xs text-gray-500 dark:text-gray-400">Loading debates...</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{t('mvpDebate.form.loadingDebates')}</span>
                 {:else if completedDebates.length === 0}
-                  <span class="text-xs text-gray-500 dark:text-gray-400">No completed debates found in this project.</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{t('mvpDebate.form.noCompletedDebates')}</span>
                 {:else}
                   <div class="flex items-center justify-between mb-1">
                     <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDebateIds.length} of {completedDebates.length} selected</span>
                     <button
                       class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                       onclick={() => { selectedDebateIds = selectedDebateIds.length === completedDebates.length ? [] : completedDebates.map(d => d.debate_id); }}
-                    >{selectedDebateIds.length === completedDebates.length ? 'Deselect all' : 'Select all'}</button>
+                    >{selectedDebateIds.length === completedDebates.length ? t('mvpDebate.form.deselectAll') : t('mvpDebate.form.selectAll')}</button>
                   </div>
                   {#each completedDebates as debate (debate.debate_id)}
                     <label class="dms-debate-item">
@@ -1116,7 +1116,7 @@
             </div>
             <p class="agent-desc">{agent.desc}</p>
             <div class="agent-llm-select">
-              <label for="llm-{agent.role}" class="select-label">LLM Profile</label>
+              <label for="llm-{agent.role}" class="select-label">{t('mvpDebate.form.llmProfile')}</label>
               {#if isLoadingProfiles}
                 <div class="select-loading">Loading profiles...</div>
               {:else}
@@ -1325,7 +1325,8 @@
               type="text"
               class="interjection-input"
               bind:value={interjectionText}
-              placeholder="Send input to agents..."
+              placeholder={t('mvpDebate.interjectionPlaceholder')}
+              aria-label={t('mvpDebate.interjectionPlaceholder')}
               onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendInterjection(); } }}
               disabled={sendingInterjection}
             />

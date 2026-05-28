@@ -441,12 +441,14 @@
         type="text"
         bind:value={searchQuery}
         placeholder={t('rag.searchPlaceholder')}
+        aria-label={t('rag.searchPlaceholder')}
         class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
       />
       <select
         bind:value={searchLimit}
+        aria-label={t('rag.searchLimit')}
         class="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       >

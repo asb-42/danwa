@@ -153,8 +153,8 @@
       class="kitsune-toggle"
       class:active={isAssistantOpen}
       on:click={onToggle}
-      title="Danwa Kitsune öffnen/schließen"
-      aria-label="Danwa Kitsune"
+      title={t('header.kitsuneToggle')}
+      aria-label={t('header.kitsuneLabel')}
     >
       <span class="kitsune-icon">🦊</span>
       <span class="kitsune-label">Kitsune</span>

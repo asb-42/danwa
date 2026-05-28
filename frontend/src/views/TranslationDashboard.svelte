@@ -321,8 +321,7 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="space-y-6" onclick={() => {}} onkeydown={() => {}}>
+<div class="space-y-6">
   <div class="flex items-center justify-between">
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
       {t('translation.title')}

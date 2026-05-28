@@ -458,7 +458,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="space-y-6" onclick={handleDocClick} onkeydown={() => {}}>
+<div class="space-y-6" onclick={handleDocClick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDocClick(e); } }}>
   <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('manage.title') || 'Manage'}</h2>
 
   {#if $error}
