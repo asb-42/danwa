@@ -75,3 +75,17 @@ def register_error_handlers(app: FastAPI) -> None:
             status_code=422,
             content={"detail": exc.detail},
         )
+
+
+# ---------------------------------------------------------------------------
+# Rate Limit Handler (used by slowapi)
+# ---------------------------------------------------------------------------
+
+
+async def _rate_limit_handler(request: Request, exc) -> JSONResponse:
+    """Handler for slowapi RateLimitExceeded exceptions."""
+    logger.warning("Rate limit exceeded for %s: %s", request.url.path, exc.detail)
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"Rate limit exceeded: {exc.detail}"},
+    )

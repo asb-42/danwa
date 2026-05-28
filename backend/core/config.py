@@ -104,6 +104,16 @@ class Settings(BaseSettings):
     celery_worker_concurrency: int = 4
     max_concurrent_debates_global: int = 20
 
+    # --- Rate Limiting ---
+    rate_limit_enabled: bool = True
+    rate_limit_default: str = "60/minute"  # Default API rate limit
+    rate_limit_debate: str = "10/hour"     # Debate creation limit
+    rate_limit_upload: str = "20/hour"     # Document upload limit
+    rate_limit_analysis: str = "5/hour"    # LLM analysis limit
+
+    # --- Observability ---
+    prometheus_enabled: bool = True
+
 
 def is_service_llm_eligible(profile) -> tuple[bool, str]:
     """Check whether an LLM profile is suitable as a service LLM.

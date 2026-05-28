@@ -129,6 +129,12 @@ def _setup_logging() -> None:
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
     _setup_logging()
+
+    # Setup structured logging (structlog)
+    from backend.core.logging import setup_logging
+
+    setup_logging(debug=settings.debug)
+
     logger = logging.getLogger(__name__)
     logger.info("Debate Engine starting up...")
 
@@ -225,6 +231,42 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # --- Rate Limiting (slowapi) ---
+    if settings.rate_limit_enabled:
+        from slowapi import Limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.util import get_remote_address
+
+        from backend.api.errors import _rate_limit_handler
+
+        storage_uri = settings.redis_url if settings.redis_url else "memory://"
+        limiter = Limiter(
+            key_func=get_remote_address,
+            storage_uri=storage_uri,
+            default_limits=[settings.rate_limit_default],
+        )
+        app.state.limiter = limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+
+    # --- Request-ID Middleware ---
+    @app.middleware("http")
+    async def add_request_context(request, call_next):
+        import uuid as _uuid
+
+        from backend.core.logging import bind_request_context
+
+        request_id = request.headers.get("X-Request-ID", str(_uuid.uuid4()))
+        bind_request_context(request_id=request_id)
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+    # --- Prometheus Metrics ---
+    if settings.prometheus_enabled:
+        from prometheus_fastapi_instrumentator import Instrumentator
+
+        Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
     # --- Routers ---
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
