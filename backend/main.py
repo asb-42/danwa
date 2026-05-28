@@ -131,9 +131,10 @@ async def lifespan(app: FastAPI):
     _setup_logging()
 
     # Setup structured logging (structlog)
+    from backend.core.config import settings as _settings
     from backend.core.logging import setup_logging
 
-    setup_logging(debug=settings.debug)
+    setup_logging(debug=_settings.debug)
 
     logger = logging.getLogger(__name__)
     logger.info("Debate Engine starting up...")
@@ -165,6 +166,11 @@ async def lifespan(app: FastAPI):
     from backend.migrations.migrate_projects import migrate_to_projects
 
     migrate_to_projects()
+
+    # Run multi-tenant migration (idempotent)
+    from backend.migrations.v001_multi_tenant import migrate_to_multi_tenant
+
+    migrate_to_multi_tenant()
 
     # Seed system workflow templates (idempotent)
     from scripts.seed_templates import seed_system_templates
