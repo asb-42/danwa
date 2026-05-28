@@ -62,7 +62,7 @@ class TestInputNode:
     """Test input_node() sets context correctly."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_input_node_returns_context(self, mock_publish: AsyncMock) -> None:
         """input_node should return the context as current_draft."""
         state = _make_state(context="My debate topic")
@@ -74,7 +74,7 @@ class TestInputNode:
         assert result["current_draft"] == "My debate topic"
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_input_node_publishes_events(self, mock_publish: AsyncMock) -> None:
         """input_node should publish node.start and node.complete events."""
         state = _make_state()
@@ -86,7 +86,7 @@ class TestInputNode:
         assert "node.complete" in events
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_input_node_zero_tokens(self, mock_publish: AsyncMock) -> None:
         """input_node should report zero tokens used."""
         state = _make_state()
@@ -103,7 +103,7 @@ class TestInitializeNode:
     """Test initialize_wf_node() resets state."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_initialize_resets_round(self, mock_publish: AsyncMock) -> None:
         """initialize_wf_node should set current_round=1."""
         state = _make_state(current_round=5)
@@ -111,7 +111,7 @@ class TestInitializeNode:
         assert result["current_round"] == 1
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_initialize_clears_draft(self, mock_publish: AsyncMock) -> None:
         """initialize_wf_node should clear current_draft."""
         state = _make_state(current_draft="old draft")
@@ -119,7 +119,7 @@ class TestInitializeNode:
         assert result["current_draft"] == ""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_initialize_resets_consensus(self, mock_publish: AsyncMock) -> None:
         """initialize_wf_node should reset final_consensus to 0.0."""
         state = _make_state(final_consensus=0.9)
@@ -136,8 +136,8 @@ class TestAgentNodeFactory:
     """Test agent_node_factory() with mock LLM."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    @patch("backend.workflow.node_functions.LLMService")
+    @patch("backend.workflow.nodes.agent_nodes.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.agent_nodes.LLMService")
     async def test_agent_produces_output(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """agent_node_factory should produce output from LLM call."""
         mock_service = AsyncMock()
@@ -156,7 +156,7 @@ class TestAgentNodeFactory:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
         state = _make_state()
 
-        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
+        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -167,8 +167,8 @@ class TestAgentNodeFactory:
         assert result["node_outputs"][0]["status"] == "completed"
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    @patch("backend.workflow.node_functions.LLMService")
+    @patch("backend.workflow.nodes.agent_nodes.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.agent_nodes.LLMService")
     async def test_agent_handles_llm_failure(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """agent_node_factory should handle LLM failures gracefully."""
         mock_service = AsyncMock()
@@ -187,7 +187,7 @@ class TestAgentNodeFactory:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
         state = _make_state()
 
-        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
+        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -195,8 +195,8 @@ class TestAgentNodeFactory:
         assert "LLM call failed" in result["node_outputs"][0]["content"]
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    @patch("backend.workflow.node_functions.LLMService")
+    @patch("backend.workflow.nodes.agent_nodes.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.agent_nodes.LLMService")
     async def test_agent_appends_to_draft(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """agent_node_factory should append content to current_draft."""
         mock_service = AsyncMock()
@@ -215,7 +215,7 @@ class TestAgentNodeFactory:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
         state = _make_state(current_draft="Existing draft")
 
-        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
+        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -232,7 +232,7 @@ class TestGateNodeFactory:
     """Test gate_node_factory() with true/false conditions."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     async def test_gate_evaluates_true_condition(self, mock_publish: AsyncMock) -> None:
         """gate_node_factory should evaluate a true condition."""
         node_fn = gate_node_factory("gate-1", "current_round >= 1")
@@ -244,7 +244,7 @@ class TestGateNodeFactory:
         assert "True" in result["node_outputs"][0]["content"]
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     async def test_gate_evaluates_false_condition(self, mock_publish: AsyncMock) -> None:
         """gate_node_factory should evaluate a false condition."""
         node_fn = gate_node_factory("gate-1", "current_round >= 10")
@@ -255,7 +255,7 @@ class TestGateNodeFactory:
         assert "False" in result["node_outputs"][0]["content"]
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     async def test_gate_empty_condition(self, mock_publish: AsyncMock) -> None:
         """gate_node_factory with empty condition should not raise."""
         node_fn = gate_node_factory("gate-1", "")
@@ -274,7 +274,7 @@ class TestInterjectionNode:
     """Test interjection_node() with empty and non-empty queues."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_empty_queue_pauses(self, mock_publish: AsyncMock) -> None:
         """interjection_node with empty queue should set is_paused=True."""
         state = _make_state(interjection_queue=[])
@@ -284,7 +284,7 @@ class TestInterjectionNode:
         assert result["node_outputs"][0]["status"] == "pending"
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_queued_items_consumed(self, mock_publish: AsyncMock) -> None:
         """interjection_node with queued items should consume them."""
         state = _make_state(
@@ -303,7 +303,7 @@ class TestInterjectionNode:
         assert "Second input" in result["node_outputs"][0]["content"]
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_consumed_appended_to_draft(self, mock_publish: AsyncMock) -> None:
         """interjection_node should append consumed content to current_draft."""
         state = _make_state(
@@ -325,8 +325,8 @@ class TestModeratorNodeFactory:
     """Test moderator_node_factory() consensus evaluation."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    @patch("backend.workflow.node_functions.LLMService")
+    @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.agent_nodes.LLMService")
     async def test_moderator_produces_consensus(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """moderator_node_factory should compute and return a consensus score."""
         mock_service = AsyncMock()
@@ -350,7 +350,7 @@ class TestModeratorNodeFactory:
             ]
         )
 
-        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
+        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -358,8 +358,8 @@ class TestModeratorNodeFactory:
         assert 0.0 <= result["final_consensus"] <= 1.0
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
-    @patch("backend.workflow.node_functions.LLMService")
+    @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.agent_nodes.LLMService")
     async def test_moderator_publishes_consensus_event(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """moderator_node_factory should publish a consensus.reached event."""
         mock_service = AsyncMock()
@@ -378,7 +378,7 @@ class TestModeratorNodeFactory:
         node_fn = moderator_node_factory("node-mod", config)
         state = _make_state()
 
-        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
+        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             await node_fn(state)
 
@@ -395,7 +395,7 @@ class TestCompleteNode:
     """Test complete_wf_node() assembles final output."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_complete_sets_output(self, mock_publish: AsyncMock) -> None:
         """complete_wf_node should set the output field."""
         state = _make_state(current_draft="Final draft content")
@@ -405,7 +405,7 @@ class TestCompleteNode:
         assert result["status"] == "completed"
 
     @pytest.mark.asyncio
-    @patch("backend.workflow.node_functions.publish_async", new_callable=AsyncMock)
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     async def test_complete_publishes_workflow_complete(self, mock_publish: AsyncMock) -> None:
         """complete_wf_node should publish workflow.complete event."""
         state = _make_state()

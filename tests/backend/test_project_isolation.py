@@ -38,6 +38,7 @@ def settings(tmp_path) -> Settings:
         db_path=tmp_path / "test_audit.db",
         cors_origins=["http://testserver"],
         debug=True,
+        auth_enabled=False,
     )
 
 
@@ -63,6 +64,9 @@ def app(settings, audit_service, debate_store, project_store, monkeypatch):
     # Clear the lru_cache so monkeypatch takes effect
     get_project_store.cache_clear()
     monkeypatch.setattr(deps_module, "get_project_store", lambda: project_store)
+
+    # Disable auth for tests — get_current_user reads module-level settings
+    monkeypatch.setattr(deps_module.settings, "auth_enabled", False)
 
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
