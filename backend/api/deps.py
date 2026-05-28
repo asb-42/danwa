@@ -130,6 +130,47 @@ def get_user_store():
     return UserStore()
 
 
+@lru_cache
+def get_tenant_store():
+    """Singleton TenantStore instance."""
+    from backend.persistence.tenant_store import TenantStore
+
+    return TenantStore()
+
+
+# ---------------------------------------------------------------------------
+# Tenant & Project scoping
+# ---------------------------------------------------------------------------
+
+
+async def get_project_scoped(
+    project_id: str = Depends(get_project_id),
+    user=Depends(lambda: None),  # Injected below after get_current_user is defined
+):
+    """Validate that the authenticated user has access to the requested project.
+
+    Returns the project if the user's tenant_id matches the project's tenant_id.
+    Raises 404 (not 403) to avoid information leakage.
+    """
+    # If auth is disabled, skip tenant check
+    if not settings.auth_enabled:
+        project = get_project_store().get(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return project
+
+    # Lazy import to avoid circular dependency
+    from backend.api.deps import get_current_user as _gcu
+
+    current_user = user or await _gcu()
+    project = get_project_store().get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.tenant_id != current_user.tenant_id and current_user.role != "admin":
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
 # ---------------------------------------------------------------------------
 # Authentication dependencies
 # ---------------------------------------------------------------------------

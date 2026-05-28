@@ -44,6 +44,7 @@ class Project(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: str = ""
     is_system: bool = False  # True for _default (not deletable)
+    tenant_id: str = "_default"  # FK → Tenant
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     config: ProjectConfig = Field(default_factory=ProjectConfig)
@@ -57,6 +58,7 @@ class ProjectCreateRequest(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=200)
     description: str = ""
+    tenant_id: str = "_default"
 
 
 class ProjectUpdateRequest(BaseModel):
@@ -79,6 +81,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str
     is_system: bool
+    tenant_id: str
     created_at: datetime
     updated_at: datetime
     config: ProjectConfig
@@ -91,5 +94,6 @@ class ProjectListItem(BaseModel):
     name: str
     description: str
     is_system: bool
+    tenant_id: str
     created_at: datetime
     updated_at: datetime

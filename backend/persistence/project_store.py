@@ -96,6 +96,7 @@ class ProjectStore:
         description: str = "",
         is_system: bool = False,
         project_id: str | None = None,
+        tenant_id: str = "_default",
     ) -> Project:
         """Create a new project and persist it."""
         project = Project(
@@ -103,6 +104,7 @@ class ProjectStore:
             name=name,
             description=description,
             is_system=is_system,
+            tenant_id=tenant_id,
         )
         with self._lock:
             self._cache[project.id] = project
@@ -121,6 +123,14 @@ class ProjectStore:
         """List all projects, newest first."""
         return sorted(
             self._cache.values(),
+            key=lambda p: p.created_at,
+            reverse=True,
+        )
+
+    def list_by_tenant(self, tenant_id: str) -> list[Project]:
+        """List projects belonging to a specific tenant, newest first."""
+        return sorted(
+            [p for p in self._cache.values() if p.tenant_id == tenant_id],
             key=lambda p: p.created_at,
             reverse=True,
         )

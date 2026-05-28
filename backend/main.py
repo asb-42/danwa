@@ -48,6 +48,7 @@ from backend.api.routers import (  # noqa: E402
     role_definitions,
     sessions,
     system,
+    tenants,
     tone_profiles,
     workflow_definitions,
     workflow_exec,
@@ -179,6 +180,11 @@ async def lifespan(app: FastAPI):
 
     ensure_admin_user()
 
+    # Seed default tenant (idempotent)
+    from backend.core.seed import ensure_default_tenant
+
+    ensure_default_tenant()
+
     yield
     logger.info("Debate Engine shutting down.")
 
@@ -222,6 +228,7 @@ def create_app() -> FastAPI:
 
     # --- Routers ---
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+    app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
     app.include_router(debate_stream.router, prefix="/api/v1/debate", tags=["debate"])
