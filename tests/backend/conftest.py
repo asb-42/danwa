@@ -93,6 +93,17 @@ def _clear_dms_cache():
     _dms_cache.clear()
 
 
+@pytest.fixture(autouse=True)
+def _disable_auth():
+    """Disable auth globally for all backend tests."""
+    from backend.api import deps as deps_module
+
+    original = deps_module.settings.auth_enabled
+    deps_module.settings.auth_enabled = False
+    yield
+    deps_module.settings.auth_enabled = original
+
+
 @pytest.fixture()
 def client(app) -> TestClient:
     """Synchronous test client."""

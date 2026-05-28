@@ -8,12 +8,20 @@ from __future__ import annotations
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from backend.api.deps import get_current_user
 from backend.main import create_app
+from backend.models.user import User
 
 
 @pytest.fixture
 def app():
-    return create_app()
+    application = create_app()
+    _test_user = User(
+        id="test-user", email="test@danwa.local", display_name="Test User",
+        password_hash="", role="admin", tenant_id="_default",
+    )
+    application.dependency_overrides[get_current_user] = lambda: _test_user
+    return application
 
 
 @pytest.fixture

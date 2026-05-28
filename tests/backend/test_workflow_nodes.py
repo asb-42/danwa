@@ -156,7 +156,7 @@ class TestAgentNodeFactory:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
         state = _make_state()
 
-        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
+        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -187,7 +187,7 @@ class TestAgentNodeFactory:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
         state = _make_state()
 
-        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
+        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -215,7 +215,7 @@ class TestAgentNodeFactory:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
         state = _make_state(current_draft="Existing draft")
 
-        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
+        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -350,7 +350,7 @@ class TestModeratorNodeFactory:
             ]
         )
 
-        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
+        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             result = await node_fn(state)
 
@@ -378,7 +378,7 @@ class TestModeratorNodeFactory:
         node_fn = moderator_node_factory("node-mod", config)
         state = _make_state()
 
-        with patch("backend.workflow.nodes.agent_nodes._get_profile_service") as mock_ps:
+        with patch("backend.workflow.node_functions._get_profile_service") as mock_ps:
             mock_ps.return_value = AsyncMock()
             await node_fn(state)
 

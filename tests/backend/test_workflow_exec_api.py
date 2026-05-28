@@ -161,7 +161,7 @@ class TestStartWorkflow:
             mock_compiler.compile_to_langgraph.return_value = mock_compiled_workflow
             mock_compiler_cls.return_value = mock_compiler
 
-            with patch("backend.api.routers.workflow_exec.run_workflow_background"):
+            with patch("backend.tasks.dispatch.dispatch_workflow_task"):
                 resp = client.post(
                     f"/api/v1/workflow-exec/{workflow_in_repo}/start",
                     json={"context": "Test debate topic"},
