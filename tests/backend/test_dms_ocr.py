@@ -339,7 +339,7 @@ class TestDocumentProcessorEasyOCR:
         easyocr_module = py_types.SimpleNamespace(Reader=MagicMock(return_value=reader_mock))
 
         with patch.dict(sys.modules, {"paddleocr": None, "easyocr": easyocr_module, "pytesseract": None}):
-            processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_lang": "deu+eng"})
+            _processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_lang": "deu+eng"})
 
         call_args = easyocr_module.Reader.call_args
         assert call_args is not None
@@ -355,7 +355,7 @@ class TestDocumentProcessorEasyOCR:
         easyocr_module = py_types.SimpleNamespace(Reader=MagicMock(return_value=reader_mock))
 
         with patch.dict(sys.modules, {"paddleocr": None, "easyocr": easyocr_module, "pytesseract": None}):
-            processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_lang": "fra"})
+            _processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_lang": "fra"})
 
         call_args = easyocr_module.Reader.call_args
         assert call_args is not None

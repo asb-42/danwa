@@ -244,7 +244,7 @@ class DocumentProcessor:
             import easyocr
 
             lang = self.config.get("ocr_lang", "deu+eng")
-            langs = [l.replace("deu", "de").replace("eng", "en") for l in lang.replace("+", " ").split()]
+            langs = [lang_code.replace("deu", "de").replace("eng", "en") for lang_code in lang.replace("+", " ").split()]
             reader = easyocr.Reader(langs, gpu=("gpu" in self.config.get("ocr_device", "cpu")))
             logger.info("EasyOCR initialized (langs=%s, gpu=%s)", langs, "gpu" in self.config.get("ocr_device", "cpu"))
             return reader
