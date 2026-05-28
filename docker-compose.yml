@@ -1,21 +1,87 @@
-# docker-compose.yml — Local development stack
+# docker-compose.yml — Full stack deployment
 #
-# Usage:
-#   docker compose up -d          Start all services
-#   docker compose up redis       Start only Redis (for local backend dev)
-#   docker compose logs -f        Follow all logs
+# Local development (Redis only):
+#   docker compose up redis -d
 #
-# Services:
-#   redis          — Message broker + shared state
-#   celery-worker  — Debate task worker (optional, for parallel debates)
+# Full stack (all services):
+#   docker compose up -d
+#
+# With Celery worker:
+#   docker compose --profile celery up -d
+#
+# Production:
+#   cp deploy/.env.example deploy/.env  # Edit with real values
+#   docker compose --env-file deploy/.env up -d
 
 version: "3.9"
 
 services:
+  # --- Backend API server ---
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - DANWA_JWT_SECRET_KEY=${JWT_SECRET_KEY:-changeme}
+      - DANWA_REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DANWA_DB_PATH=${DB_PATH:-/data/danwa.db}
+      - DANWA_CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:80"]}
+      - DANWA_CELERY_ENABLED=${CELERY_ENABLED:-false}
+      - DANWA_DEBUG=${DEBUG:-false}
+    volumes:
+      - danwa-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # --- Celery worker (optional) ---
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: celery -A backend.tasks.celery_app worker -Q debates -c ${CELERY_WORKER_CONCURRENCY:-4} --loglevel=info
+    environment:
+      - DANWA_JWT_SECRET_KEY=${JWT_SECRET_KEY:-changeme}
+      - DANWA_REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DANWA_DB_PATH=${DB_PATH:-/data/danwa.db}
+      - DANWA_CELERY_ENABLED=true
+    volumes:
+      - danwa-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - celery
+
+  # --- Frontend + Nginx reverse proxy ---
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      # Mount TLS certificates (production)
+      - ${TLS_CERT_DIR:-./deploy/certs}:/etc/letsencrypt/live/danwa.example.com:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Redis ---
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -25,24 +91,6 @@ services:
       timeout: 3s
       retries: 3
 
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    command: celery -A backend.tasks.celery_app worker -Q debates -c 4 --loglevel=info
-    environment:
-      - DANWA_REDIS_URL=redis://redis:6379/0
-      - DANWA_CELERY_ENABLED=true
-    volumes:
-      - .:/app
-      - danwa-data:/app/data
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    profiles:
-      - celery  # Only started with: docker compose --profile celery up
-
 volumes:
-  redis-data:
   danwa-data:
+  redis-data:
