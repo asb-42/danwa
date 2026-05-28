@@ -1,9 +1,11 @@
 <script>
-  import { healthStatus } from '../lib/stores.js';
+  import { healthStatus, route } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
   import { getLLMActivity } from '../lib/api.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
+  import { currentUser } from '../lib/stores/auth.svelte.js';
+  import { logout } from '../lib/auth.js';
 
   let { isAssistantOpen, onToggle } = $props();
 
@@ -86,6 +88,38 @@
     if (s < 60) return `${Math.round(s)}s`;
     return `${Math.floor(s / 60)}m${Math.round(s % 60)}s`;
   }
+
+  // --- User Dropdown ---
+  let userDropdownOpen = $state(false);
+
+  function toggleUserDropdown() {
+    userDropdownOpen = !userDropdownOpen;
+  }
+
+  function handleLogout() {
+    logout();
+    userDropdownOpen = false;
+    route.set('login');
+    window.location.hash = '#/login';
+  }
+
+  function goToUserManagement() {
+    userDropdownOpen = false;
+    window.location.hash = '#/users';
+  }
+
+  // Close dropdown on click outside
+  $effect(() => {
+    if (!userDropdownOpen) return;
+    function onDocClick(e) {
+      const el = e.target;
+      if (!el.closest('.user-dropdown')) {
+        userDropdownOpen = false;
+      }
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  });
 </script>
 
 <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
@@ -148,11 +182,51 @@
       </span>
     </div>
 
+    <!-- User Dropdown -->
+    {#if $currentUser}
+      <div class="relative user-dropdown">
+        <button
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600"
+          onclick={toggleUserDropdown}
+          aria-haspopup="true"
+          aria-expanded={userDropdownOpen}
+        >
+          <span class="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+            {($currentUser.display_name || $currentUser.email)[0].toUpperCase()}
+          </span>
+          <span class="hidden sm:inline max-w-[120px] truncate">{$currentUser.display_name || $currentUser.email}</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {#if userDropdownOpen}
+          <div class="absolute right-0 top-full mt-1 z-50 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
+            <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+              <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{$currentUser.display_name || $currentUser.email}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{$currentUser.email}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {t('auth.role', { role: t('auth.role_' + $currentUser.role) || $currentUser.role })}
+              </p>
+            </div>
+            {#if $currentUser.role === 'admin'}
+              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={goToUserManagement}>
+                👥 {t('users.title')}
+              </button>
+            {/if}
+            <button class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" onclick={handleLogout}>
+              🚪 {t('auth.logout')}
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Kitsune toggle button -->
     <button
       class="kitsune-toggle"
       class:active={isAssistantOpen}
-      on:click={onToggle}
+      onclick={onToggle}
       title={t('header.kitsuneToggle')}
       aria-label={t('header.kitsuneLabel')}
     >

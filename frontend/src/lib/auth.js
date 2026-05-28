@@ -93,6 +93,64 @@ export function logout() {
 }
 
 /**
+ * List all users (admin only).
+ * @returns {Promise<Array>}
+ */
+export async function listUsers() {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/auth/users`, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to load users' }));
+    throw new Error(error.detail || 'Failed to load users');
+  }
+  return response.json();
+}
+
+/**
+ * Invite a new user (admin only).
+ * @returns {Promise<object>}
+ */
+export async function inviteUser(email, displayName, password, role) {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/auth/users/invite`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ email, display_name: displayName, password, role }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to invite user' }));
+    throw new Error(error.detail || 'Failed to invite user');
+  }
+  return response.json();
+}
+
+/**
+ * Delete a user (admin only).
+ */
+export async function deleteUser(userId) {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/auth/users/${userId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to delete user' }));
+    throw new Error(error.detail || 'Failed to delete user');
+  }
+}
+
+/**
  * Change the current user's password.
  */
 export async function changePassword(currentPassword, newPassword) {

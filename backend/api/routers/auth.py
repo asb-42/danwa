@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 
-from backend.api.deps import get_current_user, get_user_store
+from backend.api.deps import get_current_user, get_user_store, require_role
 from backend.core.security import (
     create_access_token,
     create_refresh_token,
@@ -147,3 +147,63 @@ def change_password(
 
     logger.info("Password changed for user: %s", user.email)
     return {"status": "ok", "message": "Password changed successfully"}
+
+
+# ---------------------------------------------------------------------------
+# Admin-only user management endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/users", response_model=list[UserResponse])
+def list_users(
+    user_store=Depends(get_user_store),
+    _=Depends(require_role("admin")),
+):
+    """List all registered users (admin only)."""
+    return [user_to_response(u) for u in user_store.list_all()]
+
+
+@router.post("/users/invite", response_model=UserResponse, status_code=201)
+def invite_user(
+    body: UserCreate,
+    user_store=Depends(get_user_store),
+    _=Depends(require_role("admin")),
+):
+    """Invite a new user by creating their account with a password (admin only)."""
+    existing = user_store.get_by_email(body.email)
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    password_hash = hash_password(body.password)
+    try:
+        user = user_store.create(
+            email=body.email,
+            display_name=body.display_name,
+            password_hash=password_hash,
+            role=body.role,
+            tenant_id="_default",
+        )
+    except Exception as e:
+        logger.error("Failed to create user %s: %s", body.email, e)
+        raise HTTPException(status_code=500, detail="Failed to create user")
+
+    logger.info("User invited: %s (role=%s) by admin", user.email, user.role)
+    return user_to_response(user)
+
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user(
+    user_id: str,
+    user_store=Depends(get_user_store),
+    current_user=Depends(require_role("admin")),
+):
+    """Delete a user account (admin only). Cannot delete yourself."""
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    user = user_store.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_store.delete(user_id)
+    logger.info("User deleted: %s by admin %s", user.email, current_user.email)

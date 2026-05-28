@@ -2,6 +2,7 @@
   import { i18n } from '../lib/i18n/index.js';
   import { currentDebate } from '../lib/stores.js';
   import { appVersion } from '../lib/stores.js';
+  import { currentUser } from '../lib/stores/auth.svelte.js';
   import ProjectSelector from './ProjectSelector.svelte';
 
   let { navigate, currentRoute } = $props();
@@ -92,6 +93,7 @@
       items: [
         { id: 'projects', label: t('nav.projects'), icon: '📁', route: 'projects' },
         { id: 'audit', label: t('nav.audit'), icon: '📋', route: 'audit' },
+        ...($currentUser?.role === 'admin' ? [{ id: 'users', label: t('users.title'), icon: '👥', route: 'users' }] : []),
         { id: 'configure', label: t('nav.section.configure') || 'Configure', icon: '⚙️', route: 'config' },
       ],
     },

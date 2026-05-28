@@ -27,6 +27,7 @@ import ManageView from './views/ManageView.svelte';
 import MvpDebateView from './views/MvpDebateView.svelte';
 import BundleComposerView from './views/BundleComposerView.svelte';
 import LoginView from './views/LoginView.svelte';
+import UserManagement from './views/UserManagement.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Register toast callback for i18n fallback warnings
@@ -138,6 +139,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <ProposalsView />
   {:else if $route === 'mvp-debate'}
     <MvpDebateView debateId={$routeParams[0] || null} {navigate} />
+  {:else if $route === 'users'}
+    <UserManagement />
   {:else}
     <Dashboard {navigate} />
   {/if}
