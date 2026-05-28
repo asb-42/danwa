@@ -1,0 +1,48 @@
+# docker-compose.yml — Local development stack
+#
+# Usage:
+#   docker compose up -d          Start all services
+#   docker compose up redis       Start only Redis (for local backend dev)
+#   docker compose logs -f        Follow all logs
+#
+# Services:
+#   redis          — Message broker + shared state
+#   celery-worker  — Debate task worker (optional, for parallel debates)
+
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: celery -A backend.tasks.celery_app worker -Q debates -c 4 --loglevel=info
+    environment:
+      - DANWA_REDIS_URL=redis://redis:6379/0
+      - DANWA_CELERY_ENABLED=true
+    volumes:
+      - .:/app
+      - danwa-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - celery  # Only started with: docker compose --profile celery up
+
+volumes:
+  redis-data:
+  danwa-data:

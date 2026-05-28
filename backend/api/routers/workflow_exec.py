@@ -40,7 +40,6 @@ from backend.workflow.workflow_runner import (
     get_session_status,
     pause_session,
     resume_session,
-    run_workflow_background,
     set_session_status,
 )
 
@@ -411,8 +410,10 @@ async def start_mvp_debate(
 
     initial_state["debate_id"] = debate_id
 
-    background_tasks.add_task(
-        run_workflow_background,
+    from backend.tasks.dispatch import dispatch_workflow_task
+
+    dispatch_workflow_task(
+        background_tasks,
         session_id=session_id,
         workflow_id=wf.id,
         project_id=effective_project_id,
@@ -543,9 +544,11 @@ async def start_workflow(
 
     set_session_status(session_id, "running")
 
-    # Launch as background task
-    background_tasks.add_task(
-        run_workflow_background,
+    # Launch as background task (dispatches to Celery if available, else BackgroundTasks)
+    from backend.tasks.dispatch import dispatch_workflow_task
+
+    dispatch_workflow_task(
+        background_tasks,
         session_id=session_id,
         workflow_id=workflow_id,
         project_id=body.project_id,

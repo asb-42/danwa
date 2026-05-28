@@ -22,14 +22,11 @@ from backend.api.deps import (
 )
 from backend.api.events import publish_async
 from backend.models.schemas import (
-    DebateContinueBody,
     DebateListItem,
     DebateRequest,
     DebateResponse,
     DebateStatus,
     DebateStatusResponse,
-    ForkDebateBody,
-    ForkFromConsensusBody,
     OOBInputBody,
     OOBInputResponse,
     RoundData,
@@ -429,7 +426,8 @@ async def start_debate(
     Returns immediately with status=running.  Real-time progress is
     delivered via the SSE stream endpoint.
     """
-    from backend.services.debate_workflow import extract_rag_info, run_debate_workflow
+    from backend.services.debate_workflow import extract_rag_info
+    from backend.tasks.dispatch import dispatch_debate_task
 
     store = get_debate_store_for_project(project_id, project_store)
     debate = store.get(debate_id)
@@ -443,7 +441,7 @@ async def start_debate(
     debate["updated_at"] = datetime.now(UTC)
     store.put(debate_id, debate)
 
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
+    dispatch_debate_task(background_tasks, debate_id, project_id, audit, store, project_store)
 
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
@@ -527,7 +525,7 @@ async def start_debate_from_layout(
     """
     from backend.api.deps import get_blueprint_repository
     from backend.blueprints.canvas_to_workflow import CanvasToWorkflowConverter, ConversionError
-    from backend.services.debate_workflow import run_debate_workflow
+    from backend.tasks.dispatch import dispatch_debate_task
 
     repo = get_blueprint_repository()
     store = get_debate_store_for_project(project_id, project_store)
@@ -574,363 +572,13 @@ async def start_debate_from_layout(
     }
     store.put(debate_id, debate)
 
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
-
-    return DebateResponse(debate_id=debate_id, status=DebateStatus.RUNNING, title="", created_at=now)
-
-
-@router.post("/from-workflow/{workflow_id}", response_model=DebateResponse, status_code=201)
-async def start_debate_from_workflow(
-    workflow_id: str,
-    body: StartFromWorkflowBody,
-    background_tasks: BackgroundTasks,
-    project_id: str = Depends(get_project_id),
-    audit: AuditService = Depends(get_audit_service),
-    project_store: ProjectStore = Depends(get_project_store),
-) -> DebateResponse:
-    """Start a debate from an existing WorkflowDefinition.
-
-    The workflow's wf-agent nodes (with bundle_id references) are resolved
-    during execution via the WorkflowCompiler.
-    """
-    from backend.api.deps import get_blueprint_repository
-    from backend.services.debate_workflow import run_debate_workflow
-
-    repo = get_blueprint_repository()
-    store = get_debate_store_for_project(project_id, project_store)
-
-    wf = repo.get_workflow_definition(workflow_id)
-    if not wf:
-        raise HTTPException(status_code=404, detail="Workflow definition not found")
-
-    # Extract bundle_ids from wf-agent nodes
-    bundle_ids = [n.bundle_id for n in wf.nodes if n.type == "wf-agent" and n.bundle_id]
-
-    from backend.models.schemas import CaseInput
-    from backend.models.schemas import DebateRequest as ReqModel
-
-    request = ReqModel(
-        case=CaseInput(text=body.case_text),
-        agent_profile=[],
-        bundle_ids=bundle_ids,
-        max_rounds=body.max_rounds,
-        consensus_threshold=body.consensus_threshold,
-        language=body.language,
-    )
-
-    debate_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
-
-    debate = {
-        "debate_id": debate_id,
-        "status": DebateStatus.RUNNING,
-        "title": "",
-        "request": request,
-        "max_rounds": body.max_rounds,
-        "current_round": 0,
-        "rounds": [],
-        "created_at": now,
-        "updated_at": now,
-        "result": None,
-        "workflow_id": wf.id,
-    }
-    store.put(debate_id, debate)
-
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
-
-    return DebateResponse(debate_id=debate_id, status=DebateStatus.RUNNING, title="", created_at=now)
-
-
-# ---------------------------------------------------------------------------
-# Continue Debate (P0)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/{debate_id}/continue", response_model=DebateResponse)
-async def continue_debate(
-    debate_id: str,
-    body: DebateContinueBody,
-    project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
-) -> DebateResponse:
-    """Start a new debate continuing from a completed one (P0).
-
-    The previous debate's results are used as context for the new case text.
-    """
-    from backend.services.debate_workflow import build_followup_case
-
-    # Find the debate in the project's store
-    store = get_debate_store_for_project(project_id, project_store)
-    debate = store.get(debate_id)
-    if not debate:
-        raise HTTPException(status_code=404, detail="Debate not found")
-
-    status_val = debate.get("status", "")
-    if hasattr(status_val, "value"):
-        status_val = status_val.value
-    if status_val not in ("completed", "failed"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot continue debate with status '{status_val}'. Only completed or failed debates can be continued.",
-        )
-
-    # Build the follow-up case text from the previous debate
-    followup_prompt = build_followup_case(debate_id, body.focus_topic, store=store)
-
-    # Determine inherited settings
-    req = debate.get("request", {})
-    if isinstance(req, dict):
-        inherit_llm = req.get("llm_profile_id", "openrouter-claude")
-        inherit_personas = req.get("agent_persona_ids", {})
-        inherit_prompt_variant = req.get("prompt_variant", "default")
-        inherit_max_rounds = req.get("max_rounds", 3)
-        inherit_consensus_threshold = req.get("consensus_threshold", 0.8)
-        inherit_search_mode = req.get("search_mode", "off")
-        inherit_language = req.get("language", "de")
-        inherit_enable_extra_rounds = req.get("enable_extra_rounds", False)
-    else:
-        inherit_llm = getattr(req, "llm_profile_id", "openrouter-claude")
-        inherit_personas = getattr(req, "agent_persona_ids", {})
-        inherit_prompt_variant = getattr(req, "prompt_variant", "default")
-        inherit_max_rounds = getattr(req, "max_rounds", 3)
-        inherit_consensus_threshold = getattr(req, "consensus_threshold", 0.8)
-        inherit_search_mode = getattr(req, "search_mode", "off")
-        inherit_language = getattr(req, "language", "de")
-        inherit_enable_extra_rounds = getattr(req, "enable_extra_rounds", False)
-
-    from backend.models.schemas import (
-        AgentConfig,
-        CaseInput,
-    )
-    from backend.models.schemas import (
-        DebateRequest as ReqModel,
-    )
-
-    new_request = ReqModel(
-        case=CaseInput(text=followup_prompt),
-        agent_profile=[
-            AgentConfig(role="strategist", **inherit_personas.get("strategist", {"llm_profile": inherit_llm})),
-            AgentConfig(role="critic", **inherit_personas.get("critic", {"llm_profile": inherit_llm})),
-            AgentConfig(role="optimizer", **inherit_personas.get("optimizer", {"llm_profile": inherit_llm})),
-            AgentConfig(role="moderator", **inherit_personas.get("moderator", {"llm_profile": inherit_llm})),
-        ],
-        max_rounds=inherit_max_rounds,
-        consensus_threshold=inherit_consensus_threshold,
-        search_mode=inherit_search_mode,
-        llm_profile_id=inherit_llm,
-        prompt_variant=inherit_prompt_variant,
-        agent_persona_ids=inherit_personas,
-        language=inherit_language,
-        enable_extra_rounds=inherit_enable_extra_rounds,
-    )
-
-    # Create the new debate using the standard flow
-    from datetime import UTC, datetime
-
-    new_debate_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
-    new_title = body.new_title or f"Fortsetzung: {debate.get('title', 'Debatte')}"
-
-    new_debate = {
-        "debate_id": new_debate_id,
-        "status": DebateStatus.PENDING,
-        "title": "",
-        "request": new_request,
-        "max_rounds": new_request.max_rounds,
-        "current_round": 0,
-        "rounds": [],
-        "created_at": now,
-        "updated_at": now,
-        "result": None,
-    }
-
-    store.put(new_debate_id, new_debate)
-
-    return DebateResponse(debate_id=new_debate_id, status=DebateStatus.PENDING, title=new_title, created_at=now)
-
-
-# ---------------------------------------------------------------------------
-# Fork from Consensus (P2)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/{debate_id}/fork-from-consensus", response_model=DebateResponse)
-async def fork_from_consensus(
-    debate_id: str,
-    body: ForkFromConsensusBody,
-    project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
-) -> DebateResponse:
-    """Create a new debate from the consensus of a completed one (P2).
-
-    The consensus summary is used as the starting context.
-    """
-
-    store = get_debate_store_for_project(project_id, project_store)
-    debate = store.get(debate_id)
-    if not debate:
-        raise HTTPException(status_code=404, detail="Debate not found")
-
-    status_val = debate.get("status", "")
-    if hasattr(status_val, "value"):
-        status_val = status_val.value
-    if status_val != "completed":
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot fork from consensus with status '{status_val}'. Only completed debates are supported.",
-        )
-
-    # Build consensus-aware case text
-    result = debate.get("result", {})
-    consensus = result.get("final_consensus", 0.0)
-    output = result.get("output", "")
-    req = debate.get("request", {})
-    title = debate.get("title", "Debatte")
-
-    if isinstance(req, dict):
-        original_case = req.get("case", {}).get("text", "")
-        inherit_language = req.get("language", "de")
-        inherit_max_rounds = body.max_rounds
-        inherit_threshold = body.consensus_threshold
-        inherit_personas = req.get("agent_persona_ids", {})
-        inherit_llm = req.get("llm_profile_id", "openrouter-claude")
-        inherit_prompt_variant = req.get("prompt_variant", "default")
-        inherit_search_mode = req.get("search_mode", "off")
-    else:
-        original_case = getattr(req.case, "text", "")
-        inherit_language = getattr(req, "language", "de")
-        inherit_max_rounds = body.max_rounds
-        inherit_threshold = body.consensus_threshold
-        inherit_personas = getattr(req, "agent_persona_ids", {})
-        inherit_llm = getattr(req, "llm_profile_id", "openrouter-claude")
-        inherit_prompt_variant = getattr(req, "prompt_variant", "default")
-        inherit_search_mode = getattr(req, "search_mode", "off")
-
-    # Extract top-3 arguments per role for context
-    from backend.workflow.report_generator import WorkflowReportGenerator
-
-    transcript = WorkflowReportGenerator._build_transcript(debate)
-    summaries = []
-    role_summaries: dict[str, list[str]] = {}
-    for rd in transcript.get("rounds", []):
-        for ao in rd.get("agent_outputs", []):
-            role = ao.get("role", "unknown")
-            content = ao.get("content", "")[:200]
-            if role not in role_summaries:
-                role_summaries[role] = []
-            role_summaries[role].append(content)
-
-    for role, contents in role_summaries.items():
-        summaries.append(f"### {role.capitalize()}:\n" + "\n".join(f"- {c}" for c in contents[-3:]))
-
-    summary_text = "\n\n".join(summaries)
-
-    fork_case_text = (
-        f"Kontext: Die Debatte '{title}' wurde mit einem Konsensgrad von {consensus * 100:.0f}% abgeschlossen.\n\n"
-        f"Zusammenfassung der Ergebnisse:\n{output[:1000] if output else 'Kein Endergebnis verfügbar.'}\n\n"
-        f"Wichtige Argumente aus der vorherigen Debatte:\n{summary_text}\n\n"
-        f"Neues Thema: {body.new_topic}\n\n"
-        f"Original-Falltext:\n{original_case}"
-    )
-
-    from backend.models.schemas import AgentConfig, CaseInput
-    from backend.models.schemas import DebateRequest as ReqModel
-
-    new_request = ReqModel(
-        case=CaseInput(text=fork_case_text),
-        agent_profile=[
-            AgentConfig(role="strategist", **inherit_personas.get("strategist", {"llm_profile": inherit_llm})),
-            AgentConfig(role="critic", **inherit_personas.get("critic", {"llm_profile": inherit_llm})),
-            AgentConfig(role="optimizer", **inherit_personas.get("optimizer", {"llm_profile": inherit_llm})),
-            AgentConfig(role="moderator", **inherit_personas.get("moderator", {"llm_profile": inherit_llm})),
-        ],
-        max_rounds=inherit_max_rounds,
-        consensus_threshold=inherit_threshold,
-        search_mode=inherit_search_mode,
-        llm_profile_id=inherit_llm,
-        prompt_variant=inherit_prompt_variant,
-        agent_persona_ids=inherit_personas,
-        language=inherit_language,
-    )
-
-    from datetime import UTC, datetime
-
-    new_debate_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
-
-    new_debate = {
-        "debate_id": new_debate_id,
-        "status": DebateStatus.PENDING,
-        "title": body.new_title,
-        "request": new_request,
-        "max_rounds": new_request.max_rounds,
-        "current_round": 0,
-        "rounds": [],
-        "created_at": now,
-        "updated_at": now,
-        "result": None,
-    }
-
-    store.put(new_debate_id, new_debate)
-
-    return DebateResponse(debate_id=new_debate_id, status=DebateStatus.PENDING, title=body.new_title, created_at=now)
-
-
-# ---------------------------------------------------------------------------
-# Fork Debate (P4)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/{debate_id}/fork", response_model=DebateResponse)
-async def fork_debate(
-    debate_id: str,
-    body: ForkDebateBody,
-    project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
-) -> DebateResponse:
-    """Fork an existing debate with optional modifications (P4).
-
-    Creates a deep copy with configurable fork point and persona/prompt changes.
-    """
-    from backend.services.debate_workflow import create_fork_debate
-
-    store = get_debate_store_for_project(project_id, project_store)
-    debate = store.get(debate_id)
-    if not debate:
-        raise HTTPException(status_code=404, detail="Debate not found")
-
-    # Validate fork_from_round
-    if body.fork_from_round is not None:
-        max_round = debate.get("current_round", 0)
-        if body.fork_from_round < 0 or body.fork_from_round > max_round:
-            raise HTTPException(
-                status_code=400,
-                detail=f"fork_from_round must be between 0 and {max_round} (current round)",
-            )
-
-    # Prevent circular forks
-    existing_parent = debate.get("fork_info", {}).get("parent_debate_id") if isinstance(debate.get("fork_info"), dict) else None
-    if existing_parent == debate_id:
-        raise HTTPException(status_code=400, detail="Circular fork detected")
-
-    try:
-        result = create_fork_debate(
-            original_debate_id=debate_id,
-            new_title=body.new_title,
-            fork_from_round=body.fork_from_round,
-            fork_reason=body.fork_reason,
-            modified_personas=body.modified_personas,
-            modified_prompt_variant=body.modified_prompt_variant,
-            store=store,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    dispatch_debate_task(background_tasks, debate_id, project_id, audit, store, project_store)
 
     return DebateResponse(
-        debate_id=result["debate_id"],
+        debate_id=debate["debate_id"],
         status=DebateStatus.PENDING,
-        title=result["title"],
-        created_at=result["created_at"],
+        title=debate["title"],
+        created_at=debate["created_at"],
     )
 
 

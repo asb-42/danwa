@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 30
     auth_enabled: bool = True  # Set to False to disable auth (dev mode)
 
+    # --- Redis / Celery (optional — falls back to in-memory if unavailable) ---
+    redis_url: str = ""  # e.g. "redis://localhost:6379/0". Empty = no Redis
+    celery_enabled: bool = False  # True = use Celery for debate tasks
+    celery_worker_concurrency: int = 4
+    max_concurrent_debates_global: int = 20
+
 
 def is_service_llm_eligible(profile) -> tuple[bool, str]:
     """Check whether an LLM profile is suitable as a service LLM.
