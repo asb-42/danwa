@@ -50,6 +50,7 @@ from backend.api.routers import (  # noqa: E402
     system,
     tenants,
     tone_profiles,
+    user_keys,
     workflow_definitions,
     workflow_exec,
     workflow_reports,
@@ -286,6 +287,7 @@ def create_app() -> FastAPI:
 
     # --- Routers ---
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+    app.include_router(user_keys.router, prefix="/api/v1/user-keys", tags=["user-keys"])
     app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])

@@ -67,6 +67,53 @@ class LLMService:
     def profile(self) -> LLMProfile | None:
         return self._profile
 
+    def _resolve_api_key(self, required: bool = True) -> str:
+        """Resolve the API key for this profile using the BYOK priority chain.
+
+        Priority:
+        1. Profile's direct ``api_key`` field (BYOK — set via API or UI)
+        2. User-scoped key override (if user_id is set on the service)
+        3. Environment variable (``api_key_env``)
+
+        Args:
+            required: If True, raises ValueError when no key is found.
+
+        Returns:
+            The resolved API key string, or empty string if not required and not found.
+        """
+        # 1. Profile-level BYOK key
+        if self._profile.api_key:
+            return self._profile.api_key
+
+        # 2. User-scoped key override (stored in auth.db)
+        if hasattr(self, "_user_id") and self._user_id:
+            try:
+                from backend.persistence.user_key_store import UserKeyStore
+
+                store = UserKeyStore()
+                user_key = store.get_key(self._user_id, self._profile.id)
+                if user_key:
+                    return user_key
+            except Exception:
+                pass  # Fall through to env var
+
+        # 3. Environment variable fallback
+        env_key = os.getenv(self._profile.api_key_env, "")
+        if env_key:
+            return env_key
+
+        if required:
+            raise ValueError(
+                f"API key not found for profile '{self._profile.id}'. "
+                f"Set the {self._profile.api_key_env} environment variable, "
+                f"or configure a key in the profile settings (BYOK)."
+            )
+        return ""
+
+    def set_user_context(self, user_id: str) -> None:
+        """Set the user context for BYOK key resolution."""
+        self._user_id = user_id
+
     async def generate(
         self,
         prompt: str,
@@ -217,7 +264,7 @@ class LLMService:
         url = f"{api_base}/chat/completions"
 
         # Get API key (optional for local, but include if set)
-        api_key = os.getenv(self._profile.api_key_env, "")
+        api_key = self._resolve_api_key(required=False)
 
         payload: dict[str, Any] = {
             "model": self._profile.model,
@@ -373,9 +420,7 @@ class LLMService:
             raise ValueError(f"Cloudflare account ID not found. Set the {account_id_env} environment variable.")
 
         # Resolve API key
-        api_key = os.getenv(self._profile.api_key_env)
-        if not api_key:
-            raise ValueError(f"Cloudflare API key not found. Set the {self._profile.api_key_env} environment variable.")
+        api_key = self._resolve_api_key(required=True)
 
         model = self._profile.model
         url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
@@ -441,9 +486,7 @@ class LLMService:
         except ImportError:
             raise ImportError("litellm is required for cloud LLM calls. Install it with: uv add litellm")
 
-        api_key = os.getenv(self._profile.api_key_env)
-        if not api_key:
-            raise ValueError(f"API key not found. Set the {self._profile.api_key_env} environment variable.")
+        api_key = self._resolve_api_key(required=True)
 
         model_name = self._profile.model
         provider_prefix = self._profile.provider.value

@@ -37,6 +37,7 @@ class LLMProfile(BaseModel):
     model: str  # e.g. "anthropic/claude-3.5-sonnet"
     api_base: str | None = None  # For OpenRouter / local
     api_key_env: str = "OPENROUTER_API_KEY"  # Environment variable name
+    api_key: str | None = None  # BYOK: Direct API key (takes precedence over env var)
     account_id_env: str | None = None  # Environment variable name for account ID (e.g. Cloudflare)
     max_tokens: int = 4096
     context_window: int | None = None  # Max total tokens (input + output) the model supports

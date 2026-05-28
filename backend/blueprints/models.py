@@ -59,6 +59,7 @@ class BlueprintLLMProfile(BaseModel):
     model: str
     api_base: str | None = None
     api_key_env: str = "OPENROUTER_API_KEY"
+    api_key: str | None = None  # BYOK: Direct API key (takes precedence over env var)
     account_id_env: str | None = None
     max_tokens: int = 4096
     context_window: int | None = None
