@@ -65,24 +65,29 @@ class UserStore:
         return self.get(user_id)  # type: ignore[return-value]
 
     def get(self, user_id: str) -> User | None:
+        """Retrieve a user by ID. Returns None if not found."""
         cursor = self.conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         return self._row_to_user(row) if row else None
 
     def get_by_email(self, email: str) -> User | None:
+        """Retrieve a user by email address. Returns None if not found."""
         cursor = self.conn.execute("SELECT * FROM users WHERE email = ?", (email,))
         row = cursor.fetchone()
         return self._row_to_user(row) if row else None
 
     def list_by_tenant(self, tenant_id: str) -> list[User]:
+        """List all users belonging to a specific tenant, ordered by creation date."""
         cursor = self.conn.execute("SELECT * FROM users WHERE tenant_id = ? ORDER BY created_at", (tenant_id,))
         return [self._row_to_user(row) for row in cursor.fetchall()]
 
     def list_all(self) -> list[User]:
+        """List all users across all tenants, ordered by creation date."""
         cursor = self.conn.execute("SELECT * FROM users ORDER BY created_at")
         return [self._row_to_user(row) for row in cursor.fetchall()]
 
     def count(self) -> int:
+        """Total number of users."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM users")
         return cursor.fetchone()[0]
 
@@ -100,6 +105,7 @@ class UserStore:
         return self.get(user_id)
 
     def update_last_login(self, user_id: str) -> None:
+        """Set last_login_at to now for the given user."""
         now = datetime.now().isoformat()
         self.conn.execute(
             "UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?",
@@ -108,6 +114,7 @@ class UserStore:
         self.conn.commit()
 
     def delete(self, user_id: str) -> bool:
+        """Delete a user by ID. Returns True."""
         self.conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         self.conn.commit()
         return True

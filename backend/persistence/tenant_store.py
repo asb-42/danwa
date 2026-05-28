@@ -59,11 +59,13 @@ class TenantStore:
         return self.get(tid)  # type: ignore[return-value]
 
     def get(self, tenant_id: str) -> Tenant | None:
+        """Retrieve a tenant by ID. Returns None if not found."""
         cursor = self.conn.execute("SELECT * FROM tenants WHERE id = ?", (tenant_id,))
         row = cursor.fetchone()
         return self._row_to_tenant(row) if row else None
 
     def list_all(self) -> list[Tenant]:
+        """List all tenants, ordered by creation date."""
         cursor = self.conn.execute("SELECT * FROM tenants ORDER BY created_at")
         return [self._row_to_tenant(row) for row in cursor.fetchall()]
 
@@ -95,11 +97,13 @@ class TenantStore:
         return self.get(tenant_id)
 
     def delete(self, tenant_id: str) -> bool:
+        """Delete a tenant by ID. Returns True."""
         self.conn.execute("DELETE FROM tenants WHERE id = ?", (tenant_id,))
         self.conn.commit()
         return True
 
     def count(self) -> int:
+        """Total number of tenants."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM tenants")
         return cursor.fetchone()[0]
 

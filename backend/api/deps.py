@@ -26,6 +26,7 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return the cached application settings singleton."""
     return settings
 
 

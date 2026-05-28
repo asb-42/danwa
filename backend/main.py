@@ -226,7 +226,17 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
+        description=(
+            "Danwa — Auditierbarer Multi-Agenten-Debatten-Workflow.\n\n"
+            "KI-gestützte Debattenplattform mit Multi-Tenant-Authentifizierung, "
+            "RAG-Dokumentenanalyse, paralleler Workflow-Ausführung und "
+            "strukturierter Berichterstellung.\n\n"
+            "**Authentifizierung:** JWT Bearer Token via `/api/v1/auth/login`.\n\n"
+            "**Dokumentation:** [Swagger UI](/docs) · [ReDoc](/redoc) · [OpenAPI JSON](/openapi.json)"
+        ),
         lifespan=lifespan,
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
 
     # --- CORS ---
