@@ -22,7 +22,7 @@ from backend.workflow.hitl.nodes import (
     hitl_check_node,
     reset_round_interrupt_count,
 )
-from backend.workflow.nodes import (
+from backend.workflow.legacy_nodes import (
     check_consensus_node,
     complete_node,
     initialize_node,

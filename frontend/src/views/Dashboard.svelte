@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { healthStatus, loading, error, activeProject, currentDebate, sseConnected } from '../lib/stores.js';
-  import { getHealth, getDebates, findRunningDebateAcrossProjects } from '../lib/api.js';
+  import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
+  import { currentUser } from '../lib/stores/auth.svelte.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
 
@@ -23,15 +24,22 @@
   });
 
   let recentDebates = $state([]);
+  let tenant = $state(null);
 
   let projectId = $derived($activeProject?.id);
   let runningDebatePoller = $state(null);
 
   onMount(async () => {
-    await loadDebateStats();
+    await Promise.all([loadDebateStats(), loadTenant()]);
     startRunningDebatePoller();
     return () => stopRunningDebatePoller();
   });
+
+  async function loadTenant() {
+    try {
+      tenant = await request('/api/v1/tenants/current');
+    } catch { /* ignore — tenant info is optional */ }
+  }
 
   // Reload when project changes
   $effect(() => {
@@ -176,6 +184,27 @@
     </div>
   </div>
 
+  <!-- Tenant quotas -->
+  {#if tenant}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">🏢 {tenant.name}</h3>
+        <span class="px-2 py-0.5 text-xs rounded-full
+          {tenant.plan === 'enterprise' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+           tenant.plan === 'pro' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+           'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}">
+          {t(`tenant.plan.${tenant.plan}`) || tenant.plan}
+        </span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <QuotaIndicator label={t('tenant.projectsUsed', { used: '—', max: tenant.max_projects })} max={tenant.max_projects} icon="📁" />
+        <QuotaIndicator label={t('tenant.debatesUsed', { used: '—', max: tenant.max_concurrent_debates })} max={tenant.max_concurrent_debates} icon="💬" />
+        <QuotaIndicator label={t('tenant.documentsUsed', { used: '—', max: tenant.max_documents })} max={tenant.max_documents} icon="📄" />
+        <QuotaIndicator label={t('tenant.storageUsed', { used: '—', max: tenant.max_storage_mb })} max={tenant.max_storage_mb} icon="💾" />
+      </div>
+    </div>
+  {/if}
+
   <!-- Recent debates -->
   {#if recentDebates.length > 0}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -234,3 +263,10 @@
   <!-- Workflow graph -->
   <DashboardWorkflowGraph status={graphStatus} activeNodeId={activePipelineNode} />
 </div>
+
+{#snippet QuotaIndicator(label, max, icon)}
+  <div class="text-center">
+    <span class="text-lg">{icon}</span>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">{label}</p>
+  </div>
+{/snippet}

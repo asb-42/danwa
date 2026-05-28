@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from backend.workflow.debate_graph import build_graph
-from backend.workflow.nodes import (
+from backend.workflow.legacy_nodes import (
     check_consensus_node,
     complete_node,
     initialize_node,

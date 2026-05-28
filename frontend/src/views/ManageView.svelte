@@ -30,6 +30,9 @@
     listRoleDefinitions,
   } from '../lib/blueprint/api.js';
   import ConfigModal from '../components/config/ConfigModal.svelte';
+  import LlmProfileList from '../components/manage/LlmProfileList.svelte';
+  import PersonaList from '../components/manage/PersonaList.svelte';
+  import PromptVariantList from '../components/manage/PromptVariantList.svelte';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -74,10 +77,6 @@
   let formErrors = $state({});
   let showDeleteConfirm = $state(false);
   let deleteTarget = $state(null);
-
-  // LLM search / filter / sort
-  let llmSearch = $state('');
-  let llmDropdownOpen = $state(null);
 
   // Role Type modal state
   let showRoleTypeModal = $state(false);
@@ -194,43 +193,10 @@
     if (results[5].status === 'fulfilled') serviceEligibleProfiles = results[5].value || [];
   }
 
-  function isBlueprintManaged(personaId) {
-    return blueprintRoleDefIds.has(personaId);
-  }
-
-  function getServiceElig(profileId) {
-    return serviceEligibleProfiles.find(p => p.id === profileId) || null;
-  }
-
-  function getPersonasByRole(role) {
-    return agentPersonas.filter(p => p.role === role);
-  }
-
   function formatCost(cost) {
     if (cost === null || cost === undefined) return '—';
     return `$${cost.toFixed(4)}`;
   }
-
-  const PROFILE_TYPE_LABELS = { text: 'Text', tts: 'TTS', stt: 'STT' };
-  const PROFILE_TYPE_COLORS = {
-    text: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-    tts: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
-    stt: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
-  };
-
-  let filteredLLMProfiles = $derived(() => {
-    const q = llmSearch.toLowerCase().trim();
-    let list = [...llmProfiles];
-    if (q) {
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.profile_type || 'text').toLowerCase().includes(q) ||
-        p.model.toLowerCase().includes(q)
-      );
-    }
-    list.sort((a, b) => a.name.localeCompare(b.name));
-    return list;
-  });
 
   function openDuplicateLLM(profile) {
     modalMode = 'create';
@@ -245,14 +211,6 @@
     delete formData.updated_at;
     formErrors = {};
     showModal = true;
-  }
-
-  function toggleDropdown(profileId) {
-    llmDropdownOpen = llmDropdownOpen === profileId ? null : profileId;
-  }
-
-  function handleDocClick() {
-    llmDropdownOpen = null;
   }
 
   function openCreateLLM() {
@@ -457,8 +415,7 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="space-y-6" onclick={handleDocClick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDocClick(e); } }}>
+<div class="space-y-6">
   <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('manage.title') || 'Manage'}</h2>
 
   {#if $error}
@@ -498,123 +455,19 @@
 
   <!-- LLM Profiles Tab -->
   {:else if activeTab === 'llm'}
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <div class="relative flex-1 max-w-md">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">🔍</span>
-          <input type="text" bind:value={llmSearch}
-            placeholder="{t('config.search')}… (Name, Typ, Modell)"
-            class="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-          {#if llmSearch}
-            <button class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm" onclick={() => { llmSearch = ''; }}>✕</button>
-          {/if}
-        </div>
-        <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap" onclick={openCreateLLM}>
-          + {t('config.createLLM')}
-        </button>
-      </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        {#if llmProfiles.length === 0}
-          <div class="flex items-center justify-center h-32">
-            <p class="text-gray-500 dark:text-gray-400">{t('config.llmProfilesPlaceholder')}</p>
-          </div>
-        {:else if filteredLLMProfiles().length === 0}
-          <div class="flex items-center justify-center h-32">
-            <p class="text-gray-500 dark:text-gray-400">{t('config.noResults') || 'Keine Treffer'}</p>
-          </div>
-        {:else}
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-              <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th class="px-4 py-3">{t('config.name')}</th>
-                  <th class="px-4 py-3">{t('config.type') || 'Typ'}</th>
-                  <th class="px-4 py-3 text-center">🔧 {t('service.utility') || 'Utility'}</th>
-                  <th class="px-4 py-3">{t('config.provider')}</th>
-                  <th class="px-4 py-3">{t('config.model')}</th>
-                  <th class="px-4 py-3">{t('config.temperature')}</th>
-                  <th class="px-4 py-3">{t('config.maxTokens')}</th>
-                  <th class="px-4 py-3">{t('config.contextWindow')}</th>
-                  <th class="px-4 py-3 text-right">{t('config.actions') || 'Aktionen'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredLLMProfiles() as profile (profile.id)}
-                  <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50
-                    {$selectedLLMProfile === profile.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
-                    <td class="px-4 py-3 font-medium">
-                      <button class="text-blue-600 dark:text-blue-400 hover:underline" onclick={() => { selectedLLMProfile.set(profile.id); }}>
-                        {profile.name}
-                      </button>
-                      {#if $selectedLLMProfile === profile.id}
-                        <span class="ml-2 text-xs text-green-600 dark:text-green-400">✓ {t('config.active')}</span>
-                      {/if}
-                    </td>
-                    <td class="px-4 py-3">
-                      <span class="inline-block text-xs px-2 py-0.5 rounded-full {PROFILE_TYPE_COLORS[profile.profile_type || 'text']}">
-                        {PROFILE_TYPE_LABELS[profile.profile_type || 'text']}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      {#if getServiceElig(profile.id)}
-                        {#if getServiceElig(profile.id).service_eligible || serviceLLMConfig.service_llm_profile_id === profile.id}
-                          <div class="flex flex-col items-center gap-0.5">
-                            <input type="checkbox"
-                              checked={serviceLLMConfig.service_llm_profile_id === profile.id}
-                              onchange={(e) => toggleServiceProfile(profile.id, e.target.checked)}
-                              disabled={isLoadingServiceLLM}
-                              class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
-                            {#if !getServiceElig(profile.id).service_eligible}
-                              <span class="text-[10px] text-amber-500 dark:text-amber-400" title={getServiceElig(profile.id).eligibility_reason}>⚠️</span>
-                            {/if}
-                          </div>
-                        {:else}
-                          <span class="text-[10px] text-gray-400" title={getServiceElig(profile.id).eligibility_reason}>⚠️</span>
-                        {/if}
-                      {:else}
-                        <span class="text-xs text-gray-400">—</span>
-                      {/if}
-                    </td>
-                    <td class="px-4 py-3">{profile.provider}</td>
-                    <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
-                    <td class="px-4 py-3">{profile.temperature}</td>
-                    <td class="px-4 py-3">{profile.max_tokens}</td>
-                    <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
-                    <td class="px-4 py-3 text-right">
-                      <div class="relative inline-block">
-                        <button
-                          class="px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                          onclick={(e) => { e.stopPropagation(); toggleDropdown(profile.id); }}
-                          aria-haspopup="true" aria-expanded={llmDropdownOpen === profile.id}>
-                          ⋮
-                        </button>
-                        {#if llmDropdownOpen === profile.id}
-                           <div class="absolute right-0 top-full mt-1 z-40 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
-                             <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { llmDropdownOpen = null; openEditLLM(profile); }}>
-                               ✏️ {t('common.edit')}
-                             </button>
-                             <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { llmDropdownOpen = null; openDuplicateLLM(profile); }}>
-                               📋 {t('config.duplicate') || 'Duplizieren'}
-                             </button>
-                             <hr class="my-1 border-gray-200 dark:border-gray-700" />
-                             <button class="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" onclick={() => { llmDropdownOpen = null; confirmDelete('llm', profile.id, profile.name); }}>
-                               🗑️ {t('common.delete')}
-                             </button>
-                           </div>
-                        {/if}
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-          <div class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
-            {filteredLLMProfiles().length} / {llmProfiles.length} {t('config.profiles') || 'Profile'}
-          </div>
-        {/if}
-      </div>
-    </div>
+    <LlmProfileList
+      profiles={llmProfiles}
+      selectedProfileId={$selectedLLMProfile}
+      {serviceLLMConfig}
+      {serviceEligibleProfiles}
+      {isLoadingServiceLLM}
+      onCreate={openCreateLLM}
+      onEdit={openEditLLM}
+      onDuplicate={openDuplicateLLM}
+      onDelete={(id, name) => confirmDelete('llm', id, name)}
+      onToggleService={toggleServiceProfile}
+      onSelectProfile={(id) => selectedLLMProfile.set(id)}
+    />
 
   <!-- Role Types Tab -->
   {:else if activeTab === 'roleTypes'}
@@ -669,119 +522,30 @@
 
   <!-- Agent Personas Tab -->
   {:else if activeTab === 'agents'}
-    <div class="space-y-4">
-      {#each ['strategist', 'critic', 'optimizer', 'moderator'] as role}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-md font-semibold text-gray-800 dark:text-white capitalize">{t(`agent.${role}`)}</h4>
-            <button class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" onclick={() => openCreateAgent(role)}>
-              + {t('config.createPersona')}
-            </button>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {#each getPersonasByRole(role) as persona}
-              <div class="p-3 rounded-lg border transition-colors relative
-                {$selectedPersonas[role] === persona.id
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}">
-                <div class="cursor-pointer" onclick={() => { selectedPersonas.set({ ...$selectedPersonas, [role]: persona.id }); }}
-                  onkeydown={(e) => { if (e.key === 'Enter') selectedPersonas.set({ ...$selectedPersonas, [role]: persona.id }); }}
-                  role="button" tabindex="0">
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="font-medium text-sm text-gray-800 dark:text-white">{persona.name}</span>
-                    <span class="flex items-center gap-1">
-                      {#if isBlueprintManaged(persona.id)}
-                        <span class="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded" title="{t('config.managedByBlueprint') || 'Managed by Blueprint Canvas'}">🧩</span>
-                      {/if}
-                      {#if $selectedPersonas[role] === persona.id}
-                        <span class="text-xs text-green-600 dark:text-green-400">✓</span>
-                      {/if}
-                    </span>
-                  </div>
-                  {#if persona.description}
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{persona.description}</p>
-                  {/if}
-                  <div class="flex flex-wrap gap-1">
-                    {#each persona.tags as tag}
-                      <span class="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">{tag}</span>
-                    {/each}
-                  </div>
-                </div>
-                <div class="flex gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                  <button class="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors" onclick={() => openEditAgent(persona)}>
-                    {t('common.edit')}
-                  </button>
-                  <button class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors" onclick={() => confirmDelete('agent', persona.id, persona.name)}>
-                    {t('common.delete')}
-                  </button>
-                </div>
-              </div>
-            {:else}
-              <p class="text-sm text-gray-500 dark:text-gray-400 col-span-full">{t('config.noProfiles')}</p>
-            {/each}
-          </div>
-        </div>
-      {/each}
-    </div>
+    <PersonaList
+      personas={agentPersonas}
+      selectedPersonas={$selectedPersonas}
+      {blueprintRoleDefIds}
+      onCreate={openCreateAgent}
+      onEdit={openEditAgent}
+      onDelete={(id, name) => confirmDelete('agent', id, name)}
+      onSelectPersona={(role, id) => selectedPersonas.set({ ...$selectedPersonas, [role]: id })}
+    />
 
   <!-- Prompt Variants Tab -->
   {:else if activeTab === 'prompts'}
-    <div class="space-y-4">
-      <div class="flex justify-end">
-        <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors" onclick={openCreatePrompt}>
-          + {t('config.createPromptVariant') || 'Create Prompt Variant'}
-        </button>
-      </div>
-      {#each promptVariants as variant}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <h4 class="text-md font-semibold text-gray-800 dark:text-white">{variant.name || variant.id}</h4>
-              {#if $selectedPromptVariant === variant.id}
-                <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">✓ {t('config.active')}</span>
-              {/if}
-            </div>
-            <div class="flex items-center gap-2">
-              <button class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/40 transition-colors" onclick={() => { selectedPromptVariant.set(variant.id); }}>
-                {$selectedPromptVariant === variant.id ? t('config.active') : t('config.select') || 'Select'}
-              </button>
-              <button class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800/40 transition-colors" onclick={() => openPromptTranslate(variant.id)} title={t('config.translatePrompt') || 'Translate'}>
-                🌐 {t('config.translate') || 'Translate'}
-              </button>
-              {#if variant.id !== 'default'}
-                <button class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors" onclick={() => confirmDelete('prompt', variant.id, variant.id)}>
-                  {t('common.delete')}
-                </button>
-              {/if}
-            </div>
-          </div>
-          {#if variant.description}
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">{variant.description}</p>
-          {/if}
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {#each PROMPT_ROLES as role}
-              <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-sm font-medium text-gray-800 dark:text-white capitalize">{role.emoji} {role.label}</span>
-                  <button class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={() => handlePreview(variant.id, role.value)}>
-                    {t('config.preview')}
-                  </button>
-                </div>
-                {#if previewContent && previewVariantId === variant.id && previewRole === role.value}
-                  <pre class="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto max-h-32 whitespace-pre-wrap">{previewContent}</pre>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        </div>
-      {:else}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-center h-32">
-            <p class="text-gray-500 dark:text-gray-400">{t('config.promptVariantsPlaceholder')}</p>
-          </div>
-        </div>
-      {/each}
-    </div>
+    <PromptVariantList
+      variants={promptVariants}
+      selectedVariantId={$selectedPromptVariant}
+      {previewContent}
+      {previewRole}
+      {previewVariantId}
+      onCreate={openCreatePrompt}
+      onDelete={(id) => confirmDelete('prompt', id, id)}
+      onPreview={handlePreview}
+      onTranslate={openPromptTranslate}
+      onSelect={(id) => selectedPromptVariant.set(id)}
+    />
 
   <!-- Cost Estimation Tab -->
   {:else if activeTab === 'cost'}

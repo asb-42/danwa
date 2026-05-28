@@ -13,7 +13,7 @@ from backend.services.web_search import (
     extract_search_queries,
     format_search_results,
 )
-from backend.workflow.nodes import _append_search_instruction
+from backend.workflow.legacy_nodes import _append_search_instruction
 
 # ---------------------------------------------------------------------------
 # WebSearchTool

@@ -16,7 +16,7 @@ import warnings
 
 from langgraph.graph import END, StateGraph
 
-from backend.workflow.nodes import (
+from backend.workflow.legacy_nodes import (
     check_consensus_node,
     complete_node,
     initialize_node,
