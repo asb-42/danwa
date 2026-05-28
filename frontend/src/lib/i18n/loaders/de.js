@@ -967,5 +967,31 @@ export default {
   'renderJob.download': 'Download',
   'renderJob.queued': 'Auf Verarbeitung warten…',
 
+  // Auth / Login
+  'auth.signIn': 'Anmelden',
+  'auth.createAccount': 'Konto erstellen',
+  'auth.welcomeBack': 'Willkommen zurück bei Danwa',
+  'auth.createAccountDesc': 'Erstelle ein neues Konto um loszulegen',
+  'auth.email': 'E-Mail',
+  'auth.emailPlaceholder': 'du@beispiel.de',
+  'auth.displayName': 'Anzeigename',
+  'auth.displayNamePlaceholder': 'Dein Name',
+  'auth.password': 'Passwort',
+  'auth.passwordPlaceholderLogin': 'Dein Passwort',
+  'auth.passwordPlaceholderRegister': 'Mindestens 8 Zeichen',
+  'auth.confirmPassword': 'Passwort bestätigen',
+  'auth.confirmPasswordPlaceholder': 'Passwort wiederholen',
+  'auth.alreadyHaveAccount': 'Bereits ein Konto?',
+  'auth.noAccount': 'Noch kein Konto?',
+  'auth.passwordsDoNotMatch': 'Passwörter stimmen nicht überein',
+  'auth.authenticationFailed': 'Authentifizierung fehlgeschlagen',
+  'auth.sessionExpired': 'Sitzung abgelaufen. Bitte erneut anmelden.',
+
+  // Upload-Status
+  'upload.uploading': '{filename} — Upload läuft…',
+  'upload.success': '{filename} — {engine}: {chars} Zeichen, {words} Wörter, {chunks} Chunks',
+  'upload.ocrUnavailable': '{filename} — Keine Texterkennung (OCR nicht verfügbar), {chunks} Chunks',
+  'upload.successPlain': '{filename} — {chars} Zeichen, {words} Wörter, {chunks} Chunks',
+
 };
 

@@ -54,6 +54,7 @@ export async function register(email, displayName, password, role = 'viewer') {
 
 /**
  * Refresh the access token using the refresh token.
+ * Delegates to the api.js request wrapper for consistent 401 handling.
  * @returns {Promise<boolean>} True if refresh succeeded
  */
 export async function refreshAccessToken() {
@@ -80,6 +81,9 @@ export async function refreshAccessToken() {
     return false;
   }
 }
+
+// NOTE: api.js has its own attemptTokenRefresh() that handles 401 retry.
+// This function is used for standalone token refresh (e.g., on page load).
 
 /**
  * Logout — clear all auth state.

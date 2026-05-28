@@ -5,6 +5,7 @@
   import { healthStatus, appVersion } from './lib/stores.js';
   import { getVersion } from './lib/api.js';
   import { i18n, discoverLanguagePacks, setToastCallback } from './lib/i18n/index.js';
+  import { isAuthenticated } from './lib/stores/auth.svelte.js';
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
   import DebateView from './views/DebateView.svelte';
@@ -25,6 +26,7 @@ import ProposalsView from './views/ProposalsView.svelte';
 import ManageView from './views/ManageView.svelte';
 import MvpDebateView from './views/MvpDebateView.svelte';
 import BundleComposerView from './views/BundleComposerView.svelte';
+import LoginView from './views/LoginView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Register toast callback for i18n fallback warnings
@@ -94,6 +96,9 @@ import ToastContainer from './components/ToastContainer.svelte';
   });
 </script>
 
+{#if !$isAuthenticated}
+<LoginView />
+{:else}
 <Layout {navigate} currentRoute={$route}>
   {#if $route === 'dashboard'}
     <Dashboard {navigate} />
@@ -138,3 +143,4 @@ import ToastContainer from './components/ToastContainer.svelte';
   {/if}
   <ToastContainer />
 </Layout>
+{/if}

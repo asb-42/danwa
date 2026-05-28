@@ -104,7 +104,7 @@ export async function request(endpoint, options = {}) {
       if (typeof window !== 'undefined') {
         window.location.hash = '#/login';
       }
-      throw new Error('Session expired. Please log in again.');
+      throw new Error(i18n.t('auth.sessionExpired') || 'Session expired. Please log in again.');
     }
   }
 

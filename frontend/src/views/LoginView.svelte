@@ -4,6 +4,19 @@
   import { login, register } from '../lib/auth.js';
   import { isAuthenticated } from '../lib/stores/auth.svelte.js';
   import { route } from '../lib/stores.js';
+  import { i18n } from '../lib/i18n/index.js';
+
+  let t = $derived((key, params) => {
+    const val = $i18n.translations[key];
+    if (!val) return key;
+    if (params) {
+      return Object.entries(params).reduce(
+        (s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, 'g'), v),
+        val
+      );
+    }
+    return val;
+  });
 
   let email = $state('');
   let displayName = $state('');
@@ -13,7 +26,6 @@
   let error = $state('');
   let loading = $state(false);
 
-  // Redirect to dashboard if already authenticated
   $effect(() => {
     if ($isAuthenticated) {
       route.set('dashboard');
@@ -28,19 +40,18 @@
     try {
       if (isRegisterMode) {
         if (password !== confirmPassword) {
-          error = 'Passwords do not match';
+          error = t('auth.passwordsDoNotMatch');
           loading = false;
           return;
         }
         await register(email, displayName || email.split('@')[0], password);
-        // Auto-login after registration
         await login(email, password);
       } else {
         await login(email, password);
       }
       route.set('dashboard');
     } catch (err) {
-      error = err.message || 'Authentication failed';
+      error = err.message || t('auth.authenticationFailed');
     } finally {
       loading = false;
     }
@@ -55,24 +66,24 @@
 <div class="login-container">
   <div class="login-card">
     <h1 class="login-title">
-      {isRegisterMode ? 'Create Account' : 'Sign In'}
+      {isRegisterMode ? t('auth.createAccount') : t('auth.signIn')}
     </h1>
     <p class="login-subtitle">
-      {isRegisterMode ? 'Create a new account to get started' : 'Welcome back to Danwa'}
+      {isRegisterMode ? t('auth.createAccountDesc') : t('auth.welcomeBack')}
     </p>
 
     {#if error}
-      <div class="error-banner">{error}</div>
+      <div class="error-banner" role="alert">{error}</div>
     {/if}
 
     <form onsubmit={handleSubmit}>
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">{t('auth.email')}</label>
         <input
           id="email"
           type="email"
           bind:value={email}
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           required
           autocomplete="email"
         />
@@ -80,24 +91,24 @@
 
       {#if isRegisterMode}
         <div class="form-group">
-          <label for="displayName">Display Name</label>
+          <label for="displayName">{t('auth.displayName')}</label>
           <input
             id="displayName"
             type="text"
             bind:value={displayName}
-            placeholder="Your name"
+            placeholder={t('auth.displayNamePlaceholder')}
             autocomplete="name"
           />
         </div>
       {/if}
 
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password">{t('auth.password')}</label>
         <input
           id="password"
           type="password"
           bind:value={password}
-          placeholder={isRegisterMode ? 'At least 8 characters' : 'Your password'}
+          placeholder={isRegisterMode ? t('auth.passwordPlaceholderRegister') : t('auth.passwordPlaceholderLogin')}
           required
           minlength="8"
           autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
@@ -106,12 +117,12 @@
 
       {#if isRegisterMode}
         <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
+          <label for="confirmPassword">{t('auth.confirmPassword')}</label>
           <input
             id="confirmPassword"
             type="password"
             bind:value={confirmPassword}
-            placeholder="Repeat your password"
+            placeholder={t('auth.confirmPasswordPlaceholder')}
             required
             minlength="8"
             autocomplete="new-password"
@@ -123,15 +134,15 @@
         {#if loading}
           <span class="spinner"></span>
         {:else}
-          {isRegisterMode ? 'Create Account' : 'Sign In'}
+          {isRegisterMode ? t('auth.createAccount') : t('auth.signIn')}
         {/if}
       </button>
     </form>
 
     <p class="toggle-mode">
-      {isRegisterMode ? 'Already have an account?' : "Don't have an account?"}
+      {isRegisterMode ? t('auth.alreadyHaveAccount') : t('auth.noAccount')}
       <button type="button" class="link-btn" onclick={toggleMode}>
-        {isRegisterMode ? 'Sign In' : 'Create one'}
+        {isRegisterMode ? t('auth.signIn') : t('auth.createAccount')}
       </button>
     </p>
   </div>

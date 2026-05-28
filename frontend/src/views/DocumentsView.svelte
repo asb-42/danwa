@@ -100,7 +100,7 @@
         uploadResults = [...uploadResults, {
           filename: file.name,
           status: 'uploading',
-          message: isImage ? `${file.name} — Upload läuft…` : `${file.name} — Upload läuft…`,
+          message: t('upload.uploading', { filename: file.name }),
         }];
 
         let res;
@@ -120,20 +120,20 @@
               ? {
                   ...r,
                   status: 'success',
-                  message: `${file.name} — ${engine}: ${res.char_count} Zeichen, ${res.word_count} Wörter, ${res.chunk_count} Chunks`,
+                  message: t('upload.success', { filename: file.name, engine, chars: res.char_count, words: res.word_count, chunks: res.chunk_count }),
                 }
               : r
           );
         } else if (isImage) {
           uploadResults = uploadResults.map(r =>
             r.filename === file.name
-              ? { ...r, status: 'warning', message: `${file.name} — Keine Texterkennung (OCR nicht verfügbar), ${res.chunk_count} Chunks` }
+              ? { ...r, status: 'warning', message: t('upload.ocrUnavailable', { filename: file.name, chunks: res.chunk_count }) }
               : r
           );
         } else {
           uploadResults = uploadResults.map(r =>
             r.filename === file.name
-              ? { ...r, status: 'success', message: `${file.name} — ${res.char_count} Zeichen, ${res.word_count} Wörter, ${res.chunk_count} Chunks` }
+              ? { ...r, status: 'success', message: t('upload.successPlain', { filename: file.name, chars: res.char_count, words: res.word_count, chunks: res.chunk_count }) }
               : r
           );
         }
