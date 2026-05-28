@@ -617,8 +617,16 @@ class UITranslationService:
         llm_profile = settings.service_llm_profile_id or "(not set — using fallback)"
         logger.info("Bulk-Translation gestartet: locales=%s, LLM=%s", target_locales, llm_profile)
 
+        bundled = self._scan_bundled_loaders()
+
         for locale in target_locales:
             existing = self.get_translations_bulk(locale, namespace)
+            # Treat bundled JS translations as already-existing so they
+            # are not redundantly re-translated by the LLM.
+            if locale in bundled:
+                for k, v in bundled[locale].items():
+                    if v and (k not in existing or not existing[k]):
+                        existing[k] = v
             missing = [k for k in all_keys if k not in existing or not existing[k]]
 
             if not missing:
@@ -672,9 +680,14 @@ class UITranslationService:
                 llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
 
                 all_keys = self.get_all_keys(namespace)
+                bundled = self._scan_bundled_loaders()
                 total = 0
                 for locale in target_locales:
                     existing = self.get_translations_bulk(locale, namespace)
+                    if locale in bundled:
+                        for k, v in bundled[locale].items():
+                            if v and (k not in existing or not existing[k]):
+                                existing[k] = v
                     missing = [k for k in all_keys if k not in existing or not existing[k]]
                     total += len(missing)
 
@@ -683,6 +696,10 @@ class UITranslationService:
 
                 for locale in target_locales:
                     existing = self.get_translations_bulk(locale, namespace)
+                    if locale in bundled:
+                        for k, v in bundled[locale].items():
+                            if v and (k not in existing or not existing[k]):
+                                existing[k] = v
                     missing = [k for k in all_keys if k not in existing or not existing[k]]
 
                     if not missing:
