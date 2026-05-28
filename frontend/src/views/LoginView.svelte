@@ -6,7 +6,17 @@
   import { route } from '../lib/stores.js';
   import { i18n } from '../lib/i18n/index.js';
 
-  let t = $derived((key, params) => $i18n.t(key, params));
+  let t = $derived((key, params) => {
+    const val = $i18n[key];
+    if (!val) return key;
+    if (params) {
+      return Object.entries(params).reduce(
+        (s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, 'g'), v),
+        val
+      );
+    }
+    return val;
+  });
 
   let email = $state('');
   let displayName = $state('');
