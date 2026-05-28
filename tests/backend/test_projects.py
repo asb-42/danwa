@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from backend.api.deps import (
     get_audit_service,
+    get_current_user,
     get_debate_store,
     get_project_store,
     get_settings,
@@ -16,6 +17,7 @@ from backend.api.deps import (
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.models.project import ProjectConfig
+from backend.models.user import User
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
@@ -54,7 +56,18 @@ def debate_store(tmp_path) -> DebateStore:
 def app(settings, audit_service, debate_store, project_store):
     """FastAPI app with overridden dependencies including project_store."""
     application = create_app()
+
+    _test_user = User(
+        id="test-user",
+        email="test@danwa.local",
+        display_name="Test User",
+        password_hash="",
+        role="admin",
+        tenant_id="_default",
+    )
+
     application.dependency_overrides[get_settings] = lambda: settings
+    application.dependency_overrides[get_current_user] = lambda: _test_user
     application.dependency_overrides[get_audit_service] = lambda: audit_service
     application.dependency_overrides[get_debate_store] = lambda: debate_store
     application.dependency_overrides[get_project_store] = lambda: project_store

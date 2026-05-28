@@ -142,3 +142,21 @@ class TestTTSOutputPlugin:
         assert TTSOutputPlugin.plugin_key == "tts"
         assert "mp3" in TTSOutputPlugin.supported_formats
         assert "wav" in TTSOutputPlugin.supported_formats
+
+    def test_pyttsx3_engine_enum(self) -> None:
+        """pyttsx3 engine is registered in the TTSEngine enum."""
+        assert TTSEngine.PYTTSX3 == "pyttsx3"
+
+    def test_pyttsx3_engine_config(self) -> None:
+        """TTSPluginConfig accepts pyttsx3 as engine."""
+        c = TTSPluginConfig(engine=TTSEngine.PYTTSX3)
+        assert c.engine == TTSEngine.PYTTSX3
+
+    def test_pyttsx3_renderer_import(self) -> None:
+        """Pyttsx3Renderer can be imported without pyttsx3 installed."""
+        from backend.services.output.plugins.pyttsx3_renderer import Pyttsx3Renderer
+
+        renderer = Pyttsx3Renderer()
+        assert renderer is not None
+        assert hasattr(renderer, "render")
+        assert hasattr(renderer, "_render_segment")

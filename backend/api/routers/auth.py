@@ -48,13 +48,14 @@ def register_user(
 
     password_hash = hash_password(body.password)
 
+    # Self-signup always creates user in _default tenant
     try:
         user = user_store.create(
             email=body.email,
             display_name=body.display_name,
             password_hash=password_hash,
             role=role,
-            tenant_id=body.tenant_id,
+            tenant_id="_default",
         )
     except Exception as e:
         logger.error("Failed to create user %s: %s", body.email, e)

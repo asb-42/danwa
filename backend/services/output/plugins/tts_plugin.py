@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 class TTSEngine(StrEnum):
     EDGE_TTS = "edge_tts"
     MIMO_TTS = "mimo_tts"
+    PYTTSX3 = "pyttsx3"
 
 
 class AudioFormat(StrEnum):
@@ -269,6 +270,19 @@ class TTSOutputPlugin(OutputPlugin):
                         "WAV→MP3 conversion failed (returning WAV): %s",
                         stderr.decode()[:200],
                     )
+
+        elif config.engine == TTSEngine.PYTTSX3:
+            from backend.services.output.plugins.pyttsx3_renderer import Pyttsx3Renderer
+
+            renderer = Pyttsx3Renderer()
+            output_path = await renderer.render(
+                script=script,
+                job_id=job_id,
+                output_dir=output_dir,
+                output_format=config.output_format,
+                bitrate=config.bitrate,
+                keep_segments=config.keep_segments,
+            )
 
         else:
             from backend.services.output.plugins.edge_tts_renderer import EdgeTTSRenderer

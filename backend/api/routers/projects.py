@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.api.deps import get_project_store
+from backend.api.deps import get_current_user, get_project_store
 from backend.models.project import (
     ProjectConfigUpdateRequest,
     ProjectCreateRequest,
@@ -23,15 +23,17 @@ router = APIRouter()
 @router.get("", response_model=list[ProjectListItem])
 def list_projects(
     store=Depends(get_project_store),
+    user=Depends(get_current_user),
 ) -> list[ProjectListItem]:
-    """List all projects."""
-    projects = store.list_all()
+    """List projects scoped to the current user's tenant."""
+    projects = store.list_by_tenant(user.tenant_id)
     return [
         ProjectListItem(
             id=p.id,
             name=p.name,
             description=p.description,
             is_system=p.is_system,
+            tenant_id=p.tenant_id,
             created_at=p.created_at,
             updated_at=p.updated_at,
         )
@@ -43,14 +45,16 @@ def list_projects(
 def create_project(
     body: ProjectCreateRequest,
     store=Depends(get_project_store),
+    user=Depends(get_current_user),
 ) -> ProjectResponse:
-    """Create a new project."""
-    project = store.create(name=body.name, description=body.description)
+    """Create a new project within the current user's tenant."""
+    project = store.create(name=body.name, description=body.description, tenant_id=user.tenant_id)
     return ProjectResponse(
         id=project.id,
         name=project.name,
         description=project.description,
         is_system=project.is_system,
+        tenant_id=project.tenant_id,
         created_at=project.created_at,
         updated_at=project.updated_at,
         config=project.config,
@@ -71,6 +75,7 @@ def get_project(
         name=project.name,
         description=project.description,
         is_system=project.is_system,
+        tenant_id=project.tenant_id,
         created_at=project.created_at,
         updated_at=project.updated_at,
         config=project.config,
@@ -96,6 +101,7 @@ def update_project(
         name=project.name,
         description=project.description,
         is_system=project.is_system,
+        tenant_id=project.tenant_id,
         created_at=project.created_at,
         updated_at=project.updated_at,
         config=project.config,
