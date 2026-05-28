@@ -310,6 +310,7 @@
     analysisLoading = true;
     analysisError = '';
     analysis = null;
+    analysisProgressIdx = 0;
     try {
       const lang = i18n.getLocale() || 'de';
       const res = await analyzeDocuments({ language: lang, mode });
@@ -318,8 +319,29 @@
       analysisError = e.message;
     } finally {
       analysisLoading = false;
+      analysisProgressIdx = 0;
     }
   }
+
+  // Rotating progress messages during analysis
+  const analysisSteps = [
+    'Sorting documents…',
+    'Building chronological timeline…',
+    'Extracting key facts…',
+    'Identifying key issues…',
+    'Analyzing party positions…',
+    'Generating case summary…',
+    'Finalizing report…',
+  ];
+  let analysisProgressIdx = $state(0);
+
+  $effect(() => {
+    if (!analysisLoading || analysis) return;
+    const id = setInterval(() => {
+      analysisProgressIdx = (analysisProgressIdx + 1) % analysisSteps.length;
+    }, 3000);
+    return () => clearInterval(id);
+  });
 
   function formatDate(dateStr) {
     if (!dateStr) return '—';
@@ -655,8 +677,8 @@
     {#if analysisLoading && !analysis}
       <div class="text-center py-12 text-gray-500 dark:text-gray-400">
         <span class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block mb-3"></span>
-        <p>Analyzing documents…</p>
-        <p class="text-sm mt-1">This may take a moment depending on document volume.</p>
+        <p>{analysisSteps[analysisProgressIdx]}</p>
+        <p class="text-sm mt-1 text-gray-400 dark:text-gray-500">This may take a moment depending on document volume.</p>
       </div>
     {/if}
 

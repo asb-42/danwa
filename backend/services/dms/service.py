@@ -40,10 +40,12 @@ class DMS:
         db_path: str | Path,
         chroma_path: str | Path,
         config: dict | None = None,
+        project_id: str | None = None,
     ):
         self.db_path = str(db_path)
         self.chroma_path = str(chroma_path)
         self.config = config or {}
+        self._project_id = project_id
 
         self.db = DMSDB(db_path=self.db_path)
 
@@ -65,9 +67,16 @@ class DMS:
             metadata_index=self.metadata_index,
         )
         self.rag_formatter = RAGContextFormatter()
-        # NOTE: In-memory only — manual RAG selections are lost on server restart.
-        # The database has a `rag_context` table that could be used for persistence.
+
+        # Load persisted RAG selections from DB
         self._manual_rag_docs: set[str] = set()
+        if project_id:
+            try:
+                rows = self.db.list_rag_context(project_id)
+                self._manual_rag_docs = {r["document_id"] for r in rows}
+                logger.info("Loaded %d persisted RAG docs for project %s", len(self._manual_rag_docs), project_id)
+            except Exception as e:
+                logger.warning("Failed to load RAG context from DB: %s", e)
 
         logger.info("DMS initialized (db: %s, chroma: %s)", self.db_path, self.chroma_path)
 
@@ -339,6 +348,8 @@ class DMS:
                 logger.info("Document %s already in manual RAG context", document_id)
                 return False
             self._manual_rag_docs.add(document_id)
+            if self._project_id:
+                self.db.add_rag_context(self._project_id, document_id)
             logger.info("Added document %s to manual RAG context", document_id)
             return True
         except Exception as e:
@@ -352,6 +363,8 @@ class DMS:
                 logger.info("Document %s not in manual RAG context", document_id)
                 return False
             self._manual_rag_docs.remove(document_id)
+            if self._project_id:
+                self.db.remove_rag_context(self._project_id, document_id)
             logger.info("Removed document %s from manual RAG context", document_id)
             return True
         except Exception as e:
@@ -442,6 +455,7 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
             db_path=str(dms_dir / "dms.db"),
             chroma_path=str(dms_dir / "chroma_db"),
             config=dms_config,
+            project_id=project_id,
         )
 
         if not dms.db.get_project(project_id):
