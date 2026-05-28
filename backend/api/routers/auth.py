@@ -132,6 +132,25 @@ def get_me(
     return user_to_response(user)
 
 
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    body: dict,
+    user=Depends(get_current_user),
+    user_store=Depends(get_user_store),
+):
+    """Update the current user's profile (display_name)."""
+    display_name = body.get("display_name")
+    if not display_name:
+        raise HTTPException(status_code=400, detail="display_name is required")
+
+    updated = user_store.update(user.id, display_name=display_name)
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update profile")
+
+    logger.info("Profile updated for user: %s", user.email)
+    return user_to_response(updated)
+
+
 @router.put("/password")
 def change_password(
     body: PasswordChangeRequest,

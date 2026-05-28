@@ -93,8 +93,24 @@
       items: [
         { id: 'projects', label: t('nav.projects'), icon: '📁', route: 'projects' },
         { id: 'audit', label: t('nav.audit'), icon: '📋', route: 'audit' },
-        ...($currentUser?.role === 'admin' ? [{ id: 'users', label: t('users.title'), icon: '👥', route: 'users' }] : []),
         { id: 'configure', label: t('nav.section.configure') || 'Configure', icon: '⚙️', route: 'config' },
+      ],
+    },
+    ...($currentUser?.role === 'admin' ? [{
+      id: 'administration',
+      label: t('nav.section.administration'),
+      items: [
+        { id: 'users', label: t('users.title'), icon: '👥', route: 'users' },
+        { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
+        { id: 'server-health', label: t('nav.serverHealth'), icon: '🖥️', route: 'server-health' },
+      ],
+    }] : []),
+    {
+      id: 'account',
+      label: t('nav.section.account'),
+      items: [
+        { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
+        { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
       ],
     },
     {

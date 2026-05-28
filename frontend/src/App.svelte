@@ -28,6 +28,10 @@ import MvpDebateView from './views/MvpDebateView.svelte';
 import BundleComposerView from './views/BundleComposerView.svelte';
 import LoginView from './views/LoginView.svelte';
 import UserManagement from './views/UserManagement.svelte';
+import ProfileView from './views/ProfileView.svelte';
+import TenantSettingsView from './views/TenantSettingsView.svelte';
+import BYOKManager from './views/BYOKManager.svelte';
+import ServerHealthView from './views/ServerHealthView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
 
   // Register toast callback for i18n fallback warnings
@@ -141,6 +145,14 @@ import ToastContainer from './components/ToastContainer.svelte';
     <MvpDebateView debateId={$routeParams[0] || null} {navigate} />
   {:else if $route === 'users'}
     <UserManagement />
+  {:else if $route === 'profile'}
+    <ProfileView />
+  {:else if $route === 'tenant-settings'}
+    <TenantSettingsView />
+  {:else if $route === 'my-keys'}
+    <BYOKManager />
+  {:else if $route === 'server-health'}
+    <ServerHealthView />
   {:else}
     <Dashboard {navigate} />
   {/if}

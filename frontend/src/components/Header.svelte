@@ -214,6 +214,21 @@
                 👥 {t('users.title')}
               </button>
             {/if}
+            <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { userDropdownOpen = false; window.location.hash = '#/profile'; }}>
+              👤 {t('nav.profile')}
+            </button>
+            <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { userDropdownOpen = false; window.location.hash = '#/my-keys'; }}>
+              🔑 {t('nav.myKeys')}
+            </button>
+            {#if $currentUser.role === 'admin'}
+              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { userDropdownOpen = false; window.location.hash = '#/tenant-settings'; }}>
+                🏢 {t('nav.tenantSettings')}
+              </button>
+              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { userDropdownOpen = false; window.location.hash = '#/server-health'; }}>
+                🖥️ {t('nav.serverHealth')}
+              </button>
+            {/if}
+            <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
             <button class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" onclick={handleLogout}>
               🚪 {t('auth.logout')}
             </button>
