@@ -244,7 +244,7 @@ class CompilerService:
             # 12. Edge source/target must reference valid node IDs
             if edge.source not in node_ids:
                 errors.append(f"Edge '{edge.id}': source '{edge.source}' is not a valid node ID")
-            if edge.target not in node_ids:
+            if edge.target not in node_ids and edge.target not in ("__end__",):
                 errors.append(f"Edge '{edge.id}': target '{edge.target}' is not a valid node ID")
             outgoing[edge.source].append(edge.target)
             incoming[edge.target].append(edge.source)

@@ -361,12 +361,33 @@ class WorkflowCompiler:
                 graph.add_edge(node.id, END)
                 continue
 
-            # Separate feedback, injects_config edges from non-feedback
-            non_feedback = [e for e in outgoing if e.type not in ("feedback", "injects_config")]
+            # Separate edges by type
+            non_feedback = [e for e in outgoing if e.type not in ("feedback", "injects_config", "decision")]
             feedback_edges = [e for e in outgoing if e.type == "feedback"]
+            decision_edges = [e for e in outgoing if e.type == "decision"]
+
+            # Handle decision edges (transactional drafting approval gate)
+            # Must come BEFORE feedback edges, otherwise a node with both (e.g.
+            # Moderator) would get route_feedback instead of route_decision.
+            if decision_edges:
+                targets: dict[str, object] = {}
+                for edge in decision_edges:
+                    cond = edge.condition or "approved"
+                    tgt: object = END if edge.target in ("__end__", "") else edge.target
+                    targets[cond] = tgt
+                approved_target = targets.get("approved", "__complete__")
+                # return_to_builder → feedback target, or the decision edge's
+                # revision_required target, or END fallback
+                revision_target: object = feedback_edges[0].target if feedback_edges else targets.get("revision_required", END)
+                mapping = {
+                    "approved": approved_target,
+                    "return_to_builder": revision_target,
+                    "construction_deadlock": END,
+                }
+                graph.add_conditional_edges(node.id, route_decision, mapping)
 
             # Handle gate nodes (conditional routing)
-            if node.type == "wf-gate" and len(non_feedback) >= 2:
+            elif node.type == "wf-gate" and len(non_feedback) >= 2:
                 conditions = {}
                 for edge in non_feedback:
                     target = edge.target
@@ -431,23 +452,6 @@ class WorkflowCompiler:
                 if other_edges:
                     # This is unusual but handle it
                     graph.add_edge(node.id, other_edges[0].target)
-
-            # Handle decision edges (transactional drafting approval gate)
-            elif any(e.type == "decision" for e in non_feedback):
-                targets: dict[str, object] = {}
-                for edge in non_feedback:
-                    if edge.type == "decision":
-                        cond = edge.condition or "approved"
-                        tgt: object = END if edge.target in ("__end__", "") else edge.target
-                        targets[cond] = tgt
-                approved_target = targets.get("approved", "__complete__")
-                revision_target = targets.get("revision_required", END)
-                mapping = {
-                    "approved": approved_target,
-                    "return_to_builder": revision_target,
-                    "construction_deadlock": END,
-                }
-                graph.add_conditional_edges(node.id, route_decision, mapping)
 
             # Handle single sequential edge
             elif len(non_feedback) == 1:
