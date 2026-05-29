@@ -113,30 +113,47 @@ def route_after_interjection(state: WorkflowState) -> str:
     return "next"
 
 
-def route_decision(state: WorkflowState) -> str:
-    """Router for the Moderator's decision in Transactional Drafting.
+def route_decision(max_rounds: int = 5) -> Any:
+    """Factory that returns a router for the Moderator's decision in Transactional Drafting.
 
-    Inspects ``state["consensus_result"]["verdict"]``:
+    If the current round exceeds ``max_rounds``, returns ``"construction_deadlock"``
+    to terminate.  Otherwise inspects ``state["consensus_result"]["verdict"]``:
 
-    - ``"approved"`` → return ``"approved"`` (→ END)
-    - ``"revision_required"`` → return ``"return_to_builder"`` (→ BuilderNode)
+    - ``"approved"`` → ``"approved"`` (→ END)
+    - ``"revision_required"`` → ``"return_to_builder"`` (→ BuilderNode)
 
-    Loop detection: if ``draft_version >= 5``, returns ``"construction_deadlock"``
-    to terminate the workflow.
+    Deadlock fallback: if ``draft_version >= 5``, returns ``"construction_deadlock"``.
+
+    Args:
+        max_rounds: Maximum number of drafting rounds before forced termination.
     """
-    draft_version = state.get("draft_version", 1)
-    if draft_version >= 5:
-        logger.warning("Construction deadlock at draft_version=%d", draft_version)
-        return "construction_deadlock"
 
-    result = state.get("consensus_result", {})
-    verdict = result.get("verdict", "revision_required")
-    if verdict == "approved":
-        logger.info("Decision router: approved (draft_version=%d)", draft_version)
-        return "approved"
-    logger.info(
-        "Decision router: return_to_builder (draft_version=%d, concerns=%s)",
-        draft_version,
-        result.get("concerns", []),
-    )
-    return "return_to_builder"
+    def _router(state: WorkflowState) -> str:
+        current_round = state.get("current_round", 1)
+        draft_version = state.get("draft_version", 1)
+
+        if current_round > max_rounds:
+            logger.warning(
+                "Decision router: round %d exceeds max %d, terminating",
+                current_round, max_rounds,
+            )
+            return "construction_deadlock"
+
+        if draft_version >= 5:
+            logger.warning("Decision router: construction deadlock at draft_version=%d", draft_version)
+            return "construction_deadlock"
+
+        result = state.get("consensus_result", {})
+        verdict = result.get("verdict", "revision_required")
+        if verdict == "approved":
+            logger.info("Decision router: approved (round=%d, draft_version=%d)", current_round, draft_version)
+            return "approved"
+        logger.info(
+            "Decision router: return_to_builder (round=%d, draft_version=%d, concerns=%s)",
+            current_round,
+            draft_version,
+            result.get("concerns", []),
+        )
+        return "return_to_builder"
+
+    return _router

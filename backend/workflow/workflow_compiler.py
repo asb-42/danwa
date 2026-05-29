@@ -373,6 +373,12 @@ class WorkflowCompiler:
             # Must come BEFORE feedback edges, otherwise a node with both (e.g.
             # Moderator) would get route_feedback instead of route_decision.
             if decision_edges:
+                # Read max_rounds from termination conditions
+                decision_max_rounds = 5
+                for tc in workflow.termination_conditions:
+                    if tc.type == "max_rounds":
+                        decision_max_rounds = tc.value if isinstance(tc.value, int) else 5
+
                 targets: dict[str, object] = {}
                 for edge in decision_edges:
                     cond = edge.condition or "approved"
@@ -387,7 +393,7 @@ class WorkflowCompiler:
                     "return_to_builder": revision_target,
                     "construction_deadlock": END,
                 }
-                graph.add_conditional_edges(node.id, route_decision, mapping)
+                graph.add_conditional_edges(node.id, route_decision(decision_max_rounds), mapping)
 
             # Handle gate nodes (conditional routing)
             elif node.type == "wf-gate" and len(non_feedback) >= 2:

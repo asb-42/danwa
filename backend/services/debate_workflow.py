@@ -366,7 +366,7 @@ async def run_debate_workflow(
         "used_variant": "default",
         "interactions": [],
         "active_interrupt": None,
-        "hitl_enabled": True,
+        "hitl_enabled": False,
         "hitl_mode": "full",
         "auto_query_threshold": 0.4,
         "max_interrupts_per_round": 3,
