@@ -21,6 +21,7 @@
     'wf-optimizer', 'wf-moderator', 'wf-analyst', 'wf-creative',
     'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner',
     'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer',
+    'wf-builder', 'wf-pragmatist',
   ];
 
   const NODE_TYPE_LABELS = {
@@ -43,6 +44,8 @@
     'wf-synthesizer': '🔗 Synthesizer',
     'wf-user-injection': '👤 User Injection',
     'wf-gate': '🔀 Gate',
+    'wf-builder': '🔨 Builder',
+    'wf-pragmatist': '⚖️ Pragmatist',
   };
 
   const INPUT_TYPES = [

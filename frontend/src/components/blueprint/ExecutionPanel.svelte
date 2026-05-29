@@ -270,6 +270,14 @@
       {/if}
     </div>
 
+    <!-- Context / Topic -->
+    {#if context}
+      <div class="context-bar">
+        <span class="context-label">{t('workflow.execution.topic') || 'Topic'}:</span>
+        <span class="context-text">{context}</span>
+      </div>
+    {/if}
+
     <!-- Metrics -->
     <div class="metrics-grid">
       <div class="metric">
@@ -452,6 +460,29 @@
     color: #9ca3af;
     font-family: monospace;
   }
+
+  .context-bar {
+    padding: 8px 16px;
+    font-size: 12px;
+    line-height: 1.4;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  :global(.dark) .context-bar {
+    border-color: #374151;
+    background: #111827;
+  }
+  .context-label {
+    font-weight: 600;
+    color: #6b7280;
+    margin-right: 4px;
+  }
+  :global(.dark) .context-label { color: #9ca3af; }
+  .context-text {
+    color: #374151;
+    word-break: break-word;
+  }
+  :global(.dark) .context-text { color: #d1d5db; }
 
   .metrics-grid {
     display: grid;

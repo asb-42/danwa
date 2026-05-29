@@ -6,6 +6,7 @@
    */
   import { i18n } from '../lib/i18n/index.js';
   import { canvasStore } from '../lib/blueprint/store.svelte.js';
+  import { currentDebate } from '../lib/stores.js';
   import {
     getCanvasLayout,
     createCanvasLayout,
@@ -409,6 +410,8 @@
   }
 
   async function handleStartDebate(params) {
+    // Clear any stale debate from legacy system
+    currentDebate.set(null);
     try {
       let workflowId = canvasStore.currentWorkflowId;
 

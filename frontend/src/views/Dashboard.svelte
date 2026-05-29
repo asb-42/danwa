@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { healthStatus, loading, error, activeProject, currentDebate, sseConnected } from '../lib/stores.js';
+  import { healthStatus, loading, error, activeProject, currentDebate, sseConnected, route } from '../lib/stores.js';
   import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
@@ -63,6 +63,7 @@
   }
 
   async function checkForRunningDebates() {
+    if ($route !== 'dashboard') return;
     if ($currentDebate?.status === 'running') return;
     try {
       const running = await findRunningDebateAcrossProjects();

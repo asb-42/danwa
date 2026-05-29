@@ -142,6 +142,7 @@
     if (workflowTimer) clearInterval(workflowTimer);
     if (hitlPollTimer) clearInterval(hitlPollTimer);
     resetWorkflow();
+    currentDebate.set(null);
   });
 
   async function handleStartDebate() {
