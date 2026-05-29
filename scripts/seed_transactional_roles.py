@@ -111,10 +111,7 @@ def create_role_definitions(repo: BlueprintRepository) -> dict[str, str]:
             id="angels-advocate-default",
             name="Angel's Advocate",
             role_type_id="angels-advocate",
-            description=(
-                "Finde drei Elemente am aktuellen Stand, die beibehalten werden müssen, "
-                "selbst wenn alles andere verworfen wird."
-            ),
+            description=("Finde drei Elemente am aktuellen Stand, die beibehalten werden müssen, selbst wenn alles andere verworfen wird."),
             mode="angels_advocate",
             max_rounds=5,
             consensus_threshold=0.9,
