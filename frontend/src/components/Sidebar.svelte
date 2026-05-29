@@ -3,6 +3,7 @@
   import { currentDebate } from '../lib/stores.js';
   import { appVersion } from '../lib/stores.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
+  import { getActiveWorkflowSession } from '../lib/workflowSession.js';
   import ProjectSelector from './ProjectSelector.svelte';
 
   let { navigate, currentRoute } = $props();
@@ -23,6 +24,11 @@
 
   let activeDebateRoute = $derived(
     hasActiveDebate ? `debate/${$currentDebate.debate_id}` : 'debate'
+  );
+
+  let activeWorkflowSession = $derived(getActiveWorkflowSession());
+  let hasActiveExecution = $derived(
+    activeWorkflowSession && ['running', 'paused'].includes(activeWorkflowSession.status)
   );
 
   const routeGroups = {
@@ -55,6 +61,7 @@
       label: t('nav.section.run'),
       items: [
         ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬', route: activeDebateRoute }] : []),
+        ...(hasActiveExecution ? [{ id: 'execution', label: t('nav.activeExecution') || 'Live Execution', icon: '⚡', route: `execution/${activeWorkflowSession.sessionId}` }] : []),
         { id: 'mvp-debate', label: 'MVP Debate', icon: '🏛️', route: 'mvp-debate' },
         { id: 'input', label: t('nav.input'), icon: '💬', route: 'input' },
         { id: 'output', label: t('nav.output'), icon: '🖨️', route: 'output' },

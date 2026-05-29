@@ -21,6 +21,11 @@
     getWorkflowDefinition,
   } from '../lib/blueprint/api.js';
   import { startWorkflow } from '../lib/workflowExec.js';
+  import {
+    getActiveWorkflowSession,
+    setActiveWorkflowSession,
+    clearActiveWorkflowSession,
+  } from '../lib/workflowSession.js';
 
   import Palette from '../components/blueprint/Palette.svelte';
   import BlueprintCanvas from '../components/blueprint/BlueprintCanvas.svelte';
@@ -83,6 +88,18 @@
         loadWorkflow(routeParams[1]);
       } else if (layoutId !== 'wf') {
         loadLayout(layoutId);
+      }
+    }
+  });
+
+  // Restore active workflow session on mount (after layout loads or standalone)
+  $effect(() => {
+    if (!canvasStore.isLoading && !executionSessionId) {
+      const active = getActiveWorkflowSession();
+      if (active && active.workflowId === canvasStore.currentWorkflowId) {
+        executionSessionId = active.sessionId;
+        executionContext = active.context || '';
+        showExecutionPanel = true;
       }
     }
   });
@@ -436,6 +453,14 @@
         includeDebateResults: params.includeDebateResults ?? false,
       };
       executionSessionId = result.session_id;
+      setActiveWorkflowSession({
+        sessionId: result.session_id,
+        workflowId,
+        workflowName: canvasStore.currentLayoutName || 'Untitled',
+        context: params.topic,
+        startedAt: new Date().toISOString(),
+        status: 'running',
+      });
       showExecutionPanel = true;
     } catch (err) {
       console.error('[BlueprintCanvasView] Failed to start debate:', err);
@@ -447,6 +472,7 @@
   function handleCloseExecutionPanel() {
     showExecutionPanel = false;
     executionSessionId = null;
+    clearActiveWorkflowSession();
   }
 </script>
 
@@ -728,6 +754,9 @@
   startOptions={executionOptions}
   visible={showExecutionPanel}
   onclose={handleCloseExecutionPanel}
+  onNodeStatusUpdate={(nodeId) => {
+    patchActiveWorkflowSession('status', 'running');
+  }}
 />
 
 <style>

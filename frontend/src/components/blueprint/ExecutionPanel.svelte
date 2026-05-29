@@ -17,6 +17,7 @@
     getWorkflowState,
   } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
+  import { patchActiveWorkflowSession } from '../../lib/workflowSession.js';
 
   /**
    * @type {{
@@ -129,6 +130,14 @@
         if (data.final_consensus !== undefined) {
           consensus = data.final_consensus;
         }
+        patchActiveWorkflowSession('status', 'completed');
+      },
+      onNodeError: (data) => {
+        error = data.error || 'Unknown error';
+        status = 'failed';
+        stopTimer();
+        onNodeStatusUpdate(data.node_id, 'failed');
+        patchActiveWorkflowSession('status', 'failed');
       },
       onWorkflowPaused: () => {
         status = 'paused';

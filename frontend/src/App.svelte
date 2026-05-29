@@ -20,6 +20,7 @@
   import DiffView from './views/DiffView.svelte';
   import OutputComposerView from './views/OutputComposerView.svelte';
 import InputComposerView from './views/InputComposerView.svelte';
+import WorkflowExecutionView from './views/WorkflowExecutionView.svelte';
 import TranslationDashboard from './views/TranslationDashboard.svelte';
 import ModulesView from './views/ModulesView.svelte';
 import ProposalsView from './views/ProposalsView.svelte';
@@ -123,6 +124,8 @@ import ToastContainer from './components/ToastContainer.svelte';
     <ConfigView />
   {:else if $route === 'manage'}
     <ManageView />
+  {:else if $route === 'execution'}
+    <WorkflowExecutionView sessionId={$routeParams[0] || null} {navigate} />
   {:else if $route === 'blueprint'}
     <BlueprintCanvasView layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />
   {:else if $route === 'bundle-composer'}
