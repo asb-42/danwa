@@ -29,6 +29,7 @@ class ModuleType(StrEnum):
     KITSUNE_ASSISTANT = "kitsune-assistant"
     BUNDLE = "bundle"
     LANGUAGE_PACK = "language-pack"
+    AGENT_CORE = "agent-core"
 
 
 class ModuleCategory(StrEnum):
