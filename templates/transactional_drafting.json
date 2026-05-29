@@ -4,6 +4,14 @@
   "description": "A structured drafting workflow with Critic, Builder, and Pragmatist roles. The Critic identifies flaws, the Builder proposes solutions, and the Pragmatist evaluates real-world feasibility. Supports iterative revision until approval or deadlock.",
   "category": "system",
   "tags": ["drafting", "transactional", "builder", "pragmatist", "critic"],
+  "placeholders": [
+    { "key": "strategist_blueprint_id", "type": "blueprint_ref", "description": "Strategist that creates the zero draft" },
+    { "key": "critic_blueprint_id", "type": "blueprint_ref", "description": "Critic that analyses the draft" },
+    { "key": "builder_blueprint_id", "type": "blueprint_ref", "description": "Builder that addresses critique" },
+    { "key": "pragmatist_blueprint_id", "type": "blueprint_ref", "description": "Pragmatist that evaluates feasibility" },
+    { "key": "moderator_blueprint_id", "type": "blueprint_ref", "description": "Moderator that makes the approval decision" },
+    { "key": "context", "type": "string", "description": "The topic or case to draft" }
+  ],
   "template_data": {
     "nodes": [
       {
@@ -87,7 +95,7 @@
     "entry_point": "input",
     "termination_conditions": [
       { "type": "max_rounds", "value": 5 },
-      { "type": "consensus_threshold", "value": 0.6 }
+      { "type": "consensus_reached", "value": 0.6 }
     ]
   }
 }

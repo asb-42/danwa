@@ -5,6 +5,7 @@
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
+  import QuotaIndicator from '../components/QuotaIndicator.svelte';
 
   let { navigate = () => {} } = $props();
 
@@ -264,9 +265,4 @@
   <DashboardWorkflowGraph status={graphStatus} activeNodeId={activePipelineNode} />
 </div>
 
-{#snippet QuotaIndicator(label, max, icon)}
-  <div class="text-center">
-    <span class="text-lg">{icon}</span>
-    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">{label}</p>
-  </div>
-{/snippet}
+
