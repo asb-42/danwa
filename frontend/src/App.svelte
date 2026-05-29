@@ -124,7 +124,7 @@ import ToastContainer from './components/ToastContainer.svelte';
   {:else if $route === 'manage'}
     <ManageView />
   {:else if $route === 'blueprint'}
-    <BlueprintCanvasView layoutId={$routeParams[0] || null} {navigate} />
+    <BlueprintCanvasView layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />
   {:else if $route === 'bundle-composer'}
     <BundleComposerView />
   {:else if $route === 'replay'}

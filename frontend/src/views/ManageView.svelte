@@ -28,11 +28,16 @@
     updateRoleType,
     deleteRoleType,
     listRoleDefinitions,
+    listWorkflowDefinitions,
+    deleteWorkflowDefinition,
+    cloneWorkflow,
+    compileWorkflow,
   } from '../lib/blueprint/api.js';
   import ConfigModal from '../components/config/ConfigModal.svelte';
   import LlmProfileList from '../components/manage/LlmProfileList.svelte';
   import PersonaList from '../components/manage/PersonaList.svelte';
   import PromptVariantList from '../components/manage/PromptVariantList.svelte';
+  import WorkflowList from '../components/manage/WorkflowList.svelte';
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -53,6 +58,7 @@
   let agentPersonas = $state([]);
   let promptVariants = $state([]);
   let roleTypes = $state([]);
+  let workflows = $state([]);
   let blueprintRoleDefIds = $state(new Set());
   let costEstimate = $state(null);
   let previewContent = $state(null);
@@ -109,6 +115,7 @@
         listRoleTypes(),
         getServiceEligibleProfiles(),
         getServiceLLMConfig(),
+        listWorkflowDefinitions(),
       ]);
       const errors = [];
       if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
@@ -120,6 +127,8 @@
       if (results[3].status === 'fulfilled') roleTypes = results[3].value;
       if (results[4].status === 'fulfilled') serviceEligibleProfiles = results[4].value || [];
       if (results[5].status === 'fulfilled') serviceLLMConfig = results[5].value || {};
+      if (results[6].status === 'fulfilled') workflows = results[6].value;
+      else errors.push(`Workflows: ${results[6].reason?.message || results[6].reason}`);
       if (errors.length > 0) error.set(errors.join('; '));
     } catch (e) {
       error.set(e.message);
@@ -184,13 +193,14 @@
   }
 
   async function refreshLists() {
-    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions(), getServiceEligibleProfiles()]);
+    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions(), getServiceEligibleProfiles(), listWorkflowDefinitions()]);
     if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
     if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
     if (results[2].status === 'fulfilled') promptVariants = results[2].value;
     if (results[3].status === 'fulfilled') roleTypes = results[3].value;
     if (results[4].status === 'fulfilled') blueprintRoleDefIds = new Set(results[4].value.map(rd => rd.id));
     if (results[5].status === 'fulfilled') serviceEligibleProfiles = results[5].value || [];
+    if (results[6].status === 'fulfilled') workflows = results[6].value;
   }
 
   function formatCost(cost) {
@@ -277,6 +287,7 @@
       else if (deleteTarget.type === 'agent') await deleteAgentPersona(deleteTarget.id);
       else if (deleteTarget.type === 'prompt') await deletePromptVariant(deleteTarget.id);
       else if (deleteTarget.type === 'roleType') await deleteRoleType(deleteTarget.id);
+      else if (deleteTarget.type === 'workflow') await deleteWorkflowDefinition(deleteTarget.id);
       showDeleteConfirm = false;
       deleteTarget = null;
       statusMessage = `✓ ${t('config.profileDeleted')}`;
@@ -405,6 +416,34 @@
     } catch (e) { error.set(e.message); }
   }
 
+  async function loadWorkflows() {
+    try {
+      workflows = await listWorkflowDefinitions();
+    } catch (e) { error.set(e.message); }
+  }
+
+  async function handleCloneWorkflow(wfId) {
+    try {
+      const cloned = await cloneWorkflow(wfId);
+      await loadWorkflows();
+      statusMessage = `✓ ${t('blueprint.workflow.cloned') || 'Workflow cloned'}: "${cloned.name}"`;
+    } catch (e) { error.set(e.message); }
+  }
+
+  async function handleCompileWorkflow(wfId) {
+    try {
+      const result = await compileWorkflow(wfId);
+      const msg = result.is_valid
+        ? `✓ ${t('blueprint.workflow.valid') || 'Valid'}`
+        : `✗ ${t('blueprint.workflow.invalid') || 'Invalid'}: ${(result.errors || []).join('; ')}`;
+      statusMessage = `${msg} (${(result.warnings || []).length} warnings)`;
+    } catch (e) { error.set(e.message); }
+  }
+
+  function handleOpenWorkflowCanvas(wfId) {
+    window.location.hash = `#/blueprint/wf/${wfId}`;
+  }
+
   async function handleReloadProfiles() {
     statusMessage = '';
     try {
@@ -429,7 +468,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Manage tabs">
-      {#each ['llm', 'roleTypes', 'agents', 'prompts', 'cost'] as tab}
+      {#each ['llm', 'roleTypes', 'agents', 'prompts', 'workflows', 'cost'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -441,6 +480,7 @@
           {:else if tab === 'agents'}{t('config.agentProfiles')}
           {:else if tab === 'roleTypes'}🎭 {t('config.roleTypes')}
           {:else if tab === 'prompts'}{t('config.promptVariants')}
+          {:else if tab === 'workflows'}📋 {t('manage.workflows') || 'Workflows'}
           {:else if tab === 'cost'}{t('config.costEstimate')}
           {/if}
         </button>
@@ -545,6 +585,17 @@
       onPreview={handlePreview}
       onTranslate={openPromptTranslate}
       onSelect={(id) => selectedPromptVariant.set(id)}
+    />
+
+  <!-- Workflows Tab -->
+  {:else if activeTab === 'workflows'}
+    <WorkflowList
+      workflows={workflows}
+      onRefresh={loadWorkflows}
+      onDelete={(id, name) => confirmDelete('workflow', id, name)}
+      onClone={handleCloneWorkflow}
+      onCompile={handleCompileWorkflow}
+      onOpenCanvas={handleOpenWorkflowCanvas}
     />
 
   <!-- Cost Estimation Tab -->

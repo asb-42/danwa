@@ -18,6 +18,7 @@
     compileWorkflow,
     cloneWorkflow,
     convertLayoutToWorkflow,
+    getWorkflowDefinition,
   } from '../lib/blueprint/api.js';
   import { startWorkflow } from '../lib/workflowExec.js';
 
@@ -30,8 +31,8 @@
   import RunWorkflowDialog from '../components/blueprint/RunWorkflowDialog.svelte';
   import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
 
-  /** @type {{ layoutId?: string|null, navigate?: function }} */
-  let { layoutId = null, navigate = () => {} } = $props();
+  /** @type {{ layoutId?: string|null, routeParams?: string[], navigate?: function }} */
+  let { layoutId = null, routeParams = [], navigate = () => {} } = $props();
 
   let t = $derived((key, params = {}) => {
     let text = $i18n[key] || key;
@@ -75,10 +76,14 @@
   let executionContext = $state('');
   let executionOptions = $state({});
 
-  // Load layout if layoutId provided
+  // Load layout or workflow if layoutId provided
   $effect(() => {
     if (layoutId) {
-      loadLayout(layoutId);
+      if (layoutId === 'wf' && routeParams[1]) {
+        loadWorkflow(routeParams[1]);
+      } else if (layoutId !== 'wf') {
+        loadLayout(layoutId);
+      }
     }
   });
 
@@ -124,6 +129,43 @@
     } catch (err) {
       canvasStore.error = err.message;
       console.error('[BlueprintCanvasView] Failed to load layout:', err);
+    } finally {
+      canvasStore.isLoading = false;
+    }
+  }
+
+  async function loadWorkflow(wfId) {
+    canvasStore.isLoading = true;
+    try {
+      const wf = await getWorkflowDefinition(wfId);
+      canvasStore.reset();
+      canvasStore.currentWorkflowId = wf.id;
+      canvasStore.currentLayoutName = wf.name;
+
+      const layoutData = {
+        nodes: (wf.nodes || []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          x: n.position?.x ?? 0,
+          y: n.position?.y ?? 0,
+          blueprint_id: n.agent_blueprint_id || n.bundle_id || n.id,
+          label: n.label || '',
+          config: n.config || {},
+          parent_id: n.parent_id || null,
+        })),
+        edges: (wf.edges || []).map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          type: e.type,
+          data: {},
+        })),
+      };
+      canvasStore.loadFromLayout(layoutData, {});
+      canvasStore.setMode('workflow');
+    } catch (err) {
+      canvasStore.error = err.message;
+      console.error('[BlueprintCanvasView] Failed to load workflow:', err);
     } finally {
       canvasStore.isLoading = false;
     }
