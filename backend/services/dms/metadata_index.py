@@ -31,11 +31,17 @@ class MetadataIndex:
     def get_chunks_by_document(self, document_id: str) -> list[dict[str, Any]]:
         try:
             results = self.chroma_store.collection.get(
-                where={"document_id": document_id},
+                where={"document_id": {"$eq": document_id}},
                 include=["metadatas", "documents", "ids"],
-                limit=10_000,
             )
-            return self._process_chunks(results)
+            chunks = self._process_chunks(results)
+            logger.info(
+                "get_chunks_by_document(%s): chroma returned %d ids, extracted %d chunks",
+                document_id,
+                len(results.get("ids", [])),
+                len(chunks),
+            )
+            return chunks
         except Exception as e:
             logger.error("Failed to fetch chunks for document %s: %s", document_id, e)
             return []
