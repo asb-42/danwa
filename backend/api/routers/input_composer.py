@@ -23,6 +23,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.blueprints.compiler import CompilerService
+from backend.blueprints.mvp_debate_canvas import _ensure_blueprint
 from backend.blueprints.repository import BlueprintRepository
 from backend.models.input_job import InputJobStatus
 from backend.services.input.input_engine import InputComposerService
@@ -460,15 +461,30 @@ async def launch_workflow_from_input(
             placeholder_values={},
         )
 
-        # Instantiate the template
-        required_keys = {p.key for p in template.placeholders if p.default is None}
-        if required_keys:
+        # Auto-resolve blueprint_ref placeholders with default AgentBlueprints
+        for p in template.placeholders:
+            if p.key not in inst_req.placeholder_values and p.type == "blueprint_ref":
+                role = p.key.replace("_blueprint_id", "")
+                try:
+                    profiles = repo.list_llm_profiles(limit=1)
+                    default_llm = profiles[0].id if profiles else "opencodezen-minimax-m2.5-free-ry6l"
+                    bp = _ensure_blueprint(repo, role, default_llm)
+                    inst_req.placeholder_values[p.key] = bp.id
+                    logger.info(
+                        "Auto-resolved placeholder '%s' → AgentBlueprint '%s' (LLM: %s)",
+                        p.key, bp.id, default_llm,
+                    )
+                except Exception as exc:
+                    logger.warning("Could not auto-resolve placeholder '%s': %s", p.key, exc)
+
+        missing_keys = {p.key for p in template.placeholders if p.default is None and p.key not in inst_req.placeholder_values}
+        if missing_keys:
             raise HTTPException(
                 status_code=422,
                 detail={
                     "error": "missing_placeholders",
-                    "missing": sorted(required_keys),
-                    "message": f"Template '{template.name}' requires placeholder values: {', '.join(sorted(required_keys))}",
+                    "missing": sorted(missing_keys),
+                    "message": f"Template '{template.name}' requires placeholder values: {', '.join(sorted(missing_keys))}",
                 },
             )
 

@@ -36,6 +36,7 @@
     context = '',
     startOptions = {},
     visible = false,
+    inline = false,
     onclose = () => {},
     onNodeStatusUpdate = () => {},
   } = $props();
@@ -255,7 +256,7 @@
 </script>
 
 {#if visible}
-  <div class="execution-panel" data-testid="execution-panel">
+  <div class="execution-panel" class:inline data-testid="execution-panel">
     <div class="panel-header">
       <h3 class="panel-title">🚀 {t('workflow.execution.title')}</h3>
       <button class="close-btn" onclick={onclose} title={t('workflow.execution.close')}>✕</button>
@@ -398,6 +399,14 @@
     z-index: 20;
     overflow-y: auto;
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.05);
+  }
+  .execution-panel.inline {
+    position: relative;
+    width: 100%;
+    border-left: none;
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
   }
   :global(.dark) .execution-panel {
     background: #1f2937;

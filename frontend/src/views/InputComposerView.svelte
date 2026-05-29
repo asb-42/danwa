@@ -383,13 +383,18 @@
         Full MCP support will be enabled in a future release.
       </p>
     </div>
+
+    <!-- Execution results (inline below form) -->
+    {#if showExecutionPanel}
+      <div class="execution-results">
+        <ExecutionPanel
+          sessionId={executionSessionId}
+          context={topic}
+          visible={true}
+          inline={true}
+          onclose={() => { showExecutionPanel = false; executionSessionId = null; }}
+        />
+      </div>
+    {/if}
   {/if}
 </div>
-
-<!-- Execution Panel (slides in from right) -->
-<ExecutionPanel
-  sessionId={executionSessionId}
-  context={topic}
-  visible={showExecutionPanel}
-  onclose={() => { showExecutionPanel = false; executionSessionId = null; }}
-/>
