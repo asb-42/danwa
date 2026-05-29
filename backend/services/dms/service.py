@@ -380,13 +380,32 @@ class DMS:
             return []
 
     def get_manual_rag_context(self, k: int = 5) -> list[dict[str, Any]]:
-        """Get chunks from manually selected RAG documents."""
+        """Get chunks from manually selected RAG documents.
+
+        Uses round-robin sampling across documents to avoid biasing
+        toward the first document when multiple are selected.
+        """
         try:
-            all_chunks = []
+            doc_chunks: list[list[dict]] = []
             for doc_id in self._manual_rag_docs:
                 chunks = self.metadata_index.get_chunks_by_document(doc_id)
-                all_chunks.extend(chunks)
-            return all_chunks[:k]
+                if chunks:
+                    doc_chunks.append(chunks)
+
+            if not doc_chunks:
+                return []
+
+            # Round-robin: take one chunk from each document in turn
+            result: list[dict] = []
+            max_len = max(len(c) for c in doc_chunks)
+            for i in range(max_len):
+                for dc in doc_chunks:
+                    if i < len(dc) and len(result) < k:
+                        result.append(dc[i])
+                if len(result) >= k:
+                    break
+
+            return result
         except Exception as e:
             logger.error("Failed to get manual RAG context: %s", e)
             return []

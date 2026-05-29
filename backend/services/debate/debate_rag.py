@@ -178,7 +178,7 @@ def resolve_rag_context(
             unique_chunks.append(chunk)
 
     if document_ids:
-        rag_context = dms.format_rag_context(unique_chunks, max_chars=200_000)
+        rag_context = dms.format_rag_context(unique_chunks, max_chars=80_000)
     else:
         rag_context = dms.format_rag_context(unique_chunks)
     doc_count = len(document_ids) if document_ids else 0
@@ -203,17 +203,17 @@ def resolve_rag_context_with_debate_results(
     rag_auto_retrieve: bool = False,
     include_debate_results: bool = True,
     store: DebateStore | None = None,
+    project_store: ProjectStore | None = None,
     include_document_analysis: bool = False,
 ) -> tuple[str, int]:
     """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3)."""
-    # Lazy imports to avoid circular dependency with debate_workflow
     from backend.services.debate_workflow import _build_transcript_for_followup, _generate_rag_friendly_summary
     from backend.services.dms.service import get_dms_for_project
 
-    analysis_text = _load_analysis_text(project_id) if include_document_analysis else ""
+    analysis_text = _load_analysis_text(project_id, project_store) if include_document_analysis else ""
 
     try:
-        dms = get_dms_for_project(project_id)
+        dms = get_dms_for_project(project_id, project_store)
     except Exception:
         if analysis_text:
             return analysis_text, 0
@@ -230,8 +230,13 @@ def resolve_rag_context_with_debate_results(
             except Exception as exc:
                 logger.warning("Failed to get chunks for document %s: %s", doc_id, exc)
 
+        if not all_chunks and document_ids:
+            logger.warning(
+                "Document IDs %s returned zero chunks — documents may not be indexed",
+                document_ids,
+            )
+
     elif rag_auto_retrieve and case_text:
-        # Auto-retrieval only when no explicit documents are selected
         try:
             auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
             all_chunks.extend(auto_chunks)
@@ -241,18 +246,11 @@ def resolve_rag_context_with_debate_results(
     # Zusätzlich: Debattenergebnisse als Kontext einbeziehen
     if include_debate_results:
         try:
-            # Finde alle abgeschlossenen Debatten des Projekts
-            if store is None:
-                store = DebateStore()
-
-            # Suche im Projektverzeichnis
-            from backend.persistence.project_store import ProjectStore
-
-            ps = ProjectStore()
+            ps = project_store or ProjectStore()
             project_dir = ps.get_project_dir(project_id)
-            project_store = DebateStore(data_dir=project_dir / "debates")
+            debate_store = DebateStore(data_dir=project_dir / "debates")
 
-            debates = project_store.list_all(limit=50)
+            debates = debate_store.list_all(limit=50)
             debate_count = 0
             from backend.services.dms.chunker import TextChunker
 
@@ -260,20 +258,14 @@ def resolve_rag_context_with_debate_results(
 
             for d in debates:
                 if d.get("status") in ("completed",) and d.get("debate_id") != "":
-                    debate_json = d
-                    # Extrahiere Transcript-Text
-                    debate_json.get("request", {})
-                    transcript = _build_transcript_for_followup(debate_json)
-
-                    # Baue Zusammenfassung
+                    transcript = _build_transcript_for_followup(d)
                     summary = _generate_rag_friendly_summary(transcript)
-
                     raw_chunks = chunker.chunk(summary)
                     chunks = [{"text": t, "document_id": f"debate_result_{d.get('debate_id', '')[:8]}"} for t in raw_chunks]
-                    all_chunks.extend(chunks[:3])  # Max 3 Chunks pro Debatte
+                    all_chunks.extend(chunks[:3])
 
                     debate_count += 1
-                    if debate_count >= 5:  # Max. 5 vorherige Ergebnisse
+                    if debate_count >= 5:
                         break
         except Exception as exc:
             logger.warning("Failed to include debate results in RAG context: %s", exc)

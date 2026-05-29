@@ -4,6 +4,7 @@ Migrated from src/dms/hybrid_retriever.py.
 """
 
 import logging
+import time
 from typing import Any
 
 from rank_bm25 import BM25Okapi
@@ -13,6 +14,9 @@ from backend.services.dms.vector_store import DMSVectorStore
 
 logger = logging.getLogger(__name__)
 
+# BM25 corpus cache TTL in seconds
+_CORPUS_CACHE_TTL = 300  # 5 minutes
+
 
 class HybridRetriever:
     """Combines BM25 keyword search with vector similarity search using RRF."""
@@ -21,6 +25,9 @@ class HybridRetriever:
         self.vector_store = vector_store
         self.metadata_index = metadata_index
         self.rrf_k = 60  # Standard RRF constant
+
+        # BM25 corpus cache: (project_id, timestamp, chunks)
+        self._corpus_cache: tuple[str, float, list[dict]] | None = None
 
         self.cross_encoder = None
         try:
@@ -80,6 +87,20 @@ class HybridRetriever:
         return final_results[:k]
 
     def _fetch_chunks(self, project_id: str | None) -> list[dict[str, Any]]:
+        """Fetch chunks with TTL-based caching to avoid reloading per query."""
+        now = time.time()
+        if (
+            self._corpus_cache is not None
+            and self._corpus_cache[0] == project_id
+            and (now - self._corpus_cache[1]) < _CORPUS_CACHE_TTL
+        ):
+            return self._corpus_cache[2]
+
+        chunks = self._fetch_chunks_uncached(project_id)
+        self._corpus_cache = (project_id, now, chunks)
+        return chunks
+
+    def _fetch_chunks_uncached(self, project_id: str | None) -> list[dict[str, Any]]:
         if project_id and self.metadata_index:
             return self.metadata_index.get_chunks_by_project(project_id)
         try:
@@ -108,9 +129,9 @@ class HybridRetriever:
             return []
         try:
             corpus = [chunk["text"] for chunk in chunks]
-            tokenized_corpus = [text.split() for text in corpus]
+            tokenized_corpus = [self._tokenize(text) for text in corpus]
             bm25 = BM25Okapi(tokenized_corpus)
-            tokenized_query = query.split()
+            tokenized_query = self._tokenize(query)
             scores = bm25.get_scores(tokenized_query)
             top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
             results = []
@@ -128,6 +149,11 @@ class HybridRetriever:
         except Exception as e:
             logger.error("BM25 retrieval failed: %s", e)
             return []
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        """Tokenize text for BM25: lowercase, split, filter short tokens."""
+        return [t.lower() for t in text.split() if len(t) > 1]
 
     def _rrf_combine(self, bm25_results: list[dict], vector_results: list[dict]) -> dict[str, float]:
         rrf_scores: dict[str, float] = {}
