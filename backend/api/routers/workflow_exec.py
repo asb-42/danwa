@@ -87,6 +87,10 @@ class StartWorkflowRequest(BaseModel):
         default=False,
         description="Automatically retrieve relevant document chunks based on context",
     )
+    include_document_analysis: bool = Field(
+        default=False,
+        description="Include AI-generated document analysis in RAG context (may leak data from other cases in the same project)",
+    )
 
 
 class StartWorkflowResponse(BaseModel):
@@ -184,6 +188,10 @@ class StartMvpDebateRequest(BaseModel):
         default=False,
         description="Include results from previous completed debates as RAG context",
     )
+    include_document_analysis: bool = Field(
+        default=False,
+        description="Include AI-generated document analysis in RAG context (may contain data from other cases in the same project)",
+    )
     debate_result_ids: list[str] = Field(
         default_factory=list,
         description="Specific debate IDs to include when include_debate_results is true. If empty, auto-selects up to 5 recent completed debates.",
@@ -275,6 +283,7 @@ async def start_mvp_debate(
                 rag_auto_retrieve=body.rag_auto_retrieve,
                 include_debate_results=body.include_debate_results,
                 debate_result_ids=body.debate_result_ids or None,
+                include_document_analysis=body.include_document_analysis,
                 project_store=project_store,
             )
         except Exception:
@@ -488,6 +497,7 @@ async def start_workflow(
                 case_text=body.context,
                 document_ids=body.document_ids,
                 rag_auto_retrieve=body.rag_auto_retrieve,
+                include_document_analysis=body.include_document_analysis,
                 project_store=project_store,
             )
             if rag_context:

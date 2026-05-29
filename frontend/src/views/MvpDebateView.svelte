@@ -43,6 +43,7 @@
     selectedDocumentIds: [],
     ragAutoRetrieve: false,
     includeDebateResults: false,
+    includeDocumentAnalysis: false,
     selectedDebateIds: [],
     enableExtraRounds: false,
     llmAssignments: {},
@@ -562,6 +563,7 @@
         documentIds: config.selectedDocumentIds,
         ragAutoRetrieve: config.ragAutoRetrieve,
         includeDebateResults: config.includeDebateResults,
+        includeDocumentAnalysis: config.includeDocumentAnalysis,
         debateResultIds: config.selectedDebateIds,
         enableExtraRounds: config.enableExtraRounds,
       });
@@ -616,6 +618,7 @@
     config.selectedDocumentIds = [];
     config.ragAutoRetrieve = false;
     config.includeDebateResults = false;
+    config.includeDocumentAnalysis = false;
     config.selectedDebateIds = [];
     config.enableExtraRounds = false;
     const emptyDefaults = {};

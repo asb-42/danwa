@@ -11,7 +11,7 @@ import { request } from './api.js';
  * Start executing a workflow definition.
  * @param {string} workflowId - The workflow definition ID.
  * @param {string} context - The debate topic / context.
- * @param {{ language?: string, projectId?: string, maxRounds?: number, threshold?: number, documentIds?: string[], ragAutoRetrieve?: boolean, includeDebateResults?: boolean }} [options]
+ * @param {{ language?: string, projectId?: string, maxRounds?: number, threshold?: number, documentIds?: string[], ragAutoRetrieve?: boolean, includeDebateResults?: boolean, includeDocumentAnalysis?: boolean }} [options]
  * @returns {Promise<{ session_id: string, status: string }>}
  */
 export function startWorkflow(workflowId, context, options = {}) {
@@ -26,6 +26,7 @@ export function startWorkflow(workflowId, context, options = {}) {
       document_ids: options.documentIds || [],
       rag_auto_retrieve: options.ragAutoRetrieve || false,
       include_debate_results: options.includeDebateResults || false,
+      include_document_analysis: options.includeDocumentAnalysis ?? false,
     }),
   });
 }
@@ -98,6 +99,7 @@ export function startMvpDebate({
   documentIds = [],
   ragAutoRetrieve = false,
   includeDebateResults = false,
+  includeDocumentAnalysis = false,
   debateResultIds = [],
   enableExtraRounds = false,
 }) {
@@ -118,6 +120,7 @@ export function startMvpDebate({
       document_ids: documentIds,
       rag_auto_retrieve: ragAutoRetrieve,
       include_debate_results: includeDebateResults,
+      include_document_analysis: includeDocumentAnalysis,
       debate_result_ids: debateResultIds,
       enable_extra_rounds: enableExtraRounds,
     }),

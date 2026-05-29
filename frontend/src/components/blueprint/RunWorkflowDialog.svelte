@@ -32,6 +32,7 @@
   let selectedDocumentIds = $state([]);
   let ragAutoRetrieve = $state(false);
   let includeDebateResults = $state(false);
+  let includeDocumentAnalysis = $state(false);
   let error = $state('');
   let isStarting = $state(false);
 
@@ -60,6 +61,7 @@
         documentIds: selectedDocumentIds,
         ragAutoRetrieve,
         includeDebateResults,
+        includeDocumentAnalysis,
       });
     } catch (err) {
       error = err.message || 'Failed to start';
@@ -84,6 +86,7 @@
       selectedDocumentIds = [];
       ragAutoRetrieve = false;
       includeDebateResults = false;
+      includeDocumentAnalysis = false;
       error = '';
       isStarting = false;
       getDocuments()
@@ -193,6 +196,10 @@
               <label class="rag-option">
                 <input type="checkbox" bind:checked={includeDebateResults} class="rag-checkbox" />
                 <span class="text-xs">{t('documents.includeDebateResults')}</span>
+              </label>
+              <label class="rag-option">
+                <input type="checkbox" bind:checked={includeDocumentAnalysis} class="rag-checkbox" />
+                <span class="text-xs">{t('documents.includeDocumentAnalysis')}</span>
               </label>
             </div>
           </details>

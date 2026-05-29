@@ -80,7 +80,7 @@ def extract_request_fields(req: object | dict) -> dict:
     enable_fact_check, enable_memory, llm_profile_id, prompt_variant,
     agent_persona_ids, language, document_ids, rag_auto_retrieve,
     a2a_agents_raw, search_mode, agent_profile_list, bundle_ids,
-    enable_extra_rounds.
+    enable_extra_rounds, include_document_analysis.
 
     If language is None, resolves to the user's configured UI language
     (from config/settings.yaml), falling back to 'de' if not configured.
@@ -102,6 +102,7 @@ def extract_request_fields(req: object | dict) -> dict:
         document_ids = getattr(req, "document_ids", [])
         rag_auto_retrieve = getattr(req, "rag_auto_retrieve", False)
         include_debate_results = getattr(req, "include_debate_results", False)
+        include_document_analysis = getattr(req, "include_document_analysis", False)
         a2a_agents_raw = getattr(req, "a2a_agents", [])
         bundle_ids = getattr(req, "bundle_ids", [])
         raw_search_mode = getattr(req, "search_mode", None)
@@ -126,6 +127,7 @@ def extract_request_fields(req: object | dict) -> dict:
         document_ids = req.get("document_ids", [])
         rag_auto_retrieve = req.get("rag_auto_retrieve", False)
         include_debate_results = req.get("include_debate_results", False)
+        include_document_analysis = req.get("include_document_analysis", False)
         a2a_agents_raw = req.get("a2a_agents", [])
         bundle_ids = req.get("bundle_ids", [])
         raw_search_mode = req.get("search_mode")
@@ -159,6 +161,7 @@ def extract_request_fields(req: object | dict) -> dict:
         "document_ids": document_ids,
         "rag_auto_retrieve": rag_auto_retrieve,
         "include_debate_results": include_debate_results,
+        "include_document_analysis": include_document_analysis,
         "a2a_agents_raw": a2a_agents_raw,
         "search_mode": search_mode,
         "agent_profile_list": agent_profile_list,
@@ -309,6 +312,7 @@ async def run_debate_workflow(
         document_ids=fields["document_ids"],
         rag_auto_retrieve=fields["rag_auto_retrieve"],
         include_debate_results=fields.get("include_debate_results", False),
+        include_document_analysis=fields.get("include_document_analysis", False),
         project_store=project_store,
         store=store,
     )

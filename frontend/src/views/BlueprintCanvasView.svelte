@@ -442,6 +442,7 @@
         documentIds: params.documentIds || [],
         ragAutoRetrieve: params.ragAutoRetrieve ?? false,
         includeDebateResults: params.includeDebateResults ?? false,
+        includeDocumentAnalysis: params.includeDocumentAnalysis ?? false,
       });
 
       // Close run dialog, open execution panel with session ID
@@ -454,6 +455,7 @@
         documentIds: params.documentIds || [],
         ragAutoRetrieve: params.ragAutoRetrieve ?? false,
         includeDebateResults: params.includeDebateResults ?? false,
+        includeDocumentAnalysis: params.includeDocumentAnalysis ?? false,
       };
       executionSessionId = result.session_id;
       setActiveWorkflowSession({

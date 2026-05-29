@@ -166,6 +166,10 @@
           <input type="checkbox" bind:checked={config.includeDebateResults} class="dms-checkbox" />
           <span class="text-sm text-gray-700 dark:text-gray-300">{t('mvpDebate.form.includePreviousDebates')}</span>
         </label>
+        <label class="dms-option">
+          <input type="checkbox" bind:checked={config.includeDocumentAnalysis} class="dms-checkbox" />
+          <span class="text-sm text-gray-700 dark:text-gray-300">{t('documents.includeDocumentAnalysis')}</span>
+        </label>
         {#if config.includeDebateResults}
           <div class="dms-debate-list">
             {#if loadingCompletedDebates}

@@ -68,6 +68,7 @@ def resolve_rag_context(
     debate_result_ids: list[str] | None = None,
     project_store: ProjectStore | None = None,
     store: DebateStore | None = None,
+    include_document_analysis: bool = False,
 ) -> tuple[str, int]:
     """Resolve RAG context for a debate.
 
@@ -77,7 +78,7 @@ def resolve_rag_context(
     from backend.services.debate_workflow import _build_transcript_for_followup, _generate_rag_friendly_summary
     from backend.services.dms.service import get_dms_for_project
 
-    analysis_text = _load_analysis_text(project_id, project_store)
+    analysis_text = _load_analysis_text(project_id, project_store) if include_document_analysis else ""
 
     try:
         dms = get_dms_for_project(project_id, project_store)
@@ -187,13 +188,14 @@ def resolve_rag_context_with_debate_results(
     rag_auto_retrieve: bool = False,
     include_debate_results: bool = True,
     store: DebateStore | None = None,
+    include_document_analysis: bool = False,
 ) -> tuple[str, int]:
     """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3)."""
     # Lazy imports to avoid circular dependency with debate_workflow
     from backend.services.debate_workflow import _build_transcript_for_followup, _generate_rag_friendly_summary
     from backend.services.dms.service import get_dms_for_project
 
-    analysis_text = _load_analysis_text(project_id)
+    analysis_text = _load_analysis_text(project_id) if include_document_analysis else ""
 
     try:
         dms = get_dms_for_project(project_id)

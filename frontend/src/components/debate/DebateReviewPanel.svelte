@@ -153,6 +153,7 @@
           {/each}
           {#if config.ragAutoRetrieve}<span class="confirm-badge">{t('mvpDebate.confirm.autoRetrieve')}</span>{/if}
           {#if config.includeDebateResults}<span class="confirm-badge">{t('mvpDebate.confirm.includeDebateResults')}</span>{/if}
+          {#if config.includeDocumentAnalysis}<span class="confirm-badge">{t('mvpDebate.confirm.includeDocumentAnalysis')}</span>{/if}
         </div>
       </div>
     {/if}
