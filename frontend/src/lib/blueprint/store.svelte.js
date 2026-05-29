@@ -213,6 +213,8 @@ class BlueprintCanvasStore {
       'wf-gate': 'wf-gate',
       'wf-tone-profile': 'wf-tone-profile',
       'wf-agent': 'wf-agent',
+      'wf-builder': 'wf-builder',
+      'wf-pragmatist': 'wf-pragmatist',
       'wf-phase': 'wf-phase',
       'tone-profile': 'tone-profile',
     };

@@ -39,6 +39,8 @@ import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNod
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
 import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
 import AgentNode from '../../components/blueprint/nodes/AgentNode.svelte';
+import BuilderNode from '../../components/blueprint/nodes/BuilderNode.svelte';
+import PragmatistNode from '../../components/blueprint/nodes/PragmatistNode.svelte';
 
 // Semantic edge components (Phase 3)
 import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
@@ -53,6 +55,9 @@ import ConditionalEdge from '../../components/blueprint/edges/ConditionalEdge.sv
 import InterjectionEdge from '../../components/blueprint/edges/InterjectionEdge.svelte';
 import FeedbackEdge from '../../components/blueprint/edges/FeedbackEdge.svelte';
 import InjectsConfigEdge from '../../components/blueprint/edges/InjectsConfigEdge.svelte';
+import BuildsUponEdge from '../../components/blueprint/edges/BuildsUponEdge.svelte';
+import ValidatesEdge from '../../components/blueprint/edges/ValidatesEdge.svelte';
+import DecisionEdge from '../../components/blueprint/edges/DecisionEdge.svelte';
 
 // RoleType edge component
 import DefinesRoleEdge from '../../components/blueprint/edges/DefinesRoleEdge.svelte';
@@ -502,6 +507,36 @@ export function registerAllNodeTypes() {
     active: true,
   });
 
+  registerNode({
+    type: 'wf-builder',
+    component: BuilderNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🔨',
+    labelKey: 'blueprint.palette.wfBuilder',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Builder',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-pragmatist',
+    component: PragmatistNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '⚖️',
+    labelKey: 'blueprint.palette.wfPragmatist',
+    defaultData: () => ({
+      isDraft: true,
+      label: 'Pragmatist',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
   // ── Semantic edges (Phase 3) ───────────────────────────────────────
 
   registerEdge({
@@ -569,6 +604,24 @@ export function registerAllNodeTypes() {
   registerEdge({
     type: 'injects_config',
     component: InjectsConfigEdge,
+    category: 'control_flow',
+  });
+
+  registerEdge({
+    type: 'builds_upon',
+    component: BuildsUponEdge,
+    category: 'control_flow',
+  });
+
+  registerEdge({
+    type: 'validates',
+    component: ValidatesEdge,
+    category: 'control_flow',
+  });
+
+  registerEdge({
+    type: 'decision',
+    component: DecisionEdge,
     category: 'control_flow',
   });
 }

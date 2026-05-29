@@ -51,6 +51,9 @@ export const EDGE_STYLES = {
   interjection: { color: '#f43f5e', style: 'dotted', label: 'Interjection' },
   feedback: { color: '#10b981', style: 'dash-dot', label: 'Feedback' },
   injects_config: { color: '#f59e0b', style: 'dashed', label: 'Injects Config' },
+  builds_upon: { color: '#22c55e', style: 'dashed', label: 'Builds Upon' },
+  validates: { color: '#64748b', style: 'solid', label: 'Validates' },
+  decision: { color: '#f59e0b', style: 'dashed', label: 'Decision' },
 };
 
 /**
@@ -62,9 +65,9 @@ export const WORKFLOW_CONNECTION_RULES = {
   'wf-input': ['wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
   'wf-initialize': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
   'wf-strategist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
-  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-builder', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-optimizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
-  'wf-moderator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-gate', 'wf-tone-profile'],
+  'wf-moderator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-builder', 'wf-gate', 'wf-tone-profile'],
   'wf-user-injection': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
   'wf-gate': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate', 'wf-tone-profile'],
   'wf-tone-profile': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-initialize', 'wf-gate', 'wf-user-injection'],
@@ -79,6 +82,8 @@ export const WORKFLOW_CONNECTION_RULES = {
   'wf-ethicist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-synthesizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-phase': ['wf-phase', 'wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
+  'wf-builder': ['wf-pragmatist', 'wf-moderator', 'wf-critic', 'wf-gate', 'wf-tone-profile'],
+  'wf-pragmatist': ['wf-moderator', 'wf-builder', 'wf-critic', 'wf-gate', 'wf-tone-profile'],
 };
 
 /**
@@ -90,6 +95,7 @@ export const INJECTABLE_AGENT_TYPES = [
   'wf-analyst', 'wf-creative', 'wf-fact-checker',
   'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner',
   'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer',
+  'wf-builder', 'wf-pragmatist',
 ];
 
 /**
@@ -201,6 +207,18 @@ export function getWorkflowEdgeType(sourceType, targetType) {
   // User injection → any = interjection
   if (sourceType === 'wf-user-injection') {
     return 'interjection';
+  }
+  // Critic → Builder = builds_upon
+  if (sourceType === 'wf-critic' && targetType === 'wf-builder') {
+    return 'builds_upon';
+  }
+  // Builder → Pragmatist = validates
+  if (sourceType === 'wf-builder' && targetType === 'wf-pragmatist') {
+    return 'validates';
+  }
+  // Moderator → Builder = decision (revision loop)
+  if (sourceType === 'wf-moderator' && targetType === 'wf-builder') {
+    return 'decision';
   }
   return 'sequential';
 }
