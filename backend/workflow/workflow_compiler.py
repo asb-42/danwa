@@ -65,6 +65,7 @@ class ResolvedAgentConfig:
     mode: str = ""
     system_prompt: str = ""  # Assembled system prompt (from Bundle or legacy assembly)
     model_params: dict = field(default_factory=dict)  # LLM inference overrides (top_p, frequency_penalty, etc.)
+    node_config: dict = field(default_factory=dict)  # WorkflowNode.config fields (mode, template, etc.)
 
 
 @dataclass
@@ -150,6 +151,7 @@ class WorkflowCompiler:
                         "mode": config.mode,
                         "system_prompt": config.system_prompt,
                         "model_params": config.model_params,
+                        "node_config": config.node_config,
                     }
                     result.resolved_agents.append(config)
 
@@ -233,6 +235,7 @@ class WorkflowCompiler:
             default_consensus_threshold=default_consensus_threshold,
             argumentation_pattern=role_def.argumentation_pattern or "",
             mode=role_def.mode or "",
+            node_config=node.config or {},
         )
 
     def _resolve_bundle_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:

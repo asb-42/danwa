@@ -104,7 +104,14 @@ def agent_node_factory(
         current_draft = state.get("current_draft", "")
         language = state.get("language", "de")
 
-        user_prompt = f"Case: {context}"
+        # Use node config template as user prompt (with context substitution)
+        node_config = resolved_config.get("node_config", {})
+        task_template = node_config.get("template", "")
+        if task_template:
+            task_prompt = task_template.replace("{{context}}", context)
+            user_prompt = f"{task_prompt}\n\nCase: {context}"
+        else:
+            user_prompt = f"Case: {context}"
 
         # Inject RAG context (document content)
         rag_context = state.get("rag_context", "")

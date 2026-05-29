@@ -9,8 +9,7 @@
     { "key": "critic_blueprint_id", "type": "blueprint_ref", "description": "Critic that analyses the draft" },
     { "key": "builder_blueprint_id", "type": "blueprint_ref", "description": "Builder that addresses critique" },
     { "key": "pragmatist_blueprint_id", "type": "blueprint_ref", "description": "Pragmatist that evaluates feasibility" },
-    { "key": "moderator_blueprint_id", "type": "blueprint_ref", "description": "Moderator that makes the approval decision" },
-    { "key": "context", "type": "string", "description": "The topic or case to draft" }
+    { "key": "moderator_blueprint_id", "type": "blueprint_ref", "description": "Moderator that makes the approval decision" }
   ],
   "template_data": {
     "nodes": [
@@ -33,7 +32,7 @@
         "agent_blueprint_id": "{{strategist_blueprint_id}}",
         "config": {
           "mode": "zero_draft",
-          "template": "Erstelle einen strukturierten Entwurf für: {{context}}"
+          "template": "Erstelle einen strukturierten Entwurf zum folgenden Thema."
         },
         "position": { "x": 520, "y": 200 }
       },
