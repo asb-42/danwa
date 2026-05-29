@@ -98,7 +98,9 @@ def resolve_rag_context(
             except Exception as exc:
                 logger.warning("Failed to get chunks for document %s: %s", doc_id, exc)
 
-    if rag_auto_retrieve and case_text:
+    elif rag_auto_retrieve and case_text:
+        # Auto-retrieval only when no explicit documents are selected —
+        # avoids pulling chunks from unrelated documents in the same project.
         try:
             auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
             all_chunks.extend(auto_chunks)
@@ -215,7 +217,8 @@ def resolve_rag_context_with_debate_results(
             except Exception as exc:
                 logger.warning("Failed to get chunks for document %s: %s", doc_id, exc)
 
-    if rag_auto_retrieve and case_text:
+    elif rag_auto_retrieve and case_text:
+        # Auto-retrieval only when no explicit documents are selected
         try:
             auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
             all_chunks.extend(auto_chunks)

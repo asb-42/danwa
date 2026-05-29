@@ -33,6 +33,7 @@ class MetadataIndex:
             results = self.chroma_store.collection.get(
                 where={"document_id": document_id},
                 include=["metadatas", "documents", "ids"],
+                limit=10_000,
             )
             return self._process_chunks(results)
         except Exception as e:
