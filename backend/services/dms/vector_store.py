@@ -38,6 +38,7 @@ class DMSVectorStore:
                     "project_id": project_id,
                     "chunk_index": chunk_index,
                     "page": chunk.get("page", 0),
+                    "file_name": chunk.get("file_name", ""),
                 }
             )
         self.collection.add(ids=ids, documents=documents, metadatas=metadatas)

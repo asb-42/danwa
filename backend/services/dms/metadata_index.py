@@ -70,4 +70,5 @@ class MetadataIndex:
                     },
                 }
             )
+        chunks.sort(key=lambda c: (c["metadata"].get("chunk_index") is None, c["metadata"].get("chunk_index", 0)))
         return chunks
