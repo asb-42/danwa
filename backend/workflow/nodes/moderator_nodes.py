@@ -35,12 +35,29 @@ def moderator_node_factory(
     async def _moderator_node(state: WorkflowState) -> dict:
         result = await base_fn(state)
 
-        # Simple consensus heuristic: based on draft length stability
-        # In a real implementation, this would use LLM-based evaluation
-        current_draft = result.get("current_draft", state.get("current_draft", ""))
-        draft_length = len(current_draft)
-        num_outputs = len(state.get("node_outputs", [])) + len(result.get("node_outputs", []))
-        consensus = min(1.0, (num_outputs * 0.15) + (draft_length / 10000))
+        # Transactional Drafting: evaluate from pragmatist_output if present
+        pragmatist_output = state.get("pragmatist_output")
+        if pragmatist_output:
+            reality_score = pragmatist_output.get("reality_score", 0.0)
+            blocking_concerns = pragmatist_output.get("blocking_concerns", [])
+            approved = reality_score >= 0.6 and not blocking_concerns
+            consensus = reality_score
+            verdict = "approved" if approved else "revision_required"
+            result["consensus_result"] = {
+                "verdict": verdict,
+                "reality_score": reality_score,
+                "blocking_concerns": blocking_concerns,
+            }
+            # Increment draft_version on revision (loop detection)
+            current_dv = state.get("draft_version", 1)
+            if verdict == "revision_required":
+                result["draft_version"] = current_dv + 1
+        else:
+            # Standard debate: simple consensus heuristic based on draft length
+            current_draft = result.get("current_draft", state.get("current_draft", ""))
+            draft_length = len(current_draft)
+            num_outputs = len(state.get("node_outputs", [])) + len(result.get("node_outputs", []))
+            consensus = min(1.0, (num_outputs * 0.15) + (draft_length / 10000))
 
         current_round = state.get("current_round", 1)
         max_rounds = state.get("max_rounds", 10)

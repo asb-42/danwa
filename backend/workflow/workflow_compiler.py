@@ -23,16 +23,19 @@ from backend.blueprints.workflow_models import (
 )
 from backend.workflow.node_functions import (
     agent_node_factory,
+    builder_node_factory,
     complete_wf_node,
     gate_node_factory,
     initialize_wf_node,
     input_node,
     interjection_node,
     moderator_node_factory,
+    pragmatist_node_factory,
     tone_profile_node_factory,
 )
 from backend.workflow.workflow_routers import (
     route_conditional,
+    route_decision,
     route_feedback,
 )
 from backend.workflow.workflow_state import WorkflowState
@@ -278,7 +281,7 @@ class WorkflowCompiler:
         in_degree: dict[str, int] = {nid: 0 for nid in node_ids}
 
         for edge in workflow.edges:
-            if edge.type not in ("feedback", "injects_config"):
+            if edge.type not in ("feedback", "injects_config", "decision"):
                 adj[edge.source].append(edge.target)
                 in_degree[edge.target] = in_degree.get(edge.target, 0) + 1
 
@@ -429,6 +432,23 @@ class WorkflowCompiler:
                     # This is unusual but handle it
                     graph.add_edge(node.id, other_edges[0].target)
 
+            # Handle decision edges (transactional drafting approval gate)
+            elif any(e.type == "decision" for e in non_feedback):
+                targets: dict[str, object] = {}
+                for edge in non_feedback:
+                    if edge.type == "decision":
+                        cond = edge.condition or "approved"
+                        tgt: object = END if edge.target in ("__end__", "") else edge.target
+                        targets[cond] = tgt
+                approved_target = targets.get("approved", "__complete__")
+                revision_target = targets.get("revision_required", END)
+                mapping = {
+                    "approved": approved_target,
+                    "return_to_builder": revision_target,
+                    "construction_deadlock": END,
+                }
+                graph.add_conditional_edges(node.id, route_decision, mapping)
+
             # Handle single sequential edge
             elif len(non_feedback) == 1:
                 target = non_feedback[0].target
@@ -475,12 +495,14 @@ class WorkflowCompiler:
         elif node.type in AGENT_NODE_TYPES:
             config = resolved_configs.get(node.id, {})
             if node.type == "wf-moderator":
-                # Use RoleType default_consensus_threshold if available
                 threshold = config.get("default_consensus_threshold", 0.7)
                 return moderator_node_factory(node.id, config, threshold)
             elif node.type == "wf-agent":
-                # Generic agent node — uses system_prompt from resolved Bundle
                 return agent_node_factory(node.id, "wf-agent", config)
+            elif node.type == "wf-builder":
+                return builder_node_factory(node.id, config)
+            elif node.type == "wf-pragmatist":
+                return pragmatist_node_factory(node.id, config)
             else:
                 return agent_node_factory(node.id, node.type, config)
         elif node.type == "wf-gate":

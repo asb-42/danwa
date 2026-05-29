@@ -139,11 +139,22 @@ async def initialize_wf_node(state: WorkflowState) -> dict:
 
 
 async def complete_wf_node(state: WorkflowState) -> dict:
-    """Complete node — assembles final output and marks workflow as done."""
+    """Complete node — assembles final output and marks workflow as done.
+
+    For Transactional Drafting, includes constructivity_score, draft_version,
+    consensus_result, and pragmatist reality_score in the final output.
+    """
     session_id = state.get("session_id", "")
     node_id = state.get("current_node_id", "wf-complete")
 
     final_output = state.get("current_draft", "")
+
+    # --- Transactional Drafting metadata ---
+    consensus_result = state.get("consensus_result")
+    constructivity_score = state.get("constructivity_score", 0.0)
+    draft_version = state.get("draft_version", 1)
+    pragmatist_output = state.get("pragmatist_output")
+    reality_score = pragmatist_output.get("reality_score", 0.0) if pragmatist_output else 0.0
 
     output: WorkflowNodeOutput = {
         "node_id": node_id,
@@ -162,27 +173,47 @@ async def complete_wf_node(state: WorkflowState) -> dict:
             "session_id": session_id,
             "total_rounds": state.get("current_round", 1),
             "final_consensus": state.get("final_consensus", 0.0),
+            "constructivity_score": constructivity_score,
+            "reality_score": reality_score,
+            "draft_version": draft_version,
+            "consensus_verdict": consensus_result.get("verdict") if consensus_result else None,
         },
     )
 
     # --- Audit log ---
     try:
+        metadata = {
+            "consensus": state.get("final_consensus", 0.0),
+            "constructivity_score": constructivity_score,
+            "reality_score": reality_score,
+            "draft_version": draft_version,
+        }
+        if consensus_result:
+            metadata["consensus_verdict"] = consensus_result.get("verdict")
         get_audit_logger().log_workflow_event(
             session_id=session_id,
             workflow_id=state.get("workflow_id", ""),
             workflow_version=state.get("workflow_version", 1),
             event_type="workflow_completed",
             actor="system",
-            metadata={"consensus": state.get("final_consensus", 0.0)},
+            metadata=metadata,
         )
     except Exception:
         logger.debug("Audit logging failed for complete_wf_node", exc_info=True)
 
-    return {
+    # Only include transactional_drafting fields in output if they carry data
+    result: dict = {
         "output": final_output,
         "status": "completed",
         "node_outputs": [output],
     }
+    if consensus_result or constructivity_score > 0.0 or draft_version > 1:
+        result["constructivity_score"] = constructivity_score
+        result["draft_version"] = draft_version
+        result["reality_score"] = reality_score
+        if consensus_result:
+            result["consensus_result"] = consensus_result
+    return result
 
 
 async def interjection_node(state: WorkflowState) -> dict:

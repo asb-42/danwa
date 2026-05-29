@@ -111,3 +111,32 @@ def route_after_interjection(state: WorkflowState) -> str:
     simply returns ``"next"`` to continue the flow.
     """
     return "next"
+
+
+def route_decision(state: WorkflowState) -> str:
+    """Router for the Moderator's decision in Transactional Drafting.
+
+    Inspects ``state["consensus_result"]["verdict"]``:
+
+    - ``"approved"`` → return ``"approved"`` (→ END)
+    - ``"revision_required"`` → return ``"return_to_builder"`` (→ BuilderNode)
+
+    Loop detection: if ``draft_version >= 5``, returns ``"construction_deadlock"``
+    to terminate the workflow.
+    """
+    draft_version = state.get("draft_version", 1)
+    if draft_version >= 5:
+        logger.warning("Construction deadlock at draft_version=%d", draft_version)
+        return "construction_deadlock"
+
+    result = state.get("consensus_result", {})
+    verdict = result.get("verdict", "revision_required")
+    if verdict == "approved":
+        logger.info("Decision router: approved (draft_version=%d)", draft_version)
+        return "approved"
+    logger.info(
+        "Decision router: return_to_builder (draft_version=%d, concerns=%s)",
+        draft_version,
+        result.get("concerns", []),
+    )
+    return "return_to_builder"

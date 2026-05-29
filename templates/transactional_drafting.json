@@ -1,0 +1,93 @@
+{
+  "id": "tpl-transactional-drafting",
+  "name": "Transactional Drafting",
+  "description": "A structured drafting workflow with Critic, Builder, and Pragmatist roles. The Critic identifies flaws, the Builder proposes solutions, and the Pragmatist evaluates real-world feasibility. Supports iterative revision until approval or deadlock.",
+  "category": "system",
+  "tags": ["drafting", "transactional", "builder", "pragmatist", "critic"],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "wf-input",
+        "label": "Topic Input",
+        "position": { "x": 100, "y": 200 }
+      },
+      {
+        "id": "init",
+        "type": "wf-initialize",
+        "label": "Initialize Context",
+        "position": { "x": 300, "y": 200 }
+      },
+      {
+        "id": "strategist",
+        "type": "wf-strategist",
+        "label": "Strategist (Zero Draft)",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "config": {
+          "mode": "zero_draft",
+          "template": "Erstelle einen strukturierten Entwurf für: {{context}}"
+        },
+        "position": { "x": 520, "y": 200 }
+      },
+      {
+        "id": "critic",
+        "type": "wf-critic",
+        "label": "Critic (Structured)",
+        "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "config": {
+          "mode": "critic_structured",
+          "template": "Analysiere den Entwurf und identifiziere Schwachstellen. Gib deine Kritik als strukturiertes JSON-Array von CriticItem-Objekten aus."
+        },
+        "position": { "x": 520, "y": 400 }
+      },
+      {
+        "id": "builder",
+        "type": "wf-builder",
+        "label": "Builder",
+        "agent_blueprint_id": "{{builder_blueprint_id}}",
+        "config": {
+          "mode": "builder_constructor",
+          "template": "Behebe die identifizierten Schwachstellen mit strukturierten Lösungen."
+        },
+        "position": { "x": 740, "y": 200 }
+      },
+      {
+        "id": "pragmatist",
+        "type": "wf-pragmatist",
+        "label": "Pragmatist",
+        "agent_blueprint_id": "{{pragmatist_blueprint_id}}",
+        "config": {
+          "mode": "pragmatist_reality_filter",
+          "template": "Bewerte die vorgeschlagenen Lösungen auf Umsetzbarkeit, Risiko und Kosten."
+        },
+        "position": { "x": 960, "y": 200 }
+      },
+      {
+        "id": "moderator",
+        "type": "wf-moderator",
+        "label": "Moderator (Approval Gate)",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "config": {
+          "mode": "approval_gate",
+          "template": "Bewerte die Ergebnisse und treffe eine Entscheidung."
+        },
+        "position": { "x": 1180, "y": 200 }
+      }
+    ],
+    "edges": [
+      { "id": "e-input-init", "source": "input", "target": "init", "type": "sequential" },
+      { "id": "e-init-strategist", "source": "init", "target": "strategist", "type": "sequential" },
+      { "id": "e-strategist-critic", "source": "strategist", "target": "critic", "type": "sequential" },
+      { "id": "e-critic-builder", "source": "critic", "target": "builder", "type": "builds_upon", "label": "address critique" },
+      { "id": "e-builder-pragmatist", "source": "builder", "target": "pragmatist", "type": "validates", "label": "validate solutions" },
+      { "id": "e-pragmatist-moderator", "source": "pragmatist", "target": "moderator", "type": "sequential" },
+      { "id": "e-moderator-approved", "source": "moderator", "target": "__end__", "type": "decision", "condition": "approved" },
+      { "id": "e-moderator-revision", "source": "moderator", "target": "builder", "type": "decision", "condition": "revision_required" }
+    ],
+    "entry_point": "input",
+    "termination_conditions": [
+      { "type": "max_rounds", "value": 5 },
+      { "type": "consensus_threshold", "value": 0.6 }
+    ]
+  }
+}

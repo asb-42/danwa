@@ -312,6 +312,9 @@ _LAZY_IMPORT_MAP: dict[str, tuple[str, str]] = {
     "initialize_wf_node": ("backend.workflow.nodes.system_nodes", "initialize_wf_node"),
     "complete_wf_node": ("backend.workflow.nodes.system_nodes", "complete_wf_node"),
     "interjection_node": ("backend.workflow.nodes.system_nodes", "interjection_node"),
+    "builder_node_factory": ("backend.workflow.nodes.builder_nodes", "builder_node_factory"),
+    "pragmatist_node_factory": ("backend.workflow.nodes.pragmatist_nodes", "pragmatist_node_factory"),
+    "route_decision": ("backend.workflow.workflow_routers", "route_decision"),
 }
 
 

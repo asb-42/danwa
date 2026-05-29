@@ -46,6 +46,8 @@ WORKFLOW_NODE_TYPES: list[str] = [
     "wf-tone-profile",
     "wf-agent",  # Generic agent node referencing an AgentBundle
     "wf-phase",  # Phase container node for multi-phase debates
+    "wf-builder",
+    "wf-pragmatist",
 ]
 
 #: Node types that require an agent_blueprint_id or bundle_id reference.
@@ -66,6 +68,8 @@ AGENT_NODE_TYPES: list[str] = [
     "wf-ethicist",
     "wf-synthesizer",
     "wf-agent",
+    "wf-builder",
+    "wf-pragmatist",
 ]
 
 
@@ -105,6 +109,8 @@ class WorkflowNode(BaseModel):
         "wf-tone-profile",
         "wf-agent",
         "wf-phase",
+        "wf-builder",
+        "wf-pragmatist",
     ]
     label: str = ""
     agent_blueprint_id: str | None = None  # Required for legacy agent node types
@@ -149,6 +155,9 @@ WORKFLOW_EDGE_TYPES: list[str] = [
     "interjection",
     "feedback",
     "injects_config",
+    "builds_upon",
+    "validates",
+    "decision",
 ]
 
 #: Agent node types that can receive injects_config edges.
@@ -169,6 +178,8 @@ INJECTABLE_AGENT_NODE_TYPES: list[str] = [
     "wf-ethicist",
     "wf-synthesizer",
     "wf-agent",
+    "wf-builder",
+    "wf-pragmatist",
     # Note: wf-input, wf-gate, wf-phase, wf-user-injection, wf-tone-profile cannot receive injects_config
 ]
 
@@ -187,7 +198,7 @@ class WorkflowEdge(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
     source: str  # source node ID
     target: str  # target node ID
-    type: Literal["sequential", "conditional", "interjection", "feedback", "injects_config"] = "sequential"
+    type: Literal["sequential", "conditional", "interjection", "feedback", "injects_config", "builds_upon", "validates", "decision"] = "sequential"
     condition: str | None = None  # Required for conditional edges
     label: str = ""
 

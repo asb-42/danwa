@@ -2,6 +2,10 @@
 
 Parallel to ``DebateState`` but tailored for graph-based workflows with
 structured node types, conditional edges, feedback loops, and interjections.
+
+Also carries transactional-drafting-specific keys (zero_draft, critic_items,
+build_responses, pragmatist_output, etc.) — these are only used when the
+workflow template is ``transactional_drafting``.
 """
 
 from __future__ import annotations
@@ -70,3 +74,12 @@ class WorkflowState(TypedDict, total=False):
     # --- Control ---
     is_paused: bool
     pause_event: Any  # asyncio.Event for pause/resume
+
+    # --- Transactional Drafting ---
+    zero_draft: str | None  # Originaler Entwurf vom Strategist
+    critic_items: Annotated[list[dict], operator.add]  # list[CriticItem]
+    build_responses: Annotated[list[dict], operator.add]  # list[BuildResponse]
+    pragmatist_output: dict | None  # PragmatistOutput serialised
+    draft_version: int  # Inkrementiert bei jedem Return-to-Builder
+    constructivity_score: float
+    consensus_result: dict | None  # {"verdict": "approved"|"revision_required", ...}
