@@ -109,7 +109,7 @@ def builder_node_factory(
         if pragmatist_output:
             concerns = pragmatist_output.get("blocking_concerns", [])
             if concerns:
-                user_prompt += f"\n\nThe Pragmatist raised these concerns from the previous iteration:\n"
+                user_prompt += "\n\nThe Pragmatist raised these concerns from the previous iteration:\n"
                 user_prompt += "\n".join(f"- {c}" for c in concerns)
 
         user_prompt += f"\n\nThis is iteration {draft_version}. "
