@@ -99,21 +99,20 @@ def resolve_rag_context(
             except Exception as exc:
                 logger.warning("Failed to get chunks for document %s: %s", doc_id, exc)
 
-        # If explicit document selection returned no chunks, log diagnostic
         if not all_chunks:
             logger.warning(
                 "Explicit document_ids %s returned zero chunks — documents may not be indexed in ChromaDB yet",
                 document_ids,
             )
 
-    if not all_chunks and rag_auto_retrieve and case_text:
-        # Fallback: auto-retrieval across all project documents.
-        # Triggers when: (a) no explicit docs selected, or (b) explicit
-        # docs are selected but have no indexed chunks yet.
+    elif rag_auto_retrieve and case_text:
+        # Auto-retrieval only when no explicit documents are selected.
+        # Never blends with explicit document selection to prevent spillover
+        # from unrelated project documents.
         try:
             auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
             logger.info(
-                "Auto-retrieve fallback returned %d chunks for project %s",
+                "Auto-retrieve returned %d chunks for project %s",
                 len(auto_chunks),
                 project_id,
             )

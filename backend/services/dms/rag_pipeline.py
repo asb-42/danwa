@@ -51,7 +51,10 @@ class RAGPipeline:
             logger.warning("No chunks generated for document %s", doc_id)
             return []
 
-        chunk_dicts = [{"text": chunk_text, "chunk_index": idx, "page": 0} for idx, chunk_text in enumerate(chunks)]
+        chunk_dicts = [
+            {"text": chunk_text, "chunk_index": idx, "page": 0, "file_name": doc["filename"]}
+            for idx, chunk_text in enumerate(chunks)
+        ]
 
         try:
             self.vector_store.add_chunks(
