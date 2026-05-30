@@ -16,7 +16,7 @@ from backend.api.events import publish_async
 from backend.models.transactional import CriticItem
 from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
-from backend.workflow.node_functions import _get_profile_service, _resolve_system_prompt
+from backend.workflow.node_functions import _get_profile_service
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -147,10 +147,7 @@ def builder_node_factory(
                 ]
             }
 
-        # --- Build prompt ---
-        system_prompt = _resolve_system_prompt(resolved_config, state)
-
-        # Inject BuilderOutput JSON schema for structured output
+        # --- Build prompt (hardened against meta-discussion) ---
         from backend.models.transactional import BuilderOutput
 
         schema = BuilderOutput.model_json_schema()
@@ -161,7 +158,30 @@ def builder_node_factory(
         }
         if "$defs" in schema:
             dump["$defs"] = schema["$defs"]
-        system_prompt += "\n\n## Output Format\nRespond with a JSON object matching this schema:\n" + json.dumps(dump, indent=2, ensure_ascii=False)
+
+        system_prompt = (
+            "Du bist der Builder. Du erhältst:\n"
+            "Den ORIGINAL-ENTWURF (Zero-Draft) als vollständigen Text.\n"
+            "Eine Liste von CriticItems mit konkreten Mängeln.\n"
+            "\n"
+            "ABSOLUTE REGELN:\n"
+            "Du darfst NICHT über 'die Problematik' oder 'die Herausforderung' sprechen.\n"
+            "Du darfst NICHT sagen 'man sollte erwägen' oder 'es wäre denkbar'.\n"
+            "Du MUSST für jeden CriticItem einen konkreten, revidierten Text liefern, "
+            "der direkt in den Vertrag/Klage/Strategie eingesetzt werden kann.\n"
+            "Wenn es eine Klausel betrifft: Schreibe die neue Klausel in juristischem Deutsch.\n"
+            "Wenn es eine Prozessstrategie betrifft: Schreibe den konkreten nächsten Schritt "
+            "mit Termin und Zuständigkeit.\n"
+            "Wenn du keine Lösung hast: Schreibe 'KEINE REPARATUR MÖGLICH' und begründe "
+            "in einem Satz.\n"
+            "\n"
+            "FORMAT: Valides JSON. Kein Markdown außerhalb des JSON. "
+            "Keine Einleitung. Keine Schlussfolgerung.\n"
+            "\n"
+            "## Output Format\n"
+            "Respond with a JSON object matching this schema:\n"
+            + json.dumps(dump, indent=2, ensure_ascii=False)
+        )
 
         user_prompt = f"""Original draft:\n{zero_draft}\n\nCritique items:\n{json.dumps(critic_items, indent=2, default=str)}"""
 
@@ -296,12 +316,8 @@ def builder_node_factory(
                     duration_ms,
                     0,
                     tokens_used,
-                )
-                al.log_workflow_event(
-                    session_id,
-                    state.get("workflow_id", ""),
-                    "builder_iteration",
-                    {"draft_version": draft_version, "constructivity_score": constructivity},
+                    constructivity_score=constructivity,
+                    draft_version=draft_version,
                 )
         except Exception:
             logger.debug("Audit logging failed for builder %s", node_id, exc_info=True)

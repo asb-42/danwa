@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 30
+SCHEMA_VERSION = 31
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -1030,6 +1030,29 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 30, "Add progress_current and progress_total columns to render_jobs for real-time progress tracking")
             conn.commit()
             logger.info("Migration v30 applied successfully")
+
+        # ── V31 — structured audit columns for transactional drafting ──
+        if current < 31:
+            logger.info("Applying migration v31: structured audit columns for transactional drafting")
+            try:
+                conn.execute("ALTER TABLE audit_log ADD COLUMN critic_item_id TEXT")
+            except sqlite3.OperationalError as exc:
+                logger.debug("audit_log.critic_item_id already exists: %s", exc)
+            try:
+                conn.execute("ALTER TABLE audit_log ADD COLUMN build_response_id TEXT")
+            except sqlite3.OperationalError as exc:
+                logger.debug("audit_log.build_response_id already exists: %s", exc)
+            try:
+                conn.execute("ALTER TABLE audit_log ADD COLUMN draft_version INTEGER DEFAULT 0")
+            except sqlite3.OperationalError as exc:
+                logger.debug("audit_log.draft_version already exists: %s", exc)
+            try:
+                conn.execute("ALTER TABLE audit_log ADD COLUMN constructivity_score REAL")
+            except sqlite3.OperationalError as exc:
+                logger.debug("audit_log.constructivity_score already exists: %s", exc)
+            _record_version(conn, 31, "Add critic_item_id, build_response_id, draft_version, constructivity_score to audit_log")
+            conn.commit()
+            logger.info("Migration v31 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

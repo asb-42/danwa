@@ -334,6 +334,88 @@ def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
     return serialized
 
 
+def normalize_transcript_for_display(state: dict) -> list[dict]:
+    """Build transcript entries directly from transactional drafting state keys.
+
+    Reads ``zero_draft``, ``critic_items``, and ``build_responses`` from
+    the workflow state and returns a list of plain dicts compatible with
+    the ``Turn`` Pydantic model.  Designed for the ``transactional_drafting``
+    template where results live in top-level state keys rather than in
+    the standard ``node_outputs`` list.
+    """
+    import uuid as _uuid
+
+    transcript: list[dict] = []
+
+    # Zero-Draft (Strategist)
+    zd = state.get("zero_draft")
+    if zd:
+        content = zd if isinstance(zd, str) else str(zd)
+        if len(content) > 2000:
+            content = content[:2000] + "..."
+        transcript.append({
+            "id": str(_uuid.uuid4()),
+            "round": 0,
+            "node_id": "strategist",
+            "agent_name": "Strategist",
+            "role_type": "strategist",
+            "content": f"**Zero-Draft erstellt:**\n\n{content}",
+        })
+
+    # Critic Items
+    critic_items = state.get("critic_items", [])
+    if isinstance(critic_items, list):
+        for i, item in enumerate(critic_items):
+            data = item if isinstance(item, dict) else item.model_dump() if hasattr(item, "model_dump") else {}
+            sev = data.get("severity", "mittel")
+            flaw = data.get("flaw", data.get("issue", ""))
+            principle = data.get("principle", "")
+            target = data.get("target", "")
+            transcript.append({
+                "id": str(_uuid.uuid4()),
+                "round": 1,
+                "node_id": f"critic_{i}",
+                "agent_name": "Critic",
+                "role_type": "critic",
+                "content": (
+                    f"**Kritik {i+1}** ({sev}): {flaw}\n\n"
+                    f"*Prinzip:* {principle}\n"
+                    f"*Betrifft:* {target}"
+                ),
+            })
+
+    # Build Responses (Builder)
+    build_responses_raw = state.get("build_responses", [])
+    if isinstance(build_responses_raw, list):
+        for i, resp in enumerate(build_responses_raw):
+            data = resp if isinstance(resp, dict) else resp.model_dump() if hasattr(resp, "model_dump") else {}
+            rto = data.get("response_to", "?")
+            opt_a = data.get("option_a", "")
+            opt_b = data.get("option_b", "")
+            rec = data.get("recommendation", "?")
+            rationale = data.get("rationale", "")
+            parts = [
+                f"**Lösung für {rto}**",
+            ]
+            if opt_a:
+                parts.append(f"\n**A (Konservativ):** {opt_a}")
+            if opt_b:
+                parts.append(f"\n**B (Radikal):** {opt_b}")
+            parts.append(f"\n**Empfohlen:** {rec}")
+            if rationale:
+                parts.append(f"\n*Begründung:* {rationale}")
+            transcript.append({
+                "id": str(_uuid.uuid4()),
+                "round": 2,
+                "node_id": f"builder_{i}",
+                "agent_name": "Builder",
+                "role_type": "builder",
+                "content": "".join(parts),
+            })
+
+    return transcript
+
+
 def _normalize_transcript_content(content: str, role: str) -> str:
     """Convert structured JSON output (critic, builder, pragmatist) into
     readable Markdown for the frontend transcript view."""
@@ -443,7 +525,20 @@ def _build_artifact_from_state(
     metadata from the LangGraph state dict.  This is the bridge
     between the workflow execution layer and the Output Composer.
     """
-    from datetime import UTC, datetime
+
+    # Transactional Drafting: build transcript from state keys directly
+    if state.get("workflow_template") == "transactional_drafting":
+        entries = normalize_transcript_for_display(state)
+        turns = [Turn(**entry) for entry in entries]
+        # Skip the standard node_outputs loop below — turns already built
+        # Build remaining fields (interjections, metadata, etc.)
+        return _build_artifact_common(
+            session_id=session_id,
+            workflow_id=workflow_id,
+            state=state,
+            duration_ms=duration_ms,
+            turns=turns,
+        )
 
     # Build turns from node_outputs
     node_configs = state.get("node_configs", {})
@@ -487,6 +582,28 @@ def _build_artifact_from_state(
                 token_usage={"total": output.get("tokens_used", 0)},
             )
         )
+
+    return _build_artifact_common(
+        session_id=session_id,
+        workflow_id=workflow_id,
+        state=state,
+        duration_ms=duration_ms,
+        turns=turns,
+    )
+
+
+def _build_artifact_common(
+    *,
+    session_id: str,
+    workflow_id: str,
+    state: dict[str, Any],
+    duration_ms: int,
+    turns: list[Turn],
+) -> DebateArtifact:
+    """Build the shared fields of a DebateArtifact (interjections, metadata,
+    consensus) and return the completed artifact.  Used by both the standard
+    node_outputs path and the transactional-drafting fast path."""
+    from datetime import UTC, datetime
 
     # Build interjections from consumed_interjections
     interjections: list[Injection] = []

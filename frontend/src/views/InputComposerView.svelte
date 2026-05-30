@@ -25,7 +25,7 @@
   import A2AApprovalCard from '../components/input/A2AApprovalCard.svelte';
   import WorkflowTemplatePicker from '../components/input/WorkflowTemplatePicker.svelte';
   import DebateCreatePanel from '../components/debate/DebateCreatePanel.svelte';
-  import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
+  import DebateExecutionDisplay from '../components/blueprint/DebateExecutionDisplay.svelte';
 
   /** @type {function} Navigation helper from App.svelte */
   let { navigate = () => {} } = $props();
@@ -404,25 +404,15 @@
       </p>
     </div>
 
-    <!-- Execution results (inline below form) -->
+    <!-- Execution results (inline below form) in DebateView style -->
     {#if showExecutionPanel}
-      <div class="execution-results">
-        {#if currentDebateTitle}
-          <div class="debate-info-bar">
-            <span class="debate-title">{currentDebateTitle}</span>
-            {#if currentDebateId}
-              <span class="debate-id">ID: {currentDebateId}</span>
-            {/if}
-          </div>
-        {/if}
-        <ExecutionPanel
-          sessionId={executionSessionId}
-          context={topic}
-          visible={true}
-          inline={true}
-          onclose={() => { showExecutionPanel = false; executionSessionId = null; currentDebateTitle = ''; currentDebateId = null; }}
-        />
-      </div>
+      <DebateExecutionDisplay
+        sessionId={executionSessionId}
+        debateTitle={currentDebateTitle}
+        debateId={currentDebateId}
+        context={topic}
+        onclose={() => { showExecutionPanel = false; executionSessionId = null; currentDebateTitle = ''; currentDebateId = null; }}
+      />
     {/if}
   {/if}
 </div>

@@ -96,6 +96,10 @@ class AuditLogger:
         latency_ms: int = 0,
         prompt_tokens: int = 0,
         completion_tokens: int = 0,
+        critic_item_id: str = "",
+        build_response_id: str = "",
+        draft_version: int = 0,
+        constructivity_score: float | None = None,
     ) -> None:
         """Insert a single audit log row with full content."""
         now = datetime.now(UTC).isoformat()
@@ -107,8 +111,9 @@ class AuditLogger:
                      event_type, node_id, actor,
                      input_hash, output_hash,
                      input_content, output_content, trace_log_path,
-                     llm_profile_id, latency_ms, prompt_tokens, completion_tokens)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     llm_profile_id, latency_ms, prompt_tokens, completion_tokens,
+                     critic_item_id, build_response_id, draft_version, constructivity_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
@@ -127,6 +132,10 @@ class AuditLogger:
                     latency_ms,
                     prompt_tokens,
                     completion_tokens,
+                    critic_item_id,
+                    build_response_id,
+                    draft_version,
+                    constructivity_score,
                 ),
             )
 
@@ -149,6 +158,10 @@ class AuditLogger:
         prompt_tokens: int = 0,
         completion_tokens: int = 0,
         trace_log_path: str = "",
+        critic_item_id: str = "",
+        build_response_id: str = "",
+        draft_version: int = 0,
+        constructivity_score: float | None = None,
     ) -> None:
         """Record a node execution event with full input/output content."""
         self._insert(
@@ -167,6 +180,10 @@ class AuditLogger:
             latency_ms=latency_ms,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            critic_item_id=critic_item_id,
+            build_response_id=build_response_id,
+            draft_version=draft_version,
+            constructivity_score=constructivity_score,
         )
         logger.debug(
             "Audit: node_completed session=%s node=%s latency=%dms",
