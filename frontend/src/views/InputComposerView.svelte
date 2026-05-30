@@ -233,8 +233,11 @@
   }
 
   function handleCreated(response) {
-    if (response.session_id) {
-      // Workflow-exec path — navigate to execution view
+    if (response.debate_id) {
+      // Workflow with debate record — navigate to rich debate view
+      navigate('mvp-debate/' + response.debate_id);
+    } else if (response.session_id) {
+      // Workflow-exec path without debate — navigate to execution view
       setActiveWorkflowSession({
         sessionId: response.session_id,
         workflowId: response.workflow_id || '',

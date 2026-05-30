@@ -98,6 +98,7 @@ class StartWorkflowResponse(BaseModel):
 
     session_id: str
     status: str = "running"
+    debate_id: str | None = None
     workflow_id: str | None = None
     workflow_name: str | None = None
     context: str | None = None
@@ -557,6 +558,53 @@ async def start_workflow(
 
     set_session_status(session_id, "running")
 
+    # Create debate record so the workflow appears in Dashboard/Archive
+    debate_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+
+    title = body.context[:80]
+    try:
+        from backend.services.debate_workflow import generate_debate_title
+
+        generated = await generate_debate_title(
+            case_text=body.context,
+            llm_profile_id="",
+            language=body.language,
+            project_id=body.project_id,
+            use_service_llm=True,
+        )
+        if generated:
+            title = generated
+    except Exception:
+        logger.warning("Title generation failed for workflow, using fallback", exc_info=True)
+
+    try:
+        debate_store = get_debate_store_for_project(body.project_id, project_store)
+        debate_store.put(
+            debate_id,
+            {
+                "debate_id": debate_id,
+                "session_id": session_id,
+                "status": DebateStatus.RUNNING,
+                "title": title,
+                "request": {"case": {"text": body.context}, "max_rounds": body.max_rounds},
+                "max_rounds": body.max_rounds,
+                "current_round": 0,
+                "rounds": [],
+                "created_at": now,
+                "updated_at": now,
+                "result": None,
+                "is_mvp": True,
+                "workflow_id": workflow_id,
+                "workflow_name": workflow.name,
+            },
+        )
+        logger.info("Created debate record %s for workflow session %s", debate_id, session_id)
+    except Exception as e:
+        logger.warning("Failed to create debate record for workflow session %s: %s", session_id, e, exc_info=True)
+
+    initial_state["debate_id"] = debate_id
+
     # Launch as background task (dispatches to Celery if available, else BackgroundTasks)
     from backend.tasks.dispatch import dispatch_workflow_task
 
@@ -570,10 +618,11 @@ async def start_workflow(
         snapshot_store=snapshot_store,
     )
 
-    logger.info("Started workflow %s as session %s", workflow_id, session_id)
+    logger.info("Started workflow %s as session %s (debate %s)", workflow_id, session_id, debate_id)
     return StartWorkflowResponse(
         session_id=session_id,
         status="running",
+        debate_id=debate_id,
         workflow_id=workflow_id,
         workflow_name=workflow.name,
         context=body.context,
