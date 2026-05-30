@@ -131,11 +131,12 @@ def route_decision(max_rounds: int = 5) -> Any:
     def _router(state: WorkflowState) -> str:
         current_round = state.get("current_round", 1)
         draft_version = state.get("draft_version", 1)
+        effective_max = max_rounds or state.get("max_rounds", 5)
 
-        if current_round > max_rounds:
+        if current_round > effective_max:
             logger.warning(
                 "Decision router: round %d exceeds max %d, terminating",
-                current_round, max_rounds,
+                current_round, effective_max,
             )
             return "construction_deadlock"
 

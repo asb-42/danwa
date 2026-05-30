@@ -18,7 +18,7 @@ from backend.blueprints.repository import BlueprintRepository
 
 logger = logging.getLogger(__name__)
 
-LLM_PROFILE_ID = "opencodezen-minimax-m2.5-free-ry6l"
+LLM_PROFILE_ID = "xiaomi-mimo-v2.5-pro"
 
 
 def update_role_types(repo: BlueprintRepository) -> None:

@@ -19,6 +19,7 @@
   } from '../lib/input/inputApi.js';
   import { createInputJobTracker } from '../lib/input/inputJobStore.js';
   import { listWorkflowTemplates } from '../lib/blueprint/api.js';
+  import { setActiveWorkflowSession } from '../lib/workflowSession.js';
   import PluginSelector from '../components/input/PluginSelector.svelte';
   import STTMicrophoneButton from '../components/input/STTMicrophoneButton.svelte';
   import A2AApprovalCard from '../components/input/A2AApprovalCard.svelte';
@@ -232,12 +233,24 @@
   }
 
   function handleCreated(response) {
-    // Set the current debate and trigger auto-start on the debate page
-    currentDebate.set(response);
-    debates.set([...$debates, response]);
-    autoStartDebate.set(true);
-    // Navigate to the active debate page
-    navigate('debate');
+    if (response.session_id) {
+      // Workflow-exec path — navigate to execution view
+      setActiveWorkflowSession({
+        sessionId: response.session_id,
+        workflowId: response.workflow_id || '',
+        workflowName: response.workflow_name || 'Workflow',
+        context: response.context || '',
+        startedAt: new Date().toISOString(),
+        status: response.status || 'running',
+      });
+      navigate('execution/' + response.session_id);
+    } else {
+      // Legacy debate path — navigate to debate view
+      currentDebate.set(response);
+      debates.set([...$debates, response]);
+      autoStartDebate.set(true);
+      navigate('debate');
+    }
   }
 </script>
 

@@ -98,6 +98,9 @@ class StartWorkflowResponse(BaseModel):
 
     session_id: str
     status: str = "running"
+    workflow_id: str | None = None
+    workflow_name: str | None = None
+    context: str | None = None
 
 
 class SessionStateResponse(BaseModel):
@@ -568,7 +571,13 @@ async def start_workflow(
     )
 
     logger.info("Started workflow %s as session %s", workflow_id, session_id)
-    return StartWorkflowResponse(session_id=session_id, status="running")
+    return StartWorkflowResponse(
+        session_id=session_id,
+        status="running",
+        workflow_id=workflow_id,
+        workflow_name=workflow.name,
+        context=body.context,
+    )
 
 
 @router.get("/{session_id}/state", response_model=SessionStateResponse)
