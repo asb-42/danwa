@@ -82,8 +82,7 @@ export async function listInputJobs({ status, pluginKey, limit = 50, offset = 0 
  * @param {number} [options.max_rounds] - Max debate rounds.
  * @param {number} [options.consensus_threshold] - Consensus threshold.
  * @param {string} [options.language] - Language code.
- * @param {string} [options.project_id] - Project ID.
- * @returns {Promise<{ session_id: string, status: string, workflow_id: string }>}
+ * @returns {Promise<{ session_id: string, status: string, workflow_id: string, debate_id?: string }>}
  */
 export async function launchWorkflow(jobId, options = {}) {
   const res = await fetch(`${BASE}/input/launch`, {

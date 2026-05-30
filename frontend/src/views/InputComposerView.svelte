@@ -199,8 +199,12 @@
         options.workflow_template_id = selectedTemplateId;
       }
       const result = await launchWorkflow(jobId, options);
-      executionSessionId = result.session_id;
-      showExecutionPanel = true;
+      if (result.debate_id) {
+        navigate('mvp-debate/' + result.debate_id);
+      } else {
+        executionSessionId = result.session_id;
+        showExecutionPanel = true;
+      }
     } catch (e) {
       launchError = e.message || 'Failed to launch workflow';
       error = launchError;

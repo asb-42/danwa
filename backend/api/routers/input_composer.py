@@ -16,16 +16,20 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.mvp_debate_canvas import _ensure_blueprint
 from backend.blueprints.repository import BlueprintRepository
 from backend.models.input_job import InputJobStatus
+from backend.persistence.debate_store import DebateStatus
+from backend.persistence.project_store import ProjectStore
 from backend.services.input.input_engine import InputComposerService
 from backend.services.input.input_job_store import InputJobStore
 from backend.services.input.registry import InputPluginRegistry
@@ -33,7 +37,6 @@ from backend.services.stt_service import STTService
 from backend.workflow.state_snapshot import StateSnapshotStore
 from backend.workflow.workflow_runner import (
     get_pause_event,
-    run_workflow_background,
     set_session_status,
 )
 
@@ -392,7 +395,6 @@ class LaunchWorkflowRequest(BaseModel):
     max_rounds: int = Field(default=5, ge=1, le=50)
     consensus_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
     language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
-    project_id: str = Field(default="default", description="Project ID")
 
 
 class LaunchWorkflowResponse(BaseModel):
@@ -401,12 +403,15 @@ class LaunchWorkflowResponse(BaseModel):
     session_id: str
     status: str
     workflow_id: str
+    debate_id: str | None = None
 
 
 @router.post("/input/launch", response_model=LaunchWorkflowResponse)
 async def launch_workflow_from_input(
     body: LaunchWorkflowRequest,
     background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
+    project_store: ProjectStore = Depends(get_project_store),
 ) -> LaunchWorkflowResponse:
     """Launch a workflow execution from a completed input job.
 
@@ -568,7 +573,7 @@ async def launch_workflow_from_input(
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,
         "session_id": session_id,
-        "project_id": body.project_id,
+        "project_id": project_id,
         "context": topic,
         "language": body.language,
         "rag_context": "",
@@ -605,27 +610,78 @@ async def launch_workflow_from_input(
 
     set_session_status(session_id, "running")
 
-    # 5. Launch as background task
-    background_tasks.add_task(
-        run_workflow_background,
+    # 5. Create debate record so the workflow appears in Dashboard/Archive
+    debate_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+
+    title = topic[:80] if topic else f"Input Job {body.job_id}"
+    try:
+        from backend.services.debate_workflow import generate_debate_title
+
+        generated = await generate_debate_title(
+            case_text=topic,
+            llm_profile_id="",
+            language=body.language or "de",
+            project_id=project_id,
+            use_service_llm=True,
+        )
+        if generated:
+            title = generated
+    except Exception:
+        logger.warning("Title generation failed for input-composer workflow, using fallback", exc_info=True)
+
+    try:
+        debate_store = get_debate_store_for_project(project_id, project_store)
+        debate_store.put(
+            debate_id,
+            {
+                "debate_id": debate_id,
+                "session_id": session_id,
+                "status": DebateStatus.RUNNING,
+                "title": title,
+                "request": {"case": {"text": topic}, "max_rounds": body.max_rounds},
+                "max_rounds": body.max_rounds,
+                "current_round": 0,
+                "rounds": [],
+                "created_at": now,
+                "updated_at": now,
+                "result": None,
+                "is_mvp": True,
+                "workflow_id": workflow_id,
+                "workflow_name": workflow.name,
+            },
+        )
+        logger.info("Created debate record %s for input-composer session %s", debate_id, session_id)
+    except Exception as e:
+        logger.warning("Failed to create debate record for input-composer session %s: %s", session_id, e, exc_info=True)
+
+    initial_state["debate_id"] = debate_id
+
+    # 6. Launch as background task
+    from backend.tasks.dispatch import dispatch_workflow_task
+
+    dispatch_workflow_task(
+        background_tasks,
         session_id=session_id,
         workflow_id=workflow_id,
-        project_id=body.project_id,
+        project_id=project_id,
         initial_state=initial_state,
         compiled_workflow=compiled,
         snapshot_store=snapshot_store,
     )
 
     logger.info(
-        "Launched workflow '%s' from InputJob '%s' (plugin=%s) as session '%s'",
+        "Launched workflow '%s' from InputJob '%s' (plugin=%s) as session '%s' (debate %s)",
         workflow_id,
         body.job_id,
         job.plugin_key,
         session_id,
+        debate_id,
     )
 
     return LaunchWorkflowResponse(
         session_id=session_id,
         status="running",
         workflow_id=workflow_id,
+        debate_id=debate_id,
     )
