@@ -19,9 +19,17 @@
 export function normalizeTranscriptContent(content, role) {
   if (!content || typeof content !== 'string') return content || '';
 
+  // Strip markdown code fences (```json ... ``` or ``` ... ```) that LLMs
+  // often wrap around JSON responses
+  let cleaned = content.trim();
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
+  }
+
   let parsed;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(cleaned);
   } catch {
     // Not JSON — return as-is
     return content;
@@ -30,13 +38,15 @@ export function normalizeTranscriptContent(content, role) {
   if (parsed === null || parsed === undefined) return content;
   if (typeof parsed === 'string') return parsed;
 
+  const r = role ? role.toLowerCase() : '';
+
   // Strategist: zero_draft key
-  if (role === 'strategist' && parsed.zero_draft) {
+  if (r === 'strategist' && parsed.zero_draft) {
     return formatZeroDraft(parsed.zero_draft);
   }
 
   // Critic: array of critic items with flaw/severity/principle/target
-  if (role === 'critic' && Array.isArray(parsed)) {
+  if (r === 'critic' && Array.isArray(parsed)) {
     const items = parsed.filter(i => i.flaw || i.severity);
     if (items.length > 0) {
       return items.map((item, i) => formatCriticItem(item, i)).join('\n\n---\n\n');
@@ -44,12 +54,12 @@ export function normalizeTranscriptContent(content, role) {
   }
 
   // Critic: object with critic_items key
-  if (role === 'critic' && parsed.critic_items && Array.isArray(parsed.critic_items)) {
+  if (r === 'critic' && parsed.critic_items && Array.isArray(parsed.critic_items)) {
     return parsed.critic_items.map((item, i) => formatCriticItem(item, i)).join('\n\n---\n\n');
   }
 
   // Builder/Optimizer: array of build responses with response_to/option_a/option_b
-  if ((role === 'optimizer' || role === 'builder') && Array.isArray(parsed)) {
+  if ((r === 'optimizer' || r === 'builder') && Array.isArray(parsed)) {
     const items = parsed.filter(i => i.response_to || i.option_a);
     if (items.length > 0) {
       return items.map((item, i) => formatBuildResponse(item, i)).join('\n\n---\n\n');
@@ -57,7 +67,7 @@ export function normalizeTranscriptContent(content, role) {
   }
 
   // Builder/Optimizer: object with build_responses key
-  if ((role === 'optimizer' || role === 'builder') && parsed.build_responses && Array.isArray(parsed.build_responses)) {
+  if ((r === 'optimizer' || r === 'builder') && parsed.build_responses && Array.isArray(parsed.build_responses)) {
     return parsed.build_responses.map((item, i) => formatBuildResponse(item, i)).join('\n\n---\n\n');
   }
 
