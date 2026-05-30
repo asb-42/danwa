@@ -74,22 +74,108 @@ def agent_node_factory(
         # --- Build system prompt ---
         system_prompt = _resolve_system_prompt(resolved_config, state)
 
-        # --- Inject CriticItem JSON schema for wf-critic ---
-        if node_type == "wf-critic":
+        # --- Inject CriticItem JSON schema + decision matrix for wf-critic ---
+        # IMPORTANT: Decision matrix only applies to Transactional Drafting,
+        # not standard debate workflows (Akzeptanzkriterium).
+        if node_type == "wf-critic" and state.get("workflow_template") == "transactional_drafting":
             from backend.models.transactional import CriticItem
 
             schema = CriticItem.model_json_schema()
-            system_prompt += "\n\n## Output Format\nRespond with a JSON array. Every object must match this schema:\n" + _json.dumps(
-                {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": schema["properties"],
-                        "required": schema.get("required", []),
+            decision_matrix = (
+                "Du MUSST jeden Mangel nach dieser Tabelle klassifizieren. "
+                "Es gibt keine Option dazwischen.\n"
+                "\n"
+                "| Severity | Bedingung (mindestens eine muss zutreffen) | Beispiel |\n"
+                "| --- | --- | --- |\n"
+                "| **blocking** | Rechtswidrigkeit (Gesetz, Verordnung, "
+                "höchstrichterliche Entscheidung). Oder: Prozessverlust ist "
+                "wahrscheinlich. Oder: Vertrag ist nichtig oder anfechtbar. | "
+                "Kaution >3 Monate (§ 551 BGB). Haftung für höhere Gewalt. "
+                "Kündigungsfrist 1 Monat bei Gewerbemiete. |\n"
+                "| **critical** | Schwerer rechtlicher Mangel, aber Vertrag bleibt "
+                "wirksam. Oder: Wesentliche wirtschaftliche Risiken für Mandanten. "
+                "Oder: Beweislast ungünstig verteilt. | Schönheitsreparaturen ohne "
+                "Zeitbegrenzung. Unbegrenzte Indexmiete. |\n"
+                "| **warning** | Unschärfe, die im Streitfall unterschiedlich "
+                "ausgelegt werden könnte. Oder: Praktische Probleme, aber keine "
+                "Rechtsverletzung. | 'Gebrauchsspuren' nicht definiert. Kaution "
+                "in bar statt Überweisung. |\n"
+                "| **cosmetic** | Stil, Formatierung, Typos. Keine rechtliche "
+                "Relevanz. | Doppeltes Leerzeichen. 'Mietvertrag' statt "
+                "'Mietverhältnis'. |\n"
+                "\n"
+                "REGELN:\n"
+                "- Wenn ein Gesetzsparagraf verletzt wird: IMMER blocking.\n"
+                "- Wenn eine Klausel im Standard-Mietvertragsrecht "
+                "(BGH-Rechtsprechung) als unzulässig gilt: IMMER critical oder "
+                "blocking.\n"
+                "- warning und cosmetic sind für Fälle, die vor Gericht diskutiert "
+                "werden könnten, aber nicht zwingend verlieren.\n"
+                "- Du darfst NICHT alles als warning klassifizieren, um Konflikte "
+                "zu vermeiden. Das ist ein Fehler.\n"
+                "\n"
+                "BEISPIELE:\n"
+                "\n"
+                "Beispiel 1 (blocking — Gesetzesverstoss):\n"
+                "```json\n"
+                "{\n"
+                '  "critic_id": "c-001",\n'
+                '  "severity": "blocking",\n'
+                '  "target": "§3 Kaution",\n'
+                '  "flaw": "Kaution beträgt 5 Monatsmieten, § 551 Abs. 1 S. 1 '
+                "BGB begrenzt auf 3 Monatsmieten. Verstoss führt zur "
+                'Unwirksamkeit der Kautionsabrede.",\n'
+                '  "principle": "§ 551 Abs. 1 S. 1 BGB",\n'
+                '  "context_quote": "Die Kaution beträgt fünf Monatsmieten"\n'
+                "}\n"
+                "```\n"
+                "\n"
+                "Beispiel 2 (blocking — Haftung bei höherer Gewalt):\n"
+                "```json\n"
+                "{\n"
+                '  "critic_id": "c-002",\n'
+                '  "severity": "blocking",\n'
+                '  "target": "§5 Haftung",\n'
+                '  "flaw": "Mieter haftet für Schäden bei höherer Gewalt. '
+                "§ 278 BGB schliesst höhere Gewalt von der Schuldnerhaftung "
+                'aus. Klausel ist nichtig.",\n'
+                '  "principle": "§ 278 BGB, höhere Gewalt",\n'
+                '  "context_quote": "Mieter haftet für alle Schäden, auch bei '
+                'höherer Gewalt"\n'
+                "}\n"
+                "```\n"
+                "\n"
+                "Beispiel 3 (critical — wirtschaftliches Risiko):\n"
+                "```json\n"
+                "{\n"
+                '  "critic_id": "c-003",\n'
+                '  "severity": "critical",\n'
+                '  "target": "§4 Mieterhöhung",\n'
+                '  "flaw": "Indexmiete ohne Obergrenze. Zulässig nach § 557b '
+                "BGB, aber wirtschaftliches Existenzrisiko für Mieter bei "
+                'starker Inflation.",\n'
+                '  "principle": "§ 557b BGB, wirtschaftliche Zumutbarkeit",\n'
+                '  "context_quote": "Indexmiete nach VPI, aber keine '
+                'Obergrenze"\n'
+                "}\n"
+                "```\n"
+            )
+            system_prompt = system_prompt + "\n\n" + decision_matrix + "\n\n"
+            system_prompt += (
+                "## Output Format\n"
+                "Respond with a JSON array. Every object must match this schema:\n"
+                + _json.dumps(
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": schema["properties"],
+                            "required": schema.get("required", []),
+                        },
                     },
-                },
-                indent=2,
-                ensure_ascii=False,
+                    indent=2,
+                    ensure_ascii=False,
+                )
             )
 
         # --- Inject tone profile if configured ---
