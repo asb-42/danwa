@@ -36,6 +36,7 @@ def moderator_node_factory(
         result = await base_fn(state)
 
         # Transactional Drafting: evaluate from pragmatist_output if present
+        num_outputs = len(state.get("node_outputs", [])) + len(result.get("node_outputs", []))
         pragmatist_output = state.get("pragmatist_output")
         if pragmatist_output:
             reality_score = pragmatist_output.get("reality_score", 0.0)
@@ -56,7 +57,6 @@ def moderator_node_factory(
             # Standard debate: simple consensus heuristic based on draft length
             current_draft = result.get("current_draft", state.get("current_draft", ""))
             draft_length = len(current_draft)
-            num_outputs = len(state.get("node_outputs", [])) + len(result.get("node_outputs", []))
             consensus = min(1.0, (num_outputs * 0.15) + (draft_length / 10000))
 
         current_round = state.get("current_round", 1)
