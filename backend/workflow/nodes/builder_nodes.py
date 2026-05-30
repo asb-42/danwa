@@ -13,7 +13,7 @@ import time
 from collections.abc import Callable
 
 from backend.api.events import publish_async
-from backend.models.transactional import BuilderOutput, CriticItem
+from backend.models.transactional import CriticItem
 from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.node_functions import _get_profile_service, _resolve_system_prompt
@@ -35,6 +35,26 @@ def _extract_zero_draft(state: WorkflowState) -> str:
     return state.get("context", "")
 
 
+def _strip_markdown_json(text: str) -> str:
+    """Strip markdown code-block fences (`` ```json … ``` ``) from a string."""
+    s = text.strip()
+    import re
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", s)
+    if m:
+        return m.group(1).strip()
+    if s.startswith("```"):
+        s = s.removeprefix("```").removeprefix("json").removeprefix("JSON").strip()
+        if s.endswith("```"):
+            s = s.removesuffix("```").strip()
+    return s
+
+
+def _clean_llm_output(text: str) -> str:
+    """Strip control characters (except newlines/tabs) from LLM output."""
+    import re
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+
+
 def _extract_critic_items(state: WorkflowState) -> list[dict]:
     """Extract CriticItems from state, falling back to parsing from node_outputs.
 
@@ -51,11 +71,20 @@ def _extract_critic_items(state: WorkflowState) -> list[dict]:
             raw = no.get("content", "")
             if not raw:
                 continue
+            raw = _strip_markdown_json(raw)
             try:
                 parsed = json.loads(raw)
                 if isinstance(parsed, list):
                     return [CriticItem.model_validate(c).model_dump() for c in parsed]
-            except (json.JSONDecodeError, ValueError):
+            except Exception:
+                try:
+                    from json_repair import repair_json
+                    repaired = repair_json(raw)
+                    parsed = json.loads(repaired)
+                    if isinstance(parsed, list):
+                        return [CriticItem.model_validate(c).model_dump() for c in parsed]
+                except Exception:
+                    continue
                 continue
     return []
 
@@ -118,6 +147,22 @@ def builder_node_factory(
         # --- Build prompt ---
         system_prompt = _resolve_system_prompt(resolved_config, state)
 
+        # Inject BuilderOutput JSON schema for structured output
+        from backend.models.transactional import BuilderOutput
+        schema = BuilderOutput.model_json_schema()
+        dump = {
+            "type": "object",
+            "properties": schema["properties"],
+            "required": schema.get("required", []),
+        }
+        if "$defs" in schema:
+            dump["$defs"] = schema["$defs"]
+        system_prompt += (
+            "\n\n## Output Format\n"
+            "Respond with a JSON object matching this schema:\n"
+            + json.dumps(dump, indent=2, ensure_ascii=False)
+        )
+
         user_prompt = f"""Original draft:\n{zero_draft}\n\nCritique items:\n{json.dumps(critic_items, indent=2, default=str)}"""
 
         if pragmatist_output:
@@ -153,11 +198,32 @@ def builder_node_factory(
                 duration_ms = gen_result.duration_ms
 
                 try:
-                    parsed = json.loads(raw)
+                    # Strip control characters and markdown fences
+                    clean = _clean_llm_output(raw)
+                    clean = _strip_markdown_json(clean)
+                    parsed = json.loads(clean)
+                    # Handle both array and object formats
+                    if isinstance(parsed, list):
+                        parsed = {"build_responses": parsed, "constructivity_score": 0.0}
                     builder_output = BuilderOutput.model_validate(parsed)
                     content = raw
                     break
-                except (json.JSONDecodeError, ValueError) as e:
+                except Exception as e:
+                    # Try json-repair fallback
+                    try:
+                        from json_repair import repair_json
+                        clean = _clean_llm_output(raw)
+                        clean = _strip_markdown_json(clean)
+                        repaired = repair_json(clean)
+                        parsed = json.loads(repaired)
+                        if isinstance(parsed, list):
+                            parsed = {"build_responses": parsed, "constructivity_score": 0.0}
+                        builder_output = BuilderOutput.model_validate(parsed)
+                        content = raw
+                        logger.info("Builder %s: json-repair fixed JSON on attempt %d", node_id, attempt + 1)
+                        break
+                    except Exception:
+                        pass
                     logger.warning(
                         "Builder JSON parse attempt %d/%d failed: %s",
                         attempt + 1,

@@ -6,7 +6,9 @@ runtime and call the LLM via ``LLMService``.
 
 from __future__ import annotations
 
+import json as _json
 import logging
+import re
 import time
 from collections.abc import Callable
 
@@ -71,6 +73,23 @@ def agent_node_factory(
 
         # --- Build system prompt ---
         system_prompt = _resolve_system_prompt(resolved_config, state)
+
+        # --- Inject CriticItem JSON schema for wf-critic ---
+        if node_type == "wf-critic":
+            from backend.models.transactional import CriticItem
+            schema = CriticItem.model_json_schema()
+            system_prompt += (
+                "\n\n## Output Format\n"
+                "Respond with a JSON array. Every object must match this schema:\n"
+                + _json.dumps({
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": schema["properties"],
+                        "required": schema.get("required", []),
+                    },
+                }, indent=2, ensure_ascii=False)
+            )
 
         # --- Inject tone profile if configured ---
         tone_profile_name = None
@@ -327,10 +346,143 @@ def agent_node_factory(
         if len(new_draft) > 8000:
             new_draft = new_draft[-8000:]
 
-        return {
+        state_update: dict = {
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],
             "current_draft": new_draft,
         }
 
+        # --- Transactional Drafting: populate critic_items for wf-critic ---
+        if node_type == "wf-critic":
+            items = _parse_critic_output(content, node_id)
+            if items:
+                state_update["critic_items"] = items
+
+        return state_update
+
     return _agent_node
+
+
+_SEVERITY_MAP = {
+    "blocking": "blocking", "critical": "critical", "warning": "warning", "cosmetic": "cosmetic",
+    "hoch": "critical", "mittel": "warning", "niedrig": "cosmetic",
+    "high": "critical", "medium": "warning", "low": "cosmetic",
+    "kritisch": "critical", "schwer": "critical", "gering": "cosmetic",
+}
+
+
+def _normalize_severity(val: str | None) -> str:
+    if not val:
+        return "warning"
+    return _SEVERITY_MAP.get(val.lower().strip(), "warning")
+
+
+def _map_to_critic_item(item: dict, idx: int) -> dict:
+    severity = _normalize_severity(item.get("severity"))
+
+    raw_id = item.get("critic_id") or item.get("id") or item.get("criticId") or str(idx + 1)
+    if isinstance(raw_id, (int, float)):
+        critic_id = f"c-critic_1-{int(raw_id):03d}"
+    elif isinstance(raw_id, str) and re.match(r"^c-\w+-\d{3}$", raw_id):
+        critic_id = raw_id
+    else:
+        critic_id = f"c-critic_1-{idx + 1:03d}"
+
+    target = (
+        item.get("target")
+        or item.get("section")
+        or item.get("location")
+        or item.get("bereich")
+        or item.get("abschnitt")
+        or item.get("paragraph")
+        or ""
+    )
+    flaw = (
+        item.get("flaw")
+        or item.get("criticism")
+        or item.get("description")
+        or item.get("kritik")
+        or item.get("problem")
+        or item.get("mangel")
+        or ""
+    )
+    principle = (
+        item.get("principle")
+        or item.get("norm")
+        or item.get("rule")
+        or item.get("principle_violated")
+        or item.get("suggestion")
+        or item.get("empfehlung")
+        or item.get("category")
+        or ""
+    )
+    context_quote = (
+        item.get("context_quote")
+        or item.get("quote")
+        or item.get("zitat")
+        or item.get("context")
+        or item.get("evidence")
+        or None
+    )
+
+    mapped = {
+        "critic_id": critic_id,
+        "severity": severity,
+        "target": str(target)[:500] if target else "",
+        "flaw": str(flaw)[:500] if flaw else "",
+        "principle": str(principle)[:500] if principle else "",
+    }
+    if context_quote:
+        mapped["context_quote"] = str(context_quote)[:500]
+
+    return mapped
+
+
+def _parse_critic_output(content: str, node_id: str) -> list[dict] | None:
+    """Parse LLM output for wf-critic into a list of CriticItem dicts.
+    Handles markdown code fences, field aliases, and severity translation.
+    """
+    raw = content.strip()
+
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+    if m:
+        raw = m.group(1).strip()
+
+    try:
+        parsed = _json.loads(raw)
+    except Exception:
+        try:
+            from json_repair import repair_json
+            repaired = repair_json(raw)
+            parsed = _json.loads(repaired)
+            logger.info("_parse_critic_output[%s]: json-repair fixed %d chars → %d chars", node_id, len(raw), len(repaired))
+        except Exception:
+            logger.warning("_parse_critic_output[%s]: JSON decode failed on: %s…", node_id, raw[:200])
+            return None
+
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+
+    from backend.models.transactional import CriticItem
+
+    items: list[dict] = []
+    for idx, c in enumerate(parsed):
+        if not isinstance(c, dict):
+            continue
+        try:
+            items.append(CriticItem.model_validate(c).model_dump())
+            continue
+        except Exception:
+            pass
+        mapped = _map_to_critic_item(c, idx)
+        try:
+            items.append(CriticItem.model_validate(mapped).model_dump())
+        except Exception:
+            logger.warning("_parse_critic_output[%s]: skipping item %d: %s…", node_id, idx, str(c)[:120])
+
+    if not items:
+        logger.warning("_parse_critic_output[%s]: zero items extracted from content", node_id)
+        return None
+
+    logger.info("_parse_critic_output[%s]: extracted %d critic items", node_id, len(items))
+    return items

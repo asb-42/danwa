@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Callable
 
@@ -76,6 +77,22 @@ def pragmatist_node_factory(
             }
 
         system_prompt = _resolve_system_prompt(resolved_config, state)
+
+        # Inject PragmatistOutput JSON schema for structured output
+        schema = PragmatistOutput.model_json_schema()
+        dump = {
+            "type": "object",
+            "properties": schema["properties"],
+            "required": schema.get("required", []),
+        }
+        if "$defs" in schema:
+            dump["$defs"] = schema["$defs"]
+        system_prompt += (
+            "\n\n## Output Format\n"
+            "Respond with a JSON object matching this schema:\n"
+            + json.dumps(dump, indent=2, ensure_ascii=False)
+        )
+
         user_prompt = f"""Build responses to evaluate:\n{json.dumps(build_responses, indent=2, default=str)}"""
 
         language = state.get("language", "de")
@@ -103,11 +120,33 @@ def pragmatist_node_factory(
                 duration_ms = gen_result.duration_ms
 
                 try:
-                    parsed = json.loads(raw)
+                    clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+                    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", clean)
+                    if m:
+                        clean = m.group(1).strip()
+                    parsed = json.loads(clean)
+                    if isinstance(parsed, list):
+                        parsed = {"evaluations": parsed, "reality_score": 0.0, "blocking_concerns": []}
                     pragmatist_output = PragmatistOutput.model_validate(parsed)
                     content = raw
                     break
-                except (json.JSONDecodeError, ValueError) as e:
+                except Exception as e:
+                    try:
+                        from json_repair import repair_json
+                        clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+                        m = re.search(r"```(?:json)?\s*([\s\S]*?)```", clean)
+                        if m:
+                            clean = m.group(1).strip()
+                        repaired = repair_json(clean)
+                        parsed = json.loads(repaired)
+                        if isinstance(parsed, list):
+                            parsed = {"evaluations": parsed, "reality_score": 0.0, "blocking_concerns": []}
+                        pragmatist_output = PragmatistOutput.model_validate(parsed)
+                        content = raw
+                        logger.info("Pragmatist %s: json-repair fixed JSON on attempt %d", node_id, attempt + 1)
+                        break
+                    except Exception:
+                        pass
                     logger.warning(
                         "Pragmatist JSON parse attempt %d/%d failed: %s",
                         attempt + 1,

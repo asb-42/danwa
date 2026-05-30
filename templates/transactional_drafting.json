@@ -43,7 +43,7 @@
         "agent_blueprint_id": "{{critic_blueprint_id}}",
         "config": {
           "mode": "critic_structured",
-          "template": "Analysiere den Entwurf und identifiziere Schwachstellen. Gib deine Kritik als strukturiertes JSON-Array von CriticItem-Objekten aus."
+          "template": "Analysiere den Entwurf und identifiziere Schwachstellen. Gib deine Kritik als JSON-Array im CriticItem-Schema aus (siehe System Prompt für das genaue Schema). Jedes Objekt benötigt: critic_id (z.B. 'c-critic_1-001'), severity (blocking|critical|warning|cosmetic), target (Abschnittsadresse), flaw (Mangel), principle (verletzte Regel)."
         },
         "position": { "x": 520, "y": 400 }
       },
