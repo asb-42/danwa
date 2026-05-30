@@ -404,6 +404,7 @@ class LaunchWorkflowResponse(BaseModel):
     status: str
     workflow_id: str
     debate_id: str | None = None
+    title: str = ""
 
 
 @router.post("/input/launch", response_model=LaunchWorkflowResponse)
@@ -684,4 +685,5 @@ async def launch_workflow_from_input(
         status="running",
         workflow_id=workflow_id,
         debate_id=debate_id,
+        title=title,
     )

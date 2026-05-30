@@ -58,6 +58,8 @@
   // Workflow execution state (Input Composer → ExecutionPanel)
   let showExecutionPanel = $state(false);
   let executionSessionId = $state(null);
+  let currentDebateTitle = $state('');
+  let currentDebateId = $state(null);
   let launchError = $state(null);
 
   // Which mode is active: 'compose' (Input Composer) or 'form' (DebateCreatePanel)
@@ -200,6 +202,8 @@
       }
       const result = await launchWorkflow(jobId, options);
       executionSessionId = result.session_id;
+      currentDebateTitle = result.title || '';
+      currentDebateId = result.debate_id || null;
       showExecutionPanel = true;
     } catch (e) {
       launchError = e.message || 'Failed to launch workflow';
@@ -403,12 +407,20 @@
     <!-- Execution results (inline below form) -->
     {#if showExecutionPanel}
       <div class="execution-results">
+        {#if currentDebateTitle}
+          <div class="debate-info-bar">
+            <span class="debate-title">{currentDebateTitle}</span>
+            {#if currentDebateId}
+              <span class="debate-id">ID: {currentDebateId}</span>
+            {/if}
+          </div>
+        {/if}
         <ExecutionPanel
           sessionId={executionSessionId}
           context={topic}
           visible={true}
           inline={true}
-          onclose={() => { showExecutionPanel = false; executionSessionId = null; }}
+          onclose={() => { showExecutionPanel = false; executionSessionId = null; currentDebateTitle = ''; currentDebateId = null; }}
         />
       </div>
     {/if}

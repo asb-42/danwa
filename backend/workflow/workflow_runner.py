@@ -214,6 +214,7 @@ async def run_workflow_background(
                     debate["status"] = DebateStatus.COMPLETED
                     debate["current_round"] = final_state.get("current_round", 0)
                     debate["result"] = {
+                        "final_consensus": final_state.get("final_consensus", 0.0),
                         "consensus": final_state.get("final_consensus", 0.0),
                         "output": final_state.get("output", ""),
                     }
