@@ -2,6 +2,9 @@
  * Input Composer API client functions.
  */
 
+import { get } from 'svelte/store';
+import { activeProject } from '../stores.js';
+
 const BASE = '/api/v1';
 
 export async function listInputPlugins() {
@@ -85,9 +88,13 @@ export async function listInputJobs({ status, pluginKey, limit = 50, offset = 0 
  * @returns {Promise<{ session_id: string, status: string, workflow_id: string, debate_id?: string }>}
  */
 export async function launchWorkflow(jobId, options = {}) {
+  const projectId = get(activeProject)?.id;
   const res = await fetch(`${BASE}/input/launch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(projectId ? { 'X-Project-Id': projectId } : {}),
+    },
     body: JSON.stringify({ job_id: jobId, ...options }),
   });
   if (!res.ok) {
