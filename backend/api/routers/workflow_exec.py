@@ -76,7 +76,7 @@ class StartWorkflowRequest(BaseModel):
 
     context: str = Field(..., min_length=1, description="The debate topic / context")
     language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
-    project_id: str = Field(default="default", description="Project ID")
+    project_id: str = Field(default="_default", description="Project ID")
     max_rounds: int = Field(default=10, ge=1, description="Maximum rounds")
     threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Consensus threshold")
     document_ids: list[str] = Field(
@@ -457,13 +457,13 @@ async def start_workflow(
     workflow_id: str,
     body: StartWorkflowRequest,
     background_tasks: BackgroundTasks,
+    project_id: str = Depends(get_project_id),
     project_store: ProjectStore = Depends(get_project_store),
 ) -> StartWorkflowResponse:
     """Start executing a workflow definition.
 
-    Loads the WorkflowDefinition from the repository, compiles it into
-    a LangGraph StateGraph, builds the initial state, and launches
-    the execution as a background task.
+    Uses the project_id from the X-Project-Id header (not the body)
+    to ensure debate records are stored in the correct project.
     """
     repo = _get_repo()
     snapshot_store = _get_snapshot_store()
@@ -497,7 +497,7 @@ async def start_workflow(
             from backend.services.debate_workflow import resolve_rag_context
 
             rag_context, _ = resolve_rag_context(
-                project_id=body.project_id,
+                project_id=project_id,
                 case_text=body.context,
                 document_ids=body.document_ids,
                 rag_auto_retrieve=body.rag_auto_retrieve,
@@ -521,7 +521,7 @@ async def start_workflow(
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,
         "session_id": session_id,
-        "project_id": body.project_id,
+        "project_id": project_id,
         "context": body.context,
         "language": body.language,
         "rag_context": rag_context,
@@ -570,7 +570,7 @@ async def start_workflow(
             case_text=body.context,
             llm_profile_id="",
             language=body.language,
-            project_id=body.project_id,
+            project_id=project_id,
             use_service_llm=True,
         )
         if generated:
@@ -579,7 +579,7 @@ async def start_workflow(
         logger.warning("Title generation failed for workflow, using fallback", exc_info=True)
 
     try:
-        debate_store = get_debate_store_for_project(body.project_id, project_store)
+        debate_store = get_debate_store_for_project(project_id, project_store)
         debate_store.put(
             debate_id,
             {
@@ -612,7 +612,7 @@ async def start_workflow(
         background_tasks,
         session_id=session_id,
         workflow_id=workflow_id,
-        project_id=body.project_id,
+        project_id=project_id,
         initial_state=initial_state,
         compiled_workflow=compiled,
         snapshot_store=snapshot_store,

@@ -20,7 +20,7 @@ export function startWorkflow(workflowId, context, options = {}) {
     body: JSON.stringify({
       context,
       language: options.language || 'de',
-      project_id: options.projectId || 'default',
+      project_id: options.projectId || '_default',
       max_rounds: options.maxRounds || 10,
       threshold: options.threshold || 0.7,
       document_ids: options.documentIds || [],
