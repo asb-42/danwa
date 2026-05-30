@@ -19,6 +19,7 @@
   } from '../lib/input/inputApi.js';
   import { createInputJobTracker } from '../lib/input/inputJobStore.js';
   import { listWorkflowTemplates } from '../lib/blueprint/api.js';
+  import { getDocuments } from '../lib/api/document.js';
   import { setActiveWorkflowSession } from '../lib/workflowSession.js';
   import PluginSelector from '../components/input/PluginSelector.svelte';
   import STTMicrophoneButton from '../components/input/STTMicrophoneButton.svelte';
@@ -65,6 +66,15 @@
   // Which mode is active: 'compose' (Input Composer) or 'form' (DebateCreatePanel)
   let inputMode = $state('form');
 
+  // DMS / RAG state
+  let documents = $state([]);
+  let selectedDocumentIds = $state([]);
+  let ragAutoRetrieve = $state(false);
+  let includeDebateResults = $state(false);
+  let includeDocumentAnalysis = $state(false);
+  let completedDebates = $state([]);
+  let loadingCompletedDebates = $state(false);
+
   // A2A polling interval reference
   let a2aPollInterval = null;
 
@@ -83,7 +93,12 @@
       })
       .catch((e) => { console.warn('Failed to load workflow templates:', e.message); });
 
-    // Phase 3: Start polling for pending A2A jobs
+    // Phase 3: Load project documents for RAG
+    getDocuments()
+      .then((docs) => { documents = docs || []; })
+      .catch((e) => console.warn('Failed to load documents:', e.message));
+
+    // Phase 4: Start polling for pending A2A jobs
     startA2APolling();
 
     return () => {
@@ -196,7 +211,14 @@
     try {
       const options = {
         language: 'de',
+        document_ids: selectedDocumentIds,
+        rag_auto_retrieve: ragAutoRetrieve,
+        include_debate_results: includeDebateResults,
+        include_document_analysis: includeDocumentAnalysis,
       };
+      if (includeDebateResults) {
+        options.debate_result_ids = completedDebates.map(d => d.debate_id);
+      }
       if (selectedTemplateId) {
         options.workflow_template_id = selectedTemplateId;
       }
@@ -234,6 +256,42 @@
     } catch (e) {
       error = e.message;
     }
+  }
+
+  // --- DMS / RAG Helpers ---
+
+  function toggleDocumentSelection(docId) {
+    const idx = selectedDocumentIds.indexOf(docId);
+    if (idx >= 0) {
+      selectedDocumentIds = selectedDocumentIds.filter(id => id !== docId);
+    } else {
+      selectedDocumentIds = [...selectedDocumentIds, docId];
+    }
+  }
+
+  function toggleSelectAllDocs() {
+    if (selectedDocumentIds.length === documents.length) {
+      selectedDocumentIds = [];
+    } else {
+      selectedDocumentIds = documents.map(d => d.id);
+    }
+  }
+
+  function loadCompletedDebates() {
+    if (loadingCompletedDebates) return;
+    loadingCompletedDebates = true;
+    (async () => {
+      try {
+        const { getDebates } = await import('../lib/api.js');
+        const res = await getDebates(100, { status: 'completed' });
+        completedDebates = res || [];
+      } catch (e) {
+        console.warn('Failed to load completed debates:', e);
+        completedDebates = [];
+      } finally {
+        loadingCompletedDebates = false;
+      }
+    })();
   }
 
   function handleCreated(response) {
@@ -327,6 +385,60 @@
       <div class="mb-4">
         <WorkflowTemplatePicker templates={workflowTemplates} selectedId={selectedTemplateId} onchange={onTemplateChange} />
       </div>
+
+      <!-- DMS Document Selection -->
+      {#if documents.length > 0}
+        <div class="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-gray-800 dark:text-white">Documents</span>
+            <div class="flex items-center gap-2">
+              <button
+                class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                onclick={toggleSelectAllDocs}
+              >{selectedDocumentIds.length === documents.length ? 'Deselect all' : 'Select all'}</button>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{selectedDocumentIds.length} selected</span>
+            </div>
+          </div>
+          <div class="max-h-32 overflow-y-auto space-y-1 mb-2">
+            {#each documents as doc (doc.id)}
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedDocumentIds.includes(doc.id)}
+                  onchange={() => toggleDocumentSelection(doc.id)}
+                  class="rounded border-gray-300 dark:border-gray-600"
+                />
+                <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{doc.filename}</span>
+              </label>
+            {/each}
+          </div>
+          <div class="space-y-1">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" bind:checked={ragAutoRetrieve} class="rounded border-gray-300 dark:border-gray-600" />
+              <span class="text-sm text-gray-700 dark:text-gray-300">Auto-retrieve relevant chunks</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" bind:checked={includeDebateResults} class="rounded border-gray-300 dark:border-gray-600" />
+              <span class="text-sm text-gray-700 dark:text-gray-300">Include previous debates</span>
+            </label>
+            {#if includeDebateResults}
+              <div class="ml-6 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {#if loadingCompletedDebates}
+                  Loading debates…
+                {:else if completedDebates.length === 0}
+                  <button class="text-blue-600 hover:underline" onclick={loadCompletedDebates}>Load completed debates</button>
+                {:else}
+                  {completedDebates.length} debate(s) selected
+                {/if}
+              </div>
+            {/if}
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" bind:checked={includeDocumentAnalysis} class="rounded border-gray-300 dark:border-gray-600" />
+              <span class="text-sm text-gray-700 dark:text-gray-300">Include document analysis</span>
+            </label>
+          </div>
+        </div>
+      {/if}
 
       <!-- Error -->
       {#if error}

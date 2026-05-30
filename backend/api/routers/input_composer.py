@@ -396,6 +396,28 @@ class LaunchWorkflowRequest(BaseModel):
     consensus_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
     language: str | None = Field(default=None, description="Language code (uses user preference if not set)")
 
+    # DMS / RAG fields
+    document_ids: list[str] = Field(
+        default_factory=list,
+        description="Document IDs to include as RAG context (explicit selection).",
+    )
+    rag_auto_retrieve: bool = Field(
+        default=False,
+        description="Automatically retrieve relevant chunks for the topic from project documents.",
+    )
+    include_debate_results: bool = Field(
+        default=False,
+        description="Include previous completed debate results in RAG context.",
+    )
+    debate_result_ids: list[str] | None = Field(
+        default=None,
+        description="Specific debate result IDs to include (if include_debate_results is True).",
+    )
+    include_document_analysis: bool = Field(
+        default=False,
+        description="Include LLM-generated document analysis in RAG context.",
+    )
+
 
 class LaunchWorkflowResponse(BaseModel):
     """Response after launching a workflow from input."""
@@ -568,7 +590,30 @@ async def launch_workflow_from_input(
             },
         )
 
-    # 4. Generate session ID and build initial state
+    # 4. Resolve RAG context from DMS
+    rag_context = ""
+    if project_id:
+        try:
+            from backend.services.debate_workflow import resolve_rag_context
+
+            rag_context, _ = resolve_rag_context(
+                project_id=project_id,
+                case_text=topic,
+                document_ids=body.document_ids or None,
+                rag_auto_retrieve=body.rag_auto_retrieve,
+                include_debate_results=body.include_debate_results,
+                debate_result_ids=body.debate_result_ids or None,
+                include_document_analysis=body.include_document_analysis,
+                project_store=project_store,
+            )
+        except Exception:
+            logger.warning("Failed to resolve RAG context for input-composer workflow", exc_info=True)
+    logger.info(
+        "RAG context resolved for input-composer workflow: %d chars",
+        len(rag_context),
+    )
+
+    # 5. Generate session ID and build initial state
     session_id = f"wf-{uuid.uuid4().hex[:12]}"
 
     initial_state: dict[str, Any] = {
@@ -577,7 +622,7 @@ async def launch_workflow_from_input(
         "project_id": project_id,
         "context": topic,
         "language": body.language,
-        "rag_context": "",
+        "rag_context": rag_context,
         "node_sequence": compiled.node_sequence,
         "node_configs": {
             agent.node_id: {
@@ -611,7 +656,7 @@ async def launch_workflow_from_input(
 
     set_session_status(session_id, "running")
 
-    # 5. Create debate record so the workflow appears in Dashboard/Archive
+    # 7. Create debate record so the workflow appears in Dashboard/Archive
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
@@ -658,7 +703,7 @@ async def launch_workflow_from_input(
 
     initial_state["debate_id"] = debate_id
 
-    # 6. Launch as background task
+    # 8. Launch as background task
     from backend.tasks.dispatch import dispatch_workflow_task
 
     dispatch_workflow_task(
