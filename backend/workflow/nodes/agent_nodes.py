@@ -353,11 +353,13 @@ def agent_node_factory(
             "current_draft": new_draft,
         }
 
-        # --- Transactional Drafting: populate critic_items for wf-critic ---
+        # --- Transactional Drafting: populate domain-specific state keys ---
         if node_type == "wf-critic":
             items = _parse_critic_output(content, node_id)
             if items:
                 state_update["critic_items"] = items
+        elif node_type == "wf-strategist":
+            state_update["zero_draft"] = content
 
         return state_update
 
