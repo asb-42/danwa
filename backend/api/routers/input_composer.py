@@ -467,6 +467,7 @@ async def launch_workflow_from_input(
                 role = p.key.replace("_blueprint_id", "")
                 try:
                     from backend.core.config import settings
+
                     default_llm = settings.service_llm_profile_id
                     if not default_llm or not repo.get_llm_profile(default_llm):
                         profiles = repo.list_llm_profiles(limit=1)
@@ -475,7 +476,9 @@ async def launch_workflow_from_input(
                     inst_req.placeholder_values[p.key] = bp.id
                     logger.info(
                         "Auto-resolved placeholder '%s' → AgentBlueprint '%s' (LLM: %s)",
-                        p.key, bp.id, default_llm,
+                        p.key,
+                        bp.id,
+                        default_llm,
                     )
                 except Exception as exc:
                     logger.warning("Could not auto-resolve placeholder '%s': %s", p.key, exc)

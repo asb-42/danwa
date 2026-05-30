@@ -136,7 +136,8 @@ def route_decision(max_rounds: int = 5) -> Any:
         if current_round > effective_max:
             logger.warning(
                 "Decision router: round %d exceeds max %d, terminating",
-                current_round, effective_max,
+                current_round,
+                effective_max,
             )
             return "construction_deadlock"
 

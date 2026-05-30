@@ -89,11 +89,7 @@ class HybridRetriever:
     def _fetch_chunks(self, project_id: str | None) -> list[dict[str, Any]]:
         """Fetch chunks with TTL-based caching to avoid reloading per query."""
         now = time.time()
-        if (
-            self._corpus_cache is not None
-            and self._corpus_cache[0] == project_id
-            and (now - self._corpus_cache[1]) < _CORPUS_CACHE_TTL
-        ):
+        if self._corpus_cache is not None and self._corpus_cache[0] == project_id and (now - self._corpus_cache[1]) < _CORPUS_CACHE_TTL:
             return self._corpus_cache[2]
 
         chunks = self._fetch_chunks_uncached(project_id)

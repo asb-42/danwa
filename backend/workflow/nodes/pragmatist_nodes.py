@@ -87,11 +87,7 @@ def pragmatist_node_factory(
         }
         if "$defs" in schema:
             dump["$defs"] = schema["$defs"]
-        system_prompt += (
-            "\n\n## Output Format\n"
-            "Respond with a JSON object matching this schema:\n"
-            + json.dumps(dump, indent=2, ensure_ascii=False)
-        )
+        system_prompt += "\n\n## Output Format\nRespond with a JSON object matching this schema:\n" + json.dumps(dump, indent=2, ensure_ascii=False)
 
         user_prompt = f"""Build responses to evaluate:\n{json.dumps(build_responses, indent=2, default=str)}"""
 
@@ -120,7 +116,7 @@ def pragmatist_node_factory(
                 duration_ms = gen_result.duration_ms
 
                 try:
-                    clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+                    clean = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", raw)
                     m = re.search(r"```(?:json)?\s*([\s\S]*?)```", clean)
                     if m:
                         clean = m.group(1).strip()
@@ -133,7 +129,8 @@ def pragmatist_node_factory(
                 except Exception as e:
                     try:
                         from json_repair import repair_json
-                        clean = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+
+                        clean = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", raw)
                         m = re.search(r"```(?:json)?\s*([\s\S]*?)```", clean)
                         if m:
                             clean = m.group(1).strip()

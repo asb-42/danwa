@@ -77,18 +77,19 @@ def agent_node_factory(
         # --- Inject CriticItem JSON schema for wf-critic ---
         if node_type == "wf-critic":
             from backend.models.transactional import CriticItem
+
             schema = CriticItem.model_json_schema()
-            system_prompt += (
-                "\n\n## Output Format\n"
-                "Respond with a JSON array. Every object must match this schema:\n"
-                + _json.dumps({
+            system_prompt += "\n\n## Output Format\nRespond with a JSON array. Every object must match this schema:\n" + _json.dumps(
+                {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": schema["properties"],
                         "required": schema.get("required", []),
                     },
-                }, indent=2, ensure_ascii=False)
+                },
+                indent=2,
+                ensure_ascii=False,
             )
 
         # --- Inject tone profile if configured ---
@@ -364,10 +365,19 @@ def agent_node_factory(
 
 
 _SEVERITY_MAP = {
-    "blocking": "blocking", "critical": "critical", "warning": "warning", "cosmetic": "cosmetic",
-    "hoch": "critical", "mittel": "warning", "niedrig": "cosmetic",
-    "high": "critical", "medium": "warning", "low": "cosmetic",
-    "kritisch": "critical", "schwer": "critical", "gering": "cosmetic",
+    "blocking": "blocking",
+    "critical": "critical",
+    "warning": "warning",
+    "cosmetic": "cosmetic",
+    "hoch": "critical",
+    "mittel": "warning",
+    "niedrig": "cosmetic",
+    "high": "critical",
+    "medium": "warning",
+    "low": "cosmetic",
+    "kritisch": "critical",
+    "schwer": "critical",
+    "gering": "cosmetic",
 }
 
 
@@ -398,13 +408,7 @@ def _map_to_critic_item(item: dict, idx: int) -> dict:
         or ""
     )
     flaw = (
-        item.get("flaw")
-        or item.get("criticism")
-        or item.get("description")
-        or item.get("kritik")
-        or item.get("problem")
-        or item.get("mangel")
-        or ""
+        item.get("flaw") or item.get("criticism") or item.get("description") or item.get("kritik") or item.get("problem") or item.get("mangel") or ""
     )
     principle = (
         item.get("principle")
@@ -416,14 +420,7 @@ def _map_to_critic_item(item: dict, idx: int) -> dict:
         or item.get("category")
         or ""
     )
-    context_quote = (
-        item.get("context_quote")
-        or item.get("quote")
-        or item.get("zitat")
-        or item.get("context")
-        or item.get("evidence")
-        or None
-    )
+    context_quote = item.get("context_quote") or item.get("quote") or item.get("zitat") or item.get("context") or item.get("evidence") or None
 
     mapped = {
         "critic_id": critic_id,
@@ -453,6 +450,7 @@ def _parse_critic_output(content: str, node_id: str) -> list[dict] | None:
     except Exception:
         try:
             from json_repair import repair_json
+
             repaired = repair_json(raw)
             parsed = _json.loads(repaired)
             logger.info("_parse_critic_output[%s]: json-repair fixed %d chars → %d chars", node_id, len(raw), len(repaired))
