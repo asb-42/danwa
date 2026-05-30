@@ -334,6 +334,102 @@ def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
     return serialized
 
 
+def _normalize_transcript_content(content: str, role: str) -> str:
+    """Convert structured JSON output (critic, builder, pragmatist) into
+    readable Markdown for the frontend transcript view."""
+    import json as _json
+
+    if not content or not content.strip():
+        return content
+
+    raw = content.strip()
+    if raw.startswith("```json"):
+        raw = raw.removeprefix("```json").strip()
+    if raw.endswith("```"):
+        raw = raw.removesuffix("```").strip()
+    if raw.startswith("```"):
+        raw = raw.removeprefix("```").strip()
+
+    try:
+        parsed = _json.loads(raw)
+    except (_json.JSONDecodeError, ValueError):
+        return content
+
+    lines: list[str] = []
+
+    if role == "critic" and isinstance(parsed, list):
+        for item in parsed:
+            cid = item.get("critic_id", "?")
+            sev = item.get("severity", "?").upper()
+            target = item.get("target", "")
+            flaw = item.get("flaw", "")
+            principle = item.get("principle", "")
+            quote = item.get("context_quote")
+            lines.append(f"**{cid} [{sev}]**  ")
+            if target:
+                lines.append(f"**Target:** {target}  ")
+            if flaw:
+                lines.append(f"**Flaw:** {flaw}  ")
+            if principle:
+                lines.append(f"**Principle:** {principle}  ")
+            if quote:
+                lines.append(f"> {quote}")
+            lines.append("")
+        return "\n".join(lines)
+
+    if role == "builder" and isinstance(parsed, dict):
+        responses = parsed.get("build_responses", [])
+        for resp in responses:
+            rto = resp.get("response_to", "?")
+            opt_a = resp.get("option_a", "")
+            opt_b = resp.get("option_b", "")
+            opt_c = resp.get("option_c")
+            rec = resp.get("recommendation", "?")
+            risk = resp.get("risk_assessment", "?")
+            rationale = resp.get("rationale", "")
+            lines.append(f"**Response to {rto}**  ")
+            if opt_a:
+                lines.append(f"**Option A:** {opt_a}  ")
+            if opt_b:
+                lines.append(f"**Option B:** {opt_b}  ")
+            if opt_c:
+                lines.append(f"**Option C:** {opt_c}  ")
+            lines.append(f"**Recommendation:** {rec} / Risk: {risk}  ")
+            if rationale:
+                lines.append(f"_{rationale}_")
+            lines.append("")
+        if lines:
+            return "\n".join(lines)
+
+    if role == "pragmatist" and isinstance(parsed, dict):
+        evals = parsed.get("evaluations", [])
+        concerns = parsed.get("blocking_concerns", [])
+        rscore = parsed.get("reality_score")
+        for ev in evals:
+            rto = ev.get("response_to", "?")
+            feas = ev.get("feasibility", "?")
+            prisk = ev.get("process_risk", "?")
+            cost = ev.get("cost_time_estimate", "?")
+            verdict = ev.get("verdict", "?")
+            note = ev.get("revision_note")
+            lines.append(f"**Evaluation of {rto}**  ")
+            lines.append(f"Feasibility: {feas} / Risk: {prisk} / Cost: {cost}  ")
+            lines.append(f"**Verdict:** {verdict}  ")
+            if note:
+                lines.append(f"*{note}*")
+            lines.append("")
+        if rscore is not None:
+            lines.append(f"**Reality Score:** {rscore}  ")
+        if concerns:
+            lines.append("**Blocking Concerns:**")
+            for c in concerns:
+                lines.append(f"- {c}")
+        if lines:
+            return "\n".join(lines)
+
+    return content
+
+
 def _build_artifact_from_state(
     *,
     session_id: str,
@@ -378,6 +474,7 @@ def _build_artifact_from_state(
         elif llm_profile_id:
             agent_name = f"{agent_name} ({llm_profile_id})"
 
+        raw_content = output.get("content", "")
         turns.append(
             Turn(
                 node_id=node_id,
@@ -385,7 +482,7 @@ def _build_artifact_from_state(
                 agent_name=agent_name,
                 role_type=role,
                 llm_profile_id=llm_profile_id,
-                content=output.get("content", ""),
+                content=_normalize_transcript_content(raw_content, role),
                 latency_ms=output.get("duration_ms", 0),
                 token_usage={"total": output.get("tokens_used", 0)},
             )
