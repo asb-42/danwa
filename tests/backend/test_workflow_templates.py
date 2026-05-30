@@ -258,11 +258,11 @@ class TestSeedTemplates:
     def test_seed_creates_templates(self, repo):
         templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
         result = seed_system_templates(repo=repo, templates_dir=templates_dir)
-        assert result["created"] == 7
+        assert result["created"] == 8
         assert result["updated"] == 0
         assert result["skipped"] == 0
 
-        # Verify all seven exist
+        # Verify all eight exist
         for tid in (
             "tpl-standard-debate",
             "tpl-kantian-analysis",
@@ -271,6 +271,7 @@ class TestSeedTemplates:
             "tpl-interview",
             "tpl-mediation",
             "tpl-streitgespraech",
+            "tpl-transactional-drafting",
         ):
             tmpl = repo.get_workflow_template(tid)
             assert tmpl is not None
@@ -283,7 +284,7 @@ class TestSeedTemplates:
         result = seed_system_templates(repo=repo, templates_dir=templates_dir)
         assert result["created"] == 0
         assert result["updated"] == 0
-        assert result["skipped"] == 7
+        assert result["skipped"] == 8
 
     def test_seed_updates_on_change(self, repo, tmp_path):
         """Modify a template file and verify seed detects the change."""
