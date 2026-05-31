@@ -104,6 +104,24 @@ def moderator_node_factory(
         # Increment current_round so the feedback router can cap at max_rounds
         result["current_round"] = next_round
 
+        # --- Extract final assessment, usability score, remaining blockers ---
+        # Get moderator's own LLM output text from the base agent's result
+        mod_outputs = result.get("node_outputs", [])
+        final_assessment = ""
+        for o in mod_outputs:
+            c = o.get("content", "")
+            if c and not c.startswith("["):
+                final_assessment = c
+                break
+        result["final_assessment"] = final_assessment
+
+        if pragmatist_output:
+            result["usability_score"] = pragmatist_output.get("reality_score")
+            result["remaining_blockers"] = pragmatist_output.get("blocking_concerns", [])
+        else:
+            result["usability_score"] = round(consensus, 2)
+            result["remaining_blockers"] = []
+
         # --- Extension request (extra rounds) for MVP debates ---
         enable_extra = state.get("enable_extra_rounds", False)
         if enable_extra and current_round >= max_rounds and current_round <= max_rounds + 2:

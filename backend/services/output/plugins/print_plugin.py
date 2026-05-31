@@ -31,6 +31,7 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "
 class PrintTemplate(StrEnum):
     ACADEMIC_DEBATE = "academic_debate"
     MINIMAL = "minimal"
+    TRANSACTIONAL_DRAFTING = "transactional_drafting"
 
 
 class PrintFormat(StrEnum):
@@ -102,6 +103,12 @@ class PrintOutputPlugin(OutputPlugin):
         job_dir = output_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
 
+        # Auto-detect transactional drafting from artifact metadata
+        wf_template = (artifact.metadata or {}).get("workflow_template", "")
+        is_td = wf_template == "transactional_drafting"
+        if is_td and config.template_name == PrintTemplate.ACADEMIC_DEBATE:
+            config.template_name = PrintTemplate.TRANSACTIONAL_DRAFTING
+
         # 1. Transform artifact → PrintDocument
         engine = PrintLayoutEngine()
         doc = engine.transform(
@@ -111,12 +118,20 @@ class PrintOutputPlugin(OutputPlugin):
             include_toc=config.include_toc,
         )
 
-        # 2. Load i18n
+        # 2. Build sections for transactional drafting
+        sections = []
+        if config.template_name == PrintTemplate.TRANSACTIONAL_DRAFTING:
+            sections = engine.build_transactional_sections(artifact)
+
+        # 3. Load i18n
         i18n = self._load_i18n(config.language)
 
-        # 3. Render HTML via Jinja2 (needed for PDF, DOCX, ODT)
+        # 4. Render HTML via Jinja2 (needed for PDF, DOCX, ODT)
         template_name = f"{config.template_name.value}.html"
-        html = await asyncio.to_thread(self._render_html, template_name, doc.model_dump(), i18n, config)
+        html = await asyncio.to_thread(
+            self._render_html, template_name, doc.model_dump(), i18n, config,
+            artifact=artifact, sections=sections,
+        )
 
         # 4. Generate output files based on primary_format
         output_files: list[Path] = []
@@ -177,8 +192,14 @@ class PrintOutputPlugin(OutputPlugin):
         doc_data: dict,
         i18n: dict,
         config: PrintPluginConfig,
+        **extra: dict,
     ) -> str:
-        """Render Jinja2 template to HTML string."""
+        """Render Jinja2 template to HTML string.
+
+        Keyword arguments in *extra* (e.g. *artifact*, *sections*) are
+        forwarded to the template context for templates that need
+        direct access to the DebateArtifact.
+        """
 
         def _format_number(value):
             """Format a number with thousands separator."""
@@ -197,6 +218,7 @@ class PrintOutputPlugin(OutputPlugin):
             doc=doc_data,
             i18n=i18n,
             config=config.model_dump(),
+            **extra,
         )
 
     @staticmethod

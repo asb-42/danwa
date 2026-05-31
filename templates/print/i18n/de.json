@@ -20,5 +20,13 @@
   "llm_column": "LLM-Profil",
   "latency_column": "Latenz (ms)",
   "tokens_column": "Tokens",
-  "toc_label": "Inhaltsverzeichnis"
+  "toc_label": "Inhaltsverzeichnis",
+  "executive_summary_label": "Executive Summary",
+  "usability_label": "Verwendbarkeit",
+  "remaining_blockers_label": "Verbleibende Blocker",
+  "revised_clauses_label": "Revidierte Vertragsfassung",
+  "iteration_label": "Iteration",
+  "construction_protocol_label": "Konstruktionsprotokoll",
+  "action_label": "Aktion",
+  "no_clauses_label": "Keine Klauseln verfügbar."
 }

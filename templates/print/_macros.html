@@ -63,6 +63,17 @@
 </section>
 {%- endmacro %}
 
+{% macro render_executive_summary(section, i18n) -%}
+<section class="executive-summary"{% if section.id %} id="{{ section.id }}"{% endif %}>
+  <header>
+    <strong>{{ i18n.executive_summary_label }}</strong>
+  </header>
+  <div class="executive-summary-content">
+    {{ section.content | safe }}
+  </div>
+</section>
+{%- endmacro %}
+
 {% macro render_audit_appendix(section, i18n) -%}
 <section class="audit-appendix"{% if section.id %} id="{{ section.id }}"{% endif %}>
   <header>

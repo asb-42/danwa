@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="{{ config.get('language', 'de') }}">
+<head>
+<meta charset="utf-8">
+<title>{{ doc.metadata.topic }}</title>
+<style>
+@page {
+  size: A4;
+  margin: 2cm;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+h1 { font-size: 18pt; border-bottom: 2px solid #1a237e; padding-bottom: 0.3em; color: #1a237e; }
+h2 { font-size: 14pt; color: #283593; margin-top: 1.5em; border-bottom: 1px solid #c5cae9; padding-bottom: 0.2em; }
+h3 { font-size: 12pt; color: #333; margin-top: 1em; }
+
+/* Executive Summary */
+.exec-summary {
+  margin: 1em 0;
+  padding: 1em 1.5em;
+  border: 2px solid #1a237e;
+  border-radius: 4px;
+  background: #e8eaf6;
+  page-break-inside: avoid;
+}
+.exec-summary h2 { margin-top: 0; border: none; }
+.exec-score { font-size: 13pt; margin: 0.5em 0; }
+.exec-score .score-green { color: #2e7d32; font-weight: bold; }
+.exec-score .score-orange { color: #e65100; font-weight: bold; }
+.exec-score .score-red { color: #c62828; font-weight: bold; }
+.exec-assessment {
+  font-size: 11pt; font-style: italic; margin: 0.5em 0;
+  padding: 0.5em 0.8em; background: #fff;
+  border-left: 4px solid #1a237e; border-radius: 2px;
+}
+.exec-blockers {
+  margin: 0.5em 0; padding: 0.5em 0.8em;
+  background: #fff; border: 1px solid #ffcdd2; border-radius: 3px;
+}
+.exec-blockers ul { margin: 0.3em 0 0 0; padding-left: 1.2em; }
+
+/* Clause Sections */
+.clause-section {
+  margin: 1em 0; padding: 0.5em 0;
+  border-bottom: 1px solid #e0e0e0;
+  page-break-inside: avoid;
+}
+.clause-content {
+  padding: 0.5em 1em;
+  background: #fafafa;
+  border-left: 3px solid #7986cb;
+  border-radius: 2px;
+  font-size: 10.5pt;
+  line-height: 1.7;
+}
+.provenance-bar {
+  margin-top: 0.3em;
+  padding: 0.2em 0.8em;
+  font-size: 8pt;
+  color: #5c6bc0;
+  background: #e8eaf6;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Construction Protocol Table */
+.protocol-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+  margin: 1em 0;
+}
+.protocol-table th {
+  background: #283593;
+  color: #fff;
+  padding: 0.4em 0.6em;
+  text-align: left;
+  font-weight: bold;
+}
+.protocol-table td {
+  border: 1px solid #c5cae9;
+  padding: 0.3em 0.6em;
+  vertical-align: top;
+}
+.protocol-table tr:nth-child(even) { background: #f5f5f5; }
+
+.doc-meta {
+  font-size: 9pt; color: #555; margin-bottom: 1em;
+}
+.doc-meta span {
+  background: #f5f5f5; padding: 0.2em 0.6em; border-radius: 3px;
+  margin-right: 0.5em;
+}
+</style>
+</head>
+<body>
+
+<h1>{{ artifact.workflow_name or doc.metadata.topic }}</h1>
+
+<div class="doc-meta">
+  <span>{{ i18n.get('topic_label', 'Thema') }}: {{ doc.metadata.topic }}</span>
+  {% if doc.metadata.duration %}
+  <span>{{ i18n.get('duration_label', 'Dauer') }}: {{ doc.metadata.duration }}</span>
+  {% endif %}
+  {% if doc.metadata.total_tokens %}
+  <span>{{ i18n.get('tokens_label', 'Tokens') }}: {{ doc.metadata.total_tokens }}</span>
+  {% endif %}
+</div>
+
+<!-- Executive Summary -->
+<section class="exec-summary">
+  <h2>{{ i18n.get('executive_summary_label', 'Executive Summary') }}</h2>
+
+  {% set score = artifact.usability_score %}
+  {% if score is not none %}
+  {% set pct = (score * 100) | round(1) %}
+  {% if pct >= 80 %}
+    {% set color = 'green' %}
+  {% elif pct >= 50 %}
+    {% set color = 'orange' %}
+  {% else %}
+    {% set color = 'red' %}
+  {% endif %}
+  <div class="exec-score">
+    <strong>{{ i18n.get('usability_label', 'Verwendbarkeit') }}:</strong>
+    <span class="score-{{ color }}">{{ pct }}%</span>
+  </div>
+  {% endif %}
+
+  {% if artifact.final_assessment %}
+  <div class="exec-assessment">{{ artifact.final_assessment }}</div>
+  {% endif %}
+
+  {% if artifact.remaining_blockers %}
+  <div class="exec-blockers">
+    <strong>{{ i18n.get('remaining_blockers_label', 'Verbleibende Blocker') }}:</strong>
+    <ul>
+    {% for blocker in artifact.remaining_blockers %}
+      <li>{{ blocker }}</li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</section>
+
+<!-- Revised Contract Version -->
+<h2>{{ i18n.get('revised_clauses_label', 'Revidierte Vertragsfassung') }}</h2>
+
+{% if sections %}
+{% for section in sections %}
+<article class="clause-section">
+  <h3>{{ section.title }}</h3>
+  <div class="clause-content">{{ section.content }}</div>
+  {% if section.provenance %}
+  <div class="provenance-bar">
+    {% if section.provenance.draft_version %}
+      {{ i18n.get('iteration_label', 'Iteration') }} {{ section.provenance.draft_version }}
+    {% endif %}
+    {% if section.provenance.critic_item_id %}
+      | Critic: {{ section.provenance.critic_item_id }}
+    {% endif %}
+    {% if section.provenance.revision_type %}
+      | Builder:
+      {% if section.provenance.revision_type == 'conservative' %}Option A
+      {% elif section.provenance.revision_type == 'radical' %}Option B
+      {% else %}Option C{% endif %}
+    {% endif %}
+    {% if section.provenance.pragmatist_verdict %}
+      | Pragmatist: {{ section.provenance.pragmatist_verdict }}
+    {% endif %}
+  </div>
+  {% endif %}
+</article>
+{% endfor %}
+{% else %}
+<p>{{ i18n.get('no_clauses_label', 'Keine Klauseln verfügbar.') }}</p>
+{% endif %}
+
+<!-- Construction Protocol -->
+<h2>{{ i18n.get('construction_protocol_label', 'Konstruktionsprotokoll') }}</h2>
+
+<table class="protocol-table">
+  <thead>
+    <tr>
+      <th>{{ i18n.get('round_label', 'Runde') }}</th>
+      <th>{{ i18n.get('agent_label', 'Agent') }}</th>
+      <th>{{ i18n.get('role_label', 'Rolle') }}</th>
+      <th>{{ i18n.get('action_label', 'Aktion') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for turn in artifact.transcript %}
+    <tr>
+      <td>{{ turn.round }}</td>
+      <td>{{ turn.agent_name }}</td>
+      <td>{{ turn.role_type }}</td>
+      <td>{{ turn.content[:200] }}{% if turn.content | length > 200 %}...{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="doc-footer">
+  {{ i18n.get('generated_label', 'Generiert') }}: {{ doc.metadata.topic }}
+</div>
+
+</body>
+</html>

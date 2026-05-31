@@ -8,7 +8,7 @@
   </style>
 </head>
 <body>
-  {% from '_macros.html' import render_turn, render_minority_callout, render_user_query, render_consensus, render_audit_appendix %}
+  {% from '_macros.html' import render_executive_summary, render_turn, render_minority_callout, render_user_query, render_consensus, render_audit_appendix %}
 
   <!-- Table of Contents -->
   {% if doc.toc %}
@@ -44,7 +44,9 @@
   <!-- Main Content -->
   <main class="debate-content">
     {% for section in doc.sections %}
-      {% if section.type == 'turn' %}
+      {% if section.type == 'executive_summary' %}
+        {{ render_executive_summary(section, i18n) }}
+      {% elif section.type == 'turn' %}
         {{ render_turn(section, i18n) }}
       {% elif section.type == 'minority_callout' %}
         {{ render_minority_callout(section, i18n) }}

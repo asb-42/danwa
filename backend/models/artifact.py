@@ -95,6 +95,20 @@ class DebateArtifact(BaseModel):
     minority_votes: list[MinorityVote] = Field(default_factory=list)
 
     consensus_result: dict | None = None
+    final_assessment: str | None = Field(
+        default=None,
+        description="Final assessment text from the moderator (e.g. '85% verwendbar')",
+    )
+    usability_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Overall usability score from pragmatist reality_score",
+    )
+    remaining_blockers: list[str] = Field(
+        default_factory=list,
+        description="Blocking concerns that still need resolution after the final round",
+    )
     metadata: dict = Field(default_factory=dict)
     # metadata keys: token_usage, latencies, timestamps (start/end),
     #                agents (list of {name, blueprint_id, role_type, llm_profile_id})

@@ -664,6 +664,7 @@ def _build_artifact_common(
             "end": now.isoformat(),
         },
         "duration_ms": duration_ms,
+        "workflow_template": state.get("workflow_template", "debate"),
     }
 
     return DebateArtifact(
@@ -679,5 +680,8 @@ def _build_artifact_common(
             "score": state.get("final_consensus", 0.0),
             "summary": state.get("output", ""),
         },
+        final_assessment=state.get("final_assessment"),
+        usability_score=state.get("usability_score"),
+        remaining_blockers=state.get("remaining_blockers", []),
         metadata=metadata,
     )

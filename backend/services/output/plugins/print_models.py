@@ -40,6 +40,7 @@ class SectionType(StrEnum):
     MINORITY_CALLOUT = "minority_callout"
     USER_QUERY_BLOCK = "user_query_block"
     CONSENSUS_SUMMARY = "consensus_summary"
+    EXECUTIVE_SUMMARY = "executive_summary"
     AUDIT_APPENDIX = "audit_appendix"
 
 

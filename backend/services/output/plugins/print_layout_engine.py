@@ -140,6 +140,22 @@ class PrintLayoutEngine:
         queries_by_round = self._group_queries_by_round(artifact)
         minority_by_turn = self._group_minority_by_turn(artifact)
 
+        # --- Executive Summary (Page 1) ---
+        exec_sid = _make_id("exec", section_idx)
+        exec_html = self._build_executive_summary(artifact)
+        if exec_html:
+            toc.append(TOCEntry(level=1, title="Executive Summary", anchor=exec_sid))
+            sections.append(
+                PrintSection(
+                    id=exec_sid,
+                    type=SectionType.EXECUTIVE_SUMMARY,
+                    title="Executive Summary",
+                    content=exec_html,
+                    css_class="executive-summary",
+                )
+            )
+            section_idx += 1
+
         # Collect all rounds from transcript
         rounds = sorted({t.round for t in artifact.transcript})
 
@@ -309,6 +325,42 @@ class PrintLayoutEngine:
         return dict(result)
 
     @staticmethod
+    def build_transactional_sections(artifact: DebateArtifact) -> list[dict]:
+        """Build clause-sections from a transactional-drafting artifact.
+
+        Extracts builder turns from the transcript and groups them into
+        clause-level sections with provenance metadata from Turn.metadata.
+
+        Returns a list of dicts with keys: title, content, provenance.
+        """
+        sections: list[dict] = []
+        for turn in artifact.transcript:
+            if turn.role_type != "builder":
+                continue
+            prov = (turn.metadata or {}).get("provenance", {})
+            # Derive title from critic_item_id or turn content
+            cid = prov.get("critic_item_id", "")
+            title = f"Klausel {cid}" if cid else turn.agent_name
+
+            # Content: extract the recommended builder option from the turn
+            # The turn content already has the formatted markdown
+            content = turn.content
+
+            sections.append({
+                "title": title,
+                "content": content,
+                "provenance": {
+                    "draft_version": prov.get("draft_version"),
+                    "critic_item_id": prov.get("critic_item_id"),
+                    "original_text": prov.get("original_text", ""),
+                    "revision_type": prov.get("revision_type"),
+                    "pragmatist_verdict": prov.get("pragmatist_verdict"),
+                    "pragmatist_score": prov.get("pragmatist_score"),
+                },
+            })
+        return sections
+
+    @staticmethod
     def _group_minority_by_turn(
         artifact: DebateArtifact,
     ) -> dict[str, list]:
@@ -317,6 +369,39 @@ class PrintLayoutEngine:
         for vote in artifact.minority_votes:
             result[vote.target_turn_id].append(vote)
         return dict(result)
+
+    @staticmethod
+    def _build_executive_summary(artifact: DebateArtifact) -> str:
+        """Build HTML for the Executive Summary (page 1).
+
+        Shows final assessment, usability score, and remaining blockers
+        from the moderator's output.
+        """
+        parts: list[str] = []
+        if artifact.final_assessment:
+            parts.append(
+                f'<div class="exec-assessment">{artifact.final_assessment}</div>'
+            )
+        if artifact.usability_score is not None:
+            pct = round(artifact.usability_score * 100, 1)
+            color = "green" if pct >= 80 else "orange" if pct >= 50 else "red"
+            parts.append(
+                f'<div class="exec-score">'
+                f'<strong>Usability Score:</strong> '
+                f'<span class="score-{color}">{pct}%</span>'
+                f'</div>'
+            )
+        if artifact.remaining_blockers:
+            blockers = "".join(
+                f"<li>{b}</li>" for b in artifact.remaining_blockers
+            )
+            parts.append(
+                f'<div class="exec-blockers">'
+                f'<strong>Verbleibende Blockierer:</strong>'
+                f'<ul>{blockers}</ul>'
+                f'</div>'
+            )
+        return "".join(parts)
 
     @staticmethod
     def _format_consensus(consensus: dict) -> str:
