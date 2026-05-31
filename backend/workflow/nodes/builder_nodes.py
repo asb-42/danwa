@@ -13,10 +13,10 @@ import time
 from collections.abc import Callable
 
 from backend.api.events import publish_async
-from backend.models.transactional import BuilderOutput, Provenance
+from backend.models.transactional import CriticItem, Provenance
 from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
-from backend.workflow.node_functions import _get_profile_service, _resolve_system_prompt
+from backend.workflow.node_functions import _get_profile_service
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -179,8 +179,7 @@ def builder_node_factory(
             "Keine Einleitung. Keine Schlussfolgerung.\n"
             "\n"
             "## Output Format\n"
-            "Respond with a JSON object matching this schema:\n"
-            + json.dumps(dump, indent=2, ensure_ascii=False)
+            "Respond with a JSON object matching this schema:\n" + json.dumps(dump, indent=2, ensure_ascii=False)
         )
 
         user_prompt = f"""Original draft:\n{zero_draft}\n\nCritique items:\n{json.dumps(critic_items, indent=2, default=str)}"""

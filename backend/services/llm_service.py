@@ -154,10 +154,7 @@ class LLMService:
         from datetime import datetime as _dt
 
         today = _dt.now().strftime("%Y-%m-%d")
-        date_line = (
-            f"Heute ist der {today}. "
-            "Alle Fristen, Termine und zeitlichen Bewertungen beziehen sich auf dieses Datum."
-        )
+        date_line = f"Heute ist der {today}. Alle Fristen, Termine und zeitlichen Bewertungen beziehen sich auf dieses Datum."
         if system_prompt:
             system_prompt = f"{date_line}\n\n{system_prompt}"
         else:

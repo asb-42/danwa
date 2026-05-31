@@ -129,8 +129,13 @@ class PrintOutputPlugin(OutputPlugin):
         # 4. Render HTML via Jinja2 (needed for PDF, DOCX, ODT)
         template_name = f"{config.template_name.value}.html"
         html = await asyncio.to_thread(
-            self._render_html, template_name, doc.model_dump(), i18n, config,
-            artifact=artifact, sections=sections,
+            self._render_html,
+            template_name,
+            doc.model_dump(),
+            i18n,
+            config,
+            artifact=artifact,
+            sections=sections,
         )
 
         # 4. Generate output files based on primary_format

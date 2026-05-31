@@ -353,14 +353,16 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
         content = zd if isinstance(zd, str) else str(zd)
         if len(content) > 2000:
             content = content[:2000] + "..."
-        transcript.append({
-            "id": str(_uuid.uuid4()),
-            "round": 0,
-            "node_id": "strategist",
-            "agent_name": "Strategist",
-            "role_type": "strategist",
-            "content": f"**Zero-Draft erstellt:**\n\n{content}",
-        })
+        transcript.append(
+            {
+                "id": str(_uuid.uuid4()),
+                "round": 0,
+                "node_id": "strategist",
+                "agent_name": "Strategist",
+                "role_type": "strategist",
+                "content": f"**Zero-Draft erstellt:**\n\n{content}",
+            }
+        )
 
     # Critic Items
     critic_items = state.get("critic_items", [])
@@ -371,18 +373,16 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
             flaw = data.get("flaw", data.get("issue", ""))
             principle = data.get("principle", "")
             target = data.get("target", "")
-            transcript.append({
-                "id": str(_uuid.uuid4()),
-                "round": 1,
-                "node_id": f"critic_{i}",
-                "agent_name": "Critic",
-                "role_type": "critic",
-                "content": (
-                    f"**Kritik {i+1}** ({sev}): {flaw}\n\n"
-                    f"*Prinzip:* {principle}\n"
-                    f"*Betrifft:* {target}"
-                ),
-            })
+            transcript.append(
+                {
+                    "id": str(_uuid.uuid4()),
+                    "round": 1,
+                    "node_id": f"critic_{i}",
+                    "agent_name": "Critic",
+                    "role_type": "critic",
+                    "content": (f"**Kritik {i + 1}** ({sev}): {flaw}\n\n*Prinzip:* {principle}\n*Betrifft:* {target}"),
+                }
+            )
 
     # Build Responses (Builder) — with provenance metadata
     build_responses_raw = state.get("build_responses", [])
@@ -408,10 +408,10 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
             if prov.get("draft_version"):
                 marginalia.append(f"Iteration {prov['draft_version']}")
             if prov.get("critic_item_id"):
-                sev = ""
                 marginalia.append(f"Critic: {prov['critic_item_id']}")
             if prov.get("revision_type"):
-                marginalia.append(f"Builder: Option {'A' if prov['revision_type'] == 'conservative' else 'B' if prov['revision_type'] == 'radical' else 'C'}")
+                opt_letter = "A" if prov["revision_type"] == "conservative" else "B" if prov["revision_type"] == "radical" else "C"
+                marginalia.append(f"Builder: Option {opt_letter}")
             if ev:
                 marginalia.append(f"Pragmatist: {ev.get('verdict', '?')} ({ev.get('feasibility', '?')})")
 
@@ -427,24 +427,26 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
                 parts.append(f"\n*Begründung:* {rationale}")
             if marginalia:
                 parts.append(f"\n\n---\n*{' | '.join(marginalia)}*")
-            transcript.append({
-                "id": str(_uuid.uuid4()),
-                "round": 2,
-                "node_id": f"builder_{i}",
-                "agent_name": "Builder",
-                "role_type": "builder",
-                "content": "".join(parts),
-                "metadata": {
-                    "provenance": {
-                        "draft_version": prov.get("draft_version"),
-                        "critic_item_id": prov.get("critic_item_id"),
-                        "original_text": prov.get("original_text", ""),
-                        "revision_type": prov.get("revision_type"),
-                        "pragmatist_verdict": ev.get("verdict"),
-                        "pragmatist_score": ev.get("feasibility"),
+            transcript.append(
+                {
+                    "id": str(_uuid.uuid4()),
+                    "round": 2,
+                    "node_id": f"builder_{i}",
+                    "agent_name": "Builder",
+                    "role_type": "builder",
+                    "content": "".join(parts),
+                    "metadata": {
+                        "provenance": {
+                            "draft_version": prov.get("draft_version"),
+                            "critic_item_id": prov.get("critic_item_id"),
+                            "original_text": prov.get("original_text", ""),
+                            "revision_type": prov.get("revision_type"),
+                            "pragmatist_verdict": ev.get("verdict"),
+                            "pragmatist_score": ev.get("feasibility"),
+                        },
                     },
-                },
-            })
+                }
+            )
 
     return transcript
 

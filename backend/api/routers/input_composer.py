@@ -618,9 +618,7 @@ async def launch_workflow_from_input(
 
     wf_template_slug = ""
     if body.workflow_template_id:
-        wf_template_slug = (
-            body.workflow_template_id.replace("tpl-", "").replace("-", "_")
-        )
+        wf_template_slug = body.workflow_template_id.replace("tpl-", "").replace("-", "_")
 
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,

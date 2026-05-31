@@ -275,17 +275,19 @@ def _save_provenance_batch(
         rows = []
         for br in build_responses:
             prov = br.get("provenance") or {}
-            rows.append((
-                session_id,
-                workflow_id,
-                br.get("response_to", ""),
-                prov.get("draft_version", 0),
-                prov.get("critic_item_id", ""),
-                prov.get("original_text", ""),
-                prov.get("revision_type", "conservative"),
-                prov.get("pragmatist_verdict"),
-                prov.get("pragmatist_score"),
-            ))
+            rows.append(
+                (
+                    session_id,
+                    workflow_id,
+                    br.get("response_to", ""),
+                    prov.get("draft_version", 0),
+                    prov.get("critic_item_id", ""),
+                    prov.get("original_text", ""),
+                    prov.get("revision_type", "conservative"),
+                    prov.get("pragmatist_verdict"),
+                    prov.get("pragmatist_score"),
+                )
+            )
         conn.executemany(
             """INSERT INTO build_response_provenance
                (session_id, workflow_id, response_to, draft_version, critic_item_id,

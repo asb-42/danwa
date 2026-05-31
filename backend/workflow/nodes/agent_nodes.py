@@ -161,21 +161,17 @@ def agent_node_factory(
                 "```\n"
             )
             system_prompt = system_prompt + "\n\n" + decision_matrix + "\n\n"
-            system_prompt += (
-                "## Output Format\n"
-                "Respond with a JSON array. Every object must match this schema:\n"
-                + _json.dumps(
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": schema["properties"],
-                            "required": schema.get("required", []),
-                        },
+            system_prompt += "## Output Format\nRespond with a JSON array. Every object must match this schema:\n" + _json.dumps(
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": schema["properties"],
+                        "required": schema.get("required", []),
                     },
-                    indent=2,
-                    ensure_ascii=False,
-                )
+                },
+                indent=2,
+                ensure_ascii=False,
             )
 
         # --- Inject tone profile if configured ---

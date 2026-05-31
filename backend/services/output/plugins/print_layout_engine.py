@@ -54,6 +54,7 @@ def _fmt_marginalia(metadata: dict) -> str:
         parts.append(f"Pragmatist: {pv} ({ps})")
     return " | ".join(parts)
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -346,18 +347,20 @@ class PrintLayoutEngine:
             # The turn content already has the formatted markdown
             content = turn.content
 
-            sections.append({
-                "title": title,
-                "content": content,
-                "provenance": {
-                    "draft_version": prov.get("draft_version"),
-                    "critic_item_id": prov.get("critic_item_id"),
-                    "original_text": prov.get("original_text", ""),
-                    "revision_type": prov.get("revision_type"),
-                    "pragmatist_verdict": prov.get("pragmatist_verdict"),
-                    "pragmatist_score": prov.get("pragmatist_score"),
-                },
-            })
+            sections.append(
+                {
+                    "title": title,
+                    "content": content,
+                    "provenance": {
+                        "draft_version": prov.get("draft_version"),
+                        "critic_item_id": prov.get("critic_item_id"),
+                        "original_text": prov.get("original_text", ""),
+                        "revision_type": prov.get("revision_type"),
+                        "pragmatist_verdict": prov.get("pragmatist_verdict"),
+                        "pragmatist_score": prov.get("pragmatist_score"),
+                    },
+                }
+            )
         return sections
 
     @staticmethod
@@ -379,28 +382,14 @@ class PrintLayoutEngine:
         """
         parts: list[str] = []
         if artifact.final_assessment:
-            parts.append(
-                f'<div class="exec-assessment">{artifact.final_assessment}</div>'
-            )
+            parts.append(f'<div class="exec-assessment">{artifact.final_assessment}</div>')
         if artifact.usability_score is not None:
             pct = round(artifact.usability_score * 100, 1)
             color = "green" if pct >= 80 else "orange" if pct >= 50 else "red"
-            parts.append(
-                f'<div class="exec-score">'
-                f'<strong>Usability Score:</strong> '
-                f'<span class="score-{color}">{pct}%</span>'
-                f'</div>'
-            )
+            parts.append(f'<div class="exec-score"><strong>Usability Score:</strong> <span class="score-{color}">{pct}%</span></div>')
         if artifact.remaining_blockers:
-            blockers = "".join(
-                f"<li>{b}</li>" for b in artifact.remaining_blockers
-            )
-            parts.append(
-                f'<div class="exec-blockers">'
-                f'<strong>Verbleibende Blockierer:</strong>'
-                f'<ul>{blockers}</ul>'
-                f'</div>'
-            )
+            blockers = "".join(f"<li>{b}</li>" for b in artifact.remaining_blockers)
+            parts.append(f'<div class="exec-blockers"><strong>Verbleibende Blockierer:</strong><ul>{blockers}</ul></div>')
         return "".join(parts)
 
     @staticmethod
