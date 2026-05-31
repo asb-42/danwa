@@ -83,6 +83,80 @@ async def list_available_modules() -> list[dict[str, Any]]:
     return []
 
 
+# ------------------------------------------------------------------
+# Repository Integration (danwa-modules)
+# ------------------------------------------------------------------
+
+
+@router.get("/repo-index", response_model=list[dict[str, Any]])
+async def get_repo_index(
+    force_refresh: bool = Query(False, description="Bypass cache and fetch fresh index"),
+) -> list[dict[str, Any]]:
+    """Fetch the module index from the danwa-modules GitHub repository.
+
+    Returns all available modules with version, download URL, checksum,
+    and (for language packs) translation stats.
+
+    Results are cached server-side for 24 hours; pass ``force_refresh=true``
+    to bypass.
+    """
+    svc = get_module_service()
+    return svc.fetch_repo_index(force_refresh=force_refresh)
+
+
+class InstallFromRepoRequest(BaseModel):
+    """Request body for installing a module from the danwa-modules repo."""
+
+    module_id: str = Field(..., description="Module ID to install")
+    version: str | None = Field(None, description="Specific version (defaults to latest)")
+
+
+@router.post("/install-from-repo", response_model=dict[str, Any], status_code=201)
+async def install_module_from_repo(body: InstallFromRepoRequest) -> dict[str, Any]:
+    """Install a module directly from the danwa-modules GitHub release.
+
+    Fetches the repo index, resolves the correct version, validates
+    dependencies, then downloads and installs the ZIP from GitHub Releases.
+
+    Returns an ``InstallationReport`` with status, files installed, and
+    any errors or warnings (including unresolved dependencies).
+    """
+    svc = get_module_service()
+    try:
+        report = svc.install_from_repo(body.module_id, version=body.version)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("Failed to install module %s from repo", body.module_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": report.status,
+        "module_id": report.module_id,
+        "version": report.version,
+        "files_installed": report.files_installed,
+        "files_failed": report.files_failed,
+        "db_entries_created": report.db_entries_created,
+        "checksum": report.checksum,
+        "warnings": report.warnings,
+        "errors": report.errors,
+    }
+
+
+@router.get("/check-repo-updates", response_model=list[dict[str, Any]])
+async def check_repo_updates() -> list[dict[str, Any]]:
+    """Compare installed module versions against the danwa-modules repo index.
+
+    Uses semver comparison — any remote version strictly greater than the
+    installed version is listed as an available update.
+
+    Returns a list of ``{module_id, current_version, available_version,
+    download_url, checksum_sha256, name}`` dicts.
+    """
+    svc = get_module_service()
+    return svc.check_updates()
+
+
 @router.get("/{module_id}", response_model=dict[str, Any])
 async def get_module(module_id: str) -> dict[str, Any]:
     """Get detailed info about a specific module."""

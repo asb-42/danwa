@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from packaging.version import Version
 
+from backend.modules.dependency_resolver import DependencyResolver
 from backend.modules.installer import ModuleInstaller
 from backend.modules.models import (
     InstallationReport,
@@ -34,6 +36,10 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 MODULES_DIR = ROOT / "modules"
 DEFAULT_DB = ROOT / "data" / "blueprints.db"
 
+DANWA_MODULES_REPO = "asb-42/danwa-modules"
+DANWA_MODULES_INDEX_URL = "https://raw.githubusercontent.com/asb-42/danwa-modules/main/index.json"
+DANWA_MODULES_RELEASE_URL = "https://github.com/asb-42/danwa-modules/releases/download/v{version}/{module_id}.zip"
+
 
 class ModuleService:
     def __init__(
@@ -45,6 +51,7 @@ class ModuleService:
         self.db_path = Path(db_path)
         self.validator = ModuleValidator(self.modules_dir)
         self.installer = ModuleInstaller(self.modules_dir, self.db_path)
+        self.dependency_resolver = DependencyResolver()
         self._registry_cache: dict | None = None
         self._registry_cache_time: float = 0
         self._registry_cache_ttl: int = 86400
@@ -194,11 +201,20 @@ class ModuleService:
             modules = [m for m in modules if m.category.value == category]
         return modules
 
-    def discover_remote(
+    def fetch_repo_index(
         self,
-        registry_url: str = "https://raw.githubusercontent.com/danwa/modules/main/registry.json",
+        repo_url: str = DANWA_MODULES_INDEX_URL,
         force_refresh: bool = False,
     ) -> list[dict[str, Any]]:
+        """Fetch the ``index.json`` from the danwa-modules repository.
+
+        Returns a list of module entries, each with ``module_id``,
+        ``version``, ``type``, ``download_url``, ``checksum_sha256``,
+        and optional ``translation_stats``.
+
+        Results are cached for 24 hours (configurable via
+        ``_registry_cache_ttl``).
+        """
         import time
 
         now = time.time()
@@ -206,25 +222,127 @@ class ModuleService:
             return self._registry_cache.get("modules", [])
 
         try:
-            with urllib.request.urlopen(registry_url, timeout=10) as resp:
+            req = urllib.request.Request(
+                repo_url,
+                headers={"User-Agent": "Danwa/2.1.0 (ModuleService)"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             self._registry_cache = data
             self._registry_cache_time = now
             return data.get("modules", [])
         except Exception as exc:
-            logger.warning("Remote registry not reachable: %s", exc)
+            logger.warning("Module repo index not reachable (%s): %s", repo_url, exc)
             return []
 
-    def check_updates(self, registry_url: str | None = None) -> list[dict[str, Any]]:
-        remote = self.discover_remote(registry_url or "https://raw.githubusercontent.com/danwa/modules/main/registry.json")
-        installed = {m["module_id"]: m for m in self.discover_local()}
+    def get_download_url(self, module_id: str, version: str) -> str:
+        """Construct the download URL for a module release ZIP."""
+        return DANWA_MODULES_RELEASE_URL.format(module_id=module_id, version=version)
+
+    def install_from_repo(
+        self,
+        module_id: str,
+        version: str | None = None,
+    ) -> InstallationReport:
+        """Install a module directly from the danwa-modules GitHub release.
+
+        Args:
+            module_id: The module ID to install.
+            version: Specific version to install (defaults to latest).
+
+        Returns:
+            InstallationReport with the result.
+
+        Raises:
+            FileNotFoundError: If the module or version is not found in the index.
+        """
+        index = self.fetch_repo_index(force_refresh=True)
+        candidates = [m for m in index if m["module_id"] == module_id]
+        if not candidates:
+            raise FileNotFoundError(f"Module '{module_id}' not found in danwa-modules repository")
+
+        target = candidates[0]
+        if version:
+            matches = [m for m in candidates if m.get("version") == version]
+            if not matches:
+                raise FileNotFoundError(f"Module '{module_id}' version {version} not found in danwa-modules repository")
+            target = matches[0]
+
+        module_version = target.get("version", "0.0.0")
+        download_url = target.get(
+            "download_url",
+            self.get_download_url(module_id, module_version),
+        )
+
+        checksum = target.get("checksum_sha256", "")
+
+        # Pre-flight dependency check
+        installed_local = self.discover_local()
+        installed_map = {m.module_id: m.version for m in installed_local}
+
+        errors = self.dependency_resolver.resolve(
+            module_id,
+            target.get("dependencies", {}),
+            installed_map,
+        )
+        if errors:
+            report = InstallationReport(
+                status="error",
+                module_id=module_id,
+                version=module_version,
+                errors=errors,
+            )
+            return report
+
+        report = self.installer.install_from_url(download_url)
+        if report.status == "ok" and checksum and not report.checksum:
+            report.checksum = checksum
+        return report
+
+    def check_updates(
+        self,
+        repo_url: str = DANWA_MODULES_INDEX_URL,
+    ) -> list[dict[str, Any]]:
+        """Compare installed module versions against the danwa-modules repo index.
+
+        Uses semver comparison — any remote version greater than the
+        installed version is reported as an available update.
+
+        Returns:
+            List of ``{module_id, current_version, available_version,
+            download_url, checksum_sha256}`` dicts.
+        """
+        remote_modules = self.fetch_repo_index(repo_url)
+        installed = {m.module_id: m for m in self.discover_local()}
 
         updates = []
-        for remote_mod in remote:
-            mod_id = remote_mod["module_id"]
-            if mod_id in installed:
-                local_version = installed[mod_id].version
-                remote_version = remote_mod.get("version", "0.0.0")
+        for remote_mod in remote_modules:
+            mod_id = remote_mod.get("module_id", "")
+            if mod_id not in installed:
+                continue
+
+            local_version = installed[mod_id].version
+            remote_version = remote_mod.get("version", "0.0.0")
+
+            try:
+                local_ver = Version(local_version)
+                remote_ver = Version(remote_version)
+                if remote_ver > local_ver:
+                    updates.append(
+                        {
+                            "module_id": mod_id,
+                            "current_version": local_version,
+                            "available_version": remote_version,
+                            "download_url": remote_mod.get(
+                                "download_url",
+                                self.get_download_url(mod_id, remote_version),
+                            ),
+                            "checksum_sha256": remote_mod.get("checksum_sha256", ""),
+                            "name": remote_mod.get("name", {}),
+                        }
+                    )
+            except Exception:
+                # If version parsing fails, fall back to string comparison
                 if remote_version != local_version:
                     updates.append(
                         {
@@ -232,9 +350,12 @@ class ModuleService:
                             "current_version": local_version,
                             "available_version": remote_version,
                             "download_url": remote_mod.get("download_url", ""),
-                            "checksum": remote_mod.get("checksum", ""),
+                            "checksum_sha256": remote_mod.get("checksum_sha256", ""),
+                            "name": remote_mod.get("name", {}),
                         }
                     )
+
+        updates.sort(key=lambda u: u["module_id"])
         return updates
 
     def install(

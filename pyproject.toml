@@ -39,6 +39,7 @@ dependencies = [
     "structlog>=24.1.0",
     "slowapi>=0.1.9",
     "prometheus-fastapi-instrumentator>=7.0.0",
+    "packaging>=23.0",
 ]
 
 [tool.uv]

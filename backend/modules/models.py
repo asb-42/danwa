@@ -148,9 +148,25 @@ class LanguagePackData(BaseModel):
     module_translations: list[str] = Field(default_factory=list)  # Paths to translated module files
 
 
+class ManifestCompatibility(BaseModel):
+    """Compatibility range for Danwa versions."""
+
+    danwa_min_version: str | None = None
+    danwa_max_version: str | None = None
+
+
+class ManifestRepository(BaseModel):
+    """Source repository reference for a module."""
+
+    type: str = "github"
+    url: str = ""
+    ref: str | None = None
+
+
 class ModuleManifest(BaseModel):
     """Manifest for a Danwa module.
 
+    v3: adds `compatibility` + `repository` fields
     v2 (single-profile): uses `profile_file` + `profile_format`
     v1 (legacy bundle): uses `files[]`
     """
@@ -175,6 +191,10 @@ class ModuleManifest(BaseModel):
 
     # v1: legacy bundle files (migration compat)
     files: list[ModuleFile] = Field(default_factory=list)
+
+    # v3: repository origin
+    compatibility: ManifestCompatibility = Field(default_factory=ManifestCompatibility)
+    repository: ManifestRepository = Field(default_factory=ManifestRepository)
 
     created_at: datetime | None = None
     updated_at: datetime | None = None

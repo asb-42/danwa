@@ -68,6 +68,24 @@ export function getAvailableModules() {
   return request('/api/v1/modules/available');
 }
 
+/** Fetch the module index from the danwa-modules GitHub repository. */
+export function getRepoIndex(forceRefresh = false) {
+  return request(`/api/v1/modules/repo-index?force_refresh=${forceRefresh}`);
+}
+
+/** Install a module directly from the danwa-modules GitHub release. */
+export function installFromRepo(moduleId, version = null) {
+  return request('/api/v1/modules/install-from-repo', {
+    method: 'POST',
+    body: JSON.stringify({ module_id: moduleId, version }),
+  });
+}
+
+/** Check for available updates from the danwa-modules repo. */
+export function getRepoUpdates() {
+  return request('/api/v1/modules/check-repo-updates');
+}
+
 /** Get the parsed profile data for a module. */
 export function getModuleProfile(moduleId) {
   return request(`/api/v1/modules/${moduleId}/profile`);

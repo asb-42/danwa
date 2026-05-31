@@ -49,15 +49,48 @@ class ModuleValidator:
 
         # --- Schema version ---
         schema_version = manifest.get("schema_version", "1.0.0")
-        is_v2 = schema_version == "2.0.0"
-        if schema_version not in ("1.0.0", "2.0.0"):
+        is_v2 = schema_version in ("2.0.0", "3.0.0")
+        if schema_version not in ("1.0.0", "2.0.0", "3.0.0"):
             issues.append(
                 ValidationIssue(
                     severity="warning",
                     field="schema_version",
-                    message=f"Schema version '{schema_version}' may not be supported. Expected '1.0.0' or '2.0.0'",
+                    message=f"Schema version '{schema_version}' may not be supported. Expected '1.0.0', '2.0.0', or '3.0.0'",
                 )
             )
+
+        # v3: validate compatibility field
+        if schema_version == "3.0.0":
+            compat = manifest.get("compatibility", {})
+            if compat.get("danwa_min_version") and not re.match(r"^\d+\.\d+\.\d+$", compat["danwa_min_version"]):
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        field="compatibility.danwa_min_version",
+                        message=f"Invalid danwa_min_version '{compat['danwa_min_version']}': must follow semver X.Y.Z",
+                    )
+                )
+            if compat.get("danwa_max_version") and not re.match(r"^\d+\.\d+\.\d+$", compat["danwa_max_version"]):
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        field="compatibility.danwa_max_version",
+                        message=f"Invalid danwa_max_version '{compat['danwa_max_version']}': must follow semver X.Y.Z",
+                    )
+                )
+
+        # v3: validate repository field structure
+        if schema_version == "3.0.0":
+            repo = manifest.get("repository", {})
+            if repo:
+                if repo.get("type") not in (None, "github"):
+                    issues.append(
+                        ValidationIssue(
+                            severity="warning",
+                            field="repository.type",
+                            message=f"Unsupported repository type '{repo.get('type')}'. Currently only 'github' is supported.",
+                        )
+                    )
 
         # --- module_id format ---
         mid = manifest.get("module_id", "")
@@ -86,8 +119,8 @@ class ModuleValidator:
                     )
                 )
 
-        # v1 requires files[], v2 requires profile_file
-        if not is_v2 and not has_files:
+        # v1 requires files[], v2/v3 requires profile_file
+        if schema_version == "1.0.0" and not has_files:
             issues.append(ValidationIssue(severity="error", field="files", message="Required field 'files' is missing (v1 format)"))
         if is_v2 and not has_profile_file and not has_files:
             issues.append(ValidationIssue(severity="error", field="profile_file", message="Required field 'profile_file' is missing (v2 format)"))
