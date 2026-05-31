@@ -351,8 +351,8 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
     zd = state.get("zero_draft")
     if zd:
         content = zd if isinstance(zd, str) else str(zd)
-        if len(content) > 2000:
-            content = content[:2000] + "..."
+        if len(content) > 50000:
+            content = content[:25000] + "\n[… content truncated …]\n" + content[-25000:]
         transcript.append(
             {
                 "id": str(_uuid.uuid4()),
@@ -588,9 +588,12 @@ def _build_artifact_from_state(
                 cfg = {}
         config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
 
+    _system_roles = {"complete", "input", "initialize"}
     turns: list[Turn] = []
     for output in state.get("node_outputs", []):
         role = output.get("role", "")
+        if role in _system_roles:
+            continue
         node_id = output.get("node_id", "")
         config = config_by_node.get(node_id, {})
         llm_model = config.get("llm_model", "")
@@ -680,7 +683,6 @@ def _build_artifact_common(
         interjections=interjections,
         consensus_result={
             "score": state.get("final_consensus", 0.0),
-            "summary": state.get("output", ""),
         },
         final_assessment=state.get("final_assessment"),
         usability_score=state.get("usability_score"),

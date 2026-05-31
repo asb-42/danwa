@@ -421,13 +421,18 @@ def agent_node_factory(
         # Include round number in node_output for render engine / PDF generation
         output["round"] = current_round
 
-        # Keep current_draft bounded — only retain the latest round's content
-        # to prevent unbounded context growth across feedback loops
+        # Keep current_draft bounded to prevent unbounded context growth
+        # across feedback loops.  Uses head+tail preservation so the start
+        # of the debate isn't lost.
+        _max_draft_len = 50000
+        _trunc_warn = "\n\n[… content truncated …]\n\n"
         existing_draft = state.get("current_draft", "")
-        # Append this agent's output, but cap total length to ~8000 chars (last ~2 rounds)
         new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
-        if len(new_draft) > 8000:
-            new_draft = new_draft[-8000:]
+        if len(new_draft) > _max_draft_len:
+            tail_target = _max_draft_len - len(_trunc_warn)
+            head = new_draft[: tail_target // 2]
+            tail = new_draft[-(tail_target // 2) :]
+            new_draft = head + _trunc_warn + tail
 
         state_update: dict = {
             "node_outputs": [output],

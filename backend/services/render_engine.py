@@ -310,9 +310,12 @@ def _build_turns_from_node_outputs(
                 cfg = {}
         config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
 
+    _system_roles = {"complete", "input", "initialize"}
     turns: list[Turn] = []
     for no in node_outputs:
         role = no.get("role") or no.get("node_type", "agent")
+        if role in _system_roles:
+            continue
         rnd = no.get("round", 0)
         node_id = no.get("node_id", f"{role}_round{rnd}")
 

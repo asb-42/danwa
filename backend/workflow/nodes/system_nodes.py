@@ -147,7 +147,18 @@ async def complete_wf_node(state: WorkflowState) -> dict:
     session_id = state.get("session_id", "")
     node_id = state.get("current_node_id", "wf-complete")
 
-    final_output = state.get("current_draft", "")
+    # Reconstruct final output from all node outputs instead of the
+    # truncated current_draft — preserves full debate text for export
+    node_outputs = state.get("node_outputs", [])
+    final_parts: list[str] = []
+    for no in node_outputs:
+        r = no.get("role", "")
+        rnd = no.get("round", "")
+        c = no.get("content", "")
+        if r and c:
+            header = f"[{r.upper()} Round {rnd}]" if rnd else f"[{r.upper()}]"
+            final_parts.append(f"\n\n{header}\n{c}")
+    final_output = "".join(final_parts) if final_parts else state.get("current_draft", "")
 
     # --- Transactional Drafting metadata ---
     consensus_result = state.get("consensus_result")
