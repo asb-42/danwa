@@ -101,6 +101,11 @@ class PrintLayoutEngine:
         """
         import re
 
+        # Defensive: strip system-internal nodes from stored artifacts
+        # that were persisted before the export-pipeline fix.
+        _system_roles = {"complete", "input", "initialize"}
+        artifact.transcript = [t for t in artifact.transcript if t.role_type not in _system_roles]
+
         sections: list[PrintSection] = []
         toc: list[TOCEntry] = []
         section_idx = 0
@@ -399,7 +404,12 @@ class PrintLayoutEngine:
         if "score" in consensus:
             parts.append(f"Konsens-Score: {consensus['score']}")
         if "summary" in consensus:
-            parts.append(consensus["summary"])
+            summary = consensus["summary"]
+            # Defensive: don't dump the entire truncated draft as summary.
+            # If it's longer than 2000 chars it's likely the full current_draft.
+            if len(summary) > 2000:
+                summary = summary[:1000] + "\n\n[…]\n\n" + summary[-500:]
+            parts.append(summary)
         if "key_agreements" in consensus:
             agreements = consensus["key_agreements"]
             if isinstance(agreements, list):
