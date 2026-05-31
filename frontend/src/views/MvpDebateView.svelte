@@ -707,11 +707,36 @@
     </p>
   </div>
 
-  {#if config.topic && debateId}
-    <div class="case-text-section">
-      <h4 class="case-text-heading">📋 {t('debate.caseLabel')}</h4>
-      <p class="case-text-content">{config.topic}</p>
+  {#if debateId}
+    <!-- Title -->
+    {#if debateTitle}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
+        <div class="text-xl font-bold text-gray-900 dark:text-white">&lt;Title&gt;{debateTitle}&lt;/Title&gt;</div>
+      </div>
+    {/if}
+
+    <!-- Metadata -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
+      <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300">
+        {#if currentRound}
+          <div><span class="font-semibold">Anzahl Runden:</span> {currentRound}</div>
+        {/if}
+        {#if nodeOutputs.length}
+          {@const roles = [...new Set(nodeOutputs.map(n => n.role).filter(Boolean))]}
+          {#if roles.length}
+            <div><span class="font-semibold">Agenten-Rollen:</span> {roles.join(' · ')}</div>
+          {/if}
+        {/if}
+      </div>
     </div>
+
+    <!-- Case text (without Title tags) -->
+    {#if config.topic}
+      <div class="case-text-section">
+        <h4 class="case-text-heading">📋 {t('debate.caseLabel')}</h4>
+        <p class="case-text-content">{config.topic}</p>
+      </div>
+    {/if}
   {/if}
 
   {#if isLoadingDebate}

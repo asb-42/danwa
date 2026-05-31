@@ -326,22 +326,34 @@ class PrintOutputPlugin(OutputPlugin):
         assert isinstance(doc, PrintDocument)
         lines: list[str] = []
 
+        # Sections (process semantic sections for special positioning)
+        title_section = next((s for s in doc.sections if s.type.value == "title"), None)
+        metadata_section = next((s for s in doc.sections if s.type.value == "metadata"), None)
+        case_section = next((s for s in doc.sections if s.type.value == "case_description"), None)
+
         # Title
-        lines.append(f"# {doc.metadata.topic}")
+        if title_section:
+            plain_title = re.sub(r"<[^>]+>", "", title_section.content).strip()
+            lines.append(f"<Title>{plain_title}</Title>")
+        else:
+            lines.append(f"# {doc.metadata.topic}")
         lines.append("")
 
         # Metadata
-        meta_parts: list[str] = []
-        if doc.metadata.workflow_name:
-            meta_parts.append(f"**{i18n.get('workflow_label', 'Workflow')}:** {doc.metadata.workflow_name}")
-        if doc.metadata.participants:
-            meta_parts.append(f"**{i18n.get('participants_label', 'Participants')}:** " + ", ".join(doc.metadata.participants))
-        if doc.metadata.duration:
-            meta_parts.append(f"**{i18n.get('duration_label', 'Duration')}:** {doc.metadata.duration}")
-        if doc.metadata.total_tokens:
-            meta_parts.append(f"**{i18n.get('tokens_label', 'Tokens')}:** {doc.metadata.total_tokens:,}")
-        if meta_parts:
-            lines.append(" | ".join(meta_parts))
+        if metadata_section:
+            meta_plain = re.sub(r"<[^>]+>", "", metadata_section.content)
+            for meta_line in meta_plain.split("\n"):
+                meta_line = meta_line.strip()
+                if meta_line:
+                    lines.append(meta_line)
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        # Case description
+        if case_section:
+            case_plain = re.sub(r"<[^>]+>", "", case_section.content).strip()
+            lines.append(case_plain)
             lines.append("")
             lines.append("---")
             lines.append("")
@@ -357,8 +369,12 @@ class PrintOutputPlugin(OutputPlugin):
             lines.append("---")
             lines.append("")
 
-        # Sections
+        # Sections (skip semantic types already rendered above)
+        skip_types = {"title", "metadata", "case_description", "table_of_contents"}
         for section in doc.sections:
+            if section.type.value in skip_types:
+                continue
+            
             # Strip HTML from content to get plain text
             plain_content = re.sub(r"<[^>]+>", "", section.content)
             plain_content = re.sub(r"\n{3,}", "\n\n", plain_content).strip()

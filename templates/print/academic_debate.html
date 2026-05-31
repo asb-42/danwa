@@ -2,7 +2,7 @@
 <html lang="{{ config.language | default('de') }}">
 <head>
   <meta charset="utf-8">
-  <title>{{ doc.metadata.topic }} — {{ doc.metadata.workflow_name }}</title>
+  <title>{{ doc.metadata.title or doc.metadata.topic }} — {{ doc.metadata.workflow_name }}</title>
   <style>
     {% include 'css/academic_debate.css' %}
   </style>
@@ -26,11 +26,15 @@
 
   <!-- Document Header -->
   <header class="doc-header">
-    <h1>{{ doc.metadata.topic }}</h1>
+    <h1>{{ doc.metadata.title or doc.metadata.topic }}</h1>
+    {% if doc.metadata.total_rounds %}
     <div class="doc-meta">
       <span>{{ i18n.workflow_label }}: {{ doc.metadata.workflow_name }}</span>
       {% if doc.metadata.participants %}
       <span>{{ i18n.participants_label }}: {{ doc.metadata.participants | join(', ') }}</span>
+      {% endif %}
+      {% if doc.metadata.total_rounds %}
+      <span>{{ i18n.rounds_label or 'Runden' }}: {{ doc.metadata.total_rounds }}</span>
       {% endif %}
       {% if doc.metadata.duration %}
       <span>{{ i18n.duration_label }}: {{ doc.metadata.duration }}</span>
@@ -39,12 +43,20 @@
       <span>{{ i18n.tokens_label }}: {{ doc.metadata.total_tokens | format_number }}</span>
       {% endif %}
     </div>
+    {% endif %}
   </header>
 
   <!-- Main Content -->
   <main class="debate-content">
     {% for section in doc.sections %}
-      {% if section.type == 'executive_summary' %}
+      {% if section.type == 'title' %}
+        <div class="debate-title-section">{{ section.content }}</div>
+      {% elif section.type == 'metadata' %}
+        <div class="debate-metadata-section">{{ section.content }}</div>
+      {% elif section.type == 'case_description' %}
+        <div class="debate-case-section">{{ section.content }}</div>
+      {% elif section.type == 'table_of_contents' %}{# TOC rendered at top; skip #}
+      {% elif section.type == 'executive_summary' %}
         {{ render_executive_summary(section, i18n) }}
       {% elif section.type == 'turn' %}
         {{ render_turn(section, i18n) }}

@@ -35,6 +35,10 @@ class SectionType(StrEnum):
     """Semantic type of a print section."""
 
     HEADER = "header"
+    TITLE = "title"
+    METADATA = "metadata"
+    CASE_DESCRIPTION = "case_description"
+    TABLE_OF_CONTENTS = "table_of_contents"
     TURN = "turn"
     INJECTION_SIDEBAR = "injection_sidebar"
     MINORITY_CALLOUT = "minority_callout"
@@ -71,9 +75,13 @@ class PrintMetadata(BaseModel):
 
     topic: str
     workflow_name: str
+    title: str = ""
     participants: list[str] = Field(default_factory=list)
     duration: str = ""
     total_tokens: int = 0
+    total_rounds: int = 0
+    agent_roles: list[str] = Field(default_factory=list)
+    llm_mapping: dict[str, str] = Field(default_factory=dict)
 
 
 class PrintDocument(BaseModel):

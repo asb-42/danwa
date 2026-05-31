@@ -625,6 +625,7 @@ async def launch_workflow_from_input(
         "workflow_template": wf_template_slug,
         "session_id": session_id,
         "project_id": project_id,
+        "title": title,
         "context": topic,
         "language": body.language,
         "rag_context": rag_context,

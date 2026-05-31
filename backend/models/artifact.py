@@ -86,6 +86,7 @@ class DebateArtifact(BaseModel):
     workflow_id: str
     workflow_version: int = 1
     workflow_name: str = ""
+    title: str = ""
     topic: str = ""
     tone_profile_snapshot: dict = Field(default_factory=dict)
 

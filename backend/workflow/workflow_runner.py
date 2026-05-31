@@ -677,6 +677,7 @@ def _build_artifact_common(
         workflow_id=workflow_id,
         workflow_version=state.get("workflow_version", 1),
         workflow_name=state.get("workflow_name", ""),
+        title=state.get("title", ""),
         topic=state.get("context", ""),
         tone_profile_snapshot=tone_snapshot,
         transcript=turns,

@@ -367,6 +367,29 @@
     </div>
   {/if}
 
+  <!-- Title -->
+  {#if debateTitle}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
+      <div class="text-xl font-bold text-gray-900 dark:text-white">&lt;Title&gt;{debateTitle}&lt;/Title&gt;</div>
+    </div>
+  {/if}
+
+  <!-- Metadata -->
+  {#if nodeOutputs.length}
+    {@const rounds = Math.max(...nodeOutputs.map(n => n.round || 0), 0)}
+    {@const roles = [...new Set(nodeOutputs.map(n => n.role).filter(Boolean))]}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
+      <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300">
+        {#if rounds}
+          <div><span class="font-semibold">Anzahl Runden:</span> {rounds}</div>
+        {/if}
+        {#if roles.length}
+          <div><span class="font-semibold">Agenten-Rollen:</span> {roles.join(' · ')}</div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
   <!-- Case text -->
   {#if context}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">

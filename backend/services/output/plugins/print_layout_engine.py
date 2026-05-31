@@ -146,6 +146,52 @@ class PrintLayoutEngine:
         queries_by_round = self._group_queries_by_round(artifact)
         minority_by_turn = self._group_minority_by_turn(artifact)
 
+        # --- Title (with Title tags) ---
+        title_text = artifact.title or artifact.topic[:80]
+        title_id = _make_id("title", section_idx)
+        title_html = f"<Title>{self._escape(title_text)}</Title>"
+        toc.append(TOCEntry(level=1, title=title_text, anchor=title_id))
+        sections.append(
+            PrintSection(
+                id=title_id,
+                type=SectionType.TITLE,
+                title=title_text,
+                content=title_html,
+                css_class="debate-title",
+            )
+        )
+        section_idx += 1
+
+        # --- Metadata (rounds, agent roles, LLM mapping) ---
+        meta = self._build_metadata_block(artifact)
+        meta_id = _make_id("meta", section_idx)
+        sections.append(
+            PrintSection(
+                id=meta_id,
+                type=SectionType.METADATA,
+                title="Metadaten",
+                content=meta,
+                css_class="debate-metadata",
+            )
+        )
+        section_idx += 1
+
+        # --- Case description (full text, no Title tags) ---
+        if artifact.topic:
+            case_id = _make_id("case", section_idx)
+            case_html = f"<h2>Fallbeschreibung</h2><div class=\"case-text\">{self._escape(artifact.topic)}</div>"
+            toc.append(TOCEntry(level=1, title="Fallbeschreibung", anchor=case_id))
+            sections.append(
+                PrintSection(
+                    id=case_id,
+                    type=SectionType.CASE_DESCRIPTION,
+                    title="Fallbeschreibung",
+                    content=case_html,
+                    css_class="case-description",
+                )
+            )
+            section_idx += 1
+
         # --- Executive Summary (Page 1) ---
         exec_sid = _make_id("exec", section_idx)
         exec_html = self._build_executive_summary(artifact)
@@ -379,6 +425,63 @@ class PrintLayoutEngine:
         return dict(result)
 
     @staticmethod
+    def _escape(text: str) -> str:
+        """Escape HTML special characters."""
+        return (
+            text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
+
+    @staticmethod
+    def _build_metadata_block(artifact: DebateArtifact) -> str:
+        """Build HTML for the metadata section."""
+        parts: list[str] = []
+
+        rounds = max((t.round for t in artifact.transcript), default=0)
+        parts.append(f'<div class="meta-row"><span class="meta-label">Anzahl Runden:</span> <span class="meta-value">{rounds}</span></div>')
+
+        roles = sorted({t.role_type for t in artifact.transcript if t.role_type})
+        if roles:
+            parts.append(f'<div class="meta-row"><span class="meta-label">Agenten-Rollen:</span> <span class="meta-value">{" · ".join(roles)}</span></div>')
+
+        mapping: dict[str, str] = {}
+        for t in artifact.transcript:
+            if t.role_type and t.llm_profile_id and t.role_type not in mapping:
+                mapping[t.role_type] = t.llm_profile_id
+        if mapping:
+            mapping_lines = " · ".join(f"{role} → {pid}" for role, pid in mapping.items())
+            parts.append(f'<div class="meta-row"><span class="meta-label">LLM-Mapping:</span> <span class="meta-value">{mapping_lines}</span></div>')
+
+        participants = sorted({t.agent_name for t in artifact.transcript if t.agent_name})
+        if participants:
+            parts.append(f'<div class="meta-row"><span class="meta-label">Teilnehmer:</span> <span class="meta-value">{" · ".join(participants)}</span></div>')
+
+        duration = ""
+        timestamps = artifact.metadata.get("timestamps", {})
+        if timestamps:
+            start = timestamps.get("start", "")
+            end = timestamps.get("end", "")
+            if start and end:
+                try:
+                    t_start = datetime.fromisoformat(start)
+                    t_end = datetime.fromisoformat(end)
+                    delta = t_end - t_start
+                    minutes = int(delta.total_seconds() // 60)
+                    seconds = int(delta.total_seconds() % 60)
+                    duration = f"{minutes}m {seconds}s"
+                except (ValueError, TypeError):
+                    duration = f"{start} → {end}"
+        if duration:
+            parts.append(f'<div class="meta-row"><span class="meta-label">Dauer:</span> <span class="meta-value">{duration}</span></div>')
+
+        total_tokens = sum(t.token_usage.get("total", 0) for t in artifact.transcript)
+        parts.append(f'<div class="meta-row"><span class="meta-label">Tokens gesamt:</span> <span class="meta-value">{total_tokens:,}</span></div>')
+
+        return '<div class="metadata-grid">' + "".join(parts) + "</div>"
+
+    @staticmethod
     def _build_executive_summary(artifact: DebateArtifact) -> str:
         """Build HTML for the Executive Summary (page 1).
 
@@ -457,10 +560,20 @@ class PrintLayoutEngine:
                 except (ValueError, TypeError):
                     duration = f"{start} → {end}"
 
+        agent_roles = sorted({t.role_type for t in artifact.transcript if t.role_type})
+        llm_mapping: dict[str, str] = {}
+        for t in artifact.transcript:
+            if t.role_type and t.llm_profile_id and t.role_type not in llm_mapping:
+                llm_mapping[t.role_type] = t.llm_profile_id
+
         return PrintMetadata(
             topic=artifact.topic,
             workflow_name=artifact.workflow_name,
+            title=artifact.title,
             participants=sorted(participants),
             duration=duration,
             total_tokens=total_tokens,
+            total_rounds=max((t.round for t in artifact.transcript), default=0),
+            agent_roles=agent_roles,
+            llm_mapping=llm_mapping,
         )

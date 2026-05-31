@@ -346,10 +346,27 @@ async def start_mvp_debate(
             )
         node_configs[agent.node_id] = cfg
 
+    title = body.context[:80]
+    try:
+        from backend.services.debate_workflow import generate_debate_title
+
+        generated = await generate_debate_title(
+            case_text=body.context,
+            llm_profile_id="",
+            language=body.language,
+            project_id=effective_project_id,
+            use_service_llm=True,
+        )
+        if generated:
+            title = generated
+    except Exception:
+        logger.warning("MVP title generation failed, using fallback", exc_info=True)
+
     initial_state: dict[str, Any] = {
         "workflow_id": wf.id,
         "session_id": session_id,
         "project_id": effective_project_id,
+        "title": title,
         "context": body.context,
         "language": body.language,
         "search_mode": body.search_mode.value,
@@ -380,22 +397,6 @@ async def start_mvp_debate(
 
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
-
-    title = body.context[:80]
-    try:
-        from backend.services.debate_workflow import generate_debate_title
-
-        generated = await generate_debate_title(
-            case_text=body.context,
-            llm_profile_id="",
-            language=body.language,
-            project_id=effective_project_id,
-            use_service_llm=True,
-        )
-        if generated:
-            title = generated
-    except Exception:
-        logger.warning("MVP title generation failed, using fallback", exc_info=True)
 
     try:
         debate_store = get_debate_store_for_project(effective_project_id, project_store)
@@ -517,11 +518,28 @@ async def start_workflow(
                 exc_info=True,
             )
 
+    title = body.context[:80]
+    try:
+        from backend.services.debate_workflow import generate_debate_title
+
+        generated = await generate_debate_title(
+            case_text=body.context,
+            llm_profile_id="",
+            language=body.language,
+            project_id=project_id,
+            use_service_llm=True,
+        )
+        if generated:
+            title = generated
+    except Exception:
+        logger.warning("Title generation failed for workflow, using fallback", exc_info=True)
+
     # Build initial state
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,
         "session_id": session_id,
         "project_id": project_id,
+        "title": title,
         "context": body.context,
         "language": body.language,
         "rag_context": rag_context,
@@ -561,22 +579,6 @@ async def start_workflow(
     # Create debate record so the workflow appears in Dashboard/Archive
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
-
-    title = body.context[:80]
-    try:
-        from backend.services.debate_workflow import generate_debate_title
-
-        generated = await generate_debate_title(
-            case_text=body.context,
-            llm_profile_id="",
-            language=body.language,
-            project_id=project_id,
-            use_service_llm=True,
-        )
-        if generated:
-            title = generated
-    except Exception:
-        logger.warning("Title generation failed for workflow, using fallback", exc_info=True)
 
     try:
         debate_store = get_debate_store_for_project(project_id, project_store)

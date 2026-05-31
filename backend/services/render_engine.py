@@ -419,6 +419,7 @@ def _debate_to_artifact(debate: dict):
         workflow_id=f"debate_{debate.get('debate_id', '')[:8]}",
         workflow_version=1,
         workflow_name="debate",
+        title=debate.get("title", ""),
         topic=case_text,
         transcript=turns,
         consensus_result={

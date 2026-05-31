@@ -74,12 +74,12 @@ async def generate_debate_title(
             prompt=user_prompt,
             system_prompt=system_prompt,
             temperature=0.1,
-            max_tokens=100,
+            max_tokens=4000,
             context="Debate",
-            stop=["\n\n", "---", "Titel:", "Title:"],
         )
 
-        title = _post_process_title(result.content.strip(), case_text)
+        raw = (result.content or "").strip()
+        title = _post_process_title(_extract_title_from_verbose(raw) or raw, case_text)
         logger.info("Generated debate title (%d chars, service=%s): %s", len(title), use_service_llm, title)
         return title
 
@@ -89,36 +89,50 @@ async def generate_debate_title(
 
 
 def _select_service_llm(profile_service) -> str:
-    """Select the best service LLM profile for system/background tasks.
+    """Select the service LLM profile for system/background tasks.
 
-    Strategy:
-    1. Use configured settings.service_llm_profile_id if eligible.
-    2. Otherwise find first eligible profile preferring openrouter + large context.
-    3. Fall back to first available text-LLM.
+    Strategy — respects the user's UI choice (Build > Manage > LLM Profile,
+    Utility-LLM checkbox) above all else:
+    1. User-saved profiles (not readonly) with ``service_eligible`` = True.
+    2. ``settings.service_llm_profile_id`` if it matches an eligible user-saved profile.
+    3. Any eligible readonly profile.
+    4. First available text-LLM.
     """
     try:
+        all_profiles = profile_service.list_llm_profiles()
+    except Exception:
+        raise RuntimeError("No suitable LLM profile available for service tasks")
+
+    # --- User-saved eligible profiles (UI checkbox choice) ---
+    user_saved = [
+        p for p in all_profiles
+        if is_service_llm_eligible(p)[0] and not getattr(p, "_readonly", False)
+    ]
+    if user_saved:
         if settings.service_llm_profile_id:
-            preferred = profile_service.get_llm_profile(settings.service_llm_profile_id)
-            if preferred and is_service_llm_eligible(preferred)[0]:
-                return settings.service_llm_profile_id
-    except Exception:
-        pass
-    try:
-        all_profiles = profile_service.list_llm_profiles()
-        eligible = [p for p in all_profiles if is_service_llm_eligible(p)[0]]
-        if eligible:
-            eligible.sort(key=lambda p_: (0 if p_.provider.value == "openrouter" else 1, -(p_.context_window or 0)))
-            return eligible[0].id
-    except Exception:
-        pass
-    # Last resort: return first text-LLM
-    try:
-        all_profiles = profile_service.list_llm_profiles()
-        text_profiles = [p for p in all_profiles if getattr(p, "profile_type", "text") == "text"]
-        if text_profiles:
-            return text_profiles[0].id
-    except Exception:
-        pass
+            match = next((p for p in user_saved if p.id == settings.service_llm_profile_id), None)
+            if match:
+                return match.id
+        user_saved.sort(key=lambda p_: -(p_.context_window or 0))
+        return user_saved[0].id
+
+    # --- settings.service_llm_profile_id (fallback) ---
+    if settings.service_llm_profile_id:
+        preferred = profile_service.get_llm_profile(settings.service_llm_profile_id)
+        if preferred and is_service_llm_eligible(preferred)[0]:
+            return settings.service_llm_profile_id
+
+    # --- Any eligible readonly profile ---
+    readonly_eligible = [p for p in all_profiles if is_service_llm_eligible(p)[0]]
+    if readonly_eligible:
+        readonly_eligible.sort(key=lambda p_: -(p_.context_window or 0))
+        return readonly_eligible[0].id
+
+    # --- Last resort ---
+    text_profiles = [p for p in all_profiles if getattr(p, "profile_type", "text") == "text"]
+    if text_profiles:
+        return text_profiles[0].id
+
     raise RuntimeError("No suitable LLM profile available for service tasks")
 
 
@@ -154,6 +168,55 @@ def validate_title(title: str, case_text: str) -> tuple[bool, str]:
     if _re.match(r"^[\s\"'„" r"''`\-–:.,!?]+$", title):
         return False, "Nur Sonderzeichen"
     return True, "OK"
+
+
+def _extract_title_from_verbose(text: str) -> str:
+    """Extract just the title from verbose/reasoning-style LLM output.
+
+    Handles models (e.g. MiMo) that output chain-of-thought reasoning with
+    the final answer appended at the end.
+    """
+    if not text or len(text) < 150:
+        return ""
+
+    _re = __import__("re")
+
+    markers = [
+        r"Final title:\s*",
+        r"Title:\s*",
+        r"Answer:\s*",
+        r"I'll go with:\s*",
+        r"I think I'll use:\s*",
+        r"I will use:\s*",
+        r"Let me use:\s*",
+        r"So the title is:\s*",
+        r"The best title is:\s*",
+        r"Abschließender Titel:\s*",
+        r"Titel:\s*",
+        r"Antwort:\s*",
+        r"Abschließend:\s*",
+        r"Ich verwende:\s*",
+        r"Der beste Titel ist:\s*",
+        r"Der Titel lautet:\s*",
+    ]
+
+    for marker in markers:
+        parts = _re.split(marker, text, flags=_re.IGNORECASE)
+        if len(parts) >= 2:
+            candidate = parts[-1].strip()
+            if 10 <= len(candidate) <= 200:
+                for ch in ['"', "'", "„", "`"]:
+                    candidate = candidate.strip(ch)
+                return candidate.strip()
+
+    # No marker found: take the last sentence (or last ~120 chars)
+    sentences = _re.split(r'(?<=[.!?])\s+', text)
+    if len(sentences) >= 2:
+        tail = sentences[-1].strip()
+        if 10 <= len(tail) <= 200:
+            return tail
+
+    return ""
 
 
 def _post_process_title(raw: str, case_text: str) -> str:

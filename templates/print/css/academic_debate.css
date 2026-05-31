@@ -460,6 +460,54 @@ body {
   color: #555;
 }
 
+/* Debate Title */
+.debate-title-section Title {
+  display: block;
+  font-size: 18pt;
+  font-weight: bold;
+  color: #1a237e;
+  text-align: center;
+  margin: 1em 0 0.5em 0;
+  padding: 0.5em 0;
+  border-bottom: 2px solid #1a237e;
+}
+
+/* Metadata Grid */
+.debate-metadata-section {
+  margin: 0.5em 0 1.5em 0;
+  padding: 0.5em 1em;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 9pt;
+}
+.meta-row {
+  margin: 0.2em 0;
+}
+.meta-label {
+  font-weight: bold;
+  color: #333;
+  display: inline-block;
+  min-width: 14em;
+}
+.meta-value {
+  color: #555;
+}
+
+/* Case Description */
+.debate-case-section {
+  margin: 1em 0;
+  padding: 1em;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  background: #fafafa;
+}
+.case-text {
+  font-size: 10.5pt;
+  line-height: 1.7;
+  color: #333;
+}
+
 /* Footer */
 .doc-footer {
   margin-top: 2em;

@@ -104,9 +104,20 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
 </head>
 <body>
 
-<h1>{{ artifact.workflow_name or doc.metadata.topic }}</h1>
+<!-- Title -->
+<Title>{{ doc.metadata.title or doc.metadata.topic }}</Title>
 
+<!-- Metadata -->
 <div class="doc-meta">
+  <span>{{ i18n.get('rounds_label', 'Runden') }}: {{ doc.metadata.total_rounds }}</span>
+  {% if doc.metadata.agent_roles %}
+  <span>{{ i18n.get('agent_roles_label', 'Rollen') }}: {{ doc.metadata.agent_roles | join(', ') }}</span>
+  {% endif %}
+  {% if doc.metadata.llm_mapping %}
+  <span>{{ i18n.get('llm_mapping_label', 'LLM-Mapping') }}:
+    {% for role, pid in doc.metadata.llm_mapping.items() %}{{ role }}→{{ pid }}{% if not loop.last %} · {% endif %}{% endfor %}
+  </span>
+  {% endif %}
   <span>{{ i18n.get('topic_label', 'Thema') }}: {{ doc.metadata.topic }}</span>
   {% if doc.metadata.duration %}
   <span>{{ i18n.get('duration_label', 'Dauer') }}: {{ doc.metadata.duration }}</span>
@@ -115,6 +126,8 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
   <span>{{ i18n.get('tokens_label', 'Tokens') }}: {{ doc.metadata.total_tokens }}</span>
   {% endif %}
 </div>
+
+<h1>{{ artifact.workflow_name or doc.metadata.title or doc.metadata.topic }}</h1>
 
 <!-- Executive Summary -->
 <section class="exec-summary">

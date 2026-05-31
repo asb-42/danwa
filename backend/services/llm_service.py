@@ -581,7 +581,7 @@ class LLMService:
                 val_preview = str(v)[:300] if v else ""
                 logger.warning("  psf[%s] = %s", k, val_preview)
 
-        if content is None:
+        if not content:
             reasoning = psf.get("reasoning_content")
             if reasoning:
                 logger.info(

@@ -297,6 +297,7 @@ async def run_debate_workflow(
 
     generated_title = await generate_debate_title(fields["case_text"], fields["llm_profile_id"], fields["language"], project_id, use_service_llm=True)
 
+    fields["title"] = generated_title
     store.update(debate_id, title=generated_title)
 
     await publish_async(
@@ -491,6 +492,7 @@ async def run_debate_workflow(
                 workflow_id=f"debate_{debate_id[:8]}",
                 workflow_version=1,
                 workflow_name="debate",
+                title=fields.get("title", ""),
                 topic=fields["case_text"],
                 transcript=turns,
                 consensus_result={
