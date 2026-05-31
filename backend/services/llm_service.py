@@ -150,10 +150,22 @@ class LLMService:
         if not self._profile:
             raise RuntimeError("No LLM profile configured")
 
+        # --- Time Awareness — inject current date into every system prompt ---
+        from datetime import datetime as _dt
+
+        today = _dt.now().strftime("%Y-%m-%d")
+        date_line = (
+            f"Heute ist der {today}. "
+            "Alle Fristen, Termine und zeitlichen Bewertungen beziehen sich auf dieses Datum."
+        )
+        if system_prompt:
+            system_prompt = f"{date_line}\n\n{system_prompt}"
+        else:
+            system_prompt = date_line
+
         # Build messages
         messages: list[dict[str, str]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
         # Resolve temperature / max_tokens with proper None handling
