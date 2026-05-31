@@ -104,10 +104,7 @@ def _select_service_llm(profile_service) -> str:
         raise RuntimeError("No suitable LLM profile available for service tasks")
 
     # --- User-saved eligible profiles (UI checkbox choice) ---
-    user_saved = [
-        p for p in all_profiles
-        if is_service_llm_eligible(p)[0] and not getattr(p, "_readonly", False)
-    ]
+    user_saved = [p for p in all_profiles if is_service_llm_eligible(p)[0] and not getattr(p, "_readonly", False)]
     if user_saved:
         if settings.service_llm_profile_id:
             match = next((p for p in user_saved if p.id == settings.service_llm_profile_id), None)
@@ -210,7 +207,7 @@ def _extract_title_from_verbose(text: str) -> str:
                 return candidate.strip()
 
     # No marker found: take the last sentence (or last ~120 chars)
-    sentences = _re.split(r'(?<=[.!?])\s+', text)
+    sentences = _re.split(r"(?<=[.!?])\s+", text)
     if len(sentences) >= 2:
         tail = sentences[-1].strip()
         if 10 <= len(tail) <= 200:

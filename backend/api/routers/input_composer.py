@@ -613,12 +613,28 @@ async def launch_workflow_from_input(
         len(rag_context),
     )
 
-    # 5. Generate session ID and build initial state
+    # 5. Generate session ID and title, then build initial state
     session_id = f"wf-{uuid.uuid4().hex[:12]}"
 
     wf_template_slug = ""
     if body.workflow_template_id:
         wf_template_slug = body.workflow_template_id.replace("tpl-", "").replace("-", "_")
+
+    title = topic[:80] if topic else f"Input Job {body.job_id}"
+    try:
+        from backend.services.debate_workflow import generate_debate_title
+
+        generated = await generate_debate_title(
+            case_text=topic,
+            llm_profile_id="",
+            language=body.language or "de",
+            project_id=project_id,
+            use_service_llm=True,
+        )
+        if generated:
+            title = generated
+    except Exception:
+        logger.warning("Title generation failed for input-composer workflow, using fallback", exc_info=True)
 
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,
@@ -665,22 +681,6 @@ async def launch_workflow_from_input(
     # 7. Create debate record so the workflow appears in Dashboard/Archive
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
-
-    title = topic[:80] if topic else f"Input Job {body.job_id}"
-    try:
-        from backend.services.debate_workflow import generate_debate_title
-
-        generated = await generate_debate_title(
-            case_text=topic,
-            llm_profile_id="",
-            language=body.language or "de",
-            project_id=project_id,
-            use_service_llm=True,
-        )
-        if generated:
-            title = generated
-    except Exception:
-        logger.warning("Title generation failed for input-composer workflow, using fallback", exc_info=True)
 
     try:
         debate_store = get_debate_store_for_project(project_id, project_store)

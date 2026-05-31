@@ -149,7 +149,7 @@ class PrintLayoutEngine:
         # --- Title (with Title tags) ---
         title_text = artifact.title or artifact.topic[:80]
         title_id = _make_id("title", section_idx)
-        title_html = f"<h1 class=\"debate-title\">{self._escape(title_text)}</h1>"
+        title_html = f'<h1 class="debate-title">{self._escape(title_text)}</h1>'
         toc.append(TOCEntry(level=1, title=title_text, anchor=title_id))
         sections.append(
             PrintSection(
@@ -179,7 +179,7 @@ class PrintLayoutEngine:
         # --- Case description (full text, no Title tags) ---
         if artifact.topic:
             case_id = _make_id("case", section_idx)
-            case_html = f"<h2>Fallbeschreibung</h2><div class=\"case-text\">{self._escape(artifact.topic)}</div>"
+            case_html = f'<h2>Fallbeschreibung</h2><div class="case-text">{self._escape(artifact.topic)}</div>'
             toc.append(TOCEntry(level=1, title="Fallbeschreibung", anchor=case_id))
             sections.append(
                 PrintSection(
@@ -427,12 +427,7 @@ class PrintLayoutEngine:
     @staticmethod
     def _escape(text: str) -> str:
         """Escape HTML special characters."""
-        return (
-            text.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-        )
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
     @staticmethod
     def _build_metadata_block(artifact: DebateArtifact) -> str:
@@ -444,7 +439,9 @@ class PrintLayoutEngine:
 
         roles = sorted({t.role_type for t in artifact.transcript if t.role_type})
         if roles:
-            parts.append(f'<div class="meta-row"><span class="meta-label">Agenten-Rollen:</span> <span class="meta-value">{" · ".join(roles)}</span></div>')
+            parts.append(
+                f'<div class="meta-row"><span class="meta-label">Agenten-Rollen:</span> <span class="meta-value">{" · ".join(roles)}</span></div>'
+            )
 
         mapping: dict[str, str] = {}
         for t in artifact.transcript:
@@ -456,7 +453,9 @@ class PrintLayoutEngine:
 
         participants = sorted({t.agent_name for t in artifact.transcript if t.agent_name})
         if participants:
-            parts.append(f'<div class="meta-row"><span class="meta-label">Teilnehmer:</span> <span class="meta-value">{" · ".join(participants)}</span></div>')
+            parts.append(
+                f'<div class="meta-row"><span class="meta-label">Teilnehmer:</span> <span class="meta-value">{" · ".join(participants)}</span></div>'
+            )
 
         duration = ""
         timestamps = artifact.metadata.get("timestamps", {})

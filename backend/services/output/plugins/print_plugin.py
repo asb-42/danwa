@@ -374,7 +374,7 @@ class PrintOutputPlugin(OutputPlugin):
         for section in doc.sections:
             if section.type.value in skip_types:
                 continue
-            
+
             # Strip HTML from content to get plain text
             plain_content = re.sub(r"<[^>]+>", "", section.content)
             plain_content = re.sub(r"\n{3,}", "\n\n", plain_content).strip()
