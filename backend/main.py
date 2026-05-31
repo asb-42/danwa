@@ -32,6 +32,7 @@ from backend.api.routers import (  # noqa: E402
     blueprints,
     bundle_composer,
     canvas,
+    cases,
     config,
     debate,
     debate_stream,
@@ -48,6 +49,7 @@ from backend.api.routers import (  # noqa: E402
     role_definitions,
     sessions,
     system,
+    tags,
     tenants,
     tone_profiles,
     user_keys,
@@ -289,6 +291,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(user_keys.router, prefix="/api/v1/user-keys", tags=["user-keys"])
     app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
+    app.include_router(cases.router, prefix="/api/v1", tags=["cases"])
+    app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
     app.include_router(debate_stream.router, prefix="/api/v1/debate", tags=["debate"])

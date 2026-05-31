@@ -69,6 +69,22 @@ def get_project_store() -> ProjectStore:
     return ProjectStore()
 
 
+@lru_cache
+def get_case_store():
+    """Singleton CaseStore instance."""
+    from backend.persistence.case_store import CaseStore
+
+    return CaseStore()
+
+
+@lru_cache
+def get_tag_store():
+    """Singleton TagStore instance."""
+    from backend.persistence.tag_store import TagStore
+
+    return TagStore()
+
+
 def get_debate_store_for_project(project_id: str, project_store: ProjectStore) -> DebateStore:
     """Return a project-scoped DebateStore."""
     project = project_store.get(project_id)
