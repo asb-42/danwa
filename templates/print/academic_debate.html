@@ -50,11 +50,11 @@
   <main class="debate-content">
     {% for section in doc.sections %}
       {% if section.type == 'title' %}
-        <div class="debate-title-section">{{ section.content }}</div>
+        <div class="debate-title-section">{{ section.content | safe }}</div>
       {% elif section.type == 'metadata' %}
-        <div class="debate-metadata-section">{{ section.content }}</div>
+        <div class="debate-metadata-section">{{ section.content | safe }}</div>
       {% elif section.type == 'case_description' %}
-        <div class="debate-case-section">{{ section.content }}</div>
+        <div class="debate-case-section">{{ section.content | safe }}</div>
       {% elif section.type == 'table_of_contents' %}{# TOC rendered at top; skip #}
       {% elif section.type == 'executive_summary' %}
         {{ render_executive_summary(section, i18n) }}

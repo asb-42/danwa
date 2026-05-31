@@ -461,8 +461,7 @@ body {
 }
 
 /* Debate Title */
-.debate-title-section Title {
-  display: block;
+.debate-title {
   font-size: 18pt;
   font-weight: bold;
   color: #1a237e;

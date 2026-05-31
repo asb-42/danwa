@@ -334,7 +334,7 @@ class PrintOutputPlugin(OutputPlugin):
         # Title
         if title_section:
             plain_title = re.sub(r"<[^>]+>", "", title_section.content).strip()
-            lines.append(f"<Title>{plain_title}</Title>")
+            lines.append(f"# {plain_title}")
         else:
             lines.append(f"# {doc.metadata.topic}")
         lines.append("")

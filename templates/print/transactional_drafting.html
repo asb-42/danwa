@@ -105,7 +105,7 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
 <body>
 
 <!-- Title -->
-<Title>{{ doc.metadata.title or doc.metadata.topic }}</Title>
+<h1 class="debate-title">{{ doc.metadata.title or doc.metadata.topic }}</h1>
 
 <!-- Metadata -->
 <div class="doc-meta">
@@ -172,7 +172,7 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
 {% for section in sections %}
 <article class="clause-section">
   <h3>{{ section.title }}</h3>
-  <div class="clause-content">{{ section.content }}</div>
+  <div class="clause-content">{{ section.content | safe }}</div>
   {% if section.provenance %}
   <div class="provenance-bar">
     {% if section.provenance.draft_version %}

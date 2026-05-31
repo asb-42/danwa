@@ -149,7 +149,7 @@ class PrintLayoutEngine:
         # --- Title (with Title tags) ---
         title_text = artifact.title or artifact.topic[:80]
         title_id = _make_id("title", section_idx)
-        title_html = f"<Title>{self._escape(title_text)}</Title>"
+        title_html = f"<h1 class=\"debate-title\">{self._escape(title_text)}</h1>"
         toc.append(TOCEntry(level=1, title=title_text, anchor=title_id))
         sections.append(
             PrintSection(

@@ -27,7 +27,6 @@
     {% elif section.type == 'case_description' %}
     <div class="debate-case-section">{{ section.content | safe }}</div>
     {% elif section.type == 'turn' %}
-    {% if section.type == 'turn' %}
     <div class="turn">
       <div class="turn-header">
         {{ section.agent_name }} ({{ section.title }})
