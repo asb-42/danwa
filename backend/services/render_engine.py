@@ -268,6 +268,13 @@ class RenderEngineService:
         return None
 
 
+def _normalize_or_pass(content: str, role: str) -> str:
+    """Normalize structured JSON output (critic/builder/pragmatist) to Markdown."""
+    from backend.workflow.workflow_runner import normalize_transcript_content
+
+    return normalize_transcript_content(content, role)
+
+
 def _build_turns_from_node_outputs(
     node_outputs: list[dict],
     node_configs: dict | None = None,
@@ -333,7 +340,7 @@ def _build_turns_from_node_outputs(
                 agent_name=agent_name,
                 role_type=role,
                 llm_profile_id=llm_profile_id,
-                content=no.get("content", ""),
+                content=_normalize_or_pass(no.get("content", ""), role),
                 latency_ms=no.get("duration_ms", 0),
                 token_usage={"total": no.get("tokens_used", 0)},
             )
@@ -378,13 +385,14 @@ def _debate_to_artifact(debate: dict):
         # Legacy debates: build turns from rounds[n].agent_outputs
         for rd in rounds:
             for ao in rd.get("agent_outputs", []):
+                role = ao.get("role", "agent")
                 turns.append(
                     Turn(
                         round=rd.get("round", 0),
-                        node_id=f"{ao.get('role', 'agent')}_round{rd.get('round', 0)}",
-                        agent_name=ao.get("role", "agent"),
-                        role_type=ao.get("role", "agent"),
-                        content=ao.get("content", ""),
+                        node_id=f"{role}_round{rd.get('round', 0)}",
+                        agent_name=role,
+                        role_type=role,
+                        content=_normalize_or_pass(ao.get("content", ""), role),
                         token_usage={"total": ao.get("tokens_used", 0)},
                     )
                 )

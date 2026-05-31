@@ -449,7 +449,7 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
     return transcript
 
 
-def _normalize_transcript_content(content: str, role: str) -> str:
+def normalize_transcript_content(content: str, role: str) -> str:
     """Convert structured JSON output (critic, builder, pragmatist) into
     readable Markdown for the frontend transcript view."""
     import json as _json
@@ -610,7 +610,7 @@ def _build_artifact_from_state(
                 agent_name=agent_name,
                 role_type=role,
                 llm_profile_id=llm_profile_id,
-                content=_normalize_transcript_content(raw_content, role),
+                content=normalize_transcript_content(raw_content, role),
                 latency_ms=output.get("duration_ms", 0),
                 token_usage={"total": output.get("tokens_used", 0)},
             )

@@ -616,8 +616,15 @@ async def launch_workflow_from_input(
     # 5. Generate session ID and build initial state
     session_id = f"wf-{uuid.uuid4().hex[:12]}"
 
+    wf_template_slug = ""
+    if body.workflow_template_id:
+        wf_template_slug = (
+            body.workflow_template_id.replace("tpl-", "").replace("-", "_")
+        )
+
     initial_state: dict[str, Any] = {
         "workflow_id": workflow_id,
+        "workflow_template": wf_template_slug,
         "session_id": session_id,
         "project_id": project_id,
         "context": topic,
