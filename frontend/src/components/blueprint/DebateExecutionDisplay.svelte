@@ -132,7 +132,9 @@
     switch (role) {
       case 'strategist': return '🎯';
       case 'critic': return '🔍';
+      case 'builder': return '🛠️';
       case 'optimizer': return '⚡';
+      case 'pragmatist': return '📊';
       case 'moderator': return '⚖️';
       default: return '🤖';
     }
@@ -142,7 +144,9 @@
     switch (role) {
       case 'strategist': return 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-600';
       case 'critic': return 'border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-600';
+      case 'builder': return 'border-teal-400 bg-teal-50 dark:bg-teal-900/20 dark:border-teal-600';
       case 'optimizer': return 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-600';
+      case 'pragmatist': return 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-600';
       case 'moderator': return 'border-purple-400 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-600';
       default: return 'border-gray-400 bg-gray-50 dark:bg-gray-800 dark:border-gray-600';
     }
@@ -152,7 +156,9 @@
     switch (role) {
       case 'strategist': return 'text-blue-700 dark:text-blue-300';
       case 'critic': return 'text-red-700 dark:text-red-300';
+      case 'builder': return 'text-teal-700 dark:text-teal-300';
       case 'optimizer': return 'text-amber-700 dark:text-amber-300';
+      case 'pragmatist': return 'text-indigo-700 dark:text-indigo-300';
       case 'moderator': return 'text-purple-700 dark:text-purple-300';
       default: return 'text-gray-700 dark:text-gray-300';
     }

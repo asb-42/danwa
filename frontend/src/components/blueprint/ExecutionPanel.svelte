@@ -18,6 +18,7 @@
   } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
   import { patchActiveWorkflowSession } from '../../lib/workflowSession.js';
+  import { normalizeTranscriptContent } from '../../lib/transcriptNormalizer.js';
 
   /**
    * @type {{
@@ -103,11 +104,12 @@
         onNodeStatusUpdate(data.node_id, 'running');
       },
       onNodeComplete: (data) => {
+        const normalized = normalizeTranscriptContent(data.content || '', data.role || data.node_type || '');
         nodeOutputs = [...nodeOutputs, {
           nodeId: data.node_id,
           nodeType: data.node_type,
           role: data.role,
-          content: data.content,
+          content: normalized,
           durationMs: data.duration_ms,
           round: data.round,
         }];
