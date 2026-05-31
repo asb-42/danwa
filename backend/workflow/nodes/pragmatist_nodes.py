@@ -219,10 +219,86 @@ def pragmatist_node_factory(
         except Exception:
             logger.debug("Audit logging failed for pragmatist %s", node_id, exc_info=True)
 
+        # --- Merge pragmatist verdict/score into build_responses provenance ---
+        updated_build_responses = list(build_responses)
+        if pragmatist_output and pragmatist_output.evaluations:
+            eval_by_resp = {e.response_to: e for e in pragmatist_output.evaluations}
+            for br_dict in updated_build_responses:
+                evalu = eval_by_resp.get(br_dict.get("response_to", ""))
+                if evalu and "provenance" in br_dict and br_dict["provenance"]:
+                    br_dict["provenance"]["pragmatist_verdict"] = evalu.verdict
+                    br_dict["provenance"]["pragmatist_score"] = evalu.feasibility
+
+        # --- Save provenance to DB ---
+        try:
+            _save_provenance_batch(session_id, state.get("workflow_id", ""), updated_build_responses)
+        except Exception:
+            logger.debug("Failed to save provenance for session %s", session_id, exc_info=True)
+
         return {
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],
             "pragmatist_output": pragmatist_output.model_dump() if pragmatist_output else None,
+            "build_responses": updated_build_responses,
         }
 
     return _pragmatist_node
+
+
+def _save_provenance_batch(
+    session_id: str,
+    workflow_id: str,
+    build_responses: list[dict],
+) -> None:
+    """Persist provenance entries to the build_response_provenance SQLite table."""
+    import sqlite3
+    from pathlib import Path
+
+    db_path = Path("data/blueprints.db")
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS build_response_provenance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                workflow_id TEXT NOT NULL,
+                response_to TEXT NOT NULL,
+                draft_version INTEGER DEFAULT 0,
+                critic_item_id TEXT DEFAULT '',
+                original_text TEXT DEFAULT '',
+                revision_type TEXT DEFAULT 'conservative',
+                pragmatist_verdict TEXT,
+                pragmatist_score REAL,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        rows = []
+        for br in build_responses:
+            prov = br.get("provenance") or {}
+            rows.append((
+                session_id,
+                workflow_id,
+                br.get("response_to", ""),
+                prov.get("draft_version", 0),
+                prov.get("critic_item_id", ""),
+                prov.get("original_text", ""),
+                prov.get("revision_type", "conservative"),
+                prov.get("pragmatist_verdict"),
+                prov.get("pragmatist_score"),
+            ))
+        conn.executemany(
+            """INSERT INTO build_response_provenance
+               (session_id, workflow_id, response_to, draft_version, critic_item_id,
+                original_text, revision_type, pragmatist_verdict, pragmatist_score)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            rows,
+        )
+        conn.commit()
+        logger.info("Saved %d provenance records for session %s", len(rows), session_id)
+    except Exception as exc:
+        logger.warning("Failed to save provenance for session %s: %s", session_id, exc)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass

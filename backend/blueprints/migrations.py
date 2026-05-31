@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 31
+SCHEMA_VERSION = 32
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -1053,6 +1053,29 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 31, "Add critic_item_id, build_response_id, draft_version, constructivity_score to audit_log")
             conn.commit()
             logger.info("Migration v31 applied successfully")
+
+        # ── V32 — build_response_provenance table for clause lineage ──
+        if current < 32:
+            logger.info("Applying migration v32: create build_response_provenance table")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS build_response_provenance (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    workflow_id TEXT NOT NULL,
+                    response_to TEXT NOT NULL,
+                    draft_version INTEGER DEFAULT 0,
+                    critic_item_id TEXT DEFAULT '',
+                    original_text TEXT DEFAULT '',
+                    revision_type TEXT DEFAULT 'conservative',
+                    pragmatist_verdict TEXT,
+                    pragmatist_score REAL,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_provenance_session ON build_response_provenance(session_id)")
+            _record_version(conn, 32, "Create build_response_provenance table for clause lineage tracking")
+            conn.commit()
+            logger.info("Migration v32 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

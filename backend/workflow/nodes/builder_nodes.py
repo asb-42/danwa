@@ -13,10 +13,10 @@ import time
 from collections.abc import Callable
 
 from backend.api.events import publish_async
-from backend.models.transactional import CriticItem
+from backend.models.transactional import BuilderOutput, Provenance
 from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
-from backend.workflow.node_functions import _get_profile_service
+from backend.workflow.node_functions import _get_profile_service, _resolve_system_prompt
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -269,6 +269,19 @@ def builder_node_factory(
             n_build = len(builder_output.build_responses)
             constructivity = round(n_build / n_critic, 4) if n_critic > 0 else 1.0
             builder_output.constructivity_score = constructivity
+            # --- Attach Provenance to each BuildResponse ---
+            critic_by_id = {c.get("critic_id", ""): c for c in critic_items}
+            revision_map = {"option_a": "conservative", "option_b": "radical", "option_c": "minimal"}
+            for br in builder_output.build_responses:
+                c = critic_by_id.get(br.response_to, {})
+                original_text = c.get("context_quote") or c.get("flaw", "")
+                revision_type = revision_map.get(br.recommendation, "conservative")
+                br.provenance = Provenance(
+                    draft_version=draft_version,
+                    critic_item_id=br.response_to,
+                    original_text=original_text,
+                    revision_type=revision_type,
+                )
         else:
             constructivity = 0.0
 

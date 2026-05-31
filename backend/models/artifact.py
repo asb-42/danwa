@@ -33,6 +33,10 @@ class Turn(BaseModel):
     latency_ms: int = 0
     token_usage: dict[str, int] = Field(default_factory=dict)
     # Expected keys: "prompt", "completion", "total"
+    metadata: dict = Field(
+        default_factory=dict,
+        description="Arbitrary metadata for this turn (e.g. provenance chain for transactional drafting)",
+    )
 
 
 class Injection(BaseModel):

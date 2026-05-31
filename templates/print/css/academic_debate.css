@@ -216,6 +216,13 @@ body {
   border-left: 3px solid #43a047;
 }
 
+.margin-note.provenance {
+  background: #ede7f6;
+  border-left: 3px solid #7c4dff;
+  font-size: 7.5pt;
+  font-style: normal;
+}
+
 .margin-note-icon {
   margin-right: 0.3em;
 }

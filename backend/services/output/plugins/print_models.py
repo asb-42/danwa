@@ -20,6 +20,7 @@ class MarginNoteType(StrEnum):
     INJECTION = "injection"
     META = "meta"
     DISSENT = "dissent"
+    PROVENANCE = "provenance"
 
 
 class MarginNote(BaseModel):

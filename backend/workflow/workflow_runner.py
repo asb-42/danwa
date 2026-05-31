@@ -384,8 +384,14 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
                 ),
             })
 
-    # Build Responses (Builder)
+    # Build Responses (Builder) — with provenance metadata
     build_responses_raw = state.get("build_responses", [])
+    pragmatist_output = state.get("pragmatist_output", {})
+    evaluations_by_resp = {}
+    if pragmatist_output:
+        for ev in pragmatist_output.get("evaluations", []):
+            evaluations_by_resp[ev.get("response_to", "")] = ev
+
     if isinstance(build_responses_raw, list):
         for i, resp in enumerate(build_responses_raw):
             data = resp if isinstance(resp, dict) else resp.model_dump() if hasattr(resp, "model_dump") else {}
@@ -394,6 +400,21 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
             opt_b = data.get("option_b", "")
             rec = data.get("recommendation", "?")
             rationale = data.get("rationale", "")
+            prov = data.get("provenance") or {}
+            ev = evaluations_by_resp.get(rto, {})
+
+            # Build provenance marginalia line
+            marginalia = []
+            if prov.get("draft_version"):
+                marginalia.append(f"Iteration {prov['draft_version']}")
+            if prov.get("critic_item_id"):
+                sev = ""
+                marginalia.append(f"Critic: {prov['critic_item_id']}")
+            if prov.get("revision_type"):
+                marginalia.append(f"Builder: Option {'A' if prov['revision_type'] == 'conservative' else 'B' if prov['revision_type'] == 'radical' else 'C'}")
+            if ev:
+                marginalia.append(f"Pragmatist: {ev.get('verdict', '?')} ({ev.get('feasibility', '?')})")
+
             parts = [
                 f"**Lösung für {rto}**",
             ]
@@ -404,6 +425,8 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
             parts.append(f"\n**Empfohlen:** {rec}")
             if rationale:
                 parts.append(f"\n*Begründung:* {rationale}")
+            if marginalia:
+                parts.append(f"\n\n---\n*{' | '.join(marginalia)}*")
             transcript.append({
                 "id": str(_uuid.uuid4()),
                 "round": 2,
@@ -411,6 +434,16 @@ def normalize_transcript_for_display(state: dict) -> list[dict]:
                 "agent_name": "Builder",
                 "role_type": "builder",
                 "content": "".join(parts),
+                "metadata": {
+                    "provenance": {
+                        "draft_version": prov.get("draft_version"),
+                        "critic_item_id": prov.get("critic_item_id"),
+                        "original_text": prov.get("original_text", ""),
+                        "revision_type": prov.get("revision_type"),
+                        "pragmatist_verdict": ev.get("verdict"),
+                        "pragmatist_score": ev.get("feasibility"),
+                    },
+                },
             })
 
     return transcript

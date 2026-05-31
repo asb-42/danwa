@@ -11,6 +11,38 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class Provenance(BaseModel):
+    """Herkunftsnachweis (Klausel-Stammbaum) einer BuildResponse."""
+
+    draft_version: int = Field(
+        ...,
+        description="Iteration, in der diese Revision erzeugt wurde",
+    )
+    critic_item_id: str = Field(
+        ...,
+        description="Referenz auf das CriticItem, das diese Revision ausgelöst hat",
+    )
+    original_text: str = Field(
+        default="",
+        max_length=1000,
+        description="Der ursprüngliche Text, den der Critic beanstandet hat (context_quote oder flaw)",
+    )
+    revision_type: Literal["conservative", "radical", "minimal"] = Field(
+        ...,
+        description="Option A = conservative, B = radical, C = minimal",
+    )
+    pragmatist_verdict: str | None = Field(
+        default=None,
+        description="Verdict des Pragmatist: accept / revise / reject",
+    )
+    pragmatist_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Reality-Score aus der Pragmatist-Evaluation (feasibility)",
+    )
+
+
 class CriticItem(BaseModel):
     """Atomare Einheit von Kritik im Transactional Drafting."""
 
@@ -66,6 +98,10 @@ class BuildResponse(BaseModel):
     implementable: bool = Field(
         ...,
         description="Kann der Vorschlag sofort übernommen werden?",
+    )
+    provenance: Provenance | None = Field(
+        default=None,
+        description="Klausel-Stammbaum: Herkunft und Entscheidungsweg dieser Revision",
     )
 
 

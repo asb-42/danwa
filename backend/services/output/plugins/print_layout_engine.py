@@ -29,6 +29,31 @@ from backend.services.output.plugins.print_models import (
     TOCEntry,
 )
 
+
+def _fmt_marginalia(metadata: dict) -> str:
+    """Build an HTML marginalia line from Turn metadata (provenance)."""
+    prov = metadata.get("provenance", {})
+    if not prov or not prov.get("critic_item_id"):
+        return ""
+    parts = []
+    dv = prov.get("draft_version")
+    if dv:
+        parts.append(f"revidiert in Iteration {dv}")
+    ci = prov.get("critic_item_id", "")
+    parts.append(f"Critic: {ci}")
+    rt = prov.get("revision_type", "")
+    if rt == "conservative":
+        parts.append("Builder: Option A")
+    elif rt == "radical":
+        parts.append("Builder: Option B")
+    elif rt == "minimal":
+        parts.append("Builder: Option C")
+    pv = prov.get("pragmatist_verdict")
+    ps = prov.get("pragmatist_score")
+    if pv and ps is not None:
+        parts.append(f"Pragmatist: {pv} ({ps})")
+    return " | ".join(parts)
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,6 +193,18 @@ class PrintLayoutEngine:
                             reference_id=inj.id,
                         )
                     )
+
+                # (b2) Attach provenance marginalia for builder turns
+                if turn.role_type == "builder":
+                    marginalia = _fmt_marginalia(turn.metadata)
+                    if marginalia:
+                        margin_notes.append(
+                            MarginNote(
+                                type=MarginNoteType.PROVENANCE,
+                                content=self._md_to_html(marginalia),
+                                reference_id=turn.id,
+                            )
+                        )
 
                 content_html = self._md_to_html(turn.content)
 
