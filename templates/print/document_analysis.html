@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+<meta charset="utf-8">
+<title>Document Analysis — {{ project_name }}</title>
+<style>
+@page { size: A4; margin: 2cm; }
+* { box-sizing: border-box; }
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 11pt; line-height: 1.6;
+  color: #1a1a1a; max-width: 100%; margin: 0; padding: 0;
+}
+h1 { font-size: 18pt; border-bottom: 2px solid #1a237e; padding-bottom: 0.3em; color: #1a237e; }
+h2 { font-size: 14pt; color: #283593; margin-top: 1.5em; border-bottom: 1px solid #c5cae9; padding-bottom: 0.2em; }
+h3 { font-size: 12pt; color: #333; margin-top: 1em; }
+.doc-meta { font-size: 9pt; color: #555; margin-bottom: 1.5em; }
+.doc-meta span { background: #f5f5f5; padding: 0.2em 0.6em; border-radius: 3px; margin-right: 0.5em; }
+.summary-block {
+  margin: 1em 0; padding: 1em 1.2em;
+  background: #e8eaf6; border-left: 4px solid #1a237e; border-radius: 3px;
+  font-size: 11pt; line-height: 1.7; white-space: pre-wrap;
+}
+.fact-list { list-style: none; padding: 0; }
+.fact-list li {
+  padding: 0.4em 0.6em; margin: 0.3em 0;
+  background: #f5f5f5; border-left: 3px solid #7986cb; border-radius: 2px;
+  font-size: 10.5pt; white-space: pre-wrap;
+}
+.party-grid { display: block; }
+.party-card {
+  display: inline-block; width: 47%; margin: 0.3em 0.5em 0.3em 0;
+  padding: 0.6em 0.8em;
+  background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 3px;
+  vertical-align: top;
+}
+.party-name { font-weight: bold; font-size: 11pt; color: #1a237e; }
+.party-role { font-size: 9pt; color: #666; font-style: italic; }
+.party-positions { font-size: 10pt; margin-top: 0.3em; }
+.timeline-entry {
+  padding: 0.4em 0.6em; margin: 0.3em 0;
+  border-left: 3px solid #ff8f00; background: #fff8e1; border-radius: 2px;
+}
+.timeline-date { font-weight: bold; font-size: 9pt; color: #e65100; font-family: monospace; }
+.timeline-event { font-size: 10.5pt; }
+.issue-list { list-style: none; padding: 0; }
+.issue-list li {
+  padding: 0.4em 0.6em; margin: 0.3em 0;
+  background: #fce4ec; border-left: 3px solid #e53935; border-radius: 2px;
+  font-size: 10.5pt; white-space: pre-wrap;
+}
+.issue-list { list-style: none; padding: 0; }
+.issue-list li {
+  padding: 0.4em 0.6em; margin: 0.3em 0;
+  background: #fce4ec; border-left: 3px solid #e53935; border-radius: 2px;
+  font-size: 10.5pt; white-space: pre-wrap;
+}
+.doc-filename { font-weight: bold; font-size: 10.5pt; color: #283593; }
+.doc-text { font-size: 10pt; margin-top: 0.3em; }
+.excerpt {
+  border-left: 2px solid #ff8f00; padding: 0.3em 0.6em; margin: 0.3em 0 0.3em 1em;
+  font-size: 9.5pt; font-style: italic; color: #555;
+}
+.metadata-line {
+  margin-top: 2em; padding-top: 0.5em; border-top: 1px solid #ddd;
+  font-size: 8pt; color: #999;
+}
+</style>
+</head>
+<body>
+
+<h1>{{ project_name }}</h1>
+<div class="doc-meta">
+  <span>{{ i18n.get('topic_label', 'Topic') }}: {{ project_name }}</span>
+  {% if generated %}
+  <span>{{ i18n.get('generated_label', 'Generated') }}: {{ generated }}</span>
+  {% endif %}
+  {% if analysis._model %}
+  <span>LLM: {{ analysis._model }}</span>
+  {% endif %}
+</div>
+
+<h2>{{ i18n.get('case_summary_label', 'Case Summary') }}</h2>
+<div class="summary-block">{{ analysis.case_summary or '—' }}</div>
+
+{% if analysis.key_facts %}
+<h2>{{ i18n.get('key_facts_label', 'Key Facts') }}</h2>
+<ul class="fact-list">
+{% for fact in analysis.key_facts %}
+  <li>{{ fact }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if analysis.parties %}
+<h2>{{ i18n.get('parties_label', 'Parties') }}</h2>
+<div class="party-grid">
+{% for party in analysis.parties %}
+  <div class="party-card">
+    <div class="party-name">{{ party.name }}</div>
+    {% if party.role %}<div class="party-role">{{ party.role }}</div>{% endif %}
+    {% if party.positions %}<div class="party-positions">{{ party.positions }}</div>{% endif %}
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+
+{% if analysis.timeline %}
+<h2>{{ i18n.get('timeline_label', 'Timeline') }}</h2>
+{% for entry in analysis.timeline %}
+  <div class="timeline-entry">
+    <span class="timeline-date">{{ entry.date }}</span>
+    <span class="timeline-event">{{ entry.event }}</span>
+  </div>
+{% endfor %}
+{% endif %}
+
+{% if analysis.key_issues %}
+<h2>{{ i18n.get('key_issues_label', 'Key Issues') }}</h2>
+<ul class="issue-list">
+{% for issue in analysis.key_issues %}
+  <li>{{ issue }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if analysis.documents %}
+<h2>{{ i18n.get('documents_label', 'Document Summaries') }}</h2>
+{% for doc in analysis.documents %}
+  <div class="doc-summary">
+    <div class="doc-filename">{{ doc.filename }}</div>
+    {% if doc.summary %}<div class="doc-text">{{ doc.summary }}</div>{% endif %}
+    {% if doc.key_excerpts %}
+      {% for excerpt in doc.key_excerpts %}
+        <div class="excerpt">„{{ excerpt }}"</div>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endfor %}
+{% endif %}
+
+<div class="metadata-line">
+  {% if analysis._tokens_out %}Tokens: {{ analysis._tokens_out }} · {% endif %}
+  {% if analysis._duration_ms %}{{ (analysis._duration_ms / 1000) | round(1) }}s · {% endif %}
+  {{ i18n.get('generated_label', 'Generated') }}: {{ generated }}
+</div>
+
+</body>
+</html>

@@ -4,8 +4,10 @@ import asyncio
 import logging
 import os
 import tempfile
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.api.deps import get_profile_service_for_project, get_project_id, get_project_store
@@ -408,3 +410,107 @@ def get_analysis(
         raise HTTPException(status_code=404, detail="No analysis found. Run analysis first.")
 
     return {"status": "ok", "analysis": analysis}
+
+
+# ---------------------------------------------------------------------------
+# Analysis Export
+# ---------------------------------------------------------------------------
+
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates" / "print"
+
+
+class AnalysisExportRequest(BaseModel):
+    format: str = "pdf"
+
+
+@router.post("/analyze/export")
+async def export_analysis(
+    body: AnalysisExportRequest,
+    project_id: str = Depends(get_project_id),
+    project_store=Depends(get_project_store),
+):
+    """Export the document analysis as PDF, ODT, or Markdown."""
+    project = project_store.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project_dir = project_store.get_project_dir(project_id)
+    project_name = getattr(project, "name", project_id)
+
+    analysis = load_analysis(project_dir)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="No analysis found. Run analysis first.")
+
+    fmt = body.format.lower()
+    if fmt not in ("pdf", "odt", "md"):
+        raise HTTPException(status_code=422, detail=f"Unsupported format: {fmt}")
+
+    # Render HTML
+    from datetime import UTC, datetime
+
+    import jinja2
+
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
+        autoescape=True,
+    )
+    template = env.get_template("document_analysis.html")
+    now = datetime.now(UTC)
+    i18n = _load_analysis_i18n("de")
+    html = template.render(
+        project_name=project_name,
+        analysis=analysis,
+        language="de",
+        generated=now.strftime("%Y-%m-%d %H:%M UTC"),
+        i18n=i18n,
+    )
+
+    # Generate output file
+    import tempfile as _tf
+
+    stem = f"analysis_{project_id[:8]}_{now.strftime('%Y%m%d_%H%M')}"
+
+    if fmt == "pdf":
+        from weasyprint import HTML
+
+        tmp = _tf.NamedTemporaryFile(suffix=".pdf", delete=False)
+        HTML(string=html).write_pdf(tmp.name)
+        media_type = "application/pdf"
+        filename = f"{stem}.pdf"
+
+    elif fmt == "odt":
+        tmp = _tf.NamedTemporaryFile(suffix=".odt", delete=False)
+        try:
+            import pypandoc
+
+            pypandoc.convert_text(html, "odt", format="html", outputfile=tmp.name)
+        except ImportError:
+            tmp.write(html.encode("utf-8"))
+        media_type = "application/vnd.oasis.opendocument.text"
+        filename = f"{stem}.odt"
+
+    elif fmt == "md":
+        import re
+
+        md = re.sub(r"<[^>]+>", " ", html)
+        md = re.sub(r"\s{3,}", "\n\n", md).strip()
+        tmp = _tf.NamedTemporaryFile(suffix=".md", delete=False)
+        tmp.write(md.encode("utf-8"))
+        media_type = "text/markdown"
+        filename = f"{stem}.md"
+
+    tmp.close()
+    return FileResponse(tmp.name, media_type=media_type, filename=filename)
+
+
+def _load_analysis_i18n(language: str) -> dict:
+    """Load i18n labels for the document analysis template."""
+    labels = {
+        "case_summary_label": ("Fallzusammenfassung" if language == "de" else "Case Summary"),
+        "key_facts_label": ("Wichtige Fakten" if language == "de" else "Key Facts"),
+        "parties_label": ("Parteien" if language == "de" else "Parties"),
+        "timeline_label": ("Zeitstrahl" if language == "de" else "Timeline"),
+        "key_issues_label": ("Hauptstreitpunkte" if language == "de" else "Key Issues"),
+        "documents_label": ("Dokumentübersichten" if language == "de" else "Document Summaries"),
+    }
+    return labels

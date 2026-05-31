@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { activeProject } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
 
   let { navigate } = $props();
 
@@ -290,6 +290,8 @@
   let analysis = $state(null);
   let analysisLoading = $state(false);
   let analysisError = $state('');
+  let exportLoading = $state(false);
+  let exportError = $state('');
 
   async function loadAnalysis() {
     analysisLoading = true;
@@ -303,6 +305,18 @@
       analysis = null;
     } finally {
       analysisLoading = false;
+    }
+  }
+
+  async function handleExport(format) {
+    exportLoading = true;
+    exportError = '';
+    try {
+      await exportAnalysis(format);
+    } catch (e) {
+      exportError = e.message;
+    } finally {
+      exportLoading = false;
     }
   }
 
@@ -657,6 +671,22 @@
             onclick={() => runAnalysis('full')}
             disabled={analysisLoading}
           >🔄 Re-analyze</button>
+          <div class="w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+          <button
+            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            onclick={() => handleExport('pdf')}
+            disabled={exportLoading || analysisLoading}
+          >📄 PDF</button>
+          <button
+            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            onclick={() => handleExport('odt')}
+            disabled={exportLoading || analysisLoading}
+          >📝 ODT</button>
+          <button
+            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            onclick={() => handleExport('md')}
+            disabled={exportLoading || analysisLoading}
+          >📃 MD</button>
         </div>
       {/if}
     </div>
@@ -778,7 +808,9 @@
       </div>
     {/if}
 
-    {#if analysisError}
+    {#if exportError}
+      <div class="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">{exportError}</div>
+    {:else if analysisError}
       <div class="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">{analysisError}</div>
     {/if}
   </div>

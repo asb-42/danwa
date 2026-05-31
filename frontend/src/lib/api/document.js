@@ -86,6 +86,33 @@ export function searchRAG(query, limit = 5) {
   return request(`/api/v1/dms/rag/search?query=${encodeURIComponent(query)}&k=${limit}`);
 }
 
+export function exportAnalysis(format = 'pdf') {
+  const projectId = get(activeProject)?.id;
+  return fetch(`${API_BASE}/api/v1/dms/analyze/export`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(projectId ? { 'X-Project-Id': projectId } : {}),
+    },
+    body: JSON.stringify({ format }),
+  }).then(async (response) => {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Export failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+    // Trigger download
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analysis.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+}
+
 export function getOcrStatus() {
   return request('/api/v1/dms/ocr-status');
 }
