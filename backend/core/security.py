@@ -36,8 +36,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_access_token(user: User, expires_delta: timedelta | None = None) -> str:
-    """Create a short-lived JWT access token."""
+def create_access_token(user: User, expires_delta: timedelta | None = None, tenant_id: str | None = None) -> str:
+    """Create a short-lived JWT access token.
+
+    Args:
+        user: The user model.
+        expires_delta: Optional custom expiration.
+        tenant_id: Override tenant_id in the token (for tenant switching).
+    """
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.jwt_access_token_expire_minutes)
     now = datetime.now(UTC)
@@ -45,7 +51,7 @@ def create_access_token(user: User, expires_delta: timedelta | None = None) -> s
         "sub": user.id,
         "email": user.email,
         "role": user.role,
-        "tenant_id": user.tenant_id,
+        "tenant_id": tenant_id or user.tenant_id,
         "type": "access",
         "iat": now,
         "exp": now + expires_delta,

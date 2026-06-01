@@ -155,6 +155,14 @@ def get_tenant_store():
     return TenantStore()
 
 
+@lru_cache
+def get_membership_store():
+    """Singleton MembershipStore instance."""
+    from backend.persistence.membership_store import MembershipStore
+
+    return MembershipStore()
+
+
 # ---------------------------------------------------------------------------
 # Tenant & Project scoping
 # ---------------------------------------------------------------------------

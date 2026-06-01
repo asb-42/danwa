@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 
-from backend.api.deps import get_current_user, get_user_store, require_role
+from backend.api.deps import get_current_user, get_membership_store, get_user_store, require_role
 from backend.core.security import (
     create_access_token,
     create_refresh_token,
@@ -16,6 +16,7 @@ from backend.core.security import (
     user_to_response,
     verify_password,
 )
+from backend.models.membership import TenantMembershipResponse
 from backend.models.user import (
     LoginRequest,
     PasswordChangeRequest,
@@ -226,3 +227,54 @@ def delete_user(
 
     user_store.delete(user_id)
     logger.info("User deleted: %s by admin %s", user.email, current_user.email)
+
+
+# ---------------------------------------------------------------------------
+# Multi-tenant endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/my-tenants", response_model=list[TenantMembershipResponse])
+def list_my_tenants(
+    user=Depends(get_current_user),
+    membership_store=Depends(get_membership_store),
+):
+    """List all tenants the current user belongs to."""
+    memberships = membership_store.list_by_user(user.id)
+    return [
+        TenantMembershipResponse(
+            tenant_id=m.tenant_id,
+            user_id=m.user_id,
+            role=m.role,
+            invited_by=m.invited_by,
+            joined_at=m.joined_at,
+        )
+        for m in memberships
+    ]
+
+
+@router.post("/select-tenant/{tenant_id}", response_model=TokenResponse)
+def select_tenant(
+    tenant_id: str,
+    user=Depends(get_current_user),
+    membership_store=Depends(get_membership_store),
+):
+    """Switch the current user's active tenant.
+
+    Validates membership and returns a new JWT token pair with the
+    selected tenant_id embedded. The new token should be used for
+    subsequent API requests.
+    """
+    membership = membership_store.get(tenant_id, user.id)
+    if not membership:
+        raise HTTPException(status_code=403, detail="Not a member of this tenant")
+
+    access_token = create_access_token(user, tenant_id=tenant_id)
+    refresh_token = create_refresh_token(user)
+
+    logger.info("User %s switched to tenant %s (role=%s)", user.email, tenant_id, membership.role)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=user_to_response(user),
+    )
