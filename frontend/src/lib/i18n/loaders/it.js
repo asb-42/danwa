@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'Iniezione Utente',
   'blueprint.palette.wfGate': 'Gate',
   'blueprint.palette.wfToneProfile': 'Profilo Tono',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'Ruoli Transazionali',
+  'blueprint.palette.wfBuilder': 'Costruttore',
+  'blueprint.palette.wfPragmatist': 'Pragmatico',
+  'blueprint.palette.wfAngelsAdvocate': "Avvocato dell'Angelo",
   'blueprint.palette.existingEntities': 'Entità Esistenti',
   'blueprint.palette.llmProfiles': 'Profili LLM',
   'blueprint.palette.roleDefinitions': 'Definizioni Ruolo',

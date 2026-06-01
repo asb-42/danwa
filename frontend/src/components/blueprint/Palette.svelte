@@ -50,6 +50,14 @@
   registerAllNodeTypes();
   const assetNodes = getNodesByCategory('asset');
   const workflowNodes = getNodesByCategory('workflow');
+
+  // Transactional Drafting role nodes
+  const TRANSACTIONAL_TYPES = new Set([
+    'wf-strategist', 'wf-critic', 'wf-builder', 'wf-pragmatist',
+    'wf-angels-advocate', 'wf-moderator',
+  ]);
+  const transactionalWorkflowNodes = workflowNodes.filter(n => TRANSACTIONAL_TYPES.has(n.type));
+  const generalWorkflowNodes = workflowNodes.filter(n => !TRANSACTIONAL_TYPES.has(n.type));
   let isWorkflowMode = $derived(canvasStore.mode === 'workflow');
 
   async function loadLayouts() {
@@ -170,10 +178,18 @@
 
   <!-- Workflow nodes (only in Workflow Mode) -->
   {#if isWorkflowMode}
-    <PaletteCategory
-      title={t('blueprint.palette.workflowNodes')}
-      nodes={workflowNodes}
-    />
+    {#if transactionalWorkflowNodes.length > 0}
+      <PaletteCategory
+        title={t('blueprint.palette.transactionalRoles')}
+        nodes={transactionalWorkflowNodes}
+      />
+    {/if}
+    {#if generalWorkflowNodes.length > 0}
+      <PaletteCategory
+        title={t('blueprint.palette.workflowNodes')}
+        nodes={generalWorkflowNodes}
+      />
+    {/if}
   {/if}
 
   <!-- Saved Layouts section -->

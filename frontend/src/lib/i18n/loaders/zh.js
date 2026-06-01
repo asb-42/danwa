@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': '用户注入',
   'blueprint.palette.wfGate': '门控',
   'blueprint.palette.wfToneProfile': '语气配置文件',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': '事务角色',
+  'blueprint.palette.wfBuilder': '构建器',
+  'blueprint.palette.wfPragmatist': '实用主义者',
+  'blueprint.palette.wfAngelsAdvocate': "天使倡导者",
   'blueprint.palette.existingEntities': '现有实体',
   'blueprint.palette.llmProfiles': 'LLM 配置文件',
   'blueprint.palette.roleDefinitions': '角色定义',

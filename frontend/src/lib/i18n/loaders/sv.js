@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'Användarinjektion',
   'blueprint.palette.wfGate': 'Port',
   'blueprint.palette.wfToneProfile': 'Tonprofil',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'Transaktionella Roller',
+  'blueprint.palette.wfBuilder': 'Byggare',
+  'blueprint.palette.wfPragmatist': 'Pragmatiker',
+  'blueprint.palette.wfAngelsAdvocate': "Änglens Advokat",
   'blueprint.palette.existingEntities': 'Befintliga entiteter',
   'blueprint.palette.llmProfiles': 'LLM-profiler',
   'blueprint.palette.roleDefinitions': 'Rolldefinitioner',

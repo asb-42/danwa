@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'حقن المستخدم',
   'blueprint.palette.wfGate': 'البوابة',
   'blueprint.palette.wfToneProfile': 'ملف النبرة',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'أدوار المعاملات',
+  'blueprint.palette.wfBuilder': 'باني',
+  'blueprint.palette.wfPragmatist': 'براغماتي',
+  'blueprint.palette.wfAngelsAdvocate': "محامي الملاك",
   'blueprint.palette.existingEntities': 'الكيانات الموجودة',
   'blueprint.palette.llmProfiles': 'ملفات نموذج اللغة',
   'blueprint.palette.roleDefinitions': 'تعريفات الأدوار',

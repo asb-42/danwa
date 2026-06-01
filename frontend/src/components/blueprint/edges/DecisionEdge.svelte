@@ -7,15 +7,20 @@
     getBezierPath({ sourceX, sourceY, targetX, targetY })[0],
   );
 
-  let color = $derived(data?.condition === 'approved' ? '#22c55e' : '#f59e0b');
+  let condition = $derived(data?.condition || 'revision_required');
+  let color = $derived(condition === 'approved' ? '#22c55e' : '#f59e0b');
+  let markerId = $derived(condition === 'approved' ? 'arrow-decision-approved' : 'arrow-decision-rejected');
 </script>
 
-<BaseEdge {id} {path} class="blueprint-edge decision-edge" style="stroke: {color};" marker-end="url(#arrow-decision)" />
+<BaseEdge {id} {path} class="blueprint-edge decision-edge" style="stroke: {color};" marker-end="url(#{markerId})" />
 
 <svelte:head>
   <svg style="position:absolute;width:0;height:0;">
     <defs>
-      <marker id="arrow-decision" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <marker id="arrow-decision-approved" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
+      </marker>
+      <marker id="arrow-decision-rejected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
       </marker>
     </defs>

@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': '사용자 주입',
   'blueprint.palette.wfGate': '게이트',
   'blueprint.palette.wfToneProfile': '톤 프로필',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': '트랜잭셔널 역할',
+  'blueprint.palette.wfBuilder': '빌더',
+  'blueprint.palette.wfPragmatist': '프래그머티스트',
+  'blueprint.palette.wfAngelsAdvocate': "엔젤스 어드보케이트",
   'blueprint.palette.existingEntities': '기존 엔티티',
   'blueprint.palette.llmProfiles': 'LLM 프로필',
   'blueprint.palette.roleDefinitions': '역할 정의',

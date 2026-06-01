@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'Внедрение пользователя',
   'blueprint.palette.wfGate': 'Шлюз',
   'blueprint.palette.wfToneProfile': 'Профиль тона',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'Транзакционные роли',
+  'blueprint.palette.wfBuilder': 'Строитель',
+  'blueprint.palette.wfPragmatist': 'Прагматик',
+  'blueprint.palette.wfAngelsAdvocate': "Адвокат ангела",
   'blueprint.palette.existingEntities': 'Существующие сущности',
   'blueprint.palette.llmProfiles': 'Профили LLM',
   'blueprint.palette.roleDefinitions': 'Определения ролей',

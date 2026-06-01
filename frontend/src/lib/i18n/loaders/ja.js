@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'ユーザー注入',
   'blueprint.palette.wfGate': 'ゲート',
   'blueprint.palette.wfToneProfile': 'トーンプロファイル',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'トランザクショナルロール',
+  'blueprint.palette.wfBuilder': 'ビルダー',
+  'blueprint.palette.wfPragmatist': 'プラグマティスト',
+  'blueprint.palette.wfAngelsAdvocate': "エンジェルズアドボケート",
   'blueprint.palette.existingEntities': '既存エンティティ',
   'blueprint.palette.llmProfiles': 'LLMプロファイル',
   'blueprint.palette.roleDefinitions': 'ロール定義',

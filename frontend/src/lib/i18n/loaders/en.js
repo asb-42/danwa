@@ -504,6 +504,12 @@ export default {
   'blueprint.palette.wfAgent': 'Agent (Bundle)',
   'blueprint.palette.wfAgentDesc': 'Generic agent node powered by an Agent Bundle',
   'blueprint.palette.wfToneProfile': 'Tone Profile',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'Transactional Roles',
+  'blueprint.palette.wfBuilder': 'Builder',
+  'blueprint.palette.wfPragmatist': 'Pragmatist',
+  'blueprint.palette.wfAngelsAdvocate': "Angel's Advocate",
   'blueprint.palette.existingEntities': 'Existing Entities',
   'blueprint.palette.llmProfiles': 'LLM Profiles',
   'blueprint.palette.roleDefinitions': 'Role Definitions',

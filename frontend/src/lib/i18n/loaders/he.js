@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'הזרקת משתמש',
   'blueprint.palette.wfGate': 'שער',
   'blueprint.palette.wfToneProfile': 'פרופיל טון',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'תפקידים טרנזקציוניים',
+  'blueprint.palette.wfBuilder': 'בונה',
+  'blueprint.palette.wfPragmatist': 'פרקמטיקאי',
+  'blueprint.palette.wfAngelsAdvocate': "פרקליט המלאך",
   'blueprint.palette.existingEntities': 'ישויות קיימות',
   'blueprint.palette.llmProfiles': 'פרופילי LLM',
   'blueprint.palette.roleDefinitions': 'הגדרות תפקיד',

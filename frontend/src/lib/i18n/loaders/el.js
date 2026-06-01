@@ -493,6 +493,12 @@ export default {
   'blueprint.palette.wfUserInjection': 'Εισαγωγή Χρήστη',
   'blueprint.palette.wfGate': 'Πύλη',
   'blueprint.palette.wfToneProfile': 'Προφίλ Τόνου',
+
+  // Transactional Drafting
+  'blueprint.palette.transactionalRoles': 'Συναλλακτικοί Ρόλοι',
+  'blueprint.palette.wfBuilder': 'Κατασκευαστής',
+  'blueprint.palette.wfPragmatist': 'Πραγματιστής',
+  'blueprint.palette.wfAngelsAdvocate': "Δικηγόρος του Αγγέλου",
   'blueprint.palette.existingEntities': 'Υπάρχουσες Οντότητες',
   'blueprint.palette.llmProfiles': 'Προφίλ LLM',
   'blueprint.palette.roleDefinitions': 'Ορισμοί Ρόλων',
