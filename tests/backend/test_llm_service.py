@@ -279,3 +279,110 @@ class TestLLMServiceCostEstimation:
         llm = LLMService(profile_id="free-llm", profile_service=service)
         cost = llm.estimate_cost(input_tokens=1000, output_tokens=500)
         assert cost == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Tool-calling support
+# ---------------------------------------------------------------------------
+
+
+class TestGenerationResultToolCalls:
+    def test_tool_calls_field_default_none(self):
+        result = GenerationResult(content="hello")
+        assert result.tool_calls is None
+
+    def test_tool_calls_field_with_data(self):
+        tc = [{"id": "call_1", "type": "function", "function": {"name": "test", "arguments": "{}"}}]
+        result = GenerationResult(content=None, tool_calls=tc)
+        assert result.tool_calls is not None
+        assert len(result.tool_calls) == 1
+        assert result.tool_calls[0]["function"]["name"] == "test"
+
+
+class TestGenerateWithTools:
+    @pytest.mark.asyncio
+    async def test_tools_parameter_accepted(self, mock_profile_service):
+        """generate() should accept a tools parameter without error."""
+        llm = LLMService(profile_id="test-llm", profile_service=mock_profile_service)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Here is the result"
+        mock_response.choices[0].message.tool_calls = None
+        mock_response.choices[0].finish_reason = "stop"
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.model = "test-model"
+
+        tools = [{"type": "function", "function": {"name": "test_fn", "parameters": {}}}]
+
+        with patch.dict("os.environ", {"TEST_API_KEY": "sk-test-key"}):
+            with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response):
+                result = await llm.generate(
+                    prompt="test",
+                    system_prompt="system",
+                    tools=tools,
+                )
+        assert result.content == "Here is the result"
+        assert result.tool_calls is None
+
+    @pytest.mark.asyncio
+    async def test_tool_calls_parsed_from_response(self, mock_profile_service):
+        """generate() should parse tool_calls from the LLM response."""
+        llm = LLMService(profile_id="test-llm", profile_service=mock_profile_service)
+
+        mock_tc = MagicMock()
+        mock_tc.id = "call_123"
+        mock_tc.type = "function"
+        mock_tc.function.name = "list_debates"
+        mock_tc.function.arguments = '{"status": "all"}'
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = None
+        mock_response.choices[0].message.tool_calls = [mock_tc]
+        mock_response.choices[0].message.role = "assistant"
+        mock_response.choices[0].message.refusal = None
+        mock_response.choices[0].message.provider_specific_fields = {}
+        mock_response.choices[0].finish_reason = "tool_calls"
+        mock_response.usage.prompt_tokens = 50
+        mock_response.usage.completion_tokens = 10
+        mock_response.model = "test-model"
+
+        with patch.dict("os.environ", {"TEST_API_KEY": "sk-test-key"}):
+            with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response):
+                result = await llm.generate(
+                    prompt="list my debates",
+                    system_prompt="system",
+                    tools=[{"type": "function", "function": {"name": "list_debates", "parameters": {}}}],
+                )
+
+        # Content is None in the response, but LLMService may extract from
+        # provider_specific_fields or set to empty string — the important
+        # assertion is that tool_calls are correctly parsed.
+        assert result.tool_calls is not None
+        assert result.tool_calls is not None
+        assert len(result.tool_calls) == 1
+        assert result.tool_calls[0]["id"] == "call_123"
+        assert result.tool_calls[0]["function"]["name"] == "list_debates"
+
+    @pytest.mark.asyncio
+    async def test_no_tools_parameter_omitted_from_request(self, mock_profile_service):
+        """When tools=None, no tools key should be in the kwargs."""
+        llm = LLMService(profile_id="test-llm", profile_service=mock_profile_service)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "ok"
+        mock_response.choices[0].message.tool_calls = None
+        mock_response.choices[0].finish_reason = "stop"
+        mock_response.usage.prompt_tokens = 5
+        mock_response.usage.completion_tokens = 5
+        mock_response.model = "test-model"
+
+        with patch.dict("os.environ", {"TEST_API_KEY": "sk-test-key"}):
+            with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response) as mock_ac:
+                await llm.generate(prompt="test", system_prompt="system")
+
+        call_kwargs = mock_ac.call_args[1]
+        assert "tools" not in call_kwargs
