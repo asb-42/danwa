@@ -46,6 +46,9 @@
                                 <a class="variable" href="#DebateArtifact.workflow_name">workflow_name</a>
                         </li>
                         <li>
+                                <a class="variable" href="#DebateArtifact.title">title</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#DebateArtifact.topic">topic</a>
                         </li>
                         <li>
@@ -65,6 +68,30 @@
                         </li>
                         <li>
                                 <a class="variable" href="#DebateArtifact.consensus_result">consensus_result</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.final_assessment">final_assessment</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.usability_score">usability_score</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.remaining_blockers">remaining_blockers</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.constructivity_score">constructivity_score</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.draft_versions">draft_versions</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.critic_item_count">critic_item_count</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.build_response_count">build_response_count</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#DebateArtifact.pragmatist_reality_score">pragmatist_reality_score</a>
                         </li>
                         <li>
                                 <a class="variable" href="#DebateArtifact.metadata">metadata</a>
@@ -264,6 +291,12 @@
                         <li>
                                 <a class="variable" href="#RenderJob.artifact_snapshot_hash">artifact_snapshot_hash</a>
                         </li>
+                        <li>
+                                <a class="variable" href="#RenderJob.progress_current">progress_current</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#RenderJob.progress_total">progress_total</a>
+                        </li>
                 </ul>
 
             </li>
@@ -320,6 +353,9 @@
                         </li>
                         <li>
                                 <a class="variable" href="#Turn.token_usage">token_usage</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#Turn.metadata">metadata</a>
                         </li>
                 </ul>
 
@@ -406,37 +442,82 @@
 
     </div>
     <a class="headerlink" href="#DebateArtifact"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="DebateArtifact-74"><a href="#DebateArtifact-74"><span class="linenos"> 74</span></a><span class="k">class</span><span class="w"> </span><span class="nc">DebateArtifact</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="DebateArtifact-75"><a href="#DebateArtifact-75"><span class="linenos"> 75</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable output of a completed workflow execution.</span>
-</span><span id="DebateArtifact-76"><a href="#DebateArtifact-76"><span class="linenos"> 76</span></a>
-</span><span id="DebateArtifact-77"><a href="#DebateArtifact-77"><span class="linenos"> 77</span></a><span class="sd">    This is the sole interface between execution (LangGraph) and</span>
-</span><span id="DebateArtifact-78"><a href="#DebateArtifact-78"><span class="linenos"> 78</span></a><span class="sd">    rendering (Output Composer / plugins).  Plugins consume **only**</span>
-</span><span id="DebateArtifact-79"><a href="#DebateArtifact-79"><span class="linenos"> 79</span></a><span class="sd">    this artifact — never the raw session state or snapshot data.</span>
-</span><span id="DebateArtifact-80"><a href="#DebateArtifact-80"><span class="linenos"> 80</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="DebateArtifact-81"><a href="#DebateArtifact-81"><span class="linenos"> 81</span></a>
-</span><span id="DebateArtifact-82"><a href="#DebateArtifact-82"><span class="linenos"> 82</span></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="DebateArtifact-83"><a href="#DebateArtifact-83"><span class="linenos"> 83</span></a>    <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="DebateArtifact-84"><a href="#DebateArtifact-84"><span class="linenos"> 84</span></a>    <span class="n">workflow_version</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span id="DebateArtifact-85"><a href="#DebateArtifact-85"><span class="linenos"> 85</span></a>    <span class="n">workflow_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-</span><span id="DebateArtifact-86"><a href="#DebateArtifact-86"><span class="linenos"> 86</span></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-</span><span id="DebateArtifact-87"><a href="#DebateArtifact-87"><span class="linenos"> 87</span></a>    <span class="n">tone_profile_snapshot</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-</span><span id="DebateArtifact-88"><a href="#DebateArtifact-88"><span class="linenos"> 88</span></a>
-</span><span id="DebateArtifact-89"><a href="#DebateArtifact-89"><span class="linenos"> 89</span></a>    <span class="n">transcript</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Turn</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-</span><span id="DebateArtifact-90"><a href="#DebateArtifact-90"><span class="linenos"> 90</span></a>    <span class="n">interjections</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Injection</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-</span><span id="DebateArtifact-91"><a href="#DebateArtifact-91"><span class="linenos"> 91</span></a>    <span class="n">user_queries</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserQuery</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-</span><span id="DebateArtifact-92"><a href="#DebateArtifact-92"><span class="linenos"> 92</span></a>    <span class="n">minority_votes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">MinorityVote</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="DebateArtifact-78"><a href="#DebateArtifact-78"><span class="linenos"> 78</span></a><span class="k">class</span><span class="w"> </span><span class="nc">DebateArtifact</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="DebateArtifact-79"><a href="#DebateArtifact-79"><span class="linenos"> 79</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable output of a completed workflow execution.</span>
+</span><span id="DebateArtifact-80"><a href="#DebateArtifact-80"><span class="linenos"> 80</span></a>
+</span><span id="DebateArtifact-81"><a href="#DebateArtifact-81"><span class="linenos"> 81</span></a><span class="sd">    This is the sole interface between execution (LangGraph) and</span>
+</span><span id="DebateArtifact-82"><a href="#DebateArtifact-82"><span class="linenos"> 82</span></a><span class="sd">    rendering (Output Composer / plugins).  Plugins consume **only**</span>
+</span><span id="DebateArtifact-83"><a href="#DebateArtifact-83"><span class="linenos"> 83</span></a><span class="sd">    this artifact — never the raw session state or snapshot data.</span>
+</span><span id="DebateArtifact-84"><a href="#DebateArtifact-84"><span class="linenos"> 84</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="DebateArtifact-85"><a href="#DebateArtifact-85"><span class="linenos"> 85</span></a>
+</span><span id="DebateArtifact-86"><a href="#DebateArtifact-86"><span class="linenos"> 86</span></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="DebateArtifact-87"><a href="#DebateArtifact-87"><span class="linenos"> 87</span></a>    <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="DebateArtifact-88"><a href="#DebateArtifact-88"><span class="linenos"> 88</span></a>    <span class="n">workflow_version</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span id="DebateArtifact-89"><a href="#DebateArtifact-89"><span class="linenos"> 89</span></a>    <span class="n">workflow_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+</span><span id="DebateArtifact-90"><a href="#DebateArtifact-90"><span class="linenos"> 90</span></a>    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+</span><span id="DebateArtifact-91"><a href="#DebateArtifact-91"><span class="linenos"> 91</span></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+</span><span id="DebateArtifact-92"><a href="#DebateArtifact-92"><span class="linenos"> 92</span></a>    <span class="n">tone_profile_snapshot</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
 </span><span id="DebateArtifact-93"><a href="#DebateArtifact-93"><span class="linenos"> 93</span></a>
-</span><span id="DebateArtifact-94"><a href="#DebateArtifact-94"><span class="linenos"> 94</span></a>    <span class="n">consensus_result</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="DebateArtifact-95"><a href="#DebateArtifact-95"><span class="linenos"> 95</span></a>    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-</span><span id="DebateArtifact-96"><a href="#DebateArtifact-96"><span class="linenos"> 96</span></a>    <span class="c1"># metadata keys: token_usage, latencies, timestamps (start/end),</span>
-</span><span id="DebateArtifact-97"><a href="#DebateArtifact-97"><span class="linenos"> 97</span></a>    <span class="c1">#                agents (list of {name, blueprint_id, role_type, llm_profile_id})</span>
+</span><span id="DebateArtifact-94"><a href="#DebateArtifact-94"><span class="linenos"> 94</span></a>    <span class="n">transcript</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Turn</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+</span><span id="DebateArtifact-95"><a href="#DebateArtifact-95"><span class="linenos"> 95</span></a>    <span class="n">interjections</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Injection</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+</span><span id="DebateArtifact-96"><a href="#DebateArtifact-96"><span class="linenos"> 96</span></a>    <span class="n">user_queries</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserQuery</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+</span><span id="DebateArtifact-97"><a href="#DebateArtifact-97"><span class="linenos"> 97</span></a>    <span class="n">minority_votes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">MinorityVote</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
 </span><span id="DebateArtifact-98"><a href="#DebateArtifact-98"><span class="linenos"> 98</span></a>
-</span><span id="DebateArtifact-99"><a href="#DebateArtifact-99"><span class="linenos"> 99</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">artifact_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="DebateArtifact-100"><a href="#DebateArtifact-100"><span class="linenos">100</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a deterministic SHA-256 hex digest of this artifact.&quot;&quot;&quot;</span>
-</span><span id="DebateArtifact-101"><a href="#DebateArtifact-101"><span class="linenos">101</span></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
-</span><span id="DebateArtifact-102"><a href="#DebateArtifact-102"><span class="linenos">102</span></a>
-</span><span id="DebateArtifact-103"><a href="#DebateArtifact-103"><span class="linenos">103</span></a>        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-</span><span id="DebateArtifact-104"><a href="#DebateArtifact-104"><span class="linenos">104</span></a>        <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+</span><span id="DebateArtifact-99"><a href="#DebateArtifact-99"><span class="linenos"> 99</span></a>    <span class="n">consensus_result</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="DebateArtifact-100"><a href="#DebateArtifact-100"><span class="linenos">100</span></a>    <span class="n">final_assessment</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-101"><a href="#DebateArtifact-101"><span class="linenos">101</span></a>        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="DebateArtifact-102"><a href="#DebateArtifact-102"><span class="linenos">102</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Final assessment text from the moderator (e.g. &#39;85% verwendbar&#39;)&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-103"><a href="#DebateArtifact-103"><span class="linenos">103</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-104"><a href="#DebateArtifact-104"><span class="linenos">104</span></a>    <span class="n">usability_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-105"><a href="#DebateArtifact-105"><span class="linenos">105</span></a>        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="DebateArtifact-106"><a href="#DebateArtifact-106"><span class="linenos">106</span></a>        <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="DebateArtifact-107"><a href="#DebateArtifact-107"><span class="linenos">107</span></a>        <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="DebateArtifact-108"><a href="#DebateArtifact-108"><span class="linenos">108</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Overall usability score from pragmatist reality_score&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-109"><a href="#DebateArtifact-109"><span class="linenos">109</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-110"><a href="#DebateArtifact-110"><span class="linenos">110</span></a>    <span class="n">remaining_blockers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-111"><a href="#DebateArtifact-111"><span class="linenos">111</span></a>        <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span>
+</span><span id="DebateArtifact-112"><a href="#DebateArtifact-112"><span class="linenos">112</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Blocking concerns that still need resolution after the final round&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-113"><a href="#DebateArtifact-113"><span class="linenos">113</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-114"><a href="#DebateArtifact-114"><span class="linenos">114</span></a>
+</span><span id="DebateArtifact-115"><a href="#DebateArtifact-115"><span class="linenos">115</span></a>    <span class="c1"># --- Transactional Drafting scores ---</span>
+</span><span id="DebateArtifact-116"><a href="#DebateArtifact-116"><span class="linenos">116</span></a>    <span class="n">constructivity_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-117"><a href="#DebateArtifact-117"><span class="linenos">117</span></a>        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="DebateArtifact-118"><a href="#DebateArtifact-118"><span class="linenos">118</span></a>        <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="DebateArtifact-119"><a href="#DebateArtifact-119"><span class="linenos">119</span></a>        <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="DebateArtifact-120"><a href="#DebateArtifact-120"><span class="linenos">120</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Final constructivity score after all Builder loops (0.0–1.0)&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-121"><a href="#DebateArtifact-121"><span class="linenos">121</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-122"><a href="#DebateArtifact-122"><span class="linenos">122</span></a>    <span class="n">draft_versions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-123"><a href="#DebateArtifact-123"><span class="linenos">123</span></a>        <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="DebateArtifact-124"><a href="#DebateArtifact-124"><span class="linenos">124</span></a>        <span class="n">ge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="DebateArtifact-125"><a href="#DebateArtifact-125"><span class="linenos">125</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of Builder iteration loops executed&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-126"><a href="#DebateArtifact-126"><span class="linenos">126</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-127"><a href="#DebateArtifact-127"><span class="linenos">127</span></a>    <span class="n">critic_item_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-128"><a href="#DebateArtifact-128"><span class="linenos">128</span></a>        <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="DebateArtifact-129"><a href="#DebateArtifact-129"><span class="linenos">129</span></a>        <span class="n">ge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="DebateArtifact-130"><a href="#DebateArtifact-130"><span class="linenos">130</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Total number of CriticItems produced across all rounds&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-131"><a href="#DebateArtifact-131"><span class="linenos">131</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-132"><a href="#DebateArtifact-132"><span class="linenos">132</span></a>    <span class="n">build_response_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-133"><a href="#DebateArtifact-133"><span class="linenos">133</span></a>        <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="DebateArtifact-134"><a href="#DebateArtifact-134"><span class="linenos">134</span></a>        <span class="n">ge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="DebateArtifact-135"><a href="#DebateArtifact-135"><span class="linenos">135</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Total number of BuildResponses produced across all rounds&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-136"><a href="#DebateArtifact-136"><span class="linenos">136</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-137"><a href="#DebateArtifact-137"><span class="linenos">137</span></a>    <span class="n">pragmatist_reality_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="DebateArtifact-138"><a href="#DebateArtifact-138"><span class="linenos">138</span></a>        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="DebateArtifact-139"><a href="#DebateArtifact-139"><span class="linenos">139</span></a>        <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="DebateArtifact-140"><a href="#DebateArtifact-140"><span class="linenos">140</span></a>        <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="DebateArtifact-141"><a href="#DebateArtifact-141"><span class="linenos">141</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Final pragmatist reality_score (aggregate feasibility)&quot;</span><span class="p">,</span>
+</span><span id="DebateArtifact-142"><a href="#DebateArtifact-142"><span class="linenos">142</span></a>    <span class="p">)</span>
+</span><span id="DebateArtifact-143"><a href="#DebateArtifact-143"><span class="linenos">143</span></a>
+</span><span id="DebateArtifact-144"><a href="#DebateArtifact-144"><span class="linenos">144</span></a>    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</span><span id="DebateArtifact-145"><a href="#DebateArtifact-145"><span class="linenos">145</span></a>    <span class="c1"># metadata keys: token_usage, latencies, timestamps (start/end),</span>
+</span><span id="DebateArtifact-146"><a href="#DebateArtifact-146"><span class="linenos">146</span></a>    <span class="c1">#                agents (list of {name, blueprint_id, role_type, llm_profile_id})</span>
+</span><span id="DebateArtifact-147"><a href="#DebateArtifact-147"><span class="linenos">147</span></a>
+</span><span id="DebateArtifact-148"><a href="#DebateArtifact-148"><span class="linenos">148</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">artifact_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="DebateArtifact-149"><a href="#DebateArtifact-149"><span class="linenos">149</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a deterministic SHA-256 hex digest of this artifact.&quot;&quot;&quot;</span>
+</span><span id="DebateArtifact-150"><a href="#DebateArtifact-150"><span class="linenos">150</span></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+</span><span id="DebateArtifact-151"><a href="#DebateArtifact-151"><span class="linenos">151</span></a>
+</span><span id="DebateArtifact-152"><a href="#DebateArtifact-152"><span class="linenos">152</span></a>        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
+</span><span id="DebateArtifact-153"><a href="#DebateArtifact-153"><span class="linenos">153</span></a>        <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
 </span></pre></div>
 
 
@@ -492,6 +573,18 @@ this artifact — never the raw session state or snapshot data.</p>
         
     </div>
     <a class="headerlink" href="#DebateArtifact.workflow_name"></a>
+    
+    
+
+                            </div>
+                            <div id="DebateArtifact.title" class="classattr">
+                                <div class="attr variable">
+            <span class="name">title</span><span class="annotation">: str</span>        =
+<span class="default_value">&#39;&#39;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.title"></a>
     
     
 
@@ -580,6 +673,118 @@ this artifact — never the raw session state or snapshot data.</p>
     
 
                             </div>
+                            <div id="DebateArtifact.final_assessment" class="classattr">
+                                <div class="attr variable">
+            <span class="name">final_assessment</span><span class="annotation">: str | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.final_assessment"></a>
+    
+            <div class="docstring"><p>Final assessment text from the moderator (e.g. '85% verwendbar')</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.usability_score" class="classattr">
+                                <div class="attr variable">
+            <span class="name">usability_score</span><span class="annotation">: float | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.usability_score"></a>
+    
+            <div class="docstring"><p>Overall usability score from pragmatist reality_score</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.remaining_blockers" class="classattr">
+                                <div class="attr variable">
+            <span class="name">remaining_blockers</span><span class="annotation">: list[str]</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.remaining_blockers"></a>
+    
+            <div class="docstring"><p>Blocking concerns that still need resolution after the final round</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.constructivity_score" class="classattr">
+                                <div class="attr variable">
+            <span class="name">constructivity_score</span><span class="annotation">: float | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.constructivity_score"></a>
+    
+            <div class="docstring"><p>Final constructivity score after all Builder loops (0.0–1.0)</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.draft_versions" class="classattr">
+                                <div class="attr variable">
+            <span class="name">draft_versions</span><span class="annotation">: int</span>        =
+<span class="default_value">0</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.draft_versions"></a>
+    
+            <div class="docstring"><p>Number of Builder iteration loops executed</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.critic_item_count" class="classattr">
+                                <div class="attr variable">
+            <span class="name">critic_item_count</span><span class="annotation">: int</span>        =
+<span class="default_value">0</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.critic_item_count"></a>
+    
+            <div class="docstring"><p>Total number of CriticItems produced across all rounds</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.build_response_count" class="classattr">
+                                <div class="attr variable">
+            <span class="name">build_response_count</span><span class="annotation">: int</span>        =
+<span class="default_value">0</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.build_response_count"></a>
+    
+            <div class="docstring"><p>Total number of BuildResponses produced across all rounds</p>
+</div>
+
+
+                            </div>
+                            <div id="DebateArtifact.pragmatist_reality_score" class="classattr">
+                                <div class="attr variable">
+            <span class="name">pragmatist_reality_score</span><span class="annotation">: float | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#DebateArtifact.pragmatist_reality_score"></a>
+    
+            <div class="docstring"><p>Final pragmatist reality_score (aggregate feasibility)</p>
+</div>
+
+
+                            </div>
                             <div id="DebateArtifact.metadata" class="classattr">
                                 <div class="attr variable">
             <span class="name">metadata</span><span class="annotation">: dict</span>        =
@@ -603,12 +808,12 @@ this artifact — never the raw session state or snapshot data.</p>
 
     </div>
     <a class="headerlink" href="#DebateArtifact.artifact_hash"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="DebateArtifact.artifact_hash-99"><a href="#DebateArtifact.artifact_hash-99"><span class="linenos"> 99</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">artifact_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="DebateArtifact.artifact_hash-100"><a href="#DebateArtifact.artifact_hash-100"><span class="linenos">100</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a deterministic SHA-256 hex digest of this artifact.&quot;&quot;&quot;</span>
-</span><span id="DebateArtifact.artifact_hash-101"><a href="#DebateArtifact.artifact_hash-101"><span class="linenos">101</span></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
-</span><span id="DebateArtifact.artifact_hash-102"><a href="#DebateArtifact.artifact_hash-102"><span class="linenos">102</span></a>
-</span><span id="DebateArtifact.artifact_hash-103"><a href="#DebateArtifact.artifact_hash-103"><span class="linenos">103</span></a>        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
-</span><span id="DebateArtifact.artifact_hash-104"><a href="#DebateArtifact.artifact_hash-104"><span class="linenos">104</span></a>        <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="DebateArtifact.artifact_hash-148"><a href="#DebateArtifact.artifact_hash-148"><span class="linenos">148</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">artifact_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="DebateArtifact.artifact_hash-149"><a href="#DebateArtifact.artifact_hash-149"><span class="linenos">149</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a deterministic SHA-256 hex digest of this artifact.&quot;&quot;&quot;</span>
+</span><span id="DebateArtifact.artifact_hash-150"><a href="#DebateArtifact.artifact_hash-150"><span class="linenos">150</span></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+</span><span id="DebateArtifact.artifact_hash-151"><a href="#DebateArtifact.artifact_hash-151"><span class="linenos">151</span></a>
+</span><span id="DebateArtifact.artifact_hash-152"><a href="#DebateArtifact.artifact_hash-152"><span class="linenos">152</span></a>        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>
+</span><span id="DebateArtifact.artifact_hash-153"><a href="#DebateArtifact.artifact_hash-153"><span class="linenos">153</span></a>        <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
 </span></pre></div>
 
 
@@ -1150,15 +1355,15 @@ handles the capture/processing.</p>
 
     </div>
     <a class="headerlink" href="#Injection"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Injection-39"><a href="#Injection-39"><span class="linenos">39</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Injection</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="Injection-40"><a href="#Injection-40"><span class="linenos">40</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A user or system injection into the debate.&quot;&quot;&quot;</span>
-</span><span id="Injection-41"><a href="#Injection-41"><span class="linenos">41</span></a>
-</span><span id="Injection-42"><a href="#Injection-42"><span class="linenos">42</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
-</span><span id="Injection-43"><a href="#Injection-43"><span class="linenos">43</span></a>    <span class="n">source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span>
-</span><span id="Injection-44"><a href="#Injection-44"><span class="linenos">44</span></a>    <span class="n">target_node_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="Injection-45"><a href="#Injection-45"><span class="linenos">45</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="Injection-46"><a href="#Injection-46"><span class="linenos">46</span></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">))</span>
-</span><span id="Injection-47"><a href="#Injection-47"><span class="linenos">47</span></a>    <span class="n">injected_at_round</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Injection-43"><a href="#Injection-43"><span class="linenos">43</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Injection</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="Injection-44"><a href="#Injection-44"><span class="linenos">44</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A user or system injection into the debate.&quot;&quot;&quot;</span>
+</span><span id="Injection-45"><a href="#Injection-45"><span class="linenos">45</span></a>
+</span><span id="Injection-46"><a href="#Injection-46"><span class="linenos">46</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
+</span><span id="Injection-47"><a href="#Injection-47"><span class="linenos">47</span></a>    <span class="n">source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span>
+</span><span id="Injection-48"><a href="#Injection-48"><span class="linenos">48</span></a>    <span class="n">target_node_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="Injection-49"><a href="#Injection-49"><span class="linenos">49</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="Injection-50"><a href="#Injection-50"><span class="linenos">50</span></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">))</span>
+</span><span id="Injection-51"><a href="#Injection-51"><span class="linenos">51</span></a>    <span class="n">injected_at_round</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 </span></pre></div>
 
 
@@ -1250,14 +1455,14 @@ handles the capture/processing.</p>
 
     </div>
     <a class="headerlink" href="#MinorityVote"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="MinorityVote-59"><a href="#MinorityVote-59"><span class="linenos">59</span></a><span class="k">class</span><span class="w"> </span><span class="nc">MinorityVote</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="MinorityVote-60"><a href="#MinorityVote-60"><span class="linenos">60</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A dissenting opinion from an agent.&quot;&quot;&quot;</span>
-</span><span id="MinorityVote-61"><a href="#MinorityVote-61"><span class="linenos">61</span></a>
-</span><span id="MinorityVote-62"><a href="#MinorityVote-62"><span class="linenos">62</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
-</span><span id="MinorityVote-63"><a href="#MinorityVote-63"><span class="linenos">63</span></a>    <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="MinorityVote-64"><a href="#MinorityVote-64"><span class="linenos">64</span></a>    <span class="n">dissent_content</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="MinorityVote-65"><a href="#MinorityVote-65"><span class="linenos">65</span></a>    <span class="n">target_turn_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="MinorityVote-66"><a href="#MinorityVote-66"><span class="linenos">66</span></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">))</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="MinorityVote-63"><a href="#MinorityVote-63"><span class="linenos">63</span></a><span class="k">class</span><span class="w"> </span><span class="nc">MinorityVote</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="MinorityVote-64"><a href="#MinorityVote-64"><span class="linenos">64</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A dissenting opinion from an agent.&quot;&quot;&quot;</span>
+</span><span id="MinorityVote-65"><a href="#MinorityVote-65"><span class="linenos">65</span></a>
+</span><span id="MinorityVote-66"><a href="#MinorityVote-66"><span class="linenos">66</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
+</span><span id="MinorityVote-67"><a href="#MinorityVote-67"><span class="linenos">67</span></a>    <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="MinorityVote-68"><a href="#MinorityVote-68"><span class="linenos">68</span></a>    <span class="n">dissent_content</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="MinorityVote-69"><a href="#MinorityVote-69"><span class="linenos">69</span></a>    <span class="n">target_turn_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="MinorityVote-70"><a href="#MinorityVote-70"><span class="linenos">70</span></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">))</span>
 </span></pre></div>
 
 
@@ -1356,6 +1561,8 @@ handles the capture/processing.</p>
 </span><span id="RenderJob-38"><a href="#RenderJob-38"><span class="linenos">38</span></a>    <span class="n">error_message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </span><span id="RenderJob-39"><a href="#RenderJob-39"><span class="linenos">39</span></a>    <span class="n">output_files</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
 </span><span id="RenderJob-40"><a href="#RenderJob-40"><span class="linenos">40</span></a>    <span class="n">artifact_snapshot_hash</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># SHA-256 of DebateArtifact JSON</span>
+</span><span id="RenderJob-41"><a href="#RenderJob-41"><span class="linenos">41</span></a>    <span class="n">progress_current</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># number of items processed so far</span>
+</span><span id="RenderJob-42"><a href="#RenderJob-42"><span class="linenos">42</span></a>    <span class="n">progress_total</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># total number of items to process</span>
 </span></pre></div>
 
 
@@ -1499,6 +1706,30 @@ for a completed session.  The <code><a href="#RenderJob.plugin_key">plugin_key</
     
 
                             </div>
+                            <div id="RenderJob.progress_current" class="classattr">
+                                <div class="attr variable">
+            <span class="name">progress_current</span><span class="annotation">: int</span>        =
+<span class="default_value">0</span>
+
+        
+    </div>
+    <a class="headerlink" href="#RenderJob.progress_current"></a>
+    
+    
+
+                            </div>
+                            <div id="RenderJob.progress_total" class="classattr">
+                                <div class="attr variable">
+            <span class="name">progress_total</span><span class="annotation">: int</span>        =
+<span class="default_value">0</span>
+
+        
+    </div>
+    <a class="headerlink" href="#RenderJob.progress_total"></a>
+    
+    
+
+                            </div>
                 </section>
                 <section id="RenderJobStatus">
                             <input id="RenderJobStatus-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
@@ -1600,6 +1831,10 @@ for a completed session.  The <code><a href="#RenderJob.plugin_key">plugin_key</
 </span><span id="Turn-34"><a href="#Turn-34"><span class="linenos">34</span></a>    <span class="n">latency_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 </span><span id="Turn-35"><a href="#Turn-35"><span class="linenos">35</span></a>    <span class="n">token_usage</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
 </span><span id="Turn-36"><a href="#Turn-36"><span class="linenos">36</span></a>    <span class="c1"># Expected keys: &quot;prompt&quot;, &quot;completion&quot;, &quot;total&quot;</span>
+</span><span id="Turn-37"><a href="#Turn-37"><span class="linenos">37</span></a>    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+</span><span id="Turn-38"><a href="#Turn-38"><span class="linenos">38</span></a>        <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+</span><span id="Turn-39"><a href="#Turn-39"><span class="linenos">39</span></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Arbitrary metadata for this turn (e.g. provenance chain for transactional drafting)&quot;</span><span class="p">,</span>
+</span><span id="Turn-40"><a href="#Turn-40"><span class="linenos">40</span></a>    <span class="p">)</span>
 </span></pre></div>
 
 
@@ -1739,6 +1974,20 @@ for a completed session.  The <code><a href="#RenderJob.plugin_key">plugin_key</
     
 
                             </div>
+                            <div id="Turn.metadata" class="classattr">
+                                <div class="attr variable">
+            <span class="name">metadata</span><span class="annotation">: dict</span>        =
+<span class="default_value">PydanticUndefined</span>
+
+        
+    </div>
+    <a class="headerlink" href="#Turn.metadata"></a>
+    
+            <div class="docstring"><p>Arbitrary metadata for this turn (e.g. provenance chain for transactional drafting)</p>
+</div>
+
+
+                            </div>
                 </section>
                 <section id="UserQuery">
                             <input id="UserQuery-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
@@ -1751,13 +2000,13 @@ for a completed session.  The <code><a href="#RenderJob.plugin_key">plugin_key</
 
     </div>
     <a class="headerlink" href="#UserQuery"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="UserQuery-50"><a href="#UserQuery-50"><span class="linenos">50</span></a><span class="k">class</span><span class="w"> </span><span class="nc">UserQuery</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="UserQuery-51"><a href="#UserQuery-51"><span class="linenos">51</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A user query submitted during the debate.&quot;&quot;&quot;</span>
-</span><span id="UserQuery-52"><a href="#UserQuery-52"><span class="linenos">52</span></a>
-</span><span id="UserQuery-53"><a href="#UserQuery-53"><span class="linenos">53</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
-</span><span id="UserQuery-54"><a href="#UserQuery-54"><span class="linenos">54</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="UserQuery-55"><a href="#UserQuery-55"><span class="linenos">55</span></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">))</span>
-</span><span id="UserQuery-56"><a href="#UserQuery-56"><span class="linenos">56</span></a>    <span class="n">response_turn_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="UserQuery-54"><a href="#UserQuery-54"><span class="linenos">54</span></a><span class="k">class</span><span class="w"> </span><span class="nc">UserQuery</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="UserQuery-55"><a href="#UserQuery-55"><span class="linenos">55</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A user query submitted during the debate.&quot;&quot;&quot;</span>
+</span><span id="UserQuery-56"><a href="#UserQuery-56"><span class="linenos">56</span></a>
+</span><span id="UserQuery-57"><a href="#UserQuery-57"><span class="linenos">57</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
+</span><span id="UserQuery-58"><a href="#UserQuery-58"><span class="linenos">58</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="UserQuery-59"><a href="#UserQuery-59"><span class="linenos">59</span></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">))</span>
+</span><span id="UserQuery-60"><a href="#UserQuery-60"><span class="linenos">60</span></a>    <span class="n">response_turn_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </span></pre></div>
 
 

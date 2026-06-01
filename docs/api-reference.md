@@ -1,6 +1,13 @@
 # API Reference — Debate-Agent
 
 > **Version**: 1.1.0
+> **Description**: Danwa — Auditierbarer Multi-Agenten-Debatten-Workflow.
+
+KI-gestützte Debattenplattform mit Multi-Tenant-Authentifizierung, RAG-Dokumentenanalyse, paralleler Workflow-Ausführung und strukturierter Berichterstellung.
+
+**Authentifizierung:** JWT Bearer Token via `/api/v1/auth/login`.
+
+**Dokumentation:** [Swagger UI](/docs) · [ReDoc](/redoc) · [OpenAPI JSON](/openapi.json)
 
 ---
 
@@ -8,10 +15,14 @@
 
 - [a2a](#a2a)
 - [a2a-discovery](#a2a-discovery)
+- [assistant](#assistant)
 - [audit](#audit)
+- [auth](#auth)
 - [blueprint-events](#blueprint-events)
 - [blueprints](#blueprints)
+- [bundle-composer](#bundle-composer)
 - [canvas](#canvas)
+- [cases](#cases)
 - [config](#config)
 - [debate](#debate)
 - [dms](#dms)
@@ -20,6 +31,7 @@
 - [i18n](#i18n)
 - [input-composer](#input-composer)
 - [modules](#modules)
+- [monitor](#monitor)
 - [optimization-proposals](#optimization-proposals)
 - [output-composer](#output-composer)
 - [profiles](#profiles)
@@ -27,10 +39,20 @@
 - [reports](#reports)
 - [sessions](#sessions)
 - [system](#system)
+- [tags](#tags)
+- [tenants](#tenants)
 - [tone-profiles](#tone-profiles)
 - [translation](#translation)
+- [untagged](#untagged)
+- [user-keys](#user-keys)
 - [workflow-exec](#workflow-exec)
 - [workflow-templates](#workflow-templates)
+
+---
+
+## Authentication
+
+- **HTTPBearer**: HTTP bearer authentication
 
 ---
 
@@ -42,6 +64,7 @@
 - [AgentConfig](#data-model-agentconfig)
 - [AgentOutput](#data-model-agentoutput)
 - [AgentPersona](#data-model-agentpersona)
+- [AnalysisExportRequest](#data-model-analysisexportrequest)
 - [ApproveResponse](#data-model-approveresponse)
 - [ApproveTranslationRequest](#data-model-approvetranslationrequest)
 - [BackupCreateBody](#data-model-backupcreatebody)
@@ -49,9 +72,11 @@
 - [BackupSettingsBody](#data-model-backupsettingsbody)
 - [BatchTranslateRequest](#data-model-batchtranslaterequest)
 - [BlueprintLLMProfile](#data-model-blueprintllmprofile)
+- [Body_upload_case_document_api_v1_tenants__tenant_id__cases__case_id__dms_documents_post](#data-model-body_upload_case_document_api_v1_tenants__tenant_id__cases__case_id__dms_documents_post)
 - [Body_upload_document_api_v1_dms_documents_post](#data-model-body_upload_document_api_v1_dms_documents_post)
 - [BulkTranslateRequest](#data-model-bulktranslaterequest)
 - [BulkTranslationRequest](#data-model-bulktranslationrequest)
+- [BundleComposition](#data-model-bundlecomposition)
 - [CanvasLayout-Input](#data-model-canvaslayout-input)
 - [CanvasLayout-Output](#data-model-canvaslayout-output)
 - [CanvasLayoutData](#data-model-canvaslayoutdata)
@@ -59,16 +84,21 @@
 - [CanvasLayoutNode](#data-model-canvaslayoutnode)
 - [CanvasLayoutViewport](#data-model-canvaslayoutviewport)
 - [CapabilitiesRequest](#data-model-capabilitiesrequest)
+- [CaseCreateRequest](#data-model-casecreaterequest)
 - [CaseInput](#data-model-caseinput)
+- [CaseListItem](#data-model-caselistitem)
+- [CaseResponse](#data-model-caseresponse)
+- [CaseUpdateRequest](#data-model-caseupdaterequest)
 - [CompilationResult](#data-model-compilationresult)
+- [Composition](#data-model-composition)
 - [ConditionalEdge](#data-model-conditionaledge)
 - [ConvertToWorkflowRequest](#data-model-converttoworkflowrequest)
+- [CreateBundleRequest](#data-model-createbundlerequest)
 - [CreatePromptVariantRequest](#data-model-createpromptvariantrequest)
 - [CreateRenderRequest](#data-model-createrenderrequest)
 - [CreateRenderResponse](#data-model-createrenderresponse)
 - [CreateReportRequest](#data-model-createreportrequest)
 - [CreateReportResponse](#data-model-createreportresponse)
-- [DebateContinueBody](#data-model-debatecontinuebody)
 - [DebateListItem](#data-model-debatelistitem)
 - [DebateRequest](#data-model-debaterequest)
 - [DebateResponse](#data-model-debateresponse)
@@ -81,18 +111,17 @@
 - [ExtensionDecisionModel](#data-model-extensiondecisionmodel)
 - [ExtensionRequest](#data-model-extensionrequest)
 - [ExtensionResponse](#data-model-extensionresponse)
-- [ForkDebateBody](#data-model-forkdebatebody)
-- [ForkFromConsensusBody](#data-model-forkfromconsensusbody)
 - [HITLMode](#data-model-hitlmode)
 - [HITLStatusResponse](#data-model-hitlstatusresponse)
 - [HTTPValidationError](#data-model-httpvalidationerror)
-- [HealthResponse](#data-model-healthresponse)
 - [ImportBundleRequest](#data-model-importbundlerequest)
+- [ImportRequest](#data-model-importrequest)
 - [ImportResult](#data-model-importresult)
 - [InjectRequest](#data-model-injectrequest)
 - [InjectResponse](#data-model-injectresponse)
 - [InputJobStatusResponse](#data-model-inputjobstatusresponse)
 - [InputPluginInfo](#data-model-inputplugininfo)
+- [InstallFromRepoRequest](#data-model-installfromreporequest)
 - [InstallRequest](#data-model-installrequest)
 - [InstantiateRequest](#data-model-instantiaterequest)
 - [InteractionDirection](#data-model-interactiondirection)
@@ -112,14 +141,21 @@
 - [LanguagePackExportRequest](#data-model-languagepackexportrequest)
 - [LaunchWorkflowRequest](#data-model-launchworkflowrequest)
 - [LaunchWorkflowResponse](#data-model-launchworkflowresponse)
+- [LoginRequest](#data-model-loginrequest)
+- [MoveDebateBody](#data-model-movedebatebody)
+- [MoveDocumentRequest](#data-model-movedocumentrequest)
 - [OOBInputBody](#data-model-oobinputbody)
 - [OOBInputResponse](#data-model-oobinputresponse)
 - [OOBTarget](#data-model-oobtarget)
 - [OOBTargetType](#data-model-oobtargettype)
+- [OcrSettingsBody](#data-model-ocrsettingsbody)
+- [PasswordChangeRequest](#data-model-passwordchangerequest)
 - [PauseAction](#data-model-pauseaction)
 - [PauseRequest](#data-model-pauserequest)
 - [PauseResponse](#data-model-pauseresponse)
+- [PhaseConfig](#data-model-phaseconfig)
 - [PluginInfo](#data-model-plugininfo)
+- [PreviewRequest](#data-model-previewrequest)
 - [ProfileUpdateRequest](#data-model-profileupdaterequest)
 - [ProjectConfig-Input](#data-model-projectconfig-input)
 - [ProjectConfig-Output](#data-model-projectconfig-output)
@@ -132,6 +168,7 @@
 - [PromptVariant](#data-model-promptvariant)
 - [ProposalResponse](#data-model-proposalresponse)
 - [ReflectResponse](#data-model-reflectresponse)
+- [RefreshRequest](#data-model-refreshrequest)
 - [RegisterLocaleRequest](#data-model-registerlocalerequest)
 - [RenderJobStatusResponse](#data-model-renderjobstatusresponse)
 - [ReportStatusResponse](#data-model-reportstatusresponse)
@@ -145,27 +182,42 @@
 - [SearchMode](#data-model-searchmode)
 - [SessionStateResponse](#data-model-sessionstateresponse)
 - [StartFromLayoutBody](#data-model-startfromlayoutbody)
-- [StartFromWorkflowBody](#data-model-startfromworkflowbody)
+- [StartMvpDebateRequest](#data-model-startmvpdebaterequest)
+- [StartMvpDebateResponse](#data-model-startmvpdebateresponse)
 - [StartWorkflowRequest](#data-model-startworkflowrequest)
 - [StartWorkflowResponse](#data-model-startworkflowresponse)
 - [StatusResponse](#data-model-statusresponse)
 - [SubmitInputRequest](#data-model-submitinputrequest)
 - [SubmitInputResponse](#data-model-submitinputresponse)
+- [TagCreateRequest](#data-model-tagcreaterequest)
+- [TagResponse](#data-model-tagresponse)
+- [TagUpdateRequest](#data-model-tagupdaterequest)
 - [TemplatePlaceholder](#data-model-templateplaceholder)
+- [TenantMembershipResponse](#data-model-tenantmembershipresponse)
+- [TenantResponse](#data-model-tenantresponse)
+- [TenantUpdate](#data-model-tenantupdate)
 - [TerminationCondition](#data-model-terminationcondition)
+- [TokenResponse](#data-model-tokenresponse)
 - [ToneProfile](#data-model-toneprofile)
 - [TranslatePromptRequest](#data-model-translatepromptrequest)
+- [TranslateRequest](#data-model-translaterequest)
 - [TranslationSetRequest](#data-model-translationsetrequest)
 - [UninstallRequest](#data-model-uninstallrequest)
+- [UpdateBundleRequest](#data-model-updatebundlerequest)
+- [UpdateDocumentTextRequest](#data-model-updatedocumenttextrequest)
+- [UserCreate](#data-model-usercreate)
+- [UserKeyResponse](#data-model-userkeyresponse)
+- [UserKeySetRequest](#data-model-userkeysetrequest)
+- [UserResponse](#data-model-userresponse)
 - [UtilityLLMRequest](#data-model-utilityllmrequest)
 - [ValidateRequest](#data-model-validaterequest)
 - [ValidationError](#data-model-validationerror)
+- [WipeLocaleRequest](#data-model-wipelocalerequest)
 - [WorkflowDefinition](#data-model-workflowdefinition)
 - [WorkflowEdge](#data-model-workflowedge)
 - [WorkflowNode](#data-model-workflownode)
 - [WorkflowTemplate](#data-model-workflowtemplate)
 - [backend__api__routers__modules__TranslateRequest](#data-model-backend__api__routers__modules__translaterequest)
-- [backend__api__routers__translation__TranslateRequest](#data-model-backend__api__routers__translation__translaterequest)
 
 ---
 
@@ -345,6 +397,195 @@ Raises:
 
 ---
 
+## assistant
+
+### `POST` `/api/v1/assistant/chat`
+
+**Quick Chat**
+
+Quick chat endpoint — creates a session if needed and sends a message.
+
+This is a convenience endpoint for single-message interactions without
+explicit session management.
+
+Args:
+    message: The user's message.
+    profile_id: Optional LLM profile override.
+
+Returns:
+    Session ID and all new messages from this turn.
+
+*Operation ID*: `quick_chat_api_v1_assistant_chat_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `message` | query | string | ✓ |  |
+| `profile_id` | query | string |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/assistant/sessions`
+
+**List Sessions**
+
+List all active chat sessions.
+
+Returns:
+    List of session summaries (no message content).
+
+*Operation ID*: `list_sessions_api_v1_assistant_sessions_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `POST` `/api/v1/assistant/sessions`
+
+**Create Session**
+
+Create a new chat session with the Danwa assistant.
+
+Args:
+    title: Optional title for the session.
+    profile_id: Optional LLM profile ID to use for this session.
+
+Returns:
+    Session object with ID and metadata.
+
+*Operation ID*: `create_session_api_v1_assistant_sessions_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `title` | query | string |  |  |
+| `profile_id` | query | string |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/assistant/sessions/{session_id}`
+
+**Delete Session**
+
+Delete a chat session.
+
+Args:
+    session_id: The session ID.
+
+Returns:
+    Status message.
+
+Raises:
+    HTTP 404: Session not found.
+
+*Operation ID*: `delete_session_api_v1_assistant_sessions__session_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/assistant/sessions/{session_id}`
+
+**Get Session**
+
+Get a specific chat session with full message history.
+
+Args:
+    session_id: The session ID.
+
+Returns:
+    Session object with all messages.
+
+Raises:
+    HTTP 404: Session not found.
+
+*Operation ID*: `get_session_api_v1_assistant_sessions__session_id__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/assistant/sessions/{session_id}/chat`
+
+**Send Message**
+
+Send a message to the Danwa assistant and get a response.
+
+Args:
+    session_id: The session ID.
+    message: The user's message.
+    profile_id: Optional LLM profile override.
+
+Returns:
+    Contains ``messages`` (array of all new messages from this turn,
+    including tool calls and results) and ``message`` (the final
+    assistant text response for backward compatibility).
+
+Raises:
+    HTTP 404: Session not found.
+    HTTP 500: LLM call failed.
+
+*Operation ID*: `send_message_api_v1_assistant_sessions__session_id__chat_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
+| `message` | query | string | ✓ |  |
+| `profile_id` | query | string |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ## audit
 
 ### `GET` `/api/v1/audit/project/{project_id}`
@@ -382,6 +623,7 @@ Accepts either a debate UUID or a debate title as the path parameter.
 If a title is provided, it is resolved to the matching debate ID first.
 
 Events are enriched with actual agent output content from the debate store.
+Falls back to workflow audit_log table for MVP debates.
 
 *Operation ID*: `get_audit_events_api_v1_audit__debate_id_or_title__get`
 
@@ -397,6 +639,220 @@ Events are enriched with actual agent output content from the debate store.
 | Status | Description |
 |--------|-------------|
 | `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+## auth
+
+### `POST` `/api/v1/auth/login`
+
+**Login**
+
+Authenticate with email + password. Returns JWT token pair.
+
+*Operation ID*: `login_api_v1_auth_login_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/auth/me`
+
+**Get Me**
+
+Get the current authenticated user's profile.
+
+*Operation ID*: `get_me_api_v1_auth_me_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `PUT` `/api/v1/auth/me`
+
+**Update Me**
+
+Update the current user's profile (display_name).
+
+*Operation ID*: `update_me_api_v1_auth_me_put`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/auth/my-tenants`
+
+**List My Tenants**
+
+List all tenants the current user belongs to.
+
+*Operation ID*: `list_my_tenants_api_v1_auth_my_tenants_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `PUT` `/api/v1/auth/password`
+
+**Change Password**
+
+Change the current user's password.
+
+*Operation ID*: `change_password_api_v1_auth_password_put`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/auth/refresh`
+
+**Refresh Token**
+
+Exchange a refresh token for a new access + refresh token pair.
+
+*Operation ID*: `refresh_token_api_v1_auth_refresh_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/auth/register`
+
+**Register User**
+
+Register a new user (self-signup). First user is auto-promoted to admin.
+
+*Operation ID*: `register_user_api_v1_auth_register_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/auth/select-tenant/{tenant_id}`
+
+**Select Tenant**
+
+Switch the current user's active tenant.
+
+Validates membership and returns a new JWT token pair with the
+selected tenant_id embedded. The new token should be used for
+subsequent API requests.
+
+*Operation ID*: `select_tenant_api_v1_auth_select_tenant__tenant_id__post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/auth/users`
+
+**List Users**
+
+List all registered users (admin only).
+
+*Operation ID*: `list_users_api_v1_auth_users_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `POST` `/api/v1/auth/users/invite`
+
+**Invite User**
+
+Invite a new user by creating their account with a password (admin only).
+
+*Operation ID*: `invite_user_api_v1_auth_users_invite_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/auth/users/{user_id}`
+
+**Delete User**
+
+Delete a user account (admin only). Cannot delete yourself.
+
+*Operation ID*: `delete_user_api_v1_auth_users__user_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `user_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `204` | Successful Response |
 | `422` | Validation Error |
 
 ---
@@ -688,7 +1144,7 @@ Delete an agent bundle.
 
 **Get Bundle**
 
-Get a single agent bundle by ID.
+Get a single agent bundle by ID — checks DB first, then modules.
 
 *Operation ID*: `get_bundle_api_v1_blueprints_bundles__bundle_id__get`
 
@@ -870,7 +1326,7 @@ Delete an LLM profile.
 
 **Get Llm Profile**
 
-Get a single LLM profile by ID.
+Get a single LLM profile by ID (DB or module).
 
 *Operation ID*: `get_llm_profile_api_v1_blueprints_llm_profiles__profile_id__get`
 
@@ -986,7 +1442,7 @@ Delete a prompt template.
 
 **Get Prompt Template**
 
-Get a single prompt template by ID.
+Get a single prompt template by ID — checks DB first, then modules.
 
 *Operation ID*: `get_prompt_template_api_v1_blueprints_prompt_templates__template_id__get`
 
@@ -1102,7 +1558,7 @@ Delete a role definition.
 
 **Get Role Definition**
 
-Get a single role definition by ID.
+Get a single role definition by ID — checks DB first, then modules.
 
 *Operation ID*: `get_role_definition_api_v1_blueprints_role_definitions__role_id__get`
 
@@ -1217,7 +1673,7 @@ Delete a role type.
 
 **Get Role Type**
 
-Get a single role type by ID.
+Get a single role type by ID — checks DB first, then modules.
 
 *Operation ID*: `get_role_type_api_v1_blueprints_role_types__role_type_id__get`
 
@@ -1454,6 +1910,186 @@ Fields listed in ``extracted_placeholders`` are replaced with
 
 ---
 
+## bundle-composer
+
+### `GET` `/api/v1/bundle-composer/bundles`
+
+**List Bundles**
+
+List agent bundles, optionally filtering to active only.
+
+*Operation ID*: `list_bundles_api_v1_bundle_composer_bundles_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `active_only` | query | boolean |  |  |
+| `limit` | query | integer |  |  |
+| `offset` | query | integer |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/bundle-composer/bundles`
+
+**Create Bundle**
+
+Create a new AgentBundle from modular composition.
+
+*Operation ID*: `create_bundle_api_v1_bundle_composer_bundles_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/bundle-composer/bundles/{bundle_id}`
+
+**Get Bundle**
+
+Get a single agent bundle by ID.
+
+*Operation ID*: `get_bundle_api_v1_bundle_composer_bundles__bundle_id__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `bundle_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT` `/api/v1/bundle-composer/bundles/{bundle_id}`
+
+**Update Bundle**
+
+Update an existing composer bundle.
+
+*Operation ID*: `update_bundle_api_v1_bundle_composer_bundles__bundle_id__put`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `bundle_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/bundle-composer/bundles/{bundle_id}/export`
+
+**Export Bundle**
+
+Export a bundle as portable manifest + profile.
+
+When ``to_directory=true``, writes to modules/agent-bundles/<id>/ on disk.
+Returns the manifest and profile dicts (or the directory path).
+
+*Operation ID*: `export_bundle_api_v1_bundle_composer_bundles__bundle_id__export_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `bundle_id` | path | string | ✓ |  |
+| `to_directory` | query | boolean |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/bundle-composer/components`
+
+**List Components**
+
+Return all available components across all 5 categories.
+
+Returns agent_cores, argumentation_patterns, tone_profiles,
+prompt_modifiers, and llm_profiles for populating dropdowns.
+
+*Operation ID*: `list_components_api_v1_bundle_composer_components_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `POST` `/api/v1/bundle-composer/import`
+
+**Import Bundle**
+
+Import a bundle from modules/agent-bundles/<module_id>/ on disk.
+
+*Operation ID*: `import_bundle_api_v1_bundle_composer_import_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/bundle-composer/preview`
+
+**Preview Prompt**
+
+Preview the assembled system prompt without persisting.
+
+Accepts the four component IDs and returns the concatenated prompt.
+
+*Operation ID*: `preview_prompt_api_v1_bundle_composer_preview_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ## canvas
 
 ### `GET` `/api/v1/canvas/layouts`
@@ -1599,6 +2235,643 @@ be compiled and executed via ``POST /workflow-exec/{wf_id}/start``.
 | Status | Description |
 |--------|-------------|
 | `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+## cases
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases`
+
+**List Cases**
+
+List all cases in a tenant.
+
+*Operation ID*: `list_cases_api_v1_tenants__tenant_id__cases_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases`
+
+**Create Case**
+
+Create a new case within a tenant.
+
+*Operation ID*: `create_case_api_v1_tenants__tenant_id__cases_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/tenants/{tenant_id}/cases/{case_id}`
+
+**Delete Case**
+
+Delete a case. System default cases cannot be deleted.
+
+*Operation ID*: `delete_case_api_v1_tenants__tenant_id__cases__case_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}`
+
+**Get Case**
+
+Get case details.
+
+*Operation ID*: `get_case_api_v1_tenants__tenant_id__cases__case_id__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH` `/api/v1/tenants/{tenant_id}/cases/{case_id}`
+
+**Update Case**
+
+Update case fields (title, description, tags, status).
+
+*Operation ID*: `update_case_api_v1_tenants__tenant_id__cases__case_id__patch`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/audit/{debate_id_or_title}`
+
+**List Case Audit Events**
+
+List audit events for a debate within a case.
+
+*Operation ID*: `list_case_audit_events_api_v1_tenants__tenant_id__cases__case_id__audit__debate_id_or_title__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id_or_title` | path | string | ✓ |  |
+| `limit` | query | integer |  |  |
+| `offset` | query | integer |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates`
+
+**List Case Debates**
+
+List debates in a case (newest first).
+
+*Operation ID*: `list_case_debates_api_v1_tenants__tenant_id__cases__case_id__debates_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `limit` | query | integer |  |  |
+| `offset` | query | integer |  |  |
+| `status` | query | string |  |  |
+| `search` | query | string |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates`
+
+**Create Case Debate**
+
+Create a new debate within a case (status = pending).
+
+*Operation ID*: `create_case_debate_api_v1_tenants__tenant_id__cases__case_id__debates_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}`
+
+**Delete Case Debate**
+
+Delete a debate and its associated audit events.
+
+*Operation ID*: `delete_case_debate_api_v1_tenants__tenant_id__cases__case_id__debates__debate_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}`
+
+**Get Case Debate**
+
+Get a single debate's status and progress.
+
+*Operation ID*: `get_case_debate_api_v1_tenants__tenant_id__cases__case_id__debates__debate_id__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}/cancel`
+
+**Cancel Case Debate**
+
+Cancel a running debate (idempotent).
+
+*Operation ID*: `cancel_case_debate_api_v1_tenants__tenant_id__cases__case_id__debates__debate_id__cancel_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}/forks`
+
+**List Case Forks**
+
+List all forks originating from a given debate in a case.
+
+*Operation ID*: `list_case_forks_api_v1_tenants__tenant_id__cases__case_id__debates__debate_id__forks_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id` | path | string | ✓ |  |
+| `limit` | query | integer |  |  |
+| `offset` | query | integer |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}/oob`
+
+**Submit Case Oob Input**
+
+Submit an out-of-band input for a running debate in a case.
+
+*Operation ID*: `submit_case_oob_input_api_v1_tenants__tenant_id__cases__case_id__debates__debate_id__oob_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}/start`
+
+**Start Case Debate**
+
+Start a pending debate — launches the workflow in a background task.
+
+*Operation ID*: `start_case_debate_api_v1_tenants__tenant_id__cases__case_id__debates__debate_id__start_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `debate_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/analyze`
+
+**Get Case Analysis**
+
+Get the latest analysis for the case DMS.
+
+*Operation ID*: `get_case_analysis_api_v1_tenants__tenant_id__cases__case_id__dms_analyze_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/analyze`
+
+**Analyze Case Documents**
+
+Analyze all documents in the case DMS.
+
+*Operation ID*: `analyze_case_documents_api_v1_tenants__tenant_id__cases__case_id__dms_analyze_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/documents`
+
+**List Case Documents**
+
+List documents in the case DMS.
+
+*Operation ID*: `list_case_documents_api_v1_tenants__tenant_id__cases__case_id__dms_documents_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/documents`
+
+**Upload Case Document**
+
+Upload a document to the case DMS.
+
+*Operation ID*: `upload_case_document_api_v1_tenants__tenant_id__cases__case_id__dms_documents_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `filename` | query | string |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/documents/{document_id}`
+
+**Delete Case Document**
+
+Delete a document from the case DMS.
+
+*Operation ID*: `delete_case_document_api_v1_tenants__tenant_id__cases__case_id__dms_documents__document_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `document_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/documents/{document_id}`
+
+**Get Case Document**
+
+Get a single document with its content for viewing.
+
+*Operation ID*: `get_case_document_api_v1_tenants__tenant_id__cases__case_id__dms_documents__document_id__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `document_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/documents/{document_id}/rag`
+
+**Remove Case Document Rag**
+
+Remove a document from the RAG index for a case.
+
+*Operation ID*: `remove_case_document_rag_api_v1_tenants__tenant_id__cases__case_id__dms_documents__document_id__rag_delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `document_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/documents/{document_id}/rag`
+
+**Add Case Document Rag**
+
+Add a document to the RAG index for a case.
+
+*Operation ID*: `add_case_document_rag_api_v1_tenants__tenant_id__cases__case_id__dms_documents__document_id__rag_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `document_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/dms/rag/search`
+
+**Search Case Rag**
+
+Search the RAG index for a case.
+
+*Operation ID*: `search_case_rag_api_v1_tenants__tenant_id__cases__case_id__dms_rag_search_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `query` | query | string |  |  |
+| `limit` | query | integer |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/cases/{case_id}/workflows/{session_id}/state`
+
+**Get Case Workflow State**
+
+Get workflow execution state within a case context.
+
+*Operation ID*: `get_case_workflow_state_api_v1_tenants__tenant_id__cases__case_id__workflows__session_id__state_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `session_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/cases/{case_id}/workflows/{workflow_id}/start`
+
+**Start Case Workflow**
+
+Start a workflow within a case context.
+
+Delegates to the workflow_exec router but resolves the project_id
+from the tenant/case path.
+
+*Operation ID*: `start_case_workflow_api_v1_tenants__tenant_id__cases__case_id__workflows__workflow_id__start_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `case_id` | path | string | ✓ |  |
+| `workflow_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
 | `422` | Validation Error |
 
 ---
@@ -1817,6 +3090,41 @@ Get the current UI language.
 Set the UI language.
 
 *Operation ID*: `set_language_api_v1_config_language_put`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/config/ocr-settings`
+
+**Get Ocr Settings**
+
+Get current OCR configuration from settings.yaml (merged with defaults).
+
+*Operation ID*: `get_ocr_settings_api_v1_config_ocr_settings_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `PUT` `/api/v1/config/ocr-settings`
+
+**Update Ocr Settings**
+
+Update OCR settings in settings.yaml.
+
+*Operation ID*: `update_ocr_settings_api_v1_config_ocr_settings_put`
 
 **Request Body:**
 
@@ -2063,35 +3371,6 @@ bundle-resolved agent profiles, and launches the workflow.
 
 ---
 
-### `POST` `/api/v1/debate/from-workflow/{workflow_id}`
-
-**Start Debate From Workflow**
-
-Start a debate from an existing WorkflowDefinition.
-
-The workflow's wf-agent nodes (with bundle_id references) are resolved
-during execution via the WorkflowCompiler.
-
-*Operation ID*: `start_debate_from_workflow_api_v1_debate_from_workflow__workflow_id__post`
-
-**Parameters:**
-
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| `workflow_id` | path | string | ✓ |  |
-| `X-Project-Id` | header | string | ✓ | Active project UUID |
-
-**Request Body:**
-
-**Responses:**
-
-| Status | Description |
-|--------|-------------|
-| `201` | Successful Response |
-| `422` | Validation Error |
-
----
-
 ### `POST` `/api/v1/debate/on-completed`
 
 **On Debate Completed Hook**
@@ -2166,6 +3445,35 @@ Get debate status and progress.
 
 ---
 
+### `PATCH` `/api/v1/debate/{debate_id}`
+
+**Move Debate**
+
+Move a debate to a different project.
+
+Source project is determined by the X-Project-Id header.
+Target project is specified in the request body.
+
+*Operation ID*: `move_debate_api_v1_debate__debate_id__patch`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `debate_id` | path | string | ✓ |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST` `/api/v1/debate/{debate_id}/cancel`
 
 **Cancel Debate**
@@ -2194,34 +3502,6 @@ current status instead of raising an error.
 
 ---
 
-### `POST` `/api/v1/debate/{debate_id}/continue`
-
-**Continue Debate**
-
-Start a new debate continuing from a completed one (P0).
-
-The previous debate's results are used as context for the new case text.
-
-*Operation ID*: `continue_debate_api_v1_debate__debate_id__continue_post`
-
-**Parameters:**
-
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| `debate_id` | path | string | ✓ |  |
-| `X-Project-Id` | header | string | ✓ | Active project UUID |
-
-**Request Body:**
-
-**Responses:**
-
-| Status | Description |
-|--------|-------------|
-| `200` | Successful Response |
-| `422` | Validation Error |
-
----
-
 ### `PUT` `/api/v1/debate/{debate_id}/documents`
 
 **Assign Documents**
@@ -2232,62 +3512,6 @@ Can be called before or after debate creation, but only while the
 debate is still pending (not yet started).
 
 *Operation ID*: `assign_documents_api_v1_debate__debate_id__documents_put`
-
-**Parameters:**
-
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| `debate_id` | path | string | ✓ |  |
-| `X-Project-Id` | header | string | ✓ | Active project UUID |
-
-**Request Body:**
-
-**Responses:**
-
-| Status | Description |
-|--------|-------------|
-| `200` | Successful Response |
-| `422` | Validation Error |
-
----
-
-### `POST` `/api/v1/debate/{debate_id}/fork`
-
-**Fork Debate**
-
-Fork an existing debate with optional modifications (P4).
-
-Creates a deep copy with configurable fork point and persona/prompt changes.
-
-*Operation ID*: `fork_debate_api_v1_debate__debate_id__fork_post`
-
-**Parameters:**
-
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| `debate_id` | path | string | ✓ |  |
-| `X-Project-Id` | header | string | ✓ | Active project UUID |
-
-**Request Body:**
-
-**Responses:**
-
-| Status | Description |
-|--------|-------------|
-| `200` | Successful Response |
-| `422` | Validation Error |
-
----
-
-### `POST` `/api/v1/debate/{debate_id}/fork-from-consensus`
-
-**Fork From Consensus**
-
-Create a new debate from the consensus of a completed one (P2).
-
-The consensus summary is used as the starting context.
-
-*Operation ID*: `fork_from_consensus_api_v1_debate__debate_id__fork_from_consensus_post`
 
 **Parameters:**
 
@@ -2420,6 +3644,87 @@ Accepts ``project_id`` as a **query parameter** because the browser's
 
 ## dms
 
+### `GET` `/api/v1/dms/analyze`
+
+**Get Analysis**
+
+Get the stored document analysis for the current project.
+
+*Operation ID*: `get_analysis_api_v1_dms_analyze_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/dms/analyze`
+
+**Analyze Documents**
+
+Analyze documents in the project and produce a structured case analysis.
+
+Uses the utility LLM to summarize, extract key facts, parties,
+timeline, and issues from all uploaded documents.
+
+Two modes:
+- ``full`` (default): Re-analyze all documents from scratch.
+- ``update``: Merge new documents into an existing analysis without
+  re-processing already analyzed documents.
+
+*Operation ID*: `analyze_documents_api_v1_dms_analyze_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `language` | query | string |  | Language for analysis content (e.g. 'de', 'en') |
+| `mode` | query | string |  | Analysis mode: 'full' (regenerate all) or 'update' (merge new docs only) |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/dms/analyze/export`
+
+**Export Analysis**
+
+Export the document analysis as PDF, ODT, or Markdown.
+
+*Operation ID*: `export_analysis_api_v1_dms_analyze_export_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET` `/api/v1/dms/documents`
 
 **List Documents**
@@ -2514,6 +3819,36 @@ Get a single document with its content for viewing.
 
 ---
 
+### `POST` `/api/v1/dms/documents/{document_id}/move`
+
+**Move Document**
+
+Move a document to another project.
+
+Source project is determined by the ``X-Project-Id`` header.
+The document is removed from the source project's DMS and
+re-created in the target project's DMS (with a new document ID).
+
+*Operation ID*: `move_document_api_v1_dms_documents__document_id__move_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `document_id` | path | string | ✓ |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `DELETE` `/api/v1/dms/documents/{document_id}/rag`
 
 **Remove From Rag**
@@ -2562,6 +3897,32 @@ Add a document to manual RAG context.
 
 ---
 
+### `PUT` `/api/v1/dms/documents/{document_id}/text`
+
+**Update Document Text**
+
+Update the extracted text of a document (re-chunks and re-indexes).
+
+*Operation ID*: `update_document_text_api_v1_dms_documents__document_id__text_put`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `document_id` | path | string | ✓ |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET` `/api/v1/dms/ocr-status`
 
 **Ocr Status**
@@ -2570,7 +3931,8 @@ Check which OCR engines are available for image text extraction.
 
 Returns:
     Dict with ``available`` (bool) and ``engine`` (str or null)
-    indicating the available OCR engine ("paddleocr" or "tesseract").
+    indicating the available OCR engine ("paddleocr", "easyocr",
+    "tesseract", or null).
 
 *Operation ID*: `ocr_status_api_v1_dms_ocr_status_get`
 
@@ -2636,7 +3998,10 @@ Search RAG context for relevant chunks.
 
 **Health**
 
-Return application health status.
+Comprehensive health check.
+
+Returns 200 if all services are healthy, 503 if any are degraded.
+Checks: SQLite, Redis (if configured), ChromaDB (if available).
 
 *Operation ID*: `health_health_get`
 
@@ -3359,6 +4724,56 @@ Creates a ZIP archive containing:
 
 ---
 
+### `POST` `/api/v1/i18n/{locale}/wipe`
+
+**Wipe Locale**
+
+Delete all translations for a locale. Use before re-translating.
+
+*Operation ID*: `wipe_locale_api_v1_i18n__locale__wipe_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `locale` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/i18n/{locale}/wipe`
+
+**Wipe Locale**
+
+Delete all translations for a locale. Use before re-translating.
+
+*Operation ID*: `wipe_locale_api_v1_i18n__locale__wipe_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `locale` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `DELETE` `/api/v1/i18n/{locale}/{key}`
 
 **Delete Translation**
@@ -3807,6 +5222,12 @@ pipeline — the missing link between input capture and debate execution.
 
 *Operation ID*: `launch_workflow_from_input_api_v1_input_launch_post`
 
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
 **Request Body:**
 
 **Responses:**
@@ -3831,6 +5252,12 @@ This bridges the Input Composer pipeline to the Workflow Execution
 pipeline — the missing link between input capture and debate execution.
 
 *Operation ID*: `launch_workflow_from_input_api_v1_input_launch_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
 
 **Request Body:**
 
@@ -4011,6 +5438,28 @@ local `modules/` directory. A remote registry may be added later.
 
 ---
 
+### `GET` `/api/v1/modules/check-repo-updates`
+
+**Check Repo Updates**
+
+Compare installed module versions against the danwa-modules repo index.
+
+Uses semver comparison — any remote version strictly greater than the
+installed version is listed as an available update.
+
+Returns a list of ``{module_id, current_version, available_version,
+download_url, checksum_sha256, name}`` dicts.
+
+*Operation ID*: `check_repo_updates_api_v1_modules_check_repo_updates_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
 ### `POST` `/api/v1/modules/install`
 
 **Install Module**
@@ -4026,6 +5475,60 @@ Install a module from local files or a URL.
 | Status | Description |
 |--------|-------------|
 | `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/modules/install-from-repo`
+
+**Install Module From Repo**
+
+Install a module directly from the danwa-modules GitHub release.
+
+Fetches the repo index, resolves the correct version, validates
+dependencies, then downloads and installs the ZIP from GitHub Releases.
+
+Returns an ``InstallationReport`` with status, files installed, and
+any errors or warnings (including unresolved dependencies).
+
+*Operation ID*: `install_module_from_repo_api_v1_modules_install_from_repo_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/modules/repo-index`
+
+**Get Repo Index**
+
+Fetch the module index from the danwa-modules GitHub repository.
+
+Returns all available modules with version, download URL, checksum,
+and (for language packs) translation stats.
+
+Results are cached server-side for 24 hours; pass ``force_refresh=true``
+to bypass.
+
+*Operation ID*: `get_repo_index_api_v1_modules_repo_index_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `force_refresh` | query | boolean |  | Bypass cache and fetch fresh index |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
 | `422` | Validation Error |
 
 ---
@@ -4170,7 +5673,7 @@ Export a module as a ZIP archive for sharing/uploading to GitHub.
 
 **Get Module Profile**
 
-Get the parsed profile data for a module.
+Get the parsed profile data for a module, merged with manifest metadata.
 
 *Operation ID*: `get_module_profile_api_v1_modules__module_id__profile_get`
 
@@ -4307,6 +5810,27 @@ Update a module to the latest available version.
 |--------|-------------|
 | `200` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+## monitor
+
+### `GET` `/api/v1/monitor/activity`
+
+**Get Llm Activity**
+
+Get current LLM activity status.
+
+Returns active calls, recent history, and token totals.
+Designed to be polled every 3-5 seconds by the frontend header.
+
+*Operation ID*: `get_llm_activity_api_v1_monitor_activity_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
 
 ---
 
@@ -4752,6 +6276,7 @@ Returns sessions that have a saved DebateArtifact.
 |------|----|------|----------|-------------|
 | `q` | query | string |  |  |
 | `limit` | query | integer |  |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
 
 **Responses:**
 
@@ -4778,6 +6303,65 @@ Returns sessions that have a saved DebateArtifact.
 |------|----|------|----------|-------------|
 | `q` | query | string |  |  |
 | `limit` | query | integer |  |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/render-sessions/{session_id}/agents`
+
+**Get Session Agents**
+
+Return unique agent roles from a completed session's artifact.
+
+Used by the frontend to pre-populate the TTS voice mapping editor.
+
+Returns:
+    List of ``{"role_type": str, "agent_name": str}`` from the
+    debate transcript.
+
+*Operation ID*: `get_session_agents_api_v1_render_sessions__session_id__agents_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/render-sessions/{session_id}/agents`
+
+**Get Session Agents**
+
+Return unique agent roles from a completed session's artifact.
+
+Used by the frontend to pre-populate the TTS voice mapping editor.
+
+Returns:
+    List of ``{"role_type": str, "agent_name": str}`` from the
+    debate transcript.
+
+*Operation ID*: `get_session_agents_api_v1_render_sessions__session_id__agents_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
 
 **Responses:**
 
@@ -5016,6 +6600,28 @@ Update an existing agent persona.
 |--------|-------------|
 | `200` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/profiles/composition/components`
+
+**List Composition Components**
+
+List all available components for the Prompt Composer UI.
+
+Returns all four component types in a single call:
+  - agent_cores: functional role definitions
+  - argumentation_patterns: argumentation methodologies
+  - tone_profiles: communication style profiles
+  - prompt_modifiers: output formatting modifiers
+
+*Operation ID*: `list_composition_components_api_v1_profiles_composition_components_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
 
 ---
 
@@ -5279,7 +6885,7 @@ Translate a prompt variant to a target language.
 
 **List Projects**
 
-List all projects.
+List projects scoped to the current user's tenant.
 
 *Operation ID*: `list_projects_api_v1_projects_get`
 
@@ -5295,7 +6901,7 @@ List all projects.
 
 **Create Project**
 
-Create a new project.
+Create a new project within the current user's tenant.
 
 *Operation ID*: `create_project_api_v1_projects_post`
 
@@ -5815,7 +7421,10 @@ up the updated profiles immediately.
 
 **Health**
 
-Return application health status.
+Comprehensive health check.
+
+Returns 200 if all services are healthy, 503 if any are degraded.
+Checks: SQLite, Redis (if configured), ChromaDB (if available).
 
 *Operation ID*: `health_health_get`
 
@@ -5824,6 +7433,225 @@ Return application health status.
 | Status | Description |
 |--------|-------------|
 | `200` | Successful Response |
+
+---
+
+## tags
+
+### `GET` `/api/v1/tenants/{tenant_id}/tags`
+
+**List Tags**
+
+List all tags for a tenant.
+
+*Operation ID*: `list_tags_api_v1_tenants__tenant_id__tags_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/tenants/{tenant_id}/tags`
+
+**Create Tag**
+
+Create a new tag for a tenant.
+
+*Operation ID*: `create_tag_api_v1_tenants__tenant_id__tags_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/tenants/{tenant_id}/tags/{tag_id}`
+
+**Delete Tag**
+
+Delete a tag.
+
+*Operation ID*: `delete_tag_api_v1_tenants__tenant_id__tags__tag_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `tag_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/{tenant_id}/tags/{tag_id}`
+
+**Get Tag**
+
+Get a single tag.
+
+*Operation ID*: `get_tag_api_v1_tenants__tenant_id__tags__tag_id__get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `tag_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT` `/api/v1/tenants/{tenant_id}/tags/{tag_id}`
+
+**Update Tag**
+
+Update a tag's name and/or color.
+
+*Operation ID*: `update_tag_api_v1_tenants__tenant_id__tags__tag_id__put`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `tenant_id` | path | string | ✓ |  |
+| `tag_id` | path | string | ✓ |  |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+## tenants
+
+### `GET` `/api/v1/tenants/current`
+
+**Get Current Tenant**
+
+Get the current user's tenant.
+
+*Operation ID*: `get_current_tenant_api_v1_tenants_current_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `POST` `/api/v1/tenants/current/invite`
+
+**Invite User**
+
+Invite a new user to the current tenant. Admin only.
+
+*Operation ID*: `invite_user_api_v1_tenants_current_invite_post`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT` `/api/v1/tenants/current/settings`
+
+**Update Tenant Settings**
+
+Update the current tenant's settings. Admin only.
+
+*Operation ID*: `update_tenant_settings_api_v1_tenants_current_settings_put`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/tenants/current/users`
+
+**List Tenant Users**
+
+List all users in the current tenant. Admin only.
+
+*Operation ID*: `list_tenant_users_api_v1_tenants_current_users_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `DELETE` `/api/v1/tenants/current/users/{target_user_id}`
+
+**Remove User**
+
+Remove a user from the current tenant. Admin only. Cannot remove yourself.
+
+*Operation ID*: `remove_user_api_v1_tenants_current_users__target_user_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `target_user_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -5902,11 +7730,11 @@ System profiles cannot be deleted (HTTP 403).
 
 ### `GET` `/api/v1/tone-profiles/{profile_id}`
 
-**Get Tone Profile**
+**Get Tone Profile By Id**
 
-Get a single tone profile by ID.
+Get a single tone profile by ID — checks DB first, then modules.
 
-*Operation ID*: `get_tone_profile_api_v1_tone_profiles__profile_id__get`
+*Operation ID*: `get_tone_profile_by_id_api_v1_tone_profiles__profile_id__get`
 
 **Parameters:**
 
@@ -6141,8 +7969,163 @@ Returns detailed status including per-file quality scores.
 
 ---
 
+## untagged
+
+### `GET` `/metrics`
+
+**Metrics**
+
+Endpoint that serves Prometheus metrics.
+
+*Operation ID*: `metrics_metrics_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+## user-keys
+
+### `DELETE` `/api/v1/user-keys`
+
+**Delete All User Keys**
+
+Delete all BYOK API keys for the current user.
+
+*Operation ID*: `delete_all_user_keys_api_v1_user_keys_delete`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `GET` `/api/v1/user-keys`
+
+**List User Keys**
+
+List all BYOK keys for the current user (keys are masked).
+
+*Operation ID*: `list_user_keys_api_v1_user_keys_get`
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+
+---
+
+### `PUT` `/api/v1/user-keys`
+
+**Set User Key**
+
+Store or update a BYOK API key for a specific LLM profile.
+
+The key is stored per-user and takes precedence over the profile's
+environment variable when the user triggers an LLM call.
+
+*Operation ID*: `set_user_key_api_v1_user_keys_put`
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE` `/api/v1/user-keys/{profile_id}`
+
+**Delete User Key**
+
+Delete a BYOK API key for a specific LLM profile.
+
+*Operation ID*: `delete_user_key_api_v1_user_keys__profile_id__delete`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `profile_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ## workflow-exec
 
+### `POST` `/api/v1/workflow-exec/mvp/start`
+
+**Start Mvp Debate**
+
+Create and execute an MVP debate workflow with per-agent LLM profiles.
+
+Builds a 4-agent debate (strategist → critic → optimizer → moderator)
+where each agent uses its own dedicated LLM profile, compiles it via
+WorkflowCompiler, and launches execution as a background task.
+
+*Operation ID*: `start_mvp_debate_api_v1_workflow_exec_mvp_start_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST` `/api/v1/workflow-exec/mvp/start`
+
+**Start Mvp Debate**
+
+Create and execute an MVP debate workflow with per-agent LLM profiles.
+
+Builds a 4-agent debate (strategist → critic → optimizer → moderator)
+where each agent uses its own dedicated LLM profile, compiles it via
+WorkflowCompiler, and launches execution as a background task.
+
+*Operation ID*: `start_mvp_debate_api_v1_workflow_exec_mvp_start_post`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
+
+**Request Body:**
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `DELETE` `/api/v1/workflow-exec/{session_id}`
 
 **Archive Workflow Session**
@@ -6185,6 +8168,62 @@ Use ``POST /{session_id}/restore`` to un-archive.
 | Name | In | Type | Required | Description |
 |------|----|------|----------|-------------|
 | `session_id` | path | string | ✓ |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/workflow-exec/{session_id}/audit-log`
+
+**Get Workflow Audit Log**
+
+Return audit log entries for a workflow session.
+
+Used by the frontend to display the audit trail for MVP debates.
+
+*Operation ID*: `get_workflow_audit_log_api_v1_workflow_exec__session_id__audit_log_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
+| `event_type` | query | string |  |  |
+| `limit` | query | integer |  |  |
+| `offset` | query | integer |  |  |
+
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET` `/api/v1/workflow-exec/{session_id}/audit-log`
+
+**Get Workflow Audit Log**
+
+Return audit log entries for a workflow session.
+
+Used by the frontend to display the audit trail for MVP debates.
+
+*Operation ID*: `get_workflow_audit_log_api_v1_workflow_exec__session_id__audit_log_get`
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| `session_id` | path | string | ✓ |  |
+| `event_type` | query | string |  |  |
+| `limit` | query | integer |  |  |
+| `offset` | query | integer |  |  |
 
 **Responses:**
 
@@ -6559,9 +8598,8 @@ by workflow nodes.
 
 Start executing a workflow definition.
 
-Loads the WorkflowDefinition from the repository, compiles it into
-a LangGraph StateGraph, builds the initial state, and launches
-the execution as a background task.
+Uses the project_id from the X-Project-Id header (not the body)
+to ensure debate records are stored in the correct project.
 
 *Operation ID*: `start_workflow_api_v1_workflow_exec__workflow_id__start_post`
 
@@ -6570,6 +8608,7 @@ the execution as a background task.
 | Name | In | Type | Required | Description |
 |------|----|------|----------|-------------|
 | `workflow_id` | path | string | ✓ |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
 
 **Request Body:**
 
@@ -6588,9 +8627,8 @@ the execution as a background task.
 
 Start executing a workflow definition.
 
-Loads the WorkflowDefinition from the repository, compiles it into
-a LangGraph StateGraph, builds the initial state, and launches
-the execution as a background task.
+Uses the project_id from the X-Project-Id header (not the body)
+to ensure debate records are stored in the correct project.
 
 *Operation ID*: `start_workflow_api_v1_workflow_exec__workflow_id__start_post`
 
@@ -6599,6 +8637,7 @@ the execution as a background task.
 | Name | In | Type | Required | Description |
 |------|----|------|----------|-------------|
 | `workflow_id` | path | string | ✓ |  |
+| `X-Project-Id` | header | string | ✓ | Active project UUID |
 
 **Request Body:**
 
@@ -6798,6 +8837,7 @@ configuration.
 | `prompt_template_id` | string |  |  |
 | `role_definition_id` | string | ✓ |  |
 | `tags` | array[string] |  |  |
+| `tone_profile_id` | string |  |  |
 | `tts_voice_id` | string |  |  |
 | `updated_at` | string |  |  |
 
@@ -6815,11 +8855,13 @@ and optionally includes a ToneProfile.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `composition` | string |  |  |
 | `created_at` | string |  |  |
 | `description` | string |  |  |
 | `id` | string |  |  |
 | `is_active` | boolean |  |  |
 | `llm_profile_id` | string | ✓ |  |
+| `model_params` | object |  | LLM inference overrides (temperature, top_p, top_k, frequency_penalty, presence_penalty, etc.) |
 | `name` | string | ✓ |  |
 | `persona_id` | string |  |  |
 | `prompt_template_id` | string |  |  |
@@ -6868,13 +8910,21 @@ Configuration for a debate agent persona.
 | `consensus_threshold` | number |  |  |
 | `description` | string |  |  |
 | `id` | string | ✓ |  |
-| `llm_profile_id` | string | ✓ |  |
+| `llm_profile_id` | string |  |  |
 | `max_rounds` | integer |  |  |
 | `mode` | string |  |  |
 | `name` | string | ✓ |  |
 | `role` | string | ✓ |  |
 | `system_prompt` | string | ✓ |  |
 | `tags` | array[string] |  |  |
+
+---
+
+### Data Model: `AnalysisExportRequest`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `format` | string |  |  |
 
 ---
 
@@ -6964,7 +9014,9 @@ blueprint-specific metadata (description, tags, timestamps).
 | `a2a_config` | object |  |  |
 | `a2a_endpoint` | string |  |  |
 | `a2a_timeout` | integer |  |  |
+| `account_id_env` | string |  |  |
 | `api_base` | string |  |  |
+| `api_key` | string |  |  |
 | `api_key_env` | string |  |  |
 | `context_window` | string |  |  |
 | `cost_per_1k_input` | string |  |  |
@@ -6978,12 +9030,20 @@ blueprint-specific metadata (description, tags, timestamps).
 | `name` | string | ✓ |  |
 | `profile_type` | enum(text, tts, stt) |  |  |
 | `protocol` | enum(litellm, a2a, stt) |  |  |
-| `provider` | enum(openrouter, openai, anthropic, local, ollama, opencode-zen, opencode-go, xiaomi, whisper-local, whisper-api, azure-stt, google-stt) | ✓ |  |
+| `provider` | enum(openrouter, openai, anthropic, deepseek, local, ollama, opencode-zen, opencode-go, xiaomi, cloudflare, whisper-local, whisper-api, azure-stt, google-stt) | ✓ |  |
 | `service_eligible` | boolean |  |  |
 | `tags` | array[string] |  |  |
 | `temperature` | number |  |  |
 | `timeout` | integer |  |  |
 | `updated_at` | string |  |  |
+
+---
+
+### Data Model: `Body_upload_case_document_api_v1_tenants__tenant_id__cases__case_id__dms_documents_post`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file_bytes` | string | ✓ |  |
 
 ---
 
@@ -7004,6 +9064,7 @@ Request for batch LLM translation.
 | `force` | boolean |  |  |
 | `namespace` | string |  |  |
 | `target_locales` | string |  |  |
+| `wipe_first` | boolean |  |  |
 
 ---
 
@@ -7016,6 +9077,25 @@ Bulk-set translations for a locale.
 | `locale` | string | ✓ |  |
 | `namespace` | string |  |  |
 | `translations` | object | ✓ |  |
+
+---
+
+### Data Model: `BundleComposition`
+
+Modul-Referenzen für die Composer-Assembly — KEINE Inline-Daten.
+
+References module IDs from the ``modules/`` directory tree, NOT
+database primary keys.  At resolve time the actual content is loaded
+from the module filesystem (or a future ``danwa-modules`` resolver).
+
+FUTURE: Dependency resolver from ``danwa-modules`` repo on GitHub
+will automatically fetch missing dependencies.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_core_id` | string |  |  |
+| `argumentation_pattern_id` | string |  |  |
+| `prompt_modifier_id` | string |  |  |
 
 ---
 
@@ -7093,6 +9173,7 @@ A node in the simplified canvas layout format.
 | `data` | object |  |  |
 | `id` | string | ✓ |  |
 | `label` | string |  |  |
+| `parent_id` | string |  |  |
 | `type` | string | ✓ |  |
 | `x` | number |  |  |
 | `y` | number |  |  |
@@ -7121,6 +9202,19 @@ Request body for storing A2A capabilities.
 
 ---
 
+### Data Model: `CaseCreateRequest`
+
+POST /api/v1/tenants/{tid}/cases request body.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `created_by` | string |  |  |
+| `description` | string |  |  |
+| `tags` | array[string] |  |  |
+| `title` | string | ✓ |  |
+
+---
+
 ### Data Model: `CaseInput`
 
 The case or topic to debate.
@@ -7132,6 +9226,56 @@ The case or topic to debate.
 
 ---
 
+### Data Model: `CaseListItem`
+
+Lightweight case summary for list views.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `created_at` | string | ✓ |  |
+| `created_by` | string | ✓ |  |
+| `description` | string | ✓ |  |
+| `id` | string | ✓ |  |
+| `status` | string | ✓ |  |
+| `tags` | array[string] | ✓ |  |
+| `tenant_id` | string | ✓ |  |
+| `title` | string | ✓ |  |
+| `updated_at` | string | ✓ |  |
+
+---
+
+### Data Model: `CaseResponse`
+
+GET /api/v1/tenants/{tid}/cases/{cid} response.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `created_at` | string | ✓ |  |
+| `created_by` | string | ✓ |  |
+| `description` | string | ✓ |  |
+| `id` | string | ✓ |  |
+| `metadata` | object | ✓ |  |
+| `status` | string | ✓ |  |
+| `tags` | array[string] | ✓ |  |
+| `tenant_id` | string | ✓ |  |
+| `title` | string | ✓ |  |
+| `updated_at` | string | ✓ |  |
+
+---
+
+### Data Model: `CaseUpdateRequest`
+
+PATCH /api/v1/tenants/{tid}/cases/{cid} request body.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `description` | string |  |  |
+| `status` | string |  |  |
+| `tags` | string |  |  |
+| `title` | string |  |  |
+
+---
+
 ### Data Model: `CompilationResult`
 
 | Field | Type | Required | Description |
@@ -7140,6 +9284,17 @@ The case or topic to debate.
 | `is_valid` | boolean | ✓ |  |
 | `resolved_agents` | array[[ResolvedAgent](#data-model-resolvedagent)] |  |  |
 | `warnings` | array[string] |  |  |
+
+---
+
+### Data Model: `Composition`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_core_id` | string |  |  |
+| `argumentation_pattern_id` | string |  |  |
+| `prompt_modifier_id` | string |  |  |
+| `tone_profile_id` | string |  |  |
 
 ---
 
@@ -7166,6 +9321,19 @@ Request body for converting a canvas layout to a workflow definition.
 | `description` | string |  | Optional workflow description |
 | `max_rounds` | integer |  | Default max rounds for termination condition |
 | `name` | string |  | Workflow name (defaults to layout name) |
+
+---
+
+### Data Model: `CreateBundleRequest`
+
+Request body for creating a composer bundle.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `composition` | [Composition](#data-model-composition) | ✓ |  |
+| `description` | string |  |  |
+| `llm_profile_id` | string |  |  |
+| `name` | string | ✓ |  |
 
 ---
 
@@ -7228,17 +9396,6 @@ Response after creating a report job.
 
 ---
 
-### Data Model: `DebateContinueBody`
-
-POST /api/v1/debate/{id}/continue request body.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `focus_topic` | string |  |  |
-| `new_title` | string |  |  |
-
----
-
 ### Data Model: `DebateListItem`
 
 GET /api/v1/debate list item — lightweight summary for history.
@@ -7252,6 +9409,7 @@ GET /api/v1/debate list item — lightweight summary for history.
 | `current_round` | integer |  |  |
 | `debate_id` | string | ✓ |  |
 | `forks_count` | integer |  |  |
+| `is_mvp` | boolean |  |  |
 | `language` | string |  |  |
 | `max_rounds` | integer |  |  |
 | `parent_debate_id` | string |  |  |
@@ -7280,7 +9438,7 @@ POST /api/v1/debate request body.
 | `enable_fact_check` | boolean |  |  |
 | `enable_memory` | boolean |  |  |
 | `include_debate_results` | boolean |  | If true, include results from previous completed debates as RAG context |
-| `language` | string |  | Language for debate prompts: 'de' (German) or 'en' (English) |
+| `language` | string |  | Language for debate prompts. Uses the user's configured UI language if not specified. Supported: de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he |
 | `llm_profile_id` | string |  | LLM profile to use |
 | `max_rounds` | integer |  |  |
 | `prompt_variant` | string |  | Prompt variant ID |
@@ -7324,6 +9482,7 @@ GET /api/v1/debate/{id} response.
 | `has_active_interrupt` | boolean |  |  |
 | `hitl_enabled` | boolean |  |  |
 | `hitl_mode` | string |  |  |
+| `is_mvp` | boolean |  |  |
 | `is_paused` | boolean |  |  |
 | `language` | string |  |  |
 | `llm_profile_id` | string |  |  |
@@ -7332,10 +9491,12 @@ GET /api/v1/debate/{id} response.
 | `parent_debate_id` | string |  |  |
 | `project_id` | string |  |  |
 | `project_name` | string |  |  |
+| `prompt_language` | string |  | Actual language of loaded prompts (may differ from requested language if fallback used) |
 | `rag_context_preview` | string |  |  |
 | `rag_document_count` | integer |  |  |
 | `rag_enabled` | boolean |  |  |
 | `rounds` | array[[RoundData](#data-model-rounddata)] |  |  |
+| `session_id` | string |  | Workflow session ID (wf-… format). Set for MVP debates. |
 | `status` | [DebateStatus](#data-model-debatestatus) | ✓ |  |
 | `title` | string |  |  |
 | `total_interactions` | integer |  |  |
@@ -7417,35 +9578,6 @@ Response after submitting an extension decision.
 
 ---
 
-### Data Model: `ForkDebateBody`
-
-POST /api/v1/debate/{id}/fork request body.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `fork_from_round` | string |  |  |
-| `fork_reason` | string |  |  |
-| `modified_personas` | string |  |  |
-| `modified_prompt_variant` | string |  |  |
-| `new_title` | string | ✓ |  |
-
----
-
-### Data Model: `ForkFromConsensusBody`
-
-POST /api/v1/debate/{id}/fork-from-consensus request body.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `consensus_threshold` | number |  |  |
-| `inherit_llm_profile` | boolean |  |  |
-| `inherit_personas` | boolean |  |  |
-| `max_rounds` | integer |  |  |
-| `new_title` | string | ✓ |  |
-| `new_topic` | string | ✓ |  |
-
----
-
 ### Data Model: `HITLMode`
 
 HITL operation mode.
@@ -7480,17 +9612,6 @@ GET /debate/{id}/hitl/status — current HITL state.
 
 ---
 
-### Data Model: `HealthResponse`
-
-GET /health response.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `status` | string |  |  |
-| `version` | string | ✓ |  |
-
----
-
 ### Data Model: `ImportBundleRequest`
 
 Request body for importing a bundle.
@@ -7499,6 +9620,16 @@ Request body for importing a bundle.
 |-------|------|----------|-------------|
 | `conflict_strategy` | string |  |  |
 | `data` | object | ✓ |  |
+
+---
+
+### Data Model: `ImportRequest`
+
+Request body for importing a bundle from directory.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `module_id` | string | ✓ |  |
 
 ---
 
@@ -7565,6 +9696,17 @@ Information about a registered input plugin.
 | `plugin_key` | string | ✓ |  |
 | `plugin_name` | string | ✓ |  |
 | `ui_hints` | object |  | Frontend metadata (requires_microphone, supports_streaming, etc.) |
+
+---
+
+### Data Model: `InstallFromRepoRequest`
+
+Request body for installing a module from the danwa-modules repo.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `module_id` | string | ✓ | Module ID to install |
+| `version` | string |  | Specific version (defaults to latest) |
 
 ---
 
@@ -7730,13 +9872,15 @@ Configuration for a specific LLM endpoint.
 |-------|------|----------|-------------|
 | `a2a_endpoint` | string |  |  |
 | `a2a_timeout` | integer |  |  |
+| `account_id_env` | string |  |  |
 | `api_base` | string |  |  |
+| `api_key` | string |  |  |
 | `api_key_env` | string |  |  |
 | `context_window` | string |  |  |
 | `cost_per_1k_input` | string |  |  |
 | `cost_per_1k_output` | string |  |  |
 | `fallback_llm_profile_id` | string |  |  |
-| `id` | string | ✓ |  |
+| `id` | string |  |  |
 | `max_tokens` | integer |  |  |
 | `min_recommended_context` | integer |  |  |
 | `model` | string | ✓ |  |
@@ -7754,7 +9898,7 @@ Configuration for a specific LLM endpoint.
 
 Supported LLM providers.
 
-**Values**: `openrouter, openai, anthropic, local, ollama, opencode-zen, opencode-go, xiaomi`
+**Values**: `openrouter, openai, anthropic, local, ollama, opencode-zen, opencode-go, xiaomi, deepseek, cloudflare`
 
 ---
 
@@ -7788,10 +9932,14 @@ Request body for launching a workflow from a completed input job.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `consensus_threshold` | number |  |  |
+| `debate_result_ids` | string |  | Specific debate result IDs to include (if include_debate_results is True). |
+| `document_ids` | array[string] |  | Document IDs to include as RAG context (explicit selection). |
+| `include_debate_results` | boolean |  | Include previous completed debate results in RAG context. |
+| `include_document_analysis` | boolean |  | Include LLM-generated document analysis in RAG context. |
 | `job_id` | string | ✓ | InputJob ID (must have status=completed) |
-| `language` | string |  | Language code |
+| `language` | string |  | Language code (uses user preference if not set) |
 | `max_rounds` | integer |  |  |
-| `project_id` | string |  | Project ID |
+| `rag_auto_retrieve` | boolean |  | Automatically retrieve relevant chunks for the topic from project documents. |
 | `workflow_id` | string |  | WorkflowDefinition ID to execute. If omitted, uses workflow_template_id or first available active workflow. |
 | `workflow_template_id` | string |  | WorkflowTemplate ID to instantiate into a WorkflowDefinition. Ignored if workflow_id is provided. |
 
@@ -7803,9 +9951,40 @@ Response after launching a workflow from input.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `debate_id` | string |  |  |
 | `session_id` | string | ✓ |  |
 | `status` | string | ✓ |  |
+| `title` | string |  |  |
 | `workflow_id` | string | ✓ |  |
+
+---
+
+### Data Model: `LoginRequest`
+
+Login credentials.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | ✓ |  |
+| `password` | string | ✓ |  |
+
+---
+
+### Data Model: `MoveDebateBody`
+
+Request body for moving a debate to another project.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `project_id` | string | ✓ | Target project ID to move the debate to |
+
+---
+
+### Data Model: `MoveDocumentRequest`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `target_project_id` | string | ✓ |  |
 
 ---
 
@@ -7855,6 +10034,29 @@ Target type for OOB input routing.
 
 ---
 
+### Data Model: `OcrSettingsBody`
+
+Request body for OCR settings update.
+
+Only `ocr_preferred_engine` is user-configurable via the UI.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `ocr_preferred_engine` | string |  |  |
+
+---
+
+### Data Model: `PasswordChangeRequest`
+
+Password change request.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `current_password` | string | ✓ |  |
+| `new_password` | string | ✓ |  |
+
+---
+
 ### Data Model: `PauseAction`
 
 Pause/resume action.
@@ -7887,6 +10089,24 @@ Response after pause/resume action.
 
 ---
 
+### Data Model: `PhaseConfig`
+
+Configuration for a single debate phase.
+
+Maps a ``wf-phase`` node ID to its runtime configuration:
+phase name, description, assigned roles, max rounds, and header color.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `color` | string |  |  |
+| `description` | string |  |  |
+| `max_rounds` | integer |  |  |
+| `name` | string |  |  |
+| `phase_node_id` | string | ✓ |  |
+| `roles` | array[string] |  |  |
+
+---
+
 ### Data Model: `PluginInfo`
 
 Information about a registered output plugin.
@@ -7897,6 +10117,19 @@ Information about a registered output plugin.
 | `plugin_key` | string | ✓ |  |
 | `plugin_name` | string | ✓ |  |
 | `supported_formats` | array[string] | ✓ |  |
+
+---
+
+### Data Model: `PreviewRequest`
+
+Request body for preview — same fields as Composition.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_core_id` | string |  |  |
+| `argumentation_pattern_id` | string |  |  |
+| `prompt_modifier_id` | string |  |  |
+| `tone_profile_id` | string |  |  |
 
 ---
 
@@ -7968,6 +10201,7 @@ POST /api/v1/projects request body.
 |-------|------|----------|-------------|
 | `description` | string |  |  |
 | `name` | string | ✓ |  |
+| `tenant_id` | string |  |  |
 
 ---
 
@@ -7982,6 +10216,7 @@ GET /api/v1/projects list item — lightweight summary.
 | `id` | string | ✓ |  |
 | `is_system` | boolean | ✓ |  |
 | `name` | string | ✓ |  |
+| `tenant_id` | string | ✓ |  |
 | `updated_at` | string | ✓ |  |
 
 ---
@@ -7998,6 +10233,7 @@ GET /api/v1/projects/{id} response.
 | `id` | string | ✓ |  |
 | `is_system` | boolean | ✓ |  |
 | `name` | string | ✓ |  |
+| `tenant_id` | string | ✓ |  |
 | `updated_at` | string | ✓ |  |
 
 ---
@@ -8089,6 +10325,16 @@ Response after generating a proposal.
 
 ---
 
+### Data Model: `RefreshRequest`
+
+Refresh token request.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `refresh_token` | string | ✓ |  |
+
+---
+
 ### Data Model: `RegisterLocaleRequest`
 
 | Field | Type | Required | Description |
@@ -8111,6 +10357,8 @@ Response for render job status query.
 | `job_id` | string | ✓ |  |
 | `output_files` | array[string] |  |  |
 | `plugin_key` | string | ✓ |  |
+| `progress_current` | integer |  |  |
+| `progress_total` | integer |  |  |
 | `session_id` | string | ✓ |  |
 | `started_at` | string |  |  |
 | `status` | string | ✓ |  |
@@ -8168,6 +10416,7 @@ Contains the fully assembled system prompt.
 | `bundle_id` | string | ✓ |  |
 | `bundle_name` | string | ✓ |  |
 | `llm_profile` | [BlueprintLLMProfile](#data-model-blueprintllmprofile) | ✓ |  |
+| `model_params` | object |  | LLM inference overrides (temperature, top_p, etc.) |
 | `prompt_template` | string |  |  |
 | `role_definition` | string |  |  |
 | `role_type` | [RoleType](#data-model-roletype) | ✓ |  |
@@ -8298,22 +10547,50 @@ Request body for starting a debate from a canvas layout.
 | `bundle_ids` | array[string] |  | AgentBundle IDs to use (overrides layout agent nodes) |
 | `case_text` | string | ✓ | Debate case/topic |
 | `consensus_threshold` | number |  |  |
-| `language` | string |  |  |
+| `language` | string |  | Language code (uses user preference if not set) |
 | `llm_profile_id` | string |  |  |
 | `max_rounds` | integer |  |  |
 
 ---
 
-### Data Model: `StartFromWorkflowBody`
+### Data Model: `StartMvpDebateRequest`
 
-Request body for starting a debate from a workflow definition.
+Request body for starting an MVP debate with per-agent LLM profiles.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `case_text` | string | ✓ | Debate case/topic |
-| `consensus_threshold` | number |  |  |
-| `language` | string |  |  |
-| `max_rounds` | integer |  |  |
+| `agent_core_ids` | object |  | [Phase 2] Mapping of role → agent-core module ID. Composed with other components via ComposerService. |
+| `argumentation_pattern_ids` | object |  | [Phase 2] Mapping of role → argumentation-pattern module ID. |
+| `context` | string | ✓ | The debate topic / context |
+| `debate_result_ids` | array[string] |  | Specific debate IDs to include when include_debate_results is true. If empty, auto-selects up to 5 recent completed debates. |
+| `document_ids` | array[string] |  | DMS document IDs to include as RAG context |
+| `enable_extra_rounds` | boolean |  | If true, allow requesting additional rounds when consensus is not reached |
+| `include_debate_results` | boolean |  | Include results from previous completed debates as RAG context |
+| `include_document_analysis` | boolean |  | Include AI-generated document analysis in RAG context (may contain data from other cases in the same project) |
+| `language` | string |  | Language code (uses user preference if not set) |
+| `llm_profile_ids` | object |  | Mapping of role → llm_profile_id for per-agent LLM assignment |
+| `max_rounds` | integer |  | Maximum rounds |
+| `project_id` | string |  | Project ID |
+| `prompt_modifier_ids` | object |  | [Phase 2] Mapping of role → prompt-modifier module ID. |
+| `rag_auto_retrieve` | boolean |  | Automatically retrieve relevant document chunks based on context |
+| `search_mode` | [SearchMode](#data-model-searchmode) |  | Web search mode: 'off', 'optional', or 'required' |
+| `threshold` | number |  | Consensus threshold |
+| `tone_profile_ids` | object |  | [Phase 2] Mapping of role → tone-profile module ID. |
+
+---
+
+### Data Model: `StartMvpDebateResponse`
+
+Response after starting an MVP debate.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `debate_id` | string | ✓ |  |
+| `llm_assignments` | object | ✓ | Mapping of role → llm_profile_id actually used |
+| `session_id` | string | ✓ |  |
+| `status` | string |  |  |
+| `title` | string |  |  |
+| `workflow_id` | string | ✓ |  |
 
 ---
 
@@ -8325,7 +10602,8 @@ Request body for starting a workflow.
 |-------|------|----------|-------------|
 | `context` | string | ✓ | The debate topic / context |
 | `document_ids` | array[string] |  | DMS document IDs to include as RAG context |
-| `language` | string |  | Language code |
+| `include_document_analysis` | boolean |  | Include AI-generated document analysis in RAG context (may leak data from other cases in the same project) |
+| `language` | string |  | Language code (uses user preference if not set) |
 | `max_rounds` | integer |  | Maximum rounds |
 | `project_id` | string |  | Project ID |
 | `rag_auto_retrieve` | boolean |  | Automatically retrieve relevant document chunks based on context |
@@ -8339,8 +10617,12 @@ Response after starting a workflow.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `context` | string |  |  |
+| `debate_id` | string |  |  |
 | `session_id` | string | ✓ |  |
 | `status` | string |  |  |
+| `workflow_id` | string |  |  |
+| `workflow_name` | string |  |  |
 
 ---
 
@@ -8380,6 +10662,44 @@ Response after submitting input.
 
 ---
 
+### Data Model: `TagCreateRequest`
+
+POST /api/v1/tenants/{tid}/tags request body.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `color` | string |  |  |
+| `name` | string | ✓ |  |
+| `parent_id` | string |  |  |
+
+---
+
+### Data Model: `TagResponse`
+
+Tag response model.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `color` | string | ✓ |  |
+| `created_at` | string | ✓ |  |
+| `id` | string | ✓ |  |
+| `name` | string | ✓ |  |
+| `parent_id` | string | ✓ |  |
+| `tenant_id` | string | ✓ |  |
+
+---
+
+### Data Model: `TagUpdateRequest`
+
+PUT /api/v1/tenants/{tid}/tags/{tagId} request body.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `color` | string |  |  |
+| `name` | string |  |  |
+
+---
+
 ### Data Model: `TemplatePlaceholder`
 
 Defines a single placeholder within a WorkflowTemplate.
@@ -8392,6 +10712,56 @@ Placeholders are replaced with concrete values during instantiation.
 | `description` | string |  |  |
 | `key` | string | ✓ |  |
 | `type` | enum(string, blueprint_ref, integer, float) |  |  |
+
+---
+
+### Data Model: `TenantMembershipResponse`
+
+Public membership data.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `invited_by` | string | ✓ |  |
+| `joined_at` | string | ✓ |  |
+| `role` | string | ✓ |  |
+| `tenant_id` | string | ✓ |  |
+| `user_id` | string | ✓ |  |
+
+---
+
+### Data Model: `TenantResponse`
+
+Public tenant data.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `created_at` | string | ✓ |  |
+| `id` | string | ✓ |  |
+| `is_active` | boolean | ✓ |  |
+| `max_concurrent_debates` | integer | ✓ |  |
+| `max_documents` | integer | ✓ |  |
+| `max_projects` | integer | ✓ |  |
+| `max_storage_mb` | integer | ✓ |  |
+| `name` | string | ✓ |  |
+| `plan` | string | ✓ |  |
+| `settings` | object | ✓ |  |
+
+---
+
+### Data Model: `TenantUpdate`
+
+Request model for updating tenant settings.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `is_active` | string |  |  |
+| `max_concurrent_debates` | string |  |  |
+| `max_documents` | string |  |  |
+| `max_projects` | string |  |  |
+| `max_storage_mb` | string |  |  |
+| `name` | string |  |  |
+| `plan` | string |  |  |
+| `settings` | string |  |  |
 
 ---
 
@@ -8409,6 +10779,19 @@ Examples:
 | `description` | string |  |  |
 | `type` | enum(max_rounds, consensus_reached, time_limit, custom) |  |  |
 | `value` | string |  |  |
+
+---
+
+### Data Model: `TokenResponse`
+
+JWT token pair returned on login.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `access_token` | string | ✓ |  |
+| `refresh_token` | string | ✓ |  |
+| `token_type` | string |  |  |
+| `user` | [UserResponse](#data-model-userresponse) | ✓ |  |
 
 ---
 
@@ -8448,6 +10831,21 @@ Request body for translating a prompt variant.
 
 ---
 
+### Data Model: `TranslateRequest`
+
+Request body for module translation.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `auto_approve` | boolean |  | Auto-approve translations meeting quality threshold |
+| `force` | boolean |  | Force re-translation even if cached |
+| `llm_profile_id` | string |  | Override LLM profile for translation |
+| `quality_threshold` | number |  | Minimum quality score for auto-approval (0.0-1.0) |
+| `skip_back_translation` | boolean |  | Skip back-translation QA (faster but lower quality) |
+| `target_language` | string | ✓ | Target language code (e.g. 'de') |
+
+---
+
 ### Data Model: `TranslationSetRequest`
 
 Set a single UI translation.
@@ -8467,6 +10865,85 @@ Request body for module uninstallation.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `force` | boolean |  | Force uninstall ignoring dependencies |
+
+---
+
+### Data Model: `UpdateBundleRequest`
+
+Request body for updating a composer bundle.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `composition` | string |  |  |
+| `description` | string |  |  |
+| `llm_profile_id` | string |  |  |
+| `name` | string |  |  |
+
+---
+
+### Data Model: `UpdateDocumentTextRequest`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `text` | string | ✓ |  |
+
+---
+
+### Data Model: `UserCreate`
+
+Request model for creating a user.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `display_name` | string | ✓ |  |
+| `email` | string | ✓ |  |
+| `password` | string | ✓ |  |
+| `role` | enum(admin, editor, viewer) |  |  |
+| `tenant_id` | string |  |  |
+
+---
+
+### Data Model: `UserKeyResponse`
+
+Response for a stored BYOK key (key is masked).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `created_at` | string | ✓ |  |
+| `has_key` | boolean | ✓ |  |
+| `label` | string | ✓ |  |
+| `profile_id` | string | ✓ |  |
+| `updated_at` | string | ✓ |  |
+
+---
+
+### Data Model: `UserKeySetRequest`
+
+Request to store a BYOK API key.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `api_key` | string | ✓ |  |
+| `label` | string |  |  |
+| `profile_id` | string | ✓ |  |
+
+---
+
+### Data Model: `UserResponse`
+
+Public user data (no password hash).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `created_at` | string | ✓ |  |
+| `display_name` | string | ✓ |  |
+| `email` | string | ✓ |  |
+| `id` | string | ✓ |  |
+| `is_active` | boolean | ✓ |  |
+| `last_login_at` | string |  |  |
+| `role` | string | ✓ |  |
+| `tenant_id` | string | ✓ |  |
+| `updated_at` | string | ✓ |  |
 
 ---
 
@@ -8492,11 +10969,19 @@ Request body for module validation.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `ctx` | object |  |  |
-| `input` | string |  |  |
 | `loc` | array[any] | ✓ |  |
 | `msg` | string | ✓ |  |
 | `type` | string | ✓ |  |
+
+---
+
+### Data Model: `WipeLocaleRequest`
+
+Request to wipe all translations for a locale.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `namespace` | string |  |  |
 
 ---
 
@@ -8508,7 +10993,10 @@ References AgentBlueprints from the catalog by ID.
 Does NOT duplicate blueprint data.
 
 The ``nodes`` and ``edges`` fields provide the structured graph
-representation.  ``execution_order``, ``conditional_edges``, and
+representation.  ``phase_configs`` maps phase node IDs to their
+runtime configuration (name, roles, max rounds).
+
+``execution_order``, ``conditional_edges``, and
 ``interjection_points`` are retained for backward compatibility with
 the list-based representation.
 
@@ -8529,6 +11017,7 @@ the list-based representation.
 | `name` | string | ✓ |  |
 | `node_blueprint_map` | object |  |  |
 | `nodes` | array[[WorkflowNode](#data-model-workflownode)] |  |  |
+| `phase_configs` | object |  | Phase configurations keyed by phase node ID. Each entry defines the name, assigned roles, max rounds, and color for a debate phase. |
 | `tags` | array[string] |  |  |
 | `template_id` | string |  |  |
 | `termination_conditions` | array[[TerminationCondition](#data-model-terminationcondition)] |  |  |
@@ -8555,7 +11044,7 @@ Edge types:
 | `label` | string |  |  |
 | `source` | string | ✓ |  |
 | `target` | string | ✓ |  |
-| `type` | enum(sequential, conditional, interjection, feedback, injects_config) |  |  |
+| `type` | enum(sequential, conditional, interjection, feedback, injects_config, builds_upon, validates, decision) |  |  |
 
 ---
 
@@ -8578,8 +11067,9 @@ define an inline profile.
 | `config` | object |  |  |
 | `id` | string | ✓ |  |
 | `label` | string |  |  |
+| `parent_id` | string |  |  |
 | `position` | object |  |  |
-| `type` | enum(wf-input, wf-initialize, wf-strategist, wf-critic, wf-fact-checker, wf-optimizer, wf-moderator, wf-analyst, wf-creative, wf-user-injection, wf-gate, wf-tone-profile, wf-agent) | ✓ |  |
+| `type` | enum(wf-input, wf-initialize, wf-strategist, wf-critic, wf-fact-checker, wf-optimizer, wf-moderator, wf-analyst, wf-creative, wf-socratic-questioner, wf-expert-reviewer, wf-steel-manner, wf-devils-advocate, wf-troll, wf-mediator, wf-ethicist, wf-synthesizer, wf-user-injection, wf-gate, wf-tone-profile, wf-agent, wf-phase, wf-builder, wf-pragmatist, wf-angels-advocate) | ✓ |  |
 
 ---
 
@@ -8619,21 +11109,6 @@ Request body for module translation.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `force` | boolean |  | Force re-translation |
-| `target_language` | string | ✓ | Target language code (e.g. 'de') |
-
----
-
-### Data Model: `backend__api__routers__translation__TranslateRequest`
-
-Request body for module translation.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `auto_approve` | boolean |  | Auto-approve translations meeting quality threshold |
-| `force` | boolean |  | Force re-translation even if cached |
-| `llm_profile_id` | string |  | Override LLM profile for translation |
-| `quality_threshold` | number |  | Minimum quality score for auto-approval (0.0-1.0) |
-| `skip_back_translation` | boolean |  | Skip back-translation QA (faster but lower quality) |
 | `target_language` | string | ✓ | Target language code (e.g. 'de') |
 
 ---

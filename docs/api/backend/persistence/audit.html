@@ -54,6 +54,9 @@
                         <li>
                                 <a class="function" href="#AuditService.delete_events">delete_events</a>
                         </li>
+                        <li>
+                                <a class="function" href="#AuditService.update_debate_project">update_debate_project</a>
+                        </li>
                 </ul>
 
             </li>
@@ -247,6 +250,18 @@ SHA-256 hashes for complete audit trail reproducibility.</p>
 </span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a>                <span class="p">(</span><span class="n">debate_id</span><span class="p">,),</span>
 </span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a>            <span class="p">)</span>
 </span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a>            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span>
+</span><span id="L-165"><a href="#L-165"><span class="linenos">165</span></a>
+</span><span id="L-166"><a href="#L-166"><span class="linenos">166</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">update_debate_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="L-167"><a href="#L-167"><span class="linenos">167</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the project_id for all audit events of a debate.</span>
+</span><span id="L-168"><a href="#L-168"><span class="linenos">168</span></a>
+</span><span id="L-169"><a href="#L-169"><span class="linenos">169</span></a><span class="sd">        Returns the number of affected rows.</span>
+</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-171"><a href="#L-171"><span class="linenos">171</span></a>        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+</span><span id="L-172"><a href="#L-172"><span class="linenos">172</span></a>            <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+</span><span id="L-173"><a href="#L-173"><span class="linenos">173</span></a>                <span class="s2">&quot;UPDATE audit_events SET project_id = ? WHERE debate_id = ?&quot;</span><span class="p">,</span>
+</span><span id="L-174"><a href="#L-174"><span class="linenos">174</span></a>                <span class="p">(</span><span class="n">new_project_id</span><span class="p">,</span> <span class="n">debate_id</span><span class="p">),</span>
+</span><span id="L-175"><a href="#L-175"><span class="linenos">175</span></a>            <span class="p">)</span>
+</span><span id="L-176"><a href="#L-176"><span class="linenos">176</span></a>            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span>
 </span></pre></div>
 
 
@@ -409,6 +424,18 @@ SHA-256 hashes for complete audit trail reproducibility.</p>
 </span><span id="AuditService-163"><a href="#AuditService-163"><span class="linenos">163</span></a>                <span class="p">(</span><span class="n">debate_id</span><span class="p">,),</span>
 </span><span id="AuditService-164"><a href="#AuditService-164"><span class="linenos">164</span></a>            <span class="p">)</span>
 </span><span id="AuditService-165"><a href="#AuditService-165"><span class="linenos">165</span></a>            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span>
+</span><span id="AuditService-166"><a href="#AuditService-166"><span class="linenos">166</span></a>
+</span><span id="AuditService-167"><a href="#AuditService-167"><span class="linenos">167</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">update_debate_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="AuditService-168"><a href="#AuditService-168"><span class="linenos">168</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the project_id for all audit events of a debate.</span>
+</span><span id="AuditService-169"><a href="#AuditService-169"><span class="linenos">169</span></a>
+</span><span id="AuditService-170"><a href="#AuditService-170"><span class="linenos">170</span></a><span class="sd">        Returns the number of affected rows.</span>
+</span><span id="AuditService-171"><a href="#AuditService-171"><span class="linenos">171</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AuditService-172"><a href="#AuditService-172"><span class="linenos">172</span></a>        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+</span><span id="AuditService-173"><a href="#AuditService-173"><span class="linenos">173</span></a>            <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+</span><span id="AuditService-174"><a href="#AuditService-174"><span class="linenos">174</span></a>                <span class="s2">&quot;UPDATE audit_events SET project_id = ? WHERE debate_id = ?&quot;</span><span class="p">,</span>
+</span><span id="AuditService-175"><a href="#AuditService-175"><span class="linenos">175</span></a>                <span class="p">(</span><span class="n">new_project_id</span><span class="p">,</span> <span class="n">debate_id</span><span class="p">),</span>
+</span><span id="AuditService-176"><a href="#AuditService-176"><span class="linenos">176</span></a>            <span class="p">)</span>
+</span><span id="AuditService-177"><a href="#AuditService-177"><span class="linenos">177</span></a>            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span>
 </span></pre></div>
 
 
@@ -625,6 +652,38 @@ SHA-256 hashes for complete audit trail reproducibility.</p>
 
 
             <div class="docstring"><p>Delete all audit events for a debate. Returns number of deleted rows.</p>
+</div>
+
+
+                            </div>
+                            <div id="AuditService.update_debate_project" class="classattr">
+                                        <input id="AuditService.update_debate_project-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">update_debate_project</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">new_project_id</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="nb">int</span>:</span></span>
+
+                <label class="view-source-button" for="AuditService.update_debate_project-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#AuditService.update_debate_project"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AuditService.update_debate_project-167"><a href="#AuditService.update_debate_project-167"><span class="linenos">167</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">update_debate_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="AuditService.update_debate_project-168"><a href="#AuditService.update_debate_project-168"><span class="linenos">168</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the project_id for all audit events of a debate.</span>
+</span><span id="AuditService.update_debate_project-169"><a href="#AuditService.update_debate_project-169"><span class="linenos">169</span></a>
+</span><span id="AuditService.update_debate_project-170"><a href="#AuditService.update_debate_project-170"><span class="linenos">170</span></a><span class="sd">        Returns the number of affected rows.</span>
+</span><span id="AuditService.update_debate_project-171"><a href="#AuditService.update_debate_project-171"><span class="linenos">171</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AuditService.update_debate_project-172"><a href="#AuditService.update_debate_project-172"><span class="linenos">172</span></a>        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+</span><span id="AuditService.update_debate_project-173"><a href="#AuditService.update_debate_project-173"><span class="linenos">173</span></a>            <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+</span><span id="AuditService.update_debate_project-174"><a href="#AuditService.update_debate_project-174"><span class="linenos">174</span></a>                <span class="s2">&quot;UPDATE audit_events SET project_id = ? WHERE debate_id = ?&quot;</span><span class="p">,</span>
+</span><span id="AuditService.update_debate_project-175"><a href="#AuditService.update_debate_project-175"><span class="linenos">175</span></a>                <span class="p">(</span><span class="n">new_project_id</span><span class="p">,</span> <span class="n">debate_id</span><span class="p">),</span>
+</span><span id="AuditService.update_debate_project-176"><a href="#AuditService.update_debate_project-176"><span class="linenos">176</span></a>            <span class="p">)</span>
+</span><span id="AuditService.update_debate_project-177"><a href="#AuditService.update_debate_project-177"><span class="linenos">177</span></a>            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Update the project_id for all audit events of a debate.</p>
+
+<p>Returns the number of affected rows.</p>
 </div>
 
 

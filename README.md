@@ -25,6 +25,15 @@ Open `http://localhost:8000` in your browser.
 
 No systemd required - runs on-demand via simple scripts.
 
+### Docker Deployment (Production)
+
+```bash
+cp deploy/.env.example deploy/.env  # Edit JWT_SECRET_KEY
+docker compose up -d                # Start all services
+# With Celery worker for parallel debates:
+docker compose --profile celery up -d
+```
+
 ## How It Works
 
 Four specialized AI agents collaborate in a structured debate, orchestrated by a **LangGraph state machine**:
@@ -74,6 +83,17 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 - **Workflow Templates** - Pre-built workflow templates for common use cases
 - **Per-Agent LLM Parameters** - Override temperature, top_p, top_k, frequency_penalty, presence_penalty per agent in a blueprint
 - **Diff & Replay Views** - Compare debate sessions and replay past executions with timeline navigation
+- **Multi-User Authentication** - JWT-based auth with role-based access control (admin/editor/viewer)
+- **Multi-Tenant Architecture** - Isolated tenants with cases, tags, and quotas
+- **BYOK (Bring Your Own Key)** - Per-user LLM API key overrides
+- **Transactional Drafting** - Structured document creation with Builder, Pragmatist, and Angel's Advocate nodes
+- **Angel's Advocate** - Constructive advocacy workflow node
+- **Kitsune Agent Tools** - 6 read-only tools for system queries via the assistant
+- **Rate Limiting** - Configurable per-endpoint rate limits with slowapi
+- **Prometheus Metrics** - /metrics endpoint for monitoring
+- **Structured Logging** - JSON logging in production via structlog
+- **Optional Celery Task Queue** - Parallel debate execution with Redis
+- **Docker Deployment** - Production-ready Dockerfiles and docker-compose
 
 ## Technology Stack
 
@@ -102,6 +122,12 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 | i18n (Frontend) | Custom loaders (14 languages + RTL) |
 | A2A Protocol | [Google A2A](https://github.com/google/A2A) (JSON-RPC 2.0 over HTTP) |
 | A2A HTTP Client | [httpx](https://www.python-httpx.org) |
+| Authentication | python-jose (JWT), passlib (bcrypt) |
+| Task Queue | Celery + Redis (optional) |
+| Logging | structlog (JSON) |
+| Monitoring | prometheus-fastapi-instrumentator |
+| Rate Limiting | slowapi |
+| WSGI | Gunicorn with Uvicorn workers |
 
 ## Project Structure
 
@@ -112,6 +138,8 @@ danwa/
 │   ├── api/
 │   │   ├── deps.py            # Dependency injection (get_project_id, stores)
 │   │   ├── events.py          # SSE event bus (publish/subscribe)
+│   │   ├── quota.py           # Tenant quota enforcement
+│   │   ├── rate_limit.py      # Rate limiting (slowapi)
 │   │   └── routers/           # API route handlers
 │   │       ├── debate.py      # Debate CRUD + SSE stream
 │   │       ├── profiles.py    # LLM, agent, prompt management
@@ -132,7 +160,13 @@ danwa/
 │   │       ├── output_composer.py  # Output composer API
 │   │       ├── role_definitions.py  # Role definitions API
 │   │       ├── tone_profiles.py  # Tone profiles API
-│   │       └── llm_profiles.py  # LLM profiles API
+│   │       ├── llm_profiles.py  # LLM profiles API
+│   │       ├── auth.py          # Authentication endpoints
+│   │       ├── tenants.py       # Multi-tenant management
+│   │       ├── cases.py         # Case management
+│   │       ├── tags.py          # Tag management
+│   │       ├── case_scoped.py   # Case-scoped endpoints
+│   │       └── user_keys.py     # User API key management
 │   ├── blueprints/              # Blueprint system (visual workflow editor)
 │   │   ├── models.py         # Blueprint data models
 │   │   ├── repository.py     # Blueprint repository
@@ -143,14 +177,26 @@ danwa/
 │   │   └── workflow_models.py  # Workflow models
 │   ├── core/
 │   │   ├── config.py        # Pydantic Settings (env vars)
-│   │   └── profiles.py      # LLMProfile, AgentPersona, PromptVariant schemas
+│   │   ├── profiles.py      # LLMProfile, AgentPersona, PromptVariant schemas
+│   │   ├── security.py      # JWT & auth utilities
+│   │   └── logging.py       # Structured logging (structlog)
 │   ├── models/
 │   │   ├── schemas.py       # API request/response Pydantic models
 │   │   ├── render_job.py    # Render job models
-│   │   └── artifact.py      # Artifact models
+│   │   ├── artifact.py      # Artifact models
+│   │   ├── user.py          # User models
+│   │   ├── tenant.py        # Tenant models
+│   │   ├── case.py          # Case models
+│   │   ├── tag.py           # Tag models
+│   │   ├── membership.py    # Membership models
+│   │   └── transactional.py # Transactional drafting models
 │   ├── workflow/
 │   │   ├── debate_graph.py  # LangGraph state machine builder
 │   │   ├── nodes.py         # Node functions (initialize, run_agent, etc.)
+│   │   ├── nodes/           # Specialized workflow nodes
+│   │   │   ├── angels_advocate_nodes.py  # Angel's Advocate workflow
+│   │   │   ├── builder_nodes.py          # Builder workflow nodes
+│   │   │   └── pragmatist_nodes.py       # Pragmatist workflow nodes
 │   │   ├── state.py        # DebateState TypedDict definition
 │   │   ├── hitl/           # Human-in-the-loop system
 │   │   │   ├── api.py       # HITL API endpoints
@@ -228,10 +274,23 @@ danwa/
 │   │   ├── router.py         # FastAPI router (JSON-RPC + Agent Card)
 │   │   ├── client.py         # A2A Client (outgoing calls)
 │   │   └── node.py           # LangGraph node for A2A agents
+│   ├── tasks/                  # Celery task queue
+│   │   ├── celery_app.py      # Celery application setup
+│   │   ├── debate.py          # Debate task definitions
+│   │   ├── dispatch.py        # Task dispatch logic
+│   │   └── workflow.py        # Workflow task definitions
+│   ├── state/
+│   │   └── workflow_state.py  # Workflow state management
 │   ├── persistence/
 │   │   ├── project_store.py # JSON file-based project storage
 │   │   ├── debate_store.py  # SQLite debate storage
-│   │   └── audit.py        # Audit event recording
+│   │   ├── audit.py        # Audit event recording
+│   │   ├── user_store.py   # User storage
+│   │   ├── tenant_store.py # Tenant storage
+│   │   ├── case_store.py   # Case storage
+│   │   ├── tag_store.py    # Tag storage
+│   │   ├── membership_store.py # Membership storage
+│   │   └── user_key_store.py # User key storage (BYOK)
 │   ├── repositories/
 │   │   ├── profile_repo.py # Profile repository
 │   │   └── proposal_repo.py  # Proposal repository
@@ -317,7 +376,9 @@ danwa/
 │           ├── kantian/          # Kantian ethics variant
 │           └── steiner/          # Steiner variant
 ├── config/                       # Application settings
-│   └── settings.yaml           # App settings (search, privacy, DMS, UI)
+│   ├── settings.yaml           # App settings (search, privacy, DMS, UI)
+│   └── prompts/
+│       └── kitsune/            # Kitsune agent prompt templates
 ├── data/                        # Runtime data (created at runtime)
 │   ├── audit.db                # SQLite database for audit events
 │   └── projects/              # Per-project data
@@ -339,6 +400,14 @@ danwa/
 ├── plans/                       # Development plans and sprint docs
 ├── pyproject.toml               # Python project metadata & dependencies
 ├── Makefile                     # Dev workflow (install, test, lint, format)
+├── Dockerfile.backend           # Backend Docker image
+├── Dockerfile.frontend          # Frontend Docker image
+├── docker-compose.yml           # Multi-service Docker Compose
+├── deploy/                      # Deployment configs
+│   ├── nginx.conf               # Nginx reverse proxy
+│   ├── .env.example             # Environment template
+│   └── prometheus.yml           # Prometheus config
+├── .dockerignore                # Docker ignore rules
 └── setup.sh                     # Quick setup script
 ```
 
@@ -511,6 +580,33 @@ Danwa as Server (incoming):          Danwa as Client (outgoing):
 │  (FastAPI)  │  debate              └─────────────┘  External Agent
 └─────────────┘
 ```
+
+### JWT Authentication
+
+| Variable | Description |
+|----------|-------------|
+| `DANWA_JWT_SECRET_KEY` | Secret key for JWT token signing |
+| `DANWA_AUTH_ENABLED` | Enable/disable authentication (default: `false`) |
+
+### Rate Limiting
+
+| Variable | Description |
+|----------|-------------|
+| `DANWA_RATE_LIMIT_ENABLED` | Enable/disable rate limiting (default: `false`) |
+| `DANWA_RATE_LIMIT_DEFAULT` | Default rate limit (e.g., `60/minute`) |
+
+### Redis / Celery
+
+| Variable | Description |
+|----------|-------------|
+| `DANWA_REDIS_URL` | Redis connection URL (e.g., `redis://localhost:6379/0`) |
+| `DANWA_CELERY_ENABLED` | Enable Celery task queue for parallel debates (default: `false`) |
+
+### Prometheus
+
+| Variable | Description |
+|----------|-------------|
+| `DANWA_PROMETHEUS_ENABLED` | Enable Prometheus metrics endpoint (default: `false`) |
 
 ## Development
 
@@ -755,4 +851,4 @@ See the [LICENSE](LICENSE) file for details.
 
 ---
 
-*Danwa v2.1.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte*
+*Danwa v2.2.0 | Built with FastAPI + LangGraph + LiteLLM + Svelte 5 + @xyflow/svelte*

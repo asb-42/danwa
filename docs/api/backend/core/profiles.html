@@ -57,6 +57,12 @@
                         <li>
                                 <a class="variable" href="#LLMProvider.XIAOMI">XIAOMI</a>
                         </li>
+                        <li>
+                                <a class="variable" href="#LLMProvider.DEEPSEEK">DEEPSEEK</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LLMProvider.CLOUDFLARE">CLOUDFLARE</a>
+                        </li>
                 </ul>
 
             </li>
@@ -83,6 +89,12 @@
                         </li>
                         <li>
                                 <a class="variable" href="#LLMProfile.api_key_env">api_key_env</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LLMProfile.api_key">api_key</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LLMProfile.account_id_env">account_id_env</a>
                         </li>
                         <li>
                                 <a class="variable" href="#LLMProfile.max_tokens">max_tokens</a>
@@ -145,9 +157,6 @@
                                 <a class="variable" href="#AgentPersona.system_prompt">system_prompt</a>
                         </li>
                         <li>
-                                <a class="variable" href="#AgentPersona.llm_profile_id">llm_profile_id</a>
-                        </li>
-                        <li>
                                 <a class="variable" href="#AgentPersona.max_rounds">max_rounds</a>
                         </li>
                         <li>
@@ -158,6 +167,9 @@
                         </li>
                         <li>
                                 <a class="variable" href="#AgentPersona.mode">mode</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#AgentPersona.llm_profile_id">llm_profile_id</a>
                         </li>
                         <li>
                                 <a class="variable" href="#AgentPersona.description">description</a>
@@ -273,108 +285,114 @@ prompt variants, and active debate configurations.</p>
 </span><span id="L-23"><a href="#L-23"><span class="linenos"> 23</span></a>    <span class="n">OPENCODE_ZEN</span> <span class="o">=</span> <span class="s2">&quot;opencode-zen&quot;</span>
 </span><span id="L-24"><a href="#L-24"><span class="linenos"> 24</span></a>    <span class="n">OPENCODE_GO</span> <span class="o">=</span> <span class="s2">&quot;opencode-go&quot;</span>
 </span><span id="L-25"><a href="#L-25"><span class="linenos"> 25</span></a>    <span class="n">XIAOMI</span> <span class="o">=</span> <span class="s2">&quot;xiaomi&quot;</span>
-</span><span id="L-26"><a href="#L-26"><span class="linenos"> 26</span></a>
-</span><span id="L-27"><a href="#L-27"><span class="linenos"> 27</span></a>
-</span><span id="L-28"><a href="#L-28"><span class="linenos"> 28</span></a><span class="k">class</span><span class="w"> </span><span class="nc">LLMProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="L-29"><a href="#L-29"><span class="linenos"> 29</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a specific LLM endpoint.&quot;&quot;&quot;</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos"> 30</span></a>
-</span><span id="L-31"><a href="#L-31"><span class="linenos"> 31</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
-</span><span id="L-32"><a href="#L-32"><span class="linenos"> 32</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-33"><a href="#L-33"><span class="linenos"> 33</span></a>    <span class="n">profile_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;tts&quot;</span><span class="p">,</span> <span class="s2">&quot;stt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;text&quot;</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos"> 34</span></a>    <span class="n">provider</span><span class="p">:</span> <span class="n">LLMProvider</span>
-</span><span id="L-35"><a href="#L-35"><span class="linenos"> 35</span></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;anthropic/claude-3.5-sonnet&quot;</span>
-</span><span id="L-36"><a href="#L-36"><span class="linenos"> 36</span></a>    <span class="n">api_base</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># For OpenRouter / local</span>
-</span><span id="L-37"><a href="#L-37"><span class="linenos"> 37</span></a>    <span class="n">api_key_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;OPENROUTER_API_KEY&quot;</span>  <span class="c1"># Environment variable name</span>
-</span><span id="L-38"><a href="#L-38"><span class="linenos"> 38</span></a>    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4096</span>
-</span><span id="L-39"><a href="#L-39"><span class="linenos"> 39</span></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Max total tokens (input + output) the model supports</span>
-</span><span id="L-40"><a href="#L-40"><span class="linenos"> 40</span></a>    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
-</span><span id="L-41"><a href="#L-41"><span class="linenos"> 41</span></a>    <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">600</span>
-</span><span id="L-42"><a href="#L-42"><span class="linenos"> 42</span></a>
-</span><span id="L-43"><a href="#L-43"><span class="linenos"> 43</span></a>    <span class="c1"># Cost tracking (USD per 1k tokens)</span>
-</span><span id="L-44"><a href="#L-44"><span class="linenos"> 44</span></a>    <span class="n">cost_per_1k_input</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="L-45"><a href="#L-45"><span class="linenos"> 45</span></a>    <span class="n">cost_per_1k_output</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos"> 26</span></a>    <span class="n">DEEPSEEK</span> <span class="o">=</span> <span class="s2">&quot;deepseek&quot;</span>
+</span><span id="L-27"><a href="#L-27"><span class="linenos"> 27</span></a>    <span class="n">CLOUDFLARE</span> <span class="o">=</span> <span class="s2">&quot;cloudflare&quot;</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos"> 28</span></a>
+</span><span id="L-29"><a href="#L-29"><span class="linenos"> 29</span></a>
+</span><span id="L-30"><a href="#L-30"><span class="linenos"> 30</span></a><span class="k">class</span><span class="w"> </span><span class="nc">LLMProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="L-31"><a href="#L-31"><span class="linenos"> 31</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a specific LLM endpoint.&quot;&quot;&quot;</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos"> 32</span></a>
+</span><span id="L-33"><a href="#L-33"><span class="linenos"> 33</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^([a-z0-9][a-z0-9.-]*)?$&quot;</span><span class="p">)</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos"> 34</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos"> 35</span></a>    <span class="n">profile_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;tts&quot;</span><span class="p">,</span> <span class="s2">&quot;stt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;text&quot;</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos"> 36</span></a>    <span class="n">provider</span><span class="p">:</span> <span class="n">LLMProvider</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos"> 37</span></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;anthropic/claude-3.5-sonnet&quot;</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos"> 38</span></a>    <span class="n">api_base</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># For OpenRouter / local</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos"> 39</span></a>    <span class="n">api_key_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;OPENROUTER_API_KEY&quot;</span>  <span class="c1"># Environment variable name</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos"> 40</span></a>    <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># BYOK: Direct API key (takes precedence over env var)</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos"> 41</span></a>    <span class="n">account_id_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Environment variable name for account ID (e.g. Cloudflare)</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos"> 42</span></a>    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4096</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos"> 43</span></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Max total tokens (input + output) the model supports</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos"> 44</span></a>    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos"> 45</span></a>    <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">600</span>
 </span><span id="L-46"><a href="#L-46"><span class="linenos"> 46</span></a>
-</span><span id="L-47"><a href="#L-47"><span class="linenos"> 47</span></a>    <span class="c1"># --- A2A Protocol (Phase 8) ---</span>
-</span><span id="L-48"><a href="#L-48"><span class="linenos"> 48</span></a>    <span class="n">protocol</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;litellm&quot;</span><span class="p">,</span> <span class="s2">&quot;a2a&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;litellm&quot;</span>
-</span><span id="L-49"><a href="#L-49"><span class="linenos"> 49</span></a>    <span class="n">a2a_endpoint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># URL for A2A agent (e.g. &quot;http://agent.example.com&quot;)</span>
-</span><span id="L-50"><a href="#L-50"><span class="linenos"> 50</span></a>    <span class="n">a2a_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span>  <span class="c1"># Timeout for A2A calls in seconds</span>
-</span><span id="L-51"><a href="#L-51"><span class="linenos"> 51</span></a>    <span class="n">fallback_llm_profile_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Fallback profile for A2A failures</span>
-</span><span id="L-52"><a href="#L-52"><span class="linenos"> 52</span></a>
-</span><span id="L-53"><a href="#L-53"><span class="linenos"> 53</span></a>    <span class="c1"># --- Service LLM (Sprint 16) ---</span>
-</span><span id="L-54"><a href="#L-54"><span class="linenos"> 54</span></a>    <span class="n">service_eligible</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Whether this profile can be used for system/background tasks</span>
-</span><span id="L-55"><a href="#L-55"><span class="linenos"> 55</span></a>    <span class="n">min_recommended_context</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1024</span>  <span class="c1"># Min context window recommended for service use</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos"> 47</span></a>    <span class="c1"># Cost tracking (USD per 1k tokens)</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos"> 48</span></a>    <span class="n">cost_per_1k_input</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos"> 49</span></a>    <span class="n">cost_per_1k_output</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-50"><a href="#L-50"><span class="linenos"> 50</span></a>
+</span><span id="L-51"><a href="#L-51"><span class="linenos"> 51</span></a>    <span class="c1"># --- A2A Protocol (Phase 8) ---</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos"> 52</span></a>    <span class="n">protocol</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;litellm&quot;</span><span class="p">,</span> <span class="s2">&quot;a2a&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;litellm&quot;</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos"> 53</span></a>    <span class="n">a2a_endpoint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># URL for A2A agent (e.g. &quot;http://agent.example.com&quot;)</span>
+</span><span id="L-54"><a href="#L-54"><span class="linenos"> 54</span></a>    <span class="n">a2a_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span>  <span class="c1"># Timeout for A2A calls in seconds</span>
+</span><span id="L-55"><a href="#L-55"><span class="linenos"> 55</span></a>    <span class="n">fallback_llm_profile_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Fallback profile for A2A failures</span>
 </span><span id="L-56"><a href="#L-56"><span class="linenos"> 56</span></a>
-</span><span id="L-57"><a href="#L-57"><span class="linenos"> 57</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
-</span><span id="L-58"><a href="#L-58"><span class="linenos"> 58</span></a>    <span class="nd">@classmethod</span>
-</span><span id="L-59"><a href="#L-59"><span class="linenos"> 59</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_temperature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="L-60"><a href="#L-60"><span class="linenos"> 60</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="L-61"><a href="#L-61"><span class="linenos"> 61</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Temperature must be between 0 and 2&quot;</span><span class="p">)</span>
-</span><span id="L-62"><a href="#L-62"><span class="linenos"> 62</span></a>        <span class="k">return</span> <span class="n">v</span>
-</span><span id="L-63"><a href="#L-63"><span class="linenos"> 63</span></a>
-</span><span id="L-64"><a href="#L-64"><span class="linenos"> 64</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
-</span><span id="L-65"><a href="#L-65"><span class="linenos"> 65</span></a>    <span class="nd">@classmethod</span>
-</span><span id="L-66"><a href="#L-66"><span class="linenos"> 66</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_max_tokens</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="L-67"><a href="#L-67"><span class="linenos"> 67</span></a>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="L-68"><a href="#L-68"><span class="linenos"> 68</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_tokens must be at least 1&quot;</span><span class="p">)</span>
-</span><span id="L-69"><a href="#L-69"><span class="linenos"> 69</span></a>        <span class="k">return</span> <span class="n">v</span>
-</span><span id="L-70"><a href="#L-70"><span class="linenos"> 70</span></a>
-</span><span id="L-71"><a href="#L-71"><span class="linenos"> 71</span></a>
-</span><span id="L-72"><a href="#L-72"><span class="linenos"> 72</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AgentPersona</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="L-73"><a href="#L-73"><span class="linenos"> 73</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a debate agent persona.&quot;&quot;&quot;</span>
+</span><span id="L-57"><a href="#L-57"><span class="linenos"> 57</span></a>    <span class="c1"># --- Service LLM (Sprint 16) ---</span>
+</span><span id="L-58"><a href="#L-58"><span class="linenos"> 58</span></a>    <span class="n">service_eligible</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Whether this profile can be used for system/background tasks</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos"> 59</span></a>    <span class="n">min_recommended_context</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1024</span>  <span class="c1"># Min context window recommended for service use</span>
+</span><span id="L-60"><a href="#L-60"><span class="linenos"> 60</span></a>
+</span><span id="L-61"><a href="#L-61"><span class="linenos"> 61</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
+</span><span id="L-62"><a href="#L-62"><span class="linenos"> 62</span></a>    <span class="nd">@classmethod</span>
+</span><span id="L-63"><a href="#L-63"><span class="linenos"> 63</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_temperature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="L-64"><a href="#L-64"><span class="linenos"> 64</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="L-65"><a href="#L-65"><span class="linenos"> 65</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Temperature must be between 0 and 2&quot;</span><span class="p">)</span>
+</span><span id="L-66"><a href="#L-66"><span class="linenos"> 66</span></a>        <span class="k">return</span> <span class="n">v</span>
+</span><span id="L-67"><a href="#L-67"><span class="linenos"> 67</span></a>
+</span><span id="L-68"><a href="#L-68"><span class="linenos"> 68</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
+</span><span id="L-69"><a href="#L-69"><span class="linenos"> 69</span></a>    <span class="nd">@classmethod</span>
+</span><span id="L-70"><a href="#L-70"><span class="linenos"> 70</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_max_tokens</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="L-71"><a href="#L-71"><span class="linenos"> 71</span></a>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="L-72"><a href="#L-72"><span class="linenos"> 72</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_tokens must be at least 1&quot;</span><span class="p">)</span>
+</span><span id="L-73"><a href="#L-73"><span class="linenos"> 73</span></a>        <span class="k">return</span> <span class="n">v</span>
 </span><span id="L-74"><a href="#L-74"><span class="linenos"> 74</span></a>
-</span><span id="L-75"><a href="#L-75"><span class="linenos"> 75</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
-</span><span id="L-76"><a href="#L-76"><span class="linenos"> 76</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-77"><a href="#L-77"><span class="linenos"> 77</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Legacy role; widened for new role types (analyst, creative, etc.)</span>
-</span><span id="L-78"><a href="#L-78"><span class="linenos"> 78</span></a>    <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-79"><a href="#L-79"><span class="linenos"> 79</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Reference to LLMProfile.id</span>
-</span><span id="L-80"><a href="#L-80"><span class="linenos"> 80</span></a>
-</span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a>    <span class="c1"># Behaviour constraints</span>
-</span><span id="L-82"><a href="#L-82"><span class="linenos"> 82</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-</span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a>    <span class="n">consensus_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
-</span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a>
-</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a>    <span class="c1"># Argumentation &amp; mode (for blueprint system compatibility)</span>
-</span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a>    <span class="n">argumentation_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a>    <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="L-88"><a href="#L-88"><span class="linenos"> 88</span></a>
-</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a>    <span class="c1"># Metadata</span>
-</span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a>
-</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;consensus_threshold&quot;</span><span class="p">)</span>
-</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a>    <span class="nd">@classmethod</span>
-</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;consensus_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
-</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a>        <span class="k">return</span> <span class="n">v</span>
-</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a>
-</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a>
-</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="k">class</span><span class="w"> </span><span class="nc">PromptVariant</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A named set of prompt templates for debate agents.&quot;&quot;&quot;</span>
-</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a>
-</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
-</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a>    <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;profiles/prompts/default/&quot;</span>
-</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a>
-</span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a>    <span class="c1"># Override for specific agents: agent_role → file path</span>
-</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a>    <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="L-110"><a href="#L-110"><span class="linenos">110</span></a>
-</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a>    <span class="c1"># Metadata</span>
-</span><span id="L-112"><a href="#L-112"><span class="linenos">112</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a>    <span class="n">parent_variant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Inheritance</span>
-</span><span id="L-114"><a href="#L-114"><span class="linenos">114</span></a>
-</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a>
-</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ActiveConfiguration</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Running configuration for a specific debate.&quot;&quot;&quot;</span>
-</span><span id="L-118"><a href="#L-118"><span class="linenos">118</span></a>
-</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a>    <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a>    <span class="n">agent_personas</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># role → persona_id</span>
-</span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a>    <span class="n">prompt_variant_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a>    <span class="n">created_at</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-75"><a href="#L-75"><span class="linenos"> 75</span></a>
+</span><span id="L-76"><a href="#L-76"><span class="linenos"> 76</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AgentPersona</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="L-77"><a href="#L-77"><span class="linenos"> 77</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a debate agent persona.&quot;&quot;&quot;</span>
+</span><span id="L-78"><a href="#L-78"><span class="linenos"> 78</span></a>
+</span><span id="L-79"><a href="#L-79"><span class="linenos"> 79</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos"> 80</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Legacy role; widened for new role types (analyst, creative, etc.)</span>
+</span><span id="L-82"><a href="#L-82"><span class="linenos"> 82</span></a>    <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a>
+</span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a>    <span class="c1"># Behaviour constraints</span>
+</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+</span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a>    <span class="n">consensus_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
+</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a>
+</span><span id="L-88"><a href="#L-88"><span class="linenos"> 88</span></a>    <span class="c1"># Argumentation &amp; mode (for blueprint system compatibility)</span>
+</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a>    <span class="n">argumentation_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a>    <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a>
+</span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a>    <span class="c1"># LLM profile binding</span>
+</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a>
+</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a>    <span class="c1"># Metadata</span>
+</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a>
+</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;consensus_threshold&quot;</span><span class="p">)</span>
+</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a>    <span class="nd">@classmethod</span>
+</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;consensus_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
+</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a>        <span class="k">return</span> <span class="n">v</span>
+</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a>
+</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a>
+</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="k">class</span><span class="w"> </span><span class="nc">PromptVariant</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A named set of prompt templates for debate agents.&quot;&quot;&quot;</span>
+</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a>
+</span><span id="L-110"><a href="#L-110"><span class="linenos">110</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
+</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-112"><a href="#L-112"><span class="linenos">112</span></a>    <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;profiles/prompts/default/&quot;</span>
+</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a>
+</span><span id="L-114"><a href="#L-114"><span class="linenos">114</span></a>    <span class="c1"># Override for specific agents: agent_role → file path</span>
+</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a>    <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a>
+</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a>    <span class="c1"># Metadata</span>
+</span><span id="L-118"><a href="#L-118"><span class="linenos">118</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a>    <span class="n">parent_variant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Inheritance</span>
+</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a>
+</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a>
+</span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ActiveConfiguration</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Running configuration for a specific debate.&quot;&quot;&quot;</span>
 </span><span id="L-124"><a href="#L-124"><span class="linenos">124</span></a>
-</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a>    <span class="c1"># Runtime info</span>
-</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a>    <span class="n">estimated_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a>    <span class="n">actual_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a>    <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a>    <span class="n">agent_personas</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># role → persona_id</span>
+</span><span id="L-128"><a href="#L-128"><span class="linenos">128</span></a>    <span class="n">prompt_variant_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-129"><a href="#L-129"><span class="linenos">129</span></a>    <span class="n">created_at</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-130"><a href="#L-130"><span class="linenos">130</span></a>
+</span><span id="L-131"><a href="#L-131"><span class="linenos">131</span></a>    <span class="c1"># Runtime info</span>
+</span><span id="L-132"><a href="#L-132"><span class="linenos">132</span></a>    <span class="n">estimated_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="L-133"><a href="#L-133"><span class="linenos">133</span></a>    <span class="n">actual_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </span></pre></div>
 
 
@@ -401,6 +419,8 @@ prompt variants, and active debate configurations.</p>
 </span><span id="LLMProvider-24"><a href="#LLMProvider-24"><span class="linenos">24</span></a>    <span class="n">OPENCODE_ZEN</span> <span class="o">=</span> <span class="s2">&quot;opencode-zen&quot;</span>
 </span><span id="LLMProvider-25"><a href="#LLMProvider-25"><span class="linenos">25</span></a>    <span class="n">OPENCODE_GO</span> <span class="o">=</span> <span class="s2">&quot;opencode-go&quot;</span>
 </span><span id="LLMProvider-26"><a href="#LLMProvider-26"><span class="linenos">26</span></a>    <span class="n">XIAOMI</span> <span class="o">=</span> <span class="s2">&quot;xiaomi&quot;</span>
+</span><span id="LLMProvider-27"><a href="#LLMProvider-27"><span class="linenos">27</span></a>    <span class="n">DEEPSEEK</span> <span class="o">=</span> <span class="s2">&quot;deepseek&quot;</span>
+</span><span id="LLMProvider-28"><a href="#LLMProvider-28"><span class="linenos">28</span></a>    <span class="n">CLOUDFLARE</span> <span class="o">=</span> <span class="s2">&quot;cloudflare&quot;</span>
 </span></pre></div>
 
 
@@ -504,6 +524,30 @@ prompt variants, and active debate configurations.</p>
     
 
                             </div>
+                            <div id="LLMProvider.DEEPSEEK" class="classattr">
+                                <div class="attr variable">
+            <span class="name">DEEPSEEK</span>        =
+<span class="default_value">&lt;<a href="#LLMProvider.DEEPSEEK">LLMProvider.DEEPSEEK</a>: &#39;deepseek&#39;&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LLMProvider.DEEPSEEK"></a>
+    
+    
+
+                            </div>
+                            <div id="LLMProvider.CLOUDFLARE" class="classattr">
+                                <div class="attr variable">
+            <span class="name">CLOUDFLARE</span>        =
+<span class="default_value">&lt;<a href="#LLMProvider.CLOUDFLARE">LLMProvider.CLOUDFLARE</a>: &#39;cloudflare&#39;&gt;</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LLMProvider.CLOUDFLARE"></a>
+    
+    
+
+                            </div>
                 </section>
                 <section id="LLMProfile">
                             <input id="LLMProfile-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
@@ -516,48 +560,50 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#LLMProfile"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="LLMProfile-29"><a href="#LLMProfile-29"><span class="linenos">29</span></a><span class="k">class</span><span class="w"> </span><span class="nc">LLMProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="LLMProfile-30"><a href="#LLMProfile-30"><span class="linenos">30</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a specific LLM endpoint.&quot;&quot;&quot;</span>
-</span><span id="LLMProfile-31"><a href="#LLMProfile-31"><span class="linenos">31</span></a>
-</span><span id="LLMProfile-32"><a href="#LLMProfile-32"><span class="linenos">32</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile-33"><a href="#LLMProfile-33"><span class="linenos">33</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="LLMProfile-34"><a href="#LLMProfile-34"><span class="linenos">34</span></a>    <span class="n">profile_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;tts&quot;</span><span class="p">,</span> <span class="s2">&quot;stt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;text&quot;</span>
-</span><span id="LLMProfile-35"><a href="#LLMProfile-35"><span class="linenos">35</span></a>    <span class="n">provider</span><span class="p">:</span> <span class="n">LLMProvider</span>
-</span><span id="LLMProfile-36"><a href="#LLMProfile-36"><span class="linenos">36</span></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;anthropic/claude-3.5-sonnet&quot;</span>
-</span><span id="LLMProfile-37"><a href="#LLMProfile-37"><span class="linenos">37</span></a>    <span class="n">api_base</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># For OpenRouter / local</span>
-</span><span id="LLMProfile-38"><a href="#LLMProfile-38"><span class="linenos">38</span></a>    <span class="n">api_key_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;OPENROUTER_API_KEY&quot;</span>  <span class="c1"># Environment variable name</span>
-</span><span id="LLMProfile-39"><a href="#LLMProfile-39"><span class="linenos">39</span></a>    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4096</span>
-</span><span id="LLMProfile-40"><a href="#LLMProfile-40"><span class="linenos">40</span></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Max total tokens (input + output) the model supports</span>
-</span><span id="LLMProfile-41"><a href="#LLMProfile-41"><span class="linenos">41</span></a>    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
-</span><span id="LLMProfile-42"><a href="#LLMProfile-42"><span class="linenos">42</span></a>    <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">600</span>
-</span><span id="LLMProfile-43"><a href="#LLMProfile-43"><span class="linenos">43</span></a>
-</span><span id="LLMProfile-44"><a href="#LLMProfile-44"><span class="linenos">44</span></a>    <span class="c1"># Cost tracking (USD per 1k tokens)</span>
-</span><span id="LLMProfile-45"><a href="#LLMProfile-45"><span class="linenos">45</span></a>    <span class="n">cost_per_1k_input</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="LLMProfile-46"><a href="#LLMProfile-46"><span class="linenos">46</span></a>    <span class="n">cost_per_1k_output</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="LLMProfile-31"><a href="#LLMProfile-31"><span class="linenos">31</span></a><span class="k">class</span><span class="w"> </span><span class="nc">LLMProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="LLMProfile-32"><a href="#LLMProfile-32"><span class="linenos">32</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a specific LLM endpoint.&quot;&quot;&quot;</span>
+</span><span id="LLMProfile-33"><a href="#LLMProfile-33"><span class="linenos">33</span></a>
+</span><span id="LLMProfile-34"><a href="#LLMProfile-34"><span class="linenos">34</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^([a-z0-9][a-z0-9.-]*)?$&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile-35"><a href="#LLMProfile-35"><span class="linenos">35</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="LLMProfile-36"><a href="#LLMProfile-36"><span class="linenos">36</span></a>    <span class="n">profile_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;tts&quot;</span><span class="p">,</span> <span class="s2">&quot;stt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;text&quot;</span>
+</span><span id="LLMProfile-37"><a href="#LLMProfile-37"><span class="linenos">37</span></a>    <span class="n">provider</span><span class="p">:</span> <span class="n">LLMProvider</span>
+</span><span id="LLMProfile-38"><a href="#LLMProfile-38"><span class="linenos">38</span></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;anthropic/claude-3.5-sonnet&quot;</span>
+</span><span id="LLMProfile-39"><a href="#LLMProfile-39"><span class="linenos">39</span></a>    <span class="n">api_base</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># For OpenRouter / local</span>
+</span><span id="LLMProfile-40"><a href="#LLMProfile-40"><span class="linenos">40</span></a>    <span class="n">api_key_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;OPENROUTER_API_KEY&quot;</span>  <span class="c1"># Environment variable name</span>
+</span><span id="LLMProfile-41"><a href="#LLMProfile-41"><span class="linenos">41</span></a>    <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># BYOK: Direct API key (takes precedence over env var)</span>
+</span><span id="LLMProfile-42"><a href="#LLMProfile-42"><span class="linenos">42</span></a>    <span class="n">account_id_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Environment variable name for account ID (e.g. Cloudflare)</span>
+</span><span id="LLMProfile-43"><a href="#LLMProfile-43"><span class="linenos">43</span></a>    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4096</span>
+</span><span id="LLMProfile-44"><a href="#LLMProfile-44"><span class="linenos">44</span></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Max total tokens (input + output) the model supports</span>
+</span><span id="LLMProfile-45"><a href="#LLMProfile-45"><span class="linenos">45</span></a>    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
+</span><span id="LLMProfile-46"><a href="#LLMProfile-46"><span class="linenos">46</span></a>    <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">600</span>
 </span><span id="LLMProfile-47"><a href="#LLMProfile-47"><span class="linenos">47</span></a>
-</span><span id="LLMProfile-48"><a href="#LLMProfile-48"><span class="linenos">48</span></a>    <span class="c1"># --- A2A Protocol (Phase 8) ---</span>
-</span><span id="LLMProfile-49"><a href="#LLMProfile-49"><span class="linenos">49</span></a>    <span class="n">protocol</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;litellm&quot;</span><span class="p">,</span> <span class="s2">&quot;a2a&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;litellm&quot;</span>
-</span><span id="LLMProfile-50"><a href="#LLMProfile-50"><span class="linenos">50</span></a>    <span class="n">a2a_endpoint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># URL for A2A agent (e.g. &quot;http://agent.example.com&quot;)</span>
-</span><span id="LLMProfile-51"><a href="#LLMProfile-51"><span class="linenos">51</span></a>    <span class="n">a2a_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span>  <span class="c1"># Timeout for A2A calls in seconds</span>
-</span><span id="LLMProfile-52"><a href="#LLMProfile-52"><span class="linenos">52</span></a>    <span class="n">fallback_llm_profile_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Fallback profile for A2A failures</span>
-</span><span id="LLMProfile-53"><a href="#LLMProfile-53"><span class="linenos">53</span></a>
-</span><span id="LLMProfile-54"><a href="#LLMProfile-54"><span class="linenos">54</span></a>    <span class="c1"># --- Service LLM (Sprint 16) ---</span>
-</span><span id="LLMProfile-55"><a href="#LLMProfile-55"><span class="linenos">55</span></a>    <span class="n">service_eligible</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Whether this profile can be used for system/background tasks</span>
-</span><span id="LLMProfile-56"><a href="#LLMProfile-56"><span class="linenos">56</span></a>    <span class="n">min_recommended_context</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1024</span>  <span class="c1"># Min context window recommended for service use</span>
+</span><span id="LLMProfile-48"><a href="#LLMProfile-48"><span class="linenos">48</span></a>    <span class="c1"># Cost tracking (USD per 1k tokens)</span>
+</span><span id="LLMProfile-49"><a href="#LLMProfile-49"><span class="linenos">49</span></a>    <span class="n">cost_per_1k_input</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="LLMProfile-50"><a href="#LLMProfile-50"><span class="linenos">50</span></a>    <span class="n">cost_per_1k_output</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="LLMProfile-51"><a href="#LLMProfile-51"><span class="linenos">51</span></a>
+</span><span id="LLMProfile-52"><a href="#LLMProfile-52"><span class="linenos">52</span></a>    <span class="c1"># --- A2A Protocol (Phase 8) ---</span>
+</span><span id="LLMProfile-53"><a href="#LLMProfile-53"><span class="linenos">53</span></a>    <span class="n">protocol</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;litellm&quot;</span><span class="p">,</span> <span class="s2">&quot;a2a&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;litellm&quot;</span>
+</span><span id="LLMProfile-54"><a href="#LLMProfile-54"><span class="linenos">54</span></a>    <span class="n">a2a_endpoint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># URL for A2A agent (e.g. &quot;http://agent.example.com&quot;)</span>
+</span><span id="LLMProfile-55"><a href="#LLMProfile-55"><span class="linenos">55</span></a>    <span class="n">a2a_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span>  <span class="c1"># Timeout for A2A calls in seconds</span>
+</span><span id="LLMProfile-56"><a href="#LLMProfile-56"><span class="linenos">56</span></a>    <span class="n">fallback_llm_profile_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Fallback profile for A2A failures</span>
 </span><span id="LLMProfile-57"><a href="#LLMProfile-57"><span class="linenos">57</span></a>
-</span><span id="LLMProfile-58"><a href="#LLMProfile-58"><span class="linenos">58</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile-59"><a href="#LLMProfile-59"><span class="linenos">59</span></a>    <span class="nd">@classmethod</span>
-</span><span id="LLMProfile-60"><a href="#LLMProfile-60"><span class="linenos">60</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_temperature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="LLMProfile-61"><a href="#LLMProfile-61"><span class="linenos">61</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="LLMProfile-62"><a href="#LLMProfile-62"><span class="linenos">62</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Temperature must be between 0 and 2&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile-63"><a href="#LLMProfile-63"><span class="linenos">63</span></a>        <span class="k">return</span> <span class="n">v</span>
-</span><span id="LLMProfile-64"><a href="#LLMProfile-64"><span class="linenos">64</span></a>
-</span><span id="LLMProfile-65"><a href="#LLMProfile-65"><span class="linenos">65</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile-66"><a href="#LLMProfile-66"><span class="linenos">66</span></a>    <span class="nd">@classmethod</span>
-</span><span id="LLMProfile-67"><a href="#LLMProfile-67"><span class="linenos">67</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_max_tokens</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="LLMProfile-68"><a href="#LLMProfile-68"><span class="linenos">68</span></a>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="LLMProfile-69"><a href="#LLMProfile-69"><span class="linenos">69</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_tokens must be at least 1&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile-70"><a href="#LLMProfile-70"><span class="linenos">70</span></a>        <span class="k">return</span> <span class="n">v</span>
+</span><span id="LLMProfile-58"><a href="#LLMProfile-58"><span class="linenos">58</span></a>    <span class="c1"># --- Service LLM (Sprint 16) ---</span>
+</span><span id="LLMProfile-59"><a href="#LLMProfile-59"><span class="linenos">59</span></a>    <span class="n">service_eligible</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Whether this profile can be used for system/background tasks</span>
+</span><span id="LLMProfile-60"><a href="#LLMProfile-60"><span class="linenos">60</span></a>    <span class="n">min_recommended_context</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1024</span>  <span class="c1"># Min context window recommended for service use</span>
+</span><span id="LLMProfile-61"><a href="#LLMProfile-61"><span class="linenos">61</span></a>
+</span><span id="LLMProfile-62"><a href="#LLMProfile-62"><span class="linenos">62</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile-63"><a href="#LLMProfile-63"><span class="linenos">63</span></a>    <span class="nd">@classmethod</span>
+</span><span id="LLMProfile-64"><a href="#LLMProfile-64"><span class="linenos">64</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_temperature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="LLMProfile-65"><a href="#LLMProfile-65"><span class="linenos">65</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="LLMProfile-66"><a href="#LLMProfile-66"><span class="linenos">66</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Temperature must be between 0 and 2&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile-67"><a href="#LLMProfile-67"><span class="linenos">67</span></a>        <span class="k">return</span> <span class="n">v</span>
+</span><span id="LLMProfile-68"><a href="#LLMProfile-68"><span class="linenos">68</span></a>
+</span><span id="LLMProfile-69"><a href="#LLMProfile-69"><span class="linenos">69</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile-70"><a href="#LLMProfile-70"><span class="linenos">70</span></a>    <span class="nd">@classmethod</span>
+</span><span id="LLMProfile-71"><a href="#LLMProfile-71"><span class="linenos">71</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_max_tokens</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="LLMProfile-72"><a href="#LLMProfile-72"><span class="linenos">72</span></a>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="LLMProfile-73"><a href="#LLMProfile-73"><span class="linenos">73</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_tokens must be at least 1&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile-74"><a href="#LLMProfile-74"><span class="linenos">74</span></a>        <span class="k">return</span> <span class="n">v</span>
 </span></pre></div>
 
 
@@ -568,7 +614,7 @@ prompt variants, and active debate configurations.</p>
                             <div id="LLMProfile.id" class="classattr">
                                 <div class="attr variable">
             <span class="name">id</span><span class="annotation">: str</span>        =
-<span class="default_value">PydanticUndefined</span>
+<span class="default_value">&#39;&#39;</span>
 
         
     </div>
@@ -645,6 +691,30 @@ prompt variants, and active debate configurations.</p>
         
     </div>
     <a class="headerlink" href="#LLMProfile.api_key_env"></a>
+    
+    
+
+                            </div>
+                            <div id="LLMProfile.api_key" class="classattr">
+                                <div class="attr variable">
+            <span class="name">api_key</span><span class="annotation">: str | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LLMProfile.api_key"></a>
+    
+    
+
+                            </div>
+                            <div id="LLMProfile.account_id_env" class="classattr">
+                                <div class="attr variable">
+            <span class="name">account_id_env</span><span class="annotation">: str | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LLMProfile.account_id_env"></a>
     
     
 
@@ -806,12 +876,12 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#LLMProfile.validate_temperature"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="LLMProfile.validate_temperature-58"><a href="#LLMProfile.validate_temperature-58"><span class="linenos">58</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile.validate_temperature-59"><a href="#LLMProfile.validate_temperature-59"><span class="linenos">59</span></a>    <span class="nd">@classmethod</span>
-</span><span id="LLMProfile.validate_temperature-60"><a href="#LLMProfile.validate_temperature-60"><span class="linenos">60</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_temperature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="LLMProfile.validate_temperature-61"><a href="#LLMProfile.validate_temperature-61"><span class="linenos">61</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="LLMProfile.validate_temperature-62"><a href="#LLMProfile.validate_temperature-62"><span class="linenos">62</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Temperature must be between 0 and 2&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile.validate_temperature-63"><a href="#LLMProfile.validate_temperature-63"><span class="linenos">63</span></a>        <span class="k">return</span> <span class="n">v</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="LLMProfile.validate_temperature-62"><a href="#LLMProfile.validate_temperature-62"><span class="linenos">62</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile.validate_temperature-63"><a href="#LLMProfile.validate_temperature-63"><span class="linenos">63</span></a>    <span class="nd">@classmethod</span>
+</span><span id="LLMProfile.validate_temperature-64"><a href="#LLMProfile.validate_temperature-64"><span class="linenos">64</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_temperature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="LLMProfile.validate_temperature-65"><a href="#LLMProfile.validate_temperature-65"><span class="linenos">65</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="LLMProfile.validate_temperature-66"><a href="#LLMProfile.validate_temperature-66"><span class="linenos">66</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Temperature must be between 0 and 2&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile.validate_temperature-67"><a href="#LLMProfile.validate_temperature-67"><span class="linenos">67</span></a>        <span class="k">return</span> <span class="n">v</span>
 </span></pre></div>
 
 
@@ -831,12 +901,12 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#LLMProfile.validate_max_tokens"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="LLMProfile.validate_max_tokens-65"><a href="#LLMProfile.validate_max_tokens-65"><span class="linenos">65</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile.validate_max_tokens-66"><a href="#LLMProfile.validate_max_tokens-66"><span class="linenos">66</span></a>    <span class="nd">@classmethod</span>
-</span><span id="LLMProfile.validate_max_tokens-67"><a href="#LLMProfile.validate_max_tokens-67"><span class="linenos">67</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_max_tokens</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="LLMProfile.validate_max_tokens-68"><a href="#LLMProfile.validate_max_tokens-68"><span class="linenos">68</span></a>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="LLMProfile.validate_max_tokens-69"><a href="#LLMProfile.validate_max_tokens-69"><span class="linenos">69</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_tokens must be at least 1&quot;</span><span class="p">)</span>
-</span><span id="LLMProfile.validate_max_tokens-70"><a href="#LLMProfile.validate_max_tokens-70"><span class="linenos">70</span></a>        <span class="k">return</span> <span class="n">v</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="LLMProfile.validate_max_tokens-69"><a href="#LLMProfile.validate_max_tokens-69"><span class="linenos">69</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile.validate_max_tokens-70"><a href="#LLMProfile.validate_max_tokens-70"><span class="linenos">70</span></a>    <span class="nd">@classmethod</span>
+</span><span id="LLMProfile.validate_max_tokens-71"><a href="#LLMProfile.validate_max_tokens-71"><span class="linenos">71</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_max_tokens</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="LLMProfile.validate_max_tokens-72"><a href="#LLMProfile.validate_max_tokens-72"><span class="linenos">72</span></a>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="LLMProfile.validate_max_tokens-73"><a href="#LLMProfile.validate_max_tokens-73"><span class="linenos">73</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_tokens must be at least 1&quot;</span><span class="p">)</span>
+</span><span id="LLMProfile.validate_max_tokens-74"><a href="#LLMProfile.validate_max_tokens-74"><span class="linenos">74</span></a>        <span class="k">return</span> <span class="n">v</span>
 </span></pre></div>
 
 
@@ -855,33 +925,35 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#AgentPersona"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="AgentPersona-73"><a href="#AgentPersona-73"><span class="linenos">73</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AgentPersona</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="AgentPersona-74"><a href="#AgentPersona-74"><span class="linenos">74</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a debate agent persona.&quot;&quot;&quot;</span>
-</span><span id="AgentPersona-75"><a href="#AgentPersona-75"><span class="linenos">75</span></a>
-</span><span id="AgentPersona-76"><a href="#AgentPersona-76"><span class="linenos">76</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
-</span><span id="AgentPersona-77"><a href="#AgentPersona-77"><span class="linenos">77</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="AgentPersona-78"><a href="#AgentPersona-78"><span class="linenos">78</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Legacy role; widened for new role types (analyst, creative, etc.)</span>
-</span><span id="AgentPersona-79"><a href="#AgentPersona-79"><span class="linenos">79</span></a>    <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="AgentPersona-80"><a href="#AgentPersona-80"><span class="linenos">80</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Reference to LLMProfile.id</span>
-</span><span id="AgentPersona-81"><a href="#AgentPersona-81"><span class="linenos">81</span></a>
-</span><span id="AgentPersona-82"><a href="#AgentPersona-82"><span class="linenos">82</span></a>    <span class="c1"># Behaviour constraints</span>
-</span><span id="AgentPersona-83"><a href="#AgentPersona-83"><span class="linenos">83</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-</span><span id="AgentPersona-84"><a href="#AgentPersona-84"><span class="linenos">84</span></a>    <span class="n">consensus_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
-</span><span id="AgentPersona-85"><a href="#AgentPersona-85"><span class="linenos">85</span></a>
-</span><span id="AgentPersona-86"><a href="#AgentPersona-86"><span class="linenos">86</span></a>    <span class="c1"># Argumentation &amp; mode (for blueprint system compatibility)</span>
-</span><span id="AgentPersona-87"><a href="#AgentPersona-87"><span class="linenos">87</span></a>    <span class="n">argumentation_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="AgentPersona-88"><a href="#AgentPersona-88"><span class="linenos">88</span></a>    <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="AgentPersona-89"><a href="#AgentPersona-89"><span class="linenos">89</span></a>
-</span><span id="AgentPersona-90"><a href="#AgentPersona-90"><span class="linenos">90</span></a>    <span class="c1"># Metadata</span>
-</span><span id="AgentPersona-91"><a href="#AgentPersona-91"><span class="linenos">91</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="AgentPersona-92"><a href="#AgentPersona-92"><span class="linenos">92</span></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="AgentPersona-93"><a href="#AgentPersona-93"><span class="linenos">93</span></a>
-</span><span id="AgentPersona-94"><a href="#AgentPersona-94"><span class="linenos">94</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;consensus_threshold&quot;</span><span class="p">)</span>
-</span><span id="AgentPersona-95"><a href="#AgentPersona-95"><span class="linenos">95</span></a>    <span class="nd">@classmethod</span>
-</span><span id="AgentPersona-96"><a href="#AgentPersona-96"><span class="linenos">96</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="AgentPersona-97"><a href="#AgentPersona-97"><span class="linenos">97</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="AgentPersona-98"><a href="#AgentPersona-98"><span class="linenos">98</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;consensus_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
-</span><span id="AgentPersona-99"><a href="#AgentPersona-99"><span class="linenos">99</span></a>        <span class="k">return</span> <span class="n">v</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AgentPersona-77"><a href="#AgentPersona-77"><span class="linenos"> 77</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AgentPersona</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="AgentPersona-78"><a href="#AgentPersona-78"><span class="linenos"> 78</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a debate agent persona.&quot;&quot;&quot;</span>
+</span><span id="AgentPersona-79"><a href="#AgentPersona-79"><span class="linenos"> 79</span></a>
+</span><span id="AgentPersona-80"><a href="#AgentPersona-80"><span class="linenos"> 80</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
+</span><span id="AgentPersona-81"><a href="#AgentPersona-81"><span class="linenos"> 81</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="AgentPersona-82"><a href="#AgentPersona-82"><span class="linenos"> 82</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Legacy role; widened for new role types (analyst, creative, etc.)</span>
+</span><span id="AgentPersona-83"><a href="#AgentPersona-83"><span class="linenos"> 83</span></a>    <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="AgentPersona-84"><a href="#AgentPersona-84"><span class="linenos"> 84</span></a>
+</span><span id="AgentPersona-85"><a href="#AgentPersona-85"><span class="linenos"> 85</span></a>    <span class="c1"># Behaviour constraints</span>
+</span><span id="AgentPersona-86"><a href="#AgentPersona-86"><span class="linenos"> 86</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+</span><span id="AgentPersona-87"><a href="#AgentPersona-87"><span class="linenos"> 87</span></a>    <span class="n">consensus_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
+</span><span id="AgentPersona-88"><a href="#AgentPersona-88"><span class="linenos"> 88</span></a>
+</span><span id="AgentPersona-89"><a href="#AgentPersona-89"><span class="linenos"> 89</span></a>    <span class="c1"># Argumentation &amp; mode (for blueprint system compatibility)</span>
+</span><span id="AgentPersona-90"><a href="#AgentPersona-90"><span class="linenos"> 90</span></a>    <span class="n">argumentation_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="AgentPersona-91"><a href="#AgentPersona-91"><span class="linenos"> 91</span></a>    <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="AgentPersona-92"><a href="#AgentPersona-92"><span class="linenos"> 92</span></a>
+</span><span id="AgentPersona-93"><a href="#AgentPersona-93"><span class="linenos"> 93</span></a>    <span class="c1"># LLM profile binding</span>
+</span><span id="AgentPersona-94"><a href="#AgentPersona-94"><span class="linenos"> 94</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="AgentPersona-95"><a href="#AgentPersona-95"><span class="linenos"> 95</span></a>
+</span><span id="AgentPersona-96"><a href="#AgentPersona-96"><span class="linenos"> 96</span></a>    <span class="c1"># Metadata</span>
+</span><span id="AgentPersona-97"><a href="#AgentPersona-97"><span class="linenos"> 97</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="AgentPersona-98"><a href="#AgentPersona-98"><span class="linenos"> 98</span></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="AgentPersona-99"><a href="#AgentPersona-99"><span class="linenos"> 99</span></a>
+</span><span id="AgentPersona-100"><a href="#AgentPersona-100"><span class="linenos">100</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;consensus_threshold&quot;</span><span class="p">)</span>
+</span><span id="AgentPersona-101"><a href="#AgentPersona-101"><span class="linenos">101</span></a>    <span class="nd">@classmethod</span>
+</span><span id="AgentPersona-102"><a href="#AgentPersona-102"><span class="linenos">102</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="AgentPersona-103"><a href="#AgentPersona-103"><span class="linenos">103</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="AgentPersona-104"><a href="#AgentPersona-104"><span class="linenos">104</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;consensus_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
+</span><span id="AgentPersona-105"><a href="#AgentPersona-105"><span class="linenos">105</span></a>        <span class="k">return</span> <span class="n">v</span>
 </span></pre></div>
 
 
@@ -937,18 +1009,6 @@ prompt variants, and active debate configurations.</p>
     
 
                             </div>
-                            <div id="AgentPersona.llm_profile_id" class="classattr">
-                                <div class="attr variable">
-            <span class="name">llm_profile_id</span><span class="annotation">: str</span>        =
-<span class="default_value">PydanticUndefined</span>
-
-        
-    </div>
-    <a class="headerlink" href="#AgentPersona.llm_profile_id"></a>
-    
-    
-
-                            </div>
                             <div id="AgentPersona.max_rounds" class="classattr">
                                 <div class="attr variable">
             <span class="name">max_rounds</span><span class="annotation">: int</span>        =
@@ -997,6 +1057,18 @@ prompt variants, and active debate configurations.</p>
     
 
                             </div>
+                            <div id="AgentPersona.llm_profile_id" class="classattr">
+                                <div class="attr variable">
+            <span class="name">llm_profile_id</span><span class="annotation">: str | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#AgentPersona.llm_profile_id"></a>
+    
+    
+
+                            </div>
                             <div id="AgentPersona.description" class="classattr">
                                 <div class="attr variable">
             <span class="name">description</span><span class="annotation">: str | None</span>        =
@@ -1034,12 +1106,12 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#AgentPersona.validate_threshold"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="AgentPersona.validate_threshold-94"><a href="#AgentPersona.validate_threshold-94"><span class="linenos">94</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;consensus_threshold&quot;</span><span class="p">)</span>
-</span><span id="AgentPersona.validate_threshold-95"><a href="#AgentPersona.validate_threshold-95"><span class="linenos">95</span></a>    <span class="nd">@classmethod</span>
-</span><span id="AgentPersona.validate_threshold-96"><a href="#AgentPersona.validate_threshold-96"><span class="linenos">96</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="AgentPersona.validate_threshold-97"><a href="#AgentPersona.validate_threshold-97"><span class="linenos">97</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="AgentPersona.validate_threshold-98"><a href="#AgentPersona.validate_threshold-98"><span class="linenos">98</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;consensus_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
-</span><span id="AgentPersona.validate_threshold-99"><a href="#AgentPersona.validate_threshold-99"><span class="linenos">99</span></a>        <span class="k">return</span> <span class="n">v</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AgentPersona.validate_threshold-100"><a href="#AgentPersona.validate_threshold-100"><span class="linenos">100</span></a>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;consensus_threshold&quot;</span><span class="p">)</span>
+</span><span id="AgentPersona.validate_threshold-101"><a href="#AgentPersona.validate_threshold-101"><span class="linenos">101</span></a>    <span class="nd">@classmethod</span>
+</span><span id="AgentPersona.validate_threshold-102"><a href="#AgentPersona.validate_threshold-102"><span class="linenos">102</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_threshold</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="AgentPersona.validate_threshold-103"><a href="#AgentPersona.validate_threshold-103"><span class="linenos">103</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="AgentPersona.validate_threshold-104"><a href="#AgentPersona.validate_threshold-104"><span class="linenos">104</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;consensus_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
+</span><span id="AgentPersona.validate_threshold-105"><a href="#AgentPersona.validate_threshold-105"><span class="linenos">105</span></a>        <span class="k">return</span> <span class="n">v</span>
 </span></pre></div>
 
 
@@ -1058,19 +1130,19 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#PromptVariant"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="PromptVariant-102"><a href="#PromptVariant-102"><span class="linenos">102</span></a><span class="k">class</span><span class="w"> </span><span class="nc">PromptVariant</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="PromptVariant-103"><a href="#PromptVariant-103"><span class="linenos">103</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A named set of prompt templates for debate agents.&quot;&quot;&quot;</span>
-</span><span id="PromptVariant-104"><a href="#PromptVariant-104"><span class="linenos">104</span></a>
-</span><span id="PromptVariant-105"><a href="#PromptVariant-105"><span class="linenos">105</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
-</span><span id="PromptVariant-106"><a href="#PromptVariant-106"><span class="linenos">106</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="PromptVariant-107"><a href="#PromptVariant-107"><span class="linenos">107</span></a>    <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;profiles/prompts/default/&quot;</span>
-</span><span id="PromptVariant-108"><a href="#PromptVariant-108"><span class="linenos">108</span></a>
-</span><span id="PromptVariant-109"><a href="#PromptVariant-109"><span class="linenos">109</span></a>    <span class="c1"># Override for specific agents: agent_role → file path</span>
-</span><span id="PromptVariant-110"><a href="#PromptVariant-110"><span class="linenos">110</span></a>    <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="PromptVariant-111"><a href="#PromptVariant-111"><span class="linenos">111</span></a>
-</span><span id="PromptVariant-112"><a href="#PromptVariant-112"><span class="linenos">112</span></a>    <span class="c1"># Metadata</span>
-</span><span id="PromptVariant-113"><a href="#PromptVariant-113"><span class="linenos">113</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="PromptVariant-114"><a href="#PromptVariant-114"><span class="linenos">114</span></a>    <span class="n">parent_variant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Inheritance</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="PromptVariant-108"><a href="#PromptVariant-108"><span class="linenos">108</span></a><span class="k">class</span><span class="w"> </span><span class="nc">PromptVariant</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="PromptVariant-109"><a href="#PromptVariant-109"><span class="linenos">109</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A named set of prompt templates for debate agents.&quot;&quot;&quot;</span>
+</span><span id="PromptVariant-110"><a href="#PromptVariant-110"><span class="linenos">110</span></a>
+</span><span id="PromptVariant-111"><a href="#PromptVariant-111"><span class="linenos">111</span></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^[a-z0-9][a-z0-9.-]*$&quot;</span><span class="p">)</span>
+</span><span id="PromptVariant-112"><a href="#PromptVariant-112"><span class="linenos">112</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="PromptVariant-113"><a href="#PromptVariant-113"><span class="linenos">113</span></a>    <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g. &quot;profiles/prompts/default/&quot;</span>
+</span><span id="PromptVariant-114"><a href="#PromptVariant-114"><span class="linenos">114</span></a>
+</span><span id="PromptVariant-115"><a href="#PromptVariant-115"><span class="linenos">115</span></a>    <span class="c1"># Override for specific agents: agent_role → file path</span>
+</span><span id="PromptVariant-116"><a href="#PromptVariant-116"><span class="linenos">116</span></a>    <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="PromptVariant-117"><a href="#PromptVariant-117"><span class="linenos">117</span></a>
+</span><span id="PromptVariant-118"><a href="#PromptVariant-118"><span class="linenos">118</span></a>    <span class="c1"># Metadata</span>
+</span><span id="PromptVariant-119"><a href="#PromptVariant-119"><span class="linenos">119</span></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="PromptVariant-120"><a href="#PromptVariant-120"><span class="linenos">120</span></a>    <span class="n">parent_variant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Inheritance</span>
 </span></pre></div>
 
 
@@ -1162,18 +1234,18 @@ prompt variants, and active debate configurations.</p>
 
     </div>
     <a class="headerlink" href="#ActiveConfiguration"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="ActiveConfiguration-117"><a href="#ActiveConfiguration-117"><span class="linenos">117</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ActiveConfiguration</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-</span><span id="ActiveConfiguration-118"><a href="#ActiveConfiguration-118"><span class="linenos">118</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Running configuration for a specific debate.&quot;&quot;&quot;</span>
-</span><span id="ActiveConfiguration-119"><a href="#ActiveConfiguration-119"><span class="linenos">119</span></a>
-</span><span id="ActiveConfiguration-120"><a href="#ActiveConfiguration-120"><span class="linenos">120</span></a>    <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="ActiveConfiguration-121"><a href="#ActiveConfiguration-121"><span class="linenos">121</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="ActiveConfiguration-122"><a href="#ActiveConfiguration-122"><span class="linenos">122</span></a>    <span class="n">agent_personas</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># role → persona_id</span>
-</span><span id="ActiveConfiguration-123"><a href="#ActiveConfiguration-123"><span class="linenos">123</span></a>    <span class="n">prompt_variant_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="ActiveConfiguration-124"><a href="#ActiveConfiguration-124"><span class="linenos">124</span></a>    <span class="n">created_at</span><span class="p">:</span> <span class="nb">str</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="ActiveConfiguration-123"><a href="#ActiveConfiguration-123"><span class="linenos">123</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ActiveConfiguration</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="ActiveConfiguration-124"><a href="#ActiveConfiguration-124"><span class="linenos">124</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Running configuration for a specific debate.&quot;&quot;&quot;</span>
 </span><span id="ActiveConfiguration-125"><a href="#ActiveConfiguration-125"><span class="linenos">125</span></a>
-</span><span id="ActiveConfiguration-126"><a href="#ActiveConfiguration-126"><span class="linenos">126</span></a>    <span class="c1"># Runtime info</span>
-</span><span id="ActiveConfiguration-127"><a href="#ActiveConfiguration-127"><span class="linenos">127</span></a>    <span class="n">estimated_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="ActiveConfiguration-128"><a href="#ActiveConfiguration-128"><span class="linenos">128</span></a>    <span class="n">actual_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="ActiveConfiguration-126"><a href="#ActiveConfiguration-126"><span class="linenos">126</span></a>    <span class="n">debate_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="ActiveConfiguration-127"><a href="#ActiveConfiguration-127"><span class="linenos">127</span></a>    <span class="n">llm_profile_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="ActiveConfiguration-128"><a href="#ActiveConfiguration-128"><span class="linenos">128</span></a>    <span class="n">agent_personas</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># role → persona_id</span>
+</span><span id="ActiveConfiguration-129"><a href="#ActiveConfiguration-129"><span class="linenos">129</span></a>    <span class="n">prompt_variant_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="ActiveConfiguration-130"><a href="#ActiveConfiguration-130"><span class="linenos">130</span></a>    <span class="n">created_at</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="ActiveConfiguration-131"><a href="#ActiveConfiguration-131"><span class="linenos">131</span></a>
+</span><span id="ActiveConfiguration-132"><a href="#ActiveConfiguration-132"><span class="linenos">132</span></a>    <span class="c1"># Runtime info</span>
+</span><span id="ActiveConfiguration-133"><a href="#ActiveConfiguration-133"><span class="linenos">133</span></a>    <span class="n">estimated_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="ActiveConfiguration-134"><a href="#ActiveConfiguration-134"><span class="linenos">134</span></a>    <span class="n">actual_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </span></pre></div>
 
 

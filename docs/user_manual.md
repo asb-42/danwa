@@ -17,18 +17,25 @@
 13. [Document Management System (DMS)](#document-management-system-dms)
 14. [Backup System](#backup-system)
 15. [Blueprint System](#blueprint-system)
-16. [HITL (Human-in-the-Loop) System](#hitl-human-in-the-loop-system)
-17. [Input/Output Composer](#inputoutput-composer)
-18. [Real-Time Updates (SSE)](#real-time-updates-sse)
-19. [Out-of-Band Inputs](#out-of-band-inputs)
-20. [A2A Protocol Integration](#a2a-protocol-integration)
-21. [Workflow Visualization](#workflow-visualization)
-22. [Internationalization (i18n)](#internationalization-i18n)
-23. [Privacy & Data Protection](#privacy--data-protection)
-24. [Audit & Reproducibility](#audit--reproducibility)
-25. [Advanced Configuration](#advanced-configuration)
-26. [Development](#development)
-27. [Troubleshooting](#troubleshooting)
+16. [User Accounts & Authentication](#user-accounts--authentication)
+17. [Tenant Management](#tenant-management)
+18. [BYOK — Bring Your Own Key](#byok--bring-your-own-key)
+19. [Cases & Tags](#cases--tags)
+20. [Transactional Drafting](#transactional-drafting)
+21. [Docker Deployment](#docker-deployment)
+22. [Monitoring & Rate Limiting](#monitoring--rate-limiting)
+23. [HITL (Human-in-the-Loop) System](#hitl-human-in-the-loop-system)
+24. [Input/Output Composer](#inputoutput-composer)
+25. [Real-Time Updates (SSE)](#real-time-updates-sse)
+26. [Out-of-Band Inputs](#out-of-band-inputs)
+27. [A2A Protocol Integration](#a2a-protocol-integration)
+28. [Workflow Visualization](#workflow-visualization)
+29. [Internationalization (i18n)](#internationalization-i18n)
+30. [Privacy & Data Protection](#privacy--data-protection)
+31. [Audit & Reproducibility](#audit--reproducibility)
+32. [Advanced Configuration](#advanced-configuration)
+33. [Development](#development)
+34. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -149,6 +156,30 @@ uv run python -c "import fastapi, langgraph, litellm, chromadb; print('Backend d
 # Frontend dependencies
 cd frontend && npm list svelte vite tailwindcss
 ```
+
+### Docker Deployment (Alternative)
+
+Instead of the script-based setup, you can run Danwa in Docker containers:
+
+```bash
+# Quick start
+docker compose up -d
+
+# With Celery background worker
+docker compose --profile celery up -d
+
+# Using Makefile shortcuts
+make docker-build
+make docker-up
+make docker-down
+```
+
+1. Copy `deploy/.env.example` to `deploy/.env` and configure your environment variables
+2. The application is accessible at `http://localhost:8000`
+3. Health check: `GET /health` shows service status (SQLite, Redis, Auth-DB)
+4. For TLS, configure certificates in `deploy/nginx.conf`
+
+See [Docker Deployment](#docker-deployment) for full details.
 
 ---
 
@@ -1087,6 +1118,310 @@ The Assistant System provides an on-demand AI assistant that can help you with:
 - "How do I create a new blueprint?"
 - "Explain the consensus score from my last debate."
 - "What modules are installed?"
+
+---
+
+## User Accounts & Authentication
+
+### Logging In
+
+1. Navigate to `#/login` (the **LoginView**)
+2. Enter your email and password
+3. Click **Log In**
+
+If no accounts exist yet, the first registered user is automatically assigned the **admin** role.
+
+### Registering a New Account
+
+1. On the login page, click **Register**
+2. Enter your email, name, and password
+3. Submit the form — the first user becomes admin automatically
+
+### Default Admin Credentials
+
+| Field | Value |
+|-------|-------|
+| Email | `admin@danwa.local` |
+| Password | `changeme` |
+
+> **Important**: You MUST change the default password on first login.
+
+### Changing Your Password
+
+1. Navigate to `#/profile` (the **Profile** view)
+2. Enter your current password and your new password
+3. Click **Save**
+
+### Logging Out
+
+Click your user avatar in the header and select **Log Out** from the dropdown menu.
+
+### Disabling Authentication for Development
+
+Set the environment variable `DANWA_AUTH_ENABLED=false` to bypass authentication entirely. This is intended for local development only.
+
+---
+
+## Tenant Management
+
+### What Are Tenants?
+
+Tenants are top-level organizational units in Danwa. Each tenant contains its own set of cases, users, and configuration. Users can belong to multiple tenants and switch between them.
+
+### Switching Tenants
+
+Use the **TenantSelector** dropdown in the header to switch between tenants you belong to. This changes the active context for all views.
+
+### Inviting Users (Admin Only)
+
+1. Navigate to `#/tenant-settings` (**Tenant Settings**)
+2. Enter the user's email address
+3. Assign a role (member or admin)
+4. Click **Invite**
+
+Only tenant admins can invite new users.
+
+### Removing Users from a Tenant
+
+1. Navigate to **Tenant Settings**
+2. Find the user in the member list
+3. Click **Remove** next to their name
+
+### Tenant Quotas
+
+Each tenant has resource quotas based on its plan:
+
+| Resource | Description |
+|----------|-------------|
+| Projects | Maximum number of projects/cases |
+| Debates | Maximum number of debates |
+| Documents | Maximum number of uploaded documents |
+| Storage | Maximum total storage in MB |
+
+### Plans
+
+| Plan | Projects | Debates | Documents | Storage |
+|------|----------|---------|-----------|---------|
+| **Free** | 3 | 50 | 100 | 500 MB |
+| **Pro** | 20 | 500 | 1,000 | 5 GB |
+| **Enterprise** | Unlimited | Unlimited | Unlimited | Unlimited |
+
+---
+
+## BYOK — Bring Your Own Key
+
+### What is BYOK?
+
+BYOK (Bring Your Own Key) allows you to use your own LLM API keys instead of the server-configured ones. This gives you direct control over LLM costs and provider selection.
+
+### Adding a Key
+
+1. Navigate to `#/my-keys` (**My API Keys**)
+2. Select the provider (e.g., OpenRouter, OpenAI, Anthropic)
+3. Enter your API key
+4. Click **Save**
+
+### Key Resolution Priority
+
+When a debate runs, API keys are resolved in this order:
+
+1. **Your personal key** (added via BYOK) — highest priority
+2. **Server-configured key** (set by admin)
+3. **Environment variable** (e.g., `OPENROUTER_API_KEY`) — lowest priority
+
+### Deleting Keys
+
+1. Navigate to `#/my-keys`
+2. Click **Delete** next to the key you want to remove
+
+### Key Privacy
+
+Keys are stored per-user and are **not shared** with other users. Other tenant members cannot see or use your keys.
+
+---
+
+## Cases & Tags
+
+### Cases
+
+Cases replace projects as the primary organizational unit in Danwa. Each tenant has a collection of cases, and each case has its own independent DMS and debate storage.
+
+#### Creating a Case
+
+1. Navigate to **CasesView**
+2. Click **+ New Case**
+3. Enter a name and optional description
+4. Click **Create**
+
+#### Editing a Case
+
+1. In **CasesView**, click on a case
+2. Update the name or description
+3. Click **Save**
+
+#### Deleting a Case
+
+1. In **CasesView**, select the case
+2. Click **Delete** and confirm
+
+> **Warning**: Deleting a case removes all associated debates and documents permanently.
+
+### Tags
+
+Tags are tenant-global labels for categorizing cases. They are shared across all cases within a tenant.
+
+#### Managing Tags
+
+1. Navigate to **Tag Manager**
+2. Create, edit, or delete tags
+3. Assign colors for visual distinction
+
+#### Filtering Cases by Tags
+
+In **CasesView**, use the tag filter dropdown to show only cases that match one or more selected tags.
+
+---
+
+## Transactional Drafting
+
+### What is Transactional Drafting?
+
+Transactional Drafting is a structured document creation workflow that uses multiple specialized agents in a collaborative pipeline to produce polished, well-reasoned documents.
+
+### Starting a Transactional Drafting Session
+
+1. Navigate to **Run** → **New Debate**
+2. Select a **Transactional Drafting** template from the template list
+3. Provide input context (topic, source documents)
+4. Click **Start**
+
+### Node Types
+
+| Node | Role | Description |
+|------|------|-------------|
+| **Builder** | Creates | Generates initial draft content based on the input |
+| **Pragmatist** | Evaluates | Reviews the draft for accuracy, completeness, and feasibility |
+| **Angel's Advocate** | Constructive Critique | Provides constructive feedback and suggests improvements |
+| **Moderator** | Consensus | Synthesizes all inputs and drives toward final consensus |
+
+### Approval Gates
+
+Decision edges in the workflow require explicit approval before the process can continue. When an approval gate is reached:
+
+1. The workflow pauses
+2. You review the current state
+3. You approve, modify, or reject the output
+4. The workflow resumes based on your decision
+
+### Report Generation
+
+Transactional Drafting produces structured output that can be exported using print templates:
+
+1. Click **Generate Report** after the workflow completes
+2. Choose a template and output format (DOCX or PDF)
+3. Download the structured document
+
+---
+
+## Docker Deployment
+
+### Quick Start
+
+```bash
+docker compose up -d
+```
+
+This starts the backend, frontend, and all required services.
+
+### With Celery Worker
+
+To enable background task processing (e.g., async report generation, long-running analyses):
+
+```bash
+docker compose --profile celery up -d
+```
+
+### Makefile Shortcuts
+
+| Command | Description |
+|---------|-------------|
+| `make docker-build` | Build all Docker images |
+| `make docker-up` | Start all containers |
+| `make docker-down` | Stop and remove all containers |
+
+### Environment Variables
+
+1. Copy the example environment file:
+   ```bash
+   cp deploy/.env.example deploy/.env
+   ```
+2. Edit `deploy/.env` to configure API keys, database paths, and other settings
+
+### Health Check
+
+```bash
+GET /health
+```
+
+Returns the status of all services (SQLite, Redis, Auth-DB). Use this for monitoring and load balancer configuration.
+
+### TLS Configuration
+
+To enable HTTPS:
+
+1. Place your TLS certificate and key in a secure location
+2. Edit `deploy/nginx.conf` to reference the certificate paths
+3. Restart the nginx container
+
+---
+
+## Monitoring & Rate Limiting
+
+### Health Endpoint
+
+```
+GET /health
+```
+
+Returns JSON with the status of each service:
+
+```json
+{
+  "status": "ok",
+  "services": {
+    "sqlite": "ok",
+    "redis": "ok",
+    "auth_db": "ok"
+  }
+}
+```
+
+### Prometheus Metrics
+
+```
+GET /metrics
+```
+
+Exposes standard Prometheus-compatible metrics for scraping. Integrate with your monitoring stack (Grafana, Datadog, etc.).
+
+### Rate Limits
+
+| Resource | Limit | Window |
+|----------|-------|--------|
+| Global API | 60 requests | per minute |
+| Debates | 10 requests | per hour |
+| Uploads | 20 requests | per hour |
+| Analysis | 5 requests | per hour |
+
+### Handling 429 Errors
+
+When you exceed the rate limit, the API returns a `429 Too Many Requests` response:
+
+1. **Wait and retry** — respect the `Retry-After` header
+2. **Upgrade your plan** — higher plans have higher limits
+
+---
+
 ## HITL (Human-in-the-Loop) System
 
 ### What is HITL?
@@ -1760,6 +2095,21 @@ The legacy `backend/api/routers/sessions.py` router provides endpoints (supersed
 - **Cause**: Unsupported file format or corrupted file
 - **Fix**: Convert to supported format, or system falls back to plain text
 
+#### "429 Too Many Requests"
+
+- **Cause**: Rate limit exceeded (global: 60/min, debates: 10/hour, uploads: 20/hour, analysis: 5/hour)
+- **Fix**: Wait for the rate limit window to reset (check the `Retry-After` header), or upgrade your plan for higher limits
+
+#### "401 Unauthorized"
+
+- **Cause**: Session expired or invalid credentials
+- **Fix**: Log in again at `#/login`. If using API tokens, generate a new one
+
+#### "403 Forbidden"
+
+- **Cause**: You are not a member of the requested tenant, or lack the required role
+- **Fix**: Ask a tenant admin to invite you, or switch to a tenant you belong to
+
 ### Logs
 
 - **Application logs**: `logs/debate-agent.log` (configured in `backend/main.py`)
@@ -1809,4 +2159,4 @@ danwa/
 
 ---
 
-*Documentation generated for Danwa v2.1.0*
+*Documentation generated for Danwa v2.2.0 — 2026-06-01*

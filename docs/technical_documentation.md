@@ -1,7 +1,7 @@
 # Danwa (Debate-Agent) — Technical Documentation
 
-> **Version**: 2.1.0  
-> **Last Updated**: 2026-05-17  
+> **Version**: 2.2.0  
+> **Last Updated**: 2026-06-01  
 > **Authors**: Development Team  
 
 ---
@@ -27,6 +27,17 @@
 17. [A2A Protocol Integration](#17-a2a-protocol-integration)
 18. [Development Guide](#18-development-guide)
 19. [Deployment](#19-deployment)
+20. [Multi-User & Authentication System](#20-multi-user--authentication-system)
+21. [Multi-Tenant Architecture](#21-multi-tenant-architecture)
+22. [BYOK (Bring Your Own Key)](#22-byok-bring-your-own-key)
+23. [Transactional Drafting Workflow](#23-transactional-drafting-workflow)
+24. [Angel's Advocate Node](#24-angels-advocate-node)
+25. [Kitsune Agent & Assistant Tools](#25-kitsune-agent--assistant-tools)
+26. [Task Queue & Concurrency](#26-task-queue--concurrency)
+27. [Observability & Monitoring](#27-observability--monitoring)
+28. [Rate Limiting](#28-rate-limiting)
+29. [Docker Deployment](#29-docker-deployment)
+30. [CI/CD Pipeline](#30-cicd-pipeline)
 
 ---
 
@@ -149,6 +160,12 @@ Danwa follows a **decoupled frontend-backend architecture** with clear separatio
 | **State Management** | Svelte stores | Reactive state for UI |
 | **HTTP Client** | httpx | Async HTTP for LLM calls and web search |
 | **Environment** | python-dotenv | .env file loading |
+| **Authentication** | python-jose, passlib, bcrypt | JWT token creation/validation and password hashing |
+| **Task Queue** | Celery + Redis | Optional parallel debate execution |
+| **Structured Logging** | structlog | JSON logging in production, console in dev |
+| **Rate Limiting** | slowapi | Per-endpoint and global rate limiting |
+| **Metrics** | prometheus-fastapi-instrumentator | Prometheus metrics endpoint |
+| **WSGI Server** | gunicorn | Production-grade ASGI server with worker management |
 
 ---
 
@@ -2971,6 +2988,612 @@ Set up DMS dependencies (PaddleOCR):
 uv pip install ".[dms]"
 ```
 
+---
+
+## 20. Multi-User & Authentication System
+
+> **Added in v2.2.0** — Note: Sections 20–30 document new features since v2.1.0. Existing section numbering (11–19) was not renumbered to avoid breaking cross-references.
+
+Danwa now supports multi-user authentication with JWT-based access control and role-based authorization.
+
+### 20.1 Authentication Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Token creation/validation | python-jose | JWT access and refresh tokens |
+| Password hashing | passlib + bcrypt | Secure password storage |
+| User storage | SQLite | `data/auth.db` |
+
+### 20.2 User Model
+
+```python
+class User:
+    id: str                    # UUID
+    email: str                 # Unique login identifier
+    display_name: str          # Human-readable name
+    role: str                  # "admin" | "editor" | "viewer"
+    tenant_id: str             # Associated tenant UUID
+    hashed_password: str       # bcrypt hash
+    created_at: datetime
+    updated_at: datetime
+```
+
+### 20.3 UserStore
+
+- **Backend**: `backend/persistence/user_store.py`
+- **Database**: SQLite at `data/auth.db`
+- **Table**: `users` with unique constraint on `email`
+
+### 20.4 Auth Router
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/auth/register` | POST | Create new user account |
+| `/api/v1/auth/login` | POST | Authenticate and receive tokens |
+| `/api/v1/auth/refresh` | POST | Refresh access token |
+| `/api/v1/auth/me` | GET | Get current user profile |
+| `/api/v1/auth/password` | PUT | Change password |
+
+### 20.5 Security Module
+
+- **Location**: `backend/core/security.py`
+- `create_access_token(data, expires_delta)` — JWT with configurable expiry
+- `create_refresh_token(data)` — Long-lived refresh token
+- `decode_token(token)` — Validates and decodes JWT
+- Password hashing via `passlib CryptContext(schemes=["bcrypt"])`
+
+### 20.6 Seed Admin
+
+On first startup, the system auto-creates a default admin account:
+
+| Field | Value |
+|-------|-------|
+| Email | `admin@danwa.local` |
+| Password | `admin` (must be changed on first login) |
+| Role | `admin` |
+
+### 20.7 Auth Dependencies
+
+- `get_current_user(request)` — FastAPI dependency that validates JWT from `Authorization: Bearer <token>` header
+- `require_role(*roles)` — Dependency factory for role-based access control
+
+### 20.8 Disabling Auth
+
+For development, authentication can be disabled:
+
+```bash
+DANWA_AUTH_ENABLED=false
+```
+
+When disabled, all requests are treated as authenticated with a default admin user.
+
+### 20.9 Configuration
+
+| Setting | Env Var | Default | Description |
+|---------|---------|---------|-------------|
+| Secret key | `JWT_SECRET_KEY` | (required in production) | HMAC key for JWT signing |
+| Algorithm | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| Access token TTL | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token lifetime |
+| Refresh token TTL | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime |
+
+---
+
+## 21. Multi-Tenant Architecture
+
+> **Added in v2.2.0**
+
+Danwa supports multi-tenant isolation with per-tenant data scoping, membership management, and quota enforcement.
+
+### 21.1 Tenant Model
+
+```python
+class Tenant:
+    id: str                    # UUID
+    name: str                  # Display name
+    plan: str                  # "free" | "pro" | "enterprise"
+    quotas: dict               # Per-resource limits
+    created_at: datetime
+```
+
+### 21.2 TenantStore
+
+- **Location**: `backend/persistence/tenant_store.py`
+- **Database**: SQLite at `data/auth.db`
+- **Table**: `tenants`
+
+### 21.3 Membership Model
+
+```python
+class Membership:
+    tenant_id: str
+    user_id: str
+    role: str                  # "owner" | "admin" | "editor" | "viewer"
+    invited_by: str | None
+    joined_at: datetime
+```
+
+### 21.4 MembershipStore
+
+- **Location**: `backend/persistence/membership_store.py`
+- **Database**: SQLite at `data/auth.db`
+- **Table**: `memberships` with composite key `(tenant_id, user_id)`
+
+### 21.5 Tenant Scoping
+
+- `get_active_tenant(request)` — FastAPI dependency extracting tenant from JWT or header
+- `get_tenant_context(request)` — Returns full tenant + user context
+
+### 21.6 Case Model
+
+Cases replace the previous project concept and are tenant-scoped:
+
+```python
+class Case:
+    id: str                    # UUID
+    tenant_id: str             # Owning tenant
+    name: str
+    description: str
+    created_at: datetime
+```
+
+### 21.7 CaseStore
+
+- **Location**: `backend/persistence/case_store.py`
+- **Storage**: JSON files at `data/tenants/{tid}/cases/{cid}/case.json`
+
+### 21.8 Tag Model
+
+Tags are tenant-global with a flat hierarchy (parent_id reserved for future tree structure):
+
+```python
+class Tag:
+    id: str
+    tenant_id: str
+    name: str
+    parent_id: str | None      # Reserved for future hierarchy
+```
+
+### 21.9 TagStore
+
+- **Location**: `backend/persistence/tag_store.py`
+- **Storage**: JSON at `data/tenants/{tid}/tags.json`
+
+### 21.10 Case-Scoped API
+
+All resources are scoped under tenant and case:
+
+```
+/api/v1/tenants/{tid}/cases/{cid}/debates/
+/api/v1/tenants/{tid}/cases/{cid}/dms/
+/api/v1/tenants/{tid}/cases/{cid}/workflows/
+```
+
+### 21.11 Quota Enforcement
+
+Quotas are checked before resource creation:
+
+| Check Function | Resource | Description |
+|----------------|----------|-------------|
+| `check_debate_quota(tenant_id)` | Debates | Limits concurrent/completed debates |
+| `check_document_quota(tenant_id)` | Documents | Limits DMS document count |
+| `check_project_quota(tenant_id)` | Cases | Limits active cases |
+
+---
+
+## 22. BYOK (Bring Your Own Key)
+
+> **Added in v2.2.0**
+
+Users can provide their own LLM API keys, overriding tenant or environment defaults.
+
+### 22.1 UserKeyStore
+
+- **Location**: `backend/persistence/user_key_store.py`
+- **Database**: SQLite at `data/auth.db`
+- **Table**: `user_keys` with columns: `user_id`, `provider`, `api_key` (encrypted)
+
+### 22.2 API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/user-keys` | GET | List user's stored API keys |
+| `/api/v1/user-keys` | PUT | Create or update an API key |
+| `/api/v1/user-keys/{provider}` | DELETE | Remove a stored API key |
+
+### 22.3 Key Resolution Priority
+
+The LLM service resolves API keys in this order:
+
+1. **Profile api_key** — Set directly on the LLM profile (highest priority)
+2. **User key** — Per-user key from `user_keys` table
+3. **Environment variable** — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc. (lowest priority)
+
+### 22.4 Implementation
+
+- `LLMService._resolve_api_key(profile, user_id)` — Centralizes key resolution logic
+- Called transparently during LLM invocation
+
+### 22.5 Frontend
+
+- **Component**: `frontend/src/lib/components/BYOKManager.svelte`
+- **Route**: `#/my-keys`
+- Allows users to add, view, and remove API keys per provider
+
+---
+
+## 23. Transactional Drafting Workflow
+
+> **Added in v2.2.0**
+
+A specialized multi-phase workflow for structured document creation with iterative refinement.
+
+### 23.1 Workflow Template
+
+- **Location**: `templates/transactional_drafting.json`
+- Defines the graph structure, nodes, edges, and approval gates
+
+### 23.2 Specialized Nodes
+
+| Node | Role | Description |
+|------|------|-------------|
+| **Builder** | Creator | Structured document creation with iterative refinement |
+| **Pragmatist** | Evaluator | Practical evaluation and feasibility assessment |
+| **Angel's Advocate** | Optimizer | Constructive improvement suggestions |
+| **Moderator** | Coordinator | Facilitates discussion and manages flow |
+
+### 23.3 Transactional Model
+
+- **Location**: `backend/models/transactional.py`
+- Defines data structures for transactional drafting stages, approval states, and document versions
+
+### 23.4 Edge Types
+
+| Edge | Description |
+|------|-------------|
+| `decision` | Conditional routing based on evaluation outcome |
+| `validates` | Approval gate — requires explicit approval to proceed |
+| `builds-upon` | Iterative refinement — feeds output back to builder |
+
+### 23.5 Report Generator
+
+- **Location**: `backend/workflow/report_generator.py`
+- Generates structured reports from transactional drafting workflow results
+
+### 23.6 Print Templates
+
+- **Location**: `templates/print/transactional_drafting.html`
+- HTML template for rendering transactional drafting reports as printable documents
+
+---
+
+## 24. Angel's Advocate Node
+
+> **Added in v2.2.0**
+
+A constructive counterpart to the Devil's Advocate, focused on identifying strengths and opportunities.
+
+### 24.1 Implementation
+
+- **Location**: `backend/workflow/nodes/angels_advocate_nodes.py`
+- Constructive advocacy: identifies strengths, opportunities, and positive aspects of proposals
+
+### 24.2 Factory Function
+
+```python
+angels_advocate_node_factory() → Callable
+```
+
+Creates an Angel's Advocate node instance configured with the current LLM profile and prompts.
+
+### 24.3 Workflow Registration
+
+- Registered as `"wf-angels-advocate"` in the workflow compiler
+- Can be added to any custom workflow via the Blueprint editor
+
+### 24.4 Output Model
+
+- Uses `AngelsAdvocateOutput` from `backend/models/transactional.py`
+- Structured output with strengths, opportunities, and recommendations
+
+---
+
+## 25. Kitsune Agent & Assistant Tools
+
+> **Added in v2.2.0**
+
+An AI assistant agent with tool-calling capabilities for system introspection and knowledge retrieval.
+
+### 25.1 Tool Registry
+
+- **Location**: `backend/services/assistant_tools.py`
+- Central registry mapping tool names to callable functions
+
+### 25.2 Available Tools (6 read-only)
+
+| Tool | Description |
+|------|-------------|
+| `get_system_status` | System health and resource usage |
+| `list_debates` | List all debates with metadata |
+| `get_debate_details` | Full details of a specific debate |
+| `get_llm_profiles` | Available LLM profile configurations |
+| `get_modules` | Installed modules and their status |
+| `search_knowledge_base` | Search the Kitsune knowledge base |
+
+### 25.3 Tool Execution Loop
+
+- **Location**: `AssistantService.send_message()`
+- Maximum 5 tool-call iterations per user message
+- Implements OpenAI Function Calling protocol via litellm
+- Each iteration: LLM generates tool calls → tools execute → results fed back to LLM
+
+### 25.4 GenerationResult
+
+- Extended with `tool_calls: list[ToolCall]` field
+- Tracks which tools were called and their results
+
+### 25.5 Knowledge Base
+
+- **Location**: `config/prompts/kitsune/knowledge.txt`
+- Auto-generated from system state (modules, profiles, capabilities)
+- Updated on startup and after configuration changes
+
+### 25.6 Prompt Translation
+
+- Per-language prompt translation via `TranslationService`
+- Kitsune responds in the user's preferred language
+
+### 25.7 Frontend Integration
+
+- Tool-call messages rendered in `AssistantMessageBubble.svelte`
+- Shows tool name, arguments, and results in a collapsible UI
+
+---
+
+## 26. Task Queue & Concurrency
+
+> **Added in v2.2.0**
+
+Optional Celery + Redis integration for parallel debate execution and background task processing.
+
+### 26.1 Architecture
+
+```
+┌─────────────┐     ┌───────────┐     ┌─────────────────┐
+│  FastAPI     │────▶│  Redis    │────▶│  Celery Worker  │
+│  (dispatch)  │     │  (broker) │     │  (debate exec)  │
+└─────────────┘     └───────────┘     └─────────────────┘
+```
+
+### 26.2 Task Dispatch Layer
+
+- **Location**: `backend/tasks/dispatch.py`
+- Abstracts task submission: falls back to synchronous execution when Celery is disabled
+
+### 26.3 Celery App Factory
+
+- **Location**: `backend/tasks/celery_app.py`
+- Lazy initialization — Celery is only imported when enabled
+- Returns `None` when `CELERY_ENABLED=false`
+
+### 26.4 Debate Task
+
+- **Location**: `backend/tasks/debate.py`
+- `execute_debate_task(debate_id, config)` — Runs a full debate workflow in a Celery worker
+
+### 26.5 State Backends
+
+| Backend | Description |
+|---------|-------------|
+| `InMemoryWorkflowState` | Default, single-process state storage |
+| `RedisWorkflowState` | Redis-backed state for multi-worker setups |
+
+### 26.6 Configuration
+
+| Setting | Env Var | Default | Description |
+|---------|---------|---------|-------------|
+| Redis URL | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+| Celery enabled | `CELERY_ENABLED` | `false` | Enable task queue |
+| Worker concurrency | `CELERY_WORKER_CONCURRENCY` | `4` | Parallel workers |
+| Max concurrent debates | `MAX_CONCURRENT_DEBATES_GLOBAL` | `10` | Global debate limit |
+
+### 26.7 Docker
+
+Start Celery worker with the dedicated profile:
+
+```bash
+docker compose --profile celery up
+```
+
+---
+
+## 27. Observability & Monitoring
+
+> **Added in v2.2.0**
+
+Structured logging, request tracing, and Prometheus metrics for production observability.
+
+### 27.1 Structured Logging
+
+- **Location**: `backend/core/logging.py`
+- Uses `structlog` for structured log output
+- **Production**: JSON-formatted logs (machine-readable)
+- **Development**: Console-formatted logs (human-readable with colors)
+
+### 27.2 X-Request-ID Middleware
+
+- Generates a unique `X-Request-ID` for each incoming request
+- Propagates existing `X-Request-ID` headers from upstream proxies
+- Included in all log entries and response headers for request tracing
+
+### 27.3 Prometheus Metrics
+
+- **Endpoint**: `GET /metrics`
+- **Library**: `prometheus-fastapi-instrumentator`
+
+### 27.4 Available Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `http_requests_total` | Counter | Total HTTP requests by method, status, endpoint |
+| `debate_duration_seconds` | Histogram | Debate execution duration |
+| `llm_call_duration_seconds` | Histogram | Individual LLM call latency |
+| `active_debates_gauge` | Gauge | Currently running debates |
+
+### 27.5 Prometheus Configuration
+
+- **Location**: `deploy/prometheus.yml`
+- Pre-configured scrape targets for the Danwa backend
+
+---
+
+## 28. Rate Limiting
+
+> **Added in v2.2.0**
+
+API rate limiting via `slowapi` with support for Redis or in-memory backends.
+
+### 28.1 Integration
+
+- **Library**: `slowapi` (Flask-Limiter port for FastAPI)
+- **Backend**: Redis (when available) or in-memory fallback
+
+### 28.2 Default Limits
+
+| Scope | Limit | Description |
+|-------|-------|-------------|
+| Global | 60/minute per IP | Default for all endpoints |
+| Debate creation | 10/hour | Debate API endpoints |
+| File upload | 20/hour | DMS upload endpoints |
+| Analysis | 5/hour | Document analysis endpoints |
+
+### 28.3 Configuration
+
+| Setting | Env Var | Default | Description |
+|---------|---------|---------|-------------|
+| Enabled | `RATE_LIMIT_ENABLED` | `true` | Enable/disable rate limiting |
+| Default limit | `RATE_LIMIT_DEFAULT` | `60/minute` | Global default |
+| Debate limit | `RATE_LIMIT_DEBATE` | `10/hour` | Debate endpoints |
+| Upload limit | `RATE_LIMIT_UPLOAD` | `20/hour` | Upload endpoints |
+| Analysis limit | `RATE_LIMIT_ANALYSIS` | `5/hour` | Analysis endpoints |
+
+### 28.4 Error Response
+
+When rate limited, the API returns HTTP 429 with rate limit details:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "detail": "10 per 1 hour",
+  "retry_after": 3421
+}
+```
+
+---
+
+## 29. Docker Deployment
+
+> **Added in v2.2.0** — Replaces the hypothetical Docker examples from section 19.
+
+### 29.1 Dockerfile.backend
+
+```
+Base: Python 3.12-slim
+System deps: tesseract-ocr, espeak-ng, ffmpeg
+Python deps: installed via uv from pyproject.toml
+WSGI: gunicorn with uvicorn workers
+Port: 8000
+```
+
+### 29.2 Dockerfile.frontend
+
+```
+Stage 1: Node 22 — npm install + npm run build
+Stage 2: Nginx alpine — serves built SPA
+Port: 80
+```
+
+### 29.3 docker-compose.yml
+
+| Service | Description | Ports |
+|---------|-------------|-------|
+| `backend` | FastAPI application | 8000 |
+| `frontend` | Nginx serving Svelte SPA | 80 |
+| `redis` | Redis for caching/task queue | 6379 |
+| `celery-worker` | Optional Celery worker (profile: celery) | — |
+
+### 29.4 Nginx Configuration
+
+- **Location**: `deploy/nginx.conf`
+- TLS termination
+- API proxy to backend (`/api/` → `backend:8000`)
+- SSE support (`proxy_buffering off` for `/api/v1/debate/stream`)
+- Security headers (CSP, HSTS, X-Frame-Options)
+
+### 29.5 Environment Template
+
+- **Location**: `deploy/.env.example`
+- Required variables: `JWT_SECRET_KEY`, `REDIS_URL`, `CORS_ORIGINS`
+
+### 29.6 Makefile Targets
+
+| Target | Command | Description |
+|--------|---------|-------------|
+| `docker-build` | `docker compose build` | Build all images |
+| `docker-up` | `docker compose up -d` | Start all services |
+| `docker-down` | `docker compose down` | Stop all services |
+| `docker-logs` | `docker compose logs -f` | Tail service logs |
+| `docker-up-celery` | `docker compose --profile celery up -d` | Start with Celery worker |
+
+### 29.7 Health Check
+
+- **Endpoint**: `GET /health`
+- Checks:
+  - SQLite database connectivity
+  - Redis connectivity (if configured)
+  - Auth database connectivity
+- Returns `200 OK` with component statuses, or `503` on failure
+
+---
+
+## 30. CI/CD Pipeline
+
+> **Added in v2.2.0**
+
+Automated test, build, and deploy pipeline via GitHub Actions.
+
+### 30.1 Workflow
+
+- **Location**: `.github/workflows/deploy.yml`
+- **Stages**: test → build → deploy
+
+| Stage | Description |
+|-------|-------------|
+| **Test** | Run pytest, ruff, frontend lint + tests |
+| **Build** | Build Docker images with Buildx caching |
+| **Deploy** | SSH deploy to production server |
+
+### 30.2 Docker Buildx
+
+- Uses GitHub Actions cache for Docker layer caching
+- Multi-platform build support
+
+### 30.3 Deployment
+
+- SSH into production server
+- Pull latest images
+- Restart services via docker compose
+
+### 30.4 Required Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `DEPLOY_HOST` | Production server hostname/IP |
+| `DEPLOY_USER` | SSH username |
+| `DEPLOY_KEY` | SSH private key |
+| `JWT_SECRET_KEY` | JWT signing secret for production |
+
+---
+
 ## 16. Missing Links (Features Implemented but not UI-Exposed)
 
 > **What are "Missing Links"?** These are features fully implemented in the backend and/or frontend API client, but **not yet accessible through the user interface**. Users cannot use these features without direct API calls or code changes.
@@ -3123,4 +3746,4 @@ The legacy code is still present in `src/` but is being phased out.
 
 ---
 
-*Documentation generated for Danwa (Debate-Agent) v2.1.0 | Last updated: 2026-05-17*
+*Documentation generated for Danwa (Debate-Agent) v2.2.0 | Last updated: 2026-06-01*

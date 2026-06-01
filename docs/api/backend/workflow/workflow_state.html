@@ -76,6 +76,12 @@
                                 <a class="variable" href="#WorkflowState.language">language</a>
                         </li>
                         <li>
+                                <a class="variable" href="#WorkflowState.search_mode">search_mode</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.rag_context">rag_context</a>
+                        </li>
+                        <li>
                                 <a class="variable" href="#WorkflowState.node_sequence">node_sequence</a>
                         </li>
                         <li>
@@ -132,6 +138,27 @@
                         <li>
                                 <a class="variable" href="#WorkflowState.pause_event">pause_event</a>
                         </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.zero_draft">zero_draft</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.critic_items">critic_items</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.build_responses">build_responses</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.pragmatist_output">pragmatist_output</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.draft_version">draft_version</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.constructivity_score">constructivity_score</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WorkflowState.consensus_result">consensus_result</a>
+                        </li>
                 </ul>
 
             </li>
@@ -155,6 +182,10 @@
 
 <p>Parallel to <code>DebateState</code> but tailored for graph-based workflows with
 structured node types, conditional edges, feedback loops, and interjections.</p>
+
+<p>Also carries transactional-drafting-specific keys (zero_draft, critic_items,
+build_responses, pragmatist_output, etc.) — these are only used when the
+workflow template is <code>transactional_drafting</code>.</p>
 </div>
 
                         <input id="mod-workflow_state-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
@@ -165,72 +196,87 @@ structured node types, conditional edges, feedback loops, and interjections.</p>
 </span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a>
 </span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="sd">Parallel to ``DebateState`` but tailored for graph-based workflows with</span>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="sd">structured node types, conditional edges, feedback loops, and interjections.</span>
-</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">operator</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypedDict</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>
+</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="sd">Also carries transactional-drafting-specific keys (zero_draft, critic_items,</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="sd">build_responses, pragmatist_output, etc.) — these are only used when the</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="sd">workflow template is ``transactional_drafting``.</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 </span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowNodeOutput</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Output produced by a single workflow node execution.&quot;&quot;&quot;</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">operator</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypedDict</span>
 </span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="n">node_type</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="n">tokens_used</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;pending&#39; | &#39;running&#39; | &#39;completed&#39; | &#39;failed&#39; | &#39;skipped&#39;</span>
-</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>
-</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>
-</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared state passed through every LangGraph workflow node.</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowNodeOutput</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Output produced by a single workflow node execution.&quot;&quot;&quot;</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="n">node_type</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="n">tokens_used</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>    <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;pending&#39; | &#39;running&#39; | &#39;completed&#39; | &#39;failed&#39; | &#39;skipped&#39;</span>
 </span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>
-</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a><span class="sd">    Fields using ``Annotated[..., operator.add]`` are list accumulators —</span>
-</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a><span class="sd">    each node *appends* to them rather than replacing.</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>
+</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared state passed through every LangGraph workflow node.</span>
 </span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>
-</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>    <span class="c1"># --- Input (set at creation) ---</span>
-</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># User case text / input</span>
-</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>
-</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="c1"># --- Workflow structure (resolved at compile time) ---</span>
-</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="n">node_sequence</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Ordered node IDs from topological sort</span>
-</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="n">node_configs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span>  <span class="c1"># node_id → resolved config (blueprint, llm, role)</span>
-</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="n">edge_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>  <span class="c1"># node_id → list of outgoing edge dicts</span>
-</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="n">termination_conditions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a><span class="sd">    Fields using ``Annotated[..., operator.add]`` are list accumulators —</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a><span class="sd">    each node *appends* to them rather than replacing.</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="c1"># --- Input (set at creation) ---</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># User case text / input</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="n">search_mode</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;off&#39;, &#39;optional&#39;, &#39;required&#39;</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="n">rag_context</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Document analysis + RAG document excerpts</span>
 </span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>
-</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="c1"># --- Runtime ---</span>
-</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="n">current_node_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="n">current_round</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="c1"># --- Workflow structure (resolved at compile time) ---</span>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="n">node_sequence</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Ordered node IDs from topological sort</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="n">node_configs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span>  <span class="c1"># node_id → resolved config (blueprint, llm, role)</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="n">edge_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>  <span class="c1"># node_id → list of outgoing edge dicts</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>    <span class="n">termination_conditions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
 </span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a>
-</span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a>    <span class="c1"># --- Accumulators ---</span>
-</span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a>    <span class="n">node_outputs</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">WorkflowNodeOutput</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
-</span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a>    <span class="n">messages</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># Full message log</span>
-</span><span id="L-54"><a href="#L-54"><span class="linenos">54</span></a>    <span class="n">current_draft</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-55"><a href="#L-55"><span class="linenos">55</span></a>
-</span><span id="L-56"><a href="#L-56"><span class="linenos">56</span></a>    <span class="c1"># --- Interjection ---</span>
-</span><span id="L-57"><a href="#L-57"><span class="linenos">57</span></a>    <span class="n">interjection_queue</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>  <span class="c1"># Pending interjections</span>
-</span><span id="L-58"><a href="#L-58"><span class="linenos">58</span></a>    <span class="n">consumed_interjections</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
-</span><span id="L-59"><a href="#L-59"><span class="linenos">59</span></a>
-</span><span id="L-60"><a href="#L-60"><span class="linenos">60</span></a>    <span class="c1"># --- Output ---</span>
-</span><span id="L-61"><a href="#L-61"><span class="linenos">61</span></a>    <span class="n">final_consensus</span><span class="p">:</span> <span class="nb">float</span>
-</span><span id="L-62"><a href="#L-62"><span class="linenos">62</span></a>    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="L-63"><a href="#L-63"><span class="linenos">63</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;running&#39; | &#39;paused&#39; | &#39;completed&#39; | &#39;failed&#39;</span>
-</span><span id="L-64"><a href="#L-64"><span class="linenos">64</span></a>
-</span><span id="L-65"><a href="#L-65"><span class="linenos">65</span></a>    <span class="c1"># --- Tone Profiles ---</span>
-</span><span id="L-66"><a href="#L-66"><span class="linenos">66</span></a>    <span class="n">tone_profiles</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># node_id → ToneProfile dict</span>
-</span><span id="L-67"><a href="#L-67"><span class="linenos">67</span></a>
-</span><span id="L-68"><a href="#L-68"><span class="linenos">68</span></a>    <span class="c1"># --- Control ---</span>
-</span><span id="L-69"><a href="#L-69"><span class="linenos">69</span></a>    <span class="n">is_paused</span><span class="p">:</span> <span class="nb">bool</span>
-</span><span id="L-70"><a href="#L-70"><span class="linenos">70</span></a>    <span class="n">pause_event</span><span class="p">:</span> <span class="n">Any</span>  <span class="c1"># asyncio.Event for pause/resume</span>
+</span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a>    <span class="c1"># --- Runtime ---</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a>    <span class="n">current_node_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a>    <span class="n">current_round</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="L-54"><a href="#L-54"><span class="linenos">54</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="L-55"><a href="#L-55"><span class="linenos">55</span></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="L-56"><a href="#L-56"><span class="linenos">56</span></a>
+</span><span id="L-57"><a href="#L-57"><span class="linenos">57</span></a>    <span class="c1"># --- Accumulators ---</span>
+</span><span id="L-58"><a href="#L-58"><span class="linenos">58</span></a>    <span class="n">node_outputs</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">WorkflowNodeOutput</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos">59</span></a>    <span class="n">messages</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># Full message log</span>
+</span><span id="L-60"><a href="#L-60"><span class="linenos">60</span></a>    <span class="n">current_draft</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-61"><a href="#L-61"><span class="linenos">61</span></a>
+</span><span id="L-62"><a href="#L-62"><span class="linenos">62</span></a>    <span class="c1"># --- Interjection ---</span>
+</span><span id="L-63"><a href="#L-63"><span class="linenos">63</span></a>    <span class="n">interjection_queue</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>  <span class="c1"># Pending interjections</span>
+</span><span id="L-64"><a href="#L-64"><span class="linenos">64</span></a>    <span class="n">consumed_interjections</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
+</span><span id="L-65"><a href="#L-65"><span class="linenos">65</span></a>
+</span><span id="L-66"><a href="#L-66"><span class="linenos">66</span></a>    <span class="c1"># --- Output ---</span>
+</span><span id="L-67"><a href="#L-67"><span class="linenos">67</span></a>    <span class="n">final_consensus</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="L-68"><a href="#L-68"><span class="linenos">68</span></a>    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="L-69"><a href="#L-69"><span class="linenos">69</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;running&#39; | &#39;paused&#39; | &#39;completed&#39; | &#39;failed&#39;</span>
+</span><span id="L-70"><a href="#L-70"><span class="linenos">70</span></a>
+</span><span id="L-71"><a href="#L-71"><span class="linenos">71</span></a>    <span class="c1"># --- Tone Profiles ---</span>
+</span><span id="L-72"><a href="#L-72"><span class="linenos">72</span></a>    <span class="n">tone_profiles</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># node_id → ToneProfile dict</span>
+</span><span id="L-73"><a href="#L-73"><span class="linenos">73</span></a>
+</span><span id="L-74"><a href="#L-74"><span class="linenos">74</span></a>    <span class="c1"># --- Control ---</span>
+</span><span id="L-75"><a href="#L-75"><span class="linenos">75</span></a>    <span class="n">is_paused</span><span class="p">:</span> <span class="nb">bool</span>
+</span><span id="L-76"><a href="#L-76"><span class="linenos">76</span></a>    <span class="n">pause_event</span><span class="p">:</span> <span class="n">Any</span>  <span class="c1"># asyncio.Event for pause/resume</span>
+</span><span id="L-77"><a href="#L-77"><span class="linenos">77</span></a>
+</span><span id="L-78"><a href="#L-78"><span class="linenos">78</span></a>    <span class="c1"># --- Transactional Drafting ---</span>
+</span><span id="L-79"><a href="#L-79"><span class="linenos">79</span></a>    <span class="n">zero_draft</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># Originaler Entwurf vom Strategist</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos">80</span></a>    <span class="n">critic_items</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># list[CriticItem]</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos">81</span></a>    <span class="n">build_responses</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># list[BuildResponse]</span>
+</span><span id="L-82"><a href="#L-82"><span class="linenos">82</span></a>    <span class="n">pragmatist_output</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># PragmatistOutput serialised</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos">83</span></a>    <span class="n">draft_version</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># Inkrementiert bei jedem Return-to-Builder</span>
+</span><span id="L-84"><a href="#L-84"><span class="linenos">84</span></a>    <span class="n">constructivity_score</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="L-85"><a href="#L-85"><span class="linenos">85</span></a>    <span class="n">consensus_result</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># {&quot;verdict&quot;: &quot;approved&quot;|&quot;revision_required&quot;, ...}</span>
 </span></pre></div>
 
 
@@ -246,16 +292,16 @@ structured node types, conditional edges, feedback loops, and interjections.</p>
 
     </div>
     <a class="headerlink" href="#WorkflowNodeOutput"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowNodeOutput-14"><a href="#WorkflowNodeOutput-14"><span class="linenos">14</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowNodeOutput</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
-</span><span id="WorkflowNodeOutput-15"><a href="#WorkflowNodeOutput-15"><span class="linenos">15</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Output produced by a single workflow node execution.&quot;&quot;&quot;</span>
-</span><span id="WorkflowNodeOutput-16"><a href="#WorkflowNodeOutput-16"><span class="linenos">16</span></a>
-</span><span id="WorkflowNodeOutput-17"><a href="#WorkflowNodeOutput-17"><span class="linenos">17</span></a>    <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowNodeOutput-18"><a href="#WorkflowNodeOutput-18"><span class="linenos">18</span></a>    <span class="n">node_type</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowNodeOutput-19"><a href="#WorkflowNodeOutput-19"><span class="linenos">19</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowNodeOutput-20"><a href="#WorkflowNodeOutput-20"><span class="linenos">20</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowNodeOutput-21"><a href="#WorkflowNodeOutput-21"><span class="linenos">21</span></a>    <span class="n">tokens_used</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="WorkflowNodeOutput-22"><a href="#WorkflowNodeOutput-22"><span class="linenos">22</span></a>    <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="WorkflowNodeOutput-23"><a href="#WorkflowNodeOutput-23"><span class="linenos">23</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;pending&#39; | &#39;running&#39; | &#39;completed&#39; | &#39;failed&#39; | &#39;skipped&#39;</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowNodeOutput-18"><a href="#WorkflowNodeOutput-18"><span class="linenos">18</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowNodeOutput</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+</span><span id="WorkflowNodeOutput-19"><a href="#WorkflowNodeOutput-19"><span class="linenos">19</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Output produced by a single workflow node execution.&quot;&quot;&quot;</span>
+</span><span id="WorkflowNodeOutput-20"><a href="#WorkflowNodeOutput-20"><span class="linenos">20</span></a>
+</span><span id="WorkflowNodeOutput-21"><a href="#WorkflowNodeOutput-21"><span class="linenos">21</span></a>    <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowNodeOutput-22"><a href="#WorkflowNodeOutput-22"><span class="linenos">22</span></a>    <span class="n">node_type</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowNodeOutput-23"><a href="#WorkflowNodeOutput-23"><span class="linenos">23</span></a>    <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowNodeOutput-24"><a href="#WorkflowNodeOutput-24"><span class="linenos">24</span></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowNodeOutput-25"><a href="#WorkflowNodeOutput-25"><span class="linenos">25</span></a>    <span class="n">tokens_used</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="WorkflowNodeOutput-26"><a href="#WorkflowNodeOutput-26"><span class="linenos">26</span></a>    <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="WorkflowNodeOutput-27"><a href="#WorkflowNodeOutput-27"><span class="linenos">27</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;pending&#39; | &#39;running&#39; | &#39;completed&#39; | &#39;failed&#39; | &#39;skipped&#39;</span>
 </span></pre></div>
 
 
@@ -352,52 +398,63 @@ structured node types, conditional edges, feedback loops, and interjections.</p>
 
     </div>
     <a class="headerlink" href="#WorkflowState"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowState-26"><a href="#WorkflowState-26"><span class="linenos">26</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="WorkflowState-27"><a href="#WorkflowState-27"><span class="linenos">27</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared state passed through every LangGraph workflow node.</span>
-</span><span id="WorkflowState-28"><a href="#WorkflowState-28"><span class="linenos">28</span></a>
-</span><span id="WorkflowState-29"><a href="#WorkflowState-29"><span class="linenos">29</span></a><span class="sd">    Fields using ``Annotated[..., operator.add]`` are list accumulators —</span>
-</span><span id="WorkflowState-30"><a href="#WorkflowState-30"><span class="linenos">30</span></a><span class="sd">    each node *appends* to them rather than replacing.</span>
-</span><span id="WorkflowState-31"><a href="#WorkflowState-31"><span class="linenos">31</span></a><span class="sd">    &quot;&quot;&quot;</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WorkflowState-30"><a href="#WorkflowState-30"><span class="linenos">30</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WorkflowState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="WorkflowState-31"><a href="#WorkflowState-31"><span class="linenos">31</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared state passed through every LangGraph workflow node.</span>
 </span><span id="WorkflowState-32"><a href="#WorkflowState-32"><span class="linenos">32</span></a>
-</span><span id="WorkflowState-33"><a href="#WorkflowState-33"><span class="linenos">33</span></a>    <span class="c1"># --- Input (set at creation) ---</span>
-</span><span id="WorkflowState-34"><a href="#WorkflowState-34"><span class="linenos">34</span></a>    <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-35"><a href="#WorkflowState-35"><span class="linenos">35</span></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-36"><a href="#WorkflowState-36"><span class="linenos">36</span></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-37"><a href="#WorkflowState-37"><span class="linenos">37</span></a>    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># User case text / input</span>
-</span><span id="WorkflowState-38"><a href="#WorkflowState-38"><span class="linenos">38</span></a>    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-39"><a href="#WorkflowState-39"><span class="linenos">39</span></a>
-</span><span id="WorkflowState-40"><a href="#WorkflowState-40"><span class="linenos">40</span></a>    <span class="c1"># --- Workflow structure (resolved at compile time) ---</span>
-</span><span id="WorkflowState-41"><a href="#WorkflowState-41"><span class="linenos">41</span></a>    <span class="n">node_sequence</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Ordered node IDs from topological sort</span>
-</span><span id="WorkflowState-42"><a href="#WorkflowState-42"><span class="linenos">42</span></a>    <span class="n">node_configs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span>  <span class="c1"># node_id → resolved config (blueprint, llm, role)</span>
-</span><span id="WorkflowState-43"><a href="#WorkflowState-43"><span class="linenos">43</span></a>    <span class="n">edge_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>  <span class="c1"># node_id → list of outgoing edge dicts</span>
-</span><span id="WorkflowState-44"><a href="#WorkflowState-44"><span class="linenos">44</span></a>    <span class="n">termination_conditions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
+</span><span id="WorkflowState-33"><a href="#WorkflowState-33"><span class="linenos">33</span></a><span class="sd">    Fields using ``Annotated[..., operator.add]`` are list accumulators —</span>
+</span><span id="WorkflowState-34"><a href="#WorkflowState-34"><span class="linenos">34</span></a><span class="sd">    each node *appends* to them rather than replacing.</span>
+</span><span id="WorkflowState-35"><a href="#WorkflowState-35"><span class="linenos">35</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="WorkflowState-36"><a href="#WorkflowState-36"><span class="linenos">36</span></a>
+</span><span id="WorkflowState-37"><a href="#WorkflowState-37"><span class="linenos">37</span></a>    <span class="c1"># --- Input (set at creation) ---</span>
+</span><span id="WorkflowState-38"><a href="#WorkflowState-38"><span class="linenos">38</span></a>    <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-39"><a href="#WorkflowState-39"><span class="linenos">39</span></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-40"><a href="#WorkflowState-40"><span class="linenos">40</span></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-41"><a href="#WorkflowState-41"><span class="linenos">41</span></a>    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># User case text / input</span>
+</span><span id="WorkflowState-42"><a href="#WorkflowState-42"><span class="linenos">42</span></a>    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-43"><a href="#WorkflowState-43"><span class="linenos">43</span></a>    <span class="n">search_mode</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;off&#39;, &#39;optional&#39;, &#39;required&#39;</span>
+</span><span id="WorkflowState-44"><a href="#WorkflowState-44"><span class="linenos">44</span></a>    <span class="n">rag_context</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Document analysis + RAG document excerpts</span>
 </span><span id="WorkflowState-45"><a href="#WorkflowState-45"><span class="linenos">45</span></a>
-</span><span id="WorkflowState-46"><a href="#WorkflowState-46"><span class="linenos">46</span></a>    <span class="c1"># --- Runtime ---</span>
-</span><span id="WorkflowState-47"><a href="#WorkflowState-47"><span class="linenos">47</span></a>    <span class="n">current_node_id</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-48"><a href="#WorkflowState-48"><span class="linenos">48</span></a>    <span class="n">current_round</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="WorkflowState-49"><a href="#WorkflowState-49"><span class="linenos">49</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span>
-</span><span id="WorkflowState-50"><a href="#WorkflowState-50"><span class="linenos">50</span></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="WorkflowState-46"><a href="#WorkflowState-46"><span class="linenos">46</span></a>    <span class="c1"># --- Workflow structure (resolved at compile time) ---</span>
+</span><span id="WorkflowState-47"><a href="#WorkflowState-47"><span class="linenos">47</span></a>    <span class="n">node_sequence</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Ordered node IDs from topological sort</span>
+</span><span id="WorkflowState-48"><a href="#WorkflowState-48"><span class="linenos">48</span></a>    <span class="n">node_configs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span>  <span class="c1"># node_id → resolved config (blueprint, llm, role)</span>
+</span><span id="WorkflowState-49"><a href="#WorkflowState-49"><span class="linenos">49</span></a>    <span class="n">edge_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>  <span class="c1"># node_id → list of outgoing edge dicts</span>
+</span><span id="WorkflowState-50"><a href="#WorkflowState-50"><span class="linenos">50</span></a>    <span class="n">termination_conditions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
 </span><span id="WorkflowState-51"><a href="#WorkflowState-51"><span class="linenos">51</span></a>
-</span><span id="WorkflowState-52"><a href="#WorkflowState-52"><span class="linenos">52</span></a>    <span class="c1"># --- Accumulators ---</span>
-</span><span id="WorkflowState-53"><a href="#WorkflowState-53"><span class="linenos">53</span></a>    <span class="n">node_outputs</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">WorkflowNodeOutput</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
-</span><span id="WorkflowState-54"><a href="#WorkflowState-54"><span class="linenos">54</span></a>    <span class="n">messages</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># Full message log</span>
-</span><span id="WorkflowState-55"><a href="#WorkflowState-55"><span class="linenos">55</span></a>    <span class="n">current_draft</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-56"><a href="#WorkflowState-56"><span class="linenos">56</span></a>
-</span><span id="WorkflowState-57"><a href="#WorkflowState-57"><span class="linenos">57</span></a>    <span class="c1"># --- Interjection ---</span>
-</span><span id="WorkflowState-58"><a href="#WorkflowState-58"><span class="linenos">58</span></a>    <span class="n">interjection_queue</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>  <span class="c1"># Pending interjections</span>
-</span><span id="WorkflowState-59"><a href="#WorkflowState-59"><span class="linenos">59</span></a>    <span class="n">consumed_interjections</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
-</span><span id="WorkflowState-60"><a href="#WorkflowState-60"><span class="linenos">60</span></a>
-</span><span id="WorkflowState-61"><a href="#WorkflowState-61"><span class="linenos">61</span></a>    <span class="c1"># --- Output ---</span>
-</span><span id="WorkflowState-62"><a href="#WorkflowState-62"><span class="linenos">62</span></a>    <span class="n">final_consensus</span><span class="p">:</span> <span class="nb">float</span>
-</span><span id="WorkflowState-63"><a href="#WorkflowState-63"><span class="linenos">63</span></a>    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="WorkflowState-64"><a href="#WorkflowState-64"><span class="linenos">64</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;running&#39; | &#39;paused&#39; | &#39;completed&#39; | &#39;failed&#39;</span>
-</span><span id="WorkflowState-65"><a href="#WorkflowState-65"><span class="linenos">65</span></a>
-</span><span id="WorkflowState-66"><a href="#WorkflowState-66"><span class="linenos">66</span></a>    <span class="c1"># --- Tone Profiles ---</span>
-</span><span id="WorkflowState-67"><a href="#WorkflowState-67"><span class="linenos">67</span></a>    <span class="n">tone_profiles</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># node_id → ToneProfile dict</span>
-</span><span id="WorkflowState-68"><a href="#WorkflowState-68"><span class="linenos">68</span></a>
-</span><span id="WorkflowState-69"><a href="#WorkflowState-69"><span class="linenos">69</span></a>    <span class="c1"># --- Control ---</span>
-</span><span id="WorkflowState-70"><a href="#WorkflowState-70"><span class="linenos">70</span></a>    <span class="n">is_paused</span><span class="p">:</span> <span class="nb">bool</span>
-</span><span id="WorkflowState-71"><a href="#WorkflowState-71"><span class="linenos">71</span></a>    <span class="n">pause_event</span><span class="p">:</span> <span class="n">Any</span>  <span class="c1"># asyncio.Event for pause/resume</span>
+</span><span id="WorkflowState-52"><a href="#WorkflowState-52"><span class="linenos">52</span></a>    <span class="c1"># --- Runtime ---</span>
+</span><span id="WorkflowState-53"><a href="#WorkflowState-53"><span class="linenos">53</span></a>    <span class="n">current_node_id</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-54"><a href="#WorkflowState-54"><span class="linenos">54</span></a>    <span class="n">current_round</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="WorkflowState-55"><a href="#WorkflowState-55"><span class="linenos">55</span></a>    <span class="n">max_rounds</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="WorkflowState-56"><a href="#WorkflowState-56"><span class="linenos">56</span></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="WorkflowState-57"><a href="#WorkflowState-57"><span class="linenos">57</span></a>
+</span><span id="WorkflowState-58"><a href="#WorkflowState-58"><span class="linenos">58</span></a>    <span class="c1"># --- Accumulators ---</span>
+</span><span id="WorkflowState-59"><a href="#WorkflowState-59"><span class="linenos">59</span></a>    <span class="n">node_outputs</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">WorkflowNodeOutput</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
+</span><span id="WorkflowState-60"><a href="#WorkflowState-60"><span class="linenos">60</span></a>    <span class="n">messages</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># Full message log</span>
+</span><span id="WorkflowState-61"><a href="#WorkflowState-61"><span class="linenos">61</span></a>    <span class="n">current_draft</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-62"><a href="#WorkflowState-62"><span class="linenos">62</span></a>
+</span><span id="WorkflowState-63"><a href="#WorkflowState-63"><span class="linenos">63</span></a>    <span class="c1"># --- Interjection ---</span>
+</span><span id="WorkflowState-64"><a href="#WorkflowState-64"><span class="linenos">64</span></a>    <span class="n">interjection_queue</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>  <span class="c1"># Pending interjections</span>
+</span><span id="WorkflowState-65"><a href="#WorkflowState-65"><span class="linenos">65</span></a>    <span class="n">consumed_interjections</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>
+</span><span id="WorkflowState-66"><a href="#WorkflowState-66"><span class="linenos">66</span></a>
+</span><span id="WorkflowState-67"><a href="#WorkflowState-67"><span class="linenos">67</span></a>    <span class="c1"># --- Output ---</span>
+</span><span id="WorkflowState-68"><a href="#WorkflowState-68"><span class="linenos">68</span></a>    <span class="n">final_consensus</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="WorkflowState-69"><a href="#WorkflowState-69"><span class="linenos">69</span></a>    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="WorkflowState-70"><a href="#WorkflowState-70"><span class="linenos">70</span></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;running&#39; | &#39;paused&#39; | &#39;completed&#39; | &#39;failed&#39;</span>
+</span><span id="WorkflowState-71"><a href="#WorkflowState-71"><span class="linenos">71</span></a>
+</span><span id="WorkflowState-72"><a href="#WorkflowState-72"><span class="linenos">72</span></a>    <span class="c1"># --- Tone Profiles ---</span>
+</span><span id="WorkflowState-73"><a href="#WorkflowState-73"><span class="linenos">73</span></a>    <span class="n">tone_profiles</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># node_id → ToneProfile dict</span>
+</span><span id="WorkflowState-74"><a href="#WorkflowState-74"><span class="linenos">74</span></a>
+</span><span id="WorkflowState-75"><a href="#WorkflowState-75"><span class="linenos">75</span></a>    <span class="c1"># --- Control ---</span>
+</span><span id="WorkflowState-76"><a href="#WorkflowState-76"><span class="linenos">76</span></a>    <span class="n">is_paused</span><span class="p">:</span> <span class="nb">bool</span>
+</span><span id="WorkflowState-77"><a href="#WorkflowState-77"><span class="linenos">77</span></a>    <span class="n">pause_event</span><span class="p">:</span> <span class="n">Any</span>  <span class="c1"># asyncio.Event for pause/resume</span>
+</span><span id="WorkflowState-78"><a href="#WorkflowState-78"><span class="linenos">78</span></a>
+</span><span id="WorkflowState-79"><a href="#WorkflowState-79"><span class="linenos">79</span></a>    <span class="c1"># --- Transactional Drafting ---</span>
+</span><span id="WorkflowState-80"><a href="#WorkflowState-80"><span class="linenos">80</span></a>    <span class="n">zero_draft</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># Originaler Entwurf vom Strategist</span>
+</span><span id="WorkflowState-81"><a href="#WorkflowState-81"><span class="linenos">81</span></a>    <span class="n">critic_items</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># list[CriticItem]</span>
+</span><span id="WorkflowState-82"><a href="#WorkflowState-82"><span class="linenos">82</span></a>    <span class="n">build_responses</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">]</span>  <span class="c1"># list[BuildResponse]</span>
+</span><span id="WorkflowState-83"><a href="#WorkflowState-83"><span class="linenos">83</span></a>    <span class="n">pragmatist_output</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># PragmatistOutput serialised</span>
+</span><span id="WorkflowState-84"><a href="#WorkflowState-84"><span class="linenos">84</span></a>    <span class="n">draft_version</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># Inkrementiert bei jedem Return-to-Builder</span>
+</span><span id="WorkflowState-85"><a href="#WorkflowState-85"><span class="linenos">85</span></a>    <span class="n">constructivity_score</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="WorkflowState-86"><a href="#WorkflowState-86"><span class="linenos">86</span></a>    <span class="n">consensus_result</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># {&quot;verdict&quot;: &quot;approved&quot;|&quot;revision_required&quot;, ...}</span>
 </span></pre></div>
 
 
@@ -459,6 +516,28 @@ each node <em>appends</em> to them rather than replacing.</p>
         
     </div>
     <a class="headerlink" href="#WorkflowState.language"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.search_mode" class="classattr">
+                                <div class="attr variable">
+            <span class="name">search_mode</span><span class="annotation">: str</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.search_mode"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.rag_context" class="classattr">
+                                <div class="attr variable">
+            <span class="name">rag_context</span><span class="annotation">: str</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.rag_context"></a>
     
     
 
@@ -553,7 +632,7 @@ each node <em>appends</em> to them rather than replacing.</p>
                             </div>
                             <div id="WorkflowState.node_outputs" class="classattr">
                                 <div class="attr variable">
-            <span class="name">node_outputs</span><span class="annotation">: typing.Annotated[list[<a href="#WorkflowNodeOutput">WorkflowNodeOutput</a>], &lt;built-in function add&gt;]</span>
+            <span class="name">node_outputs</span><span class="annotation">: Annotated[list[<a href="#WorkflowNodeOutput">WorkflowNodeOutput</a>], &lt;built-in function add&gt;]</span>
 
         
     </div>
@@ -564,7 +643,7 @@ each node <em>appends</em> to them rather than replacing.</p>
                             </div>
                             <div id="WorkflowState.messages" class="classattr">
                                 <div class="attr variable">
-            <span class="name">messages</span><span class="annotation">: typing.Annotated[list[dict], &lt;built-in function add&gt;]</span>
+            <span class="name">messages</span><span class="annotation">: Annotated[list[dict], &lt;built-in function add&gt;]</span>
 
         
     </div>
@@ -597,7 +676,7 @@ each node <em>appends</em> to them rather than replacing.</p>
                             </div>
                             <div id="WorkflowState.consumed_interjections" class="classattr">
                                 <div class="attr variable">
-            <span class="name">consumed_interjections</span><span class="annotation">: typing.Annotated[list[str], &lt;built-in function add&gt;]</span>
+            <span class="name">consumed_interjections</span><span class="annotation">: Annotated[list[str], &lt;built-in function add&gt;]</span>
 
         
     </div>
@@ -668,6 +747,83 @@ each node <em>appends</em> to them rather than replacing.</p>
         
     </div>
     <a class="headerlink" href="#WorkflowState.pause_event"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.zero_draft" class="classattr">
+                                <div class="attr variable">
+            <span class="name">zero_draft</span><span class="annotation">: str | None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.zero_draft"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.critic_items" class="classattr">
+                                <div class="attr variable">
+            <span class="name">critic_items</span><span class="annotation">: Annotated[list[dict], &lt;built-in function add&gt;]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.critic_items"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.build_responses" class="classattr">
+                                <div class="attr variable">
+            <span class="name">build_responses</span><span class="annotation">: Annotated[list[dict], &lt;built-in function add&gt;]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.build_responses"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.pragmatist_output" class="classattr">
+                                <div class="attr variable">
+            <span class="name">pragmatist_output</span><span class="annotation">: dict | None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.pragmatist_output"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.draft_version" class="classattr">
+                                <div class="attr variable">
+            <span class="name">draft_version</span><span class="annotation">: int</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.draft_version"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.constructivity_score" class="classattr">
+                                <div class="attr variable">
+            <span class="name">constructivity_score</span><span class="annotation">: float</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.constructivity_score"></a>
+    
+    
+
+                            </div>
+                            <div id="WorkflowState.consensus_result" class="classattr">
+                                <div class="attr variable">
+            <span class="name">consensus_result</span><span class="annotation">: dict | None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#WorkflowState.consensus_result"></a>
     
     
 
