@@ -126,21 +126,21 @@
           </button>
         {/each}
       {/if}
-      {#if !showCreate}
+      <div class="border-t border-gray-200 dark:border-gray-700">
         <button
-          class="w-full text-left px-3 py-2 text-sm text-blue-600 dark:text-blue-400 border-t border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          onclick={() => { showCreate = true; }}
+          class="w-full text-left px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          class:hidden={showCreate}
+          onclick={(e) => { e.stopPropagation(); showCreate = true; }}
         >
           + {t('cases.create')}
         </button>
-      {:else}
-        <div class="px-3 py-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        <div class:hidden={!showCreate} class="px-3 py-2 space-y-2">
           <input
             type="text"
             bind:value={newTitle}
             placeholder={t('cases.title_label')}
             class="w-full px-2 py-1 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-            onkeydown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') showCreate = false; }}
+            onkeydown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') showCreate = false; e.stopPropagation(); }}
           />
           <input
             type="text"
@@ -164,7 +164,11 @@
             </button>
           </div>
         </div>
-      {/if}
+      </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .hidden { display: none; }
+</style>
