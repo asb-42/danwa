@@ -23,6 +23,7 @@ from backend.blueprints.workflow_models import (
 )
 from backend.workflow.node_functions import (
     agent_node_factory,
+    angels_advocate_node_factory,
     builder_node_factory,
     complete_wf_node,
     gate_node_factory,
@@ -516,6 +517,8 @@ class WorkflowCompiler:
                 return builder_node_factory(node.id, config)
             elif node.type == "wf-pragmatist":
                 return pragmatist_node_factory(node.id, config)
+            elif node.type == "wf-angels-advocate":
+                return angels_advocate_node_factory(node.id, config)
             else:
                 return agent_node_factory(node.id, node.type, config)
         elif node.type == "wf-gate":

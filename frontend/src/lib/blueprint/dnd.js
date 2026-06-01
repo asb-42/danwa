@@ -132,6 +132,10 @@ const DEFAULT_NODE_DATA = {
     role_type_name: '',
     role_type_color: '#8b5cf6',
   },
+  'wf-angels-advocate': {
+    label: "Angel's Advocate",
+    agent_blueprint_id: null,
+  },
 };
 
 /**

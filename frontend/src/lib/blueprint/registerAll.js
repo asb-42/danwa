@@ -39,6 +39,7 @@ import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNod
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
 import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
 import AgentNode from '../../components/blueprint/nodes/AgentNode.svelte';
+import AngelsAdvocateNode from '../../components/blueprint/nodes/AngelsAdvocateNode.svelte';
 import BuilderNode from '../../components/blueprint/nodes/BuilderNode.svelte';
 import PragmatistNode from '../../components/blueprint/nodes/PragmatistNode.svelte';
 
@@ -532,6 +533,21 @@ export function registerAllNodeTypes() {
     defaultData: () => ({
       isDraft: true,
       label: 'Pragmatist',
+      agent_blueprint_id: null,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'wf-angels-advocate',
+    component: AngelsAdvocateNode,
+    category: 'workflow',
+    schemaRef: 'WorkflowDefinition',
+    icon: '🛡️',
+    labelKey: 'blueprint.palette.wfAngelsAdvocate',
+    defaultData: () => ({
+      isDraft: true,
+      label: "Angel's Advocate",
       agent_blueprint_id: null,
     }),
     active: true,

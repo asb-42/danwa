@@ -61,7 +61,7 @@
         <BundleAgentForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'wf-phase'}
         <PhaseForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
-      {:else if ['wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate', 'wf-analyst', 'wf-creative', 'wf-fact-checker', 'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner', 'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer', 'wf-builder', 'wf-pragmatist'].includes(nodeType)}
+      {:else if ['wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-user-injection', 'wf-gate', 'wf-analyst', 'wf-creative', 'wf-fact-checker', 'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner', 'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer', 'wf-builder', 'wf-pragmatist', 'wf-angels-advocate'].includes(nodeType)}
         <WorkflowNodeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else}
         <div class="inspector-empty">

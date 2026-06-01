@@ -48,6 +48,7 @@ WORKFLOW_NODE_TYPES: list[str] = [
     "wf-phase",  # Phase container node for multi-phase debates
     "wf-builder",
     "wf-pragmatist",
+    "wf-angels-advocate",
 ]
 
 #: Node types that require an agent_blueprint_id or bundle_id reference.
@@ -70,6 +71,7 @@ AGENT_NODE_TYPES: list[str] = [
     "wf-agent",
     "wf-builder",
     "wf-pragmatist",
+    "wf-angels-advocate",
 ]
 
 
@@ -111,6 +113,7 @@ class WorkflowNode(BaseModel):
         "wf-phase",
         "wf-builder",
         "wf-pragmatist",
+        "wf-angels-advocate",
     ]
     label: str = ""
     agent_blueprint_id: str | None = None  # Required for legacy agent node types
@@ -180,6 +183,7 @@ INJECTABLE_AGENT_NODE_TYPES: list[str] = [
     "wf-agent",
     "wf-builder",
     "wf-pragmatist",
+    "wf-angels-advocate",
     # Note: wf-input, wf-gate, wf-phase, wf-user-injection, wf-tone-profile cannot receive injects_config
 ]
 

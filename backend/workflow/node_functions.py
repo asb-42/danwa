@@ -314,6 +314,7 @@ _LAZY_IMPORT_MAP: dict[str, tuple[str, str]] = {
     "interjection_node": ("backend.workflow.nodes.system_nodes", "interjection_node"),
     "builder_node_factory": ("backend.workflow.nodes.builder_nodes", "builder_node_factory"),
     "pragmatist_node_factory": ("backend.workflow.nodes.pragmatist_nodes", "pragmatist_node_factory"),
+    "angels_advocate_node_factory": ("backend.workflow.nodes.angels_advocate_nodes", "angels_advocate_node_factory"),
     "route_decision": ("backend.workflow.workflow_routers", "route_decision"),
 }
 

@@ -1,12 +1,13 @@
 {
   "id": "tpl-transactional-drafting",
   "name": "Transactional Drafting",
-  "description": "A structured drafting workflow with Critic, Builder, and Pragmatist roles. The Critic identifies flaws, the Builder proposes solutions, and the Pragmatist evaluates real-world feasibility. Supports iterative revision until approval or deadlock.",
+  "description": "A structured drafting workflow with Critic, Angel's Advocate, Builder, and Pragmatist roles. The Critic identifies flaws, the Angel's Advocate preserves critical elements, the Builder proposes solutions, and the Pragmatist evaluates real-world feasibility. Supports iterative revision until approval or deadlock.",
   "category": "system",
-  "tags": ["drafting", "transactional", "builder", "pragmatist", "critic"],
+  "tags": ["drafting", "transactional", "builder", "pragmatist", "critic", "angels-advocate"],
   "placeholders": [
     { "key": "strategist_blueprint_id", "type": "blueprint_ref", "description": "Strategist that creates the zero draft" },
     { "key": "critic_blueprint_id", "type": "blueprint_ref", "description": "Critic that analyses the draft" },
+    { "key": "angels_advocate_blueprint_id", "type": "blueprint_ref", "description": "Angel's Advocate that identifies elements to preserve" },
     { "key": "builder_blueprint_id", "type": "blueprint_ref", "description": "Builder that addresses critique" },
     { "key": "pragmatist_blueprint_id", "type": "blueprint_ref", "description": "Pragmatist that evaluates feasibility" },
     { "key": "moderator_blueprint_id", "type": "blueprint_ref", "description": "Moderator that makes the approval decision" }
@@ -48,6 +49,17 @@
         "position": { "x": 520, "y": 400 }
       },
       {
+        "id": "angels-advocate",
+        "type": "wf-angels-advocate",
+        "label": "Angel's Advocate",
+        "agent_blueprint_id": "{{angels_advocate_blueprint_id}}",
+        "config": {
+          "mode": "angels_advocate",
+          "template": "Finde die Elemente am aktuellen Stand, die beibehalten werden müssen, selbst wenn alles andere verworfen wird."
+        },
+        "position": { "x": 740, "y": 400 }
+      },
+      {
         "id": "builder",
         "type": "wf-builder",
         "label": "Builder",
@@ -85,8 +97,9 @@
       { "id": "e-input-init", "source": "input", "target": "init", "type": "sequential" },
       { "id": "e-init-strategist", "source": "init", "target": "strategist", "type": "sequential" },
       { "id": "e-strategist-critic", "source": "strategist", "target": "critic", "type": "sequential" },
-      { "id": "e-critic-builder", "source": "critic", "target": "builder", "type": "sequential", "label": "address critique" },
-      { "id": "e-builder-pragmatist", "source": "builder", "target": "pragmatist", "type": "sequential", "label": "validate solutions" },
+      { "id": "e-critic-angels-advocate", "source": "critic", "target": "angels-advocate", "type": "sequential", "label": "preserve essentials" },
+      { "id": "e-angels-advocate-builder", "source": "angels-advocate", "target": "builder", "type": "builds_upon", "label": "address critique" },
+      { "id": "e-builder-pragmatist", "source": "builder", "target": "pragmatist", "type": "validates", "label": "validate solutions" },
       { "id": "e-pragmatist-moderator", "source": "pragmatist", "target": "moderator", "type": "sequential" },
       { "id": "e-moderator-approved", "source": "moderator", "target": "__end__", "type": "decision", "condition": "approved" },
       { "id": "e-moderator-revision", "source": "moderator", "target": "builder", "type": "decision", "condition": "revision_required" }

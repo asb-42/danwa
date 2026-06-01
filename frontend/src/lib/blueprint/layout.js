@@ -54,6 +54,7 @@ const NODE_DIMENSIONS = {
   'wf-synthesizer': { width: 200, height: 90 },
   'wf-user-injection': { width: 200, height: 90 },
   'wf-gate': { width: 180, height: 80 },
+  'wf-angels-advocate': { width: 200, height: 90 },
 };
 
 /**

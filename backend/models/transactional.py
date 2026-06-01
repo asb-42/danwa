@@ -152,3 +152,51 @@ class PragmatistOutput(BaseModel):
         default_factory=list,
         description="Gründe, warum eine Option trotz guter Idee scheitern würde",
     )
+
+
+class PreservedElement(BaseModel):
+    """Ein Element, das der Angel's Advocate als erhaltenswert identifiziert."""
+
+    element_id: str = Field(
+        ...,
+        description="Eindeutige ID, z.B. 'aa-001'",
+    )
+    source_location: str = Field(
+        ...,
+        max_length=500,
+        description="Adresse im Dokument, z.B. '§3.2 Abs. 1'",
+    )
+    preserved_text: str = Field(
+        ...,
+        max_length=1000,
+        description="Der Text, der beibehalten werden soll",
+    )
+    rationale: str = Field(
+        ...,
+        max_length=500,
+        description="Warum dieses Element kritisch ist und nicht verworfen werden darf",
+    )
+    priority: Literal["essential", "important", "useful"] = Field(
+        ...,
+        description="Wie wichtig die Erhaltung ist",
+    )
+
+
+class AngelsAdvocateOutput(BaseModel):
+    """Container für die gesamte Angel's Advocate-Analyse."""
+
+    preserved_elements: list[PreservedElement] = Field(
+        ...,
+        min_length=1,
+        description="Elemente, die beibehalten werden müssen",
+    )
+    overall_stability_score: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Wie stabil ist der aktuelle Stand (1.0 = sehr stabil)",
+    )
+    warning: str | None = Field(
+        default=None,
+        description="Warnung, wenn zu viele Elemente verworfen werden könnten",
+    )

@@ -38,20 +38,55 @@ def moderator_node_factory(
         # Transactional Drafting: evaluate from pragmatist_output if present
         num_outputs = len(state.get("node_outputs", [])) + len(result.get("node_outputs", []))
         pragmatist_output = state.get("pragmatist_output")
-        if pragmatist_output:
-            reality_score = pragmatist_output.get("reality_score", 0.0)
-            blocking_concerns = pragmatist_output.get("blocking_concerns", [])
-            approved = reality_score >= 0.6 and not blocking_concerns
-            consensus = reality_score
-            verdict = "approved" if approved else "revision_required"
-            result["consensus_result"] = {
-                "verdict": verdict,
-                "reality_score": reality_score,
-                "blocking_concerns": blocking_concerns,
-            }
+        workflow_template = state.get("workflow_template", "")
+
+        if workflow_template == "transactional_drafting":
+            # --- Transactional Drafting decision logic ---
+            if pragmatist_output:
+                reality_score = pragmatist_output.get("reality_score", 0.0)
+                blocking_concerns = pragmatist_output.get("blocking_concerns", [])
+                approved = reality_score >= 0.6 and not blocking_concerns
+                consensus = reality_score
+                verdict = "approved" if approved else "revision_required"
+                result["consensus_result"] = {
+                    "verdict": verdict,
+                    "reality_score": reality_score,
+                    "blocking_concerns": blocking_concerns,
+                }
+            else:
+                # No pragmatist_output — Builder likely failed JSON parsing.
+                # Check if we have build_responses at all; if not, this round
+                # produced nothing useful.  Approve after enough rounds to avoid
+                # infinite loops on persistent LLM failures.
+                build_responses = state.get("build_responses", [])
+                current_round = state.get("current_round", 1)
+                draft_version = state.get("draft_version", 1)
+                if not build_responses and draft_version >= 3:
+                    # After 3+ failed drafts, approve with warning to avoid
+                    # burning tokens on an unproductive loop.
+                    logger.warning(
+                        "Moderator: no pragmatist_output and no build_responses "
+                        "after %d drafts — approving with warning to prevent infinite loop",
+                        draft_version,
+                    )
+                    consensus = 0.5
+                    result["consensus_result"] = {
+                        "verdict": "approved",
+                        "reality_score": 0.5,
+                        "blocking_concerns": ["Approved with warning: Builder produced no valid output after multiple attempts."],
+                    }
+                else:
+                    # First attempts — request revision
+                    consensus = 0.0
+                    result["consensus_result"] = {
+                        "verdict": "revision_required",
+                        "reality_score": 0.0,
+                        "blocking_concerns": ["No pragmatist evaluation available — Builder output needs retry."],
+                    }
+
             # Increment draft_version on revision (loop detection)
-            current_dv = state.get("draft_version", 1)
-            if verdict == "revision_required":
+            if result.get("consensus_result", {}).get("verdict") == "revision_required":
+                current_dv = result.get("draft_version", state.get("draft_version", 1))
                 result["draft_version"] = current_dv + 1
         else:
             # Standard debate: simple consensus heuristic based on draft length

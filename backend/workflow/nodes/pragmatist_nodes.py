@@ -62,6 +62,13 @@ def pragmatist_node_factory(
         build_responses = state.get("build_responses", [])
         if not build_responses:
             logger.warning("Pragmatist %s: no build_responses to evaluate", node_id)
+            # Return a default pragmatist_output so the moderator can still
+            # make a decision (rather than leaving consensus_result unset).
+            default_output = PragmatistOutput(
+                evaluations=[],
+                reality_score=0.0,
+                blocking_concerns=["No build responses were produced by the Builder."],
+            )
             return {
                 "node_outputs": [
                     {
@@ -73,7 +80,9 @@ def pragmatist_node_factory(
                         "duration_ms": 0,
                         "status": "completed",
                     }
-                ]
+                ],
+                "pragmatist_output": default_output.model_dump(),
+                "build_responses": [],
             }
 
         system_prompt = _resolve_system_prompt(resolved_config, state)

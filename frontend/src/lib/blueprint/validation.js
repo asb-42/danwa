@@ -65,7 +65,7 @@ export const WORKFLOW_CONNECTION_RULES = {
   'wf-input': ['wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
   'wf-initialize': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
   'wf-strategist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
-  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-builder', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
+  'wf-critic': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-builder', 'wf-angels-advocate', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-optimizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-moderator': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-builder', 'wf-gate', 'wf-tone-profile'],
   'wf-user-injection': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
@@ -82,8 +82,9 @@ export const WORKFLOW_CONNECTION_RULES = {
   'wf-ethicist': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-synthesizer': ['wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-user-injection', 'wf-tone-profile'],
   'wf-phase': ['wf-phase', 'wf-input', 'wf-initialize', 'wf-strategist', 'wf-critic', 'wf-optimizer', 'wf-moderator', 'wf-gate', 'wf-tone-profile'],
-  'wf-builder': ['wf-pragmatist', 'wf-moderator', 'wf-critic', 'wf-gate', 'wf-tone-profile'],
-  'wf-pragmatist': ['wf-moderator', 'wf-builder', 'wf-critic', 'wf-gate', 'wf-tone-profile'],
+  'wf-angels-advocate': ['wf-builder', 'wf-moderator', 'wf-critic', 'wf-gate', 'wf-tone-profile'],
+  'wf-builder': ['wf-pragmatist', 'wf-moderator', 'wf-critic', 'wf-angels-advocate', 'wf-gate', 'wf-tone-profile'],
+  'wf-pragmatist': ['wf-moderator', 'wf-builder', 'wf-critic', 'wf-angels-advocate', 'wf-gate', 'wf-tone-profile'],
 };
 
 /**
@@ -95,7 +96,7 @@ export const INJECTABLE_AGENT_TYPES = [
   'wf-analyst', 'wf-creative', 'wf-fact-checker',
   'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner',
   'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer',
-  'wf-builder', 'wf-pragmatist',
+  'wf-builder', 'wf-pragmatist', 'wf-angels-advocate',
 ];
 
 /**
@@ -207,6 +208,14 @@ export function getWorkflowEdgeType(sourceType, targetType) {
   // User injection → any = interjection
   if (sourceType === 'wf-user-injection') {
     return 'interjection';
+  }
+  // Critic → Angel's Advocate = sequential
+  if (sourceType === 'wf-critic' && targetType === 'wf-angels-advocate') {
+    return 'sequential';
+  }
+  // Angel's Advocate → Builder = builds_upon
+  if (sourceType === 'wf-angels-advocate' && targetType === 'wf-builder') {
+    return 'builds_upon';
   }
   // Critic → Builder = builds_upon
   if (sourceType === 'wf-critic' && targetType === 'wf-builder') {

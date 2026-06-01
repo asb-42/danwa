@@ -21,7 +21,7 @@
     'wf-optimizer', 'wf-moderator', 'wf-analyst', 'wf-creative',
     'wf-socratic-questioner', 'wf-expert-reviewer', 'wf-steel-manner',
     'wf-devils-advocate', 'wf-troll', 'wf-mediator', 'wf-ethicist', 'wf-synthesizer',
-    'wf-builder', 'wf-pragmatist',
+    'wf-builder', 'wf-pragmatist', 'wf-angels-advocate',
   ];
 
   const NODE_TYPE_LABELS = {
@@ -46,6 +46,7 @@
     'wf-gate': '🔀 Gate',
     'wf-builder': '🔨 Builder',
     'wf-pragmatist': '⚖️ Pragmatist',
+    'wf-angels-advocate': "🛡️ Angel's Advocate",
   };
 
   const INPUT_TYPES = [

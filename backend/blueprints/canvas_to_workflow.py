@@ -54,6 +54,7 @@ CANVAS_TO_WF_NODE_TYPE: dict[str, str] = {
     "wf-tone-profile": "wf-tone-profile",
     "wf-agent": "wf-agent",
     "wf-phase": "wf-phase",
+    "wf-angels-advocate": "wf-angels-advocate",
 }
 
 # Asset-node types that should be resolved to their linked workflow node.

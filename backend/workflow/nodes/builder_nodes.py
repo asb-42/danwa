@@ -184,6 +184,17 @@ def builder_node_factory(
 
         user_prompt = f"""Original draft:\n{zero_draft}\n\nCritique items:\n{json.dumps(critic_items, indent=2, default=str)}"""
 
+        # Inject Angel's Advocate preserved elements as constraints
+        preserved_elements = state.get("preserved_elements", [])
+        if preserved_elements:
+            user_prompt += "\n\nThe Angel's Advocate identified these elements that MUST be preserved:\n"
+            for el in preserved_elements:
+                loc = el.get("source_location", "")
+                text = el.get("preserved_text", "")
+                rationale = el.get("rationale", "")
+                user_prompt += f"- [{loc}] \"{text}\" — Reason: {rationale}\n"
+            user_prompt += "\nYou MUST keep these elements intact in your revisions.\n"
+
         if pragmatist_output:
             concerns = pragmatist_output.get("blocking_concerns", [])
             if concerns:

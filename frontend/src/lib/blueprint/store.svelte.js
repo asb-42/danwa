@@ -215,6 +215,7 @@ class BlueprintCanvasStore {
       'wf-agent': 'wf-agent',
       'wf-builder': 'wf-builder',
       'wf-pragmatist': 'wf-pragmatist',
+      'wf-angels-advocate': 'wf-angels-advocate',
       'wf-phase': 'wf-phase',
       'tone-profile': 'tone-profile',
     };
