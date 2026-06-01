@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
-  import { activeCase } from '../lib/stores.js';
+  import { activeCase, addToast } from '../lib/stores.js';
   import { getCases, createCase, updateCase, deleteCase } from '../lib/api/case.js';
   import TagPicker from '../components/TagPicker.svelte';
 
@@ -76,7 +76,7 @@
     isSaving = true;
     try {
       if (editingCase) {
-        await updateCase($currentTenant.id, editingCase.case_id, {
+        await updateCase($currentTenant.id, editingCase.id, {
           title: newTitle.trim(),
           description: newDescription.trim(),
           tags: newTags,
@@ -88,6 +88,7 @@
           tags: newTags,
         });
         activeCase.set({ id: c.id, title: c.title });
+        addToast({ message: t('cases.caseCreated'), type: 'success' });
       }
       cancelForm();
       await loadCases();
