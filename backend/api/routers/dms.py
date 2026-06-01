@@ -1,4 +1,9 @@
-"""API router for Document Management System (documents, RAG)."""
+"""API router for Document Management System (documents, RAG).
+
+.. deprecated::
+    These routes are deprecated. Use ``/api/v1/tenants/{tid}/cases/{cid}/dms/``
+    instead. Legacy routes will be removed in a future version.
+"""
 
 import asyncio
 import logging

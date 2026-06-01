@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
-  import { activeProject } from '../lib/stores.js';
+  import { activeProject, activeCase } from '../lib/stores.js';
   import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
 
   let { navigate } = $props();

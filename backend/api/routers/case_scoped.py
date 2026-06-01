@@ -696,3 +696,60 @@ def list_case_audit_events(
         offset=offset,
     )
     return events
+
+
+# ---------------------------------------------------------------------------
+# Workflow endpoints (case-scoped)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/tenants/{tenant_id}/cases/{case_id}/workflows/{workflow_id}/start")
+async def start_case_workflow(
+    tenant_id: str,
+    case_id: str,
+    workflow_id: str,
+    body: dict,
+    background_tasks: BackgroundTasks,
+    case_store: CaseStore = Depends(get_case_store),
+):
+    """Start a workflow within a case context.
+
+    Delegates to the workflow_exec router but resolves the project_id
+    from the tenant/case path.
+    """
+    case = case_store.get(tenant_id, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    # Import and delegate to the existing start_workflow logic
+    from backend.api.routers.workflow_exec import StartWorkflowRequest, start_workflow
+
+    project_id = case_id
+    req = StartWorkflowRequest(
+        context=body.get("context", ""),
+        language=body.get("language"),
+        project_id=project_id,
+        max_rounds=body.get("max_rounds", 10),
+        threshold=body.get("threshold", 0.7),
+        document_ids=body.get("document_ids", []),
+        rag_auto_retrieve=body.get("rag_auto_retrieve", False),
+        include_document_analysis=body.get("include_document_analysis", False),
+    )
+    return await start_workflow(workflow_id, req, background_tasks, project_id=project_id, project_store=get_project_store())
+
+
+@router.get("/tenants/{tenant_id}/cases/{case_id}/workflows/{session_id}/state")
+async def get_case_workflow_state(
+    tenant_id: str,
+    case_id: str,
+    session_id: str,
+    case_store: CaseStore = Depends(get_case_store),
+):
+    """Get workflow execution state within a case context."""
+    case = case_store.get(tenant_id, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    from backend.api.routers.workflow_exec import get_session_state
+
+    return await get_session_state(session_id)

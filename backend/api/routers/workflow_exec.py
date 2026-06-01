@@ -1,13 +1,15 @@
-"""Workflow Execution — API router for running workflows and interjections.
+"""Workflow Execution - API router for running workflows and interjections.
 
 Endpoints:
-- POST /{workflow_id}/start — starts workflow execution
-- GET /{session_id}/state — returns current execution state
-- POST /{session_id}/pause — pauses execution
-- POST /{session_id}/resume — resumes execution
-- POST /{session_id}/cancel — cancels execution
-- GET /{session_id}/stream — SSE endpoint for real-time events
-- POST /{session_id}/interject — submit a user interjection during execution
+- POST /{workflow_id}/start - starts workflow execution
+- GET /{session_id}/state - returns current execution state
+- POST /{session_id}/pause - pauses execution
+- POST /{session_id}/resume - resumes execution
+- POST /{session_id}/cancel - cancels execution
+
+.. deprecated::
+    These routes are deprecated. Use ``/api/v1/tenants/{tid}/cases/{cid}/workflows/``
+    instead. Legacy routes will be removed in a future version.
 """
 
 from __future__ import annotations

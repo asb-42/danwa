@@ -3,6 +3,10 @@
 Business logic (workflow execution, RAG, title generation, OOB queues,
 cancellation state) lives in ``backend.services.debate_workflow``.
 Real-time SSE streaming lives in ``backend.api.routers.debate_stream``.
+
+.. deprecated::
+    These routes are deprecated. Use ``/api/v1/tenants/{tid}/cases/{cid}/debates/``
+    instead. Legacy routes will be removed in a future version.
 """
 
 from __future__ import annotations
@@ -37,6 +41,13 @@ from backend.persistence.project_store import ProjectStore
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_DEPRECATION_NOTICE = "Use /api/v1/tenants/{tid}/cases/{cid}/debates/ instead. See /api/v1/debate for deprecation details."
+
+
+def _add_deprecation_header(response):
+    response.headers["X-Deprecation"] = _DEPRECATION_NOTICE
+    return response
 
 
 def _resolve_llm_model(llm_profile_id: str, project_id: str) -> str:

@@ -168,6 +168,95 @@ def get_membership_store():
 # ---------------------------------------------------------------------------
 
 
+@lru_cache
+def get_case_store():
+    """Singleton CaseStore instance."""
+    from backend.persistence.case_store import CaseStore
+
+    return CaseStore()
+
+
+# ---------------------------------------------------------------------------
+# Tenant & Case context dependencies
+# ---------------------------------------------------------------------------
+
+
+async def get_active_tenant(
+    user=Depends(lambda: None),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+) -> str:
+    """Resolve the active tenant for the current request.
+
+    Priority:
+    1. X-Tenant-Id header (if provided, validates membership)
+    2. user.tenant_id from JWT (default active tenant)
+    """
+    if not settings.auth_enabled:
+        return tenant_id_header or "_default"
+
+    from backend.api.deps import get_current_user as _gcu
+
+    current_user = user or await _gcu()
+    tid = tenant_id_header or current_user.tenant_id
+
+    membership_store = get_membership_store()
+    memberships = membership_store.list_by_user(current_user.id)
+    if not any(m.tenant_id == tid for m in memberships):
+        if any(m.tenant_id == current_user.tenant_id for m in memberships):
+            return current_user.tenant_id
+        raise HTTPException(status_code=403, detail=f"Not a member of tenant '{tid}'")
+    return tid
+
+
+async def get_tenant_context(
+    tid: str,
+    user=Depends(lambda: None),
+) -> str:
+    """Validate user membership for a tenant from a path parameter.
+
+    Usage in routers with ``/tenants/{tid}/...`` paths.
+    """
+    if not settings.auth_enabled:
+        return tid
+
+    from backend.api.deps import get_current_user as _gcu
+
+    current_user = user or await _gcu()
+    membership_store = get_membership_store()
+    memberships = membership_store.list_by_user(current_user.id)
+    if not any(m.tenant_id == tid for m in memberships):
+        raise HTTPException(status_code=403, detail=f"Not a member of tenant '{tid}'")
+    return tid
+
+
+async def get_case_context(
+    tid: str,
+    cid: str,
+    user=Depends(lambda: None),
+) -> "Case":
+    """Load and validate a case from tenant/case path parameters.
+
+    Raises 404 if case doesn't exist. If auth is enabled, validates
+    that the current user is a member of the tenant.
+    """
+    from backend.models.case import Case
+
+    if settings.auth_enabled:
+        from backend.api.deps import get_current_user as _gcu
+
+        current_user = user or await _gcu()
+        membership_store = get_membership_store()
+        memberships = membership_store.list_by_user(current_user.id)
+        if not any(m.tenant_id == tid for m in memberships):
+            raise HTTPException(status_code=403, detail=f"Not a member of tenant '{tid}'")
+
+    case_store = get_case_store()
+    case = case_store.get(tid, cid)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return case
+
+
 async def get_project_scoped(
     project_id: str = Depends(get_project_id),
     user=Depends(lambda: None),  # Injected below after get_current_user is defined

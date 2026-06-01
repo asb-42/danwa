@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, autoStartDebate, addToast } from '../lib/stores.js';
+  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, activeCase, autoStartDebate, addToast } from '../lib/stores.js';
   import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';

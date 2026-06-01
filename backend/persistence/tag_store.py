@@ -133,7 +133,7 @@ class TagStore:
         return tag
 
     def delete(self, tenant_id: str, tag_id: str) -> bool:
-        """Delete a tag.
+        """Delete a tag and remove it from all cases that reference it.
 
         Returns True if deleted, False if not found.
         """
@@ -143,5 +143,20 @@ class TagStore:
                 return False
             del cache[tag_id]
             self._save_tenant(tenant_id)
+
+        # Remove tag from all cases in this tenant
+        try:
+            from backend.persistence.case_store import CaseStore
+
+            case_store = CaseStore()
+            cases = case_store.list_by_tenant(tenant_id)
+            for case in cases:
+                if tag_id in case.tags:
+                    case.tags.remove(tag_id)
+                    case_store.update(tenant_id, case.id, tags=case.tags)
+                    logger.debug("Removed tag %s from case %s", tag_id, case.id)
+        except Exception as exc:
+            logger.warning("Failed to clean tag %s from cases: %s", tag_id, exc)
+
         logger.info("Deleted tag %s from tenant %s", tag_id, tenant_id)
         return True
