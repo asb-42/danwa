@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -168,14 +169,6 @@ def get_membership_store():
 # ---------------------------------------------------------------------------
 
 
-@lru_cache
-def get_case_store():
-    """Singleton CaseStore instance."""
-    from backend.persistence.case_store import CaseStore
-
-    return CaseStore()
-
-
 # ---------------------------------------------------------------------------
 # Tenant & Case context dependencies
 # ---------------------------------------------------------------------------
@@ -233,14 +226,12 @@ async def get_case_context(
     tid: str,
     cid: str,
     user=Depends(lambda: None),
-) -> "Case":
+) -> Any:
     """Load and validate a case from tenant/case path parameters.
 
     Raises 404 if case doesn't exist. If auth is enabled, validates
     that the current user is a member of the tenant.
     """
-    from backend.models.case import Case
-
     if settings.auth_enabled:
         from backend.api.deps import get_current_user as _gcu
 
