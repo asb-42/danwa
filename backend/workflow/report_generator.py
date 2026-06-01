@@ -252,7 +252,12 @@ class WorkflowReportGenerator:
 
             if event_type == "builder_iteration":
                 try:
-                    data = _json.loads(raw_output) if isinstance(raw_output, str) and raw_output else raw_output if isinstance(raw_output, dict) else {}
+                    if isinstance(raw_output, str) and raw_output:
+                        data = _json.loads(raw_output)
+                    elif isinstance(raw_output, dict):
+                        data = raw_output
+                    else:
+                        data = {}
                 except (ValueError, TypeError):
                     data = {}
                 dv = entry.get("draft_version", data.get("draft_version", 0))
@@ -264,7 +269,12 @@ class WorkflowReportGenerator:
 
             elif event_type == "pragmatist_evaluation":
                 try:
-                    data = _json.loads(raw_output) if isinstance(raw_output, str) and raw_output else raw_output if isinstance(raw_output, dict) else {}
+                    if isinstance(raw_output, str) and raw_output:
+                        data = _json.loads(raw_output)
+                    elif isinstance(raw_output, dict):
+                        data = raw_output
+                    else:
+                        data = {}
                 except (ValueError, TypeError):
                     data = {}
                 verdicts = data.get("verdicts", [])
@@ -273,7 +283,6 @@ class WorkflowReportGenerator:
 
         # Build merged protocol entries
         protocol: list[dict[str, Any]] = []
-        eval_by_resp = {e.get("response_to", ""): e for e in evaluations}
 
         for ev in evaluations:
             resp_to = ev.get("response_to", "")
@@ -285,24 +294,28 @@ class WorkflowReportGenerator:
             for dv, it_data in sorted(iterations.items()):
                 draft_ver = dv
 
-            protocol.append({
-                "critic_item_id": resp_to,
-                "build_response_summary": f"Verdict: {verdict}",
-                "verdict": verdict,
-                "feasibility": feasibility,
-                "draft_version": draft_ver,
-            })
+            protocol.append(
+                {
+                    "critic_item_id": resp_to,
+                    "build_response_summary": f"Verdict: {verdict}",
+                    "verdict": verdict,
+                    "feasibility": feasibility,
+                    "draft_version": draft_ver,
+                }
+            )
 
         # If no pragmatist evaluations, fall back to builder iterations
         if not protocol and iterations:
             for dv, it_data in sorted(iterations.items()):
-                protocol.append({
-                    "critic_item_id": f"Iteration {dv}",
-                    "build_response_summary": f"{it_data.get('build_response_count', 0)} Antworten",
-                    "verdict": "pending",
-                    "feasibility": it_data.get("constructivity_score"),
-                    "draft_version": dv,
-                })
+                protocol.append(
+                    {
+                        "critic_item_id": f"Iteration {dv}",
+                        "build_response_summary": f"{it_data.get('build_response_count', 0)} Antworten",
+                        "verdict": "pending",
+                        "feasibility": it_data.get("constructivity_score"),
+                        "draft_version": dv,
+                    }
+                )
 
         return protocol
 
@@ -625,11 +638,11 @@ class WorkflowReportGenerator:
                 bg = "#e8f5e9" if verdict == "accept" else "#fff3e0" if verdict == "revise" else "#ffebee" if verdict == "reject" else "#f5f5f5"
                 color = "#2e7d32" if verdict == "accept" else "#e65100" if verdict == "revise" else "#c62828" if verdict == "reject" else "#757575"
                 protocol_rows += (
-                    f'<tr>'
-                    f'<td>{esc(str(entry.get("critic_item_id", "")))}</td>'
-                    f'<td>{esc(str(entry.get("build_response_summary", "")))}</td>'
+                    f"<tr>"
+                    f"<td>{esc(str(entry.get('critic_item_id', '')))}</td>"
+                    f"<td>{esc(str(entry.get('build_response_summary', '')))}</td>"
                     f'<td style="background:{bg};color:{color};font-weight:bold;">{verdict.upper()}<br><small>{esc(feas_str)}</small></td>'
-                    f'</tr>'
+                    f"</tr>"
                 )
             protocol_section = f"""<h2>Konstruktionsprotokoll</h2>
 <table>

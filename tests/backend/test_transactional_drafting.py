@@ -16,13 +16,12 @@ import json
 import pytest
 
 from backend.models.transactional import (
-    BuildResponse,
     BuilderOutput,
+    BuildResponse,
     CriticItem,
     PragmatistEvaluation,
     PragmatistOutput,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. CriticItem JSON parsing
@@ -71,22 +70,24 @@ class TestCriticItemParsing:
         """agent_nodes._parse_critic_output should parse a JSON array."""
         from backend.workflow.nodes.agent_nodes import _parse_critic_output
 
-        content = json.dumps([
-            {
-                "critic_id": "c-critic_1-001",
-                "severity": "blocking",
-                "target": "§1",
-                "flaw": "Missing clause",
-                "principle": "Completeness",
-            },
-            {
-                "critic_id": "c-critic_1-002",
-                "severity": "critical",
-                "target": "§2",
-                "flaw": "Ambiguous language",
-                "principle": "Clarity",
-            },
-        ])
+        content = json.dumps(
+            [
+                {
+                    "critic_id": "c-critic_1-001",
+                    "severity": "blocking",
+                    "target": "§1",
+                    "flaw": "Missing clause",
+                    "principle": "Completeness",
+                },
+                {
+                    "critic_id": "c-critic_1-002",
+                    "severity": "critical",
+                    "target": "§2",
+                    "flaw": "Ambiguous language",
+                    "principle": "Clarity",
+                },
+            ]
+        )
         result = _parse_critic_output(content, "test_node")
         assert result is not None
         assert len(result) == 2
@@ -97,11 +98,7 @@ class TestCriticItemParsing:
         """Should strip markdown code fences before parsing."""
         from backend.workflow.nodes.agent_nodes import _parse_critic_output
 
-        content = (
-            '```json\n'
-            '[{"critic_id": "c-test_1-001", "severity": "warning", "target": "X", "flaw": "Y", "principle": "Z"}]\n'
-            '```'
-        )
+        content = '```json\n[{"critic_id": "c-test_1-001", "severity": "warning", "target": "X", "flaw": "Y", "principle": "Z"}]\n```'
         result = _parse_critic_output(content, "test_node")
         assert result is not None
         assert len(result) == 1
@@ -110,13 +107,17 @@ class TestCriticItemParsing:
         """Should map common aliases (kritik, problem, etc.) to CriticItem fields."""
         from backend.workflow.nodes.agent_nodes import _parse_critic_output
 
-        content = json.dumps([{
-            "id": 1,
-            "severity": "warning",
-            "section": "§5",
-            "kritik": "Unklare Formulierung",
-            "norm": "Transparenz",
-        }])
+        content = json.dumps(
+            [
+                {
+                    "id": 1,
+                    "severity": "warning",
+                    "section": "§5",
+                    "kritik": "Unklare Formulierung",
+                    "norm": "Transparenz",
+                }
+            ]
+        )
         result = _parse_critic_output(content, "test_node")
         assert result is not None
         assert len(result) == 1
@@ -285,18 +286,14 @@ class TestDecisionRouter:
         from backend.workflow.workflow_routers import route_decision
 
         router = route_decision()
-        state = self._make_state(
-            consensus_result={"verdict": "approved", "reality_score": 0.8}
-        )
+        state = self._make_state(consensus_result={"verdict": "approved", "reality_score": 0.8})
         assert router(state) == "approved"
 
     def test_revision_required_route(self):
         from backend.workflow.workflow_routers import route_decision
 
         router = route_decision()
-        state = self._make_state(
-            consensus_result={"verdict": "revision_required", "reality_score": 0.3}
-        )
+        state = self._make_state(consensus_result={"verdict": "revision_required", "reality_score": 0.3})
         assert router(state) == "return_to_builder"
 
     def test_construction_deadlock_at_draft_version_5(self):
