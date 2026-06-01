@@ -1,12 +1,10 @@
 """Tests for case-scoped API router (tenant/case path-based endpoints)."""
-from __future__ import annotations
 
-from unittest.mock import patch
+from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import deps as deps_module
 from backend.api.deps import (
     get_audit_service,
     get_case_store,

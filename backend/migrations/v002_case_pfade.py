@@ -64,9 +64,11 @@ def migrate_to_case_paths() -> None:
     marker.write_text(
         json.dumps(
             {
-                "migrated_at": __import__("datetime").datetime.now(
+                "migrated_at": __import__("datetime")
+                .datetime.now(
                     __import__("datetime").timezone.utc,
-                ).isoformat(),
+                )
+                .isoformat(),
                 "projects_moved": moved,
                 "projects_skipped": skipped,
             },

@@ -58,9 +58,9 @@ from backend.api.routers import (  # noqa: E402
     workflow_reports,
     workflow_templates,
 )
+from backend.api.routers.case_scoped import router as case_scoped_router  # noqa: E402
 from backend.api.routers.translation import router as translation_router  # noqa: E402
 from backend.api.routers.ui_i18n import router as ui_i18n_router  # noqa: E402
-from backend.api.routers.case_scoped import router as case_scoped_router  # noqa: E402
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
 # Path to built frontend assets (relative to project root)

@@ -1,12 +1,11 @@
 """Tests for v002 case-path migration."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import pytest
-
-from backend.migrations.v002_case_pfade import _OLD_PROJECTS_DIR, _resolve_tenant_id, migrate_to_case_paths
+from backend.migrations.v002_case_pfade import _resolve_tenant_id, migrate_to_case_paths
 
 
 def _create_old_project(base: Path, project_id: str, tenant_id: str = "_default", extra_dirs: list[str] | None = None) -> Path:
@@ -35,11 +34,11 @@ def _create_old_project(base: Path, project_id: str, tenant_id: str = "_default"
 
 class TestResolveTenantId:
     def test_from_file(self, tmp_path):
-        pid = _create_old_project(tmp_path, "p1", tenant_id="acme")
+        _create_old_project(tmp_path, "p1", tenant_id="acme")
         assert _resolve_tenant_id(tmp_path / "projects" / "p1", "p1") == "acme"
 
     def test_default_when_field_missing(self, tmp_path):
-        pid = _create_old_project(tmp_path, "p2", tenant_id="")
+        _create_old_project(tmp_path, "p2", tenant_id="")
         assert _resolve_tenant_id(tmp_path / "projects" / "p2", "p2") == "_default"
 
     def test_default_when_no_project_json(self, tmp_path):

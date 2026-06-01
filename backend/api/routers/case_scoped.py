@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query
-from pydantic import BaseModel, Field
 
 from backend.api.deps import (
     get_audit_service,
@@ -411,8 +410,8 @@ async def submit_case_oob_input(
     case_store: CaseStore = Depends(get_case_store),
 ) -> OOBInputResponse:
     """Submit an out-of-band input for a running debate in a case."""
-    from backend.services.debate_workflow import enqueue_oob
     from backend.api.events import publish_async
+    from backend.services.debate_workflow import enqueue_oob
 
     store = _get_debate_store_for_case(tenant_id, case_id, case_store)
     debate = store.get(debate_id)
@@ -523,8 +522,8 @@ async def list_case_forks(
 
 def _get_dms_for_case(tenant_id: str, case_id: str, case_store: CaseStore):
     """Get or create a DMS instance for a case."""
-    from backend.services.dms.service import DMS
     from backend.services.dms.config import load_dms_config
+    from backend.services.dms.service import DMS
 
     case_dir = _resolve_case_dir(tenant_id, case_id, case_store)
     dms_dir = case_dir / "dms"
