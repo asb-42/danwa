@@ -28,5 +28,15 @@
   "iteration_label": "Iteration",
   "construction_protocol_label": "Konstruktionsprotokoll",
   "action_label": "Aktion",
-  "no_clauses_label": "Keine Klauseln verfügbar."
+  "no_clauses_label": "Keine Klauseln verfügbar.",
+  "constructivity_label": "Konstruktivität",
+  "reality_score_label": "Realitätsscore",
+  "draft_versions_label": "Iterationen",
+  "critic_items_label": "CriticItems",
+  "build_responses_label": "BuildResponses",
+  "critic_item_col": "CriticItem",
+  "build_response_col": "BuildResponse (Optionen)",
+  "pragmatist_eval_col": "Pragmatist-Evaluation",
+  "feasibility_label": "Machbarkeit",
+  "iteration_timeline_label": "Iterationsverlauf"
 }

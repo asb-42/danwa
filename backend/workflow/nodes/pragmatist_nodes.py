@@ -215,27 +215,51 @@ def pragmatist_node_factory(
         # Audit
         try:
             al = get_audit_logger()
+            wf_id = state.get("workflow_id", "")
+            wf_ver = state.get("workflow_version", 1)
             if status == "failed":
-                al.log_node_failed(session_id, state.get("workflow_id", ""), state.get("workflow_version", 1), node_id, role, content)
+                al.log_node_failed(
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    node_id=node_id,
+                    actor=role,
+                    error=content,
+                )
             else:
                 al.log_node_execution(
-                    session_id,
-                    state.get("workflow_id", ""),
-                    state.get("workflow_version", 1),
-                    node_id,
-                    role,
-                    {"build_responses": build_responses},
-                    {"content": content, "reality_score": reality_score},
-                    llm_profile_id,
-                    duration_ms,
-                    0,
-                    tokens_used,
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    node_id=node_id,
+                    actor=role,
+                    input_data={"build_responses": build_responses},
+                    output_data={"content": content, "reality_score": reality_score},
+                    llm_profile_id=llm_profile_id,
+                    latency_ms=duration_ms,
+                    prompt_tokens=0,
+                    completion_tokens=tokens_used,
                 )
+                # Transactional Drafting: pragmatist_evaluation event
+                verdicts_summary = []
+                if pragmatist_output and pragmatist_output.evaluations:
+                    for ev in pragmatist_output.evaluations:
+                        verdicts_summary.append({
+                            "response_to": ev.response_to,
+                            "verdict": ev.verdict,
+                            "feasibility": ev.feasibility,
+                        })
                 al.log_workflow_event(
-                    session_id,
-                    state.get("workflow_id", ""),
-                    "pragmatist_evaluation",
-                    {"reality_score": reality_score, "blocking_concerns": blocking},
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    event_type="pragmatist_evaluation",
+                    metadata={
+                        "reality_score": reality_score,
+                        "blocking_concerns": blocking,
+                        "verdicts": verdicts_summary,
+                        "draft_version": state.get("draft_version", 0),
+                    },
                 )
         except Exception:
             logger.debug("Audit logging failed for pragmatist %s", node_id, exc_info=True)

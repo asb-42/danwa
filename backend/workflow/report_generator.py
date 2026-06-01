@@ -228,6 +228,85 @@ class WorkflowReportGenerator:
         }
 
     # ------------------------------------------------------------------
+    # Transactional Drafting helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_transactional_protocol(
+        audit_entries: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Extract CriticItem → BuildResponse → PragmatistEvaluation data from audit entries.
+
+        Parses ``builder_iteration`` and ``pragmatist_evaluation`` workflow
+        events from the audit log and merges them into a unified protocol
+        table for the report.
+        """
+        import json as _json
+
+        iterations: dict[int, dict] = {}  # draft_version → builder data
+        evaluations: list[dict] = []
+
+        for entry in audit_entries:
+            event_type = entry.get("event_type", "")
+            raw_output = entry.get("output_content", "")
+
+            if event_type == "builder_iteration":
+                try:
+                    data = _json.loads(raw_output) if isinstance(raw_output, str) and raw_output else raw_output if isinstance(raw_output, dict) else {}
+                except (ValueError, TypeError):
+                    data = {}
+                dv = entry.get("draft_version", data.get("draft_version", 0))
+                iterations[dv] = {
+                    "draft_version": dv,
+                    "constructivity_score": entry.get("constructivity_score", data.get("constructivity_score")),
+                    "build_response_count": data.get("build_response_count", 0),
+                }
+
+            elif event_type == "pragmatist_evaluation":
+                try:
+                    data = _json.loads(raw_output) if isinstance(raw_output, str) and raw_output else raw_output if isinstance(raw_output, dict) else {}
+                except (ValueError, TypeError):
+                    data = {}
+                verdicts = data.get("verdicts", [])
+                for v in verdicts:
+                    evaluations.append(v)
+
+        # Build merged protocol entries
+        protocol: list[dict[str, Any]] = []
+        eval_by_resp = {e.get("response_to", ""): e for e in evaluations}
+
+        for ev in evaluations:
+            resp_to = ev.get("response_to", "")
+            verdict = ev.get("verdict", "pending")
+            feasibility = ev.get("feasibility")
+
+            # Find the iteration this belongs to
+            draft_ver = 0
+            for dv, it_data in sorted(iterations.items()):
+                draft_ver = dv
+
+            protocol.append({
+                "critic_item_id": resp_to,
+                "build_response_summary": f"Verdict: {verdict}",
+                "verdict": verdict,
+                "feasibility": feasibility,
+                "draft_version": draft_ver,
+            })
+
+        # If no pragmatist evaluations, fall back to builder iterations
+        if not protocol and iterations:
+            for dv, it_data in sorted(iterations.items()):
+                protocol.append({
+                    "critic_item_id": f"Iteration {dv}",
+                    "build_response_summary": f"{it_data.get('build_response_count', 0)} Antworten",
+                    "verdict": "pending",
+                    "feasibility": it_data.get("constructivity_score"),
+                    "draft_version": dv,
+                })
+
+        return protocol
+
+    # ------------------------------------------------------------------
     # DOCX
     # ------------------------------------------------------------------
 
@@ -314,6 +393,28 @@ class WorkflowReportGenerator:
                 paragraph = paragraph.strip()
                 if paragraph:
                     doc.add_paragraph(paragraph)
+
+        # --- Transactional Drafting: Konstruktionsprotokoll ---
+        txn_entries = self._extract_transactional_protocol(audit_entries)
+        if txn_entries:
+            doc.add_heading("Konstruktionsprotokoll", level=1)
+
+            # Table: CriticItem → BuildResponse → PragmatistEvaluation
+            table = doc.add_table(rows=1, cols=3, style="Table Grid")
+            headers = ["CriticItem", "BuildResponse (Optionen)", "Pragmatist-Evaluation"]
+            for i, h in enumerate(headers):
+                table.rows[0].cells[i].text = h
+
+            for entry in txn_entries:
+                row = table.add_row()
+                row.cells[0].text = entry.get("critic_item_id", "")
+                row.cells[1].text = entry.get("build_response_summary", "")
+                verdict = entry.get("verdict", "pending")
+                feasibility = entry.get("feasibility")
+                cell_text = verdict.upper()
+                if feasibility is not None:
+                    cell_text += f"\nMachbarkeit: {feasibility * 100:.1f}%"
+                row.cells[2].text = cell_text
 
         # --- Audit trail (supplementary) ---
         if audit_entries:
@@ -512,6 +613,30 @@ class WorkflowReportGenerator:
         if output:
             output_section = f'<h2>Ergebnis</h2><div class="output-text">{esc(output)}</div>'
 
+        # --- Transactional Drafting: Konstruktionsprotokoll ---
+        txn_protocol = WorkflowReportGenerator._extract_transactional_protocol(audit_entries)
+        protocol_section = ""
+        if txn_protocol:
+            protocol_rows = ""
+            for entry in txn_protocol:
+                verdict = entry.get("verdict", "pending")
+                feasibility = entry.get("feasibility")
+                feas_str = f"{feasibility * 100:.1f}%" if feasibility is not None else "—"
+                bg = "#e8f5e9" if verdict == "accept" else "#fff3e0" if verdict == "revise" else "#ffebee" if verdict == "reject" else "#f5f5f5"
+                color = "#2e7d32" if verdict == "accept" else "#e65100" if verdict == "revise" else "#c62828" if verdict == "reject" else "#757575"
+                protocol_rows += (
+                    f'<tr>'
+                    f'<td>{esc(str(entry.get("critic_item_id", "")))}</td>'
+                    f'<td>{esc(str(entry.get("build_response_summary", "")))}</td>'
+                    f'<td style="background:{bg};color:{color};font-weight:bold;">{verdict.upper()}<br><small>{esc(feas_str)}</small></td>'
+                    f'</tr>'
+                )
+            protocol_section = f"""<h2>Konstruktionsprotokoll</h2>
+<table>
+<thead><tr><th>CriticItem</th><th>BuildResponse</th><th>Pragmatist-Evaluation</th></tr></thead>
+<tbody>{protocol_rows}</tbody>
+</table>"""
+
         # --- Audit trail ---
         audit_rows = ""
         for e in audit_entries:
@@ -559,5 +684,6 @@ class WorkflowReportGenerator:
 {case_section}
 {rounds_html}
 {output_section}
+{protocol_section}
 {audit_section}
 </body></html>"""

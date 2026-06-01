@@ -274,8 +274,15 @@ class AuditLogger:
         event_type: str,
         actor: str = "system",
         metadata: dict[str, Any] | None = None,
+        draft_version: int = 0,
+        constructivity_score: float | None = None,
     ) -> None:
-        """Record a workflow lifecycle event."""
+        """Record a workflow lifecycle event.
+
+        For transactional drafting events (``builder_iteration``,
+        ``pragmatist_evaluation``) the *draft_version* and
+        *constructivity_score* are stored in dedicated columns.
+        """
         self._insert(
             session_id=session_id,
             workflow_id=workflow_id,
@@ -284,6 +291,8 @@ class AuditLogger:
             actor=actor,
             output_hash=self._compute_hash(metadata) if metadata else "",
             output_content=self._sanitize_content(metadata),
+            draft_version=draft_version,
+            constructivity_score=constructivity_score,
         )
         logger.debug(
             "Audit: %s session=%s",

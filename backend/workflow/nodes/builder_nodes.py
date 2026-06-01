@@ -324,23 +324,46 @@ def builder_node_factory(
         # Audit
         try:
             al = get_audit_logger()
+            wf_id = state.get("workflow_id", "")
+            wf_ver = state.get("workflow_version", 1)
             if status == "failed":
-                al.log_node_failed(session_id, state.get("workflow_id", ""), state.get("workflow_version", 1), node_id, role, content)
+                al.log_node_failed(
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    node_id=node_id,
+                    actor=role,
+                    error=content,
+                )
             else:
                 al.log_node_execution(
-                    session_id,
-                    state.get("workflow_id", ""),
-                    state.get("workflow_version", 1),
-                    node_id,
-                    role,
-                    {"critic_items": critic_items, "zero_draft": zero_draft},
-                    {"content": content, "constructivity_score": constructivity},
-                    llm_profile_id,
-                    duration_ms,
-                    0,
-                    tokens_used,
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    node_id=node_id,
+                    actor=role,
+                    input_data={"critic_items": critic_items, "zero_draft": zero_draft},
+                    output_data={"content": content, "constructivity_score": constructivity},
+                    llm_profile_id=llm_profile_id,
+                    latency_ms=duration_ms,
+                    prompt_tokens=0,
+                    completion_tokens=tokens_used,
                     constructivity_score=constructivity,
                     draft_version=draft_version,
+                )
+                # Transactional Drafting: builder_iteration event
+                al.log_workflow_event(
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    event_type="builder_iteration",
+                    metadata={
+                        "draft_version": draft_version,
+                        "constructivity_score": constructivity,
+                        "build_response_count": len(builder_output.build_responses) if builder_output else 0,
+                    },
+                    draft_version=draft_version,
+                    constructivity_score=constructivity,
                 )
         except Exception:
             logger.debug("Audit logging failed for builder %s", node_id, exc_info=True)

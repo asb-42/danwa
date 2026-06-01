@@ -110,6 +110,36 @@ class DebateArtifact(BaseModel):
         default_factory=list,
         description="Blocking concerns that still need resolution after the final round",
     )
+
+    # --- Transactional Drafting scores ---
+    constructivity_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Final constructivity score after all Builder loops (0.0–1.0)",
+    )
+    draft_versions: int = Field(
+        default=0,
+        ge=0,
+        description="Number of Builder iteration loops executed",
+    )
+    critic_item_count: int = Field(
+        default=0,
+        ge=0,
+        description="Total number of CriticItems produced across all rounds",
+    )
+    build_response_count: int = Field(
+        default=0,
+        ge=0,
+        description="Total number of BuildResponses produced across all rounds",
+    )
+    pragmatist_reality_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Final pragmatist reality_score (aggregate feasibility)",
+    )
+
     metadata: dict = Field(default_factory=dict)
     # metadata keys: token_usage, latencies, timestamps (start/end),
     #                agents (list of {name, blueprint_id, role_type, llm_profile_id})

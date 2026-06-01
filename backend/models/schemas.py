@@ -346,6 +346,9 @@ class AuditEventType(StrEnum):
     INTERJECTION_CONSUMED = "interjection_consumed"
     SESSION_LOCKED = "session_locked"
     SESSION_ARCHIVED = "session_archived"
+    # Transactional Drafting events
+    BUILDER_ITERATION = "builder_iteration"
+    PRAGMATIST_EVALUATION = "pragmatist_evaluation"
 
 
 class AuditLogEntry(BaseModel):

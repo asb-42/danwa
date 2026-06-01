@@ -48,6 +48,21 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
 }
 .exec-blockers ul { margin: 0.3em 0 0 0; padding-left: 1.2em; }
 
+/* Scores Summary */
+.scores-grid {
+  display: flex; gap: 1em; flex-wrap: wrap; margin: 0.8em 0;
+}
+.score-card {
+  flex: 1; min-width: 120px; padding: 0.6em 1em;
+  border: 1px solid #c5cae9; border-radius: 4px;
+  background: #fff; text-align: center;
+}
+.score-card .score-label { font-size: 9pt; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+.score-card .score-value { font-size: 16pt; font-weight: bold; margin: 0.2em 0; }
+.score-card .score-green { color: #2e7d32; }
+.score-card .score-orange { color: #e65100; }
+.score-card .score-red { color: #c62828; }
+
 /* Clause Sections */
 .clause-section {
   margin: 1em 0; padding: 0.5em 0;
@@ -92,6 +107,37 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
   vertical-align: top;
 }
 .protocol-table tr:nth-child(even) { background: #f5f5f5; }
+
+/* Verdict color coding */
+.verdict-accept { background: #e8f5e9 !important; color: #2e7d32; font-weight: bold; }
+.verdict-revise { background: #fff3e0 !important; color: #e65100; font-weight: bold; }
+.verdict-reject { background: #ffebee !important; color: #c62828; font-weight: bold; }
+.verdict-pending { background: #f5f5f5 !important; color: #757575; font-style: italic; }
+
+/* Iteration Timeline */
+.timeline {
+  margin: 1em 0; padding: 0;
+  list-style: none; position: relative;
+}
+.timeline::before {
+  content: ''; position: absolute; left: 20px; top: 0; bottom: 0;
+  width: 2px; background: #c5cae9;
+}
+.timeline-item {
+  position: relative; margin: 0 0 1em 36px; padding: 0.5em 1em;
+  background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px;
+}
+.timeline-item::before {
+  content: ''; position: absolute; left: -24px; top: 0.8em;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #283593; border: 2px solid #fff;
+}
+.timeline-item .tl-header {
+  font-weight: bold; font-size: 10pt; color: #283593; margin-bottom: 0.3em;
+}
+.timeline-item .tl-meta {
+  font-size: 8pt; color: #666;
+}
 
 .doc-meta {
   font-size: 9pt; color: #555; margin-bottom: 1em;
@@ -165,6 +211,44 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
   {% endif %}
 </section>
 
+<!-- Transactional Drafting Scores -->
+{% if artifact.constructivity_score is not none or artifact.pragmatist_reality_score is not none %}
+<div class="scores-grid">
+  {% if artifact.constructivity_score is not none %}
+  {% set cs = (artifact.constructivity_score * 100) | round(1) %}
+  <div class="score-card">
+    <div class="score-label">{{ i18n.get('constructivity_label', 'Konstruktivität') }}</div>
+    <div class="score-value {% if cs >= 70 %}score-green{% elif cs >= 40 %}score-orange{% else %}score-red{% endif %}">{{ cs }}%</div>
+  </div>
+  {% endif %}
+  {% if artifact.pragmatist_reality_score is not none %}
+  {% set rs = (artifact.pragmatist_reality_score * 100) | round(1) %}
+  <div class="score-card">
+    <div class="score-label">{{ i18n.get('reality_score_label', 'Realitätsscore') }}</div>
+    <div class="score-value {% if rs >= 70 %}score-green{% elif rs >= 40 %}score-orange{% else %}score-red{% endif %}">{{ rs }}%</div>
+  </div>
+  {% endif %}
+  {% if artifact.draft_versions > 0 %}
+  <div class="score-card">
+    <div class="score-label">{{ i18n.get('draft_versions_label', 'Iterationen') }}</div>
+    <div class="score-value">{{ artifact.draft_versions }}</div>
+  </div>
+  {% endif %}
+  {% if artifact.critic_item_count > 0 %}
+  <div class="score-card">
+    <div class="score-label">{{ i18n.get('critic_items_label', 'CriticItems') }}</div>
+    <div class="score-value">{{ artifact.critic_item_count }}</div>
+  </div>
+  {% endif %}
+  {% if artifact.build_response_count > 0 %}
+  <div class="score-card">
+    <div class="score-label">{{ i18n.get('build_responses_label', 'BuildResponses') }}</div>
+    <div class="score-value">{{ artifact.build_response_count }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- Revised Contract Version -->
 <h2>{{ i18n.get('revised_clauses_label', 'Revidierte Vertragsfassung') }}</h2>
 
@@ -198,7 +282,78 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
 <p>{{ i18n.get('no_clauses_label', 'Keine Klauseln verfügbar.') }}</p>
 {% endif %}
 
-<!-- Construction Protocol -->
+<!-- Construction Protocol: CriticItem → BuildResponse → PragmatistEvaluation -->
+{% set txn = artifact.metadata.get('transactional', {}) %}
+{% set verdict_map = txn.get('pragmatist_verdicts', []) %}
+{% if verdict_map %}
+<h2>{{ i18n.get('construction_protocol_label', 'Konstruktionsprotokoll') }}</h2>
+
+<table class="protocol-table">
+  <thead>
+    <tr>
+      <th style="width: 25%;">{{ i18n.get('critic_item_col', 'CriticItem') }}</th>
+      <th style="width: 40%;">{{ i18n.get('build_response_col', 'BuildResponse (Optionen)') }}</th>
+      <th style="width: 35%;">{{ i18n.get('pragmatist_eval_col', 'Pragmatist-Evaluation') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in verdict_map %}
+    {% set verdict = entry.verdict | default('pending') %}
+    <tr>
+      <td>
+        <strong>{{ entry.critic_item_id }}</strong>
+        {% if entry.revision_type %}
+        <br><span style="font-size:8pt;color:#666;">{{ entry.revision_type }}</span>
+        {% endif %}
+        {% if entry.draft_version %}
+        <br><span style="font-size:8pt;color:#5c6bc0;">{{ i18n.get('iteration_label', 'Iteration') }} {{ entry.draft_version }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if entry.option_a %}
+        <div style="margin-bottom:0.3em;"><strong>A:</strong> {{ entry.option_a[:300] }}{% if entry.option_a|length > 300 %}...{% endif %}</div>
+        {% endif %}
+        {% if entry.option_b %}
+        <div style="margin-bottom:0.3em;"><strong>B:</strong> {{ entry.option_b[:300] }}{% if entry.option_b|length > 300 %}...{% endif %}</div>
+        {% endif %}
+        {% if entry.option_c %}
+        <div style="margin-bottom:0.3em;"><strong>C:</strong> {{ entry.option_c[:300] }}{% if entry.option_c|length > 300 %}...{% endif %}</div>
+        {% endif %}
+        {% if entry.rationale %}
+        <div style="font-size:8pt;color:#666;font-style:italic;">{{ entry.rationale[:200] }}</div>
+        {% endif %}
+      </td>
+      <td class="{% if verdict == 'accept' %}verdict-accept{% elif verdict == 'revise' %}verdict-revise{% elif verdict == 'reject' %}verdict-reject{% else %}verdict-pending{% endif %}">
+        <strong>{{ verdict | upper }}</strong>
+        {% if entry.feasibility is not none %}
+        <br><span style="font-size:9pt;">{{ i18n.get('feasibility_label', 'Machbarkeit') }}: {{ (entry.feasibility * 100) | round(1) }}%</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Iteration Timeline (if draft_versions > 1) -->
+{% if artifact.draft_versions > 1 %}
+<h2>{{ i18n.get('iteration_timeline_label', 'Iterationsverlauf') }}</h2>
+
+<ul class="timeline">
+  {% for turn in artifact.transcript %}
+  {% if turn.role_type in ('builder', 'pragmatist', 'critic') %}
+  <li class="timeline-item">
+    <div class="tl-header">{{ turn.agent_name }} — {{ i18n.get('round_label', 'Runde') }} {{ turn.round }}</div>
+    <div class="tl-meta">{{ turn.role_type }} | {{ turn.latency_ms }}ms</div>
+    <div style="font-size:9pt;margin-top:0.3em;">{{ turn.content[:400] }}{% if turn.content|length > 400 %}...{% endif %}</div>
+  </li>
+  {% endif %}
+  {% endfor %}
+</ul>
+{% endif %}
+
+<!-- Construction Protocol (Fallback: Transcript table) -->
+{% if not verdict_map %}
 <h2>{{ i18n.get('construction_protocol_label', 'Konstruktionsprotokoll') }}</h2>
 
 <table class="protocol-table">
@@ -221,6 +376,7 @@ h3 { font-size: 12pt; color: #333; margin-top: 1em; }
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
 
 <div class="doc-footer">
   {{ i18n.get('generated_label', 'Generiert') }}: {{ doc.metadata.topic }}

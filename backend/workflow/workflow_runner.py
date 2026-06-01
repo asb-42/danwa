@@ -630,6 +630,40 @@ def _build_artifact_from_state(
     )
 
 
+def _build_verdict_map(
+    build_responses: list[dict],
+    evaluations: list[dict],
+) -> list[dict]:
+    """Build a merged CriticItem → BuildResponse → PragmatistEvaluation map.
+
+    Each entry links a critic item to its build response options and the
+    pragmatist verdict for each option.  Used by the report template to
+    render the "Konstruktionsprotokoll" table.
+    """
+    verdict_map: list[dict] = []
+    eval_by_resp = {e.get("response_to", ""): e for e in evaluations}
+
+    for br in build_responses:
+        critic_id = br.get("response_to", "")
+        provenance = br.get("provenance", {}) or {}
+        ev = eval_by_resp.get(critic_id, {})
+
+        verdict_map.append({
+            "critic_item_id": critic_id,
+            "option_a": br.get("option_a", ""),
+            "option_b": br.get("option_b", ""),
+            "option_c": br.get("option_c", ""),
+            "rationale": br.get("rationale", ""),
+            "implementable": br.get("implementable", False),
+            "verdict": ev.get("verdict", provenance.get("pragmatist_verdict", "pending")),
+            "feasibility": ev.get("feasibility", provenance.get("pragmatist_score")),
+            "revision_type": provenance.get("revision_type", ""),
+            "draft_version": provenance.get("draft_version", 0),
+        })
+
+    return verdict_map
+
+
 def _build_artifact_common(
     *,
     session_id: str,
@@ -672,6 +706,30 @@ def _build_artifact_common(
         "workflow_template": state.get("workflow_template", "debate"),
     }
 
+    # Include transactional drafting data in metadata for report generation
+    if state.get("workflow_template") == "transactional_drafting":
+        pragmatist_out = state.get("pragmatist_output")
+        metadata["transactional"] = {
+            "critic_items": state.get("critic_items", []),
+            "build_responses": state.get("build_responses", []),
+            "pragmatist_evaluations": (
+                pragmatist_out.get("evaluations", []) if isinstance(pragmatist_out, dict) else []
+            ),
+            "pragmatist_verdicts": _build_verdict_map(
+                state.get("build_responses", []),
+                pragmatist_out.get("evaluations", []) if isinstance(pragmatist_out, dict) else [],
+            ),
+        }
+
+    # Transactional Drafting scores
+    pragmatist_output = state.get("pragmatist_output")
+    pragmatist_reality = None
+    if isinstance(pragmatist_output, dict):
+        pragmatist_reality = pragmatist_output.get("reality_score")
+
+    critic_items = state.get("critic_items", [])
+    build_responses = state.get("build_responses", [])
+
     return DebateArtifact(
         session_id=session_id,
         workflow_id=workflow_id,
@@ -688,5 +746,10 @@ def _build_artifact_common(
         final_assessment=state.get("final_assessment"),
         usability_score=state.get("usability_score"),
         remaining_blockers=state.get("remaining_blockers", []),
+        constructivity_score=state.get("constructivity_score"),
+        draft_versions=state.get("draft_version", 0),
+        critic_item_count=len(critic_items) if isinstance(critic_items, list) else 0,
+        build_response_count=len(build_responses) if isinstance(build_responses, list) else 0,
+        pragmatist_reality_score=pragmatist_reality,
         metadata=metadata,
     )

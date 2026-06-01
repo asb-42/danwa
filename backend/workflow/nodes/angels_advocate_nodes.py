@@ -272,28 +272,30 @@ def angels_advocate_node_factory(
         # Audit
         try:
             al = get_audit_logger()
+            wf_id = state.get("workflow_id", "")
+            wf_ver = state.get("workflow_version", 1)
             if status == "failed":
                 al.log_node_failed(
-                    session_id,
-                    state.get("workflow_id", ""),
-                    state.get("workflow_version", 1),
-                    node_id,
-                    role,
-                    content,
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    node_id=node_id,
+                    actor=role,
+                    error=content,
                 )
             else:
                 al.log_node_execution(
-                    session_id,
-                    state.get("workflow_id", ""),
-                    state.get("workflow_version", 1),
-                    node_id,
-                    role,
-                    {"zero_draft": zero_draft[:500], "critic_items_count": len(critic_items)},
-                    {"content": content, "stability_score": stability_score, "preserved_count": len(preserved)},
-                    llm_profile_id,
-                    duration_ms,
-                    0,
-                    tokens_used,
+                    session_id=session_id,
+                    workflow_id=wf_id,
+                    workflow_version=wf_ver,
+                    node_id=node_id,
+                    actor=role,
+                    input_data={"zero_draft": zero_draft[:500], "critic_items_count": len(critic_items)},
+                    output_data={"content": content, "stability_score": stability_score, "preserved_count": len(preserved)},
+                    llm_profile_id=llm_profile_id,
+                    latency_ms=duration_ms,
+                    prompt_tokens=0,
+                    completion_tokens=tokens_used,
                 )
         except Exception:
             logger.debug("Audit logging failed for angels-advocate %s", node_id, exc_info=True)
