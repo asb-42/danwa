@@ -77,6 +77,9 @@ export function setAuth(accessTokenVal, refreshTokenVal, userVal) {
   accessToken.set(accessTokenVal);
   refreshToken.set(refreshTokenVal);
   currentUser.set(userVal);
+  if (userVal?.tenant_id && !get(currentTenant)) {
+    currentTenant.set({ id: userVal.tenant_id, name: userVal.tenant_id });
+  }
 }
 
 /**
