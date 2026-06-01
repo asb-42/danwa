@@ -18,7 +18,7 @@ def app():
 @pytest.fixture
 async def client(app):
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"X-Project-Id": "_default"}) as c:
         yield c
 
 

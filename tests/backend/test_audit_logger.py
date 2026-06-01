@@ -38,7 +38,11 @@ def tmp_db(tmp_path: Path) -> Path:
             llm_profile_id TEXT NOT NULL DEFAULT '',
             latency_ms INTEGER NOT NULL DEFAULT 0,
             prompt_tokens INTEGER NOT NULL DEFAULT 0,
-            completion_tokens INTEGER NOT NULL DEFAULT 0
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            critic_item_id TEXT NOT NULL DEFAULT '',
+            build_response_id TEXT NOT NULL DEFAULT '',
+            draft_version INTEGER NOT NULL DEFAULT 0,
+            constructivity_score REAL
         )
     """)
     conn.commit()

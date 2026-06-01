@@ -253,14 +253,29 @@ _MIGRATION_V6_TABLES = [
         output_hash TEXT NOT NULL DEFAULT '',
         llm_profile_id TEXT NOT NULL DEFAULT '',
         latency_ms INTEGER NOT NULL DEFAULT 0,
-        prompt_tokens INTEGER NOT NULL DEFAULT 0,
-        completion_tokens INTEGER NOT NULL DEFAULT 0
-    )
-    """,
+         prompt_tokens INTEGER NOT NULL DEFAULT 0,
+         completion_tokens INTEGER NOT NULL DEFAULT 0,
+         input_content TEXT NOT NULL DEFAULT '',
+         output_content TEXT NOT NULL DEFAULT '',
+         trace_log_path TEXT NOT NULL DEFAULT '',
+         critic_item_id TEXT NOT NULL DEFAULT '',
+         build_response_id TEXT NOT NULL DEFAULT '',
+         draft_version INTEGER NOT NULL DEFAULT 0,
+         constructivity_score REAL
+     )
+     """,
     "CREATE INDEX IF NOT EXISTS idx_audit_log_session ON audit_log (session_id)",
     "CREATE INDEX IF NOT EXISTS idx_audit_log_workflow ON audit_log (workflow_id)",
     "CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log (event_type)",
     "CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log (timestamp)",
+    # --- ALTER TABLE: add columns for transactional drafting (idempotent) ---
+    "ALTER TABLE audit_log ADD COLUMN input_content TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE audit_log ADD COLUMN output_content TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE audit_log ADD COLUMN trace_log_path TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE audit_log ADD COLUMN critic_item_id TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE audit_log ADD COLUMN build_response_id TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE audit_log ADD COLUMN draft_version INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE audit_log ADD COLUMN constructivity_score REAL",
     # --- report_jobs ---
     """
     CREATE TABLE IF NOT EXISTS report_jobs (
