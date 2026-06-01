@@ -61,6 +61,12 @@ function persisted(key, defaultValue) {
 /** Active project — persisted to localStorage. Stores { id, name }. */
 export const activeProject = persisted('danwa.activeProject', null);
 
+/** Active case — persisted to localStorage. Stores { id, title }. */
+export const activeCase = persisted('danwa.activeCase', null);
+
+/** Tags cache per tenant — { tenant_id: [tag, ...] } */
+export const tagsByTenant = persisted('danwa.tagsByTenant', {});
+
 /** User's preferred UI language — persisted to localStorage.
  * This is the single source of truth for the user's language preference.
  * It takes precedence over browser settings and is used for:

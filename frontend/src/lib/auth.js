@@ -151,6 +151,46 @@ export async function deleteUser(userId) {
 }
 
 /**
+ * List tenants the current user is a member of.
+ * @returns {Promise<Array>}
+ */
+export async function getMyTenants() {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/auth/my-tenants`, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to load tenants' }));
+    throw new Error(error.detail || 'Failed to load tenants');
+  }
+  return response.json();
+}
+
+/**
+ * Select a tenant — switches active tenant and returns new JWT pair.
+ * @param {string} tenantId
+ * @returns {Promise<object>} { access_token, refresh_token, user }
+ */
+export async function selectTenant(tenantId) {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/auth/select-tenant/${tenantId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to select tenant' }));
+    throw new Error(error.detail || 'Failed to select tenant');
+  }
+  return response.json();
+}
+
+/**
  * Change the current user's password.
  */
 export async function changePassword(currentPassword, newPassword) {

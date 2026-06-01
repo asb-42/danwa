@@ -5,6 +5,7 @@
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { getActiveWorkflowSession } from '../lib/workflowSession.js';
   import ProjectSelector from './ProjectSelector.svelte';
+  import CaseNavigator from './CaseNavigator.svelte';
 
   let { navigate, currentRoute } = $props();
 
@@ -103,6 +104,14 @@
         { id: 'configure', label: t('nav.section.configure') || 'Configure', icon: '⚙️', route: 'config' },
       ],
     },
+    {
+      id: 'cases',
+      label: t('nav.section.cases'),
+      items: [
+        { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
+        { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
+      ],
+    },
     ...($currentUser?.role === 'admin' ? [{
       id: 'administration',
       label: t('nav.section.administration'),
@@ -140,6 +149,11 @@
   <!-- Project Selector -->
   <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
     <ProjectSelector bind:this={projectSelector} {navigate} />
+  </div>
+
+  <!-- Case Navigator -->
+  <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+    <CaseNavigator {navigate} />
   </div>
 
   <!-- Navigation -->

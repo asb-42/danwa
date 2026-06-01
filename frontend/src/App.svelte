@@ -31,6 +31,8 @@ import LoginView from './views/LoginView.svelte';
 import UserManagement from './views/UserManagement.svelte';
 import ProfileView from './views/ProfileView.svelte';
 import TenantSettingsView from './views/TenantSettingsView.svelte';
+import CasesView from './views/CasesView.svelte';
+import TagManagerView from './views/TagManagerView.svelte';
 import BYOKManager from './views/BYOKManager.svelte';
 import ServerHealthView from './views/ServerHealthView.svelte';
 import ToastContainer from './components/ToastContainer.svelte';
@@ -156,6 +158,10 @@ import ToastContainer from './components/ToastContainer.svelte';
     <BYOKManager />
   {:else if $route === 'server-health'}
     <ServerHealthView />
+  {:else if $route === 'case-list'}
+    <CasesView {navigate} />
+  {:else if $route === 'tags'}
+    <TagManagerView />
   {:else}
     <Dashboard {navigate} />
   {/if}

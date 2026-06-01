@@ -1194,5 +1194,53 @@ export default {
   'server.redis': 'Redis',
   'server.chromadb': 'ChromaDB',
 
+  // Cases
+  'cases.title': 'Fälle',
+  'cases.create': 'Fall erstellen',
+  'cases.createTitle': 'Neuen Fall erstellen',
+  'cases.editTitle': 'Fall bearbeiten',
+  'cases.deleteConfirm': 'Diesen Fall löschen? Alle Debatten und Dokumente in diesem Fall werden endgültig gelöscht.',
+  'cases.cannotDeleteDefault': 'Standardfälle können nicht gelöscht werden.',
+  'cases.title_label': 'Titel',
+  'cases.description': 'Beschreibung',
+  'cases.tags': 'Tags',
+  'cases.createdAt': 'Erstellt',
+  'cases.updatedAt': 'Aktualisiert',
+  'cases.activeCase': 'Aktiver Fall',
+  'cases.noActiveCase': 'Kein Fall ausgewählt',
+  'cases.selectCase': 'Fall auswählen',
+  'cases.caseDeleted': 'Fall gelöscht',
+  'cases.caseCreated': 'Fall erstellt',
+  'cases.caseUpdated': 'Fall aktualisiert',
+  'cases.noCases': 'Noch keine Fälle',
+  'cases.confirmDelete': 'Sind Sie sicher, dass Sie "{name}" löschen möchten?',
+
+  // Tags
+  'tags.title': 'Tags',
+  'tags.noTags': 'Noch keine Tags',
+  'tags.create': 'Tag erstellen',
+  'tags.createTitle': 'Neuen Tag erstellen',
+  'tags.editTitle': 'Tag bearbeiten',
+  'tags.name': 'Name',
+  'tags.color': 'Farbe',
+  'tags.parentTag': 'Übergeordneter Tag',
+  'tags.deleteConfirm': 'Diesen Tag löschen?',
+  'tags.confirmDelete': 'Sind Sie sicher, dass Sie Tag "{name}" löschen möchten?',
+  'tags.tagDeleted': 'Tag gelöscht',
+  'tags.tagCreated': 'Tag erstellt',
+  'tags.tagUpdated': 'Tag aktualisiert',
+  'tags.typeToCreate': 'Tippen, um neuen Tag zu erstellen',
+  'tags.searchPlaceholder': 'Tags durchsuchen…',
+
+  // Tenants (selector)
+  'tenants.noTenant': 'Kein Tenant',
+  'tenants.noTenants': 'Keine Tenants verfügbar',
+  'tenants.switchTenant': 'Tenant wechseln',
+
+  // Navigation — case-related
+  'nav.section.cases': 'Fälle',
+  'nav.cases': 'Fälle',
+  'nav.tags': 'Tags',
+
 };
 

@@ -15,6 +15,9 @@ export const refreshToken = writable(null);
 /** Current user object (null when logged out) */
 export const currentUser = writable(null);
 
+/** Currently active tenant (null when logged out or no tenant selected) */
+export const currentTenant = writable(null);
+
 /** Whether the user is authenticated */
 export const isAuthenticated = derived(
   [accessToken, currentUser],
@@ -29,12 +32,18 @@ if (typeof localStorage !== 'undefined') {
   const storedAccess = localStorage.getItem('danwa.accessToken');
   const storedRefresh = localStorage.getItem('danwa.refreshToken');
   const storedUser = localStorage.getItem('danwa.currentUser');
+  const storedTenant = localStorage.getItem('danwa.currentTenant');
 
   if (storedAccess) accessToken.set(storedAccess);
   if (storedRefresh) refreshToken.set(storedRefresh);
   if (storedUser) {
     try {
       currentUser.set(JSON.parse(storedUser));
+    } catch { /* ignore */ }
+  }
+  if (storedTenant) {
+    try {
+      currentTenant.set(JSON.parse(storedTenant));
     } catch { /* ignore */ }
   }
 
@@ -50,6 +59,10 @@ if (typeof localStorage !== 'undefined') {
   currentUser.subscribe((v) => {
     if (v) localStorage.setItem('danwa.currentUser', JSON.stringify(v));
     else localStorage.removeItem('danwa.currentUser');
+  });
+  currentTenant.subscribe((v) => {
+    if (v) localStorage.setItem('danwa.currentTenant', JSON.stringify(v));
+    else localStorage.removeItem('danwa.currentTenant');
   });
 }
 
@@ -73,4 +86,5 @@ export function clearAuth() {
   accessToken.set(null);
   refreshToken.set(null);
   currentUser.set(null);
+  currentTenant.set(null);
 }

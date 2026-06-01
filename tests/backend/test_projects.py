@@ -102,12 +102,12 @@ class TestProjectStoreCreate:
 
     def test_create_persists_to_disk(self, project_store, tmp_path):
         project = project_store.create(name="Persisted")
-        json_path = tmp_path / "projects" / project.id / "project.json"
+        json_path = tmp_path / "projects" / "_default" / "cases" / project.id / "project.json"
         assert json_path.exists()
 
     def test_create_creates_subdirectories(self, project_store, tmp_path):
         project = project_store.create(name="Dirs")
-        project_dir = tmp_path / "projects" / project.id
+        project_dir = tmp_path / "projects" / "_default" / "cases" / project.id
         assert (project_dir / "debates").is_dir()
         assert (project_dir / "dms").is_dir()
 
@@ -188,7 +188,7 @@ class TestProjectStoreDelete:
 
     def test_delete_removes_directory(self, project_store, tmp_path):
         project = project_store.create(name="Dir Delete")
-        project_dir = tmp_path / "projects" / project.id
+        project_dir = tmp_path / "projects" / "_default" / "cases" / project.id
         assert project_dir.exists()
         project_store.delete(project.id)
         assert not project_dir.exists()
@@ -223,8 +223,9 @@ class TestProjectStoreHelpers:
 
     def test_get_project_dir(self, project_store, tmp_path):
         project = project_store.create(name="Dir Test")
-        expected = tmp_path / "projects" / project.id
+        expected = tmp_path / "projects" / "_default" / "cases" / project.id
         assert project_store.get_project_dir(project.id) == expected
+        assert expected.is_dir()
 
 
 class TestProjectStorePersistence:

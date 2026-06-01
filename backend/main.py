@@ -60,6 +60,7 @@ from backend.api.routers import (  # noqa: E402
 )
 from backend.api.routers.translation import router as translation_router  # noqa: E402
 from backend.api.routers.ui_i18n import router as ui_i18n_router  # noqa: E402
+from backend.api.routers.case_scoped import router as case_scoped_router  # noqa: E402
 from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 
 # Path to built frontend assets (relative to project root)
@@ -174,6 +175,11 @@ async def lifespan(app: FastAPI):
     from backend.migrations.v001_multi_tenant import migrate_to_multi_tenant
 
     migrate_to_multi_tenant()
+
+    # Run v002 case-path migration (idempotent)
+    from backend.migrations.v002_case_pfade import migrate_to_case_paths
+
+    migrate_to_case_paths()
 
     # Seed system workflow templates (idempotent)
     from scripts.seed_templates import seed_system_templates
@@ -300,6 +306,8 @@ def create_app() -> FastAPI:
     app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
     app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
     app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
+    app.include_router(case_scoped_router, prefix="/api/v1", tags=["cases"])
+
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
     app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
 

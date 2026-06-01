@@ -4,6 +4,7 @@
   import { getLLMActivity } from '../lib/api.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
+  import TenantSelector from './TenantSelector.svelte';
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { logout } from '../lib/auth.js';
 
@@ -162,6 +163,9 @@
   </div>
 
   <div class="flex items-center space-x-4">
+    <!-- Tenant selector -->
+    <TenantSelector />
+
     <!-- Project selector -->
     <ProjectSelector compact={true} />
 

@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # ── Standard-Include-Pfade ──────────────────────────────────────────────
 INCLUDE_PATHS: list[str] = [
     "data/projects",
+    "data/tenants",
     "data/audit.db",
     "data/a2a_tasks.db",
     "data/blueprints.db",

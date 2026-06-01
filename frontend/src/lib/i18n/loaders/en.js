@@ -1193,5 +1193,53 @@ export default {
   'server.redis': 'Redis',
   'server.chromadb': 'ChromaDB',
 
+  // Cases
+  'cases.title': 'Cases',
+  'cases.create': 'Create Case',
+  'cases.createTitle': 'Create New Case',
+  'cases.editTitle': 'Edit Case',
+  'cases.deleteConfirm': 'Delete this case? All debates and documents in this case will be permanently deleted.',
+  'cases.cannotDeleteDefault': 'Default cases cannot be deleted.',
+  'cases.title_label': 'Title',
+  'cases.description': 'Description',
+  'cases.tags': 'Tags',
+  'cases.createdAt': 'Created',
+  'cases.updatedAt': 'Updated',
+  'cases.activeCase': 'Active Case',
+  'cases.noActiveCase': 'No case selected',
+  'cases.selectCase': 'Select a case',
+  'cases.caseDeleted': 'Case deleted',
+  'cases.caseCreated': 'Case created',
+  'cases.caseUpdated': 'Case updated',
+  'cases.noCases': 'No cases yet',
+  'cases.confirmDelete': 'Are you sure you want to delete "{name}"?',
+
+  // Tags
+  'tags.title': 'Tags',
+  'tags.noTags': 'No tags yet',
+  'tags.create': 'Create Tag',
+  'tags.createTitle': 'Create New Tag',
+  'tags.editTitle': 'Edit Tag',
+  'tags.name': 'Name',
+  'tags.color': 'Color',
+  'tags.parentTag': 'Parent Tag',
+  'tags.deleteConfirm': 'Delete this tag?',
+  'tags.confirmDelete': 'Are you sure you want to delete tag "{name}"?',
+  'tags.tagDeleted': 'Tag deleted',
+  'tags.tagCreated': 'Tag created',
+  'tags.tagUpdated': 'Tag updated',
+  'tags.typeToCreate': 'Type to create new tag',
+  'tags.searchPlaceholder': 'Search tags…',
+
+  // Tenants (selector)
+  'tenants.noTenant': 'No tenant',
+  'tenants.noTenants': 'No tenants available',
+  'tenants.switchTenant': 'Switch tenant',
+
+  // Navigation — case-related
+  'nav.section.cases': 'Cases',
+  'nav.cases': 'Cases',
+  'nav.tags': 'Tags',
+
 };
 

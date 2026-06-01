@@ -18,3 +18,5 @@ export * from './api/i18n.js';
 export * from './api/module.js';
 export * from './api/session.js';
 export * from './api/assistant.js';
+export * from './api/case.js';
+export * from './api/tag.js';

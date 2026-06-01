@@ -52,6 +52,10 @@ class CaseStore:
     def _case_dir(self, tenant_id: str, case_id: str) -> Path:
         return self._tenant_dir(tenant_id) / case_id
 
+    def get_case_dir(self, tenant_id: str, case_id: str) -> Path:
+        """Return the filesystem directory for a case (thread-safe)."""
+        return self._case_dir(tenant_id, case_id)
+
     def _case_json_path(self, tenant_id: str, case_id: str) -> Path:
         return self._case_dir(tenant_id, case_id) / "case.json"
 
