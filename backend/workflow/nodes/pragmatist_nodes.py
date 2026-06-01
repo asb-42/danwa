@@ -87,7 +87,7 @@ def pragmatist_node_factory(
 
         system_prompt = _resolve_system_prompt(resolved_config, state)
 
-        # Inject PragmatistOutput JSON schema for structured output
+        # Inject PragmatistOutput JSON schema + verdict threshold rules
         schema = PragmatistOutput.model_json_schema()
         dump = {
             "type": "object",
@@ -96,7 +96,19 @@ def pragmatist_node_factory(
         }
         if "$defs" in schema:
             dump["$defs"] = schema["$defs"]
-        system_prompt += "\n\n## Output Format\nRespond with a JSON object matching this schema:\n" + json.dumps(dump, indent=2, ensure_ascii=False)
+        system_prompt += (
+            "\n\n## Verdict Rules\n"
+            "You MUST classify each option using these thresholds:\n"
+            "- **accept**: feasibility >= 0.7 — the option works in practice.\n"
+            "- **revise**: feasibility 0.4–0.7 — the option has potential but needs changes. "
+            "You MUST provide a `revision_note` telling the Builder exactly what to change.\n"
+            "- **reject**: feasibility < 0.4 — the option will fail. "
+            "You MUST provide a `revision_note` explaining why.\n"
+            "\n"
+            "## Output Format\n"
+            "Respond with a JSON object matching this schema:\n"
+            + json.dumps(dump, indent=2, ensure_ascii=False)
+        )
 
         user_prompt = f"""Build responses to evaluate:\n{json.dumps(build_responses, indent=2, default=str)}"""
 

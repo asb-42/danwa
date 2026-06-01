@@ -161,6 +161,13 @@ def agent_node_factory(
                 "```\n"
             )
             system_prompt = system_prompt + "\n\n" + decision_matrix + "\n\n"
+            system_prompt += (
+                "## Rules\n"
+                "- Maximum 10 CriticItems per round. Prioritize blocking and critical severity.\n"
+                "- You MUST NEVER say 'Das sollte überprüft werden' or 'Man sollte prüfen, ob…'. "
+                "Instead: 'Die Klausel verstößt gegen X, weil Y.'\n"
+                "- Every item MUST have a concrete target, principle, and flaw.\n\n"
+            )
             system_prompt += "## Output Format\nRespond with a JSON array. Every object must match this schema:\n" + _json.dumps(
                 {
                     "type": "array",
