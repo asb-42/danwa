@@ -86,7 +86,7 @@
           description: newDescription.trim(),
           tags: newTags,
         });
-        activeCase.set({ id: c.case_id, title: c.title });
+        activeCase.set({ id: c.id, title: c.title });
       }
       cancelForm();
       await loadCases();
@@ -101,8 +101,8 @@
     if (!$currentTenant) return;
     confirmDelete = null;
     try {
-      await deleteCase($currentTenant.id, c.case_id);
-      if ($activeCase?.id === c.case_id) activeCase.set(null);
+      await deleteCase($currentTenant.id, c.id);
+      if ($activeCase?.id === c.id) activeCase.set(null);
       await loadCases();
     } catch (err) {
       console.error('Failed to delete case:', err);
@@ -110,7 +110,7 @@
   }
 
   function selectCase(c) {
-    activeCase.set({ id: c.case_id, title: c.title });
+    activeCase.set({ id: c.id, title: c.title });
   }
 </script>
 
@@ -181,7 +181,7 @@
       {#each cases as c}
         <div
           class="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer
-                 {$activeCase?.id === c.case_id ? 'ring-2 ring-blue-400 dark:ring-blue-500' : ''}"
+                 {$activeCase?.id === c.id ? 'ring-2 ring-blue-400 dark:ring-blue-500' : ''}"
           onclick={() => selectCase(c)}
         >
           <div class="flex-1 min-w-0">
@@ -198,7 +198,7 @@
             {/if}
           </div>
           <div class="flex items-center gap-2 ml-4">
-            {#if $activeCase?.id === c.case_id}
+            {#if $activeCase?.id === c.id}
               <span class="text-xs text-blue-600 font-medium">{t('cases.activeCase')}</span>
             {/if}
             <button

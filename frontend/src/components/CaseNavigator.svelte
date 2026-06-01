@@ -46,7 +46,7 @@
   }
 
   function selectCase(c) {
-    activeCase.set({ id: c.case_id, title: c.title });
+    activeCase.set({ id: c.id, title: c.title });
     isOpen = false;
   }
 
@@ -56,7 +56,7 @@
     try {
       const c = await createCase($currentTenant.id, { title: newTitle.trim(), description: newDescription.trim() });
       cases = [...cases, c];
-      activeCase.set({ id: c.case_id, title: c.title });
+      activeCase.set({ id: c.id, title: c.title });
       newTitle = '';
       newDescription = '';
       showCreate = false;
@@ -114,13 +114,13 @@
           <button
             class="w-full text-left px-3 py-2 text-sm flex items-center justify-between
                    hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-                   {$activeCase?.id === c.case_id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700' : 'text-gray-700 dark:text-gray-300'}"
+                   {$activeCase?.id === c.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700' : 'text-gray-700 dark:text-gray-300'}"
             onclick={() => selectCase(c)}
             role="option"
-            aria-selected={$activeCase?.id === c.case_id}
+            aria-selected={$activeCase?.id === c.id}
           >
             <span class="truncate">{c.title}</span>
-            {#if $activeCase?.id === c.case_id}
+            {#if $activeCase?.id === c.id}
               <span class="text-blue-600 flex-shrink-0">✓</span>
             {/if}
           </button>
