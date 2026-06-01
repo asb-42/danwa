@@ -65,8 +65,7 @@ def moderator_node_factory(
                     # After 3+ failed drafts, approve with warning to avoid
                     # burning tokens on an unproductive loop.
                     logger.warning(
-                        "Moderator: no pragmatist_output and no build_responses "
-                        "after %d drafts — approving with warning to prevent infinite loop",
+                        "Moderator: no pragmatist_output and no build_responses after %d drafts — approving with warning to prevent infinite loop",
                         draft_version,
                     )
                     consensus = 0.5

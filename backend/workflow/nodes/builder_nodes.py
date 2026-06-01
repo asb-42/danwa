@@ -192,7 +192,7 @@ def builder_node_factory(
                 loc = el.get("source_location", "")
                 text = el.get("preserved_text", "")
                 rationale = el.get("rationale", "")
-                user_prompt += f"- [{loc}] \"{text}\" — Reason: {rationale}\n"
+                user_prompt += f'- [{loc}] "{text}" — Reason: {rationale}\n'
             user_prompt += "\nYou MUST keep these elements intact in your revisions.\n"
 
         if pragmatist_output:

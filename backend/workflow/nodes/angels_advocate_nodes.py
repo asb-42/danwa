@@ -149,17 +149,13 @@ def angels_advocate_node_factory(
             "FORMAT: Valides JSON. Kein Markdown außerhalb des JSON.\n"
             "\n"
             "## Output Format\n"
-            "Respond with a JSON object matching this schema:\n"
-            + json.dumps(dump, indent=2, ensure_ascii=False)
+            "Respond with a JSON object matching this schema:\n" + json.dumps(dump, indent=2, ensure_ascii=False)
         )
 
         user_prompt = f"Original draft:\n{zero_draft}\n\n"
         if critic_items:
             user_prompt += f"Critique items (the Builder will try to fix these):\n{json.dumps(critic_items, indent=2, default=str)}\n\n"
-        user_prompt += (
-            "Identify the elements that MUST be preserved, even if the Builder "
-            "rewrites everything else."
-        )
+        user_prompt += "Identify the elements that MUST be preserved, even if the Builder rewrites everything else."
 
         language = state.get("language", "de")
         user_prompt += " Please respond in English." if language == "en" else " Bitte antworte auf Deutsch."

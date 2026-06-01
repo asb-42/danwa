@@ -21,9 +21,7 @@ from backend.services.assistant_tools import (
     TOOL_REGISTRY,
     execute_tool,
     get_tool_definitions,
-    tool,
 )
-
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -211,9 +209,7 @@ class TestGetDebateDetails:
         store = _make_debate_store()
         store.get.return_value = debate
 
-        result = await TOOL_REGISTRY["get_debate_details"]["fn"](
-            debate_id="d1", debate_store=store
-        )
+        result = await TOOL_REGISTRY["get_debate_details"]["fn"](debate_id="d1", debate_store=store)
         assert result["debate_id"] == "d1"
         assert result["round_count"] == 3
         assert result["consensus"] == 0.85
@@ -222,9 +218,7 @@ class TestGetDebateDetails:
     async def test_not_found(self):
         store = _make_debate_store()
         store.get.return_value = None
-        result = await TOOL_REGISTRY["get_debate_details"]["fn"](
-            debate_id="nonexistent", debate_store=store
-        )
+        result = await TOOL_REGISTRY["get_debate_details"]["fn"](debate_id="nonexistent", debate_store=store)
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -296,9 +290,7 @@ class TestSearchKnowledgeBase:
     async def test_finds_matches(self):
         kb = _make_knowledge_file("Line 1\nAPI endpoint /health\nLine 3\nLine 4\nhealth check returns 200")
         try:
-            result = await TOOL_REGISTRY["search_knowledge_base"]["fn"](
-                query="health", knowledge_base_path=kb
-            )
+            result = await TOOL_REGISTRY["search_knowledge_base"]["fn"](query="health", knowledge_base_path=kb)
             assert result["match_count"] >= 2
             assert all("snippet" in m for m in result["matches"])
         finally:
@@ -308,9 +300,7 @@ class TestSearchKnowledgeBase:
     async def test_no_matches(self):
         kb = _make_knowledge_file("Line 1\nLine 2\nLine 3")
         try:
-            result = await TOOL_REGISTRY["search_knowledge_base"]["fn"](
-                query="nonexistent", knowledge_base_path=kb
-            )
+            result = await TOOL_REGISTRY["search_knowledge_base"]["fn"](query="nonexistent", knowledge_base_path=kb)
             assert result["match_count"] == 0
         finally:
             kb.unlink()
@@ -326,9 +316,7 @@ class TestSearchKnowledgeBase:
         content = "\n".join(["match line"] * 50)
         kb = _make_knowledge_file(content)
         try:
-            result = await TOOL_REGISTRY["search_knowledge_base"]["fn"](
-                query="match", knowledge_base_path=kb
-            )
+            result = await TOOL_REGISTRY["search_knowledge_base"]["fn"](query="match", knowledge_base_path=kb)
             assert len(result["matches"]) <= 10
         finally:
             kb.unlink()

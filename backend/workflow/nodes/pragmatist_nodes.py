@@ -106,8 +106,7 @@ def pragmatist_node_factory(
             "You MUST provide a `revision_note` explaining why.\n"
             "\n"
             "## Output Format\n"
-            "Respond with a JSON object matching this schema:\n"
-            + json.dumps(dump, indent=2, ensure_ascii=False)
+            "Respond with a JSON object matching this schema:\n" + json.dumps(dump, indent=2, ensure_ascii=False)
         )
 
         user_prompt = f"""Build responses to evaluate:\n{json.dumps(build_responses, indent=2, default=str)}"""
@@ -244,11 +243,13 @@ def pragmatist_node_factory(
                 verdicts_summary = []
                 if pragmatist_output and pragmatist_output.evaluations:
                     for ev in pragmatist_output.evaluations:
-                        verdicts_summary.append({
-                            "response_to": ev.response_to,
-                            "verdict": ev.verdict,
-                            "feasibility": ev.feasibility,
-                        })
+                        verdicts_summary.append(
+                            {
+                                "response_to": ev.response_to,
+                                "verdict": ev.verdict,
+                                "feasibility": ev.feasibility,
+                            }
+                        )
                 al.log_workflow_event(
                     session_id=session_id,
                     workflow_id=wf_id,

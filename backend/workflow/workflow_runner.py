@@ -648,18 +648,20 @@ def _build_verdict_map(
         provenance = br.get("provenance", {}) or {}
         ev = eval_by_resp.get(critic_id, {})
 
-        verdict_map.append({
-            "critic_item_id": critic_id,
-            "option_a": br.get("option_a", ""),
-            "option_b": br.get("option_b", ""),
-            "option_c": br.get("option_c", ""),
-            "rationale": br.get("rationale", ""),
-            "implementable": br.get("implementable", False),
-            "verdict": ev.get("verdict", provenance.get("pragmatist_verdict", "pending")),
-            "feasibility": ev.get("feasibility", provenance.get("pragmatist_score")),
-            "revision_type": provenance.get("revision_type", ""),
-            "draft_version": provenance.get("draft_version", 0),
-        })
+        verdict_map.append(
+            {
+                "critic_item_id": critic_id,
+                "option_a": br.get("option_a", ""),
+                "option_b": br.get("option_b", ""),
+                "option_c": br.get("option_c", ""),
+                "rationale": br.get("rationale", ""),
+                "implementable": br.get("implementable", False),
+                "verdict": ev.get("verdict", provenance.get("pragmatist_verdict", "pending")),
+                "feasibility": ev.get("feasibility", provenance.get("pragmatist_score")),
+                "revision_type": provenance.get("revision_type", ""),
+                "draft_version": provenance.get("draft_version", 0),
+            }
+        )
 
     return verdict_map
 
@@ -712,9 +714,7 @@ def _build_artifact_common(
         metadata["transactional"] = {
             "critic_items": state.get("critic_items", []),
             "build_responses": state.get("build_responses", []),
-            "pragmatist_evaluations": (
-                pragmatist_out.get("evaluations", []) if isinstance(pragmatist_out, dict) else []
-            ),
+            "pragmatist_evaluations": (pragmatist_out.get("evaluations", []) if isinstance(pragmatist_out, dict) else []),
             "pragmatist_verdicts": _build_verdict_map(
                 state.get("build_responses", []),
                 pragmatist_out.get("evaluations", []) if isinstance(pragmatist_out, dict) else [],
