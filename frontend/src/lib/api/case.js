@@ -11,6 +11,7 @@ export function getCases(tenantId) {
 }
 
 export function createCase(tenantId, { title, description, tags }) {
+  console.debug('[API] createCase:', { tenantId, title });
   return request(`/api/v1/tenants/${tenantId}/cases`, {
     method: 'POST',
     body: JSON.stringify({ title, description, tags: tags || [] }),

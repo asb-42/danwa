@@ -51,17 +51,19 @@
   }
 
   async function handleCreate() {
+    console.debug('[CaseNavigator] handleCreate:', { newTitle: newTitle.trim(), tenant: $currentTenant, hasTenant: !!$currentTenant });
     if (!newTitle.trim() || !$currentTenant) return;
     isCreating = true;
     try {
       const c = await createCase($currentTenant.id, { title: newTitle.trim(), description: newDescription.trim() });
+      console.debug('[CaseNavigator] createCase response:', c);
       cases = [...cases, c];
       activeCase.set({ id: c.id, title: c.title });
       newTitle = '';
       newDescription = '';
       showCreate = false;
     } catch (err) {
-      console.error('Failed to create case:', err);
+      console.error('[CaseNavigator] Failed to create case:', err);
     } finally {
       isCreating = false;
     }

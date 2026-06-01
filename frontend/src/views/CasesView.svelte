@@ -71,6 +71,7 @@
   }
 
   async function handleSave() {
+    console.debug('[CasesView] handleSave:', { newTitle: newTitle.trim(), editingCase: !!editingCase, tenant: $currentTenant });
     if (!newTitle.trim() || !$currentTenant) return;
     isSaving = true;
     try {
@@ -91,7 +92,7 @@
       cancelForm();
       await loadCases();
     } catch (err) {
-      console.error('Failed to save case:', err);
+      console.error('[CasesView] Failed to save case:', err);
     } finally {
       isSaving = false;
     }
