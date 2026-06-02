@@ -36,5 +36,5 @@
   </div>
 
   <!-- Assistant Chat -->
-  <AssistantChat isOpen={isAssistantOpen} on:close={closeAssistant} />
+  <AssistantChat isOpen={isAssistantOpen} onclose={closeAssistant} />
 </div>

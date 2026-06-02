@@ -1,6 +1,6 @@
 <script>
   import { healthStatus, route } from '../lib/stores.js';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { getLLMActivity } from '../lib/api.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
   import ProjectSelector from './ProjectSelector.svelte';
@@ -10,19 +10,29 @@
 
   let { isAssistantOpen, onToggle } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
+
+  // Map current route to a localized page title for the <h1>.
+  // Falls back to a generic title when the route has no nav.<id> key.
+  let pageTitle = $derived(t('nav.' + $route) || t('app.title'));
 
   let statusColor = $derived($healthStatus.status === 'ok'
     ? 'bg-green-500'
     : $healthStatus.status === 'unknown'
       ? 'bg-yellow-500'
       : 'bg-red-500');
+
+  let healthIcon = $derived(
+    $healthStatus.status === 'ok' ? '✅'
+      : $healthStatus.status === 'unknown' ? '⏳'
+        : '⚠️'
+  );
+
+  let healthLabel = $derived(
+    $healthStatus.status === 'ok' ? t('health.ok')
+      : $healthStatus.status === 'unknown' ? t('health.checking')
+        : t('health.unreachable')
+  );
 
   // --- LLM Activity Monitoring ---
   let llmActivity = $state({
@@ -32,7 +42,6 @@
     total_tokens_all_sessions: 0,
     session_totals: {},
   });
-  let llmPollError = $state(false);
 
   // Token warning thresholds
   const TOKEN_WARN = 100_000;
@@ -76,9 +85,8 @@
       try {
         const data = await getLLMActivity();
         llmActivity = data;
-        llmPollError = false;
-      } catch {
-        llmPollError = true;
+      } catch (e) {
+        console.warn('[Header] LLM activity poll failed:', e);
       }
     }, 4000);
     return () => clearInterval(id);
@@ -126,7 +134,7 @@
 <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
   <div class="flex items-center gap-4 min-w-0">
     <h1 class="text-lg font-semibold text-gray-800 dark:text-white shrink-0">
-      Debate Engine
+      {pageTitle}
     </h1>
 
     <!-- LLM Activity Indicator -->
@@ -172,14 +180,22 @@
     <!-- Language switcher -->
     <LanguageSwitcher />
 
-    <!-- Health indicator (includes version from backend) -->
-    <div class="flex items-center space-x-2" aria-label="Backend status: {$healthStatus.status}">
-      <span class="relative flex h-3 w-3">
+    <!-- Health indicator (includes version from backend). aria-live="polite"
+         announces status changes to screen readers without interrupting. -->
+    <div
+      class="flex items-center space-x-2"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={`${t('health.label')}: ${healthLabel}`}
+    >
+      <span aria-hidden="true">{healthIcon}</span>
+      <span class="relative flex h-3 w-3" aria-hidden="true">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full {statusColor} opacity-75"></span>
         <span class="relative inline-flex rounded-full h-3 w-3 {statusColor}"></span>
       </span>
       <span class="text-sm text-gray-600 dark:text-gray-300">
-        {$healthStatus.status}
+        {healthLabel}
         {#if $healthStatus.version}
           <span class="text-xs text-gray-500">({$healthStatus.version})</span>
         {/if}
