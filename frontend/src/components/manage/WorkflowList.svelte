@@ -1,5 +1,5 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { formatDate, tStore } from '../../lib/i18n/index.js';
 
   let {
     workflows = [],
@@ -10,13 +10,7 @@
     onOpenCanvas = () => {},
   } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let search = $state('');
   let dropdownOpen = $state(null);
@@ -43,11 +37,10 @@
     dropdownOpen = null;
   }
 
-  function formatDate(dateStr) {
+  function formatCreatedAt(dateStr) {
     if (!dateStr) return '—';
     try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return formatDate(dateStr, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch { return dateStr; }
   }
 
@@ -102,7 +95,7 @@
                 </td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">v{wf.version ?? 1}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{getTemplateLabel(wf)}</td>
-                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(wf.created_at)}</td>
+                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatCreatedAt(wf.created_at)}</td>
                 <td class="px-4 py-3 text-right relative">
                   <button
                     class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"

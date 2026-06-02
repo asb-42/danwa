@@ -2,17 +2,11 @@
   import { onMount } from 'svelte';
   import { activeProject, loading, error } from '../lib/stores.js';
   import { getProjects, createProject, updateProject, deleteProject } from '../lib/api.js';
-  import { i18n, formatDate } from '../lib/i18n/index.js';
+  import { formatDate, tStore } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let projects = $state([]);
   let isLoading = $state(false);
@@ -77,6 +71,7 @@
   async function handleSave() {
     if (!validateForm()) return;
     isSaving = true;
+    error.set(null);
     try {
       if (modalMode === 'create') {
         const project = await createProject(formData.name.trim(), formData.description.trim());
@@ -117,6 +112,7 @@
   async function handleDelete() {
     if (!deleteTarget) return;
     isDeleting = true;
+    error.set(null);
     try {
       await deleteProject(deleteTarget.id);
       // If deleted project was active, clear selection

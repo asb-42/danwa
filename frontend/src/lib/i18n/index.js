@@ -217,6 +217,22 @@ function createI18nStore() {
 export const i18n = createI18nStore();
 
 /**
+ * Reactive translation helper.
+ *
+ * Re-emits a new `t(key, params)` closure whenever the i18n store updates
+ * (i.e. on locale change), so components can do:
+ *
+ *   import { tStore } from '../lib/i18n/index.js';
+ *   let t = $derived($tStore);
+ *   <p>{t('common.welcome')}</p>
+ *
+ * Internally delegates to `i18n.t()` which implements the 3-level fallback
+ * chain (current locale → en → key), so missing translations show the
+ * English text instead of a raw key like "common.welcome".
+ */
+export const tStore = derived(i18n, () => (key, params = {}) => i18n.t(key, params));
+
+/**
  * Convenience function for translating keys.
  * Can be used outside Svelte components.
  */

@@ -1,15 +1,9 @@
 <script>
-  import { i18n } from '../lib/i18n/index.js';
+  import { formatDate, formatNumber, tStore } from '../lib/i18n/index.js';
 
   let { events = [] } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   const AGENT_COLORS = {
     strategist: { bg: '#8b5cf6', light: 'rgba(139,92,246,0.15)', border: '#8b5cf6' },
@@ -55,8 +49,9 @@
 
   function formatTime(ts) {
     if (!ts) return '';
-    const d = new Date(ts);
-    return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    try {
+      return formatDate(ts, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch { return ts; }
   }
 
   let expandedEvent = $state(null);
@@ -90,7 +85,7 @@
         </span>
         <span class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-          {totalTokens.toLocaleString()} {t('audit.tokens') || 'Tokens'}
+          {formatNumber(totalTokens)} {t('audit.tokens') || 'Tokens'}
         </span>
       </div>
     </div>
@@ -137,7 +132,7 @@
                     <!-- Tokens -->
                     {#if event.tokens_used}
                       <span class="ml-auto text-xs text-gray-400 dark:text-gray-500 font-mono">
-                        {event.tokens_used.toLocaleString()} tok
+                        {formatNumber(event.tokens_used)} tok
                       </span>
                     {/if}
 

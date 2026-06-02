@@ -2,17 +2,11 @@
   import { onMount } from 'svelte';
   import { loading, error, activeProject } from '../lib/stores.js';
   import { getDebates, listDebateForks, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
-  import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
+  import { formatNumber, formatDate, tStore } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   const PAGE_SIZE = 20;
 
@@ -138,6 +132,7 @@
 
   async function handleArchive(debateId) {
     isArchiving = true;
+    error.set(null);
     try {
       await softDeleteSession(debateId);
       // Update local state — mark as archived
@@ -174,6 +169,7 @@
   async function handleMove(debateId) {
     if (!targetProjectId) return;
     isMoving = true;
+    error.set(null);
     try {
       await moveDebate(debateId, targetProjectId);
       debates = debates.filter(d => d.debate_id !== debateId);
@@ -187,6 +183,7 @@
 
   async function handleRestore(debateId) {
     restoringId = debateId;
+    error.set(null);
     try {
       await restoreSession(debateId);
       // Update local state — unmark archived
@@ -221,6 +218,7 @@
 
   async function handleDelete(debateId) {
     isDeleting = true;
+    error.set(null);
     try {
       await deleteDebate(debateId);
       // Remove from local list

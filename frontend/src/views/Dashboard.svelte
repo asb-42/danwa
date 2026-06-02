@@ -3,19 +3,13 @@
   import { healthStatus, loading, error, activeProject, activeCase, currentDebate, sseConnected, route } from '../lib/stores.js';
   import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
-  import { i18n, formatNumber, formatDate } from '../lib/i18n/index.js';
+  import { formatNumber, formatDate, tStore } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
   import QuotaIndicator from '../components/QuotaIndicator.svelte';
 
   let { navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let stats = $state({
     totalDebates: 0,

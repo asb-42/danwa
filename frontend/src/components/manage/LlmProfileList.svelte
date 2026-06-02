@@ -1,5 +1,5 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { formatNumber, tStore } from '../../lib/i18n/index.js';
 
   let {
     profiles = [],
@@ -15,13 +15,7 @@
     onSelectProfile = () => {},
   } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let search = $state('');
   let dropdownOpen = $state(null);
@@ -140,9 +134,9 @@
                 </td>
                 <td class="px-4 py-3">{profile.provider}</td>
                 <td class="px-4 py-3 font-mono text-xs">{profile.model}</td>
-                <td class="px-4 py-3">{profile.temperature}</td>
-                <td class="px-4 py-3">{profile.max_tokens}</td>
-                <td class="px-4 py-3">{profile.context_window ?? '—'}</td>
+                <td class="px-4 py-3">{formatNumber(profile.temperature, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="px-4 py-3">{formatNumber(profile.max_tokens)}</td>
+                <td class="px-4 py-3">{profile.context_window != null ? formatNumber(profile.context_window) : '—'}</td>
                 <td class="px-4 py-3 text-right">
                   <div class="relative inline-block">
                     <button

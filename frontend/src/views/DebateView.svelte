@@ -449,6 +449,7 @@
 
   async function handleRefreshStatus() {
     if (!$currentDebate) return;
+    error.set(null);
     try {
       const status = await getDebate($currentDebate.debate_id);
       currentDebate.set({ ...$currentDebate, ...status });
@@ -466,6 +467,7 @@
   async function handleCancelDebate() {
     if (!$currentDebate) return;
     isCancelling = true;
+    error.set(null);
     try {
       const result = await cancelDebate($currentDebate.debate_id);
       if (result.status === 'completed' || result.status === 'failed') {
