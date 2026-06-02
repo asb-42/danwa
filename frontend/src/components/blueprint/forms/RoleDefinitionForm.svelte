@@ -4,7 +4,7 @@
    *
    * Maps 1:1 to the RoleDefinition Pydantic model.
    */
-  import { i18n } from '../../../lib/i18n/index.js';
+  import { tStore } from '../../../lib/i18n/index.js';
   import { canvasStore } from '../../../lib/blueprint/store.svelte.js';
   import {
     createRoleDefinition,
@@ -18,7 +18,7 @@
   /** @type {{ node: any, onsave?: (data: any) => void, ondelete?: () => void }} */
   let { node, onsave = () => {}, ondelete = () => {} } = $props();
 
-  let t = $derived((key) => $i18n[key] || key);
+  let t = $derived($tStore);
 
   let draft = $state({});
   let saving = $state(false);

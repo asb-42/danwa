@@ -1,5 +1,5 @@
 <script>
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
 
   export let events = [];
   export let sortColumn = 'timestamp';
@@ -8,7 +8,7 @@
   export let onSort = (col) => {};
   export let onRowClick = (idx) => {};
 
-  $: _ = $i18n;
+  let t = $derived($tStore);
 
   function handleSort(col) {
     onSort(col);
@@ -22,35 +22,35 @@
 <div class="audit-trail">
   {#if events.length === 0}
     <div class="empty">
-      <p>{_.audit?.noEvents || 'No audit events yet'}</p>
+      <p>{t('audit.noEvents')}</p>
     </div>
   {:else}
     <table class="audit-table">
       <thead>
         <tr>
           <th on:click={() => handleSort('timestamp')} class:sort-asc={sortColumn === 'timestamp' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'timestamp' && sortDirection === 'desc'}>
-            {_.audit?.columns?.timestamp || 'Timestamp'}
+            {t('audit.columns.timestamp')}
           </th>
           <th on:click={() => handleSort('event_type')} class:sort-asc={sortColumn === 'event_type' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'event_type' && sortDirection === 'desc'}>
-            {_.audit?.columns?.eventType || 'Event Type'}
+            {t('audit.columns.eventType')}
           </th>
           <th on:click={() => handleSort('node_id')} class:sort-asc={sortColumn === 'node_id' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'node_id' && sortDirection === 'desc'}>
-            {_.audit?.columns?.nodeId || 'Node ID'}
+            {t('audit.columns.nodeId')}
           </th>
           <th on:click={() => handleSort('actor')} class:sort-asc={sortColumn === 'actor' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'actor' && sortDirection === 'desc'}>
-            {_.audit?.columns?.actor || 'Actor'}
+            {t('audit.columns.actor')}
           </th>
           <th on:click={() => handleSort('latency_ms')} class:sort-asc={sortColumn === 'latency_ms' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'latency_ms' && sortDirection === 'desc'}>
-            {_.audit?.columns?.latency || 'Latency'}
+            {t('audit.columns.latency')}
           </th>
           <th on:click={() => handleSort('prompt_tokens')} class:sort-asc={sortColumn === 'prompt_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'prompt_tokens' && sortDirection === 'desc'}>
-            {_.audit?.columns?.promptTokens || 'Prompt Tok'}
+            {t('audit.columns.promptTokens')}
           </th>
           <th on:click={() => handleSort('completion_tokens')} class:sort-asc={sortColumn === 'completion_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'completion_tokens' && sortDirection === 'desc'}>
-            {_.audit?.columns?.completionTokens || 'Completion Tok'}
+            {t('audit.columns.completionTokens')}
           </th>
-          <th>{_.audit?.columns?.inputHash || 'Input Hash'}</th>
-          <th>{_.audit?.columns?.outputHash || 'Output Hash'}</th>
+          <th>{t('audit.columns.inputHash')}</th>
+          <th>{t('audit.columns.outputHash')}</th>
         </tr>
       </thead>
       <tbody>

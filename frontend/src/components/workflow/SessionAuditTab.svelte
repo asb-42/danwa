@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { getAuditLog } from '../../lib/workflow/auditApi.js';
   import AuditTrail from '../AuditTrail.svelte';
 
@@ -17,7 +17,7 @@
   let sortColumn = 'timestamp';
   let sortDirection = 'asc';
 
-  $: _ = $i18n;
+  let t = $derived($tStore);
 
   $: totalEvents = auditEntries.length;
   $: totalTokens = auditEntries.reduce((sum, e) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0);
@@ -110,15 +110,15 @@
   <div class="summary">
     <div class="stat">
       <span class="stat-value">{totalEvents}</span>
-      <span class="stat-label">{_.audit?.summary?.totalEvents || 'Total Events'}</span>
+      <span class="stat-label">{t('audit.summary.totalEvents')}</span>
     </div>
     <div class="stat">
       <span class="stat-value">{totalTokens}</span>
-      <span class="stat-label">{_.audit?.summary?.totalTokens || 'Total Tokens'}</span>
+      <span class="stat-label">{t('audit.summary.totalTokens')}</span>
     </div>
     <div class="stat">
       <span class="stat-value">{totalLatency} ms</span>
-      <span class="stat-label">{_.audit?.summary?.totalLatency || 'Total Latency'}</span>
+      <span class="stat-label">{t('audit.summary.totalLatency')}</span>
     </div>
     {#each Object.entries(eventTypeCounts) as [type, count]}
       <div class="stat">
@@ -131,14 +131,14 @@
   <!-- Filters -->
   <div class="filters">
     <select bind:value={eventTypeFilter}>
-      <option value="">{_.audit?.filter?.eventType || 'All Event Types'}</option>
+      <option value="">{t('audit.filter.eventType')}</option>
       {#each eventTypes as type}
         <option value={type}>{type}</option>
       {/each}
     </select>
     <input
       type="text"
-      placeholder={_.audit?.filter?.search || 'Search actor/node...'}
+      placeholder={t('audit.filter.search')}
       bind:value={searchQuery}
     />
     <select bind:value={pageSize}>
@@ -147,7 +147,7 @@
       <option value="100">100 / page</option>
     </select>
     <button class="btn-export" on:click={exportCSV}>
-      {_.audit?.export?.csv || 'Export CSV'}
+      {t('audit.export.csv')}
     </button>
   </div>
 

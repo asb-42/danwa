@@ -1,21 +1,21 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
-  export let node = null;
+  let { node = null } = $props();
 
-  $: _ = $i18n;
+  let t = $derived($tStore);
 </script>
 
 {#if node}
   <div class="node-detail">
-    <h3>{_.replay?.nodeDetail?.title || 'Node Detail'}</h3>
+    <h3>{t('replay.nodeDetail.title')}</h3>
     <div class="detail-grid">
       <div class="detail-row">
         <span class="label">Node ID:</span>
         <span class="value">{node.node_id || '—'}</span>
       </div>
       <div class="detail-row">
-        <span class="label">{_.replay?.nodeDetail?.actor || 'Actor:'}</span>
+        <span class="label">{t('replay.nodeDetail.actor')}</span>
         <span class="value">{node.actor || '—'}</span>
       </div>
       <div class="detail-row">
@@ -23,15 +23,15 @@
         <span class="value">{node.event_type || '—'}</span>
       </div>
       <div class="detail-row">
-        <span class="label">{_.replay?.nodeDetail?.timestamp || 'Timestamp:'}</span>
+        <span class="label">{t('replay.nodeDetail.timestamp')}</span>
         <span class="value">{node.timestamp || '—'}</span>
       </div>
       <div class="detail-row">
-        <span class="label">{_.replay?.nodeDetail?.latency || 'Latency:'}</span>
+        <span class="label">{t('replay.nodeDetail.latency')}</span>
         <span class="value">{node.latency_ms || 0} ms</span>
       </div>
       <div class="detail-row">
-        <span class="label">{_.replay?.nodeDetail?.tokens || 'Tokens:'}</span>
+        <span class="label">{t('replay.nodeDetail.tokens')}</span>
         <span class="value">
           {(node.prompt_tokens || 0) + (node.completion_tokens || 0)}
           ({node.prompt_tokens || 0} in / {node.completion_tokens || 0} out)

@@ -1,32 +1,34 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
-  export let currentStep = 0;
-  export let totalSteps = 0;
-  export let isPlaying = false;
-  export let playSpeed = 1;
-  export let interjectionMarkers = [];
-  export let onPlayPause;
-  export let onStepForward;
-  export let onStepBack;
-  export let onSliderChange;
-  export let onSpeedChange;
+  let {
+    currentStep = 0,
+    totalSteps = 0,
+    isPlaying = false,
+    playSpeed = 1,
+    interjectionMarkers = [],
+    onPlayPause = () => {},
+    onStepForward = () => {},
+    onStepBack = () => {},
+    onSliderChange = () => {},
+    onSpeedChange = () => {},
+  } = $props();
 
-  $: _ = $i18n;
-  $: timestamp = ''; // would be computed from audit log entry
+  let t = $derived($tStore);
+  let timestamp = $derived(''); // would be computed from audit log entry
 </script>
 
 <div class="replay-controls">
   <!-- Playback buttons -->
   <div class="playback-buttons">
     <button class="btn" on:click={onStepBack} disabled={currentStep === 0}>
-      ⏮ {_.replay?.stepBack || 'Back'}
+      ⏮ {t('replay.stepBack')}
     </button>
     <button class="btn btn-primary" on:click={onPlayPause}>
-      {isPlaying ? '⏸ ' + (_.replay?.pause || 'Pause') : '▶ ' + (_.replay?.play || 'Play')}
+      {isPlaying ? '⏸ ' + t('replay.pause') : '▶ ' + t('replay.play')}
     </button>
     <button class="btn" on:click={onStepForward} disabled={currentStep >= totalSteps - 1}>
-      ⏭ {_.replay?.stepForward || 'Forward'}
+      ⏭ {t('replay.stepForward')}
     </button>
   </div>
 
@@ -46,7 +48,7 @@
           <div
             class="marker"
             style="left: {(marker / Math.max(totalSteps - 1, 1)) * 100}%"
-            title={_.replay?.interjectionMarker || 'Interjection'}
+            title={t('replay.interjectionMarker')}
           ></div>
         {/each}
       </div>
@@ -56,7 +58,7 @@
   <!-- Speed selector + counter -->
   <div class="controls-row">
     <label>
-      {_.replay?.speed || 'Speed:'}
+      {t('replay.speed')}
       <select value={playSpeed} on:change={onSpeedChange}>
         <option value="0.5">0.5x</option>
         <option value="1">1x</option>

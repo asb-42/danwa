@@ -5,7 +5,7 @@
    * Context-sensitive panel that renders the appropriate form
    * based on the selected node type.
    */
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
 
   // Forms
@@ -22,7 +22,7 @@
 
   const TRANSACTIONAL_NODE_TYPES = ['wf-critic', 'wf-builder', 'wf-pragmatist', 'wf-angels-advocate'];
 
-  let t = $derived((key) => $i18n[key] || key);
+  let t = $derived($tStore);
 
   let selectedNode = $derived(canvasStore.selectedNode);
   let nodeType = $derived(selectedNode?.type);

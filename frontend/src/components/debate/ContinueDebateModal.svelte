@@ -5,7 +5,7 @@
    */
   import { createDebate, continueDebate, getAgentPersonas, getLLMProfiles, getPromptVariants } from '../../lib/api.js';
   import { selectedLLMProfile, selectedPromptVariant, selectedPersonas, loading, error, addToast } from '../../lib/stores.js';
-  import { i18n, locale, tStore } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   let { debateId = null, debateTitle = '', onClose = () => {}, onCreated = () => {} } = $props();
 
@@ -64,7 +64,7 @@
   }
 </script>
 
-{#if $i18n['followup.title']}
+{#if t('followup.title')}
 <div class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
     <div class="p-6">

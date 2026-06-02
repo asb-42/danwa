@@ -8,12 +8,12 @@
    * - Pragmatist (wf-pragmatist): reality_score threshold display + blocking_concerns warning
    * - Angel's Advocate (wf-angels-advocate): PreservedElement info
    */
-  import { i18n } from '../../../lib/i18n/index.js';
+  import { tStore } from '../../../lib/i18n/index.js';
 
   /** @type {{ nodeType: string }} */
   let { nodeType } = $props();
 
-  let t = $derived((key) => $i18n[key] || key);
+  let t = $derived($tStore);
 </script>
 
 <div class="txn-panel" data-testid="txn-panel-{nodeType}">

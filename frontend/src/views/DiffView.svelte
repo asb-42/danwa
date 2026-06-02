@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { routeParams } from '../lib/stores.js';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { getWorkflowSessions } from '../lib/workflow/auditApi.js';
   import DiffNodeDetail from '../components/workflow/DiffNodeDetail.svelte';
 
@@ -14,7 +14,7 @@
   let error = null;
   let selectedNodeId = null;
 
-  $: _ = $i18n;
+  let t = $derived($tStore);
 
   onMount(async () => {
     try {
@@ -54,7 +54,7 @@
     selectedNodeId = nodeId;
   }
 
-  $: diffPairs = (() => {
+  let diffPairs = $derived.by(() => {
     const mapA = new Map(auditLogA.filter(e => e.node_id).map(e => [e.node_id, e]));
     const mapB = new Map(auditLogB.filter(e => e.node_id).map(e => [e.node_id, e]));
     const allNodeIds = new Set([...mapA.keys(), ...mapB.keys()]);
@@ -63,15 +63,15 @@
       entryA: mapA.get(nodeId) || null,
       entryB: mapB.get(nodeId) || null,
     }));
-  })();
+  });
 </script>
 
 <div class="diff-view">
-  <h2>{_.diff?.title || 'Diff View'}</h2>
+  <h2>{t('diff.title')}</h2>
 
   <div class="session-selectors">
     <div class="selector">
-      <label for="diff-session-a">{_.diff?.selectSessionA || 'Session A:'}</label>
+      <label for="diff-session-a">{t('diff.selectSessionA')}</label>
       <select id="diff-session-a" value={sessionA} on:change={onSessionAChange}>
         <option value="">--</option>
         {#each sessions as s}
@@ -80,7 +80,7 @@
       </select>
     </div>
     <div class="selector">
-      <label for="diff-session-b">{_.diff?.selectSessionB || 'Session B:'}</label>
+      <label for="diff-session-b">{t('diff.selectSessionB')}</label>
       <select id="diff-session-b" value={sessionB} on:change={onSessionBChange}>
         <option value="">--</option>
         {#each sessions as s}
@@ -97,9 +97,9 @@
   {:else if diffPairs.length > 0}
     <div class="diff-summary">
       {#if diffPairs.every(p => p.entryA && p.entryB && p.entryA.output_hash === p.entryB.output_hash)}
-        <p class="no-diff">{_.diff?.noDifferences || 'No differences found.'}</p>
+        <p class="no-diff">{t('diff.noDifferences')}</p>
       {:else}
-        <p class="diff-found">{_.diff?.differencesFound || 'Differences found.'}</p>
+        <p class="diff-found">{t('diff.differencesFound')}</p>
       {/if}
     </div>
 

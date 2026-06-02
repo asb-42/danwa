@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { routeParams } from '../lib/stores.js';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { getAuditLog, getWorkflowSessions } from '../lib/workflow/auditApi.js';
   import WorkflowCanvas from '../components/workflow/WorkflowCanvas.svelte';
   import ReplayControls from '../components/workflow/ReplayControls.svelte';
@@ -18,7 +18,7 @@
   let error = null;
   let loading = false;
 
-  $: _ = $i18n; // reactivity trigger for i18n
+  let t = $derived($tStore);
 
   onMount(async () => {
     try {
@@ -113,19 +113,21 @@
     }
   }
 
-  $: interjectionMarkers = auditLog
-    .map((entry, idx) => (entry.event_type === 'interjection_submitted' ? idx : -1))
-    .filter((i) => i >= 0);
+  let interjectionMarkers = $derived(
+    auditLog
+      .map((entry, idx) => (entry.event_type === 'interjection_submitted' ? idx : -1))
+      .filter((i) => i >= 0)
+  );
 </script>
 
 <div class="replay-view">
-  <h2>{_.replay?.title || 'Replay'}</h2>
+  <h2>{t('replay.title')}</h2>
 
   <!-- Session selector -->
   <div class="session-selector">
-    <label for="replay-session-select">{_.replay?.selectSession || 'Select Session:'}</label>
+    <label for="replay-session-select">{t('replay.selectSession')}</label>
     <select id="replay-session-select" value={selectedSessionId} on:change={onSessionSelect}>
-      <option value="">-- {_.replay?.selectSession || 'Select Session'} --</option>
+      <option value="">-- {t('replay.selectSession')} --</option>
       {#each sessions as session}
         <option value={session.id}>{session.id} ({session.status})</option>
       {/each}
@@ -166,7 +168,7 @@
       <ReplayNodeDetail node={selectedNode} />
     {/if}
   {:else if selectedSessionId}
-    <p class="no-data">{_.replay?.noData || 'No audit data for this session.'}</p>
+    <p class="no-data">{t('replay.noData')}</p>
   {/if}
 </div>
 

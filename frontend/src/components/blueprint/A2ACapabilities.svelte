@@ -1,10 +1,10 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   /** @type {{ capabilities?: Object }} */
   let { capabilities = {} } = $props();
 
-  let t = $derived((key) => $i18n[key] || key);
+  let t = $derived($tStore);
 
   let skills = $derived(capabilities.skills || []);
   let inputModes = $derived(capabilities.input_modes || []);

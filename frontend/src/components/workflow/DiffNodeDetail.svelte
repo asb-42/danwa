@@ -1,18 +1,16 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
-  export let entryA = null;
-  export let entryB = null;
-  export let nodeId = '';
+  let { entryA = null, entryB = null, nodeId = '' } = $props();
 
-  $: _ = $i18n;
+  let t = $derived($tStore);
 </script>
 
 <div class="diff-detail">
   <h3>{nodeId}</h3>
   <div class="split-panel">
     <div class="panel">
-      <h4>{_.diff?.nodeDetail?.sessionA || 'Session A'}</h4>
+      <h4>{t('diff.nodeDetail.sessionA')}</h4>
       {#if entryA}
         <div class="field"><span class="label">Actor:</span> {entryA.actor || '—'}</div>
         <div class="field"><span class="label">Event:</span> {entryA.event_type || '—'}</div>
@@ -24,7 +22,7 @@
       {/if}
     </div>
     <div class="panel">
-      <h4>{_.diff?.nodeDetail?.sessionB || 'Session B'}</h4>
+      <h4>{t('diff.nodeDetail.sessionB')}</h4>
       {#if entryB}
         <div class="field"><span class="label">Actor:</span> {entryB.actor || '—'}</div>
         <div class="field"><span class="label">Event:</span> {entryB.event_type || '—'}</div>
@@ -38,11 +36,11 @@
   </div>
   {#if entryA && entryB}
     <div class="comparison">
-      <h4>{_.diff?.nodeDetail?.latencyComparison || 'Latency Comparison'}</h4>
+      <h4>{t('diff.nodeDetail.latencyComparison')}</h4>
       <span>{entryA.latency_ms || 0} ms vs {entryB.latency_ms || 0} ms
         ({(entryA.latency_ms || 0) - (entryB.latency_ms || 0) > 0 ? '+' : ''}{(entryA.latency_ms || 0) - (entryB.latency_ms || 0)} ms)
       </span>
-      <h4>{_.diff?.nodeDetail?.tokenComparison || 'Token Comparison'}</h4>
+      <h4>{t('diff.nodeDetail.tokenComparison')}</h4>
       <span>{(entryA.prompt_tokens || 0) + (entryA.completion_tokens || 0)} vs {(entryB.prompt_tokens || 0) + (entryB.completion_tokens || 0)}</span>
     </div>
   {/if}
