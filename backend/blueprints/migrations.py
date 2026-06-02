@@ -268,14 +268,6 @@ _MIGRATION_V6_TABLES = [
     "CREATE INDEX IF NOT EXISTS idx_audit_log_workflow ON audit_log (workflow_id)",
     "CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log (event_type)",
     "CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log (timestamp)",
-    # --- ALTER TABLE: add columns for transactional drafting (idempotent) ---
-    "ALTER TABLE audit_log ADD COLUMN input_content TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE audit_log ADD COLUMN output_content TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE audit_log ADD COLUMN trace_log_path TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE audit_log ADD COLUMN critic_item_id TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE audit_log ADD COLUMN build_response_id TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE audit_log ADD COLUMN draft_version INTEGER NOT NULL DEFAULT 0",
-    "ALTER TABLE audit_log ADD COLUMN constructivity_score REAL",
     # --- report_jobs ---
     """
     CREATE TABLE IF NOT EXISTS report_jobs (
@@ -608,22 +600,17 @@ _MIGRATION_V21_TABLES = [
 
 
 # ---------------------------------------------------------------------------
-# V22 — Audit log content columns
+# V22 — Audit log content columns (no-op: already in v6 CREATE TABLE)
 # ---------------------------------------------------------------------------
 
-_MIGRATION_V22_TABLES = [
-    "ALTER TABLE audit_log ADD COLUMN input_content TEXT",
-    "ALTER TABLE audit_log ADD COLUMN output_content TEXT",
-]
+_MIGRATION_V22_TABLES: list[str] = []
 
 
 # ---------------------------------------------------------------------------
-# V23 — Trace log path
+# V23 — Trace log path (no-op: already in v6 CREATE TABLE)
 # ---------------------------------------------------------------------------
 
-_MIGRATION_V23_TABLES = [
-    "ALTER TABLE audit_log ADD COLUMN trace_log_path TEXT",
-]
+_MIGRATION_V23_TABLES: list[str] = []
 
 
 # ---------------------------------------------------------------------------
