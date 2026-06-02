@@ -1,5 +1,5 @@
 <script>
-  import { i18n, formatNumber } from '../lib/i18n/index.js';
+  import { formatNumber, tStore } from '../lib/i18n/index.js';
   import { onDestroy } from 'svelte';
   import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
   import { startMvpDebate, submitInterjection, getCompositionComponents } from '../lib/workflowExec.js';
@@ -21,13 +21,7 @@
 
   let { debateId: externalDebateId = null, navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   // Tear down all polling/timer intervals on unmount. The clearInterval
   // calls inside the start* functions only fire when a new timer is
@@ -789,13 +783,13 @@
         <span class="status-dot"></span>
         <span class="status-text">{status}</span>
         {#if isConnected}
-          <span class="sse-badge" title="SSE connected">
+          <span class="sse-badge" title={t('mvpDebate.sseConnected')}>
             <span class="sse-dot"></span>
             <span class="sse-label">SSE</span>
           </span>
         {/if}
         {#if debateId}
-          <span class="debate-id clickable" title="Debate ID: {debateId}" onclick={() => navigator.clipboard?.writeText(debateId)} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') navigator.clipboard?.writeText(debateId); }}>ID: {debateId}</span>
+          <span class="debate-id clickable" title={t('mvpDebate.debateIdTooltip', { debateId })} onclick={() => navigator.clipboard?.writeText(debateId)} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') navigator.clipboard?.writeText(debateId); }}>ID: {debateId}</span>
         {/if}
         {#if sessionId}
           <span class="session-id">{sessionId}</span>
