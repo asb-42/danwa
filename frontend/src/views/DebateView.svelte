@@ -3,7 +3,7 @@
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, activeCase, autoStartDebate, addToast } from '../lib/stores.js';
   import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
-  import { i18n, formatNumber, formatDate, locale } from '../lib/i18n/index.js';
+  import { i18n, formatNumber, formatDate, locale, tn } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
   import WorkflowGraph from '../components/WorkflowGraph.svelte';
   import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
@@ -911,7 +911,7 @@
                         {#if output.duration_ms}
                           <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">⏱ {formatElapsed(output.duration_ms)}</span>
                         {/if}
-                        <span class="text-xs text-gray-400 dark:text-gray-500">{output.tokens_out || output.tokens} tokens</span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">{tn(output.tokens_out || output.tokens, { one: 'audit.tokens.one', other: 'audit.tokens.other' })}</span>
                       </div>
                     </div>
                     <div class="text-sm text-gray-700 dark:text-gray-300">
@@ -1081,7 +1081,7 @@
                             <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">{output.model}</span>
                           {/if}
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">{output.tokens_used || 0} tokens</span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">{tn(output.tokens_used || 0, { one: 'audit.tokens.one', other: 'audit.tokens.other' })}</span>
                       </div>
                       <div class="text-sm text-gray-700 dark:text-gray-300">
                         {#if isLong && !isExpanded}

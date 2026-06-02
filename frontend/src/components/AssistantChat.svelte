@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     createAssistantSession,
     listAssistantSessions,
@@ -66,6 +66,18 @@
     if (isOpen) {
       await loadSessions();
     }
+  });
+
+  // Safety net: if the component unmounts mid-drag/mid-resize, the user
+  // releases the mouse outside the page, or the chat panel is closed by
+  // some other code path, make sure none of the document-level listeners
+  // leak. removeEventListener is a no-op when the listener isn't there.
+  onDestroy(() => {
+    stopResize();
+    stopDrag();
+    stopResizeWidth();
+    stopResizeRight();
+    stopResizeBottom();
   });
 
   $effect(() => {

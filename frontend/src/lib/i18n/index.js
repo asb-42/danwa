@@ -121,6 +121,11 @@ function createI18nStore() {
     /**
      * Switch to a new locale.
      * Supports bundled locales and dynamically registered custom locales.
+     *
+     * Race fix: the locale store and the dictionary are updated atomically
+     * AFTER the new dict is loaded, so components never re-render with the
+     * new locale name pointing at the previous (or empty) dictionary during
+     * the in-flight network load.
      */
     async setLocale(lang) {
       const isBundled = SUPPORTED_LOCALES.includes(lang);
@@ -134,14 +139,16 @@ function createI18nStore() {
         }
       }
 
+      // Load the dictionary first; keep currentLocale + locale store in sync
+      // with what the dictionary actually contains.
+      const dict = await loadLocale(lang);
+
       currentLocale = lang;
       locale.set(lang);
+      set(dict);
 
       // Persist user preference
       try { localStorage.setItem('locale', lang); } catch {}
-
-      const dict = await loadLocale(lang);
-      set(dict);
 
       // Update HTML attributes
       document.documentElement.lang = lang;

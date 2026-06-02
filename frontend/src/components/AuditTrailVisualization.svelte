@@ -1,5 +1,5 @@
 <script>
-  import { formatDate, formatNumber, tStore } from '../lib/i18n/index.js';
+  import { formatDate, formatNumber, tStore, tn } from '../lib/i18n/index.js';
 
   let { events = [] } = $props();
 
@@ -73,19 +73,19 @@
       <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
         <span class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-          {events.length} {t('audit.events') || 'Events'}
+          {tn(events.length, { one: 'audit.events.one', other: 'audit.events.other' })}
         </span>
         <span class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-          {rounds().length} {t('audit.rounds') || 'Rounds'}
+          {tn(rounds().length, { one: 'audit.rounds.one', other: 'audit.rounds.other' })}
         </span>
         <span class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-green-500"></span>
-          {uniqueAgents} {t('audit.agents') || 'Agents'}
+          {tn(uniqueAgents, { one: 'audit.agents.one', other: 'audit.agents.other' })}
         </span>
         <span class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-          {formatNumber(totalTokens)} {t('audit.tokens') || 'Tokens'}
+          {tn(totalTokens, { one: 'audit.tokens.one', other: 'audit.tokens.other' })}
         </span>
       </div>
     </div>
@@ -101,7 +101,7 @@
                 {roundNum}
               </span>
               <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
-              <span class="text-xs text-gray-400 dark:text-gray-500">{roundEvents.length} {t('audit.steps') || 'steps'}</span>
+              <span class="text-xs text-gray-400 dark:text-gray-500">{tn(roundEvents.length, { one: 'audit.steps.one', other: 'audit.steps.other' })}</span>
             </div>
 
             <!-- Events in this round -->

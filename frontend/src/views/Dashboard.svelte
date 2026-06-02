@@ -3,7 +3,7 @@
   import { healthStatus, loading, error, activeProject, activeCase, currentDebate, sseConnected, route } from '../lib/stores.js';
   import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
-  import { formatNumber, formatDate, tStore } from '../lib/i18n/index.js';
+  import { formatNumber, formatDate, tStore, tn } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
   import QuotaIndicator from '../components/QuotaIndicator.svelte';
 
@@ -155,7 +155,7 @@
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
       <p class="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.totalDebates')}</p>
-      <p class="mt-1 text-2xl font-semibold text-gray-800 dark:text-white">{formatNumber(stats.totalDebates)}</p>
+      <p class="mt-1 text-2xl font-semibold text-gray-800 dark:text-white">{tn(stats.totalDebates, { one: 'debate.count.one', other: 'debate.count.other' })}</p>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
