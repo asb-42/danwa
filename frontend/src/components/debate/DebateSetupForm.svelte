@@ -233,7 +233,7 @@
         <div class="agent-llm-select">
           <label for="llm-{agent.role}" class="select-label">{t('mvpDebate.form.llmProfile')}</label>
           {#if isLoadingProfiles}
-            <div class="select-loading">Loading profiles...</div>
+            <div class="select-loading">{t('mvpDebate.form.loadingProfiles')}</div>
           {:else}
             <select
               id="llm-{agent.role}"
@@ -248,7 +248,7 @@
         </div>
 
         <div class="agent-core-select">
-          <label for="core-{agent.role}" class="select-label">Agent Core (optional)</label>
+          <label for="core-{agent.role}" class="select-label">{t('mvpDebate.form.agentCoreOptional')}</label>
           {#if isLoadingComponents}
             <div class="select-loading">Loading...</div>
           {:else}
@@ -257,7 +257,7 @@
               class="form-select"
               bind:value={config.agentCoreAssignments[agent.role]}
             >
-              <option value="">Default (built-in)</option>
+              <option value="">{t('mvpDebate.form.defaultBuiltIn')}</option>
               {#each agentCores.filter(c => c.role === agent.role) as core}
                 <option value={core.id}>{core.name}</option>
               {/each}
@@ -266,7 +266,7 @@
         </div>
 
         <div class="agent-pat-select">
-          <label for="pat-{agent.role}" class="select-label">Argumentation Pattern (optional)</label>
+          <label for="pat-{agent.role}" class="select-label">{t('mvpDebate.form.argumentationPatternOptional')}</label>
           {#if isLoadingComponents}
             <div class="select-loading">Loading...</div>
           {:else}
@@ -275,7 +275,7 @@
               class="form-select"
               bind:value={config.argumentationPatternAssignments[agent.role]}
             >
-              <option value="">Default (none)</option>
+              <option value="">{t('mvpDebate.form.defaultNone')}</option>
               {#each argumentationPatterns as pattern}
                 <option value={pattern.id}>{pattern.name}</option>
               {/each}
@@ -284,7 +284,7 @@
         </div>
 
         <div class="agent-tone-select">
-          <label for="tone-{agent.role}" class="select-label">Tone Profile (optional)</label>
+          <label for="tone-{agent.role}" class="select-label">{t('mvpDebate.form.toneProfileOptional')}</label>
           {#if isLoadingComponents}
             <div class="select-loading">Loading...</div>
           {:else}
@@ -293,7 +293,7 @@
               class="form-select"
               bind:value={config.toneProfileAssignments[agent.role]}
             >
-              <option value="">Default (none)</option>
+              <option value="">{t('mvpDebate.form.defaultNone')}</option>
               {#each toneProfiles as profile}
                 <option value={profile.id}>{profile.name}</option>
               {/each}
@@ -302,7 +302,7 @@
         </div>
 
         <div class="agent-mod-select">
-          <label for="mod-{agent.role}" class="select-label">Prompt Modifier (optional)</label>
+          <label for="mod-{agent.role}" class="select-label">{t('mvpDebate.form.promptModifierOptional')}</label>
           {#if isLoadingComponents}
             <div class="select-loading">Loading...</div>
           {:else}
@@ -311,7 +311,7 @@
               class="form-select"
               bind:value={config.promptModifierAssignments[agent.role]}
             >
-              <option value="">Default (none)</option>
+              <option value="">{t('mvpDebate.form.defaultNone')}</option>
               {#each promptModifiers as mod}
                 <option value={mod.id}>{mod.name}</option>
               {/each}
