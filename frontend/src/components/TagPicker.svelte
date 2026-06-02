@@ -4,19 +4,13 @@
    * Allows selecting existing tags and creating new ones on the fly.
    */
   import { onMount } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
   import { getTags, createTag } from '../lib/api/tag.js';
 
   let { value = [], onchange } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let tags = $state([]);
   let search = $state('');

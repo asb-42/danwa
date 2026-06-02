@@ -2,20 +2,10 @@
 
 <script>
   import { onMount } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { getHealth } from '../lib/api.js';
 
-  let t = $derived((key, params) => {
-    const val = $i18n[key];
-    if (!val) return key;
-    if (params) {
-      return Object.entries(params).reduce(
-        (s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, 'g'), v),
-        val
-      );
-    }
-    return val;
-  });
+  let t = $derived($tStore);
 
   let health = $state(null);
   let loading = $state(true);
