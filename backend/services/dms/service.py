@@ -54,7 +54,7 @@ class DMS:
         self.text_chunker = TextChunker()
 
         self.vector_store = DMSVectorStore(chroma_path=self.chroma_path)
-        self.metadata_index = MetadataIndex(self.vector_store)
+        self.metadata_index = MetadataIndex(self.vector_store, project_id=project_id)
 
         self.rag_pipeline = RAGPipeline(
             document_processor=self.document_processor,
@@ -81,6 +81,28 @@ class DMS:
         logger.info("DMS initialized (db: %s, chroma: %s)", self.db_path, self.chroma_path)
 
     # --- Document operations ---
+
+    def add_document(
+        self,
+        file_path: str,
+        filename: str = "",
+    ) -> dict[str, Any]:
+        """Thin alias of :meth:`upload_document` used by tenant/case routers.
+
+        Resolves ``project_id`` from ``self._project_id`` and forwards to
+        the canonical upload path. Raises ``ValueError`` if the DMS has
+        no project binding (which would mean the upload is unscoped and
+        therefore unsafe in a multi-tenant deployment).
+        """
+        if not self._project_id:
+            raise ValueError("DMS instance is not bound to a project — cannot accept uploads")
+        if not filename:
+            filename = Path(file_path).name
+        return self.upload_document(
+            project_id=self._project_id,
+            file_path=file_path,
+            original_filename=filename,
+        )
 
     def upload_document(
         self,
@@ -342,8 +364,20 @@ class DMS:
             return []
 
     def add_to_rag_context(self, document_id: str) -> bool:
-        """Add a document to manual RAG context."""
+        """Add a document to manual RAG context.
+
+        Returns False (and does NOT add) if the document does not belong to
+        the active project — prevents cross-tenant injection of foreign
+        document_ids into the RAG selection set.
+        """
         try:
+            if not self._document_belongs_to_project(document_id):
+                logger.warning(
+                    "Refused to add foreign document %s to manual RAG context of project %s",
+                    document_id,
+                    self._project_id,
+                )
+                return False
             if document_id in self._manual_rag_docs:
                 logger.info("Document %s already in manual RAG context", document_id)
                 return False
@@ -371,6 +405,26 @@ class DMS:
             logger.error("Failed to remove document %s from manual RAG context: %s", document_id, e)
             return False
 
+    def _document_belongs_to_project(self, document_id: str) -> bool:
+        """Return True if ``document_id`` is owned by the active project.
+
+        Used to validate manual RAG selection and any other path that
+        accepts a ``document_id`` from the caller. The check is
+        intentionally cheap: a single primary-key lookup against the
+        per-project SQLite ``documents`` table. If the project is not
+        known (no ``_project_id``), ownership cannot be verified and the
+        call is rejected.
+        """
+        if not self._project_id:
+            logger.warning(
+                "Cannot verify document ownership — DMS has no project_id (doc %s)",
+                document_id,
+            )
+            return False
+        if not self.db.get_document(document_id):
+            return False
+        return self.db.get_document(document_id).get("project_id") == self._project_id
+
     def list_manual_rag_documents(self) -> list[str]:
         """List document IDs in manual RAG context."""
         try:
@@ -384,11 +438,18 @@ class DMS:
 
         Uses round-robin sampling across documents to avoid biasing
         toward the first document when multiple are selected.
+
+        Multi-tenant safety: the per-document lookup is constrained to
+        the active project via ``MetadataIndex.get_chunks_by_document``;
+        a document_id that was smuggled in from another project returns
+        no chunks and is silently skipped (its presence in
+        ``_manual_rag_docs`` was already rejected by
+        ``add_to_rag_context``).
         """
         try:
             doc_chunks: list[list[dict]] = []
             for doc_id in self._manual_rag_docs:
-                chunks = self.metadata_index.get_chunks_by_document(doc_id)
+                chunks = self.metadata_index.get_chunks_by_document(doc_id, project_id=self._project_id)
                 if chunks:
                     doc_chunks.append(chunks)
 

@@ -114,11 +114,15 @@ class TestDMSRAGContext:
         assert response.status_code == 200
         assert response.json()["added"] == doc_id
 
-    def test_add_to_rag_nonexistent_returns_200(self, client):
-        """Adding a non-existent document to RAG returns 200 (DMS add_to_rag is permissive)."""
+    def test_add_to_rag_nonexistent_returns_404(self, client):
+        """Adding a non-existent (or foreign-project) document to RAG returns 404.
+
+        Multi-tenant safety: we no longer accept arbitrary document_ids
+        into the manual RAG set, so a caller cannot attach a document
+        from another project to the active project's RAG selection.
+        """
         response = client.post("/api/v1/dms/documents/nonexistent/rag")
-        # DMS.add_to_rag_context inserts into rag_context table without FK check
-        assert response.status_code == 200
+        assert response.status_code == 404
 
     def test_remove_from_rag_returns_200(self, client):
         """Remove a document from manual RAG context."""

@@ -727,43 +727,54 @@ def create_fork_debate(
 
 
 async def on_debate_completed(debate_id: str, project_id: str):
-    """Erzeugt automatisch ein DMS-Dokument mit den Debattenergebnissen (P3)."""
+    """Erzeugt automatisch ein DMS-Dokument mit den Debattenergebnissen (P3).
+
+    Multi-tenant safety: the previous implementation silently fell back
+    to the ``_default`` project when ``project_id`` could not be
+    resolved, which caused a completed debate from one tenant to land
+    in another tenant's DMS. We now fail loud (log + return) instead of
+    writing the summary to a different project.
+    """
     from backend.persistence.project_store import ProjectStore
     from backend.services.dms.service import get_dms_for_project
     from backend.workflow.report_generator import WorkflowReportGenerator
 
     ps = ProjectStore()
 
-    # Resolve DMS for the given project (fallback to _default)
+    # Resolve DMS strictly for the given project. No fallback to
+    # _default — that path is a cross-tenant write hazard.
     try:
         dms = get_dms_for_project(project_id, ps)
-    except Exception:
-        try:
-            dms = get_dms_for_project("_default", ps)
-            project_id = "_default"
-        except Exception:
-            logger.warning("Could not initialize DMS for debate completion callback")
-            return None
+    except Exception as exc:
+        logger.warning(
+            "Could not initialize DMS for project %s (debate %s): %s — skipping RAG document creation",
+            project_id,
+            debate_id,
+            exc,
+        )
+        return None
 
-    # Look up the debate directly in the known project
+    # Look up the debate directly in the known project. No fallback to
+    # the global default store either.
     debate_data = None
     try:
         project_dir = ps.get_project_dir(project_id)
         store = DebateStore(data_dir=project_dir / "debates")
         debate_data = store.get(debate_id)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "Could not load debate %s from project %s store: %s",
+            debate_id,
+            project_id,
+            exc,
+        )
 
     if not debate_data:
-        # Fallback: try default project store
-        try:
-            default_store = DebateStore()
-            debate_data = default_store.get(debate_id)
-        except Exception:
-            pass
-
-    if not debate_data:
-        logger.warning("Debate %s not found for RAG document creation", debate_id)
+        logger.warning(
+            "Debate %s not found in project %s — skipping RAG document creation",
+            debate_id,
+            project_id,
+        )
         return None
 
     transcript = WorkflowReportGenerator._build_transcript(debate_data)

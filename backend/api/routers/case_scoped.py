@@ -521,25 +521,51 @@ async def list_case_forks(
 
 
 def _get_dms_for_case(tenant_id: str, case_id: str, case_store: CaseStore):
-    """Get or create a DMS instance for a case."""
+    """Get or create a DMS instance for a case.
+
+    Multi-tenant safety:
+      - The DMS cache is keyed by ``(tenant_id, case_id)`` (not by
+        ``case_id`` alone), which prevents a case_id in one tenant
+        from colliding with a project_id (or another case_id) in a
+        different tenant.
+      - Validates the case belongs to the given tenant before returning.
+    """
     from backend.services.dms.config import load_dms_config
-    from backend.services.dms.service import DMS
+    from backend.services.dms.service import DMS, _dms_cache, _dms_cache_lock
 
-    case_dir = _resolve_case_dir(tenant_id, case_id, case_store)
-    dms_dir = case_dir / "dms"
-    dms_dir.mkdir(parents=True, exist_ok=True)
+    case = case_store.get(tenant_id, case_id)
+    if not case or case.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="Case not found")
 
-    try:
-        dms_config = load_dms_config()
-    except Exception:
-        dms_config = {}
+    cache_key = ("case", tenant_id, case_id)
+    with _dms_cache_lock:
+        if cache_key in _dms_cache:
+            return _dms_cache[cache_key]
 
-    return DMS(
-        db_path=str(dms_dir / "dms.db"),
-        chroma_path=str(dms_dir / "chroma_db"),
-        config=dms_config,
-        project_id=case_id,
-    )
+        case_dir = case_store.get_case_dir(tenant_id, case_id)
+        dms_dir = case_dir / "dms"
+        dms_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            dms_config = load_dms_config()
+        except Exception:
+            dms_config = {}
+
+        # Bind the DMS to a synthetic project_id that encodes both
+        # the tenant and the case. This way ``MetadataIndex`` (which
+        # tags every ChromaDB document with ``project_id``) and the
+        # ``rag_context`` table never see a cross-tenant collision even
+        # if two cases happen to share a numeric id.
+        scope_id = f"case:{tenant_id}:{case_id}"
+
+        dms = DMS(
+            db_path=str(dms_dir / "dms.db"),
+            chroma_path=str(dms_dir / "chroma_db"),
+            config=dms_config,
+            project_id=scope_id,
+        )
+        _dms_cache[cache_key] = dms
+        return dms
 
 
 @router.get("/tenants/{tenant_id}/cases/{case_id}/dms/documents")
@@ -611,9 +637,18 @@ def add_case_document_rag(
     document_id: str,
     case_store: CaseStore = Depends(get_case_store),
 ):
-    """Add a document to the RAG index for a case."""
+    """Add a document to the RAG index for a case.
+
+    Multi-tenant safety: the underlying ``add_to_rag_context`` validates
+    that the document belongs to the active project; if it does not, the
+    call returns 404 rather than silently attaching a foreign document.
+    """
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    dms.add_to_rag(document_id)
+    if dms.get_document(document_id) is None:
+        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found in this case")
+    added = dms.add_to_rag_context(document_id)
+    if not added:
+        raise HTTPException(status_code=400, detail="Document already in RAG context")
     return {"detail": "Document added to RAG index"}
 
 
@@ -626,7 +661,9 @@ def remove_case_document_rag(
 ):
     """Remove a document from the RAG index for a case."""
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    dms.remove_from_rag(document_id)
+    removed = dms.remove_from_rag_context(document_id)
+    if not removed:
+        raise HTTPException(status_code=400, detail="Document not in RAG context")
     return {"detail": "Document removed from RAG index"}
 
 
@@ -638,9 +675,9 @@ def search_case_rag(
     limit: int = Query(default=5),
     case_store: CaseStore = Depends(get_case_store),
 ):
-    """Search the RAG index for a case."""
+    """Search the RAG index for a case (hybrid retriever, project-scoped)."""
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    return dms.search_rag(query, limit=limit)
+    return {"results": dms.get_rag_context(query, project_id=dms._project_id, k=limit)}
 
 
 # ---------------------------------------------------------------------------

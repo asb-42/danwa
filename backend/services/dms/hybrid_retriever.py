@@ -99,9 +99,17 @@ class HybridRetriever:
     def _fetch_chunks_uncached(self, project_id: str | None) -> list[dict[str, Any]]:
         if project_id and self.metadata_index:
             return self.metadata_index.get_chunks_by_project(project_id)
+        if not project_id:
+            # Refuse to dump the entire collection into the BM25 corpus when
+            # no tenant scope is supplied. Cross-tenant bleed must never
+            # happen — even by accident.
+            logger.warning("_fetch_chunks called without project_id — returning empty corpus")
+            return []
         try:
-            where = {"project_id": project_id} if project_id else None
-            results = self.vector_store.collection.get(where=where, include=["documents", "metadatas", "ids"])
+            results = self.vector_store.collection.get(
+                where={"project_id": {"$eq": project_id}},
+                include=["documents", "metadatas"],
+            )
             chunks = []
             for chunk_id, doc_text, meta in zip(
                 results.get("ids", []),

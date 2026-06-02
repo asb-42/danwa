@@ -209,15 +209,22 @@ def add_to_rag(
     project_id: str = Depends(get_project_id),
     project_store=Depends(get_project_store),
 ):
-    """Add a document to manual RAG context."""
+    """Add a document to manual RAG context.
+
+    Returns 404 if the document does not belong to the active project.
+    This prevents a caller from injecting a foreign document_id into the
+    active project's manual RAG selection set.
+    """
     try:
         dms = get_dms_for_project(project_id, project_store=project_store)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
+    if dms.get_document(document_id) is None:
+        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found in this project")
     result = dms.add_to_rag_context(document_id)
     if result:
         return {"status": "ok", "added": document_id}
-    raise HTTPException(status_code=400, detail="Document already in RAG context or not found")
+    raise HTTPException(status_code=400, detail="Document already in RAG context")
 
 
 @router.delete("/documents/{document_id}/rag")
