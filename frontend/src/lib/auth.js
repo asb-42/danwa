@@ -7,6 +7,7 @@
 
 import { get } from 'svelte/store';
 import { accessToken, setAuth, clearAuth } from './stores/auth.svelte.js';
+import { i18n } from './i18n/index.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -22,8 +23,8 @@ export async function login(email, password) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Login failed' }));
-    throw new Error(error.detail || 'Login failed');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.loginFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.loginFailed'));
   }
 
   const data = await response.json();
@@ -48,8 +49,8 @@ export async function register(email, displayName, password, role = 'viewer') {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Registration failed' }));
-    throw new Error(error.detail || 'Registration failed');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.registrationFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.registrationFailed'));
   }
 
   return response.json();
@@ -75,8 +76,8 @@ export async function listUsers() {
     },
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to load users' }));
-    throw new Error(error.detail || 'Failed to load users');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.loadUsersFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.loadUsersFailed'));
   }
   return response.json();
 }
@@ -96,8 +97,8 @@ export async function inviteUser(email, displayName, password, role) {
     body: JSON.stringify({ email, display_name: displayName, password, role }),
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to invite user' }));
-    throw new Error(error.detail || 'Failed to invite user');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.inviteUserFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.inviteUserFailed'));
   }
   return response.json();
 }
@@ -115,8 +116,8 @@ export async function deleteUser(userId) {
     },
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to delete user' }));
-    throw new Error(error.detail || 'Failed to delete user');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.deleteUserFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.deleteUserFailed'));
   }
 }
 
@@ -133,8 +134,8 @@ export async function getMyTenants() {
     },
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to load tenants' }));
-    throw new Error(error.detail || 'Failed to load tenants');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.loadTenantsFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.loadTenantsFailed'));
   }
   return response.json();
 }
@@ -154,8 +155,8 @@ export async function selectTenant(tenantId) {
     },
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to select tenant' }));
-    throw new Error(error.detail || 'Failed to select tenant');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.selectTenantFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.selectTenantFailed'));
   }
   return response.json();
 }
@@ -178,8 +179,8 @@ export async function changePassword(currentPassword, newPassword) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Password change failed' }));
-    throw new Error(error.detail || 'Password change failed');
+    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.passwordChangeFailed') }));
+    throw new Error(error.detail || i18n.t('auth.errors.passwordChangeFailed'));
   }
 
   return response.json();

@@ -1035,6 +1035,14 @@ export default {
   'auth.role_admin': 'Administrator',
   'auth.role_editor': 'Editor',
   'auth.role_viewer': 'Viewer',
+  'auth.errors.loginFailed': 'Login failed',
+  'auth.errors.registrationFailed': 'Registration failed',
+  'auth.errors.loadUsersFailed': 'Failed to load users',
+  'auth.errors.inviteUserFailed': 'Failed to invite user',
+  'auth.errors.deleteUserFailed': 'Failed to delete user',
+  'auth.errors.loadTenantsFailed': 'Failed to load tenants',
+  'auth.errors.selectTenantFailed': 'Failed to select tenant',
+  'auth.errors.passwordChangeFailed': 'Password change failed',
   'users.title': 'User Management',
   'users.invite': 'Invite User',
   'users.inviteEmail': 'New user email address',
@@ -1154,6 +1162,7 @@ export default {
   // Header
   'header.kitsuneToggle': 'Open/close Danwa Kitsune',
   'header.kitsuneLabel': 'Danwa Kitsune',
+  'header.recentFailures': '{count} recent failure(s)',
 
   // Navigation — new sections
   'nav.section.administration': 'Administration',

@@ -164,7 +164,7 @@
           </span>
         {/if}
         {#if recentFailures > 0}
-          <span class="llm-errors" title="{recentFailures} recent failure(s)">⚠{recentFailures}</span>
+          <span class="llm-errors" title={t('header.recentFailures', { count: recentFailures })}>⚠{recentFailures}</span>
         {/if}
       </div>
     {/if}
