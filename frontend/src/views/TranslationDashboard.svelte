@@ -352,7 +352,14 @@
         </span>
         <span class="text-sm font-bold text-blue-700 dark:text-blue-300">{jobProgress}%</span>
       </div>
-      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+      <div
+        class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3"
+        role="progressbar"
+        aria-valuenow={jobProgress}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Translation progress: {jobCompleted} of {jobTotal} keys ({jobProgress}%)"
+      >
         <div
           class="h-3 rounded-full bg-blue-600 transition-all duration-500"
           style="width: {jobProgress}%"

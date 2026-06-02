@@ -443,6 +443,8 @@
     onconnect={handleConnect}
     ondelete={handleDelete}
     onnodedragstop={handleNodeDragStop}
+    minZoom={0.2}
+    maxZoom={2}
     class="blueprint-flow"
   >
     <!-- Bridge to expose SvelteFlow instance to parent -->

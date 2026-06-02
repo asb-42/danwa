@@ -1,4 +1,5 @@
 <script>
+  import { onDestroy } from 'svelte';
   import { i18n } from '../../lib/i18n/index.js';
   import { pauseWorkflow, resumeWorkflow, cancelWorkflow } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
@@ -32,6 +33,10 @@
   let expandedOutputs = $state(new Set());
   let isPausing = $state(false);
   let isCancelling = $state(false);
+
+  onDestroy(() => {
+    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+  });
   let cleanupSSE = $state(null);
 
   let totalDuration = $derived(computeDuration());

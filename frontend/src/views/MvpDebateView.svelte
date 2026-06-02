@@ -1,5 +1,6 @@
 <script>
   import { i18n, formatNumber } from '../lib/i18n/index.js';
+  import { onDestroy } from 'svelte';
   import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
   import { startMvpDebate, submitInterjection, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
@@ -26,6 +27,17 @@
       text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return text;
+  });
+
+  // Tear down all polling/timer intervals on unmount. The clearInterval
+  // calls inside the start* functions only fire when a new timer is
+  // scheduled, so without this guard, leaving the view mid-debate would
+  // leave four setIntervals calling fetch endpoints on a destroyed view.
+  onDestroy(() => {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (processingTimer) { clearInterval(processingTimer); processingTimer = null; }
+    if (workflowTimer) { clearInterval(workflowTimer); workflowTimer = null; }
+    if (hitlPollTimer) { clearInterval(hitlPollTimer); hitlPollTimer = null; }
   });
 
   const AGENTS = [

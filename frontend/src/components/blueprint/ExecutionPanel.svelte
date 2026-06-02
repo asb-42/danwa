@@ -7,6 +7,7 @@
    * Interjection input: text field + submit button.
    * Node output log: scrollable list of completed node outputs.
    */
+  import { onDestroy } from 'svelte';
   import { i18n } from '../../lib/i18n/index.js';
   import {
     startWorkflow,
@@ -85,6 +86,8 @@
       timerInterval = null;
     }
   }
+
+  onDestroy(stopTimer);
 
   function formatDuration(ms) {
     const seconds = Math.floor(ms / 1000);

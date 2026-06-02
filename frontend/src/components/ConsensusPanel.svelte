@@ -7,7 +7,14 @@
   <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Consensus</h4>
   <div class="flex items-center space-x-4">
     <div class="flex-1">
-      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+      <div
+        class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3"
+        role="progressbar"
+        aria-valuenow={Math.round(Math.min(score * 100, 100))}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Consensus score: {(score * 100).toFixed(0)}% (threshold {(threshold * 100).toFixed(0)}%)"
+      >
         <div
           class="h-3 rounded-full transition-all duration-500
             {score >= threshold ? 'bg-green-500' : 'bg-blue-500'}"

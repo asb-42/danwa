@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { healthStatus, loading, error, activeProject, activeCase, currentDebate, sseConnected, route } from '../lib/stores.js';
   import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
@@ -27,8 +27,11 @@
   onMount(async () => {
     await Promise.all([loadDebateStats(), loadTenant()]);
     startRunningDebatePoller();
-    return () => stopRunningDebatePoller();
   });
+
+  // The cleanup function returned from onMount is not a Svelte lifecycle
+  // hook — it only runs if onMount's promise chain rejects. Use onDestroy.
+  onDestroy(stopRunningDebatePoller);
 
   async function loadTenant() {
     try {

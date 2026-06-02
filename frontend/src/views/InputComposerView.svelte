@@ -6,6 +6,7 @@
    * workflow templates) with the DebateCreatePanel (full debate creation form).
    * After creating a debate, auto-navigates to "Laufende Debatte" and starts it.
    */
+  import { onDestroy } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
   import {
@@ -120,6 +121,13 @@
       a2aPollInterval = null;
     }
   }
+
+  onDestroy(() => {
+    if (a2aPollInterval) {
+      clearInterval(a2aPollInterval);
+      a2aPollInterval = null;
+    }
+  });
 
   async function pollPendingA2A() {
     try {
