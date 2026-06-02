@@ -708,13 +708,6 @@
   </div>
 
   {#if debateId}
-    <!-- Title -->
-    {#if debateTitle}
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
-        <div class="text-xl font-bold text-gray-900 dark:text-white">&lt;Title&gt;{debateTitle}&lt;/Title&gt;</div>
-      </div>
-    {/if}
-
     <!-- Metadata -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
       <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300">

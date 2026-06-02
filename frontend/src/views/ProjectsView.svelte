@@ -354,7 +354,7 @@
       onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
-        {t('projects.editTitle')}
+        {t('projects.deleteTitle')}
       </h3>
       <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
         {t('projects.deleteConfirm', { name: deleteTarget.name })}

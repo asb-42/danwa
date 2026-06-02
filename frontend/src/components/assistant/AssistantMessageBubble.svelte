@@ -1,11 +1,16 @@
 <script>
   import { marked } from 'marked';
+  import DOMPurify from 'dompurify';
 
   let { message } = $props();
 
   function renderMarkdown(text) {
     if (!text) return '';
-    return marked.parse(text);
+    const raw = marked.parse(text);
+    return DOMPurify.sanitize(raw, {
+      USE_PROFILES: { html: true },
+      ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'id', 'name', 'src', 'alt'],
+    });
   }
 </script>
 

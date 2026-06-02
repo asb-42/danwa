@@ -126,10 +126,10 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('tenant.quotas')}</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <QuotaBar label={t('tenant.projectsUsed', { used: '—', max: tenant.max_projects })} max={tenant.max_projects} />
-        <QuotaBar label={t('tenant.debatesUsed', { used: '—', max: tenant.max_concurrent_debates })} max={tenant.max_concurrent_debates} />
-        <QuotaBar label={t('tenant.documentsUsed', { used: '—', max: tenant.max_documents })} max={tenant.max_documents} />
-        <QuotaBar label={t('tenant.storageUsed', { used: '—', max: tenant.max_storage_mb })} max={tenant.max_storage_mb} />
+        <QuotaBar label={t('tenant.projectsUsed')} used={tenant.used_projects} max={tenant.max_projects} />
+        <QuotaBar label={t('tenant.debatesUsed')} used={tenant.used_concurrent_debates} max={tenant.max_concurrent_debates} />
+        <QuotaBar label={t('tenant.documentsUsed')} used={tenant.used_documents} max={tenant.max_documents} />
+        <QuotaBar label={t('tenant.storageUsed')} used={tenant.used_storage_mb} max={tenant.max_storage_mb} />
       </div>
     </div>
 
@@ -238,13 +238,28 @@
   {/if}
 </div>
 
-{#snippet QuotaBar(label, max)}
+{#snippet QuotaBar(label, used, max)}
+  {@const usedVal = typeof used === 'number' ? used : 0}
+  {@const maxVal = typeof max === 'number' && max > 0 ? max : 0}
+  {@const pct = maxVal > 0 ? Math.min(100, Math.round((usedVal / maxVal) * 100)) : 0}
+  {@const overLimit = maxVal > 0 && usedVal > maxVal}
   <div class="space-y-1">
     <div class="flex justify-between text-sm">
       <span class="text-gray-700 dark:text-gray-300">{label}</span>
+      <span class="text-gray-500 dark:text-gray-400 tabular-nums">{usedVal} / {maxVal || '∞'}</span>
     </div>
-    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-      <div class="h-full bg-blue-500 rounded-full" style="width: 0%"></div>
+    <div
+      class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+      role="meter"
+      aria-label={label}
+      aria-valuenow={usedVal}
+      aria-valuemin={0}
+      aria-valuemax={maxVal || undefined}
+    >
+      <div
+        class="h-full rounded-full transition-all {overLimit ? 'bg-red-500' : 'bg-blue-500'}"
+        style="width: {pct}%"
+      ></div>
     </div>
   </div>
 {/snippet}

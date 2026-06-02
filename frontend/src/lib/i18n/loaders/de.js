@@ -294,6 +294,7 @@ export default {
   'projects.noActiveProject': 'Kein Projekt ausgewählt',
   'projects.createTitle': 'Neues Projekt erstellen',
   'projects.editTitle': 'Projekt bearbeiten',
+  'projects.deleteTitle': 'Projekt löschen?',
   'projects.settings': 'Einstellungen',
   'projects.deleteConfirm': 'Möchten Sie das Projekt "{name}" wirklich löschen? Alle Debatten und Dokumente in diesem Projekt werden dauerhaft gelöscht.',
   'projects.cannotDeleteSystem': 'Systemprojekte können nicht gelöscht werden.',
@@ -1237,11 +1238,18 @@ export default {
   'tags.tagUpdated': 'Tag aktualisiert',
   'tags.typeToCreate': 'Tippen, um neuen Tag zu erstellen',
   'tags.searchPlaceholder': 'Tags durchsuchen…',
+  'tags.loadError': 'Tags konnten nicht geladen werden',
+  'tags.saveError': 'Tag konnte nicht gespeichert werden',
+  'tags.deleteError': 'Tag konnte nicht gelöscht werden',
+  'tags.deleted': 'Tag gelöscht',
+  'tags.created': 'Tag erstellt',
+  'tags.updated': 'Tag aktualisiert',
 
   // Tenants (selector)
   'tenants.noTenant': 'Kein Tenant',
   'tenants.noTenants': 'Keine Tenants verfügbar',
   'tenants.switchTenant': 'Tenant wechseln',
+  'tenants.switchFailed': 'Tenant-Wechsel fehlgeschlagen. Bitte erneut versuchen.',
 
   // Navigation — case-related
   'nav.section.cases': 'Fälle',

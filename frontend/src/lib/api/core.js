@@ -35,10 +35,26 @@ export function translateBackendError(backendMessage) {
 }
 
 /**
+ * In-flight token-refresh promise. Concurrent 401s share the same refresh
+ * so we don't issue a second `/auth/refresh` with the just-issued token
+ * (which would fail and incorrectly log the user out).
+ * @type {Promise<boolean> | null}
+ */
+let refreshInFlight = null;
+
+/**
  * Attempt to refresh the access token using the stored refresh token.
  * @returns {Promise<boolean>} True if refresh succeeded
  */
-async function attemptTokenRefresh() {
+function attemptTokenRefresh() {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function doRefresh() {
   const currentRefreshToken = get(refreshToken);
   if (!currentRefreshToken) return false;
 

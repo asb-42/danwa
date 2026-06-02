@@ -3,6 +3,7 @@
   let { content = '' } = $props();
 
   import { marked } from 'marked';
+  import DOMPurify from 'dompurify';
 
   // Configure marked for safe rendering
   marked.setOptions({
@@ -10,7 +11,12 @@
     gfm: true,
   });
 
-  let html = $derived(content ? marked.parse(content) : '');
+  let html = $derived(
+    content ? DOMPurify.sanitize(marked.parse(content), {
+      USE_PROFILES: { html: true },
+      ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'id', 'name', 'src', 'alt'],
+    }) : ''
+  );
 </script>
 
 {#if html}

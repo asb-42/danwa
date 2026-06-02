@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { i18n } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { addToast } from '../lib/stores.js';
   import { getTags, createTag, updateTag, deleteTag } from '../lib/api/tag.js';
 
   let t = $derived((key, params = {}) => {
@@ -20,6 +21,7 @@
   let newColor = $state('#3b82f6');
   let newParentId = $state('');
   let isSaving = $state(false);
+  let isDeleting = $state(false);
   let confirmDelete = $state(null);
 
   const COLOR_PRESETS = [
@@ -27,6 +29,7 @@
     '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
   ];
 
+  let tagsLoaded = false;
   onMount(() => {
     if ($currentTenant) loadTags();
   });
@@ -40,8 +43,9 @@
     isLoading = true;
     try {
       tags = await getTags($currentTenant.id);
+      tagsLoaded = true;
     } catch (err) {
-      console.warn('Failed to load tags:', err);
+      addToast({ type: 'error', message: err.message || t('tags.loadError') });
     } finally {
       isLoading = false;
     }
@@ -69,7 +73,7 @@
   }
 
   async function handleSave() {
-    if (!newName.trim() || !$currentTenant) return;
+    if (!newName.trim() || !$currentTenant || isSaving) return;
     isSaving = true;
     try {
       if (editingTag) {
@@ -78,30 +82,37 @@
           color: newColor,
           parent_id: newParentId || null,
         });
+        addToast({ type: 'success', message: t('tags.updated') });
       } else {
         await createTag($currentTenant.id, {
           name: newName.trim(),
           color: newColor,
           parent_id: newParentId || null,
         });
+        addToast({ type: 'success', message: t('tags.created') });
       }
       cancelForm();
       await loadTags();
     } catch (err) {
-      console.error('Failed to save tag:', err);
+      addToast({ type: 'error', message: err.message || t('tags.saveError') });
     } finally {
       isSaving = false;
     }
   }
 
   async function handleDelete(tag) {
-    if (!$currentTenant) return;
-    confirmDelete = null;
+    if (!$currentTenant || isDeleting) return;
+    isDeleting = true;
+    const target = confirmDelete ?? tag;
     try {
-      await deleteTag($currentTenant.id, tag.tag_id);
+      await deleteTag($currentTenant.id, target.tag_id);
+      addToast({ type: 'success', message: t('tags.deleted') });
+      confirmDelete = null;
       await loadTags();
     } catch (err) {
-      console.error('Failed to delete tag:', err);
+      addToast({ type: 'error', message: err.message || t('tags.deleteError') });
+    } finally {
+      isDeleting = false;
     }
   }
 
@@ -226,20 +237,20 @@
   {/if}
 </div>
 
-<!-- Delete confirmation modal -->
-{#if confirmDelete}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => confirmDelete = null}>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4" onclick={(e) => e.stopPropagation()}>
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('tags.confirmDelete', { name: confirmDelete.name })}</h3>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('tags.deleteConfirm')}</p>
-      <div class="flex gap-2 justify-end">
-        <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors" onclick={() => confirmDelete = null}>
-          {t('common.cancel')}
-        </button>
-        <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors" onclick={() => handleDelete(confirmDelete)}>
-          {t('common.delete')}
-        </button>
+  <!-- Delete confirmation modal -->
+  {#if confirmDelete}
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => confirmDelete = null}>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4" onclick={(e) => e.stopPropagation()}>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('tags.confirmDelete', { name: confirmDelete.name })}</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('tags.deleteConfirm')}</p>
+        <div class="flex gap-2 justify-end">
+          <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors" onclick={() => confirmDelete = null} disabled={isDeleting}>
+            {t('common.cancel')}
+          </button>
+          <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50" onclick={() => handleDelete(confirmDelete)} disabled={isDeleting}>
+            {isDeleting ? t('common.loading') : t('common.delete')}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-{/if}
+  {/if}

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { currentTenant } from '../lib/stores/auth.svelte.js';
-  import { activeCase } from '../lib/stores.js';
+  import { currentTenant, setAuth } from '../lib/stores/auth.svelte.js';
+  import { activeCase, activeProject, addToast } from '../lib/stores.js';
   import { getMyTenants, selectTenant } from '../lib/auth.js';
   import { i18n } from '../lib/i18n/index.js';
 
@@ -16,6 +16,7 @@
   let tenants = $state([]);
   let isOpen = $state(false);
   let isLoading = $state(false);
+  let isSwitching = $state(false);
 
   onMount(() => {
     loadTenants();
@@ -36,13 +37,25 @@
   }
 
   async function switchTenant(tenant) {
+    if (isSwitching) return;
+    isSwitching = true;
     try {
       const data = await selectTenant(tenant.tenant_id);
-      currentTenant.set({ id: tenant.tenant_id, name: tenant.tenant_name || tenant.tenant_id });
+      if (data?.access_token && data?.refresh_token && data?.user) {
+        setAuth(data.access_token, data.refresh_token, data.user);
+      }
+      currentTenant.set({
+        id: tenant.tenant_id,
+        name: tenant.tenant_name || tenant.tenant_id,
+      });
       activeCase.set(null);
+      activeProject.set(null);
       isOpen = false;
     } catch (err) {
       console.error('Failed to switch tenant:', err);
+      addToast({ type: 'error', message: err.message || t('tenants.switchFailed') });
+    } finally {
+      isSwitching = false;
     }
   }
 

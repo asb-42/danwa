@@ -293,6 +293,7 @@ export default {
   'projects.noActiveProject': 'No project selected',
   'projects.createTitle': 'Create New Project',
   'projects.editTitle': 'Edit Project',
+  'projects.deleteTitle': 'Delete Project?',
   'projects.settings': 'Settings',
   'projects.deleteConfirm': 'Are you sure you want to delete project "{name}"? All debates and documents in this project will be permanently deleted.',
   'projects.cannotDeleteSystem': 'System projects cannot be deleted.',
@@ -1236,11 +1237,18 @@ export default {
   'tags.tagUpdated': 'Tag updated',
   'tags.typeToCreate': 'Type to create new tag',
   'tags.searchPlaceholder': 'Search tags…',
+  'tags.loadError': 'Could not load tags',
+  'tags.saveError': 'Could not save tag',
+  'tags.deleteError': 'Could not delete tag',
+  'tags.deleted': 'Tag deleted',
+  'tags.created': 'Tag created',
+  'tags.updated': 'Tag updated',
 
   // Tenants (selector)
   'tenants.noTenant': 'No tenant',
   'tenants.noTenants': 'No tenants available',
   'tenants.switchTenant': 'Switch tenant',
+  'tenants.switchFailed': 'Could not switch tenant. Please try again.',
 
   // Navigation — case-related
   'nav.section.cases': 'Cases',

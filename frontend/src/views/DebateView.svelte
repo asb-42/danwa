@@ -1014,13 +1014,6 @@
       </div>
     {/if}
 
-    <!-- Title -->
-    {#if debateTitle}
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
-        <div class="text-xl font-bold text-gray-900 dark:text-white">&lt;Title&gt;{debateTitle}&lt;/Title&gt;</div>
-      </div>
-    {/if}
-
     <!-- Metadata -->
     {#if displayRounds && displayRounds.length}
       {@const roleSet = new Set(displayRounds.flatMap(r => (r.agent_outputs || []).map(a => a.role_type || a.role)))}
