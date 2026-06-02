@@ -663,9 +663,9 @@
 
 <!-- Delete Confirmation Dialog -->
 {#if showDeleteConfirm && deleteTarget}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeDeleteConfirm} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeDeleteConfirm} role="dialog" aria-modal="true" aria-labelledby="manage-delete-title" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6" role="presentation" onclick={(e) => e.stopPropagation()}>
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('config.deleteProfile')}</h3>
+      <h3 id="manage-delete-title" class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('config.deleteProfile')}</h3>
       <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">{t('config.confirmDelete', { name: deleteTarget.name })}</p>
       <div class="flex items-center justify-end gap-3">
         <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closeDeleteConfirm}>{t('common.cancel')}</button>
@@ -677,10 +677,10 @@
 
 <!-- Role Type Modal -->
 {#if showRoleTypeModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeRoleTypeModal} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeRoleTypeModal} role="dialog" aria-modal="true" aria-labelledby="role-type-modal-title" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4" role="presentation" onclick={(e) => e.stopPropagation()}>
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{roleTypeModalMode === 'create' ? t('config.createRoleType') : t('config.editRoleType')}</h3>
+        <h3 id="role-type-modal-title" class="text-lg font-semibold text-gray-800 dark:text-white">{roleTypeModalMode === 'create' ? t('config.createRoleType') : t('config.editRoleType')}</h3>
         <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none" onclick={closeRoleTypeModal}>✕</button>
       </div>
       <div class="px-6 py-4 space-y-4">

@@ -352,6 +352,8 @@ export default {
   'documents.chunks.other': '{count} Abschnitte',
   'documents.noContent': 'Kein Textinhalt für dieses Dokument verfügbar.',
   'documents.deleteConfirm': 'Dieses Dokument löschen? Alle indexierten Abschnitte werden entfernt.',
+  'documents.moveDocumentTitle': 'Dokument verschieben',
+  'documents.moveDocumentDesc': '{filename} in ein anderes Projekt verschieben:',
   'documents.deleted': 'Dokument gelöscht',
   'documents.addToRAG': 'Zu RAG hinzufügen',
   'documents.removeFromRAG': 'Aus RAG entfernen',

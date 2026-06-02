@@ -352,6 +352,8 @@ export default {
   'documents.noContent': 'No text content available for this document.',
   'documents.deleteConfirm': 'Delete this document? This will remove all indexed chunks.',
   'documents.deleted': 'Document deleted',
+  'documents.moveDocumentTitle': 'Move Document',
+  'documents.moveDocumentDesc': 'Move {filename} to another project:',
   'documents.addToRAG': 'Add to RAG',
   'documents.removeFromRAG': 'Remove from RAG',
   'documents.inRAG': 'In RAG',

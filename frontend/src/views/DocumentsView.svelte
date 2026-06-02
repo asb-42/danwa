@@ -854,14 +854,14 @@
 
 <!-- Document Viewer Modal -->
 {#if viewingDoc}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeViewer(); }} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeViewer(); }} role="dialog" aria-modal="true" aria-labelledby="doc-viewer-title" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-3">
           <span class="text-2xl">{getFileIcon(viewingDoc.filename)}</span>
           <div>
-            <h2 class="text-lg font-semibold text-gray-800 dark:text-white">{viewingDoc.filename}</h2>
+            <h2 id="doc-viewer-title" class="text-lg font-semibold text-gray-800 dark:text-white">{viewingDoc.filename}</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {formatFileSize(viewingDoc.file_size)}
               {#if viewingDoc.file_type} · {viewingDoc.file_type.toUpperCase()}{/if}
@@ -958,13 +958,13 @@
 <!-- Move Document Dialog -->
 {#if moveDialogOpen && moveDoc}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_interactive_supports_focus -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeMoveDialog(); }} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeMoveDialog(); }} role="dialog" aria-modal="true" aria-labelledby="doc-move-title" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-      <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
-        Move Document
+      <h2 id="doc-move-title" class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+        {t('documents.moveDocumentTitle')}
       </h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Move <strong>{moveDoc.filename}</strong> to another project:
+        {t('documents.moveDocumentDesc', { filename: moveDoc.filename })}
       </p>
 
       {#if moveError}

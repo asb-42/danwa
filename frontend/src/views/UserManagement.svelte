@@ -219,9 +219,9 @@
 
 <!-- Delete Confirm Dialog -->
 {#if deleteTarget}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={() => deleteTarget = null} role="dialog" aria-modal="true">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={() => deleteTarget = null} role="dialog" aria-modal="true" aria-labelledby="user-delete-title">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6" role="presentation" onclick={(e) => e.stopPropagation()}>
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('users.remove')}</h3>
+      <h3 id="user-delete-title" class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('users.remove')}</h3>
       <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">{t('users.removeConfirm', { name: deleteTarget.display_name || deleteTarget.email })}</p>
       <div class="flex items-center justify-end gap-3">
         <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={() => deleteTarget = null}>{t('common.cancel')}</button>
