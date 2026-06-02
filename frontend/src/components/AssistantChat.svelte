@@ -424,7 +424,13 @@
 
         <!-- Chat area -->
         <div class="chat-area">
-          <div class="messages" bind:this={chatContainer}>
+          <div
+            class="messages"
+            bind:this={chatContainer}
+            role="log"
+            aria-live="polite"
+            aria-label="Assistant conversation"
+          >
             {#if messages.length === 0}
               <div class="welcome-message">
                 <h3>{welcome.greeting}</h3>

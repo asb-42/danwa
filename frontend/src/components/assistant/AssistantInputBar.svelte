@@ -21,6 +21,7 @@
     {placeholder}
     rows="1"
     {disabled}
+    maxlength="4000"
   ></textarea>
   <button
     class="btn-send"

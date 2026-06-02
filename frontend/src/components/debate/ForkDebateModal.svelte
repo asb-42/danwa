@@ -30,7 +30,7 @@
 	let isLoading = $state(false);
 	let isSaving = $state(false);
 	let statusMessage = $state('');
-	let error = null;
+	let error = $state(null);
 
 	let forkReasonOptions = [
 		{ value: 'consensus_breakdown', label: t('fork.reason.consensus_breakdown') },

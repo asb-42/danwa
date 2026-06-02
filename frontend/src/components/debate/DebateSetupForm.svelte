@@ -88,6 +88,7 @@
       placeholder={t('mvpDebate.form.topicPlaceholder')}
       bind:value={config.topic}
       disabled={isLoadingProfiles}
+      maxlength="2000"
     ></textarea>
   </div>
 

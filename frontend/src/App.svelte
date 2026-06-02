@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { route, routeParams, addToast } from './lib/stores.js';
   import { getHealth } from './lib/api.js';
   import { healthStatus, appVersion } from './lib/stores.js';
@@ -101,6 +102,19 @@ import ToastContainer from './components/ToastContainer.svelte';
     return () => {
       window.removeEventListener('hashchange', onHashChange);
     };
+  });
+
+  // Update document.title on route or locale change so the browser tab
+  // shows the current view in the user's language, not just the URL.
+  $effect(() => {
+    const dict = $i18n;
+    const currentRoute = get(route);
+    const titleKey = `nav.${currentRoute}`;
+    const routeTitle = dict?.[titleKey] || dict?.['app.title'] || 'Debate Engine';
+    const appTitle = dict?.['app.title'] || 'Debate Engine';
+    document.title = currentRoute === 'dashboard' || !dict?.[titleKey]
+      ? appTitle
+      : `${routeTitle} · ${appTitle}`;
   });
 </script>
 

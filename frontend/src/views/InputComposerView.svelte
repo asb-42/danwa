@@ -378,6 +378,7 @@
           bind:value={topic}
           placeholder={t('debate.casePlaceholder')}
           rows="8"
+          maxlength="5000"
           class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm resize-y"
         ></textarea>
         {#if partialText}
