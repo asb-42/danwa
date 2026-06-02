@@ -2,21 +2,11 @@
 
 <script>
   import { currentUser } from '../lib/stores/auth.svelte.js';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { changePassword } from '../lib/auth.js';
   import { addToast } from '../lib/stores.js';
 
-  let t = $derived((key, params) => {
-    const val = $i18n[key];
-    if (!val) return key;
-    if (params) {
-      return Object.entries(params).reduce(
-        (s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, 'g'), v),
-        val
-      );
-    }
-    return val;
-  });
+  let t = $derived($tStore);
 
   let currentPassword = $state('');
   let newPassword = $state('');
