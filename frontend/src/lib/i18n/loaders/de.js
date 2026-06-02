@@ -1036,6 +1036,8 @@ export default {
   'auth.loggedInAs': 'Angemeldet als {name}',
   'auth.role': 'Rolle: {role}',
   'auth.role_admin': 'Administrator',
+  'languageSwitcher.changeLabel': 'Sprache wechseln',
+  'languageSwitcher.custom': 'Benutzerdefiniert',
   'auth.role_editor': 'Editor',
   'auth.role_viewer': 'Betrachter',
   'auth.errors.loginFailed': 'Anmeldung fehlgeschlagen',

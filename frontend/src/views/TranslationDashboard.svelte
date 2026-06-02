@@ -568,13 +568,14 @@
     onclick={() => { addLocaleOpen = false; }}
     role="dialog"
     aria-modal="true"
+    aria-labelledby="translation-add-locale-title"
     tabindex="-1"
   >
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6"
       onclick={(e) => e.stopPropagation()}
     >
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+      <h3 id="translation-add-locale-title" class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
         {t('translation.addLanguage')}
       </h3>
       <div class="space-y-4">

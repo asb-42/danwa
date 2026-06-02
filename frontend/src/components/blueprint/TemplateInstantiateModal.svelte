@@ -101,12 +101,12 @@
 </script>
 
 {#if visible && templateId}
-  <div class="modal-overlay" role="dialog" aria-modal="true" onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}>
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="template-instantiate-title" onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}>
     <div class="modal-container" role="document" onclick={(e) => e.stopPropagation()}>
       <!-- Header -->
       <div class="modal-header">
         <div>
-          <h2 class="modal-title">{t('template.instantiate.title')}</h2>
+          <h2 id="template-instantiate-title" class="modal-title">{t('template.instantiate.title')}</h2>
           <p class="modal-subtitle">{templateName}</p>
         </div>
         <button class="close-btn" onclick={onClose} aria-label="Close">✕</button>

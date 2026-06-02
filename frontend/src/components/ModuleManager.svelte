@@ -778,9 +778,10 @@
       onclick={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="module-edit-title"
     >
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+        <h3 id="module-edit-title" class="text-lg font-semibold text-gray-800 dark:text-white">
           Edit: {editingModule?.name?.en || editingModule?.module_id}
         </h3>
         <button

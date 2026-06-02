@@ -1,9 +1,11 @@
 <script>
   import { onMount } from 'svelte';
-  import { locale, i18n } from '../lib/i18n/index.js';
+  import { locale, i18n, tStore } from '../lib/i18n/index.js';
   import { SUPPORTED_LOCALES, LOCALE_NAMES, RTL_LOCALES, customLocales, registerCustomLocale, getAllLocales } from '../lib/i18n/config.js';
   import { setLanguage, getCustomLocales } from '../lib/api.js';
   import { userLanguage } from '../lib/stores.js';
+
+  let t = $derived($tStore);
 
   let open = $state(false);
   let persisting = $state(false);
@@ -48,7 +50,7 @@
            bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
            border border-gray-300 dark:border-gray-600
            transition-colors"
-    aria-label="Sprache wechseln"
+    aria-label={t('languageSwitcher.changeLabel')}
     aria-expanded={open}
   >
     <span class="text-lg leading-none">{currentFlag}</span>
@@ -86,7 +88,7 @@
           >
             <span class="text-lg leading-none">{FLAGS[lang] || '🌐'}</span>
             <span dir={dir}>{name}</span>
-            {#if isCustom}<span class="ml-auto text-xs text-gray-400 dark:text-gray-500">Custom</span>{/if}
+            {#if isCustom}<span class="ml-auto text-xs text-gray-400 dark:text-gray-500">{t('languageSwitcher.custom')}</span>{/if}
             {#if isRTL && !isCustom}
               <span class="ml-auto text-xs text-gray-400 dark:text-gray-500" dir="ltr">RTL</span>
             {/if}

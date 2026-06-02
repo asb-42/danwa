@@ -776,10 +776,10 @@
 
 <!-- Prompt Translation Modal -->
 {#if showPromptTranslateModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closePromptTranslate} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closePromptTranslate} role="dialog" aria-modal="true" aria-labelledby="manage-translate-title" tabindex="-1">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" role="presentation" onclick={(e) => e.stopPropagation()}>
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">🌐 {t('config.translatePrompt') || 'Translate Prompt'}</h3>
+        <h3 id="manage-translate-title" class="text-lg font-semibold text-gray-800 dark:text-white">🌐 {t('config.translatePrompt') || 'Translate Prompt'}</h3>
         <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={closePromptTranslate}>✕</button>
       </div>
       <div class="p-6 space-y-4">

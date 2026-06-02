@@ -108,11 +108,12 @@
       class="dialog dialog-wide"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="run-workflow-title"
       tabindex="0"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Enter' && !isStarting) handleConfirm(); }}
     >
-      <h3 class="dialog-title">▶️ {t('blueprint.workflow.runDebate')}</h3>
+      <h3 id="run-workflow-title" class="dialog-title">▶️ {t('blueprint.workflow.runDebate')}</h3>
       <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
         {t('blueprint.workflow.runDebateHint')}
       </p>
