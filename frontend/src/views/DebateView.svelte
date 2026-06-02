@@ -422,7 +422,7 @@
     try {
       const status = await getHITLStatus($currentDebate.debate_id);
       hitlStatus.set(status);
-    } catch { /* Silently fail */ }
+    } catch (e) { console.warn('[DebateView] HITL status refresh failed:', e); }
   }
 
   async function refreshHITLInteractions() {
@@ -430,7 +430,7 @@
     try {
       const result = await getInteractions($currentDebate.debate_id, { limit: 100 });
       hitlInteractions.set(result.interactions || []);
-    } catch { /* Silently fail */ }
+    } catch (e) { console.warn('[DebateView] HITL interactions refresh failed:', e); }
   }
 
   $effect(() => {

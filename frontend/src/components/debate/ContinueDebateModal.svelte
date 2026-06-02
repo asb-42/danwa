@@ -4,18 +4,12 @@
    * Ermöglicht das Erstellen einer neuen Debatte auf Basis der Ergebnisse.
    */
   import { createDebate, continueDebate, getAgentPersonas, getLLMProfiles, getPromptVariants } from '../../lib/api.js';
-  import { selectedLLMProfile, selectedPromptVariant, selectedPersonas, loading, error } from '../../lib/stores.js';
-  import { i18n, locale } from '../../lib/i18n/index.js';
+  import { selectedLLMProfile, selectedPromptVariant, selectedPersonas, loading, error, addToast } from '../../lib/stores.js';
+  import { i18n, locale, tStore } from '../../lib/i18n/index.js';
 
   let { debateId = null, debateTitle = '', onClose = () => {}, onCreated = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let newTitle = $state('');
   let focusTopic = $state('');
@@ -33,10 +27,15 @@
   async function loadProfiles() {
     try {
       llmProfiles = await getLLMProfiles();
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.warn('[ContinueDebateModal] failed to load LLM profiles:', e);
+      addToast({ message: t('error.unknown'), type: 'error', timeout: 4000 });
+    }
     try {
       promptVariants = await getPromptVariants();
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.warn('[ContinueDebateModal] failed to load prompt variants:', e);
+    }
   }
 
   let isSubmitting = $state(false);

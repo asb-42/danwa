@@ -198,7 +198,7 @@
                 nodeOutputs = state.node_outputs;
               }
               if (state.current_round) currentRound = state.current_round;
-            } catch (_) { /* ok */ }
+            } catch (e) { console.warn('[MvpDebateView] workflow state load failed:', e); }
             startTimer();
             connectSSE(debate.session_id);
           }
@@ -495,7 +495,7 @@
     try {
       const s = await getHITLStatus(debateId);
       hitlStatus.set(s);
-    } catch { /* Silently fail */ }
+    } catch (e) { console.warn('[MvpDebateView] HITL status refresh failed:', e); }
   }
 
   async function refreshHITLInteractions() {
@@ -503,7 +503,7 @@
     try {
       const result = await getInteractions(debateId, { limit: 100 });
       hitlInteractions.set(result.interactions || []);
-    } catch { /* Silently fail */ }
+    } catch (e) { console.warn('[MvpDebateView] HITL interactions refresh failed:', e); }
   }
 
   async function handleStart() {

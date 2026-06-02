@@ -262,6 +262,8 @@ export default {
   'common.optional': 'Optional',
   'common.no': 'No',
   'common.dismiss': 'Dismiss',
+  'common.confirm': 'Confirm',
+  'common.unsavedChanges': 'Unsaved changes will be lost. Close anyway?',
   'error.backendDisconnected': 'Backend connection lost',
   'error.debateNotFound': 'Debate not found',
   'error.invalidInput': 'Invalid input',

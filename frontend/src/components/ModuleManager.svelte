@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { i18n, tStore } from '../lib/i18n/index.js';
   import {
     getModules,
     getModuleProfile,
@@ -15,14 +15,9 @@
     installFromRepo,
     getRepoUpdates,
   } from '../lib/api.js';
+  import ConfirmDialog from './ConfirmDialog.svelte';
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let { filterCategory } = $props();
 
@@ -49,6 +44,8 @@
   let updatesError = $state(null);
 
   let installingRepoMod = $state(null);
+
+  let pendingDeleteModule = $state(null);
 
   const TABS = [
     { id: 'local', label: '📦 Local', icon: '📦' },
@@ -257,7 +254,13 @@
   }
 
   async function handleDelete(mod) {
-    if (!confirm(`Delete "${mod.name?.en || mod.module_id}"? This cannot be undone.`)) return;
+    pendingDeleteModule = mod;
+  }
+
+  async function confirmDeleteModule() {
+    const mod = pendingDeleteModule;
+    pendingDeleteModule = null;
+    if (!mod) return;
     try {
       await uninstallModule(mod.module_id);
       statusMessage = `Deleted ${mod.module_id}`;
@@ -888,3 +891,14 @@
     </div>
   </div>
 {/if}
+
+<ConfirmDialog
+  open={pendingDeleteModule !== null}
+  title={t('common.delete')}
+  message={pendingDeleteModule ? `Delete "${pendingDeleteModule.name?.en || pendingDeleteModule.module_id}"? This cannot be undone.` : ''}
+  confirmLabel={t('common.delete')}
+  cancelLabel={t('common.cancel')}
+  variant="danger"
+  onConfirm={confirmDeleteModule}
+  onCancel={() => (pendingDeleteModule = null)}
+/>

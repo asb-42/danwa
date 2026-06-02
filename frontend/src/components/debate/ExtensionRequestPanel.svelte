@@ -5,17 +5,11 @@
    */
   import { decideExtension, getHITLStatus } from '../../lib/hitl.js';
   import { hitlStatus } from '../../lib/stores/hitl.svelte.js';
-  import { i18n, locale } from '../../lib/i18n/index.js';
+  import { i18n, locale, tStore } from '../../lib/i18n/index.js';
 
   let { debateId, extensionRequest } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let isProcessing = $state(false);
   let error = $state(null);
@@ -35,7 +29,7 @@
       try {
         const status = await getHITLStatus(debateId);
         hitlStatus.set(status);
-      } catch { /* ignore */ }
+      } catch (e) { console.warn('[ExtensionRequestPanel] HITL status refresh failed:', e); }
     } catch (err) {
       error = err.message || t('error.unknown');
       decision = null;

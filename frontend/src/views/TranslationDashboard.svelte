@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { i18n, tStore } from '../lib/i18n/index.js';
   import { LOCALE_NAMES } from '../lib/i18n/config.js';
   import { addToast } from '../lib/stores.js';
   import {
@@ -15,15 +15,10 @@
     getCustomLocales,
     wipeLocale,
   } from '../lib/api.js';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let { navigate } = $props();
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let locales = $state([]);
   let stats = $state({});
@@ -57,6 +52,8 @@
   let newLocaleRtl = $state(false);
   let addingLocale = $state(false);
   let addLocaleError = $state('');
+
+  let pendingWipeLocale = $state(null);
 
   onMount(async () => {
     await loadOverview();
@@ -194,11 +191,14 @@
   }
 
   async function wipeLocaleHandler(localeCode) {
+    pendingWipeLocale = localeCode;
+  }
+
+  async function confirmWipeLocale() {
+    const localeCode = pendingWipeLocale;
+    pendingWipeLocale = null;
+    if (!localeCode) return;
     const localeName = LOCALE_NAMES[localeCode] || localeCode;
-    const confirmed = confirm(
-      `Delete ALL translations for ${localeName}?\n\nThis cannot be undone. You will need to re-translate all strings.`,
-    );
-    if (!confirmed) return;
 
     wipingLocale = localeCode;
     try {
@@ -628,3 +628,16 @@
     </div>
   </div>
 {/if}
+
+<ConfirmDialog
+  open={pendingWipeLocale !== null}
+  title={t('common.confirm')}
+  message={pendingWipeLocale
+    ? `Delete ALL translations for ${LOCALE_NAMES[pendingWipeLocale] || pendingWipeLocale}?\n\nThis cannot be undone. You will need to re-translate all strings.`
+    : ''}
+  confirmLabel={t('common.delete')}
+  cancelLabel={t('common.cancel')}
+  variant="danger"
+  onConfirm={confirmWipeLocale}
+  onCancel={() => (pendingWipeLocale = null)}
+/>

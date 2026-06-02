@@ -263,6 +263,8 @@ export default {
   'common.optional': 'Optional',
   'common.no': 'Nein',
   'common.dismiss': 'Schließen',
+  'common.confirm': 'Bestätigen',
+  'common.unsavedChanges': 'Ungespeicherte Änderungen gehen verloren. Trotzdem schließen?',
   'error.backendDisconnected': 'Backend-Verbindung verloren',
   'error.debateNotFound': 'Debatte nicht gefunden',
   'error.invalidInput': 'Ungültige Eingabe',

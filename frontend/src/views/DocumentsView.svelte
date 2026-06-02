@@ -1,8 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { i18n, tStore } from '../lib/i18n/index.js';
   import { activeProject, activeCase } from '../lib/stores.js';
   import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let { navigate } = $props();
 
@@ -17,6 +18,10 @@
   let viewingDoc = $state(null);
   let viewingDocContent = $state(null);
   let viewingLoading = $state(false);
+
+  // Confirmation dialogs (replace blocking window.confirm)
+  let pendingDeleteDoc = $state(null);
+  let pendingCloseViewer = $state(false);
 
   // RAG search state
   let searchQuery = $state('');
@@ -42,13 +47,7 @@
     }
   }
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let projectId = $derived($activeProject?.id);
 
@@ -167,7 +166,13 @@
   }
 
   async function handleDelete(doc) {
-    if (!confirm(t('documents.deleteConfirm'))) return;
+    pendingDeleteDoc = doc;
+  }
+
+  async function confirmDeleteDoc() {
+    const doc = pendingDeleteDoc;
+    pendingDeleteDoc = null;
+    if (!doc) return;
     try {
       await deleteDocument(doc.id);
       documents = documents.filter(d => d.id !== doc.id);
@@ -251,8 +256,16 @@
 
   function closeViewer() {
     if (editingText != null && editingText !== viewingDocContent?.text_content) {
-      if (!confirm('Unsaved changes will be lost. Close anyway?')) return;
+      pendingCloseViewer = true;
+      return;
     }
+    viewingDoc = null;
+    viewingDocContent = null;
+    editingText = null;
+  }
+
+  function confirmCloseViewer() {
+    pendingCloseViewer = false;
     viewingDoc = null;
     viewingDocContent = null;
     editingText = null;
@@ -816,6 +829,28 @@
   </div>
 {/if}
 </div>
+
+<ConfirmDialog
+  open={pendingDeleteDoc !== null}
+  title={t('common.delete')}
+  message={t('documents.deleteConfirm')}
+  confirmLabel={t('common.delete')}
+  cancelLabel={t('common.cancel')}
+  variant="danger"
+  onConfirm={confirmDeleteDoc}
+  onCancel={() => (pendingDeleteDoc = null)}
+/>
+
+<ConfirmDialog
+  open={pendingCloseViewer}
+  title={t('common.confirm')}
+  message={t('common.unsavedChanges')}
+  confirmLabel={t('common.confirm')}
+  cancelLabel={t('common.cancel')}
+  variant="warning"
+  onConfirm={confirmCloseViewer}
+  onCancel={() => (pendingCloseViewer = false)}
+/>
 
 <!-- Document Viewer Modal -->
 {#if viewingDoc}

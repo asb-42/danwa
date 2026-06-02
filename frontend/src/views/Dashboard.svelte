@@ -33,7 +33,7 @@
   async function loadTenant() {
     try {
       tenant = await request('/api/v1/tenants/current');
-    } catch { /* ignore — tenant info is optional */ }
+    } catch (e) { console.warn('[Dashboard] tenant info load failed (optional):', e); }
   }
 
   // Reload when project changes
@@ -64,7 +64,7 @@
       if (running && (!$currentDebate || $currentDebate.status !== 'running')) {
         currentDebate.set(running);
       }
-    } catch { /* ignore */ }
+    } catch (e) { console.warn('[Dashboard] running-debate poll failed:', e); }
   }
 
   async function loadDebateStats() {

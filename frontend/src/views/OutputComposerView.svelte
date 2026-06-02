@@ -136,7 +136,7 @@
           tracker = createRenderJobTracker(jobData.job_id);
         }
       }
-    } catch { /* ignore parse errors */ }
+    } catch (e) { console.warn('[OutputComposerView] failed to restore active job from localStorage:', e); }
 
     listOutputPlugins()
       .then((p) => { plugins = p; })
@@ -151,13 +151,13 @@
   function persistJob(jobData) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(jobData));
-    } catch { /* ignore */ }
+    } catch (e) { console.warn('[OutputComposerView] failed to persist active job:', e); }
   }
 
   function clearPersistedJob() {
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch { /* ignore */ }
+    } catch (e) { console.warn('[OutputComposerView] failed to clear persisted job:', e); }
   }
 
   function onSearchInput(e) {

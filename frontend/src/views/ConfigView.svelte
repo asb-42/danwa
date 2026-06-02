@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error, backups, backupDetails, isLoadingBackups, backupConfig } from '../lib/stores.js';
-  import { i18n } from '../lib/i18n/index.js';
+  import { i18n, tStore } from '../lib/i18n/index.js';
   import {
     reloadProfiles,
     getBackendLogs,
@@ -19,18 +19,17 @@
     updateOcrSettings,
     getOcrStatus,
   } from '../lib/api.js';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   // --- State ---
   let activeTab = $state('backup');
   let statusMessage = $state('');
+
+  // --- Confirmation dialogs (replace window.confirm for accessibility) ---
+  let pendingDeleteBackup = $state(null);
+  let pendingRestoreBackup = $state(null);
 
   // System tab state
   let isReloading = $state(false);
@@ -122,9 +121,15 @@
   }
 
   async function handleDeleteBackup(backupId) {
-    if (!confirm(t('backup.confirmDelete') || 'Are you sure you want to delete this backup?')) return;
+    pendingDeleteBackup = backupId;
+  }
+
+  async function confirmDeleteBackup() {
+    const id = pendingDeleteBackup;
+    pendingDeleteBackup = null;
+    if (!id) return;
     try {
-      await deleteBackup(backupId);
+      await deleteBackup(id);
       await loadBackups();
     } catch (e) {
       error.set(e.message);
@@ -163,9 +168,15 @@
   }
 
   async function handleRestoreBackup(backupId) {
-    if (!confirm(t('backup.confirmRestore') || 'This will overwrite existing data. Continue?')) return;
+    pendingRestoreBackup = backupId;
+  }
+
+  async function confirmRestoreBackup() {
+    const id = pendingRestoreBackup;
+    pendingRestoreBackup = null;
+    if (!id) return;
     try {
-      const result = await restoreBackup(backupId);
+      const result = await restoreBackup(id);
       backupCreateMessage = result.message || t('backup.restoreSuccess') || 'Restore completed';
       await loadBackups();
     } catch (e) {
@@ -627,3 +638,25 @@
     </div>
   {/if}
 </div>
+
+<ConfirmDialog
+  open={pendingDeleteBackup !== null}
+  title={t('backup.deleteTitle') || t('common.delete')}
+  message={t('backup.confirmDelete') || 'Are you sure you want to delete this backup?'}
+  confirmLabel={t('common.delete')}
+  cancelLabel={t('common.cancel')}
+  variant="danger"
+  onConfirm={confirmDeleteBackup}
+  onCancel={() => (pendingDeleteBackup = null)}
+/>
+
+<ConfirmDialog
+  open={pendingRestoreBackup !== null}
+  title={t('backup.restoreTitle') || t('common.confirm')}
+  message={t('backup.confirmRestore') || 'This will overwrite existing data. Continue?'}
+  confirmLabel={t('common.confirm')}
+  cancelLabel={t('common.cancel')}
+  variant="warning"
+  onConfirm={confirmRestoreBackup}
+  onCancel={() => (pendingRestoreBackup = null)}
+/>
