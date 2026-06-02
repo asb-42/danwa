@@ -10,18 +10,12 @@
   import { startWorkflow } from '../../lib/workflowExec.js';
   import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
   import { discoverA2A } from '../../lib/a2aApi.js';
-  import { i18n, locale } from '../../lib/i18n/index.js';
+  import { tStore, locale } from '../../lib/i18n/index.js';
   import A2ACapabilities from '../blueprint/A2ACapabilities.svelte';
 
   let { onCreated = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let projectId = $derived($activeProject?.id);
 

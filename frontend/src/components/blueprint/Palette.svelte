@@ -7,7 +7,7 @@
    * Uses HTML5 Drag API for DnD to canvas.
    */
   import { onMount } from 'svelte';
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
   import { getNodesByCategory } from '../../lib/blueprint/registry.js';
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
@@ -24,13 +24,7 @@
 
   let { onloadlayout = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   /** @type {Array} */
   let savedLayouts = $state([]);

@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { locale, i18n, tStore } from '../lib/i18n/index.js';
+  import { locale, tStore } from '../lib/i18n/index.js';
   import { SUPPORTED_LOCALES, LOCALE_NAMES, RTL_LOCALES, customLocales, registerCustomLocale, getAllLocales } from '../lib/i18n/config.js';
   import { setLanguage, getCustomLocales } from '../lib/api.js';
   import { userLanguage } from '../lib/stores.js';

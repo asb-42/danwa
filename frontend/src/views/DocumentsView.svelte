@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { i18n, tStore, tn } from '../lib/i18n/index.js';
+  import { tStore, tn } from '../lib/i18n/index.js';
   import { activeProject, activeCase } from '../lib/stores.js';
   import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';

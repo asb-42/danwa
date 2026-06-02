@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { i18n, tStore } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import {
     getModules,
     getModuleProfile,

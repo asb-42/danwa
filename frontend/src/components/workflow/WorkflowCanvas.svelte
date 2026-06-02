@@ -13,7 +13,7 @@
   import '@xyflow/svelte/dist/style.css';
   import { workflowStore } from '../../lib/workflow/store.svelte.js';
   import { scheduleLayout } from '../../lib/workflow/layout.js';
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   // Custom nodes
   import InputNode from './nodes/InputNode.svelte';
@@ -37,13 +37,7 @@
   /** @type {{ data?: any }} */
   let { data = {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let selectedNode = $state(null);
 

@@ -8,18 +8,12 @@
    * - Active node highlighting via activeNodeId prop
    */
   import { onMount } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { getElk } from '../lib/elk-service.js';
 
   let { activeNodeId = null, status = 'idle' } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   const NODES = [
     { id: 'input', label: 'Input', icon: '📥', color: '#6b7280', width: 100, height: 48 },

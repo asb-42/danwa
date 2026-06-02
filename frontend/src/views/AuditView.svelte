@@ -2,16 +2,10 @@
   import { onMount } from 'svelte';
   import { auditEvents, currentDebate, loading, error } from '../lib/stores.js';
   import { getAuditEvents } from '../lib/api.js';
-  import { i18n, formatDate } from '../lib/i18n/index.js';
+  import { tStore, formatDate } from '../lib/i18n/index.js';
   import AuditTrailVisualization from '../components/AuditTrailVisualization.svelte';
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let debateIdInput = $state('');
   let resolvedTitle = $state('');

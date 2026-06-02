@@ -5,7 +5,7 @@
    */
   import { decideExtension, getHITLStatus } from '../../lib/hitl.js';
   import { hitlStatus } from '../../lib/stores/hitl.svelte.js';
-  import { i18n, locale, tStore } from '../../lib/i18n/index.js';
+  import { locale, tStore } from '../../lib/i18n/index.js';
 
   let { debateId, extensionRequest } = $props();
 

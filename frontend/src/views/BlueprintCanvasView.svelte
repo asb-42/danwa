@@ -4,7 +4,7 @@
    *
    * Left: Palette (240px) | Center: BlueprintCanvas (flex-1) | Right: Inspector (320px, conditional)
    */
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { canvasStore } from '../lib/blueprint/store.svelte.js';
   import { currentDebate } from '../lib/stores.js';
   import {
@@ -40,13 +40,7 @@
   /** @type {{ layoutId?: string|null, routeParams?: string[], navigate?: function }} */
   let { layoutId = null, routeParams = [], navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let selectedNode = $derived(canvasStore.selectedNode);
   let showSaveDialog = $state(false);

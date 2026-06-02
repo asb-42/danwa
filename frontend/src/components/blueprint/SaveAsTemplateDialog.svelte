@@ -5,19 +5,13 @@
    * Allows the user to specify name, description, and which fields
    * should be extracted as placeholders.
    */
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { saveWorkflowAsTemplate } from '../../lib/blueprint/api.js';
 
   /** @type {{ workflowId?: string|null, workflowData?: Object|null, visible?: boolean, onSuccess?: Function, onClose?: Function }} */
   let { workflowId = null, workflowData = null, visible = false, onSuccess = () => {}, onClose = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let name = $state('');
   let description = $state('');

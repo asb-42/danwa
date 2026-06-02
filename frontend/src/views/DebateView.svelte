@@ -3,7 +3,7 @@
   import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, activeCase, autoStartDebate, addToast } from '../lib/stores.js';
   import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
-  import { i18n, formatNumber, formatDate, locale, tn } from '../lib/i18n/index.js';
+  import { tStore, formatNumber, formatDate, locale, tn } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
   import WorkflowGraph from '../components/WorkflowGraph.svelte';
   import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
@@ -25,13 +25,7 @@
   /** @type {function} Navigation helper from App.svelte */
   let { debateId = null, navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   /** True when viewing a past debate (read-only archive mode) */
   let isArchiveMode = $derived(!!debateId);

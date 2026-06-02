@@ -5,7 +5,7 @@
    * Fields: topic/case description, language, max rounds, consensus threshold.
    * On confirm, calls the onstart callback with the collected parameters.
    */
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { getDocuments } from '../../lib/api.js';
 
   /** @type {{ visible?: boolean, layoutName?: string, onstart?: Function, onclose?: Function }} */
@@ -16,13 +16,7 @@
     onclose = () => {},
   } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let topic = $state('');
   let language = $state('de');

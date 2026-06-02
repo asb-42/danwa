@@ -1,5 +1,5 @@
 <script>
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   let {
     personas = [],
@@ -11,13 +11,7 @@
     onSelectPersona = () => {},
   } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   function getPersonasByRole(role) {
     return personas.filter(p => p.role === role);

@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { i18n, tStore } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { LOCALE_NAMES } from '../lib/i18n/config.js';
   import { addToast } from '../lib/stores.js';
   import {

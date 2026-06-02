@@ -7,7 +7,7 @@
    * After creating a debate, auto-navigates to "Laufende Debatte" and starts it.
    */
   import { onDestroy } from 'svelte';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
   import {
     listInputPlugins,
@@ -32,13 +32,7 @@
   /** @type {function} Navigation helper from App.svelte */
   let { navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   // Input Composer state
   let plugins = $state([]);

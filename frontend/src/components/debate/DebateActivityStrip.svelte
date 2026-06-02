@@ -4,7 +4,7 @@
    *
    * Shows progress dots, agent status, model name, timer, and token counter.
    */
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   /** @type {{ currentDebate: object, currentActivity: object|null, workflowPhase: object|null, liveOutputs: array, isProcessing: boolean, isBetweenAgents: boolean, processingElapsed: number, workflowElapsed: number, cumulativeTokens: number, agentCount: number, activeAgentIndex: number, completedInRound: number }} */
   let {
@@ -22,13 +22,7 @@
     completedInRound = 0,
   } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   function roleDotColor(role) {
     switch (role) {

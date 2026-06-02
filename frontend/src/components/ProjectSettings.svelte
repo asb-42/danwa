@@ -2,17 +2,11 @@
   import { onMount } from 'svelte';
   import { activeProject, error } from '../lib/stores.js';
   import { getProject, getProjectConfig, updateProjectConfig, getSettings } from '../lib/api.js';
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
 
   let { projectId = '', navigate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let project = $state(null);
   let config = $state({

@@ -8,7 +8,7 @@
    */
   import { SvelteFlow, Background, Controls, MiniMap } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
   import { validateConnection } from '../../lib/blueprint/validation.js';
   import { createDraftNode, getNodeTypeFromDrop, getEntityIdFromDrop, createEntityNode } from '../../lib/blueprint/dnd.js';
@@ -35,13 +35,7 @@
 
   let { onsave = () => {}, onsaveas = () => {}, onnewworkflow = () => {}, onsaveastemplate = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   /** @type {HTMLElement|null} */
   let flowContainer = $state(null);

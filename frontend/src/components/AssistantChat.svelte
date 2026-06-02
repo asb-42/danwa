@@ -7,7 +7,7 @@
     deleteAssistantSession,
     sendAssistantMessage,
   } from '../lib/api.js';
-  import { i18n, locale, tStore } from '../lib/i18n/index.js';
+  import { locale, tStore } from '../lib/i18n/index.js';
   import AssistantSessionList from './assistant/AssistantSessionList.svelte';
   import AssistantMessageBubble from './assistant/AssistantMessageBubble.svelte';
   import AssistantTypingIndicator from './assistant/AssistantTypingIndicator.svelte';

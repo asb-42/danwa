@@ -5,7 +5,7 @@
    * Shows system and custom templates with search, category filter,
    * and delete functionality for custom templates.
    */
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import {
     listWorkflowTemplates,
     deleteWorkflowTemplate,
@@ -14,13 +14,7 @@
   /** @type {{ visible?: boolean, onSelect?: Function, onClose?: Function }} */
   let { visible = false, onSelect = () => {}, onClose = () => {} } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let templates = $state([]);
   let loading = $state(false);

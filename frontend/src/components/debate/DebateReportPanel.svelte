@@ -4,18 +4,12 @@
    *
    * Shown at the bottom of the final consensus section.
    */
-  import { i18n } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
   import { generateReport, getReportStatus, downloadReport } from '../../lib/api.js';
 
   let { debateId = null } = $props();
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let reportFormat = $state('docx');
   let reportGenerating = $state(false);

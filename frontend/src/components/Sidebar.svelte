@@ -1,5 +1,5 @@
 <script>
-  import { i18n } from '../lib/i18n/index.js';
+  import { tStore } from '../lib/i18n/index.js';
   import { currentDebate } from '../lib/stores.js';
   import { appVersion } from '../lib/stores.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
@@ -11,13 +11,7 @@
 
   let projectSelector;
 
-  let t = $derived((key, params = {}) => {
-    let text = $i18n[key] || key;
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    });
-    return text;
-  });
+  let t = $derived($tStore);
 
   let hasActiveDebate = $derived(
     $currentDebate && ['pending', 'running'].includes($currentDebate.status)
