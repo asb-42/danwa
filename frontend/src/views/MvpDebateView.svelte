@@ -724,12 +724,12 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-4">
       <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300">
         {#if currentRound}
-          <div><span class="font-semibold">Anzahl Runden:</span> {currentRound}</div>
+          <div><span class="font-semibold">{t('mvpDebate.metrics.rounds')}:</span> {currentRound}</div>
         {/if}
         {#if nodeOutputs.length}
           {@const roles = [...new Set(nodeOutputs.map(n => n.role).filter(Boolean))]}
           {#if roles.length}
-            <div><span class="font-semibold">Agenten-Rollen:</span> {roles.join(' · ')}</div>
+            <div><span class="font-semibold">{t('mvpDebate.metrics.roles')}:</span> {roles.join(' · ')}</div>
           {/if}
         {/if}
       </div>
@@ -830,19 +830,19 @@
 
       <div class="metrics-grid">
         <div class="metric">
-          <span class="metric-label">Round</span>
+          <span class="metric-label">{t('mvpDebate.metrics.round')}</span>
           <span class="metric-value">{currentRound}/{config.maxRounds}</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Consensus</span>
+          <span class="metric-label">{t('mvpDebate.metrics.consensus')}</span>
             <span class="metric-value">{#if hasReceivedConsensus}{(consensus * 100).toFixed(0)}%{:else}—{/if}</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Elapsed</span>
+          <span class="metric-label">{t('mvpDebate.metrics.elapsed')}</span>
           <span class="metric-value">{formatDuration(elapsedMs)}</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Tokens</span>
+          <span class="metric-label">{t('mvpDebate.metrics.tokens')}</span>
           <span class="metric-value">{formatNumber(totalTokens)}</span>
         </div>
       </div>
@@ -908,7 +908,7 @@
       {#if hasReceivedConsensus}
         <div class="consensus-bar-wrapper">
           <div class="flex items-center justify-between mb-1">
-            <span class="consensus-label">Consensus</span>
+            <span class="consensus-label">{t('mvpDebate.metrics.consensus')}</span>
             <span class="consensus-pct">{(consensus * 100).toFixed(1)}%</span>
           </div>
           <div class="consensus-track">

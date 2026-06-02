@@ -297,8 +297,10 @@
               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
               focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="My Project"
+            aria-invalid={formErrors.name ? 'true' : 'false'}
+            aria-describedby={formErrors.name ? 'project-name-error' : undefined}
           />
-          {#if formErrors.name}<p class="text-xs text-red-500 mt-1">{formErrors.name}</p>{/if}
+          {#if formErrors.name}<p id="project-name-error" class="text-xs text-red-500 mt-1">{formErrors.name}</p>{/if}
         </div>
 
         <div>

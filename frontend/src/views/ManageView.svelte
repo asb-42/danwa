@@ -688,14 +688,18 @@
           <div>
             <label for="rt-form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.id')} *</label>
             <input id="rt-form-id" type="text" bind:value={roleTypeFormData.id} disabled={roleTypeModalMode === 'edit'}
-              class="w-full px-3 py-2 border rounded-lg text-sm {roleTypeFormErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed" placeholder="custom-role" />
-            {#if roleTypeFormErrors.id}<p class="text-xs text-red-500 mt-1">{roleTypeFormErrors.id}</p>{/if}
+              class="w-full px-3 py-2 border rounded-lg text-sm {roleTypeFormErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed" placeholder="custom-role"
+              aria-invalid={roleTypeFormErrors.id ? 'true' : 'false'}
+              aria-describedby={roleTypeFormErrors.id ? 'rt-form-id-error' : undefined} />
+            {#if roleTypeFormErrors.id}<p id="rt-form-id-error" class="text-xs text-red-500 mt-1">{roleTypeFormErrors.id}</p>{/if}
           </div>
           <div>
             <label for="rt-form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.name')} *</label>
             <input id="rt-form-name" type="text" bind:value={roleTypeFormData.name}
-              class="w-full px-3 py-2 border rounded-lg text-sm {roleTypeFormErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Custom Role" />
-            {#if roleTypeFormErrors.name}<p class="text-xs text-red-500 mt-1">{roleTypeFormErrors.name}</p>{/if}
+              class="w-full px-3 py-2 border rounded-lg text-sm {roleTypeFormErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Custom Role"
+              aria-invalid={roleTypeFormErrors.name ? 'true' : 'false'}
+              aria-describedby={roleTypeFormErrors.name ? 'rt-form-name-error' : undefined} />
+            {#if roleTypeFormErrors.name}<p id="rt-form-name-error" class="text-xs text-red-500 mt-1">{roleTypeFormErrors.name}</p>{/if}
           </div>
           <div>
             <label for="rt-form-color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.roleTypeColor')}</label>
@@ -731,14 +735,18 @@
         <div>
           <label for="pv-form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID *</label>
           <input id="pv-form-id" type="text" bind:value={promptCreateData.id}
-            class="w-full px-3 py-2 border rounded-lg text-sm {promptCreateErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="my-custom-variant" />
-          {#if promptCreateErrors.id}<p class="text-xs text-red-500 mt-1">{promptCreateErrors.id}</p>{/if}
+            class="w-full px-3 py-2 border rounded-lg text-sm {promptCreateErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="my-custom-variant"
+            aria-invalid={promptCreateErrors.id ? 'true' : 'false'}
+            aria-describedby={promptCreateErrors.id ? 'pv-form-id-error' : undefined} />
+          {#if promptCreateErrors.id}<p id="pv-form-id-error" class="text-xs text-red-500 mt-1">{promptCreateErrors.id}</p>{/if}
         </div>
         <div>
           <label for="pv-form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.name')} *</label>
           <input id="pv-form-name" type="text" bind:value={promptCreateData.name}
-            class="w-full px-3 py-2 border rounded-lg text-sm {promptCreateErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="My Custom Variant" />
-          {#if promptCreateErrors.name}<p class="text-xs text-red-500 mt-1">{promptCreateErrors.name}</p>{/if}
+            class="w-full px-3 py-2 border rounded-lg text-sm {promptCreateErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="My Custom Variant"
+            aria-invalid={promptCreateErrors.name ? 'true' : 'false'}
+            aria-describedby={promptCreateErrors.name ? 'pv-form-name-error' : undefined} />
+          {#if promptCreateErrors.name}<p id="pv-form-name-error" class="text-xs text-red-500 mt-1">{promptCreateErrors.name}</p>{/if}
         </div>
         <div>
           <label for="pv-form-desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.description')}</label>
