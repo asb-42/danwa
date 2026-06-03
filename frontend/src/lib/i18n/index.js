@@ -190,15 +190,16 @@ function createI18nStore() {
         usedFallback = true;
       }
 
-      // Show one-time fallback warning per session
+      // Show one-time fallback warning per session.
+      // Deferred via queueMicrotask to avoid Svelte 5 "state_unsafe_mutation"
+      // error — i18n.t() is called inside a $derived (tStore), so we must
+      // not mutate state synchronously here.
       if (usedFallback && !fallbackWarningShown && currentLocale !== 'en') {
         fallbackWarningShown = true;
         if (_toastCallback) {
-          _toastCallback({
-            message: `Some UI strings are not yet translated to ${getLocaleName(currentLocale)}. Showing English fallback.`,
-            type: 'warning',
-            timeout: 8000,
-          });
+          const cb = _toastCallback;
+          const msg = `Some UI strings are not yet translated to ${getLocaleName(currentLocale)}. Showing English fallback.`;
+          queueMicrotask(() => cb({ message: msg, type: 'warning', timeout: 8000 }));
         }
       }
 
