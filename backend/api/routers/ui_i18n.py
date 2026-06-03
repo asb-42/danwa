@@ -9,8 +9,6 @@ from pydantic import BaseModel
 
 from backend.services.ui_translation_service import (
     DEFAULT_LOCALES,
-    LOCALE_NAMES,
-    PLURAL_TAGS,
     RTL_LOCALES,
     UITranslationService,
     get_plural_tags,
