@@ -114,8 +114,19 @@
       return result;
     }
 
-    // No filter: show all local (deduplicated)
-    return uniqueModules;
+    // No filter: show all local (deduplicated) with remote version info
+    return uniqueModules.map(m => {
+      const remoteMatch = repoModules.find(r => r.module_id === m.module_id);
+      return {
+        ...m,
+        localVersion: m.version,
+        remoteVersion: remoteMatch?.version || null,
+        status: !remoteMatch ? 'local-only'
+          : m.version === remoteMatch.version ? 'up-to-date'
+          : 'update-available',
+        remoteData: remoteMatch || null,
+      };
+    });
   });
 
   // --- Lifecycle ---
@@ -433,6 +444,20 @@
       return local && local.version !== rm.version;
     });
   });
+
+  /** Compute per-category module stats for the summary bar */
+  const categoryStats = $derived.by(() => {
+    const mods = mergedModules;
+    const local = mods.filter(m => m.status !== 'remote-only');
+    const remote = mods.filter(m => m.status === 'remote-only');
+    const updates = mods.filter(m => m.status === 'update-available');
+    return {
+      total: mods.length,
+      local: local.length,
+      remote: remote.length,
+      updates: updates.length,
+    };
+  });
 </script>
 
 <div class="space-y-4">
@@ -475,6 +500,31 @@
     </div>
   {/if}
 
+  <!-- Category stats bar -->
+  {#if filterCategory && mergedModules.length > 0}
+    <div class="flex flex-wrap items-center gap-3 px-1 text-sm">
+      <span class="inline-flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+        <span class="font-semibold">{categoryStats.total}</span> {filterCategory}
+      </span>
+      <span class="text-gray-300 dark:text-gray-600">·</span>
+      <span class="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+        <span class="font-semibold">{categoryStats.local}</span> local
+      </span>
+      {#if categoryStats.remote > 0}
+        <span class="text-gray-300 dark:text-gray-600">·</span>
+        <span class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          <span class="font-semibold">{categoryStats.remote}</span> remote
+        </span>
+      {/if}
+      {#if categoryStats.updates > 0}
+        <span class="text-gray-300 dark:text-gray-600">·</span>
+        <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+          <span class="font-semibold">{categoryStats.updates}</span> update{categoryStats.updates !== 1 ? 's' : ''} available
+        </span>
+      {/if}
+    </div>
+  {/if}
+
   <!-- Module table -->
   {#if isLoading && modules.length === 0}
     <div class="flex items-center justify-center h-32">
@@ -502,14 +552,10 @@
             </tr>
           </thead>
           <tbody>
-            {#each filterCategory ? mergedModules : modules as mod (mod.module_id)}
-              {@const remoteMatch = repoModules.find(r => r.module_id === mod.module_id)}
-              {@const localVer = filterCategory ? mod.localVersion : mod.version}
-              {@const remoteVer = filterCategory ? mod.remoteVersion : remoteMatch?.version}
-              {@const status = filterCategory && mod.status ? mod.status
-                : !remoteVer ? (mod.installed !== undefined ? 'local-only' : 'remote-only')
-                : !localVer ? 'remote-only'
-                : localVer === remoteVer ? 'up-to-date' : 'update-available'}
+            {#each mergedModules as mod (mod.module_id)}
+              {@const localVer = mod.localVersion}
+              {@const remoteVer = mod.remoteVersion}
+              {@const status = mod.status}
               <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {mod.enabled === false ? 'opacity-50' : ''}">
                 <td class="px-4 py-2.5">
                   <span class="font-medium text-gray-800 dark:text-white">{mod.name?.en || mod.module_id}</span>
