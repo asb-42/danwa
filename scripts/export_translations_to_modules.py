@@ -94,7 +94,7 @@ def find_module_dir(repo: Path, module_id: str) -> Path | None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export translations to danwa-modules repo")
     parser.add_argument("--repo", type=str, default=str(DEFAULT_REPO), help="Path to danwa-modules repo")
-    parser.add_argument("--locale", type=str, default=None, help="Export only this locale (e.g. 'es')")
+    parser.add_argument("--locale", type=str, nargs="+", default=None, help="Export specific locale(s) (e.g. --locale de es fr)")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be exported")
     args = parser.parse_args()
 
@@ -113,7 +113,7 @@ def main() -> None:
     try:
         # Find all locales that have translations in the DB
         if args.locale:
-            locales = [args.locale]
+            locales = args.locale
         else:
             rows = conn.execute("SELECT DISTINCT locale FROM ui_translations WHERE namespace LIKE 'langpack:%'").fetchall()
             locales = [r["locale"] for r in rows]
