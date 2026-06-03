@@ -473,7 +473,12 @@ class UITranslationService:
                 bundle_keys = set(bundled[locale].keys())
                 translated = len(bundle_keys & en_keys)
             else:
-                db_translations = self.get_translations_bulk(locale, namespace)
+                # Merge translations from ALL langpack:* namespaces for this locale
+                # (module translations are stored as langpack:{module_id}, not "global")
+                db_translations = self.resolve_bulk_for_locale(locale)
+                if not db_translations:
+                    # Fallback to global namespace for manually translated locales
+                    db_translations = self.get_translations_bulk(locale, namespace)
                 db_keys = {k for k, v in db_translations.items() if v}
                 translated = len(db_keys & en_keys)
             coverage = translated / len(en_keys) * 100
@@ -760,11 +765,34 @@ class UITranslationService:
                 if key not in en_keys:
                     en_keys[key] = val
 
+        # For non-bundled locales, merge langpack:* namespaces on top of global
         target_rows = conn.execute(
             "SELECT key, value, source, confidence, version, created_at, updated_at FROM ui_translations WHERE locale = ? AND namespace = ?",
             (locale, namespace),
         ).fetchall()
         target_map = {r["key"]: dict(r) for r in target_rows}
+
+        # Merge language-pack translations (langpack:* namespaces)
+        if locale not in bundled:
+            lp_query = (
+                "SELECT key, value, source, confidence, version,"
+                " created_at, updated_at"
+                " FROM ui_translations"
+                " WHERE locale = ? AND namespace LIKE 'langpack:%'"
+            )
+            langpack_rows = conn.execute(lp_query, (locale,)).fetchall()
+            for r in langpack_rows:
+                key = r["key"]
+                if key not in target_map:
+                    target_map[key] = {
+                        "key": key,
+                        "value": r["value"],
+                        "source": r["source"],
+                        "confidence": r["confidence"],
+                        "version": r["version"],
+                        "created_at": r["created_at"],
+                        "updated_at": r["updated_at"],
+                    }
         conn.close()
 
         if locale in bundled:
