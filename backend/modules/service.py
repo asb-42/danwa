@@ -68,7 +68,7 @@ class ModuleService:
         if (direct / "manifest.json").exists():
             return direct
         for subdir in self.modules_dir.iterdir():
-            if subdir.is_dir() and not subdir.name.startswith("."):
+            if subdir.is_dir() and self._is_module_dir(subdir.name):
                 candidate = subdir / module_id
                 if (candidate / "manifest.json").exists():
                     return candidate
@@ -83,7 +83,7 @@ class ModuleService:
                         continue
                 # Check one more level (subdir/<child>/) for matching module_id
                 for child in sorted(subdir.iterdir()):
-                    if not child.is_dir() or child.name.startswith("."):
+                    if not child.is_dir() or not self._is_module_dir(child.name):
                         continue
                     child_manifest = child / "manifest.json"
                     if child_manifest.exists():
@@ -95,6 +95,15 @@ class ModuleService:
                             continue
         return None
 
+    @staticmethod
+    def _is_module_dir(name: str) -> bool:
+        """Return True if *name* looks like a real module directory (not backup/temp)."""
+        if name.startswith("."):
+            return False
+        if ".bak." in name or name.endswith(".bak"):
+            return False
+        return True
+
     def discover_local(self) -> list[ModuleInfo]:
         modules: list[ModuleInfo] = []
         if not self.modules_dir.exists():
@@ -103,13 +112,13 @@ class ModuleService:
         # Search root and one level of subdirectories (category dirs)
         search_dirs = []
         for entry in sorted(self.modules_dir.iterdir()):
-            if not entry.is_dir() or entry.name.startswith("."):
+            if not entry.is_dir() or not self._is_module_dir(entry.name):
                 continue
             if (entry / "manifest.json").exists():
                 search_dirs.append(entry)
             else:
                 for sub in sorted(entry.iterdir()):
-                    if sub.is_dir() and not sub.name.startswith("."):
+                    if sub.is_dir() and self._is_module_dir(sub.name):
                         search_dirs.append(sub)
 
         for module_dir in search_dirs:
