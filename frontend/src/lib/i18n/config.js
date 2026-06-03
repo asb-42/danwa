@@ -57,7 +57,15 @@ export function getLocaleName(code) {
 export function getAllLocales() {
   const bundled = SUPPORTED_LOCALES.filter(l => !customLocales.has(l));
   const custom = [...customLocales.keys()];
-  return [...bundled, ...custom];
+  const all = [...bundled, ...custom];
+  // Sort alphabetically by display name (keep 'en' first as default)
+  return all.sort((a, b) => {
+    if (a === 'en') return -1;
+    if (b === 'en') return 1;
+    const nameA = (customLocales.get(a)?.name || LOCALE_NAMES[a] || a).toLowerCase();
+    const nameB = (customLocales.get(b)?.name || LOCALE_NAMES[b] || b).toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 }
 
 // How many string IDs to load per HTTP batch request

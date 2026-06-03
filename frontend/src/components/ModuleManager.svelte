@@ -146,7 +146,7 @@
     try {
       const result = await installFromRepo(mod.module_id, version);
       if (result.status === 'ok') {
-        statusMessage = `Installed ${mod.module_id} v${result.version}`;
+        statusMessage = `Installed ${mod.module_id} v${result.version} from GitHub (danwa-modules)`;
         await Promise.all([loadModules(), loadRepoIndex()]);
       } else {
         error = (result.errors || []).join(', ') || 'Installation failed';

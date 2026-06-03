@@ -85,7 +85,8 @@
   {#if open}
     <div class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg
                 border border-gray-200 dark:border-gray-700 z-50
-                ring-1 ring-black ring-opacity-5">
+                ring-1 ring-black ring-opacity-5
+                max-h-80 overflow-y-auto">
       <div class="py-1" role="menu">
         {#each allLocales as lang}
           {@const isRTL = RTL_LOCALES.has(lang)}
