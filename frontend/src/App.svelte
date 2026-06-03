@@ -1,42 +1,14 @@
 <script>
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { route, routeParams, addToast } from './lib/stores.js';
-  import { getHealth } from './lib/api.js';
-  import { healthStatus, appVersion } from './lib/stores.js';
-  import { getVersion } from './lib/api.js';
+  import { route, routeParams, addToast, healthStatus, appVersion } from './lib/stores.js';
+  import { getHealth, getVersion } from './lib/api.js';
   import { i18n, tStore, discoverLanguagePacks, setToastCallback } from './lib/i18n/index.js';
   import { isAuthenticated } from './lib/stores/auth.svelte.js';
   import Layout from './components/Layout.svelte';
-  import Dashboard from './views/Dashboard.svelte';
-  import DebateView from './views/DebateView.svelte';
-  import DocumentsView from './views/DocumentsView.svelte';
-  import AuditView from './views/AuditView.svelte';
-  import ConfigView from './views/ConfigView.svelte';
-  import ArchiveView from './views/ArchiveView.svelte';
-  import ProjectsView from './views/ProjectsView.svelte';
-  import ProjectSettings from './components/ProjectSettings.svelte';
-  import BlueprintCanvasView from './views/BlueprintCanvasView.svelte';
-  import ReplayView from './views/ReplayView.svelte';
-  import DiffView from './views/DiffView.svelte';
-  import OutputComposerView from './views/OutputComposerView.svelte';
-import InputComposerView from './views/InputComposerView.svelte';
-import WorkflowExecutionView from './views/WorkflowExecutionView.svelte';
-import TranslationDashboard from './views/TranslationDashboard.svelte';
-import ModulesView from './views/ModulesView.svelte';
-import ProposalsView from './views/ProposalsView.svelte';
-import ManageView from './views/ManageView.svelte';
-import MvpDebateView from './views/MvpDebateView.svelte';
-import BundleComposerView from './views/BundleComposerView.svelte';
-import LoginView from './views/LoginView.svelte';
-import UserManagement from './views/UserManagement.svelte';
-import ProfileView from './views/ProfileView.svelte';
-import TenantSettingsView from './views/TenantSettingsView.svelte';
-import CasesView from './views/CasesView.svelte';
-import TagManagerView from './views/TagManagerView.svelte';
-import BYOKManager from './views/BYOKManager.svelte';
-import ServerHealthView from './views/ServerHealthView.svelte';
-import ToastContainer from './components/ToastContainer.svelte';
+  // LoginView stays eager — it's the first thing users see and is small.
+  import LoginView from './views/LoginView.svelte';
+  import ToastContainer from './components/ToastContainer.svelte';
 
   // Register toast callback for i18n fallback warnings
   setToastCallback(addToast);
@@ -127,61 +99,61 @@ import ToastContainer from './components/ToastContainer.svelte';
     addToast({ type: 'error', message: $tStore('app.viewCrashed', { error: e.message }) });
   }}>
     {#if $route === 'dashboard'}
-      <Dashboard {navigate} />
+      {#await import('./views/Dashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'debate'}
-      <DebateView debateId={$routeParams[0] || null} {navigate} />
+      {#await import('./views/DebateView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} {navigate} />{/await}
     {:else if $route === 'documents'}
-      <DocumentsView {navigate} />
+      {#await import('./views/DocumentsView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'archive'}
-      <ArchiveView {navigate} />
+      {#await import('./views/ArchiveView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'audit'}
-      <AuditView />
+      {#await import('./views/AuditView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'projects' && $routeParams.length >= 2 && $routeParams[1] === 'settings'}
-      <ProjectSettings projectId={$routeParams[0]} {navigate} />
+      {#await import('./components/ProjectSettings.svelte') then Mod}<Mod.default projectId={$routeParams[0]} {navigate} />{/await}
     {:else if $route === 'projects'}
-      <ProjectsView {navigate} />
+      {#await import('./views/ProjectsView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'config'}
-      <ConfigView />
+      {#await import('./views/ConfigView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'manage'}
-      <ManageView />
+      {#await import('./views/ManageView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'execution'}
-      <WorkflowExecutionView sessionId={$routeParams[0] || null} {navigate} />
+      {#await import('./views/WorkflowExecutionView.svelte') then Mod}<Mod.default sessionId={$routeParams[0] || null} {navigate} />{/await}
     {:else if $route === 'blueprint'}
-      <BlueprintCanvasView layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />
+      {#await import('./views/BlueprintCanvasView.svelte') then Mod}<Mod.default layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />{/await}
     {:else if $route === 'bundle-composer'}
-      <BundleComposerView />
+      {#await import('./views/BundleComposerView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'replay'}
-      <ReplayView />
+      {#await import('./views/ReplayView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'diff'}
-      <DiffView />
+      {#await import('./views/DiffView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'output'}
-      <OutputComposerView />
+      {#await import('./views/OutputComposerView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'input'}
-      <InputComposerView />
+      {#await import('./views/InputComposerView.svelte') then Mod}<Mod.default {navigate} />{/await}
      {:else if $route === 'translation'}
-      <TranslationDashboard {navigate} />
+      {#await import('./views/TranslationDashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'modules'}
-      <ModulesView {navigate} />
+      {#await import('./views/ModulesView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'proposals'}
-      <ProposalsView />
+      {#await import('./views/ProposalsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'mvp-debate'}
-      <MvpDebateView debateId={$routeParams[0] || null} {navigate} />
+      {#await import('./views/MvpDebateView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} {navigate} />{/await}
     {:else if $route === 'users'}
-      <UserManagement />
+      {#await import('./views/UserManagement.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'profile'}
-      <ProfileView />
+      {#await import('./views/ProfileView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'tenant-settings'}
-      <TenantSettingsView />
+      {#await import('./views/TenantSettingsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'my-keys'}
-      <BYOKManager />
+      {#await import('./views/BYOKManager.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'server-health'}
-      <ServerHealthView />
+      {#await import('./views/ServerHealthView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'case-list'}
-      <CasesView {navigate} />
+      {#await import('./views/CasesView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'tags'}
-      <TagManagerView />
+      {#await import('./views/TagManagerView.svelte') then Mod}<Mod.default />{/await}
     {:else}
-      <Dashboard {navigate} />
+      {#await import('./views/Dashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
     {/if}
 
     {#snippet failed(error, reset)}
