@@ -27,7 +27,7 @@
 
   // Elapsed time counter
   let elapsed = $state(0);
-  let elapsedInterval = null;
+  let elapsedInterval = $state(null);
 
   function startElapsedCounter() {
     elapsed = 0;

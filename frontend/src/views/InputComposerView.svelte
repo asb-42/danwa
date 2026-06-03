@@ -71,7 +71,7 @@
   let loadingCompletedDebates = $state(false);
 
   // A2A polling interval reference
-  let a2aPollInterval = null;
+  let a2aPollInterval = $state(null);
 
   // Load plugins and workflow templates on mount
   $effect(() => {

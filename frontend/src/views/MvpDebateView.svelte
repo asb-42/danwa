@@ -85,7 +85,7 @@
   let nodeOutputs = $state([]);
   let nodeStatuses = $state({});
   let error = $state('');
-  let cleanupSSE = null;
+  let cleanupSSE = $state(null);
   let llmAssignmentsResult = $state({});
   let totalTokens = $state(0);
   let expandedOutputs = $state(new Set());
@@ -105,9 +105,9 @@
   let workflowElapsed = $state(0);
   let workflowTimer = $state(null);
 
-  let startTime = null;
-  let timerInterval = null;
-  let hitlPollTimer = null;
+  let startTime = $state(null);
+  let timerInterval = $state(null);
+  let hitlPollTimer = $state(null);
 
   $effect(() => {
     Promise.all([

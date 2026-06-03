@@ -21,13 +21,13 @@
 <div class="replay-controls">
   <!-- Playback buttons -->
   <div class="playback-buttons">
-    <button class="btn" on:click={onStepBack} disabled={currentStep === 0}>
+    <button class="btn" click={onStepBack} disabled={currentStep === 0}>
       ⏮ {t('replay.stepBack')}
     </button>
-    <button class="btn btn-primary" on:click={onPlayPause}>
+    <button class="btn btn-primary" click={onPlayPause}>
       {isPlaying ? '⏸ ' + t('replay.pause') : '▶ ' + t('replay.play')}
     </button>
-    <button class="btn" on:click={onStepForward} disabled={currentStep >= totalSteps - 1}>
+    <button class="btn" click={onStepForward} disabled={currentStep >= totalSteps - 1}>
       ⏭ {t('replay.stepForward')}
     </button>
   </div>
@@ -39,7 +39,7 @@
       min="0"
       max={Math.max(totalSteps - 1, 0)}
       value={currentStep}
-      on:input={onSliderChange}
+      input={onSliderChange}
       class="time-slider"
     />
     {#if interjectionMarkers.length > 0}
@@ -59,7 +59,7 @@
   <div class="controls-row">
     <label>
       {t('replay.speed')}
-      <select value={playSpeed} on:change={onSpeedChange}>
+      <select value={playSpeed} change={onSpeedChange}>
         <option value="0.5">0.5x</option>
         <option value="1">1x</option>
         <option value="2">2x</option>

@@ -7,16 +7,16 @@
   import ReplayControls from '../components/workflow/ReplayControls.svelte';
   import ReplayNodeDetail from '../components/workflow/ReplayNodeDetail.svelte';
 
-  let sessions = [];
-  let selectedSessionId = $routeParams[0] || '';
-  let auditLog = [];
-  let currentStep = 0;
-  let isPlaying = false;
-  let playSpeed = 1;
-  let playInterval = null;
-  let selectedNode = null;
-  let error = null;
-  let loading = false;
+  let sessions = $state([]);
+  let selectedSessionId = $state($routeParams[0] || '');
+  let auditLog = $state([]);
+  let currentStep = $state(0);
+  let isPlaying = $state(false);
+  let playSpeed = $state(1);
+  let playInterval = $state(null);
+  let selectedNode = $state(null);
+  let error = $state(null);
+  let loading = $state(false);
 
   let t = $derived($tStore);
 
@@ -126,7 +126,7 @@
   <!-- Session selector -->
   <div class="session-selector">
     <label for="replay-session-select">{t('replay.selectSession')}</label>
-    <select id="replay-session-select" value={selectedSessionId} on:change={onSessionSelect}>
+    <select id="replay-session-select" value={selectedSessionId} change={onSessionSelect}>
       <option value="">-- {t('replay.selectSession')} --</option>
       {#each sessions as session}
         <option value={session.id}>{session.id} ({session.status})</option>

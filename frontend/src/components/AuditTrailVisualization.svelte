@@ -112,7 +112,7 @@
                   class="rounded-lg border transition-all cursor-pointer hover:shadow-md"
                   style="background: {color.light}; border-color: {color.border}30;"
                   class:ring-2={expandedEvent === event.id}
-                  on:click={() => expandedEvent = expandedEvent === event.id ? null : event.id}
+                  click={() => expandedEvent = expandedEvent === event.id ? null : event.id}
                 >
                   <div class="flex items-center gap-3 px-3 py-2">
                     <!-- Agent dot -->

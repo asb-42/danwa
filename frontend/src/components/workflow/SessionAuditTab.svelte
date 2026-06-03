@@ -6,14 +6,14 @@
 
   export let sessionId = '';
 
-  let auditEntries = [];
-  let loading = false;
-  let error = null;
-  let eventTypeFilter = '';
-  let searchQuery = '';
+  let auditEntries = $state([]);
+  let loading = $state(false);
+  let error = $state(null);
+  let eventTypeFilter = $state('');
+  let searchQuery = $state('');
   let pageSize = 25;
-  let currentPage = 0;
-  let expandedRow = null;
+  let currentPage = $state(0);
+  let expandedRow = $state(null);
   let sortColumn = 'timestamp';
   let sortDirection = 'asc';
 
@@ -146,7 +146,7 @@
       <option value="50">50 / page</option>
       <option value="100">100 / page</option>
     </select>
-    <button class="btn-export" on:click={exportCSV}>
+    <button class="btn-export" click={exportCSV}>
       {t('audit.export.csv')}
     </button>
   </div>
@@ -169,9 +169,9 @@
     <!-- Pagination -->
     {#if totalPages > 1}
       <div class="pagination">
-        <button disabled={currentPage === 0} on:click={() => currentPage--}>←</button>
+        <button disabled={currentPage === 0} click={() => currentPage--}>←</button>
         <span>{currentPage + 1} / {totalPages}</span>
-        <button disabled={currentPage >= totalPages - 1} on:click={() => currentPage++}>→</button>
+        <button disabled={currentPage >= totalPages - 1} click={() => currentPage++}>→</button>
       </div>
     {/if}
   {/if}

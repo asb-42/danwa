@@ -15,7 +15,7 @@
   let currentPage = $state(0);
   let searchQuery = $state('');
   let statusFilter = $state('');
-  let searchTimeout = null;
+  let searchTimeout = $state(null);
 
   // Delete confirmation state
   let deleteConfirmId = $state(null);

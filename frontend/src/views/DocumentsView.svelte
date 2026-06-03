@@ -12,7 +12,7 @@
   let uploading = $state(false);
   let error = $state('');
   let dragOver = $state(false);
-  let fileInput;
+  let fileInput = $state();
 
   // Document viewer state
   let viewingDoc = $state(null);

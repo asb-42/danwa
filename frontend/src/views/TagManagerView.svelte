@@ -23,7 +23,7 @@
     '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
   ];
 
-  let tagsLoaded = false;
+  let tagsLoaded = $state(false);
   onMount(() => {
     if ($currentTenant) loadTags();
   });

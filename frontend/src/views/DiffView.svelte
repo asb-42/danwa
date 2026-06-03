@@ -5,14 +5,14 @@
   import { getWorkflowSessions } from '../lib/workflow/auditApi.js';
   import DiffNodeDetail from '../components/workflow/DiffNodeDetail.svelte';
 
-  let sessions = [];
-  let sessionA = $routeParams[0] || '';
-  let sessionB = $routeParams[1] || '';
-  let auditLogA = [];
-  let auditLogB = [];
-  let loading = false;
-  let error = null;
-  let selectedNodeId = null;
+  let sessions = $state([]);
+  let sessionA = $state($routeParams[0] || '');
+  let sessionB = $state($routeParams[1] || '');
+  let auditLogA = $state([]);
+  let auditLogB = $state([]);
+  let loading = $state(false);
+  let error = $state(null);
+  let selectedNodeId = $state(null);
 
   let t = $derived($tStore);
 
@@ -72,7 +72,7 @@
   <div class="session-selectors">
     <div class="selector">
       <label for="diff-session-a">{t('diff.selectSessionA')}</label>
-      <select id="diff-session-a" value={sessionA} on:change={onSessionAChange}>
+      <select id="diff-session-a" value={sessionA} change={onSessionAChange}>
         <option value="">--</option>
         {#each sessions as s}
           <option value={s.id}>{s.id}</option>
@@ -81,7 +81,7 @@
     </div>
     <div class="selector">
       <label for="diff-session-b">{t('diff.selectSessionB')}</label>
-      <select id="diff-session-b" value={sessionB} on:change={onSessionBChange}>
+      <select id="diff-session-b" value={sessionB} change={onSessionBChange}>
         <option value="">--</option>
         {#each sessions as s}
           <option value={s.id}>{s.id}</option>
@@ -110,8 +110,8 @@
           class:selected={selectedNodeId === pair.nodeId}
           role="button"
           tabindex="0"
-          on:click={() => onNodeClick(pair.nodeId)}
-          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(pair.nodeId); }}
+          click={() => onNodeClick(pair.nodeId)}
+          keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(pair.nodeId); }}
         >
           <span class="node-id">{pair.nodeId}</span>
           {#if pair.entryA && pair.entryB}

@@ -177,7 +177,7 @@
     if (entityId) {
       // Existing entity drop — load entity data and create non-draft node
       try {
-        let entityData = null;
+        let entityData = $state(null);
         switch (nodeType) {
           case 'agent-blueprint':
             entityData = await getAgentBlueprint(entityId);
@@ -308,7 +308,7 @@
     const updatedPosition = { ...targetNode.position };
 
     // Re-evaluate phase parentage on drag end
-    let newParentId = null;
+    let newParentId = $state(null);
     if (targetNode.type !== 'wf-phase') {
       const phaseNodes = canvasStore.nodes.filter(n => n.type === 'wf-phase' && n.id !== targetNode.id);
       // Use absolute position on the canvas (relative position + parent offset)

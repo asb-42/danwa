@@ -52,7 +52,7 @@
   let newMessage = $state('');
   let isLoading = $state(false);
   let error = $state(null);
-  let chatContainer;
+  let chatContainer = $state();
 
   // Resize state
   let chatHeight = $state(400);

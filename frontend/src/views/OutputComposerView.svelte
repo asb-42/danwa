@@ -68,7 +68,7 @@
   let ttsVoices = $state([]);
   let sessionAgents = $state([]);
 
-  let searchTimeout = null;
+  let searchTimeout = $state(null);
 
   // Derived: which voice engine is selected
   let voiceEngine = $derived(

@@ -28,25 +28,25 @@
     <table class="audit-table">
       <thead>
         <tr>
-          <th on:click={() => handleSort('timestamp')} class:sort-asc={sortColumn === 'timestamp' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'timestamp' && sortDirection === 'desc'}>
+          <th click={() => handleSort('timestamp')} class:sort-asc={sortColumn === 'timestamp' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'timestamp' && sortDirection === 'desc'}>
             {t('audit.columns.timestamp')}
           </th>
-          <th on:click={() => handleSort('event_type')} class:sort-asc={sortColumn === 'event_type' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'event_type' && sortDirection === 'desc'}>
+          <th click={() => handleSort('event_type')} class:sort-asc={sortColumn === 'event_type' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'event_type' && sortDirection === 'desc'}>
             {t('audit.columns.eventType')}
           </th>
-          <th on:click={() => handleSort('node_id')} class:sort-asc={sortColumn === 'node_id' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'node_id' && sortDirection === 'desc'}>
+          <th click={() => handleSort('node_id')} class:sort-asc={sortColumn === 'node_id' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'node_id' && sortDirection === 'desc'}>
             {t('audit.columns.nodeId')}
           </th>
-          <th on:click={() => handleSort('actor')} class:sort-asc={sortColumn === 'actor' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'actor' && sortDirection === 'desc'}>
+          <th click={() => handleSort('actor')} class:sort-asc={sortColumn === 'actor' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'actor' && sortDirection === 'desc'}>
             {t('audit.columns.actor')}
           </th>
-          <th on:click={() => handleSort('latency_ms')} class:sort-asc={sortColumn === 'latency_ms' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'latency_ms' && sortDirection === 'desc'}>
+          <th click={() => handleSort('latency_ms')} class:sort-asc={sortColumn === 'latency_ms' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'latency_ms' && sortDirection === 'desc'}>
             {t('audit.columns.latency')}
           </th>
-          <th on:click={() => handleSort('prompt_tokens')} class:sort-asc={sortColumn === 'prompt_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'prompt_tokens' && sortDirection === 'desc'}>
+          <th click={() => handleSort('prompt_tokens')} class:sort-asc={sortColumn === 'prompt_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'prompt_tokens' && sortDirection === 'desc'}>
             {t('audit.columns.promptTokens')}
           </th>
-          <th on:click={() => handleSort('completion_tokens')} class:sort-asc={sortColumn === 'completion_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'completion_tokens' && sortDirection === 'desc'}>
+          <th click={() => handleSort('completion_tokens')} class:sort-asc={sortColumn === 'completion_tokens' && sortDirection === 'asc'} class:sort-desc={sortColumn === 'completion_tokens' && sortDirection === 'desc'}>
             {t('audit.columns.completionTokens')}
           </th>
           <th>{t('audit.columns.inputHash')}</th>
@@ -55,7 +55,7 @@
       </thead>
       <tbody>
         {#each events as event, idx}
-          <tr class:expanded={expandedRow === idx} on:click={() => handleRowClick(idx)}>
+          <tr class:expanded={expandedRow === idx} click={() => handleRowClick(idx)}>
             <td>{event.timestamp ? new Date(event.timestamp).toLocaleString() : '—'}</td>
             <td><span class="badge event-type">{event.event_type || '—'}</span></td>
             <td>{event.node_id || '—'}</td>
