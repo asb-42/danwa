@@ -206,6 +206,15 @@ async def lifespan(app: FastAPI):
 
     ensure_default_tenant()
 
+    # Bootstrap i18n: migrate core locale translations to langpack namespace (idempotent)
+    from backend.services.ui_translation_service import UITranslationService
+
+    try:
+        i18n_svc = UITranslationService()
+        i18n_svc.bootstrap_core_locales()
+    except Exception as exc:
+        logger.warning("i18n bootstrap skipped: %s", exc)
+
     yield
     logger.info("Debate Engine shutting down.")
 

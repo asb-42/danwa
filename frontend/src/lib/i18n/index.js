@@ -1,19 +1,19 @@
 /**
  * i18n store for Svelte.
- * 
+ *
  * Architecture (3-level fallback):
  * 1. Local cached translations (from bundled loaders or HTTP cache)
  * 2. HTTP fetch from backend /api/v1/i18n/{locale}
  * 3. Key itself as ultimate fallback
- * 
- * Supports both static bundled locales and dynamic server-side loading.
+ *
+ * English is the only bundled language (SSOT). All other languages
+ * are loaded via language-pack modules (discoverLanguagePacks).
  */
 
 import { writable, derived, get } from 'svelte/store';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, RTL_LOCALES, customLocales, getLocaleName, registerCustomLocale } from './config.js';
 
-// Eagerly import the default locale to avoid race condition on first render.
-import defaultDict from './loaders/de.js';
+// Eagerly import English as the only bundled SSOT locale.
 import enDict from './loaders/en.js';
 
 /** Reactive store holding the current locale code. */
@@ -21,7 +21,6 @@ export const locale = writable(DEFAULT_LOCALE);
 
 /** Internal map of loaded translation dictionaries. */
 const translations = new Map();
-translations.set('de', defaultDict);
 translations.set('en', enDict);
 
 /** Currently active locale. */
@@ -99,7 +98,7 @@ async function loadLocale(lang) {
     }
   }
 
-  // 3. Ultimate fallback: empty dict (will fall back key-by-key to en/de)
+  // 3. Ultimate fallback: empty dict (will fall back key-by-key to en)
   if (!dict) {
     dict = {};
   }
@@ -113,7 +112,7 @@ async function loadLocale(lang) {
 // ---------------------------------------------------------------------------
 
 function createI18nStore() {
-  const { subscribe, set } = writable(defaultDict);
+  const { subscribe, set } = writable(enDict);
 
   return {
     subscribe,
@@ -132,9 +131,17 @@ function createI18nStore() {
       const isCustom = customLocales.has(lang);
 
       if (!isBundled && !isCustom) {
+        // Probe backend — try to load from langpack namespace
         const probe = await fetchTranslationsFromBackend(lang);
         if (!probe) {
-          console.warn(`[i18n] Locale ${lang} not available, falling back to ${DEFAULT_LOCALE}`);
+          console.warn(`[i18n] Locale '${lang}' not available as language pack, falling back to English`);
+          if (_toastCallback) {
+            _toastCallback({
+              message: `UI language "${getLocaleName(lang)}" is not installed. Install the "lang-${lang}" language pack from Build → Modules → Translations, or switch to English.`,
+              type: 'warning',
+              timeout: 10000,
+            });
+          }
           lang = DEFAULT_LOCALE;
         }
       }

@@ -83,21 +83,41 @@
         getCustomLocales().catch(() => ({ custom_locales: [] })),
       ]);
 
-      const builtIn = (localesRes.locales || []).map(l => ({
+      // /locales now returns all locales (bundled + langpack + custom) via get_installed_locales()
+      const seen = new Set();
+      const allLocales = (localesRes.locales || []).map(l => ({
         code: l.code,
         name: LOCALE_NAMES[l.code] || l.name || l.code,
         isRtl: l.is_rtl || false,
-        isCustom: false,
+        isCustom: l.source === 'custom' || false,
       }));
 
-      const custom = (customRes.custom_locales || []).map(l => ({
-        code: l.locale,
-        name: l.name || l.locale,
-        isRtl: l.is_rtl || false,
-        isCustom: true,
-      }));
+      // Add any custom locales not already in the /locales response
+      for (const cl of (customRes.custom_locales || [])) {
+        if (!seen.has(cl.locale)) {
+          seen.add(cl.locale);
+          if (!allLocales.some(l => l.code === cl.locale)) {
+            allLocales.push({
+              code: cl.locale,
+              name: cl.name || cl.locale,
+              isRtl: cl.is_rtl || false,
+              isCustom: true,
+            });
+          }
+        }
+      }
 
-      locales = [...builtIn, ...custom];
+      // Deduplicate by code (safety net)
+      const deduped = [];
+      const codes = new Set();
+      for (const loc of allLocales) {
+        if (!codes.has(loc.code)) {
+          codes.add(loc.code);
+          deduped.push(loc);
+        }
+      }
+
+      locales = deduped;
       stats = statsRes;
       coverage = coverageRes;
     } finally {

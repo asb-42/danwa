@@ -246,6 +246,10 @@ class ModuleService:
     ) -> InstallationReport:
         """Install a module directly from the danwa-modules GitHub release.
 
+        For language-pack modules, if the download fails (e.g. release ZIP
+        not yet published), falls back to creating the module directory from
+        existing DB translations + repo index metadata.
+
         Args:
             module_id: The module ID to install.
             version: Specific version to install (defaults to latest).
@@ -294,10 +298,94 @@ class ModuleService:
             )
             return report
 
-        report = self.installer.install_from_url(download_url)
-        if report.status == "ok" and checksum and not report.checksum:
-            report.checksum = checksum
-        return report
+        try:
+            report = self.installer.install_from_url(download_url)
+            if report.status == "ok" and checksum and not report.checksum:
+                report.checksum = checksum
+            return report
+        except Exception as download_err:
+            # If download fails for a language-pack module, fall back to
+            # creating the module from existing DB translations.
+            if target.get("type") == "language-pack":
+                logger.warning(
+                    "Download failed for language-pack %s (%s), falling back to DB install",
+                    module_id, download_err,
+                )
+                return self._install_langpack_from_db(module_id, target)
+            raise
+
+    def _install_langpack_from_db(
+        self, module_id: str, target: dict,
+    ) -> InstallationReport:
+        """Create a language-pack module directory from DB translations.
+
+        Used as fallback when the GitHub release ZIP is not available.
+        Reads translations from the langpack DB namespace and creates
+        manifest.json + ui_strings.json in the modules directory.
+        """
+        from backend.services.ui_translation_service import LOCALE_NAMES, UITranslationService
+
+        locale = target.get("language", module_id.replace("lang-", ""))
+        namespace = f"langpack:lang-{locale}"
+        module_version = target.get("version", "1.0.0")
+        now = datetime.now(UTC).isoformat()
+
+        # Try to get translations from langpack namespace first, then global
+        i18n_svc = UITranslationService()
+        ui_strings = i18n_svc.get_translations_bulk(locale, namespace)
+        if not ui_strings:
+            ui_strings = i18n_svc.get_translations_bulk(locale, "global")
+        if not ui_strings:
+            return InstallationReport(
+                status="error",
+                module_id=module_id,
+                version=module_version,
+                errors=[f"No translations found for locale '{locale}' in DB"],
+            )
+
+        # Also copy to langpack namespace if not already there
+        if namespace not in [ns for ns in ["langpack:lang-" + locale]]:
+            for key, value in ui_strings.items():
+                i18n_svc.set_translation(key, locale, value, namespace, "bulk_imported")
+            i18n_svc.invalidate_cache(locale)
+
+        # Use translations/ subdirectory to match repo structure and bootstrap
+        module_dir = self.modules_dir / "translations" / module_id
+        module_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "schema_version": "3.0.0",
+            "module_id": module_id,
+            "name": target.get("name", {"en": LOCALE_NAMES.get(locale, locale)}),
+            "description": target.get("description", {"en": f"UI translation pack for {LOCALE_NAMES.get(locale, locale)}"}),
+            "version": module_version,
+            "type": "language-pack",
+            "category": "translations",
+            "language": locale,
+            "author": target.get("author", {"name": "Danwa Community"}),
+            "license": target.get("license", "CC-BY-4.0"),
+            "tags": target.get("tags", [locale, "translation"]),
+            "profile_file": "ui_strings.json",
+            "profile_format": "json",
+            "compatibility": target.get("compatibility", {"danwa_min_version": "2.2.0"}),
+            "created_at": now,
+        }
+
+        (module_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8",
+        )
+        (module_dir / "ui_strings.json").write_text(
+            json.dumps(ui_strings, indent=2, ensure_ascii=False), encoding="utf-8",
+        )
+
+        logger.info("Language-pack %s installed from DB (%d keys)", module_id, len(ui_strings))
+        return InstallationReport(
+            status="ok",
+            module_id=module_id,
+            version=module_version,
+            files_installed=2,
+            db_entries_created=len(ui_strings),
+        )
 
     def check_updates(
         self,

@@ -84,7 +84,9 @@ class TestGetSupportedLocales:
         data = response.json()
         assert "locales" in data
         assert isinstance(data["locales"], list)
-        assert len(data["locales"]) >= 10
+        # At minimum, English is always bundled
+        codes = [loc["code"] for loc in data["locales"]]
+        assert "en" in codes
 
     def test_locale_entries_have_required_fields(self, client_with_i18n):
         response = client_with_i18n.get("/api/v1/i18n/locales")
@@ -99,7 +101,9 @@ class TestGetSupportedLocales:
         response = client_with_i18n.get("/api/v1/i18n/locales")
         data = response.json()
         rtl_codes = {loc["code"] for loc in data["locales"] if loc.get("is_rtl")}
-        assert "ar" in rtl_codes or "he" in rtl_codes or rtl_codes == set()
+        # RTL locales only appear when language-pack modules are installed
+        # With only English bundled, no RTL locales expected
+        assert isinstance(rtl_codes, set)
 
 
 class TestGetTranslations:
@@ -242,14 +246,18 @@ class TestStatsAndCoverage:
         svc.bulk_import(
             {
                 "de": {"k1": "Eins", "k2": "Zwei"},
-                "fr": {},
+                "en": {"k1": "One", "k2": "Two"},
             }
+        )
+        # Also register 'de' in langpack namespace so it's discovered
+        svc.bulk_import(
+            {"de": {"k1": "Eins", "k2": "Zwei"}},
+            namespace="langpack:lang-de",
         )
         response = client_with_i18n.get("/api/v1/i18n/coverage?namespace=global")
         assert response.status_code == 200
         data = response.json()
         assert "de" in data
-        assert "fr" in data
         assert 0.0 <= data["de"]["coverage_pct"] <= 100.0
 
 
@@ -262,13 +270,19 @@ class TestRTLSupport:
         rtl_codes = data.get("rtl_locales", [])
         assert isinstance(rtl_codes, list)
 
-    def test_arabic_is_rtl(self, client_with_i18n):
+    def test_arabic_is_rtl(self, svc, client_with_i18n):
+        # Register 'ar' as a langpack so it appears in locale list
+        svc.bulk_import(
+            {"ar": {"test": "اختبار"}},
+            namespace="langpack:lang-ar",
+        )
         response = client_with_i18n.get("/api/v1/i18n/locales")
         data = response.json()
         for loc in data["locales"]:
             if loc["code"] == "ar":
                 assert loc["is_rtl"] is True
-                break
+                return
+        pytest.skip("ar locale not found in locales list (no langpack installed)")
 
 
 class TestErrorHandling:

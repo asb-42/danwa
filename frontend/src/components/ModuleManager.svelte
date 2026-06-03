@@ -160,18 +160,30 @@
 
   async function openEdit(mod) {
     try {
-      const profile = await getModuleProfile(mod.module_id);
-      if (!profile) return;
       editingModule = mod;
       editProfileType = mod.type || '';
+
       if (mod.type === 'language-pack') {
+        // Language-pack modules may only exist as DB langpack entries
+        // (no local module directory). Show available info without profile fetch.
+        let profile = null;
+        try {
+          profile = await getModuleProfile(mod.module_id);
+        } catch {
+          // Module not installed locally — use available metadata
+        }
         editForm = {
-          locale: mod.language || '',
+          locale: mod.language || mod.module_id.replace(/^lang-/, ''),
           source_locale: 'en',
-          key_count: profile ? Object.keys(profile).length : 0,
-          coverage: profile ? `${Object.keys(profile).length} keys` : '0 keys',
+          key_count: profile?.content ? Object.keys(profile.content).length : (mod.key_count || 0),
+          coverage: profile?.content ? `${Object.keys(profile.content).length} keys` : `${mod.key_count || 0} keys`,
+          status: mod.status || 'unknown',
+          local_version: mod.localVersion || mod.version || '—',
+          remote_version: mod.remoteVersion || '—',
         };
       } else {
+        const profile = await getModuleProfile(mod.module_id);
+        if (!profile) return;
         editForm = { ...profile };
         if (Array.isArray(editForm.tags)) {
           editForm.tags = editForm.tags.join(', ');
@@ -388,8 +400,11 @@
       return [
         { key: 'locale', label: 'Locale', type: 'text', readonly: true },
         { key: 'source_locale', label: 'Source Locale', type: 'text', readonly: true },
-        { key: 'key_count', label: 'Translation Keys', type: 'number', readonly: true },
+        { key: 'key_count', label: 'Translation Keys', type: 'text', readonly: true },
         { key: 'coverage', label: 'Coverage', type: 'text', readonly: true },
+        { key: 'status', label: 'Status', type: 'text', readonly: true },
+        { key: 'local_version', label: 'Local Version', type: 'text', readonly: true },
+        { key: 'remote_version', label: 'Remote Version', type: 'text', readonly: true },
       ];
     }
     return [];
@@ -481,9 +496,10 @@
           <tbody>
             {#each filterCategory ? mergedModules : modules as mod (mod.module_id)}
               {@const remoteMatch = repoModules.find(r => r.module_id === mod.module_id)}
-              {@const localVer = mod.version}
-              {@const remoteVer = remoteMatch?.version}
-              {@const status = !remoteVer ? (mod.installed !== undefined ? 'local-only' : 'remote-only')
+              {@const localVer = filterCategory ? mod.localVersion : mod.version}
+              {@const remoteVer = filterCategory ? mod.remoteVersion : remoteMatch?.version}
+              {@const status = filterCategory && mod.status ? mod.status
+                : !remoteVer ? (mod.installed !== undefined ? 'local-only' : 'remote-only')
                 : !localVer ? 'remote-only'
                 : localVer === remoteVer ? 'up-to-date' : 'update-available'}
               <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {mod.enabled === false ? 'opacity-50' : ''}">

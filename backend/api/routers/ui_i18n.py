@@ -13,6 +13,7 @@ from backend.services.ui_translation_service import (
     PLURAL_TAGS,
     RTL_LOCALES,
     UITranslationService,
+    get_plural_tags,
 )
 
 router = APIRouter(tags=["i18n"])
@@ -86,19 +87,22 @@ class RegisterLocaleRequest(BaseModel):
 
 
 @router.get("/locales")
-async def get_supported_locales() -> dict[str, Any]:
-    """Liste der unterstützten Sprachen mit Metadaten."""
+async def get_supported_locales(
+    svc: UITranslationService = Depends(get_i18n_service),
+) -> dict[str, Any]:
+    """Dynamically discovered list of supported locales with metadata."""
+    all_locales = svc.get_installed_locales()
     return {
-        "default_locale": "de",
+        "default_locale": "en",
         "locales": [
             {
-                "code": loc,
-                "name": LOCALE_NAMES.get(loc, loc),
-                "is_rtl": loc in RTL_LOCALES,
-                "plural_tags": PLURAL_TAGS.get(loc, ["other"]),
-                "coverage": "auto" if loc not in ("de", "en") else "manual",
+                "code": loc["code"],
+                "name": loc["name"],
+                "is_rtl": loc["is_rtl"],
+                "plural_tags": get_plural_tags(loc["code"]),
+                "coverage": loc["source"],
             }
-            for loc in DEFAULT_LOCALES
+            for loc in all_locales
         ],
         "rtl_locales": sorted(RTL_LOCALES),
     }
@@ -223,13 +227,13 @@ async def get_translations(
 
     When merge_langpacks is True (default), strings from language-pack
     namespaces (langpack:*) are merged on top of the global namespace.
+    Always returns translations — falls back to global namespace if locale
+    is not explicitly registered (e.g. language-pack modules installed from repo).
     """
-    if locale not in DEFAULT_LOCALES:
-        custom = svc.get_custom_locales()
-        if not any(c["locale"] == locale for c in custom):
-            # Still check for language packs even if locale is not registered
-            if not merge_langpacks:
-                return {"locale": locale, "namespace": namespace, "translations": {}}
+    if locale not in DEFAULT_LOCALES and not merge_langpacks:
+        installed = svc.get_installed_locales()
+        if not any(loc["code"] == locale for loc in installed):
+            return {"locale": locale, "namespace": namespace, "translations": {}}
     key_list = keys.split(",") if keys else None
     result = svc.resolve_bulk(locale, namespace, key_list)
 

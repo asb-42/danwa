@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 from backend.services.ui_translation_service import (
-    UITranslationService, DEFAULT_LOCALES, RTL_LOCALES, LOCALE_NAMES, PLURAL_TAGS,
+    UITranslationService, DEFAULT_LOCALES, CORE_LOCALES, RTL_LOCALES, LOCALE_NAMES, PLURAL_TAGS, get_plural_tags,
 )
 
 
@@ -50,9 +50,9 @@ class TestFallback:
 
     def test_fallback_chain_order(self, svc):
         svc.set_translation("key", "en", "EN Value")
-        # French not set, should fall back to German (default), then English
+        # French not set, should fall back directly to English (no more DE middle step)
         result = svc.resolve("key", "fr")
-        assert result in ("EN Value", "key")  # Depending on DE presence
+        assert result == "EN Value"
 
     def test_existing_locale_returns_directly(self, svc):
         svc.set_translation("key", "fr", "Bonjour")
@@ -133,19 +133,27 @@ class TestStats:
 class TestCoverage:
     def test_coverage_report(self, svc):
         svc.bulk_import({
+            "en": {"k1": "One", "k2": "Two"},
             "de": {"k1": "Eins", "k2": "Zwei"},
-            "fr": {},  # No French translations
         })
+        # Register de in langpack namespace so it's discovered
+        svc.bulk_import({"de": {"k1": "Eins", "k2": "Zwei"}}, namespace="langpack:lang-de")
         coverage = svc.get_coverage()
+        assert "en" in coverage
         assert "de" in coverage
-        assert "fr" in coverage
 
 
 class TestConstants:
     def test_default_locales(self):
-        assert "de" in DEFAULT_LOCALES
-        assert "en" in DEFAULT_LOCALES
-        assert len(DEFAULT_LOCALES) >= 10
+        """Only English is bundled as a default locale."""
+        assert DEFAULT_LOCALES == ["en"]
+
+    def test_core_locales(self):
+        """Core locales are the non-English languages that were previously bundled."""
+        assert "de" in CORE_LOCALES
+        assert "fr" in CORE_LOCALES
+        assert "en" not in CORE_LOCALES
+        assert len(CORE_LOCALES) == 13
 
     def test_rtl_locales(self):
         assert "ar" in RTL_LOCALES
@@ -157,5 +165,11 @@ class TestConstants:
         assert LOCALE_NAMES["en"] == "English"
 
     def test_plural_tags(self):
+        """PLURAL_TAGS is still available as metadata in backend."""
         assert "one" in PLURAL_TAGS["de"]
         assert "other" in PLURAL_TAGS["de"]
+
+    def test_get_plural_tags_fallback(self):
+        """get_plural_tags returns fallback for unknown locales."""
+        assert get_plural_tags("xx") == ["one", "other"]
+        assert get_plural_tags("de") == ["one", "other"]

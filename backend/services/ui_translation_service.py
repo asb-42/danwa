@@ -88,21 +88,14 @@ class TranslationJobRegistry:
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_DIR = Path("data/i18n")
-DEFAULT_LOCALES = [
-    "de",
-    "en",
-    "fr",
-    "es",
-    "it",
-    "pt",
-    "ru",
-    "zh",
-    "ja",
-    "ko",
-    "sv",
-    "el",
-    # Optionale RTL-Sprachen:
-    # "ar", "he",
+DEFAULT_LOCALES = ["en"]
+
+# All non-English core locales that were previously bundled.
+# Used by bootstrap_core_locales() to migrate existing translations
+# to langpack namespace on first startup after upgrade.
+CORE_LOCALES = [
+    "de", "fr", "es", "it", "pt", "ru",
+    "zh", "ja", "ko", "sv", "el", "ar", "he",
 ]
 
 LOCALE_NAMES: dict[str, str] = {
@@ -141,6 +134,11 @@ PLURAL_TAGS: dict[str, list[str]] = {
     "ar": ["zero", "one", "two", "few", "many", "other"],
     "he": ["one", "two", "many", "other"],
 }
+
+
+def get_plural_tags(locale: str) -> list[str]:
+    """Return plural tags for a locale, with fallback for unknown locales."""
+    return PLURAL_TAGS.get(locale, ["one", "other"])
 
 
 class UITranslationService:
@@ -336,9 +334,9 @@ class UITranslationService:
     def resolve(self, key: str, locale: str, namespace: str = "global") -> str:
         """
         Resolviere eine Übersetzung mit Fallback-Kette:
-        locale → DEFAULT_LOCALE → en → key
+        locale → en → key
         """
-        chain = [locale, "de", "en"]
+        chain = [locale, "en"]
         for loc in chain:
             val = self.get_translation(key, loc, namespace)
             if val is not None:
@@ -346,29 +344,22 @@ class UITranslationService:
         return key  # Letzter Fallback
 
     def resolve_bulk(self, locale: str, namespace: str = "global", keys: list[str] | None = None) -> dict[str, str]:
-        """Bulk-Resolution mit Fallback-Kette."""
+        """Bulk-Resolution mit Fallback-Kette: locale → en → key."""
         if keys is None:
             keys = self.get_all_keys(namespace)
 
         result = {}
         primary = self.get_translations_bulk(locale, namespace, keys)
         missing_after_primary = [k for k in keys if k not in primary]
-        fallback_de = self.get_translations_bulk("de", namespace, missing_after_primary) if locale != "de" else {}
-        missing_after_de = [k for k in missing_after_primary if k not in fallback_de]
-        fallback_en = self.get_translations_bulk("en", namespace, missing_after_de)
+        fallback_en = self.get_translations_bulk("en", namespace, missing_after_primary)
 
         # Fallback to bundled loaders for any remaining missing keys
         bundled = self._scan_bundled_loaders()
         for k in list(fallback_en.keys()):
             if not fallback_en[k] and k in bundled.get("en", {}):
                 fallback_en[k] = bundled["en"][k]
-        if locale not in ("de", "en"):
-            for k in list(fallback_de.keys()):
-                if not fallback_de[k] and k in bundled.get("de", {}):
-                    fallback_de[k] = bundled["de"][k]
 
         result.update(primary)
-        result.update(fallback_de)
         result.update(fallback_en)
 
         # Letzter Fallback: Key selbst
@@ -464,7 +455,9 @@ class UITranslationService:
             return {}
 
         result = {}
-        for locale in DEFAULT_LOCALES:
+        installed = self.get_installed_locales()
+        for loc in installed:
+            locale = loc["code"]
             if locale in bundled:
                 bundle_keys = set(bundled[locale].keys())
                 translated = len(bundle_keys & en_keys)
@@ -477,25 +470,8 @@ class UITranslationService:
                 "total_keys": len(en_keys),
                 "translated": translated,
                 "coverage_pct": round(coverage, 1),
+                "source": loc["source"],
             }
-
-        conn = self._get_conn()
-        custom_rows = conn.execute(
-            "SELECT DISTINCT locale FROM ui_translations WHERE locale NOT IN ({}) AND namespace = ?".format(",".join("?" for _ in DEFAULT_LOCALES)),
-            (*DEFAULT_LOCALES, namespace),
-        ).fetchall()
-        for row in custom_rows:
-            locale = row["locale"]
-            db_translations = self.get_translations_bulk(locale, namespace)
-            db_keys = {k for k, v in db_translations.items() if v}
-            translated = len(db_keys & en_keys)
-            coverage = translated / len(en_keys) * 100
-            result[locale] = {
-                "total_keys": len(en_keys),
-                "translated": translated,
-                "coverage_pct": round(coverage, 1),
-            }
-        conn.close()
 
         return result
 
@@ -609,7 +585,8 @@ class UITranslationService:
         fehlende Strings in die Zielsprachen.
         """
         if target_locales is None:
-            target_locales = [loc for loc in DEFAULT_LOCALES if loc not in ("de", "en")]
+            installed = self.get_installed_locales()
+            target_locales = [loc["code"] for loc in installed if loc["code"] != "en"]
 
         all_keys = self.get_all_keys(namespace)
         results = {}
@@ -661,7 +638,8 @@ class UITranslationService:
         from backend.services.profile_service import ProfileService
 
         if target_locales is None:
-            target_locales = [loc for loc in DEFAULT_LOCALES if loc not in ("de", "en")]
+            installed = self.get_installed_locales()
+            target_locales = [loc["code"] for loc in installed if loc["code"] != "en"]
 
         job = TranslationJob(
             job_id=str(uuid.uuid4())[:8],
@@ -897,3 +875,193 @@ class UITranslationService:
     @staticmethod
     def _locale_name(code: str) -> str:
         return LOCALE_NAMES.get(code, code)
+
+    # ------------------------------------------------------------------
+    # Bootstrap — migrate core locale translations to langpack namespace
+    # ------------------------------------------------------------------
+
+    def bootstrap_core_locales(self) -> dict[str, int]:
+        """Migrate existing core translations to langpack namespace AND create module directories.
+
+        For each non-English core locale that has translations under
+        namespace='global':
+        1. Copy translations to namespace='langpack:lang-{locale}' in DB
+        2. Create a module directory (manifest.json + ui_strings.json) in modules/translations/
+
+        This makes them fully discoverable by discover_local() and equivalent
+        to a module installation from the danwa-modules repo.
+
+        Skips locales that already have langpack entries (idempotent).
+        Uses a metadata marker to skip on subsequent startups.
+
+        Returns: {locale: count_of_migrated_keys}
+        """
+        root = Path(__file__).resolve().parent.parent.parent
+        modules_dir = root / "modules"
+
+        conn = self._get_conn()
+        try:
+            # Check if bootstrap already ran
+            marker = conn.execute(
+                "SELECT value FROM ui_translation_metadata WHERE key = ?",
+                ("i18n_bootstrap_v2",),
+            ).fetchone()
+            if marker:
+                logger.debug("i18n bootstrap already completed, skipping.")
+                return {}
+
+            migrated: dict[str, int] = {}
+            now = datetime.now(UTC).isoformat()
+
+            for locale in CORE_LOCALES:
+                namespace = f"langpack:lang-{locale}"
+                module_id = f"lang-{locale}"
+                module_dir = modules_dir / "translations" / module_id
+
+                # Check if langpack namespace already has entries
+                existing = conn.execute(
+                    "SELECT COUNT(*) as cnt FROM ui_translations WHERE locale = ? AND namespace = ?",
+                    (locale, namespace),
+                ).fetchone()
+
+                if existing and existing["cnt"] > 0:
+                    # DB entries exist — just ensure module directory exists
+                    if not (module_dir / "manifest.json").exists():
+                        ui_strings = self.get_translations_bulk(locale, namespace)
+                        self._create_langpack_module_dir(module_dir, locale, module_id, ui_strings, now)
+                        logger.info("i18n bootstrap: created module dir for '%s' (%d existing DB keys)", locale, len(ui_strings))
+                    continue
+
+                # Fetch all global translations for this locale
+                rows = conn.execute(
+                    "SELECT key, value, source, confidence FROM ui_translations WHERE locale = ? AND namespace = 'global'",
+                    (locale,),
+                ).fetchall()
+
+                if not rows:
+                    continue
+
+                # 1. Copy to langpack namespace in DB
+                ui_strings = {}
+                for row in rows:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO ui_translations
+                            (key, locale, value, namespace, source, confidence, version, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+                        """,
+                        (row["key"], locale, row["value"], namespace,
+                         "bulk_imported", row["confidence"], now, now),
+                    )
+                    ui_strings[row["key"]] = row["value"]
+
+                # 2. Create module directory with manifest.json + ui_strings.json
+                self._create_langpack_module_dir(module_dir, locale, module_id, ui_strings, now)
+
+                migrated[locale] = len(rows)
+                logger.info(
+                    "i18n bootstrap: migrated %d keys for locale '%s' → %s + created module dir",
+                    len(rows), locale, namespace,
+                )
+
+            # Write marker so we skip on future startups
+            conn.execute(
+                "INSERT OR REPLACE INTO ui_translation_metadata (key, value) VALUES (?, ?)",
+                ("i18n_bootstrap_v2", json.dumps({"migrated_at": now, "locales": list(migrated.keys())})),
+            )
+            conn.commit()
+
+            if migrated:
+                logger.info("i18n bootstrap completed: %s", {k: v for k, v in migrated.items()})
+            return migrated
+        except Exception as e:
+            conn.rollback()
+            logger.error("i18n bootstrap failed: %s", e)
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _create_langpack_module_dir(
+        module_dir: Path, locale: str, module_id: str, ui_strings: dict[str, str], now: str,
+    ) -> None:
+        """Create a language-pack module directory with manifest.json + ui_strings.json."""
+        module_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "schema_version": "3.0.0",
+            "module_id": module_id,
+            "name": {"en": LOCALE_NAMES.get(locale, locale), locale: LOCALE_NAMES.get(locale, locale)},
+            "description": {"en": f"UI translation pack for {LOCALE_NAMES.get(locale, locale)}"},
+            "version": "1.0.0",
+            "type": "language-pack",
+            "category": "translations",
+            "language": locale,
+            "author": {"name": "Danwa Core"},
+            "license": "CC-BY-4.0",
+            "tags": [locale, "translation", "core"],
+            "profile_file": "ui_strings.json",
+            "profile_format": "json",
+            "compatibility": {"danwa_min_version": "2.2.0"},
+            "created_at": now,
+        }
+
+        (module_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8",
+        )
+        (module_dir / "ui_strings.json").write_text(
+            json.dumps(ui_strings, indent=2, ensure_ascii=False), encoding="utf-8",
+        )
+
+    def get_installed_locales(self) -> list[dict[str, Any]]:
+        """Dynamically discover all available locales.
+
+        Combines: DEFAULT_LOCALES (en) + language-pack modules + custom registered locales.
+        Deduplicates by locale code (first source wins).
+        """
+        result = []
+        seen: set[str] = set()
+
+        # 1. Default (bundled) locales
+        for loc in DEFAULT_LOCALES:
+            result.append({
+                "code": loc,
+                "name": LOCALE_NAMES.get(loc, loc),
+                "is_rtl": loc in RTL_LOCALES,
+                "source": "bundled",
+            })
+            seen.add(loc)
+
+        # 2. Language-pack modules (have langpack:* namespace entries in DB)
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT DISTINCT locale FROM ui_translations WHERE namespace LIKE 'langpack:%'"
+        ).fetchall()
+        conn.close()
+
+        for row in sorted(rows, key=lambda r: r["locale"]):
+            loc = row["locale"]
+            if loc in seen:
+                continue
+            result.append({
+                "code": loc,
+                "name": LOCALE_NAMES.get(loc, loc),
+                "is_rtl": loc in RTL_LOCALES,
+                "source": "langpack",
+            })
+            seen.add(loc)
+
+        # 3. Custom registered locales
+        for custom in self.get_custom_locales():
+            loc = custom["locale"]
+            if loc in seen:
+                continue
+            result.append({
+                "code": loc,
+                "name": custom.get("name", LOCALE_NAMES.get(loc, loc)),
+                "is_rtl": custom.get("is_rtl", loc in RTL_LOCALES),
+                "source": "custom",
+            })
+            seen.add(loc)
+
+        return result
