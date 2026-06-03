@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import {
     getModules,
@@ -13,7 +13,6 @@
     disableModule,
     getRepoIndex,
     installFromRepo,
-    getRepoUpdates,
   } from '../lib/api.js';
   import ConfirmDialog from './ConfirmDialog.svelte';
 
@@ -21,11 +20,13 @@
 
   let { filterCategory } = $props();
 
+  // --- Local module state ---
   let modules = $state([]);
   let isLoading = $state(false);
   let statusMessage = $state('');
   let error = $state(null);
 
+  // --- Edit modal state ---
   let editModalOpen = $state(false);
   let editingModule = $state(null);
   let editForm = $state({});
@@ -33,139 +34,88 @@
   let editSaving = $state(false);
   let editError = $state(null);
 
-  let activeTab = $state('local');
-
+  // --- Repo state ---
   let repoModules = $state([]);
   let repoLoading = $state(false);
   let repoError = $state(null);
-
-  let updates = $state([]);
-  let updatesLoading = $state(false);
-  let updatesError = $state(null);
-  let updatesChecked = $state(false);
-  let updateCheckElapsed = $state(0);
-  let updateCheckTimer = $state(null);
-
   let installingRepoMod = $state(null);
 
+  // --- Delete confirm ---
   let pendingDeleteModule = $state(null);
 
-  const TABS = [
-    { id: 'local', label: '📦 Local', icon: '📦' },
-    { id: 'github', label: '🌐 GitHub', icon: '🌐' },
-    { id: 'updates', label: '🔄 Updates', icon: '🔄' },
-  ];
-
+  // --- Constants ---
   const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
-  const CATEGORY_ORDER = ['llm-profiles', 'role-types', 'agents', 'prompts', 'prompt-modifiers', 'tone-profiles', 'workflows', 'kitsune', 'translations'];
-  const REPO_TYPE_LABELS = {
-    'llm-profile': 'LLM Profiles',
-    'role-type': 'Agent Cores',
-    'agent-persona': 'Agent Personas',
-    'prompt-variant': 'Argumentation Patterns',
-    'prompt-modifier': 'Prompt Modifiers',
-    'tone-profile': 'Tone Profiles',
-    'workflow-template': 'Workflows',
-    'language-pack': '🌐 Translations',
-    'kitsune': 'Kitsune',
-  };
-  const REPO_TYPE_ORDER = ['llm-profile', 'role-type', 'agent-persona', 'prompt-variant', 'prompt-modifier', 'tone-profile', 'workflow-template', 'kitsune', 'language-pack'];
 
-  /** Map of locally installed module_id → version for quick lookup */
-  const localVersionMap = $derived.by(() => {
-    const map = {};
+  /** Map filterCategory → repo type(s) for cross-referencing */
+  const CATEGORY_TO_REPO_TYPES = {
+    'llm-profiles': ['llm-profile'],
+    'agents': ['role-type', 'agent-persona'],
+    'prompts': ['prompt-variant'],
+    'tone-profiles': ['tone-profile'],
+    'prompt-modifiers': ['prompt-modifier'],
+    'workflows': ['workflow-template'],
+    'kitsune': ['kitsune'],
+    'translations': ['language-pack'],
+  };
+
+  /** Merge local modules with remote repo modules for the current category */
+  const mergedModules = $derived.by(() => {
+    const localByType = {};
     for (const m of modules) {
-      map[m.module_id] = m.version;
-    }
-    return map;
-  });
-
-  /** Group repo modules by type, enriched with local install status */
-  const groupedRepoModules = $derived.by(() => {
-    const groups = {};
-    for (const mod of repoModules) {
-      const type = mod.type || 'other';
-      if (!groups[type]) groups[type] = [];
-      const localVersion = localVersionMap[mod.module_id];
-      groups[type].push({
-        ...mod,
-        localVersion,
-        status: !localVersion ? 'not-installed'
-          : localVersion === mod.version ? 'up-to-date'
-          : 'update-available',
-      });
-    }
-    const ordered = [];
-    for (const t of REPO_TYPE_ORDER) {
-      if (groups[t]) ordered.push([t, groups[t]]);
-    }
-    const remaining = Object.keys(groups)
-      .filter(k => !REPO_TYPE_ORDER.includes(k))
-      .sort();
-    for (const t of remaining) {
-      ordered.push([t, groups[t]]);
-    }
-    return ordered;
-  });
-  const CATEGORY_LABELS = {
-    'agents': 'Agent Cores',
-    'llm-profiles': 'LLM Profiles',
-    'role-types': 'Role Types',
-    'tone-profiles': 'Tone Profiles',
-    'prompts': 'Argumentation Patterns',
-    'prompt-modifiers': 'Prompt Modifiers',
-    'kitsune': 'Kitsune',
-    'workflows': 'Workflows',
-    'translations': '🌐 Translations',
-  };
-
-  const filteredModules = $derived(
-    filterCategory
-      ? modules.filter(m => (m.category || 'other') === filterCategory)
-      : modules
-  );
-
-  const groupedModules = $derived.by(() => {
-    const groups = {};
-    const source = filterCategory ? filteredModules : modules;
-    for (const m of source) {
       const cat = m.category || 'other';
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(m);
+      if (!localByType[cat]) localByType[cat] = [];
+      localByType[cat].push(m);
     }
+
     if (filterCategory) {
-      return Object.entries(groups);
+      // Build merged list for the specific category
+      const localMods = localByType[filterCategory] || [];
+      const repoTypes = CATEGORY_TO_REPO_TYPES[filterCategory] || [];
+      const remoteMods = repoModules.filter(m => repoTypes.includes(m.type));
+
+      const localIds = new Set(localMods.map(m => m.module_id));
+      const result = [];
+
+      // Add local modules (may have remote version info)
+      for (const lm of localMods) {
+        const remoteMatch = remoteMods.find(r => r.module_id === lm.module_id);
+        result.push({
+          ...lm,
+          localVersion: lm.version,
+          remoteVersion: remoteMatch?.version || null,
+          status: remoteMatch
+            ? (lm.version === remoteMatch.version ? 'up-to-date' : 'update-available')
+            : 'local-only',
+          remoteData: remoteMatch || null,
+        });
+      }
+
+      // Add remote-only modules (not installed locally)
+      for (const rm of remoteMods) {
+        if (!localIds.has(rm.module_id)) {
+          result.push({
+            ...rm,
+            localVersion: null,
+            remoteVersion: rm.version,
+            status: 'remote-only',
+            remoteData: rm,
+          });
+        }
+      }
+
+      return result;
     }
-    const ordered = [];
-    for (const cat of CATEGORY_ORDER) {
-      if (groups[cat]) ordered.push([cat, groups[cat]]);
-    }
-    const remaining = Object.keys(groups)
-      .filter(k => !CATEGORY_ORDER.includes(k))
-      .sort();
-    for (const cat of remaining) {
-      ordered.push([cat, groups[cat]]);
-    }
-    return ordered;
+
+    // No filter: show all local grouped by category
+    return modules;
   });
 
-  $effect(() => {
-    if (activeTab === 'github' && repoModules.length === 0 && !repoLoading) {
-      loadRepoIndex();
-    }
-    if (activeTab === 'updates' && updates.length === 0 && !updatesLoading) {
-      loadUpdates();
-    }
-  });
-
+  // --- Lifecycle ---
   onMount(async () => {
-    await loadModules();
+    await Promise.all([loadModules(), loadRepoIndex()]);
   });
 
-  onDestroy(() => {
-    if (updateCheckTimer) clearInterval(updateCheckTimer);
-  });
-
+  // --- Data loaders ---
   async function loadModules() {
     isLoading = true;
     error = null;
@@ -190,61 +140,16 @@
     }
   }
 
-  async function loadUpdates() {
-    updatesLoading = true;
-    updatesError = null;
-    updateCheckElapsed = 0;
-    // Start elapsed timer for user feedback
-    if (updateCheckTimer) clearInterval(updateCheckTimer);
-    updateCheckTimer = setInterval(() => { updateCheckElapsed += 1; }, 1000);
-    // Client-side timeout so UI never hangs indefinitely
-    const TIMEOUT_MS = 30_000;
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out after 30 seconds. The backend may be unreachable.')), TIMEOUT_MS)
-    );
-    try {
-      updates = await Promise.race([getRepoUpdates(), timeout]);
-      updatesChecked = true;
-    } catch (e) {
-      updatesError = e.message;
-      updatesChecked = false;
-    } finally {
-      updatesLoading = false;
-      if (updateCheckTimer) {
-        clearInterval(updateCheckTimer);
-        updateCheckTimer = null;
-      }
-    }
-  }
-
+  // --- Actions ---
   async function handleInstallFromRepo(mod, version = null) {
     installingRepoMod = mod.module_id;
     try {
       const result = await installFromRepo(mod.module_id, version);
       if (result.status === 'ok') {
         statusMessage = `Installed ${mod.module_id} v${result.version}`;
-        await loadRepoIndex(true);
-        await loadModules();
+        await Promise.all([loadModules(), loadRepoIndex()]);
       } else {
         error = (result.errors || []).join(', ') || 'Installation failed';
-      }
-    } catch (e) {
-      error = e.message;
-    } finally {
-      installingRepoMod = null;
-    }
-  }
-
-  async function handleUpdateFromRepo(upd) {
-    installingRepoMod = upd.module_id;
-    try {
-      const result = await installFromRepo(upd.module_id, upd.available_version);
-      if (result.status === 'ok') {
-        statusMessage = `Updated ${upd.module_id} → v${result.version}`;
-        await loadUpdates();
-        await loadModules();
-      } else {
-        error = (result.errors || []).join(', ') || 'Update failed';
       }
     } catch (e) {
       error = e.message;
@@ -497,26 +402,33 @@
   function labelClass() {
     return 'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1';
   }
+
+  /** Check if there are any updates available across all repo modules */
+  const hasUpdates = $derived.by(() => {
+    return repoModules.some(rm => {
+      const local = modules.find(m => m.module_id === rm.module_id);
+      return local && local.version !== rm.version;
+    });
+  });
 </script>
 
-<div class="space-y-6">
-  <!-- Tab Navigation -->
+<div class="space-y-4">
+  <!-- Header with repo status -->
   <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
-      {t('modules.title') || 'Modules'}
-    </h2>
-    <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-      {#each TABS as tab}
-        <button
-          class="px-4 py-1.5 text-sm rounded-md transition-colors {activeTab === tab.id
-            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm font-medium'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}"
-          onclick={() => activeTab = tab.id}
-        >
-          {tab.icon} {tab.label}
-        </button>
-      {/each}
+    <div class="flex items-center gap-3">
+      {#if hasUpdates}
+        <span class="inline-flex items-center gap-1.5 text-xs bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+          🔄 Updates available
+        </span>
+      {/if}
     </div>
+    <button
+      class="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+      onclick={() => Promise.all([loadModules(), loadRepoIndex(true)])}
+      disabled={isLoading || repoLoading}
+    >
+      {isLoading || repoLoading ? 'Refreshing…' : '🔄 Refresh'}
+    </button>
   </div>
 
   {#if error}
@@ -533,394 +445,180 @@
     </div>
   {/if}
 
-  <!-- ===== LOCAL TAB ===== -->
-  {#if activeTab === 'local'}
-    <div class="space-y-6">
-      {#if isLoading && modules.length === 0}
-        <div class="flex items-center justify-center h-32">
-          <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
-        </div>
-      {:else if modules.length === 0}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 text-center">
-          <p class="text-gray-500 dark:text-gray-400">{t('modules.noInstalled') || 'No modules found'}</p>
-        </div>
-      {:else}
-        {#each groupedModules as [category, mods]}
-          <div>
-            {#if !filterCategory}
-              <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 pb-1 border-b border-gray-200 dark:border-gray-700">
-                {CATEGORY_LABELS[category] || category}
-                <span class="text-sm font-normal text-gray-400 ml-2">({mods.length})</span>
-              </h3>
-            {/if}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                      <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Name</th>
-                      <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Type</th>
-                      <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Version</th>
-                      <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Tags</th>
-                      <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide whitespace-nowrap">Created</th>
-                      <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide whitespace-nowrap">Updated</th>
-                      <th class="text-right px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {#each mods as mod (mod.module_id)}
-                      <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {mod.enabled === false ? 'opacity-50' : ''}">
-                        <td class="px-4 py-2.5">
-                          <span class="font-medium text-gray-800 dark:text-white">{mod.name?.en || mod.module_id}</span>
-                          {#if mod.enabled === false}
-                            <span class="ml-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">disabled</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5">
-                          <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{mod.type || '—'}</span>
-                        </td>
-                        <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400">v{mod.version || '0.0.0'}</td>
-                        <td class="px-4 py-2.5">
-                          <div class="flex flex-wrap gap-1">
-                            {#each (mod.tags || []) as tag}
-                              <span class="text-xs px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">{tag}</span>
-                            {/each}
-                            {#if !mod.tags || mod.tags.length === 0}
-                              <span class="text-gray-400 dark:text-gray-500">—</span>
-                            {/if}
-                          </div>
-                        </td>
-                        <td class="px-4 py-2.5 text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap">
-                          {#if mod.created_at}
-                            {new Date(mod.created_at).toLocaleDateString()}
-                          {:else}
-                            <span class="text-gray-300 dark:text-gray-600">—</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5 text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap">
-                          {#if mod.updated_at}
-                            {new Date(mod.updated_at).toLocaleDateString()}
-                          {:else}
-                            <span class="text-gray-300 dark:text-gray-600">—</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5 text-right">
-                          <div class="flex items-center justify-end gap-1">
-                            {#if mod.enabled !== false}
-                              <button
-                                class="px-2.5 py-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
-                                onclick={() => handleDisable(mod)}
-                                title="Disable module"
-                              >
-                                Disable
-                              </button>
-                            {:else}
-                              <button
-                                class="px-2.5 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                                onclick={() => handleEnable(mod)}
-                                title="Enable module"
-                              >
-                                Enable
-                              </button>
-                            {/if}
-                            <button
-                              class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                              onclick={() => openEdit(mod)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              class="px-2.5 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                              onclick={() => handleDuplicate(mod)}
-                            >
-                              Duplicate
-                            </button>
-                            <button
-                              class="px-2.5 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-                              onclick={() => handleExport(mod)}
-                            >
-                              Export
-                            </button>
-                            {#if TRANSLATABLE_TYPES.includes(mod.type)}
-                              <button
-                                class="px-2.5 py-1 text-xs rounded transition-colors {mod.language === 'en'
-                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                  : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50'}"
-                                onclick={() => mod.language !== 'en' && handleTranslate(mod)}
-                                disabled={mod.language === 'en'}
-                                title={mod.language === 'en' ? 'English is the source language (SSOT)' : 'Translate module'}
-                              >
-                                Translate
-                              </button>
-                            {/if}
-                            <button
-                              class="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                              onclick={() => handleDelete(mod)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        {/each}
-      {/if}
+  {#if repoError}
+    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-amber-700 dark:text-amber-300 text-sm">
+      ⚠️ Could not reach module repository: {repoError}
+      <button class="ml-2 text-blue-600 underline" onclick={() => loadRepoIndex(true)}>Retry</button>
     </div>
+  {/if}
 
-  <!-- ===== GITHUB TAB ===== -->
-  {:else if activeTab === 'github'}
-    <div>
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          Browse modules available in the
-          <a href="https://github.com/asb-42/danwa-modules" target="_blank" class="text-blue-600 dark:text-blue-400 underline">danwa-modules</a>
-          repository
-        </p>
-        <button
-          class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
-          onclick={() => loadRepoIndex(true)}
-          disabled={repoLoading}
-        >
-          {repoLoading ? 'Loading...' : '🔄 Refresh'}
-        </button>
-      </div>
-
-      {#if repoLoading}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700">
-          <div class="flex flex-col items-center gap-4">
-            <div class="relative w-12 h-12">
-              <div class="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-600"></div>
-              <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 animate-spin"></div>
-            </div>
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Fetching module index…</p>
-            <div class="w-48 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div class="h-full bg-blue-600 rounded-full animate-pulse" style="width: 60%"></div>
-            </div>
-          </div>
-        </div>
-      {:else if repoError}
-        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
-          <div class="flex items-start gap-3">
-            <span class="text-lg">⚠️</span>
-            <div class="flex-1">
-              <p class="font-medium">Failed to fetch module index</p>
-              <p class="text-sm mt-1">{repoError}</p>
-              <button
-                class="mt-3 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                onclick={() => loadRepoIndex(true)}
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        </div>
-      {:else if repoModules.length === 0}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 text-center">
-          <p class="text-gray-500 dark:text-gray-400">No modules found in repository. Push a release to danwa-modules first.</p>
-        </div>
-      {:else}
-        <div class="space-y-6">
-          {#each groupedRepoModules as [type, mods]}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div class="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                  {REPO_TYPE_LABELS[type] || type}
-                  <span class="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500">({mods.length})</span>
-                </h3>
-              </div>
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b border-gray-100 dark:border-gray-700">
-                      <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Name</th>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Local</th>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Remote</th>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Status</th>
-                      <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Coverage</th>
-                      <th class="text-right px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {#each mods as mod}
-                      <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <td class="px-4 py-2.5">
-                          <span class="font-medium text-gray-800 dark:text-white">{mod.name?.en || mod.module_id}</span>
-                          {#if mod.language}
-                            <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({mod.language})</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5">
-                          {#if mod.localVersion}
-                            <span class="text-xs font-mono text-gray-600 dark:text-gray-300">v{mod.localVersion}</span>
-                          {:else}
-                            <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5">
-                          <span class="text-xs font-mono text-gray-600 dark:text-gray-300">v{mod.version || '0.0.0'}</span>
-                        </td>
-                        <td class="px-4 py-2.5">
-                          {#if mod.status === 'up-to-date'}
-                            <span class="inline-flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">✓ Up to date</span>
-                          {:else if mod.status === 'update-available'}
-                            <span class="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">↑ Update available</span>
-                          {:else}
-                            <span class="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">Not installed</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5">
-                          {#if mod.translation_stats}
-                            <div class="flex items-center gap-2">
-                              <div class="w-20 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                                <div
-                                  class="h-full rounded-full {mod.translation_stats.coverage_pct >= 90 ? 'bg-green-500' : mod.translation_stats.coverage_pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}"
-                                  style="width: {mod.translation_stats.coverage_pct}%"
-                                ></div>
-                              </div>
-                              <span class="text-xs text-gray-500 dark:text-gray-400">{mod.translation_stats.coverage_pct}%</span>
-                            </div>
-                          {:else}
-                            <span class="text-gray-400 dark:text-gray-500 text-xs">—</span>
-                          {/if}
-                        </td>
-                        <td class="px-4 py-2.5 text-right">
-                          {#if mod.status === 'up-to-date'}
-                            <span class="text-xs text-gray-400 dark:text-gray-500">✓</span>
-                          {:else}
-                            <button
-                              class="px-3 py-1 text-xs {mod.status === 'update-available' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
-                              onclick={() => handleInstallFromRepo(mod)}
-                              disabled={installingRepoMod === mod.module_id}
-                            >
-                              {installingRepoMod === mod.module_id
-                                ? 'Installing...'
-                                : mod.status === 'update-available'
-                                  ? 'Update'
-                                  : 'Install'}
-                            </button>
-                          {/if}
-                        </td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
+  <!-- Module table -->
+  {#if isLoading && modules.length === 0}
+    <div class="flex items-center justify-center h-32">
+      <p class="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
     </div>
-
-  <!-- ===== UPDATES TAB ===== -->
-  {:else if activeTab === 'updates'}
-    <div>
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          Modules with newer versions available in the danwa-modules repository
-        </p>
-        <button
-          class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
-          onclick={loadUpdates}
-          disabled={updatesLoading}
-        >
-          {updatesLoading ? 'Checking...' : '🔄 Check'}
-        </button>
-      </div>
-
-      {#if updatesLoading}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700">
-          <div class="flex flex-col items-center gap-4">
-            <!-- Animated spinner -->
-            <div class="relative w-12 h-12">
-              <div class="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-600"></div>
-              <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 animate-spin"></div>
-            </div>
-            <div class="text-center">
-              <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Checking for updates…</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                {#if updateCheckElapsed < 3}
-                  Contacting danwa-modules repository…
-                {:else if updateCheckElapsed < 10}
-                  Comparing installed versions… ({updateCheckElapsed}s)
-                {:else}
-                  Still working, please wait… ({updateCheckElapsed}s)
+  {:else if filterCategory && mergedModules.length === 0}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 text-center">
+      <p class="text-gray-500 dark:text-gray-400">No modules in this category (local or remote).</p>
+    </div>
+  {:else}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Name</th>
+              <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Local</th>
+              <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Remote</th>
+              <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Status</th>
+              {#if !filterCategory}
+                <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Category</th>
+              {/if}
+              <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Tags</th>
+              <th class="text-right px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each filterCategory ? mergedModules : modules as mod (mod.module_id)}
+              {@const remoteMatch = repoModules.find(r => r.module_id === mod.module_id)}
+              {@const localVer = mod.version}
+              {@const remoteVer = remoteMatch?.version}
+              {@const status = !remoteVer ? (mod.installed !== undefined ? 'local-only' : 'remote-only')
+                : !localVer ? 'remote-only'
+                : localVer === remoteVer ? 'up-to-date' : 'update-available'}
+              <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors {mod.enabled === false ? 'opacity-50' : ''}">
+                <td class="px-4 py-2.5">
+                  <span class="font-medium text-gray-800 dark:text-white">{mod.name?.en || mod.module_id}</span>
+                  {#if mod.enabled === false}
+                    <span class="ml-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">disabled</span>
+                  {/if}
+                  {#if mod.language}
+                    <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">({mod.language})</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-2.5">
+                  {#if localVer}
+                    <span class="text-xs font-mono text-gray-600 dark:text-gray-300">v{localVer}</span>
+                  {:else}
+                    <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-2.5">
+                  {#if remoteVer}
+                    <span class="text-xs font-mono text-gray-600 dark:text-gray-300">v{remoteVer}</span>
+                  {:else}
+                    <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-2.5">
+                  {#if status === 'up-to-date'}
+                    <span class="inline-flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">✓ Up to date</span>
+                  {:else if status === 'update-available'}
+                    <span class="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">↑ Update</span>
+                  {:else if status === 'remote-only'}
+                    <span class="inline-flex items-center gap-1 text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">Available</span>
+                  {:else}
+                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">Local</span>
+                  {/if}
+                </td>
+                {#if !filterCategory}
+                  <td class="px-4 py-2.5">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{mod.category || '—'}</span>
+                  </td>
                 {/if}
-              </p>
-            </div>
-            <!-- Indeterminate progress bar -->
-            <div class="w-48 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div class="h-full bg-blue-600 rounded-full animate-pulse" style="width: {Math.min(90, updateCheckElapsed * 10)}%"></div>
-            </div>
-          </div>
-        </div>
-      {:else if updatesError}
-        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
-          <div class="flex items-start gap-3">
-            <span class="text-lg">⚠️</span>
-            <div class="flex-1">
-              <p class="font-medium">Failed to check for updates</p>
-              <p class="text-sm mt-1">{updatesError}</p>
-              <button
-                class="mt-3 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                onclick={loadUpdates}
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        </div>
-      {:else if updates.length === 0 && updatesChecked}
-        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-6 border border-green-200 dark:border-green-800 text-center">
-          <p class="text-green-700 dark:text-green-300 font-medium">All modules are up to date! 🎉</p>
-          <p class="text-xs text-green-600/70 dark:text-green-400/70 mt-1">Checked against danwa-modules repository</p>
-        </div>
-      {:else}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Module</th>
-                  <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Current</th>
-                  <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Available</th>
-                  <th class="text-right px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each updates as upd}
-                  <tr class="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td class="px-4 py-2.5 font-medium text-gray-800 dark:text-white">
-                      {upd.name?.en || upd.module_id}
-                    </td>
-                    <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400">v{upd.current_version}</td>
-                    <td class="px-4 py-2.5">
-                      <span class="text-green-600 dark:text-green-400 font-medium">v{upd.available_version}</span>
-                    </td>
-                    <td class="px-4 py-2.5 text-right">
+                <td class="px-4 py-2.5">
+                  <div class="flex flex-wrap gap-1">
+                    {#each (mod.tags || []) as tag}
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">{tag}</span>
+                    {/each}
+                    {#if !mod.tags || mod.tags.length === 0}
+                      <span class="text-gray-400 dark:text-gray-500">—</span>
+                    {/if}
+                  </div>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <div class="flex items-center justify-end gap-1 flex-wrap">
+                    <!-- Install / Update from repo -->
+                    {#if status === 'remote-only' || status === 'update-available'}
                       <button
-                        class="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:hover:bg-green-600 transition-colors disabled:opacity-50"
-                        onclick={() => handleUpdateFromRepo(upd)}
-                        disabled={installingRepoMod === upd.module_id}
+                        class="px-2.5 py-1 text-xs {status === 'update-available' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded transition-colors disabled:opacity-50"
+                        onclick={() => handleInstallFromRepo(mod.remoteData || mod)}
+                        disabled={installingRepoMod === mod.module_id}
                       >
-                        {installingRepoMod === upd.module_id ? 'Updating...' : 'Update'}
+                        {installingRepoMod === mod.module_id
+                          ? 'Installing…'
+                          : status === 'update-available' ? 'Update' : 'Install'}
                       </button>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      {/if}
+                    {/if}
+
+                    <!-- Local module actions (only for installed modules) -->
+                    {#if localVer}
+                      {#if mod.enabled !== false}
+                        <button
+                          class="px-2.5 py-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                          onclick={() => handleDisable(mod)}
+                          title="Disable module"
+                        >
+                          Disable
+                        </button>
+                      {:else}
+                        <button
+                          class="px-2.5 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                          onclick={() => handleEnable(mod)}
+                          title="Enable module"
+                        >
+                          Enable
+                        </button>
+                      {/if}
+                      <button
+                        class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        onclick={() => openEdit(mod)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        class="px-2.5 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                        onclick={() => handleDuplicate(mod)}
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        class="px-2.5 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                        onclick={() => handleExport(mod)}
+                      >
+                        Export
+                      </button>
+                      {#if TRANSLATABLE_TYPES.includes(mod.type)}
+                        <button
+                          class="px-2.5 py-1 text-xs rounded transition-colors {mod.language === 'en'
+                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                            : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50'}"
+                          onclick={() => mod.language !== 'en' && handleTranslate(mod)}
+                          disabled={mod.language === 'en'}
+                          title={mod.language === 'en' ? 'English is the source language (SSOT)' : 'Translate module'}
+                        >
+                          Translate
+                        </button>
+                      {/if}
+                      <button
+                        class="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                        onclick={() => handleDelete(mod)}
+                      >
+                        Delete
+                      </button>
+                    {/if}
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     </div>
   {/if}
 </div>
 
+<!-- Edit Modal -->
 {#if editModalOpen}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeEdit}>
     <div
