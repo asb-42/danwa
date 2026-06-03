@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
@@ -318,10 +319,11 @@ class PrintOutputPlugin(OutputPlugin):
     ) -> str:
         """Generate Markdown from a PrintDocument.
 
-        Renders the structured document as clean Markdown, suitable for
-        further processing or archival.
+        Renders the structured document as clean Markdown using html2text
+        for proper HTML→MD conversion (headings, lists, emphasis, links,
+        code blocks, tables).
         """
-        import re
+        from backend.services.output.html_to_md import html_to_markdown
 
         assert isinstance(doc, PrintDocument)
         lines: list[str] = []
@@ -333,7 +335,7 @@ class PrintOutputPlugin(OutputPlugin):
 
         # Title
         if title_section:
-            plain_title = re.sub(r"<[^>]+>", "", title_section.content).strip()
+            plain_title = html_to_markdown(title_section.content).strip().lstrip("#").strip()
             lines.append(f"# {plain_title}")
         else:
             lines.append(f"# {doc.metadata.topic}")
@@ -341,8 +343,8 @@ class PrintOutputPlugin(OutputPlugin):
 
         # Metadata
         if metadata_section:
-            meta_plain = re.sub(r"<[^>]+>", "", metadata_section.content)
-            for meta_line in meta_plain.split("\n"):
+            meta_md = html_to_markdown(metadata_section.content)
+            for meta_line in meta_md.split("\n"):
                 meta_line = meta_line.strip()
                 if meta_line:
                     lines.append(meta_line)
@@ -352,8 +354,8 @@ class PrintOutputPlugin(OutputPlugin):
 
         # Case description
         if case_section:
-            case_plain = re.sub(r"<[^>]+>", "", case_section.content).strip()
-            lines.append(case_plain)
+            case_md = html_to_markdown(case_section.content).strip()
+            lines.append(case_md)
             lines.append("")
             lines.append("---")
             lines.append("")
@@ -375,9 +377,9 @@ class PrintOutputPlugin(OutputPlugin):
             if section.type.value in skip_types:
                 continue
 
-            # Strip HTML from content to get plain text
-            plain_content = re.sub(r"<[^>]+>", "", section.content)
-            plain_content = re.sub(r"\n{3,}", "\n\n", plain_content).strip()
+            # Convert HTML content to proper Markdown
+            content_md = html_to_markdown(section.content)
+            content_md = re.sub(r"\n{3,}", "\n\n", content_md).strip()
 
             if section.type.value == "turn":
                 round_str = f" ({i18n.get('round_label', 'Round')} {section.round})" if section.round is not None else ""
@@ -386,32 +388,32 @@ class PrintOutputPlugin(OutputPlugin):
                 if section.timestamp:
                     lines.append(f"*{i18n.get('timestamp_label', 'Timestamp')}: {section.timestamp}*")
                     lines.append("")
-                lines.append(plain_content)
+                lines.append(content_md)
                 lines.append("")
 
                 # Margin notes
                 for note in section.margin_notes:
-                    note_plain = re.sub(r"<[^>]+>", "", note.content).strip()
+                    note_md = html_to_markdown(note.content).strip()
                     icon = "⚡" if note.type.value == "injection" else "ℹ"
-                    lines.append(f"> {icon} {note_plain}")
+                    lines.append(f"> {icon} {note_md}")
                     lines.append("")
 
             elif section.type.value == "minority_callout":
                 lines.append(f"### ⚠ {i18n.get('minority_vote_label', 'Minority Vote')}: {section.agent_name}")
                 lines.append("")
-                lines.append(plain_content)
+                lines.append(content_md)
                 lines.append("")
 
             elif section.type.value == "user_query_block":
                 lines.append(f"### ❓ {i18n.get('user_query_label', 'User Question')}")
                 lines.append("")
-                lines.append(plain_content)
+                lines.append(content_md)
                 lines.append("")
 
             elif section.type.value == "consensus_summary":
                 lines.append(f"## {i18n.get('consensus_label', 'Consensus')}")
                 lines.append("")
-                lines.append(plain_content)
+                lines.append(content_md)
                 lines.append("")
 
             elif section.type.value == "audit_appendix":

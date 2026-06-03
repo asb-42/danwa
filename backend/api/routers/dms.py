@@ -502,10 +502,9 @@ async def export_analysis(
         filename = f"{stem}.odt"
 
     elif fmt == "md":
-        import re
+        from backend.services.output.html_to_md import html_to_markdown
 
-        md = re.sub(r"<[^>]+>", " ", html)
-        md = re.sub(r"\s{3,}", "\n\n", md).strip()
+        md = html_to_markdown(html)
         tmp = _tf.NamedTemporaryFile(suffix=".md", delete=False)
         tmp.write(md.encode("utf-8"))
         media_type = "text/markdown"
