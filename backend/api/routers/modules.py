@@ -89,7 +89,7 @@ async def list_available_modules() -> list[dict[str, Any]]:
 
 
 @router.get("/repo-index", response_model=list[dict[str, Any]])
-async def get_repo_index(
+def get_repo_index(
     force_refresh: bool = Query(False, description="Bypass cache and fetch fresh index"),
 ) -> list[dict[str, Any]]:
     """Fetch the module index from the danwa-modules GitHub repository.
@@ -115,7 +115,7 @@ class InstallFromRepoRequest(BaseModel):
 
 
 @router.post("/install-from-repo", response_model=dict[str, Any], status_code=201)
-async def install_module_from_repo(body: InstallFromRepoRequest) -> dict[str, Any]:
+def install_module_from_repo(body: InstallFromRepoRequest) -> dict[str, Any]:
     """Install a module directly from the danwa-modules GitHub release.
 
     Fetches the repo index, resolves the correct version, validates
@@ -149,7 +149,7 @@ async def install_module_from_repo(body: InstallFromRepoRequest) -> dict[str, An
 
 
 @router.get("/check-repo-updates", response_model=list[dict[str, Any]])
-async def check_repo_updates() -> list[dict[str, Any]]:
+def check_repo_updates() -> list[dict[str, Any]]:
     """Compare installed module versions against the danwa-modules repo index.
 
     Uses semver comparison — any remote version strictly greater than the

@@ -148,8 +148,13 @@
     // Start elapsed timer for user feedback
     if (updateCheckTimer) clearInterval(updateCheckTimer);
     updateCheckTimer = setInterval(() => { updateCheckElapsed += 1; }, 1000);
+    // Client-side timeout so UI never hangs indefinitely
+    const TIMEOUT_MS = 30_000;
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out after 30 seconds. The backend may be unreachable.')), TIMEOUT_MS)
+    );
     try {
-      updates = await getRepoUpdates();
+      updates = await Promise.race([getRepoUpdates(), timeout]);
       updatesChecked = true;
     } catch (e) {
       updatesError = e.message;
