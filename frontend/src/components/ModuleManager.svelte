@@ -406,6 +406,24 @@
         { key: 'language', label: 'Language', type: 'text' },
       ];
     }
+    if (type === 'agent-core') {
+      return [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'role', label: 'Role', type: 'text' },
+        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'content', label: 'System Prompt (Markdown)', type: 'markdown' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
+      ];
+    }
+    if (type === 'bundle') {
+      return [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'description', label: 'Description', type: 'text' },
+        { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
+        { key: 'language', label: 'Language', type: 'text' },
+      ];
+    }
     if (type === 'kitsune-assistant') {
       return [
         { key: 'name', label: 'Name', type: 'text' },
