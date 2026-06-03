@@ -341,6 +341,7 @@ export default {
   'documents.uploading': 'Uploading...',
   'documents.uploadSuccess': 'Document uploaded successfully',
   'documents.uploadError': 'Upload failed',
+  'documents.uploadFailed': 'Upload failed: {error}',
   'documents.noDocuments': 'No documents uploaded yet. Upload files to use as RAG context for debates.',
   'documents.filename': 'Filename',
   'documents.fileSize': 'Size',
@@ -582,6 +583,7 @@ export default {
   'blueprint.workflow.language': 'Language',
   'blueprint.workflow.startDebate': 'Start Debate',
   'blueprint.workflow.debateStarted': 'Debate started',
+  'blueprint.workflow.startFailed': 'Failed to start workflow: {error}',
   'blueprint.toast.compiled': 'Workflow compiled successfully',
   'blueprint.toast.compileFailed': 'Workflow compilation failed',
   'blueprint.form.nodeType': 'Type',
@@ -1283,6 +1285,8 @@ export default {
   'cases.caseDeleted': 'Case deleted',
   'cases.caseCreated': 'Case created',
   'cases.caseUpdated': 'Case updated',
+  'cases.saveFailed': 'Failed to save case: {error}',
+  'cases.deleteFailed': 'Failed to delete case: {error}',
   'cases.noCases': 'No cases yet',
   'cases.confirmDelete': 'Are you sure you want to delete "{name}"?',
 
@@ -1307,6 +1311,7 @@ export default {
   'tags.deleteError': 'Could not delete tag',
   'tags.deleted': 'Tag deleted',
   'tags.created': 'Tag created',
+  'tags.createFailed': 'Failed to create tag: {error}',
   'tags.updated': 'Tag updated',
 
   // Tenants (selector)

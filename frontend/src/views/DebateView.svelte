@@ -206,7 +206,7 @@
   }
 
   function handleSSEEvent(event) {
-    console.log('SSE event:', event);
+    if (import.meta.env.DEV) console.log('SSE event:', event);
 
     try { handleWorkflowSSE(event); } catch (e) {
       console.warn('Workflow SSE mapping error:', e);

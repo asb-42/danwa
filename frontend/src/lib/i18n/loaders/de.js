@@ -342,6 +342,7 @@ export default {
   'documents.uploading': 'Wird hochgeladen...',
   'documents.uploadSuccess': 'Dokument erfolgreich hochgeladen',
   'documents.uploadError': 'Upload fehlgeschlagen',
+  'documents.uploadFailed': 'Upload fehlgeschlagen: {error}',
   'documents.noDocuments': 'Noch keine Dokumente hochgeladen. Laden Sie Dateien hoch, um sie als RAG-Kontext für Debatten zu verwenden.',
   'documents.filename': 'Dateiname',
   'documents.fileSize': 'Größe',
@@ -583,6 +584,7 @@ export default {
   'blueprint.workflow.language': 'Sprache',
   'blueprint.workflow.startDebate': 'Debatte starten',
   'blueprint.workflow.debateStarted': 'Debatte gestartet',
+  'blueprint.workflow.startFailed': 'Workflow konnte nicht gestartet werden: {error}',
   'blueprint.toast.compiled': 'Workflow erfolgreich kompiliert',
   'blueprint.toast.compileFailed': 'Workflow-Kompilierung fehlgeschlagen',
   'blueprint.form.nodeType': 'Typ',
@@ -1284,6 +1286,8 @@ export default {
   'cases.caseDeleted': 'Fall gelöscht',
   'cases.caseCreated': 'Fall erstellt',
   'cases.caseUpdated': 'Fall aktualisiert',
+  'cases.saveFailed': 'Fall konnte nicht gespeichert werden: {error}',
+  'cases.deleteFailed': 'Fall konnte nicht gelöscht werden: {error}',
   'cases.noCases': 'Noch keine Fälle',
   'cases.confirmDelete': 'Sind Sie sicher, dass Sie "{name}" löschen möchten?',
 
@@ -1308,6 +1312,7 @@ export default {
   'tags.deleteError': 'Tag konnte nicht gelöscht werden',
   'tags.deleted': 'Tag gelöscht',
   'tags.created': 'Tag erstellt',
+  'tags.createFailed': 'Tag konnte nicht erstellt werden: {error}',
   'tags.updated': 'Tag aktualisiert',
 
   // Tenants (selector)

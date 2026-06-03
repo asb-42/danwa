@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { addToast } from '../lib/stores.js';
   import { getTags, createTag } from '../lib/api/tag.js';
 
   let { value = [], onchange } = $props();
@@ -71,7 +72,7 @@
       search = '';
       isOpen = false;
     } catch (err) {
-      console.error('Failed to create tag:', err);
+      addToast({ type: 'error', message: t('tags.createFailed', { error: err.message }) });
     } finally {
       isCreating = false;
     }

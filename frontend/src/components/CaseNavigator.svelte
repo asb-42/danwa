@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
-  import { activeCase } from '../lib/stores.js';
+  import { activeCase, addToast } from '../lib/stores.js';
   import { getCases, createCase } from '../lib/api/case.js';
 
   let { navigate } = $props();
@@ -45,19 +45,19 @@
   }
 
   async function handleCreate() {
-    console.debug('[CaseNavigator] handleCreate:', { newTitle: newTitle.trim(), tenant: $currentTenant, hasTenant: !!$currentTenant });
+    if (import.meta.env.DEV) console.debug('[CaseNavigator] handleCreate:', { newTitle: newTitle.trim(), tenant: $currentTenant, hasTenant: !!$currentTenant });
     if (!newTitle.trim() || !$currentTenant) return;
     isCreating = true;
     try {
       const c = await createCase($currentTenant.id, { title: newTitle.trim(), description: newDescription.trim() });
-      console.debug('[CaseNavigator] createCase response:', c);
+      if (import.meta.env.DEV) console.debug('[CaseNavigator] createCase response:', c);
       cases = [...cases, c];
       activeCase.set({ id: c.id, title: c.title });
       newTitle = '';
       newDescription = '';
       showCreate = false;
     } catch (err) {
-      console.error('[CaseNavigator] Failed to create case:', err);
+      addToast({ type: 'error', message: t('cases.saveFailed', { error: err.message }) });
     } finally {
       isCreating = false;
     }

@@ -6,7 +6,7 @@
    */
   import { tStore } from '../lib/i18n/index.js';
   import { canvasStore } from '../lib/blueprint/store.svelte.js';
-  import { currentDebate } from '../lib/stores.js';
+  import { currentDebate, addToast } from '../lib/stores.js';
   import {
     getCanvasLayout,
     createCanvasLayout,
@@ -244,7 +244,7 @@
   async function handleImport() {
     try {
       const result = await runBlueprintImport();
-      console.log('[BlueprintCanvasView] Import result:', result);
+      if (import.meta.env.DEV) console.log('[BlueprintCanvasView] Import result:', result);
     } catch (err) {
       console.error('[BlueprintCanvasView] Import failed:', err);
     }
@@ -305,7 +305,7 @@
 
   function handleTemplateSaved(template) {
     showSaveAsTemplate = false;
-    console.log('[BlueprintCanvasView] Template saved:', template);
+    if (import.meta.env.DEV) console.log('[BlueprintCanvasView] Template saved:', template);
   }
 
   async function handleCompile() {
@@ -469,7 +469,7 @@
       });
       showExecutionPanel = true;
     } catch (err) {
-      console.error('[BlueprintCanvasView] Failed to start debate:', err);
+      addToast({ type: 'error', message: t('blueprint.workflow.startFailed', { error: err.message }) });
       // Re-throw so RunWorkflowDialog can display the error
       throw err;
     }

@@ -125,6 +125,24 @@ export function addToast({ message, type = 'info', timeout = 5000, dismissible =
   return id;
 }
 
+/**
+ * Dedup last-shown timestamps per toast key. Useful for poll-based code
+ * that would otherwise spam the user (e.g. dashboard health every 5s).
+ *
+ * @param {number} windowMs - Minimum time between toasts with the same key.
+ * @returns {(key: string, fn: () => void) => void}
+ */
+const _dedupState = new Map();
+export function debounceToast(windowMs = 30000) {
+  return (key, fn) => {
+    const now = Date.now();
+    const last = _dedupState.get(key) || 0;
+    if (now - last < windowMs) return;
+    _dedupState.set(key, now);
+    fn();
+  };
+}
+
 /** Backup-Stores (Sprint 18) */
 export const backupConfig = persisted('danwa.backupConfig', {
 	autoOnShutdown: false,

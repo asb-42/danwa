@@ -1,6 +1,7 @@
 <script>
   import { tStore } from '../lib/i18n/index.js';
   import { uploadDocument } from '../lib/api.js';
+  import { addToast } from '../lib/stores.js';
 
   let { onUpload = null, compact = false } = $props();
 
@@ -21,7 +22,7 @@
       }
       if (onUpload) onUpload(results);
     } catch (e) {
-      console.error('Upload failed:', e);
+      addToast({ type: 'error', message: t('documents.uploadFailed', { error: e.message }) });
     } finally {
       uploading = false;
     }

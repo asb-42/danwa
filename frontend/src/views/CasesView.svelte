@@ -65,7 +65,7 @@
   }
 
   async function handleSave() {
-    console.debug('[CasesView] handleSave:', { newTitle: newTitle.trim(), editingCase: !!editingCase, tenant: $currentTenant });
+    if (import.meta.env.DEV) console.debug('[CasesView] handleSave:', { newTitle: newTitle.trim(), editingCase: !!editingCase, tenant: $currentTenant });
     if (!newTitle.trim() || !$currentTenant) return;
     isSaving = true;
     try {
@@ -87,7 +87,7 @@
       cancelForm();
       await loadCases();
     } catch (err) {
-      console.error('[CasesView] Failed to save case:', err);
+      addToast({ type: 'error', message: t('cases.saveFailed', { error: err.message }) });
     } finally {
       isSaving = false;
     }
@@ -101,7 +101,7 @@
       if ($activeCase?.id === c.id) activeCase.set(null);
       await loadCases();
     } catch (err) {
-      console.error('Failed to delete case:', err);
+      addToast({ type: 'error', message: t('cases.deleteFailed', { error: err.message }) });
     }
   }
 

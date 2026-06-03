@@ -46,7 +46,6 @@
       activeProject.set(null);
       isOpen = false;
     } catch (err) {
-      console.error('Failed to switch tenant:', err);
       addToast({ type: 'error', message: err.message || t('tenants.switchFailed') });
     } finally {
       isSwitching = false;
