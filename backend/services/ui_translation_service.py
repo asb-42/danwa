@@ -614,6 +614,12 @@ class UITranslationService:
 
         for locale in target_locales:
             existing = self.get_translations_bulk(locale, namespace)
+            # Merge langpack translations so module-installed strings
+            # are not redundantly re-translated by the LLM.
+            langpack = self.resolve_bulk_for_locale(locale)
+            for k, v in langpack.items():
+                if v and (k not in existing or not existing[k]):
+                    existing[k] = v
             # Treat bundled JS translations as already-existing so they
             # are not redundantly re-translated by the LLM.
             if locale in bundled:
@@ -678,6 +684,10 @@ class UITranslationService:
                 total = 0
                 for locale in target_locales:
                     existing = self.get_translations_bulk(locale, namespace)
+                    langpack = self.resolve_bulk_for_locale(locale)
+                    for k, v in langpack.items():
+                        if v and (k not in existing or not existing[k]):
+                            existing[k] = v
                     if locale in bundled:
                         for k, v in bundled[locale].items():
                             if v and (k not in existing or not existing[k]):
@@ -690,6 +700,10 @@ class UITranslationService:
 
                 for locale in target_locales:
                     existing = self.get_translations_bulk(locale, namespace)
+                    langpack = self.resolve_bulk_for_locale(locale)
+                    for k, v in langpack.items():
+                        if v and (k not in existing or not existing[k]):
+                            existing[k] = v
                     if locale in bundled:
                         for k, v in bundled[locale].items():
                             if v and (k not in existing or not existing[k]):
