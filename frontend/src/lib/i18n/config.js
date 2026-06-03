@@ -12,22 +12,15 @@ export const SUPPORTED_LOCALES = ['en'];
 
 export const DEFAULT_LOCALE = 'en';
 
-/** Display names for all known locales (bundled + module-installable). */
+/**
+ * Display names for all known locales.
+ *
+ * Starts with 'en' (the only bundled language). All other entries are
+ * added dynamically at runtime by registerCustomLocale() when
+ * language-pack modules are discovered (via discoverLanguagePacks()).
+ */
 export const LOCALE_NAMES = {
   en: 'English',
-  de: 'Deutsch',
-  fr: 'Français',
-  es: 'Español',
-  it: 'Italiano',
-  pt: 'Português',
-  ru: 'Русский',
-  zh: '中文',
-  ja: '日本語',
-  ko: '한국어',
-  sv: 'Svenska',
-  el: 'Ελληνικά',
-  ar: 'العربية',
-  he: 'עברית',
 };
 
 export const RTL_LOCALES = new Set(['ar', 'he', 'fa']);
@@ -36,11 +29,18 @@ export const RTL_LOCALES = new Set(['ar', 'he', 'fa']);
 export const customLocales = new Map();
 
 /**
- * Register a custom locale discovered from the backend.
+ * Register a custom locale discovered from the backend or a language-pack module.
+ * Updates both the customLocales Map and LOCALE_NAMES so all consumers
+ * (LanguageSwitcher, getLocaleName, getAllLocales) see consistent data.
+ *
  * @param {{ locale: string, name: string, is_rtl: boolean }} info
  */
 export function registerCustomLocale(info) {
   customLocales.set(info.locale, { name: info.name, isRtl: info.is_rtl });
+  // Keep LOCALE_NAMES in sync — this is the single source of truth for display names
+  if (!LOCALE_NAMES[info.locale]) {
+    LOCALE_NAMES[info.locale] = info.name;
+  }
   if (info.is_rtl) RTL_LOCALES.add(info.locale);
 }
 
