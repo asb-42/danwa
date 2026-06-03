@@ -574,3 +574,169 @@ def _export_ui_strings_for_pack(module_id: str, manifest: dict) -> dict[str, str
         return {row["key"]: row["value"] for row in cursor.fetchall()}
     finally:
         conn.close()
+
+
+# ------------------------------------------------------------------
+# Sync DB profiles to module directories
+# ------------------------------------------------------------------
+
+_CATEGORY_PREFIX = {
+    "llm-profiles": "llm",
+    "agents": "agent",
+    "role-types": "role",
+    "tone-profiles": "tone",
+    "workflows": "workflow",
+    "workflow-variants": "variant",
+    "prompts": "prompt",
+}
+
+_TYPE_TO_TABLE = {
+    "llm-profile": ("blueprint_llm_profiles", "llm-profiles"),
+    "agent-persona": ("agent_personas", "agents"),
+    "tone-profile": ("tone_profiles", "tone-profiles"),
+    "prompt-variant": ("prompt_templates", "prompts"),
+}
+
+_TYPE_TO_FORMAT = {
+    "llm-profile": "yaml",
+    "agent-persona": "md",
+    "tone-profile": "md",
+    "prompt-variant": "md",
+}
+
+_TYPE_TO_PROFILE_KEYS = {
+    "llm-profile": [
+        "id", "name", "provider", "model", "api_base", "api_key_env",
+        "max_tokens", "context_window", "temperature", "timeout",
+        "cost_per_1k_input", "cost_per_1k_output", "fallback_llm_profile_id",
+        "a2a_endpoint", "a2a_timeout", "protocol", "profile_type",
+    ],
+}
+
+
+class SyncFromDbRequest(BaseModel):
+    """POST /modules/sync-from-db request body."""
+    type: str = Field(..., description="Module type (e.g. 'llm-profile')")
+    ids: list[str] | None = Field(None, description="Specific profile IDs to sync (None = all)")
+
+
+@router.post("/sync-from-db", response_model=dict[str, Any])
+def sync_from_db(body: SyncFromDbRequest) -> dict[str, Any]:
+    """Export DB profiles as module directories under modules/.
+
+    Reads profiles from the blueprint DB and writes them as module
+    directories (manifest.json + profile file).  Used to bridge the
+    gap between the Manage views (DB-sourced) and the Modules views
+    (filesystem-sourced).
+    """
+    import sqlite3
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    import yaml
+
+    table_info = _TYPE_TO_TABLE.get(body.type)
+    if not table_info:
+        raise HTTPException(400, f"Unsupported type '{body.type}'. Supported: {list(_TYPE_TO_TABLE)}")
+
+    table_name, category = table_info
+    prefix = _CATEGORY_PREFIX.get(category, "mod")
+    profile_format = _TYPE_TO_FORMAT.get(body.type, "json")
+    profile_keys = _TYPE_TO_PROFILE_KEYS.get(body.type)
+
+    db_path = Path("data/blueprints.db")
+    if not db_path.exists():
+        raise HTTPException(500, "Blueprints database not found")
+
+    svc = get_module_service()
+    modules_dir = svc.modules_dir
+    cat_dir = modules_dir / category
+
+    conn = sqlite3.connect(str(db_path), timeout=10.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        if body.ids:
+            placeholders = ",".join("?" for _ in body.ids)
+            rows = conn.execute(
+                f"SELECT * FROM {table_name} WHERE id IN ({placeholders})", body.ids,
+            ).fetchall()
+        else:
+            rows = conn.execute(f"SELECT * FROM {table_name}").fetchall()
+    finally:
+        conn.close()
+
+    exported = 0
+    skipped = 0
+    errors: list[str] = []
+    now = datetime.now(UTC).isoformat()
+
+    for row in rows:
+        profile = dict(row)
+        profile_id = profile["id"]
+        module_id = f"{prefix}-{profile_id}"
+
+        module_dir = cat_dir / module_id
+        module_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build profile data (only known keys for llm-profile, full dict otherwise)
+        if profile_keys:
+            profile_data = {k: profile.get(k) for k in profile_keys if k in profile}
+        else:
+            # For non-llm types, export the content column or full row
+            profile_data = {k: profile[k] for k in profile.keys() if k not in ("created_at", "updated_at")}
+
+        # Write profile file
+        profile_file = f"profile.{profile_format}"
+        profile_path = module_dir / profile_file
+        try:
+            if profile_format == "yaml":
+                profile_path.write_text(yaml.dump(profile_data, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+            elif profile_format == "json":
+                profile_path.write_text(json.dumps(profile_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            else:
+                # Markdown: use content column
+                content = profile.get("content", profile.get("system_prompt", ""))
+                profile_path.write_text(content or "", encoding="utf-8")
+        except OSError as exc:
+            errors.append(f"{profile_id}: failed to write profile: {exc}")
+            continue
+
+        # Write manifest.json
+        name_val = profile.get("name", module_id)
+        desc_val = profile.get("description", "")
+        manifest = {
+            "schema_version": "2.0.0",
+            "module_id": module_id,
+            "name": {"en": name_val} if isinstance(name_val, str) else name_val,
+            "version": "1.0.0",
+            "type": body.type,
+            "category": category,
+            "author": {"name": "Danwa Community"},
+            "license": "CC-BY-4.0",
+            "tags": profile.get("tags", []) if isinstance(profile.get("tags"), list) else [],
+            "language": profile.get("language", "en") or "en",
+            "profile_file": profile_file,
+            "profile_format": profile_format,
+            "files": [],
+            "created_at": now,
+            "updated_at": now,
+        }
+        if desc_val:
+            manifest["description"] = {"en": desc_val} if isinstance(desc_val, str) else desc_val
+
+        manifest_path = module_dir / "manifest.json"
+        try:
+            manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except OSError as exc:
+            errors.append(f"{profile_id}: failed to write manifest: {exc}")
+            continue
+
+        exported += 1
+
+    return {
+        "exported": exported,
+        "skipped": skipped,
+        "errors": errors,
+        "category": category,
+        "module_dir": str(cat_dir),
+    }

@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { formatNumber, tStore } from '../../lib/i18n/index.js';
+  import { syncFromDb } from '../../lib/api.js';
 
   let {
     profiles = [],
@@ -20,6 +21,21 @@
 
   let search = $state('');
   let dropdownOpen = $state(null);
+  let syncing = $state(false);
+  let syncMessage = $state('');
+
+  async function handleSyncAll() {
+    syncing = true;
+    syncMessage = '';
+    try {
+      const result = await syncFromDb('llm-profile');
+      syncMessage = `✓ ${result.exported} profile(s) synced to modules`;
+    } catch (e) {
+      syncMessage = `✗ ${e.message}`;
+    } finally {
+      syncing = false;
+    }
+  }
 
   const PROFILE_TYPE_LABELS = { text: 'Text', tts: 'TTS', stt: 'STT' };
   const PROFILE_TYPE_COLORS = {
@@ -76,10 +92,22 @@
         <button class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm" onclick={() => { search = ''; }}>✕</button>
       {/if}
     </div>
-    <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap" onclick={onCreate}>
-      + {t('config.createLLM')}
-    </button>
+    <div class="flex items-center gap-2">
+      <button class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap disabled:opacity-50"
+        onclick={handleSyncAll} disabled={syncing}>
+        {syncing ? 'Syncing…' : '📦 Sync to Modules'}
+      </button>
+      <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap" onclick={onCreate}>
+        + {t('config.createLLM')}
+      </button>
+    </div>
   </div>
+  {#if syncMessage}
+    <div class="text-sm px-3 py-2 rounded-lg {syncMessage.startsWith('✓') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'}">
+      {syncMessage}
+      <button class="ml-2 text-blue-600 underline" onclick={() => syncMessage = ''}>{t('common.dismiss')}</button>
+    </div>
+  {/if}
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
     {#if profiles.length === 0}
       <div class="flex items-center justify-center h-32">

@@ -106,3 +106,11 @@ export function duplicateModule(moduleId, newId, newName = null) {
     body: JSON.stringify({ new_id: newId, new_name: newName }),
   });
 }
+
+/** Sync DB profiles to module directories. */
+export function syncFromDb(type, ids = null) {
+  return request('/api/v1/modules/sync-from-db', {
+    method: 'POST',
+    body: JSON.stringify({ type, ids }),
+  });
+}
