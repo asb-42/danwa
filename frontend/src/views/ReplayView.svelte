@@ -126,7 +126,7 @@
   <!-- Session selector -->
   <div class="session-selector">
     <label for="replay-session-select">{t('replay.selectSession')}</label>
-    <select id="replay-session-select" value={selectedSessionId} change={onSessionSelect}>
+    <select id="replay-session-select" value={selectedSessionId} onchange={onSessionSelect}>
       <option value="">-- {t('replay.selectSession')} --</option>
       {#each sessions as session}
         <option value={session.id}>{session.id} ({session.status})</option>

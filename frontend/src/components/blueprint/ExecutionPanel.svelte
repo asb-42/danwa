@@ -123,6 +123,7 @@
         status = 'failed';
         stopTimer();
         onNodeStatusUpdate(data.node_id, 'failed');
+        patchActiveWorkflowSession('status', 'failed');
       },
       onWorkflowComplete: (data) => {
         status = 'completed';
@@ -131,13 +132,6 @@
           consensus = data.final_consensus;
         }
         patchActiveWorkflowSession('status', 'completed');
-      },
-      onNodeError: (data) => {
-        error = data.error || 'Unknown error';
-        status = 'failed';
-        stopTimer();
-        onNodeStatusUpdate(data.node_id, 'failed');
-        patchActiveWorkflowSession('status', 'failed');
       },
       onWorkflowPaused: () => {
         status = 'paused';

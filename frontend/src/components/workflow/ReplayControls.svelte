@@ -59,7 +59,7 @@
   <div class="controls-row">
     <label>
       {t('replay.speed')}
-      <select value={playSpeed} change={onSpeedChange}>
+      <select value={playSpeed} onchange={onSpeedChange}>
         <option value="0.5">0.5x</option>
         <option value="1">1x</option>
         <option value="2">2x</option>

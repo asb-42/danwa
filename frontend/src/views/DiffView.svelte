@@ -72,7 +72,7 @@
   <div class="session-selectors">
     <div class="selector">
       <label for="diff-session-a">{t('diff.selectSessionA')}</label>
-      <select id="diff-session-a" value={sessionA} change={onSessionAChange}>
+      <select id="diff-session-a" value={sessionA} onchange={onSessionAChange}>
         <option value="">--</option>
         {#each sessions as s}
           <option value={s.id}>{s.id}</option>
@@ -81,7 +81,7 @@
     </div>
     <div class="selector">
       <label for="diff-session-b">{t('diff.selectSessionB')}</label>
-      <select id="diff-session-b" value={sessionB} change={onSessionBChange}>
+      <select id="diff-session-b" value={sessionB} onchange={onSessionBChange}>
         <option value="">--</option>
         {#each sessions as s}
           <option value={s.id}>{s.id}</option>

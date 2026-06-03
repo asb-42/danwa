@@ -5,7 +5,7 @@
   import { getHealth } from './lib/api.js';
   import { healthStatus, appVersion } from './lib/stores.js';
   import { getVersion } from './lib/api.js';
-  import { i18n, discoverLanguagePacks, setToastCallback } from './lib/i18n/index.js';
+  import { i18n, tStore, discoverLanguagePacks, setToastCallback } from './lib/i18n/index.js';
   import { isAuthenticated } from './lib/stores/auth.svelte.js';
   import Layout from './components/Layout.svelte';
   import Dashboard from './views/Dashboard.svelte';
@@ -122,63 +122,79 @@ import ToastContainer from './components/ToastContainer.svelte';
 <LoginView />
 {:else}
 <Layout {navigate} currentRoute={$route}>
-  {#if $route === 'dashboard'}
-    <Dashboard {navigate} />
-  {:else if $route === 'debate'}
-    <DebateView debateId={$routeParams[0] || null} {navigate} />
-  {:else if $route === 'documents'}
-    <DocumentsView {navigate} />
-  {:else if $route === 'archive'}
-    <ArchiveView {navigate} />
-  {:else if $route === 'audit'}
-    <AuditView />
-  {:else if $route === 'projects' && $routeParams.length >= 2 && $routeParams[1] === 'settings'}
-    <ProjectSettings projectId={$routeParams[0]} {navigate} />
-  {:else if $route === 'projects'}
-    <ProjectsView {navigate} />
-  {:else if $route === 'config'}
-    <ConfigView />
-  {:else if $route === 'manage'}
-    <ManageView />
-  {:else if $route === 'execution'}
-    <WorkflowExecutionView sessionId={$routeParams[0] || null} {navigate} />
-  {:else if $route === 'blueprint'}
-    <BlueprintCanvasView layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />
-  {:else if $route === 'bundle-composer'}
-    <BundleComposerView />
-  {:else if $route === 'replay'}
-    <ReplayView />
-  {:else if $route === 'diff'}
-    <DiffView />
-  {:else if $route === 'output'}
-    <OutputComposerView />
-  {:else if $route === 'input'}
-    <InputComposerView />
-   {:else if $route === 'translation'}
-    <TranslationDashboard {navigate} />
-  {:else if $route === 'modules'}
-    <ModulesView {navigate} />
-  {:else if $route === 'proposals'}
-    <ProposalsView />
-  {:else if $route === 'mvp-debate'}
-    <MvpDebateView debateId={$routeParams[0] || null} {navigate} />
-  {:else if $route === 'users'}
-    <UserManagement />
-  {:else if $route === 'profile'}
-    <ProfileView />
-  {:else if $route === 'tenant-settings'}
-    <TenantSettingsView />
-  {:else if $route === 'my-keys'}
-    <BYOKManager />
-  {:else if $route === 'server-health'}
-    <ServerHealthView />
-  {:else if $route === 'case-list'}
-    <CasesView {navigate} />
-  {:else if $route === 'tags'}
-    <TagManagerView />
-  {:else}
-    <Dashboard {navigate} />
-  {/if}
+  <svelte:boundary onerror={(e, reset) => {
+    console.error('[App] View crashed:', e);
+    addToast({ type: 'error', message: $tStore('app.viewCrashed', { error: e.message }) });
+  }}>
+    {#if $route === 'dashboard'}
+      <Dashboard {navigate} />
+    {:else if $route === 'debate'}
+      <DebateView debateId={$routeParams[0] || null} {navigate} />
+    {:else if $route === 'documents'}
+      <DocumentsView {navigate} />
+    {:else if $route === 'archive'}
+      <ArchiveView {navigate} />
+    {:else if $route === 'audit'}
+      <AuditView />
+    {:else if $route === 'projects' && $routeParams.length >= 2 && $routeParams[1] === 'settings'}
+      <ProjectSettings projectId={$routeParams[0]} {navigate} />
+    {:else if $route === 'projects'}
+      <ProjectsView {navigate} />
+    {:else if $route === 'config'}
+      <ConfigView />
+    {:else if $route === 'manage'}
+      <ManageView />
+    {:else if $route === 'execution'}
+      <WorkflowExecutionView sessionId={$routeParams[0] || null} {navigate} />
+    {:else if $route === 'blueprint'}
+      <BlueprintCanvasView layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />
+    {:else if $route === 'bundle-composer'}
+      <BundleComposerView />
+    {:else if $route === 'replay'}
+      <ReplayView />
+    {:else if $route === 'diff'}
+      <DiffView />
+    {:else if $route === 'output'}
+      <OutputComposerView />
+    {:else if $route === 'input'}
+      <InputComposerView />
+     {:else if $route === 'translation'}
+      <TranslationDashboard {navigate} />
+    {:else if $route === 'modules'}
+      <ModulesView {navigate} />
+    {:else if $route === 'proposals'}
+      <ProposalsView />
+    {:else if $route === 'mvp-debate'}
+      <MvpDebateView debateId={$routeParams[0] || null} {navigate} />
+    {:else if $route === 'users'}
+      <UserManagement />
+    {:else if $route === 'profile'}
+      <ProfileView />
+    {:else if $route === 'tenant-settings'}
+      <TenantSettingsView />
+    {:else if $route === 'my-keys'}
+      <BYOKManager />
+    {:else if $route === 'server-health'}
+      <ServerHealthView />
+    {:else if $route === 'case-list'}
+      <CasesView {navigate} />
+    {:else if $route === 'tags'}
+      <TagManagerView />
+    {:else}
+      <Dashboard {navigate} />
+    {/if}
+
+    {#snippet failed(error, reset)}
+      <div class="view-error" role="alert" aria-live="assertive">
+        <h2>{$tStore('app.viewCrashedTitle')}</h2>
+        <p>{$tStore('app.viewCrashedMessage', { error: error.message })}</p>
+        <div class="view-error-actions">
+          <button class="btn btn-primary" onclick={() => reset()}>{$tStore('common.retry')}</button>
+          <button class="btn" onclick={() => navigate('dashboard')}>{$tStore('app.backToDashboard')}</button>
+        </div>
+      </div>
+    {/snippet}
+  </svelte:boundary>
   <ToastContainer />
 </Layout>
 {/if}

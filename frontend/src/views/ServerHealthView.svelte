@@ -1,7 +1,7 @@
 <!-- ServerHealthView.svelte — Detailed server health status -->
 
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { getHealth } from '../lib/api.js';
 
@@ -11,14 +11,27 @@
   let loading = $state(true);
   let error = $state('');
 
-  onMount(async () => {
+  const POLL_INTERVAL_MS = 30000;
+  let pollTimer = null;
+
+  async function refresh() {
     try {
       health = await getHealth();
+      error = '';
     } catch (e) {
       error = e.message;
     } finally {
       loading = false;
     }
+  }
+
+  onMount(async () => {
+    await refresh();
+    pollTimer = setInterval(refresh, POLL_INTERVAL_MS);
+  });
+
+  onDestroy(() => {
+    if (pollTimer) clearInterval(pollTimer);
   });
 
   function statusColor(status) {
