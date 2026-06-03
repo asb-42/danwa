@@ -10,6 +10,8 @@ Usage:
     python scripts/export_translations_to_modules.py --locale es              # Export one locale
     python scripts/export_translations_to_modules.py --repo ../danwa-modules  # Custom repo path
     python scripts/export_translations_to_modules.py --dry-run                # Show what would be exported
+    python scripts/export_translations_to_modules.py --release                # Export + auto-release (semver bump)
+    python scripts/export_translations_to_modules.py --release --minor        # Export + bump minor version
 """
 
 from __future__ import annotations
@@ -96,6 +98,12 @@ def main() -> None:
     parser.add_argument("--repo", type=str, default=str(DEFAULT_REPO), help="Path to danwa-modules repo")
     parser.add_argument("--locale", type=str, nargs="+", default=None, help="Export specific locale(s) (e.g. --locale de es fr)")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be exported")
+    parser.add_argument("--release", action="store_true", help="Auto-release after export: commit, bump semver tag, push")
+    bump_group = parser.add_mutually_exclusive_group()
+    bump_group.add_argument("--major", action="store_true", help="Bump major version (requires --release)")
+    bump_group.add_argument("--minor", action="store_true", help="Bump minor version (requires --release)")
+    bump_group.add_argument("--patch", action="store_true", help="Bump patch version (default, requires --release)")
+    parser.add_argument("--no-push", action="store_true", help="Tag locally but don't push (requires --release)")
     args = parser.parse_args()
 
     repo = Path(args.repo)
@@ -177,6 +185,35 @@ def main() -> None:
             exported += 1
 
         print(f"\nDone! {exported} locale(s) exported.")
+
+        # Auto-release if requested
+        if args.release and exported > 0 and not args.dry_run:
+            import subprocess
+
+            release_script = repo / "scripts" / "release.py"
+            if not release_script.exists():
+                print(f"\nERROR: release.py not found at {release_script}", file=sys.stderr)
+                sys.exit(1)
+
+            release_cmd = [sys.executable, str(release_script)]
+            release_cmd.extend(["-m", f"chore: update {exported} language pack(s) with LLM-translated strings"])
+            if args.major:
+                release_cmd.append("--major")
+            elif args.minor:
+                release_cmd.append("--minor")
+            else:
+                release_cmd.append("--patch")
+            if args.no_push:
+                release_cmd.append("--no-push")
+
+            print(f"\n--- Running release ---")
+            print(f"  cmd: {' '.join(release_cmd)}")
+            result = subprocess.run(release_cmd, cwd=repo)
+            if result.returncode != 0:
+                print(f"\nERROR: release.py exited with code {result.returncode}", file=sys.stderr)
+                sys.exit(result.returncode)
+        elif args.release and exported == 0:
+            print("\nNothing exported — skipping release.")
     finally:
         conn.close()
 
