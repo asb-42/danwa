@@ -300,7 +300,7 @@ export function applyEventToGraph(store, event) {
         data: { type: 'feedback', isActive: true, label: `${reason} (Retry ${iteration})` },
       });
 
-      const targetNode = graphEdges.get(toAgentId);
+      const targetNode = graphNodes.get(toAgentId);
       if (targetNode && targetNode.type === 'agent') {
         targetNode.data = { ...targetNode.data, hasFeedbackLoop: true };
       }

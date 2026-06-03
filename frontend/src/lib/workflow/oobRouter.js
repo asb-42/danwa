@@ -6,20 +6,27 @@
  * - OOB while agent runs → queued; agent gets it at next check
  * - OOB after agent done → forwarded to next agent
  * - OOB for agent that never comes → marked stale after timeout
+ *
+ * Migrated from Svelte 4 store pattern to Svelte 5 runes.
+ * Now takes the workflowStore as a parameter (no module-level store coupling).
  */
 
-import { get } from 'svelte/store';
-import { graphNodes, runtime } from './store.js';
+import { workflowStore } from './store.svelte.js';
 
 /**
  * Route an OOB input to the correct target, handling race conditions.
  *
+ * @param {import('./store.svelte.js').WorkflowStore} store
  * @param {import('./oob.js').OOBInput} oob
  * @returns {import('./oob.js').OOBTarget} Resolved target
  */
-export function routeOOB(oob) {
-  const rt = get(runtime);
-  const nodes = get(graphNodes);
+export function routeOOB(store, oob) {
+  const rt = {
+    status: store.runtimeStatus,
+    activeNodeId: store.runtimeActiveNodeId,
+    currentRound: store.runtimeCurrentRound,
+  };
+  const nodes = store.graphNodes;
 
   switch (oob.target.type) {
     case 'specific_agent': {

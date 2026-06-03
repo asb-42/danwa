@@ -5,8 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { get } from 'svelte/store';
-import { graphNodes, graphEdges, resetWorkflow } from '../../../src/lib/workflow/store.js';
+import { workflowStore, resetWorkflow } from '../../../src/lib/workflow/store.svelte.js';
 import { applyEventToGraph } from '../../../src/lib/workflow/graphReducer.js';
 
 describe('graphReducer', () => {
@@ -18,7 +17,7 @@ describe('graphReducer', () => {
 
   describe('AGENT_STARTED', () => {
     it('creates a new agent node when it does not exist', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
@@ -29,7 +28,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const nodes = get(graphNodes);
+      const nodes = workflowStore.graphNodes;
       expect(nodes.has('strategist_r1')).toBe(true);
 
       const node = nodes.get('strategist_r1');
@@ -40,31 +39,44 @@ describe('graphReducer', () => {
       expect(node.data.isActive).toBe(true);
     });
 
-    it('creates edges from input artifacts to the agent', () => {
-      applyEventToGraph({
+    it('creates edges from previous pipeline agent to this agent', () => {
+      // First, start the previous agent in the pipeline (strategist)
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
           role: 'strategist',
           round: 1,
-          inputArtifactIds: ['input'],
+          inputArtifactIds: [],
           timestamp: Date.now(),
         },
       });
 
-      const edges = get(graphEdges);
-      expect(edges.has('input->strategist_r1_0')).toBe(true);
+      // Now start critic — pipeline logic creates edge strategist_r1 → critic_r1
+      applyEventToGraph(workflowStore, {
+        type: 'AGENT_STARTED',
+        payload: {
+          agentId: 'critic_r1',
+          role: 'critic',
+          round: 1,
+          inputArtifactIds: [],
+          timestamp: Date.now(),
+        },
+      });
 
-      const edge = edges.get('input->strategist_r1_0');
-      expect(edge.source).toBe('input');
-      expect(edge.target).toBe('strategist_r1');
+      const edges = workflowStore.graphEdges;
+      expect(edges.has('strategist_r1->critic_r1')).toBe(true);
+
+      const edge = edges.get('strategist_r1->critic_r1');
+      expect(edge.source).toBe('strategist_r1');
+      expect(edge.target).toBe('critic_r1');
       expect(edge.type).toBe('flow');
       expect(edge.data.isActive).toBe(true);
     });
 
     it('reactivates an existing agent node (retry/loop scenario)', () => {
       // First start
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'critic_r1',
@@ -76,13 +88,13 @@ describe('graphReducer', () => {
       });
 
       // Mark as completed
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_COMPLETED',
         payload: { agentId: 'critic_r1', role: 'critic', round: 1 },
       });
 
       // Restart (retry)
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'critic_r1',
@@ -93,13 +105,27 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('critic_r1');
+      const node = workflowStore.graphNodes.get('critic_r1');
       expect(node.data.status).toBe('active');
       expect(node.data.isActive).toBe(true);
     });
 
-    it('creates multiple edges for multiple input artifacts', () => {
-      applyEventToGraph({
+    it('creates a single pipeline edge from previous agent', () => {
+      // Pipeline logic creates exactly one edge per AGENT_STARTED, not per input artifact
+      // Start strategist first to seed the pipeline
+      applyEventToGraph(workflowStore, {
+        type: 'AGENT_STARTED',
+        payload: {
+          agentId: 'strategist_r1',
+          role: 'strategist',
+          round: 1,
+          inputArtifactIds: [],
+          timestamp: Date.now(),
+        },
+      });
+
+      // Start critic with multiple inputArtifactIds — only one edge should be created
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'critic_r1',
@@ -110,9 +136,9 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
-      expect(edges.has('strategist_output_r1->critic_r1_0')).toBe(true);
-      expect(edges.has('extra_input->critic_r1_1')).toBe(true);
+      const edges = workflowStore.graphEdges;
+      expect(edges.size).toBe(1);
+      expect(edges.has('strategist_r1->critic_r1')).toBe(true);
     });
   });
 
@@ -121,7 +147,7 @@ describe('graphReducer', () => {
   describe('AGENT_COMPLETED', () => {
     it('sets agent node status to completed and inactive', () => {
       // First create the node
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
@@ -132,7 +158,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_COMPLETED',
         payload: {
           agentId: 'strategist_r1',
@@ -143,41 +169,53 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('strategist_r1');
+      const node = workflowStore.graphNodes.get('strategist_r1');
       expect(node.data.status).toBe('completed');
       expect(node.data.isActive).toBe(false);
     });
 
     it('deactivates incoming edges', () => {
-      applyEventToGraph({
+      // Set up a pipeline: strategist → critic
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
           role: 'strategist',
           round: 1,
-          inputArtifactIds: ['input'],
+          inputArtifactIds: [],
           timestamp: Date.now(),
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
+        type: 'AGENT_STARTED',
+        payload: {
+          agentId: 'critic_r1',
+          role: 'critic',
+          round: 1,
+          inputArtifactIds: [],
+          timestamp: Date.now(),
+        },
+      });
+
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_COMPLETED',
         payload: {
-          agentId: 'strategist_r1',
-          role: 'strategist',
+          agentId: 'critic_r1',
+          role: 'critic',
           round: 1,
-          outputArtifactId: 'strategy_r1',
+          outputArtifactId: 'critique_r1',
           durationMs: 5000,
         },
       });
 
-      const edge = get(graphEdges).get('input->strategist_r1_0');
+      const edge = workflowStore.graphEdges.get('strategist_r1->critic_r1');
       expect(edge.data.isActive).toBe(false);
     });
 
     it('does not throw if agent node does not exist', () => {
       expect(() => {
-        applyEventToGraph({
+        applyEventToGraph(workflowStore, {
           type: 'AGENT_COMPLETED',
           payload: {
             agentId: 'nonexistent',
@@ -195,7 +233,7 @@ describe('graphReducer', () => {
 
   describe('ARTIFACT_PRODUCED', () => {
     it('creates an artifact node', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'ARTIFACT_PRODUCED',
         payload: {
           artifactId: 'strategy_r1',
@@ -207,7 +245,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const nodes = get(graphNodes);
+      const nodes = workflowStore.graphNodes;
       expect(nodes.has('strategy_r1')).toBe(true);
 
       const node = nodes.get('strategy_r1');
@@ -219,7 +257,7 @@ describe('graphReducer', () => {
     });
 
     it('creates an edge from producer agent to artifact', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'ARTIFACT_PRODUCED',
         payload: {
           artifactId: 'strategy_r1',
@@ -231,7 +269,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
+      const edges = workflowStore.graphEdges;
       expect(edges.has('strategist_r1->strategy_r1')).toBe(true);
 
       const edge = edges.get('strategist_r1->strategy_r1');
@@ -245,7 +283,7 @@ describe('graphReducer', () => {
 
   describe('USER_CLARIFICATION_REQUESTED', () => {
     it('creates a user_action node with blocking status', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_CLARIFICATION_REQUESTED',
         payload: {
           requestId: 'req_001',
@@ -257,7 +295,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const nodes = get(graphNodes);
+      const nodes = workflowStore.graphNodes;
       expect(nodes.has('user_action_req_001')).toBe(true);
 
       const node = nodes.get('user_action_req_001');
@@ -268,7 +306,7 @@ describe('graphReducer', () => {
     });
 
     it('creates request and response edges', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_CLARIFICATION_REQUESTED',
         payload: {
           requestId: 'req_001',
@@ -280,7 +318,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
+      const edges = workflowStore.graphEdges;
       // Request edge: Agent → User
       expect(edges.has('critic_r1->user_action_req_001')).toBe(true);
       const reqEdge = edges.get('critic_r1->user_action_req_001');
@@ -300,7 +338,7 @@ describe('graphReducer', () => {
   describe('USER_CLARIFICATION_RECEIVED', () => {
     it('sets user node status to resolved', () => {
       // First create the request
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_CLARIFICATION_REQUESTED',
         payload: {
           requestId: 'req_001',
@@ -312,7 +350,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_CLARIFICATION_RECEIVED',
         payload: {
           requestId: 'req_001',
@@ -322,12 +360,12 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('user_action_req_001');
+      const node = workflowStore.graphNodes.get('user_action_req_001');
       expect(node.data.status).toBe('resolved');
     });
 
     it('deactivates request edge and activates response edge', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_CLARIFICATION_REQUESTED',
         payload: {
           requestId: 'req_001',
@@ -339,7 +377,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_CLARIFICATION_RECEIVED',
         payload: {
           requestId: 'req_001',
@@ -349,7 +387,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
+      const edges = workflowStore.graphEdges;
       const reqEdge = edges.get('critic_r1->user_action_req_001');
       expect(reqEdge.data.isActive).toBe(false);
 
@@ -362,7 +400,7 @@ describe('graphReducer', () => {
 
   describe('FEEDBACK_LOOP_INITIATED', () => {
     it('creates a feedback edge between agents', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'FEEDBACK_LOOP_INITIATED',
         payload: {
           loopId: 'loop_001',
@@ -374,7 +412,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
+      const edges = workflowStore.graphEdges;
       expect(edges.has('feedback_loop_001_1')).toBe(true);
 
       const edge = edges.get('feedback_loop_001_1');
@@ -387,7 +425,7 @@ describe('graphReducer', () => {
 
     it('marks target agent node with hasFeedbackLoop', () => {
       // Create the target agent first
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
@@ -398,7 +436,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'FEEDBACK_LOOP_INITIATED',
         payload: {
           loopId: 'loop_001',
@@ -410,7 +448,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('strategist_r1');
+      const node = workflowStore.graphNodes.get('strategist_r1');
       expect(node.data.hasFeedbackLoop).toBe(true);
     });
   });
@@ -419,7 +457,7 @@ describe('graphReducer', () => {
 
   describe('USER_OUT_OF_BAND_INPUT', () => {
     it('creates a side-input user_action node', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_OUT_OF_BAND_INPUT',
         payload: {
           inputId: 'oob_001',
@@ -429,7 +467,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const nodes = get(graphNodes);
+      const nodes = workflowStore.graphNodes;
       expect(nodes.has('side_input_oob_001')).toBe(true);
 
       const node = nodes.get('side_input_oob_001');
@@ -441,7 +479,7 @@ describe('graphReducer', () => {
 
     it('truncates long content in label', () => {
       const longContent = 'A'.repeat(100);
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_OUT_OF_BAND_INPUT',
         payload: {
           inputId: 'oob_002',
@@ -451,13 +489,13 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('side_input_oob_002');
+      const node = workflowStore.graphNodes.get('side_input_oob_002');
       expect(node.data.label.length).toBeLessThanOrEqual(43); // 40 + '...'
       expect(node.data.label).toContain('...');
     });
 
     it('creates placeholder when target agent does not exist', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_OUT_OF_BAND_INPUT',
         payload: {
           inputId: 'oob_003',
@@ -467,14 +505,14 @@ describe('graphReducer', () => {
         },
       });
 
-      const nodes = get(graphNodes);
+      const nodes = workflowStore.graphNodes;
       expect(nodes.has('pending_target_future_agent')).toBe(true);
       expect(nodes.get('pending_target_future_agent').type).toBe('placeholder');
     });
 
     it('creates OOB edge to existing target agent', () => {
       // Create target agent first
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
@@ -485,7 +523,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_OUT_OF_BAND_INPUT',
         payload: {
           inputId: 'oob_004',
@@ -495,7 +533,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
+      const edges = workflowStore.graphEdges;
       const edgeId = 'side_input_oob_004->strategist_r1';
       expect(edges.has(edgeId)).toBe(true);
 
@@ -510,7 +548,7 @@ describe('graphReducer', () => {
   describe('OOB_CONSUMED', () => {
     it('deactivates and marks OOB edges as consumed', () => {
       // Create agent and OOB
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'AGENT_STARTED',
         payload: {
           agentId: 'strategist_r1',
@@ -521,7 +559,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'USER_OUT_OF_BAND_INPUT',
         payload: {
           inputId: 'oob_001',
@@ -531,7 +569,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'OOB_CONSUMED',
         payload: {
           oobIds: ['oob_001'],
@@ -539,7 +577,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const edges = get(graphEdges);
+      const edges = workflowStore.graphEdges;
       const edge = edges.get('side_input_oob_001->strategist_r1');
       expect(edge.data.isActive).toBe(false);
       expect(edge.data.isConsumed).toBe(true);
@@ -550,7 +588,7 @@ describe('graphReducer', () => {
 
   describe('ROUND_COMPLETED', () => {
     it('marks artifacts from the round as final', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'ARTIFACT_PRODUCED',
         payload: {
           artifactId: 'strategy_r1',
@@ -562,7 +600,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'ROUND_COMPLETED',
         payload: {
           round: 1,
@@ -571,12 +609,12 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('strategy_r1');
+      const node = workflowStore.graphNodes.get('strategy_r1');
       expect(node.data.status).toBe('final');
     });
 
     it('does not affect artifacts from other rounds', () => {
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'ARTIFACT_PRODUCED',
         payload: {
           artifactId: 'strategy_r2',
@@ -588,7 +626,7 @@ describe('graphReducer', () => {
         },
       });
 
-      applyEventToGraph({
+      applyEventToGraph(workflowStore, {
         type: 'ROUND_COMPLETED',
         payload: {
           round: 1,
@@ -597,7 +635,7 @@ describe('graphReducer', () => {
         },
       });
 
-      const node = get(graphNodes).get('strategy_r2');
+      const node = workflowStore.graphNodes.get('strategy_r2');
       expect(node.data.status).toBe('draft');
     });
   });
@@ -607,7 +645,7 @@ describe('graphReducer', () => {
   describe('unknown event type', () => {
     it('does not throw for unknown event types', () => {
       expect(() => {
-        applyEventToGraph({
+        applyEventToGraph(workflowStore, {
           type: 'UNKNOWN_EVENT',
           payload: {},
         });

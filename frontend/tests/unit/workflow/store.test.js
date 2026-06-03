@@ -3,23 +3,12 @@
  *
  * Tests the dispatchEvent entry point, resetWorkflow, derived stores,
  * and the snapshot system.
+ *
+ * Migrated to Svelte 5 runes (workflowStore.X) from Svelte 4 stores.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { get } from 'svelte/store';
-import {
-  graphNodes,
-  graphEdges,
-  runtime,
-  roundSnapshots,
-  eventLog,
-  oobQueue,
-  flowNodes,
-  flowEdges,
-  pendingOOBCount,
-  dispatchEvent,
-  resetWorkflow,
-} from '../../../src/lib/workflow/store.js';
+import { workflowStore, dispatchEvent, resetWorkflow } from '../../../src/lib/workflow/store.svelte.js';
 
 describe('Workflow Store — dispatchEvent integration', () => {
   beforeEach(() => {
@@ -39,7 +28,7 @@ describe('Workflow Store — dispatchEvent integration', () => {
         },
       });
 
-      const log = get(eventLog);
+      const log = workflowStore.eventLog;
       expect(log).toHaveLength(1);
       expect(log[0].type).toBe('AGENT_STARTED');
     });
@@ -67,7 +56,7 @@ describe('Workflow Store — dispatchEvent integration', () => {
         },
       });
 
-      const log = get(eventLog);
+      const log = workflowStore.eventLog;
       expect(log).toHaveLength(2);
     });
 
@@ -83,8 +72,7 @@ describe('Workflow Store — dispatchEvent integration', () => {
         },
       });
 
-      const nodes = get(graphNodes);
-      expect(nodes.has('strategist_r1')).toBe(true);
+      expect(workflowStore.graphNodes.has('strategist_r1')).toBe(true);
     });
 
     it('updates runtime via runtimeReducer', () => {
@@ -99,13 +87,11 @@ describe('Workflow Store — dispatchEvent integration', () => {
         },
       });
 
-      const rt = get(runtime);
-      expect(rt.status).toBe('running');
-      expect(rt.activeNodeId).toBe('strategist_r1');
+      expect(workflowStore.runtimeStatus).toBe('running');
+      expect(workflowStore.runtimeActiveNodeId).toBe('strategist_r1');
     });
 
     it('creates snapshot on ROUND_COMPLETED', () => {
-      // Set up some graph state first
       dispatchEvent({
         type: 'ARTIFACT_PRODUCED',
         payload: {
@@ -127,7 +113,7 @@ describe('Workflow Store — dispatchEvent integration', () => {
         },
       });
 
-      const snaps = get(roundSnapshots);
+      const snaps = workflowStore.roundSnapshots;
       expect(snaps).toHaveLength(1);
       expect(snaps[0].round).toBe(1);
       expect(snaps[0].title).toBe('Round 1');
@@ -138,7 +124,6 @@ describe('Workflow Store — dispatchEvent integration', () => {
 
   describe('resetWorkflow', () => {
     it('clears all stores to initial state', () => {
-      // Populate stores
       dispatchEvent({
         type: 'AGENT_STARTED',
         payload: {
@@ -159,17 +144,16 @@ describe('Workflow Store — dispatchEvent integration', () => {
         },
       });
 
-      // Reset
       resetWorkflow();
 
-      expect(get(graphNodes).size).toBe(0);
-      expect(get(graphEdges).size).toBe(0);
-      expect(get(runtime).status).toBe('idle');
-      expect(get(runtime).currentRound).toBe(0);
-      expect(get(runtime).activeNodeId).toBeNull();
-      expect(get(roundSnapshots)).toHaveLength(0);
-      expect(get(eventLog)).toHaveLength(0);
-      expect(get(oobQueue).items).toHaveLength(0);
+      expect(workflowStore.graphNodes.size).toBe(0);
+      expect(workflowStore.graphEdges.size).toBe(0);
+      expect(workflowStore.runtimeStatus).toBe('idle');
+      expect(workflowStore.runtimeCurrentRound).toBe(0);
+      expect(workflowStore.runtimeActiveNodeId).toBeNull();
+      expect(workflowStore.roundSnapshots).toHaveLength(0);
+      expect(workflowStore.eventLog).toHaveLength(0);
+      expect(workflowStore.oobQueueItems).toHaveLength(0);
     });
   });
 
@@ -187,7 +171,7 @@ describe('Workflow Store — dispatchEvent integration', () => {
           },
         });
 
-        const nodes = get(flowNodes);
+        const nodes = workflowStore.flowNodes;
         expect(nodes).toHaveLength(1);
         expect(nodes[0].id).toBe('strategist_r1');
         expect(nodes[0].type).toBe('agent');
@@ -207,25 +191,36 @@ describe('Workflow Store — dispatchEvent integration', () => {
           },
         });
 
-        const nodes = get(flowNodes);
+        const nodes = workflowStore.flowNodes;
         expect(nodes[0].data.isActive).toBe(true);
       });
     });
 
     describe('flowEdges', () => {
       it('converts graphEdges to Svelte Flow format', () => {
+        // Need an input node first so pipeline-based edge gets created
+        dispatchEvent({
+          type: 'AGENT_STARTED',
+          payload: {
+            agentId: 'input',
+            role: 'input',
+            round: 0,
+            inputArtifactIds: [],
+            timestamp: Date.now(),
+          },
+        });
         dispatchEvent({
           type: 'AGENT_STARTED',
           payload: {
             agentId: 'strategist_r1',
             role: 'strategist',
             round: 1,
-            inputArtifactIds: ['input'],
+            inputArtifactIds: [],
             timestamp: Date.now(),
           },
         });
 
-        const edges = get(flowEdges);
+        const edges = workflowStore.flowEdges;
         expect(edges.length).toBeGreaterThan(0);
         expect(edges[0].source).toBeDefined();
         expect(edges[0].target).toBeDefined();
@@ -235,17 +230,13 @@ describe('Workflow Store — dispatchEvent integration', () => {
 
     describe('pendingOOBCount', () => {
       it('counts pending OOB items', () => {
-        // Directly manipulate the store for this test
-        oobQueue.update(q => {
-          q.items.push(
-            { id: '1', status: 'pending' },
-            { id: '2', status: 'consumed' },
-            { id: '3', status: 'pending' }
-          );
-          return q;
-        });
+        workflowStore.oobQueueItems.push(
+          { id: '1', status: 'pending' },
+          { id: '2', status: 'consumed' },
+          { id: '3', status: 'pending' }
+        );
 
-        expect(get(pendingOOBCount)).toBe(2);
+        expect(workflowStore.pendingOOBCount).toBe(2);
       });
     });
   });
@@ -277,7 +268,7 @@ describe('Snapshot System', () => {
       },
     });
 
-    const snaps = get(roundSnapshots);
+    const snaps = workflowStore.roundSnapshots;
     const snapshotNode = snaps[0].nodes.find(n => n.id === 'strategist_r1');
     expect(snapshotNode.data.isActive).toBe(false);
     expect(snapshotNode.data.status).toBe('completed');
@@ -287,10 +278,20 @@ describe('Snapshot System', () => {
     dispatchEvent({
       type: 'AGENT_STARTED',
       payload: {
+        agentId: 'input',
+        role: 'input',
+        round: 0,
+        inputArtifactIds: [],
+        timestamp: Date.now(),
+      },
+    });
+    dispatchEvent({
+      type: 'AGENT_STARTED',
+      payload: {
         agentId: 'strategist_r1',
         role: 'strategist',
         round: 1,
-        inputArtifactIds: ['input'],
+        inputArtifactIds: [],
         timestamp: Date.now(),
       },
     });
@@ -304,7 +305,7 @@ describe('Snapshot System', () => {
       },
     });
 
-    const snaps = get(roundSnapshots);
+    const snaps = workflowStore.roundSnapshots;
     snaps[0].edges.forEach(edge => {
       expect(edge.data.isActive).toBe(false);
     });
@@ -331,24 +332,21 @@ describe('Snapshot System', () => {
       },
     });
 
-    const rt = get(runtime);
-    expect(rt.executionPath).toEqual([]);
+    expect(workflowStore.runtimeExecutionPath).toEqual([]);
   });
 
   it('accumulates multiple round snapshots', () => {
-    // Round 1
     dispatchEvent({
       type: 'ROUND_COMPLETED',
       payload: { round: 1, finalArtifactId: 'c1', pathTaken: [] },
     });
 
-    // Round 2
     dispatchEvent({
       type: 'ROUND_COMPLETED',
       payload: { round: 2, finalArtifactId: 'c2', pathTaken: [] },
     });
 
-    const snaps = get(roundSnapshots);
+    const snaps = workflowStore.roundSnapshots;
     expect(snaps).toHaveLength(2);
     expect(snaps[0].round).toBe(1);
     expect(snaps[1].round).toBe(2);

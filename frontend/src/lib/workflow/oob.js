@@ -115,11 +115,16 @@ export function consumeOOBForAgent(store, agentRole, round) {
  * @param {string} agentId
  */
 export function markOOBConsumed(store, oobId, agentId) {
+  const updated = { status: 'consumed', consumedBy: agentId, consumedAt: Date.now() };
   store.oobQueueItems = store.oobQueueItems.map(o =>
-    o.id === oobId
-      ? { ...o, status: 'consumed', consumedBy: agentId, consumedAt: Date.now() }
-      : o
+    o.id === oobId ? { ...o, ...updated } : o
   );
+  // Sync the index so consumed items are filtered out by consumeOOBForAgent
+  const newIndex = new Map(store.oobQueueIndexByTarget);
+  for (const [key, items] of newIndex) {
+    newIndex.set(key, items.map(o => o.id === oobId ? { ...o, ...updated } : o));
+  }
+  store.oobQueueIndexByTarget = newIndex;
 }
 
 /**
