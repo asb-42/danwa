@@ -376,7 +376,7 @@
           class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm resize-y"
         ></textarea>
         {#if partialText}
-          <p class="mt-1 text-xs text-gray-400 italic">🎙️ {partialText}</p>
+          <p class="mt-1 text-xs text-gray-500 italic">🎙️ {partialText}</p>
         {/if}
         <!-- STT Microphone button (bottom-right of textarea) -->
         <div class="absolute bottom-3 right-3">

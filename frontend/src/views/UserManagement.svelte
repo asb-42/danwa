@@ -19,6 +19,7 @@
   let inviteRole = $state('viewer');
   let inviting = $state(false);
   let inviteError = $state('');
+  let showPassword = $state(false);
 
   // Delete confirm
   let deleteTarget = $state(null);
@@ -109,11 +110,12 @@
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('users.invite')}</h3>
       <form onsubmit={handleInvite} class="space-y-4">
         {#if inviteError}
-          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-red-700 dark:text-red-300 text-sm">{inviteError}</div>
+          <div id="invite-error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-red-700 dark:text-red-300 text-sm" role="alert">{inviteError}</div>
         {/if}
         <div>
           <label for="invite-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.email')}</label>
           <input id="invite-email" type="email" bind:value={inviteEmail} placeholder={t('users.inviteEmail')} required
+            aria-invalid={!!inviteError} aria-describedby={inviteError ? 'invite-error' : null}
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
         </div>
         <div>
@@ -123,8 +125,18 @@
         </div>
         <div>
           <label for="invite-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('auth.password')}</label>
-          <input id="invite-password" type="password" bind:value={invitePassword} placeholder={t('auth.passwordPlaceholderRegister')} required minlength="8"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          <div class="relative">
+            <input id="invite-password" type={showPassword ? 'text' : 'password'} bind:value={invitePassword} placeholder={t('auth.passwordPlaceholderRegister')} required minlength="8"
+              aria-invalid={!!inviteError} aria-describedby={inviteError ? 'invite-error' : null}
+              class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+            <button type="button"
+              class="absolute inset-y-0 right-0 px-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              onclick={() => showPassword = !showPassword}
+              aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+              aria-pressed={showPassword}>
+              {showPassword ? '🙈' : '👁'}
+            </button>
+          </div>
         </div>
         <div>
           <label for="invite-role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('users.inviteRole')}</label>
@@ -194,7 +206,7 @@
               </td>
               <td class="px-4 py-3 text-right">
                 {#if isAdmin && user.id !== $currentUser?.id}
-                  <button class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors" onclick={() => confirmDelete(user)}>
+                  <button class="text-xs px-2 py-1 min-h-[32px] min-w-[64px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors" onclick={() => confirmDelete(user)}>
                     {t('users.remove')}
                   </button>
                 {/if}

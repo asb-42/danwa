@@ -12,6 +12,7 @@
   let displayName = $state('');
   let password = $state('');
   let confirmPassword = $state('');
+  let showPassword = $state(false);
   let isRegisterMode = $state(false);
   let error = $state('');
   let loading = $state(false);
@@ -94,15 +95,24 @@
 
       <div class="form-group">
         <label for="password">{t('auth.password')}</label>
-        <input
-          id="password"
-          type="password"
-          bind:value={password}
-          placeholder={isRegisterMode ? t('auth.passwordPlaceholderRegister') : t('auth.passwordPlaceholderLogin')}
-          required
-          minlength="8"
-          autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
-        />
+        <div class="password-input-wrapper">
+          <input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            bind:value={password}
+            placeholder={isRegisterMode ? t('auth.passwordPlaceholderRegister') : t('auth.passwordPlaceholderLogin')}
+            required
+            minlength="8"
+            autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            onclick={() => showPassword = !showPassword}
+            aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+            aria-pressed={showPassword}
+          >{showPassword ? '🙈' : '👁'}</button>
+        </div>
       </div>
 
       {#if isRegisterMode}
@@ -110,7 +120,7 @@
           <label for="confirmPassword">{t('auth.confirmPassword')}</label>
           <input
             id="confirmPassword"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             bind:value={confirmPassword}
             placeholder={t('auth.confirmPasswordPlaceholder')}
             required
@@ -208,6 +218,32 @@
     outline: none;
     border-color: var(--color-primary, #3b82f6);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  .password-input-wrapper {
+    position: relative;
+  }
+
+  .password-input-wrapper input {
+    padding-right: 2.5rem;
+  }
+
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.25rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--color-text-secondary, #6b7280);
+    line-height: 1;
+  }
+
+  .password-toggle:hover {
+    color: var(--color-text, #1a1a1a);
   }
 
   .btn-primary {

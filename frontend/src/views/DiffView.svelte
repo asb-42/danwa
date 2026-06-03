@@ -110,8 +110,8 @@
           class:selected={selectedNodeId === pair.nodeId}
           role="button"
           tabindex="0"
-          click={() => onNodeClick(pair.nodeId)}
-          keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(pair.nodeId); }}
+          onclick={() => onNodeClick(pair.nodeId)}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNodeClick(pair.nodeId); } }}
         >
           <span class="node-id">{pair.nodeId}</span>
           {#if pair.entryA && pair.entryB}

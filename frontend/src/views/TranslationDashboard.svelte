@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { LOCALE_NAMES } from '../lib/i18n/config.js';
   import { addToast } from '../lib/stores.js';
@@ -51,6 +51,16 @@
   let newLocaleName = $state('');
   let newLocaleRtl = $state(false);
   let addingLocale = $state(false);
+
+  // Autofocus the code input when the Add Locale dialog opens
+  $effect(() => {
+    if (addLocaleOpen) {
+      tick().then(() => {
+        const el = document.getElementById('add-locale-code');
+        if (el) el.focus();
+      });
+    }
+  });
   let addLocaleError = $state('');
 
   let pendingWipeLocale = $state(null);
@@ -580,18 +590,21 @@
       </h3>
       <div class="space-y-4">
         {#if addLocaleError}
-          <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+          <div id="add-locale-error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300" role="alert">
             {addLocaleError}
           </div>
         {/if}
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label for="add-locale-code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {t('translation.localeCode')} <span class="text-red-500">*</span>
           </label>
           <input
+            id="add-locale-code"
             type="text"
             bind:value={newLocaleCode}
             placeholder="e.g. nl, pl, tr"
+            aria-invalid={!!addLocaleError}
+            aria-describedby={addLocaleError ? 'add-locale-error' : null}
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
             onkeydown={(e) => { if (e.key === 'Enter') addLocale(); }}
           />

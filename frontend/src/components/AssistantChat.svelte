@@ -557,6 +557,7 @@
     height: 10px;
     background: transparent;
     cursor: ns-resize;
+    touch-action: none;
     transition: background 0.2s;
     z-index: 10;
   }
@@ -573,6 +574,7 @@
     width: 4px;
     background: transparent;
     cursor: ew-resize;
+    touch-action: none;
     transition: background 0.2s;
     z-index: 10;
   }
@@ -600,6 +602,7 @@
     height: 4px;
     background: transparent;
     cursor: ns-resize;
+    touch-action: none;
     transition: background 0.2s;
     z-index: 10;
   }

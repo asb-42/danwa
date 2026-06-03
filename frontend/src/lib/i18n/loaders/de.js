@@ -1030,6 +1030,8 @@ export default {
   'auth.displayNamePlaceholder': 'Dein Name',
   'auth.password': 'Passwort',
   'auth.passwordPlaceholderLogin': 'Dein Passwort',
+  'auth.showPassword': 'Passwort anzeigen',
+  'auth.hidePassword': 'Passwort verbergen',
   'auth.passwordPlaceholderRegister': 'Mindestens 8 Zeichen',
   'auth.confirmPassword': 'Passwort bestätigen',
   'auth.confirmPasswordPlaceholder': 'Passwort wiederholen',

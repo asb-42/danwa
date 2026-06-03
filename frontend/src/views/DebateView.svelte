@@ -595,7 +595,7 @@
       >
         ← {t('debate.backToOverview')}
       </button>
-      <span class="text-gray-300 dark:text-gray-600">|</span>
+      <span class="text-gray-400 dark:text-gray-500" aria-hidden="true">|</span>
     {/if}
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
       {isArchiveMode ? t('debate.archiveTitle') : t('debate.title')}
