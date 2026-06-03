@@ -82,7 +82,7 @@
       placeholder={t('mvpDebate.form.topicPlaceholder')}
       bind:value={config.topic}
       disabled={isLoadingProfiles}
-      maxlength="2000"
+      maxlength="50000"
     ></textarea>
   </div>
 
@@ -127,10 +127,10 @@
   </div>
 
   <!-- DMS Document Selection -->
-  {#if documents.length > 0}
-    <div class="dms-section">
-      <div class="flex items-center justify-between mb-2">
-        <span class="form-label">{t('mvpDebate.form.dmsDocuments')}</span>
+  <div class="dms-section">
+    <div class="flex items-center justify-between mb-2">
+      <span class="form-label">{t('mvpDebate.form.dmsDocuments')}</span>
+      {#if documents.length > 0}
         <div class="flex items-center gap-2">
           <button
             class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
@@ -138,7 +138,9 @@
           >{config.selectedDocumentIds.length === documents.length ? t('mvpDebate.form.deselectAll') : t('mvpDebate.form.selectAll')}</button>
           <span class="text-xs text-gray-500 dark:text-gray-400">{config.selectedDocumentIds.length} selected</span>
         </div>
-      </div>
+      {/if}
+    </div>
+    {#if documents.length > 0}
       <div class="dms-doc-list">
         {#each documents as doc (doc.id)}
           <label class="dms-doc-item">
@@ -194,8 +196,12 @@
           </div>
         {/if}
       </div>
-    </div>
-  {/if}
+    {:else}
+      <p class="text-sm text-gray-500 dark:text-gray-400 py-2">
+        {t('mvpDebate.form.noDocumentsHint')}
+      </p>
+    {/if}
+  </div>
 
   <!-- Extension / Extra Rounds -->
   <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">

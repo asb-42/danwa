@@ -74,7 +74,7 @@ class AgentOutput(BaseModel):
 class CaseInput(BaseModel):
     """The case or topic to debate."""
 
-    text: str = Field(..., min_length=1, max_length=10_000, description="Case description")
+    text: str = Field(..., min_length=1, max_length=50_000, description="Case description")
     project_id: str | None = None
 
 

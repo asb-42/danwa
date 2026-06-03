@@ -1131,6 +1131,7 @@ export default {
   'mvpDebate.form.includePreviousDebates': 'Include previous debate results',
   'mvpDebate.form.loadingDebates': 'Loading debates…',
   'mvpDebate.form.noCompletedDebates': 'No completed debates found in this project.',
+  'mvpDebate.form.noDocumentsHint': 'No documents available. Upload documents to the DMS first to include them as RAG context in the debate.',
   'mvpDebate.form.selectedOfTotal': '{selected} of {total} selected',
   'mvpDebate.form.llmProfile': 'LLM Profile',
   'mvpDebate.form.loadingProfiles': 'Loading profiles…',
