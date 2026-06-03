@@ -227,7 +227,7 @@ def main() -> None:
             if args.no_push:
                 release_cmd.append("--no-push")
 
-            print(f"\n--- Running release ---")
+            print("\n--- Running release ---")
             print(f"  cmd: {' '.join(release_cmd)}")
             result = subprocess.run(release_cmd, cwd=repo)
             if result.returncode != 0:
