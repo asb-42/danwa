@@ -473,12 +473,13 @@ class UITranslationService:
                 bundle_keys = set(bundled[locale].keys())
                 translated = len(bundle_keys & en_keys)
             else:
-                # Merge translations from ALL langpack:* namespaces for this locale
-                # (module translations are stored as langpack:{module_id}, not "global")
-                db_translations = self.resolve_bulk_for_locale(locale)
-                if not db_translations:
-                    # Fallback to global namespace for manually translated locales
-                    db_translations = self.get_translations_bulk(locale, namespace)
+                # Merge global + all langpack:* namespaces so both
+                # module-installed and LLM-translated strings are counted
+                db_translations = self.get_translations_bulk(locale, namespace)
+                langpack = self.resolve_bulk_for_locale(locale)
+                for k, v in langpack.items():
+                    if v and (k not in db_translations or not db_translations[k]):
+                        db_translations[k] = v
                 db_keys = {k for k, v in db_translations.items() if v}
                 translated = len(db_keys & en_keys)
             coverage = translated / len(en_keys) * 100
