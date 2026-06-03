@@ -60,8 +60,16 @@
 
   /** Merge local modules with remote repo modules for the current category */
   const mergedModules = $derived.by(() => {
+    // Deduplicate modules by module_id (keep first occurrence)
+    const seen = new Set();
+    const uniqueModules = modules.filter(m => {
+      if (seen.has(m.module_id)) return false;
+      seen.add(m.module_id);
+      return true;
+    });
+
     const localByType = {};
-    for (const m of modules) {
+    for (const m of uniqueModules) {
       const cat = m.category || 'other';
       if (!localByType[cat]) localByType[cat] = [];
       localByType[cat].push(m);
@@ -106,8 +114,8 @@
       return result;
     }
 
-    // No filter: show all local grouped by category
-    return modules;
+    // No filter: show all local (deduplicated)
+    return uniqueModules;
   });
 
   // --- Lifecycle ---
