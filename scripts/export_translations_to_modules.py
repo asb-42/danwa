@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sqlite3
 import sys
 from datetime import UTC, datetime
@@ -29,6 +30,21 @@ DEFAULT_REPO = ROOT.parent / "danwa-modules"
 
 # Locate the UI i18n database (matches backend/modules/installer.py)
 UI_I18N_DB = ROOT / "data" / "i18n" / "ui_translations.db"
+
+
+def bump_patch_version(version: str) -> str:
+    """Bump the patch component of a semver string.
+
+    >>> bump_patch_version("1.0.0")
+    '1.0.1'
+    >>> bump_patch_version("2.3.9")
+    '2.3.10'
+    """
+    match = re.match(r"^(\d+)\.(\d+)\.(\d+)$", version.lstrip("v"))
+    if not match:
+        return version  # fallback: return as-is
+    major, minor, patch = int(match[1]), int(match[2]), int(match[3])
+    return f"{major}.{minor}.{patch + 1}"
 
 
 def sha256_file(path: Path) -> str:
@@ -167,10 +183,14 @@ def main() -> None:
                 encoding="utf-8",
             )
 
-            # Update manifest.json checksum and timestamp
+            # Update manifest.json: bump version, checksum, string_count, timestamp
+            version_info = ""
             if manifest_path.exists():
                 try:
                     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    old_version = manifest.get("version", "1.0.0")
+                    new_version = bump_patch_version(old_version)
+                    manifest["version"] = new_version
                     manifest["checksum"] = sha256_file(ui_strings_path)
                     manifest["string_count"] = len(merged)
                     manifest["updated_at"] = datetime.now(UTC).isoformat()
@@ -178,10 +198,11 @@ def main() -> None:
                         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
                         encoding="utf-8",
                     )
+                    version_info = f" (v{old_version} → v{new_version})"
                 except (json.JSONDecodeError, OSError) as exc:
                     print(f"  WARNING: Could not update manifest for {locale}: {exc}")
 
-            print(f"  {locale}: exported {len(merged)} strings → {module_dir.relative_to(repo)}")
+            print(f"  {locale}: exported {len(merged)} strings → {module_dir.relative_to(repo)}{version_info}")
             exported += 1
 
         print(f"\nDone! {exported} locale(s) exported.")
