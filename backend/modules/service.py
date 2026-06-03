@@ -309,13 +309,16 @@ class ModuleService:
             if target.get("type") == "language-pack":
                 logger.warning(
                     "Download failed for language-pack %s (%s), falling back to DB install",
-                    module_id, download_err,
+                    module_id,
+                    download_err,
                 )
                 return self._install_langpack_from_db(module_id, target)
             raise
 
     def _install_langpack_from_db(
-        self, module_id: str, target: dict,
+        self,
+        module_id: str,
+        target: dict,
     ) -> InstallationReport:
         """Create a language-pack module directory from DB translations.
 
@@ -372,10 +375,12 @@ class ModuleService:
         }
 
         (module_dir / "manifest.json").write_text(
-            json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8",
+            json.dumps(manifest, indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
         (module_dir / "ui_strings.json").write_text(
-            json.dumps(ui_strings, indent=2, ensure_ascii=False), encoding="utf-8",
+            json.dumps(ui_strings, indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
 
         logger.info("Language-pack %s installed from DB (%d keys)", module_id, len(ui_strings))

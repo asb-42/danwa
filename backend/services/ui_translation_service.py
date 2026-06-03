@@ -94,8 +94,19 @@ DEFAULT_LOCALES = ["en"]
 # Used by bootstrap_core_locales() to migrate existing translations
 # to langpack namespace on first startup after upgrade.
 CORE_LOCALES = [
-    "de", "fr", "es", "it", "pt", "ru",
-    "zh", "ja", "ko", "sv", "el", "ar", "he",
+    "de",
+    "fr",
+    "es",
+    "it",
+    "pt",
+    "ru",
+    "zh",
+    "ja",
+    "ko",
+    "sv",
+    "el",
+    "ar",
+    "he",
 ]
 
 LOCALE_NAMES: dict[str, str] = {
@@ -950,8 +961,7 @@ class UITranslationService:
                             (key, locale, value, namespace, source, confidence, version, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
                         """,
-                        (row["key"], locale, row["value"], namespace,
-                         "bulk_imported", row["confidence"], now, now),
+                        (row["key"], locale, row["value"], namespace, "bulk_imported", row["confidence"], now, now),
                     )
                     ui_strings[row["key"]] = row["value"]
 
@@ -961,7 +971,9 @@ class UITranslationService:
                 migrated[locale] = len(rows)
                 logger.info(
                     "i18n bootstrap: migrated %d keys for locale '%s' → %s + created module dir",
-                    len(rows), locale, namespace,
+                    len(rows),
+                    locale,
+                    namespace,
                 )
 
             # Write marker so we skip on future startups
@@ -983,7 +995,11 @@ class UITranslationService:
 
     @staticmethod
     def _create_langpack_module_dir(
-        module_dir: Path, locale: str, module_id: str, ui_strings: dict[str, str], now: str,
+        module_dir: Path,
+        locale: str,
+        module_id: str,
+        ui_strings: dict[str, str],
+        now: str,
     ) -> None:
         """Create a language-pack module directory with manifest.json + ui_strings.json."""
         module_dir.mkdir(parents=True, exist_ok=True)
@@ -1007,10 +1023,12 @@ class UITranslationService:
         }
 
         (module_dir / "manifest.json").write_text(
-            json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8",
+            json.dumps(manifest, indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
         (module_dir / "ui_strings.json").write_text(
-            json.dumps(ui_strings, indent=2, ensure_ascii=False), encoding="utf-8",
+            json.dumps(ui_strings, indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
 
     def get_installed_locales(self) -> list[dict[str, Any]]:
@@ -1024,31 +1042,33 @@ class UITranslationService:
 
         # 1. Default (bundled) locales
         for loc in DEFAULT_LOCALES:
-            result.append({
-                "code": loc,
-                "name": LOCALE_NAMES.get(loc, loc),
-                "is_rtl": loc in RTL_LOCALES,
-                "source": "bundled",
-            })
+            result.append(
+                {
+                    "code": loc,
+                    "name": LOCALE_NAMES.get(loc, loc),
+                    "is_rtl": loc in RTL_LOCALES,
+                    "source": "bundled",
+                }
+            )
             seen.add(loc)
 
         # 2. Language-pack modules (have langpack:* namespace entries in DB)
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT DISTINCT locale FROM ui_translations WHERE namespace LIKE 'langpack:%'"
-        ).fetchall()
+        rows = conn.execute("SELECT DISTINCT locale FROM ui_translations WHERE namespace LIKE 'langpack:%'").fetchall()
         conn.close()
 
         for row in sorted(rows, key=lambda r: r["locale"]):
             loc = row["locale"]
             if loc in seen:
                 continue
-            result.append({
-                "code": loc,
-                "name": LOCALE_NAMES.get(loc, loc),
-                "is_rtl": loc in RTL_LOCALES,
-                "source": "langpack",
-            })
+            result.append(
+                {
+                    "code": loc,
+                    "name": LOCALE_NAMES.get(loc, loc),
+                    "is_rtl": loc in RTL_LOCALES,
+                    "source": "langpack",
+                }
+            )
             seen.add(loc)
 
         # 3. Custom registered locales
@@ -1056,12 +1076,14 @@ class UITranslationService:
             loc = custom["locale"]
             if loc in seen:
                 continue
-            result.append({
-                "code": loc,
-                "name": custom.get("name", LOCALE_NAMES.get(loc, loc)),
-                "is_rtl": custom.get("is_rtl", loc in RTL_LOCALES),
-                "source": "custom",
-            })
+            result.append(
+                {
+                    "code": loc,
+                    "name": custom.get("name", LOCALE_NAMES.get(loc, loc)),
+                    "is_rtl": custom.get("is_rtl", loc in RTL_LOCALES),
+                    "source": "custom",
+                }
+            )
             seen.add(loc)
 
         return result
