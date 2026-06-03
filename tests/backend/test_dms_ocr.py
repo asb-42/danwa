@@ -320,12 +320,11 @@ class TestDocumentProcessorEasyOCR:
         """_try_init_easyocr returns None when easyocr is not importable."""
         from backend.services.dms.document_processor import DocumentProcessor
 
-        with patch.dict(sys.modules, {"paddleocr": None, "easyocr": None}):
+        with patch.dict(sys.modules, {"paddleocr": None, "easyocr": None, "pytesseract": None}):
             processor = DocumentProcessor(config={"ocr_enabled": True})
-
-        processor._ocr = None
-        processor._ocr_engine = None
-        result = processor._try_init_easyocr()
+            processor._ocr = None
+            processor._ocr_engine = None
+            result = processor._try_init_easyocr()
 
         assert result is None
 
@@ -467,9 +466,16 @@ class TestDocumentProcessorPreferredEngine:
 
     def test_preferred_engine_tesseract_tried_first(self):
         """With ocr_preferred_engine=tesseract, Tesseract is tried before others."""
+        import types as py_types
+
         from backend.services.dms.document_processor import DocumentProcessor
 
-        processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_preferred_engine": "tesseract"})
+        pytesseract_mock = py_types.SimpleNamespace(
+            get_tesseract_version=MagicMock(return_value="5.0.0"),
+            get_languages=MagicMock(return_value=["eng", "deu", "osd"]),
+        )
+        with patch.dict(sys.modules, {"paddleocr": None, "easyocr": None, "pytesseract": pytesseract_mock}):
+            processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_preferred_engine": "tesseract"})
 
         assert processor._ocr_engine == "tesseract"
 
@@ -480,11 +486,15 @@ class TestDocumentProcessorPreferredEngine:
         from backend.services.dms.document_processor import DocumentProcessor
 
         easyocr_module = py_types.SimpleNamespace(Reader=MagicMock(side_effect=RuntimeError("init failed")))
+        pytesseract_mock = py_types.SimpleNamespace(
+            get_tesseract_version=MagicMock(return_value="5.0.0"),
+            get_languages=MagicMock(return_value=["eng", "deu", "osd"]),
+        )
 
-        with patch.dict(sys.modules, {"paddleocr": None, "easyocr": easyocr_module}):
+        with patch.dict(sys.modules, {"paddleocr": None, "easyocr": easyocr_module, "pytesseract": pytesseract_mock}):
             processor = DocumentProcessor(config={"ocr_enabled": True, "ocr_preferred_engine": "easyocr"})
 
-        # Should fall back to tesseract (since it's available in test env)
+        # Falls back to tesseract (paddleocr not available, easyocr failed)
         assert processor._ocr_engine == "tesseract"
 
     def test_preferred_engine_invalid_falls_back_to_auto(self):

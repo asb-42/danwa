@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import {
     getModules,
@@ -42,6 +42,9 @@
   let updates = $state([]);
   let updatesLoading = $state(false);
   let updatesError = $state(null);
+  let updatesChecked = $state(false);
+  let updateCheckElapsed = $state(0);
+  let updateCheckTimer = $state(null);
 
   let installingRepoMod = $state(null);
 
@@ -110,6 +113,10 @@
     await loadModules();
   });
 
+  onDestroy(() => {
+    if (updateCheckTimer) clearInterval(updateCheckTimer);
+  });
+
   async function loadModules() {
     isLoading = true;
     error = null;
@@ -137,12 +144,22 @@
   async function loadUpdates() {
     updatesLoading = true;
     updatesError = null;
+    updateCheckElapsed = 0;
+    // Start elapsed timer for user feedback
+    if (updateCheckTimer) clearInterval(updateCheckTimer);
+    updateCheckTimer = setInterval(() => { updateCheckElapsed += 1; }, 1000);
     try {
       updates = await getRepoUpdates();
+      updatesChecked = true;
     } catch (e) {
       updatesError = e.message;
+      updatesChecked = false;
     } finally {
       updatesLoading = false;
+      if (updateCheckTimer) {
+        clearInterval(updateCheckTimer);
+        updateCheckTimer = null;
+      }
     }
   }
 
@@ -434,7 +451,7 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
       {t('modules.title') || 'Modules'}
     </h2>
-    <div class="flex gap-1 bg-gray-100 dark:bg-gray-750 rounded-lg p-1">
+    <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
       {#each TABS as tab}
         <button
           class="px-4 py-1.5 text-sm rounded-md transition-colors {activeTab === tab.id
@@ -486,7 +503,7 @@
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+                    <tr class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                       <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Name</th>
                       <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Type</th>
                       <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Version</th>
@@ -620,12 +637,33 @@
       </div>
 
       {#if repoLoading}
-        <div class="flex items-center justify-center h-32">
-          <p class="text-gray-500 dark:text-gray-400">Fetching module index...</p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700">
+          <div class="flex flex-col items-center gap-4">
+            <div class="relative w-12 h-12">
+              <div class="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-600"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 animate-spin"></div>
+            </div>
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Fetching module index…</p>
+            <div class="w-48 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-600 rounded-full animate-pulse" style="width: 60%"></div>
+            </div>
+          </div>
         </div>
       {:else if repoError}
         <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
-          {repoError}
+          <div class="flex items-start gap-3">
+            <span class="text-lg">⚠️</span>
+            <div class="flex-1">
+              <p class="font-medium">Failed to fetch module index</p>
+              <p class="text-sm mt-1">{repoError}</p>
+              <button
+                class="mt-3 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                onclick={() => loadRepoIndex(true)}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       {:else if repoModules.length === 0}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 text-center">
@@ -636,7 +674,7 @@
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+                <tr class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Name</th>
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Type</th>
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Version</th>
@@ -718,23 +756,58 @@
       </div>
 
       {#if updatesLoading}
-        <div class="flex items-center justify-center h-32">
-          <p class="text-gray-500 dark:text-gray-400">Checking for updates...</p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700">
+          <div class="flex flex-col items-center gap-4">
+            <!-- Animated spinner -->
+            <div class="relative w-12 h-12">
+              <div class="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-600"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 animate-spin"></div>
+            </div>
+            <div class="text-center">
+              <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Checking for updates…</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                {#if updateCheckElapsed < 3}
+                  Contacting danwa-modules repository…
+                {:else if updateCheckElapsed < 10}
+                  Comparing installed versions… ({updateCheckElapsed}s)
+                {:else}
+                  Still working, please wait… ({updateCheckElapsed}s)
+                {/if}
+              </p>
+            </div>
+            <!-- Indeterminate progress bar -->
+            <div class="w-48 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-600 rounded-full animate-pulse" style="width: {Math.min(90, updateCheckElapsed * 10)}%"></div>
+            </div>
+          </div>
         </div>
       {:else if updatesError}
         <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
-          {updatesError}
+          <div class="flex items-start gap-3">
+            <span class="text-lg">⚠️</span>
+            <div class="flex-1">
+              <p class="font-medium">Failed to check for updates</p>
+              <p class="text-sm mt-1">{updatesError}</p>
+              <button
+                class="mt-3 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                onclick={loadUpdates}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
-      {:else if updates.length === 0}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 text-center">
-          <p class="text-gray-500 dark:text-gray-400">All modules are up to date! 🎉</p>
+      {:else if updates.length === 0 && updatesChecked}
+        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-6 border border-green-200 dark:border-green-800 text-center">
+          <p class="text-green-700 dark:text-green-300 font-medium">All modules are up to date! 🎉</p>
+          <p class="text-xs text-green-600/70 dark:text-green-400/70 mt-1">Checked against danwa-modules repository</p>
         </div>
       {:else}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+                <tr class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Module</th>
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Current</th>
                   <th class="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Available</th>
@@ -874,7 +947,7 @@
         {/if}
       </div>
 
-      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <button
           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
           onclick={closeEdit}

@@ -101,7 +101,10 @@ async def get_repo_index(
     to bypass.
     """
     svc = get_module_service()
-    return svc.fetch_repo_index(force_refresh=force_refresh)
+    try:
+        return svc.fetch_repo_index(force_refresh=force_refresh)
+    except ConnectionError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 class InstallFromRepoRequest(BaseModel):
@@ -126,6 +129,8 @@ async def install_module_from_repo(body: InstallFromRepoRequest) -> dict[str, An
         report = svc.install_from_repo(body.module_id, version=body.version)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ConnectionError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         logger.exception("Failed to install module %s from repo", body.module_id)
         raise HTTPException(status_code=500, detail=str(e))
@@ -154,7 +159,10 @@ async def check_repo_updates() -> list[dict[str, Any]]:
     download_url, checksum_sha256, name}`` dicts.
     """
     svc = get_module_service()
-    return svc.check_updates()
+    try:
+        return svc.check_updates()
+    except ConnectionError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @router.get("/{module_id}", response_model=dict[str, Any])

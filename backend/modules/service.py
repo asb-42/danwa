@@ -233,7 +233,7 @@ class ModuleService:
             return data.get("modules", [])
         except Exception as exc:
             logger.warning("Module repo index not reachable (%s): %s", repo_url, exc)
-            return []
+            raise ConnectionError(f"Module repository not reachable: {exc}") from exc
 
     def get_download_url(self, module_id: str, version: str) -> str:
         """Construct the download URL for a module release ZIP."""
