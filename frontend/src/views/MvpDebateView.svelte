@@ -34,12 +34,12 @@
     if (hitlPollTimer) { clearInterval(hitlPollTimer); hitlPollTimer = null; }
   });
 
-  const AGENTS = [
+  let AGENTS = $derived([
     { role: 'strategist', label: t('mvpDebate.agent.strategist'), icon: '🧠', color: '#3b82f6', desc: t('mvpDebate.agentDesc.strategist') },
     { role: 'critic', label: t('mvpDebate.agent.critic'), icon: '🔍', color: '#ef4444', desc: t('mvpDebate.agentDesc.critic') },
     { role: 'optimizer', label: t('mvpDebate.agent.optimizer'), icon: '⚡', color: '#10b981', desc: t('mvpDebate.agentDesc.optimizer') },
     { role: 'moderator', label: t('mvpDebate.agent.moderator'), icon: '🎯', color: '#8b5cf6', desc: t('mvpDebate.agentDesc.moderator') },
-  ];
+  ]);
 
   let config = $state({
     topic: '',
