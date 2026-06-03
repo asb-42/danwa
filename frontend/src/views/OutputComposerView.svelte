@@ -400,7 +400,7 @@
       onclick={handleGenerate}
       disabled={loading || !selectedPlugin || (!selectedSessionId && !sessionSearch.trim())}
       class="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium text-sm
-        hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        hover:bg-blue-700 disabled:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       {#if loading}
         🔄 Starting…

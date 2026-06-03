@@ -270,15 +270,15 @@
       {#if status === 'running' || status === 'paused'}
         <button
           class="px-4 py-2 text-sm rounded-lg {status === 'running'
-            ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-            : 'bg-green-600 hover:bg-green-700 text-white'} disabled:opacity-50 transition-colors"
+            ? 'bg-yellow-500 hover:bg-yellow-600 disabled:hover:bg-yellow-500 text-white'
+            : 'bg-green-600 hover:bg-green-700 disabled:hover:bg-green-600 text-white'} disabled:opacity-50 transition-colors"
           onclick={handlePauseResume}
           disabled={isPausing}
         >
           {isPausing ? '...' : status === 'running' ? '⏸ ' + (t('workflow.execution.pause') || 'Pause') : '▶ ' + (t('workflow.execution.resume') || 'Weiter')}
         </button>
         <button
-          class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 transition-colors"
+          class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 disabled:hover:bg-red-600 text-white disabled:opacity-50 transition-colors"
           onclick={handleCancel}
           disabled={isCancelling}
         >

@@ -259,7 +259,7 @@
         </div>
 
         <button
-          class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+          class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
           onclick={handlePreview}
           disabled={isPreviewing}
         >
@@ -290,7 +290,7 @@
             bind:value={bundleDescription}
           ></textarea>
           <button
-            class="w-full px-4 py-2 {savedBundleId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            class="w-full px-4 py-2 {savedBundleId ? 'bg-amber-600 hover:bg-amber-700 disabled:hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700 disabled:hover:bg-green-600'} text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
             onclick={handleSave}
             disabled={isSaving || !bundleName.trim()}
           >
@@ -326,14 +326,14 @@
           </select>
           <div class="flex gap-2">
             <button
-              class="flex-1 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+              class="flex-1 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:hover:bg-gray-600 disabled:opacity-50 text-sm font-medium"
               onclick={handleLoadBundle}
               disabled={!selectedBundleId}
             >
               Load
             </button>
             <button
-              class="flex-1 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
+              class="flex-1 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:hover:bg-amber-600 disabled:opacity-50 text-sm font-medium"
               onclick={handleExport}
               disabled={!selectedBundleId && !savedBundleId}
             >

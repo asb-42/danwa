@@ -217,7 +217,7 @@
         <button
           type="submit"
           disabled={saving || !selectedProfile || !apiKey}
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {saving ? '…' : t('byok.addKey')}

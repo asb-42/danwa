@@ -157,7 +157,7 @@
 
       {#if newTagName}
         <button
-          class="w-full text-left px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 border-t border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+          class="w-full text-left px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 border-t border-gray-200 dark:border-gray-700 hover:bg-blue-50 disabled:hover:bg-blue--50 dark:hover:bg-blue-900 disabled:hover:bg-blue-800/20 transition-colors disabled:opacity-50"
           onclick={handleCreateNew}
           disabled={isCreating}
         >

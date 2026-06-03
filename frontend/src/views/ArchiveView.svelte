@@ -415,7 +415,7 @@
                 {#if archiveConfirmId === debate.debate_id}
                   <div class="flex items-center gap-1">
                     <button
-                      class="px-2 py-1 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700
+                      class="px-2 py-1 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700 disabled:hover:bg-amber-600
                              disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       onclick={() => handleArchive(debate.debate_id)}
                       disabled={isArchiving}
@@ -462,8 +462,7 @@
 
               <!-- Move to project button -->
               {#if moveDialogDebateId === debate.debate_id}
-                <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                <div class="flex items-center gap-1" onclick={(e) => e.stopPropagation()}>
+                <div class="flex items-center gap-1">
                   <select
                     class="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white max-w-[120px]"
@@ -475,7 +474,7 @@
                     {/each}
                   </select>
                   <button
-                    class="px-2 py-1 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700
+                    class="px-2 py-1 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:hover:bg-indigo-600
                            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     onclick={() => handleMove(debate.debate_id)}
                     disabled={!targetProjectId || isMoving}
@@ -511,7 +510,7 @@
               {#if deleteConfirmId === debate.debate_id}
                 <div class="flex items-center gap-1">
                   <button
-                    class="px-2 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700
+                    class="px-2 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700 disabled:hover:bg-red-600
                            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     onclick={() => handleDelete(debate.debate_id)}
                     disabled={isDeleting}
@@ -559,7 +558,7 @@
       <div class="flex gap-2">
         <button
           class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
-                 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700
+                 text-gray-700 dark:text-gray-300 hover:bg-gray-100 disabled:hover:bg-gray-0 dark:hover:bg-gray-700 disabled:hover:bg-gray-600
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           onclick={() => goToPage(currentPage - 1)}
           disabled={currentPage === 0 || $loading}
@@ -571,7 +570,7 @@
         </span>
         <button
           class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
-                 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700
+                 text-gray-700 dark:text-gray-300 hover:bg-gray-100 disabled:hover:bg-gray-0 dark:hover:bg-gray-700 disabled:hover:bg-gray-600
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           onclick={() => goToPage(currentPage + 1)}
           disabled={debates.length < PAGE_SIZE || $loading}
@@ -585,8 +584,15 @@
 
 <!-- Trace Modal -->
 {#if showTraceModal}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeTraceModal} role="dialog" aria-modal="true" aria-labelledby="archive-trace-title" tabindex="-1">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onclick={closeTraceModal}
+    onkeydown={(e) => { if (e.key === 'Escape') closeTraceModal(); }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="archive-trace-title"
+    tabindex="-1"
+  >
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto mx-4"
       role="presentation"

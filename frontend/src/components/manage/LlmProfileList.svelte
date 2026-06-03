@@ -1,4 +1,5 @@
 <script>
+  import { onMount, onDestroy } from 'svelte';
   import { formatNumber, tStore } from '../../lib/i18n/index.js';
 
   let {
@@ -49,13 +50,22 @@
     dropdownOpen = dropdownOpen === profileId ? null : profileId;
   }
 
-  function handleDocClick() {
-    dropdownOpen = null;
+  function handleDocClick(e) {
+    if (!e.target.closest('[data-dropdown-toggle]') && !e.target.closest('[data-dropdown-menu]')) {
+      dropdownOpen = null;
+    }
   }
+
+  onMount(() => {
+    document.addEventListener('click', handleDocClick);
+  });
+
+  onDestroy(() => {
+    document.removeEventListener('click', handleDocClick);
+  });
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="space-y-4" onclick={handleDocClick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDocClick(e); } }}>
+<div class="space-y-4">
   <div class="flex items-center justify-between gap-4">
     <div class="relative flex-1 max-w-md">
       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">🔍</span>
@@ -140,13 +150,14 @@
                 <td class="px-4 py-3 text-right">
                   <div class="relative inline-block">
                     <button
+                      data-dropdown-toggle
                       class="px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                       onclick={(e) => { e.stopPropagation(); toggleDropdown(profile.id); }}
                       aria-haspopup="true" aria-expanded={dropdownOpen === profile.id}>
                       ⋮
                     </button>
                     {#if dropdownOpen === profile.id}
-                       <div class="absolute right-0 top-full mt-1 z-40 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
+                       <div data-dropdown-menu class="absolute right-0 top-full mt-1 z-40 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
                          <button class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { dropdownOpen = null; onEdit(profile); }}>
                            ✏️ {t('common.edit')}
                          </button>

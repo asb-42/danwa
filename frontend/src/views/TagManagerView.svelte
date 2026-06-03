@@ -172,7 +172,7 @@
         </div>
         <div class="flex gap-2">
           <button
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 disabled:opacity-50 transition-colors"
             onclick={handleSave}
             disabled={isSaving || !newName.trim()}
           >
@@ -241,7 +241,7 @@
           <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors" onclick={() => confirmDelete = null} disabled={isDeleting}>
             {t('common.cancel')}
           </button>
-          <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50" onclick={() => handleDelete(confirmDelete)} disabled={isDeleting}>
+          <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:hover:bg-red-600 transition-colors disabled:opacity-50" onclick={() => handleDelete(confirmDelete)} disabled={isDeleting}>
             {isDeleting ? t('common.loading') : t('common.delete')}
           </button>
         </div>

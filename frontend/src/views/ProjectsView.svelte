@@ -262,8 +262,15 @@
 <!-- MODAL: Create / Edit Project                                  -->
 <!-- ============================================================ -->
 {#if showModal}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeModal} role="dialog" aria-modal="true" aria-labelledby="project-modal-title" tabindex="-1">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onclick={closeModal}
+    onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="project-modal-title"
+    tabindex="-1"
+  >
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg mx-4"
       role="presentation"
@@ -328,7 +335,7 @@
           {t('common.cancel')}
         </button>
         <button
-          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
+          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleSave}
           disabled={isSaving}
@@ -344,8 +351,15 @@
 <!-- DELETE CONFIRMATION DIALOG                                    -->
 <!-- ============================================================ -->
 {#if showDeleteConfirm && deleteTarget}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeDeleteConfirm} role="dialog" aria-modal="true" aria-labelledby="project-delete-title" tabindex="-1">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onclick={closeDeleteConfirm}
+    onkeydown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="project-delete-title"
+    tabindex="-1"
+  >
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6"
       role="presentation"
@@ -366,7 +380,7 @@
           {t('common.cancel')}
         </button>
         <button
-          class="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors
+          class="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:hover:bg-red-600 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleDelete}
           disabled={isDeleting}

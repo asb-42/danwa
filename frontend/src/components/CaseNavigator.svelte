@@ -146,7 +146,7 @@
           />
           <div class="flex gap-1">
             <button
-              class="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              class="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:hover:bg-blue-600 disabled:opacity-50"
               onclick={handleCreate}
               disabled={isCreating || !newTitle.trim()}
             >

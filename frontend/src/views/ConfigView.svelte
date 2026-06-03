@@ -286,8 +286,7 @@
   });
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="space-y-6" onkeydown={() => {}}>
+<div class="space-y-6">
   <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('config.title')}</h2>
 
   {#if $error}
@@ -370,7 +369,7 @@
                 {backupMessage}
               </div>
             {/if}
-            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveBackupSettings} disabled={isSavingBackupSettings}>
+            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveBackupSettings} disabled={isSavingBackupSettings}>
               {isSavingBackupSettings ? '...' : (t('common.save') || 'Save')}
             </button>
           </div>
@@ -381,7 +380,7 @@
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('backup.create') || 'Create Backup'}</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('backup.description') || 'Create a backup of all project data and settings.'}</p>
-        <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleCreateBackup} disabled={isCreatingBackup}>
+        <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleCreateBackup} disabled={isCreatingBackup}>
           {isCreatingBackup ? '...' : (t('backup.create') || 'Create Backup')}
         </button>
         {#if backupCreateMessage}
@@ -506,7 +505,7 @@
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('settings.retentionHint')}</p>
           </div>
           <div class="flex justify-end pt-2">
-            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveSettings} disabled={isSavingSettings}>
+            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveSettings} disabled={isSavingSettings}>
               {isSavingSettings ? '...' : t('common.save')}
             </button>
           </div>
@@ -587,7 +586,7 @@
           </div>
 
           <div class="flex justify-end pt-4">
-            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveOcrSettings} disabled={isSavingOcr}>
+            <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveOcrSettings} disabled={isSavingOcr}>
               {isSavingOcr ? '...' : t('common.save')}
             </button>
           </div>
@@ -601,7 +600,7 @@
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Profile neu laden</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Liest alle YAML-Profile und Prompt-Templates neu von der Festplatte, ohne das Backend neu starten zu müssen.</p>
-        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleReloadProfiles} disabled={isReloading}>
+        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleReloadProfiles} disabled={isReloading}>
           {isReloading ? 'Lade...' : '🔄 Profile neu laden'}
         </button>
         {#if reloadResult}
@@ -622,7 +621,7 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Zeigt die letzten Log-Einträge des Backends (mit Timestamps).</p>
         <div class="flex gap-2 mb-4">
           <input type="text" bind:value={logSearch} placeholder="Filter (z.B. ERROR, agent, LLM)..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onkeydown={(e) => { if (e.key === 'Enter') handleLoadLogs(); }} />
-          <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm" onclick={handleLoadLogs} disabled={isLoadingLogs}>
+          <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm" onclick={handleLoadLogs} disabled={isLoadingLogs}>
             {isLoadingLogs ? 'Lade...' : '📋 Logs laden'}
           </button>
         </div>

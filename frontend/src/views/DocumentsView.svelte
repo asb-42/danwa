@@ -423,10 +423,8 @@
     </div>
   {/if}
   {#each uploadResults as r}
-    <!-- svelte-ignore a11y_no_redundant_roles -->
-    <div
-      class="rounded-lg px-4 py-3 text-sm flex items-center gap-2 {r.status === 'success' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300' : r.status === 'warning' ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300' : r.status === 'error' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'}"
-      role="status"
+    <output
+      class="block rounded-lg px-4 py-3 text-sm flex items-center gap-2 {r.status === 'success' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300' : r.status === 'warning' ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300' : r.status === 'error' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'}"
     >
       {#if r.status === 'uploading'}
         <span class="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
@@ -438,7 +436,7 @@
         <span>❌</span>
       {/if}
       <span>{r.message}</span>
-    </div>
+    </output>
   {/each}
 
   <!-- Upload area -->
@@ -508,7 +506,7 @@
       </select>
       <button
         type="submit"
-        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700
+        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600
                transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         disabled={isSearching || !searchQuery.trim()}
       >
@@ -675,28 +673,28 @@
       {#if analysis}
         <div class="flex gap-2">
           <button
-            class="px-3 py-1.5 text-sm rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-sm rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:hover:bg-emerald-500 transition-colors disabled:opacity-50"
             onclick={() => runAnalysis('update')}
             disabled={analysisLoading}
           >➕ Update</button>
           <button
-            class="px-3 py-1.5 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:hover:bg-amber-500 transition-colors disabled:opacity-50"
             onclick={() => runAnalysis('full')}
             disabled={analysisLoading}
           >🔄 Re-analyze</button>
           <div class="w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
           <button
-            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
             onclick={() => handleExport('pdf')}
             disabled={exportLoading || analysisLoading}
           >📄 PDF</button>
           <button
-            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
             onclick={() => handleExport('odt')}
             disabled={exportLoading || analysisLoading}
           >📝 ODT</button>
           <button
-            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
             onclick={() => handleExport('md')}
             disabled={exportLoading || analysisLoading}
           >📃 MD</button>
@@ -710,7 +708,7 @@
         <p class="font-medium mb-1">No analysis yet</p>
         <p class="text-sm mb-4">Analyze all documents in this project to get a structured case summary for the debate.</p>
         <button
-          class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
           onclick={() => runAnalysis('full')}
           disabled={analysisLoading}
         >🚀 Analyze documents</button>
@@ -922,7 +920,7 @@
                 onclick={cancelEditing}
               >Cancel</button>
               <button
-                class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                 disabled={editSaving}
                 onclick={saveEditing}
               >
@@ -957,8 +955,15 @@
 
 <!-- Move Document Dialog -->
 {#if moveDialogOpen && moveDoc}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_interactive_supports_focus -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeMoveDialog(); }} role="dialog" aria-modal="true" aria-labelledby="doc-move-title" tabindex="-1">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onclick={(e) => { if (e.target === e.currentTarget) closeMoveDialog(); }}
+    onkeydown={(e) => { if (e.key === 'Escape') closeMoveDialog(); }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="doc-move-title"
+    tabindex="-1"
+  >
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
       <h2 id="doc-move-title" class="text-lg font-semibold text-gray-800 dark:text-white mb-2">
         {t('documents.moveDocumentTitle')}
@@ -996,7 +1001,7 @@
           Cancel
         </button>
         <button
-          class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
           disabled={!moveTargetId || moveSaving}
           onclick={confirmMove}
         >

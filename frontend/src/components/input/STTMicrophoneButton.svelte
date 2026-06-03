@@ -38,7 +38,7 @@
     class="mic-button flex items-center justify-center w-10 h-10 rounded-full transition-all
       {recording
         ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-300'
-        : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}
+        : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 disabled:hover:bg-gray-200 dark:hover:bg-gray-600 disabled:hover:bg-gray-500'}
       disabled:opacity-50 disabled:cursor-not-allowed"
     title={recording ? 'Stop recording' : 'Start recording'}
   >

@@ -611,7 +611,7 @@
           repository
         </p>
         <button
-          class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
           onclick={() => loadRepoIndex(true)}
           disabled={repoLoading}
         >
@@ -684,7 +684,7 @@
                         <span class="text-xs text-gray-400 dark:text-gray-500">✓ Installed</span>
                       {:else}
                         <button
-                          class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
                           onclick={() => handleInstallFromRepo(mod)}
                           disabled={installingRepoMod === mod.module_id}
                         >
@@ -709,7 +709,7 @@
           Modules with newer versions available in the danwa-modules repository
         </p>
         <button
-          class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
           onclick={loadUpdates}
           disabled={updatesLoading}
         >
@@ -753,7 +753,7 @@
                     </td>
                     <td class="px-4 py-2.5 text-right">
                       <button
-                        class="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+                        class="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:hover:bg-green-600 transition-colors disabled:opacity-50"
                         onclick={() => handleUpdateFromRepo(upd)}
                         disabled={installingRepoMod === upd.module_id}
                       >
@@ -882,7 +882,7 @@
           Cancel
         </button>
         <button
-          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50"
           onclick={saveEdit}
           disabled={editSaving}
         >

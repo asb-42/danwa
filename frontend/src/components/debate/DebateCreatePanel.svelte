@@ -506,7 +506,7 @@
           disabled={a2aDiscovering || a2aAgents.filter(a => a.url.trim()).length === 0}
           class="flex items-center gap-1 px-3 py-1.5 text-sm text-cyan-600 dark:text-cyan-400
                  border border-cyan-300 dark:border-cyan-600 rounded-lg
-                 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors
+                 hover:bg-cyan-50 disabled:hover:bg-cyan--50 dark:hover:bg-cyan-900 disabled:hover:bg-cyan-800/20 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {#if a2aDiscovering}

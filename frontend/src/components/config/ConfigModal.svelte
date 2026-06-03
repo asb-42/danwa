@@ -115,8 +115,15 @@
 </script>
 
 {#if visible}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose} role="dialog" aria-modal="true" aria-labelledby="config-modal-title" tabindex="-1">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onclick={onClose}
+    onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="config-modal-title"
+    tabindex="-1"
+  >
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4"
       role="presentation"
@@ -462,7 +469,7 @@
           {t('common.cancel')}
         </button>
         <button
-          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
+          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleSave}
           disabled={isSaving}

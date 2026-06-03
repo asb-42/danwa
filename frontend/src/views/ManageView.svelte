@@ -711,7 +711,7 @@
       </div>
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closeRoleTypeModal}>{t('common.cancel')}</button>
-        <button class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveRoleType} disabled={isSavingRoleType}>{isSavingRoleType ? '...' : t('common.save')}</button>
+        <button class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveRoleType} disabled={isSavingRoleType}>{isSavingRoleType ? '...' : t('common.save')}</button>
       </div>
     </div>
   </div>
@@ -762,7 +762,7 @@
       </div>
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closePromptCreate}>{t('common.cancel')}</button>
-        <button class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSavePromptVariant} disabled={isSavingPrompt}>{isSavingPrompt ? '...' : t('common.save')}</button>
+        <button class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSavePromptVariant} disabled={isSavingPrompt}>{isSavingPrompt ? '...' : t('common.save')}</button>
       </div>
     </div>
   </div>
@@ -815,7 +815,7 @@
       </div>
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closePromptTranslate} disabled={isTranslatingPrompt}>{t('common.close')}</button>
-        <button class="px-4 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleTranslatePrompt} disabled={isTranslatingPrompt}>{isTranslatingPrompt ? '...' : (t('config.translate') || 'Translate')}</button>
+        <button class="px-4 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleTranslatePrompt} disabled={isTranslatingPrompt}>{isTranslatingPrompt ? '...' : (t('config.translate') || 'Translate')}</button>
       </div>
     </div>
   </div>

@@ -298,7 +298,7 @@
           {t('common.cancel')}
         </button>
         <button
-          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors
+          class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleSave}
           disabled={isSaving}

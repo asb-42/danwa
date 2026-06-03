@@ -799,7 +799,7 @@
       <div class="mt-4 flex space-x-3">
         {#if $currentDebate.status === 'pending'}
           <button
-            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:hover:bg-green-600 transition-colors disabled:opacity-50"
             onclick={handleStartDebate}
             disabled={$loading}
           >
@@ -809,7 +809,7 @@
         {#if $currentDebate.status === 'running'}
           <PauseControls debateId={$currentDebate.debate_id} />
           <button
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={handleCancelDebate}
             disabled={isCancelling}
           >
@@ -819,13 +819,13 @@
         {#if isCompleted}
           <!-- Plan 19: Continue & Fork buttons for completed debates -->
           <button
-            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:hover:bg-indigo-600 transition-colors disabled:opacity-50 text-sm"
             onclick={() => showContinueModal = true}
           >
             🔄 {t('debate.continueButton')}
           </button>
           <button
-            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 text-sm"
+            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:hover:bg-purple-600 transition-colors disabled:opacity-50 text-sm"
             onclick={() => showForkModal = true}
           >
             🍴 {t('debate.forkButton')}

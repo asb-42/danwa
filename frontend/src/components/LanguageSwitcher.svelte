@@ -1,6 +1,6 @@
 <script>
-  import { onMount } from 'svelte';
-  import { locale, tStore } from '../lib/i18n/index.js';
+  import { onMount, onDestroy } from 'svelte';
+  import { i18n, locale, tStore } from '../lib/i18n/index.js';
   import { SUPPORTED_LOCALES, LOCALE_NAMES, RTL_LOCALES, customLocales, registerCustomLocale, getAllLocales } from '../lib/i18n/config.js';
   import { setLanguage, getCustomLocales } from '../lib/api.js';
   import { userLanguage } from '../lib/stores.js';
@@ -26,7 +26,24 @@
     } catch {
       // Backend unreachable — use bundled locales only
     }
+    document.addEventListener('click', handleDocClick);
+    document.addEventListener('keydown', handleKeydown);
   });
+
+  onDestroy(() => {
+    document.removeEventListener('click', handleDocClick);
+    document.removeEventListener('keydown', handleKeydown);
+  });
+
+  function handleDocClick(e) {
+    if (!e.target.closest('[data-language-switcher]')) {
+      open = false;
+    }
+  }
+
+  function handleKeydown(e) {
+    if (e.key === 'Escape') open = false;
+  }
 
   async function switchLanguage(lang) {
     await i18n.setLocale(lang);
@@ -43,7 +60,7 @@
   let allLocales = $derived(getAllLocales());
 </script>
 
-<div class="relative inline-block text-left">
+<div data-language-switcher class="relative inline-block text-left">
   <button
     onclick={() => open = !open}
     class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg
@@ -66,11 +83,9 @@
   </button>
 
   {#if open}
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg
                 border border-gray-200 dark:border-gray-700 z-50
-                ring-1 ring-black ring-opacity-5"
-         onclick={(e) => e.stopPropagation()}>
+                ring-1 ring-black ring-opacity-5">
       <div class="py-1" role="menu">
         {#each allLocales as lang}
           {@const isRTL = RTL_LOCALES.has(lang)}
@@ -104,8 +119,3 @@
     </div>
   {/if}
 </div>
-
-{#if open}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="fixed inset-0 z-40" onclick={() => open = false}></div>
-{/if}

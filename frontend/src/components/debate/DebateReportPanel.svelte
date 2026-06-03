@@ -84,7 +84,7 @@
       <option value="odf">ODF</option>
     </select>
     <button
-      class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700
+      class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600
              transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       onclick={handleGenerateReport}
       disabled={reportGenerating}

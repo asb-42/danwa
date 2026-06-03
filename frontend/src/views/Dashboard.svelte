@@ -129,7 +129,7 @@
   <div class="flex items-center justify-between">
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.title')}</h2>
     <button
-      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
+      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors text-sm disabled:opacity-50"
       onclick={refreshHealth}
       disabled={$loading}
     >

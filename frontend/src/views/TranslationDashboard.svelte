@@ -334,7 +334,7 @@
         + {t('translation.addLanguage')}
       </button>
       <button
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
+        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors text-sm disabled:opacity-50"
         onclick={loadOverview}
         disabled={loading}
       >
@@ -448,7 +448,7 @@
                   <button
                     class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-50 {locale.code === 'en'
                       ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/50'}"
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 disabled:hover:bg-red-100 dark:hover:bg-red-800 disabled:hover:bg-red-700/50'}"
                     disabled={wipingLocale === locale.code || activeJobId !== null || locale.code === 'en'}
                     onclick={() => locale.code !== 'en' && wipeLocaleHandler(locale.code)}
                     title={locale.code === 'en' ? 'Cannot wipe source language' : 'Delete all translations for this locale'}
@@ -458,7 +458,7 @@
                   <button
                     class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-50 {locale.code === 'en'
                       ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800/50'}"
+                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 disabled:hover:bg-indigo-100 dark:hover:bg-indigo-800 disabled:hover:bg-indigo-700/50'}"
                     disabled={translatingLocale === locale.code || activeJobId !== null || locale.code === 'en'}
                     onclick={() => locale.code !== 'en' && translateLocale(locale.code, false)}
                     title={locale.code === 'en' ? 'English is the source language (SSOT)' : 'Translate with LLM'}
@@ -468,7 +468,7 @@
                   <button
                     class="px-2.5 py-1 text-xs rounded transition-colors disabled:opacity-50 {locale.code === 'en'
                       ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/50'}"
+                      : 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 disabled:hover:bg-violet-100 dark:hover:bg-violet-800 disabled:hover:bg-violet-700/50'}"
                     disabled={translatingLocale === locale.code || activeJobId !== null || locale.code === 'en'}
                     onclick={() => locale.code !== 'en' && translateLocale(locale.code, true)}
                     title={locale.code === 'en' ? 'English is the source language (SSOT)' : 'Wipe existing translations, then translate all strings fresh'}
@@ -562,10 +562,10 @@
 
 <!-- Add Language Dialog -->
 {#if addLocaleOpen}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     onclick={() => { addLocaleOpen = false; }}
+    onkeydown={(e) => { if (e.key === 'Escape') addLocaleOpen = false; }}
     role="dialog"
     aria-modal="true"
     aria-labelledby="translation-add-locale-title"
@@ -626,7 +626,7 @@
           {t('common.cancel')}
         </button>
         <button
-          class="px-4 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+          class="px-4 py-2 text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:hover:bg-green-600 transition-colors disabled:opacity-50"
           disabled={!newLocaleCode || addingLocale}
           onclick={addLocale}
         >

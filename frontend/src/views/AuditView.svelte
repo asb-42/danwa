@@ -90,7 +90,7 @@
       </div>
       <button
         type="submit"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors
                disabled:opacity-50"
         disabled={$loading}
       >

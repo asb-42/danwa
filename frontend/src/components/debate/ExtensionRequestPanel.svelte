@@ -74,14 +74,14 @@
         {#if !decision}
           <div class="flex gap-2 mt-2">
             <button
-              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm font-medium"
+              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:hover:bg-green-600 transition-colors disabled:opacity-50 text-sm font-medium"
               onclick={() => handleDecision(true)}
               disabled={isProcessing}
             >
               {isProcessing ? '⏳' : '✅'} {t('debate.extensionGrant')}
             </button>
             <button
-              class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-sm font-medium"
+              class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:hover:bg-red-600 transition-colors disabled:opacity-50 text-sm font-medium"
               onclick={() => handleDecision(false)}
               disabled={isProcessing}
             >

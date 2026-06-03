@@ -496,7 +496,7 @@
         {#if canvasStore.currentLayoutId}
           <button
             class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                   bg-emerald-600 text-white hover:bg-emerald-700 transition-colors
+                   bg-emerald-600 text-white hover:bg-emerald-700 disabled:hover:bg-emerald-600 transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={handleCompile}
             disabled={isCompiling}
@@ -511,7 +511,7 @@
           </button>
           <button
             class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                   bg-violet-600 text-white hover:bg-violet-700 transition-colors
+                   bg-violet-600 text-white hover:bg-violet-700 disabled:hover:bg-violet-600 transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={handleOpenWorkflowDialog}
             title={t('blueprint.workflow.saveAsWorkflow')}
@@ -521,7 +521,7 @@
         {/if}
         <button
           class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors
+                 bg-indigo-600 text-white hover:bg-indigo-700 disabled:hover:bg-indigo-600 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleClone}
           disabled={isCloning || !canvasStore.currentWorkflowId}
@@ -536,7 +536,7 @@
         </button>
         <button
           class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                 bg-green-600 text-white hover:bg-green-700 transition-colors
+                 bg-green-600 text-white hover:bg-green-700 disabled:hover:bg-green-600 transition-colors
                  disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={handleOpenRunDialog}
           title={t('blueprint.workflow.runDebate')}
