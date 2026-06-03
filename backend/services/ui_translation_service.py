@@ -567,32 +567,51 @@ class UITranslationService:
             f"Output ONLY the translated text, nothing else. No quotes, no explanations."
         )
 
-        try:
-            thinking_budget = max(2048, len(source_text) * 8)
-            result = llm.generate_sync(
-                prompt=source_text,
-                system_prompt=system_prompt,
-                temperature=0.2,
-                max_tokens=thinking_budget,
-                context="Translate",
-            )
-            translated = result.content.strip()
-            if not translated:
-                raise ValueError(f"LLM returned empty translation for key '{key}'")
-            self.set_translation(key, target_locale, translated, source="llm_generated")
-            if job:
-                job.completed_strings += 1
-                job.current_key = key
-                job.current_locale = target_locale
-            return translated
-        except Exception as exc:
-            error_msg = str(exc)
-            is_rate_limit = "rate limit" in error_msg.lower() or "429" in error_msg
-            if is_rate_limit:
-                logger.warning("Rate limit hit for %s → %s: %s", key, target_locale, error_msg[:120])
-                raise  # Re-raise rate limit errors so the job can abort early
-            logger.error("LLM-Übersetzung fehlgeschlagen für %s → %s: %s", key, target_locale, error_msg[:200])
-            raise  # Re-raise so caller knows translation failed
+        import time
+
+        max_retries = 3
+        for attempt in range(max_retries + 1):
+            try:
+                thinking_budget = max(2048, len(source_text) * 8)
+                result = llm.generate_sync(
+                    prompt=source_text,
+                    system_prompt=system_prompt,
+                    temperature=0.2,
+                    max_tokens=thinking_budget,
+                    context="Translate",
+                )
+                translated = result.content.strip()
+                if not translated:
+                    raise ValueError(f"LLM returned empty translation for key '{key}'")
+                self.set_translation(key, target_locale, translated, source="llm_generated")
+                if job:
+                    job.completed_strings += 1
+                    job.current_key = key
+                    job.current_locale = target_locale
+                return translated
+            except Exception as exc:
+                error_msg = str(exc)
+                is_rate_limit = "rate limit" in error_msg.lower() or "429" in error_msg
+                if is_rate_limit and attempt < max_retries:
+                    wait = 2 ** (attempt + 1)  # 2s, 4s, 8s
+                    logger.warning(
+                        "Rate limit hit for %s → %s (attempt %d/%d), retrying in %ds: %s",
+                        key,
+                        target_locale,
+                        attempt + 1,
+                        max_retries,
+                        wait,
+                        error_msg[:120],
+                    )
+                    if job:
+                        job.current_key = f"{key} (retry {attempt + 1})"
+                    time.sleep(wait)
+                    continue
+                if is_rate_limit:
+                    logger.warning("Rate limit: all %d retries exhausted for %s → %s", max_retries, key, target_locale)
+                    raise
+                logger.error("LLM translation failed for %s → %s: %s", key, target_locale, error_msg[:200])
+                raise
 
     def bulk_translate(self, target_locales: list[str] | None = None, namespace: str = "global") -> dict[str, Any]:
         """Übersetze alle fehlenden Strings per LLM.
@@ -719,6 +738,8 @@ class UITranslationService:
 
                     translated_count = 0
                     failed_count = 0
+                    import time as _time
+
                     rate_limited = False
                     for key in missing:
                         job.current_key = key
@@ -728,11 +749,17 @@ class UITranslationService:
                             try:
                                 self.translate_via_llm(key, en_val, locale, llm=llm, job=job)
                                 translated_count += 1
+                                # Throttle: small delay between requests to avoid 429
+                                _time.sleep(0.5)
                             except Exception as exc:
                                 error_msg = str(exc)
                                 if "rate limit" in error_msg.lower() or "429" in error_msg:
                                     rate_limited = True
-                                    job.error = f"Rate limit exceeded for {locale}. Check your LLM provider quota."
+                                    job.error = (
+                                        f"Rate limit exceeded for {locale} after retries. "
+                                        f"Translated {translated_count} of {len(missing)} strings. "
+                                        f"Try again later or use a different LLM profile."
+                                    )
                                     job.status = "failed"
                                     logger.error("Translation aborted for %s: rate limit exceeded", locale)
                                     break
