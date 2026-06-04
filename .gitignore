@@ -267,3 +267,4 @@ modules/prompt-modifier-text-only/
 modules/.tmp_install/
 modules/*.bak.*
 data/*.bak.*
+danwa.db
