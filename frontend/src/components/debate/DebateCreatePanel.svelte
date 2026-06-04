@@ -5,7 +5,7 @@
    * Owns all form state and emits onCreate with the collected parameters.
    */
   import { onMount } from 'svelte';
-  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, userLanguage } from '../../lib/stores.js';
+  import { loading, error, selectedLLMProfile, activeProject, userLanguage } from '../../lib/stores.js';
   import { createDebate, getDocuments } from '../../lib/api.js';
   import { startWorkflow } from '../../lib/workflowExec.js';
   import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
@@ -176,8 +176,6 @@
           consensus_threshold: consensusThreshold,
           search_mode: searchMode,
           llm_profile_id: $selectedLLMProfile,
-          prompt_variant: $selectedPromptVariant,
-          agent_persona_ids: $selectedPersonas,
           language: debateLanguage,
           document_ids: selectedDocumentIds,
           rag_auto_retrieve: ragAutoRetrieve,

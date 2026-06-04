@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { getLLMProfiles, getAgentPersonas, getDebate, forkDebate } from '../../lib/api.js';
+	import { getLLMProfiles, getDebate, forkDebate } from '../../lib/api.js';
 	import { tStore } from '../../lib/i18n/index.js';
 
 	let { debateId, navigate = () => {} } = $props();
@@ -35,23 +35,12 @@
 		isLoading = true;
 		error = null;
 		try {
-			const [debateData, profiles, personas] = await Promise.all([
+			const [debateData, profiles] = await Promise.all([
 				getDebate(debateId),
 				getLLMProfiles(),
-				getAgentPersonas(),
 			]);
 			debate = debateData;
 			llmProfiles = profiles;
-			agentPersonas = personas;
-			// Prepare persona options for dropdowns
-			personaOptions = [
-				{ id: '', name: t('projects.globalDefault') }, // Standard option
-				...personas.map(p => ({
-					id: p.id,
-					name: `${p.name} (${p.role})`,
-					role: p.role,
-				})),
-			];
 		} catch (err) {
 			error = err.message;
 		} finally {
