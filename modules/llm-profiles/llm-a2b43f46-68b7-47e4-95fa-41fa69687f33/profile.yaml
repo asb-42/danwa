@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://token-plan-ams.xiaomimimo.com/v1
+api_key_env: XIAOMI_API_KEY
+context_window: null
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: a2b43f46-68b7-47e4-95fa-41fa69687f33
+max_tokens: 4096
+model: mimo-v2.5-tts
+name: mimo-2.5-tts (Xiaomi)
+profile_type: tts
+protocol: litellm
+provider: xiaomi
+temperature: 0.7
+timeout: 600

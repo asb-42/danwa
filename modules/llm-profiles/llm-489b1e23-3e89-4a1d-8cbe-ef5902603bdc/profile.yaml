@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://openrouter.ai/api/v1
+api_key_env: OPENROUTER_API_KEY
+context_window: 1000000
+cost_per_1k_input: 0.5
+cost_per_1k_output: 3.0
+fallback_llm_profile_id: null
+id: 489b1e23-3e89-4a1d-8cbe-ef5902603bdc
+max_tokens: 16000
+model: qwen/qwen3.5-plus-20260420
+name: qwen3.5-plus (Openrouter)
+profile_type: text
+protocol: litellm
+provider: openrouter
+temperature: 0.5
+timeout: 600

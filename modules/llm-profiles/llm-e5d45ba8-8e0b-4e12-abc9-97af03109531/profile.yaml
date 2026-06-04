@@ -1,0 +1,18 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: http://192.168.178.200:1234/v1
+api_key_env: LM_STUDIO_KEY
+context_window: 131072
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: e5d45ba8-8e0b-4e12-abc9-97af03109531
+max_tokens: 32000
+model: llama3.2-30b-ii-dark-champion-instruct-heretic-abliterated-uncensored-i1
+name: llama3.2-30b-ii-dark-champion-instruct-heretic-abliterated-uncensored-i1 (LM
+  Studio)
+profile_type: text
+protocol: litellm
+provider: local
+temperature: 0.5
+timeout: 600

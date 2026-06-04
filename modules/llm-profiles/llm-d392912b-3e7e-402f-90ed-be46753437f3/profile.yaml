@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://opencode.ai/zen/v1
+api_key_env: OPENCODE_ZEN_API_KEY
+context_window: 128000
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: d392912b-3e7e-402f-90ed-be46753437f3
+max_tokens: 32000
+model: deepseek-v4-flash-free
+name: deepseek-v4-flash (Opencode Zen)
+profile_type: text
+protocol: litellm
+provider: opencode-zen
+temperature: 0.8
+timeout: 600

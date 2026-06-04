@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://opencode.ai/zen/v1
+api_key_env: OPENCODE_ZEN_API_KEY
+context_window: 128000
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: 8417c749-0334-45fe-a116-e8fc9ec6d37b
+max_tokens: 32000
+model: minimax-m2.5-free
+name: minimax-m2.5 (Opencode Zen)
+profile_type: text
+protocol: litellm
+provider: opencode-zen
+temperature: 0.7
+timeout: 600

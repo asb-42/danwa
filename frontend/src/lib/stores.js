@@ -79,7 +79,7 @@ export const tagsByTenant = persisted('danwa.tagsByTenant', {});
 export const userLanguage = persisted('danwa.userLanguage', 'de');
 
 /** Selected LLM profile ID for debates (set in ConfigView, read in DebateView) */
-export const selectedLLMProfile = persisted('danwa.selectedLLMProfile', 'openrouter-claude');
+export const selectedLLMProfile = persisted('danwa.selectedLLMProfile', '');
 
 /** Selected prompt variant for debates */
 export const selectedPromptVariant = persisted('danwa.selectedPromptVariant', 'default');

@@ -28,7 +28,7 @@ class TestTurn:
             agent_name="Bob",
             role_type="critic",
             role_definition_id="rd-1",
-            llm_profile_id="openrouter-claude",
+            llm_profile_id="27e9f4f7-7302-4d0b-8043-9b4edd8c882c",
             content="I disagree",
             timestamp=datetime(2025, 1, 1, tzinfo=UTC),
             latency_ms=150,

@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://opencode.ai/zen/v1
+api_key_env: OPENCODE_ZEN_API_KEY
+context_window: 128000
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: 018f1b67-40c2-468a-95a8-8a0fa92b68f3
+max_tokens: 32000
+model: qwen3.6-plus-free
+name: qwen3.6-plus (Opencode Zen)
+profile_type: text
+protocol: litellm
+provider: opencode-zen
+temperature: 0.8
+timeout: 600

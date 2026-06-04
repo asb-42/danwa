@@ -951,7 +951,7 @@ class UITranslationService:
             "ru": "openrouter/meta-llama/llama-3.1-8b-instruct",
             "uk": "openrouter/meta-llama/llama-3.1-8b-instruct",
         }
-        return locale_map.get(locale, "openrouter-claude")
+        return locale_map.get(locale, settings.service_llm_profile_id)
 
     @staticmethod
     def _locale_name(code: str) -> str:

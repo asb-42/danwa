@@ -1,0 +1,17 @@
+a2a_endpoint: ''
+a2a_timeout: 120
+api_base: https://openrouter.ai/api/v1
+api_key_env: OPENROUTER_API_KEY
+context_window: 262144
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: ''
+id: 81529aef-84d0-475d-ad7c-3087ce46fd74
+max_tokens: 32800
+model: google/gemma-4-31b-it:free
+name: gemma-4-31b-it (Openrouter)
+profile_type: text
+protocol: litellm
+provider: openrouter
+temperature: 0.7
+timeout: 600

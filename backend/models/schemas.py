@@ -111,7 +111,7 @@ class DebateRequest(BaseModel):
     )
 
     # --- Profile configuration (Sprint 3) ---
-    llm_profile_id: str = Field(default="openrouter-claude", description="LLM profile to use")
+    llm_profile_id: str = Field(default="", description="LLM profile to use (empty = service default)")
     prompt_variant: str = Field(default="default", description="Prompt variant ID")
     agent_persona_ids: dict[str, str] = Field(
         default_factory=dict,

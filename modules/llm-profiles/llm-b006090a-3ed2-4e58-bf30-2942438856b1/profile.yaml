@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://openrouter.ai/api/v1
+api_key_env: OPENROUTER_API_KEY
+context_window: 1000000
+cost_per_1k_input: 0.003
+cost_per_1k_output: 0.015
+fallback_llm_profile_id: null
+id: b006090a-3ed2-4e58-bf30-2942438856b1
+max_tokens: 32000
+model: owl-alpha
+name: owl-alpha via OpenRouter
+profile_type: text
+protocol: litellm
+provider: openrouter
+temperature: 0.7
+timeout: 600

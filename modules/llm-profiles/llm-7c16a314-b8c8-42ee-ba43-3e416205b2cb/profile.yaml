@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: http://192.168.178.200:1234/v1
+api_key_env: LM_STUDIO_KEY
+context_window: 4096
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: 7c16a314-b8c8-42ee-ba43-3e416205b2cb
+max_tokens: 4096
+model: openbuddy/deepseek-67b
+name: openbuddy/deepseek-67b (LM Studio)
+profile_type: text
+protocol: litellm
+provider: local
+temperature: 0.4
+timeout: 900

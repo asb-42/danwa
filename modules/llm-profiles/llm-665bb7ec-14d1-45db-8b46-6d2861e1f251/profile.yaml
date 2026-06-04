@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: null
+api_key_env: CLOUDFLARE_API_KEY
+context_window: 1000000
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: 665bb7ec-14d1-45db-8b46-6d2861e1f251
+max_tokens: 32000
+model: '@cf/moonshotai/kimi-k2.6'
+name: moonshotai/kimi-k2.6 (Cloudflare)
+profile_type: text
+protocol: litellm
+provider: cloudflare
+temperature: 0.7
+timeout: 600

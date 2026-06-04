@@ -120,7 +120,7 @@ def extract_request_fields(req: object | dict) -> dict:
         consensus_threshold = req.get("consensus_threshold", 0.8)
         enable_fact_check = req.get("enable_fact_check", False)
         enable_memory = req.get("enable_memory", False)
-        llm_profile_id = req.get("llm_profile_id", "openrouter-claude")
+        llm_profile_id = req.get("llm_profile_id", "") or settings.service_llm_profile_id
         prompt_variant = req.get("prompt_variant", "default")
         agent_persona_ids = req.get("agent_persona_ids", {})
         language = req.get("language") or user_lang

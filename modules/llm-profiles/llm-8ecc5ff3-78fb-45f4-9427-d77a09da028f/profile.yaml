@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: http://192.168.178.200:1234/v1
+api_key_env: LM_STUDIO_KEY
+context_window: 262144
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: 8ecc5ff3-78fb-45f4-9427-d77a09da028f
+max_tokens: 32000
+model: gemma-4-31b-it
+name: gemma-4-31b-it (LM Studio)
+profile_type: text
+protocol: litellm
+provider: local
+temperature: 0.4
+timeout: 600

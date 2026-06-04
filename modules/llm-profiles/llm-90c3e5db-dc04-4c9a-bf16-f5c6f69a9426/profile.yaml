@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://api.deepseek.com
+api_key_env: DEEPSEEK_API_KEY
+context_window: 1000000
+cost_per_1k_input: 0.5
+cost_per_1k_output: 0.9
+fallback_llm_profile_id: null
+id: 90c3e5db-dc04-4c9a-bf16-f5c6f69a9426
+max_tokens: 384000
+model: deepseek-v4-flash
+name: deepseek-v4-flash (Deepseek)
+profile_type: text
+protocol: litellm
+provider: deepseek
+temperature: 0.7
+timeout: 600

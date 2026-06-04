@@ -1,0 +1,17 @@
+a2a_endpoint: null
+a2a_timeout: 120
+api_base: https://opencode.ai/zen/v1
+api_key_env: OPENCODE_ZEN_API_KEY
+context_window: 128000
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: 7780b408-cb78-4ade-8305-d8881c90c643
+max_tokens: 32000
+model: nemotron-3-super-free
+name: nemotron-3-super (Opencode Zen)
+profile_type: text
+protocol: litellm
+provider: opencode-zen
+temperature: 0.8
+timeout: 600

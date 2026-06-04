@@ -1,0 +1,23 @@
+{
+  "cloud-openrouter": "27e9f4f7-7302-4d0b-8043-9b4edd8c882c",
+  "cloud-qwen": "489b1e23-3e89-4a1d-8cbe-ef5902603bdc",
+  "cloudflare-kimi-k2.6-65xe": "665bb7ec-14d1-45db-8b46-6d2861e1f251",
+  "draft-d6f64175": "81529aef-84d0-475d-ad7c-3087ce46fd74",
+  "local-gemma": "327048ba-15aa-455b-8719-6de7af3fa2a2",
+  "local-gemma-4-26b-a4b": "0d14655f-c0a9-42ac-b62a-6cc23854e371",
+  "local-gemma-4-31b-it": "8ecc5ff3-78fb-45f4-9427-d77a09da028f",
+  "local-gemma-4-31b-it-copy-a9xl": "86ed2e8d-6fe2-42fa-adce-83c721b3ef59",
+  "local-gemma-4-31b-it-copy-xqx9": "e5d45ba8-8e0b-4e12-abc9-97af03109531",
+  "local-glm-4-32b-0414-uncensored-heretic-v1": "d7bd75d1-ae12-427a-88d8-5ddec3a099c7",
+  "local-qwen3.6-35b-a3b-copy-18ee": "7c16a314-b8c8-42ee-ba43-3e416205b2cb",
+  "local-qwen3.6-35b-a3b-copy-vv4d": "5009cbdf-13d2-468d-a6c5-e133efec41d6",
+  "opencodezen-minimax-m2.5-free-ry6l": "8417c749-0334-45fe-a116-e8fc9ec6d37b",
+  "opencodezen-minimax-m2.5-free-ry6l-copy-udko": "018f1b67-40c2-468a-95a8-8a0fa92b68f3",
+  "opencodezen-minimax-m2.5-free-ry6l-copy-udko-copy-vntv": "d392912b-3e7e-402f-90ed-be46753437f3",
+  "opencodezen-minimax-m2.5-free-ry6l-copy-udko-copy-wz86": "7780b408-cb78-4ade-8305-d8881c90c643",
+  "openrouter-hy3-preview-copy-2e1z": "79c6dfc0-e66e-430b-9907-5dce228a51be",
+  "openrouter-hy3-preview-copy-2e1z-copy-kon1": "90c3e5db-dc04-4c9a-bf16-f5c6f69a9426",
+  "owl-alpha": "b006090a-3ed2-4e58-bf30-2942438856b1",
+  "xiaomi-io-2--6btm": "a2b43f46-68b7-47e4-95fa-41fa69687f33",
+  "xiaomi-mimo-v2.5-pro": "3a8566e8-be5e-42dc-9a4f-c82c4327d325"
+}

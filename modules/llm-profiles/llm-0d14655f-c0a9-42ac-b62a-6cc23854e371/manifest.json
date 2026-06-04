@@ -1,0 +1,21 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-0d14655f-c0a9-42ac-b62a-6cc23854e371",
+  "name": {
+    "en": "gemma-4-26b-a4b-it-ultra-uncensored-heretic (LM Studio)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "created_at": "2026-06-04T00:07:12.660883+00:00",
+  "updated_at": "2026-06-04T00:07:12.660883+00:00"
+}

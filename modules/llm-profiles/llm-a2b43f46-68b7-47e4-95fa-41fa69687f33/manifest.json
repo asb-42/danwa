@@ -1,0 +1,21 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "llm-a2b43f46-68b7-47e4-95fa-41fa69687f33",
+  "name": {
+    "en": "mimo-2.5-tts (Xiaomi)"
+  },
+  "version": "1.0.0",
+  "type": "llm-profile",
+  "category": "llm-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.yaml",
+  "profile_format": "yaml",
+  "files": [],
+  "created_at": "2026-06-04T00:07:12.660883+00:00",
+  "updated_at": "2026-06-04T00:07:12.660883+00:00"
+}
