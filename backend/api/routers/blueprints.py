@@ -26,7 +26,6 @@ from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.resolver import BundleResolver
 from backend.services.module_profile_sync import (
     get_bundles_from_modules,
-    get_prompt_templates_from_modules,
 )
 
 router = APIRouter()
@@ -283,95 +282,6 @@ def import_bundle_endpoint(
         return bundle
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-
-
-# ==================================================================
-# Prompt Templates
-# ==================================================================
-
-
-@router.get("/prompt-templates")
-def list_prompt_templates(
-    role: str | None = None,
-    variant: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
-    repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> list[dict[str, Any]]:
-    """List prompt templates with optional filtering and pagination, including enabled module prompts."""
-    db_templates = repo.list_prompt_templates(role=role, variant=variant, limit=limit, offset=offset)
-    db_dicts = [t.model_dump() if hasattr(t, "model_dump") else t for t in db_templates]
-    module_templates = get_prompt_templates_from_modules()
-    if role:
-        module_templates = [t for t in module_templates if t.get("role") == role]
-    if variant:
-        module_templates = [t for t in module_templates if t.get("variant") == variant]
-
-    # Deduplicate by ID — DB entries take priority over modules
-    seen_ids: set[str] = set()
-    combined: list[dict[str, Any]] = []
-    for entry in db_dicts + module_templates:
-        eid = entry.get("id")
-        if eid not in seen_ids:
-            seen_ids.add(eid)
-            combined.append(entry)
-    return combined
-
-
-@router.get("/prompt-templates/{template_id}", response_model=PromptTemplate)
-def get_prompt_template(
-    template_id: str,
-    repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> PromptTemplate:
-    """Get a single prompt template by ID — checks DB first, then modules."""
-    template = repo.get_prompt_template(template_id)
-    if template is not None:
-        return template  # type: ignore[return-value]
-
-    # Fallback: search module-sourced templates
-    for mod_template in get_prompt_templates_from_modules():
-        if mod_template.get("id") == template_id:
-            return PromptTemplate(**{k: v for k, v in mod_template.items() if k in PromptTemplate.model_fields})
-
-    raise BlueprintNotFoundError("PromptTemplate", template_id)
-
-
-@router.post("/prompt-templates", response_model=PromptTemplate, status_code=201)
-def create_prompt_template(
-    template: PromptTemplate,
-    repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> PromptTemplate:
-    """Create a new prompt template."""
-    existing = repo.get_prompt_template(template.id)
-    if existing is not None:
-        raise BlueprintConflictError("PromptTemplate", template.id)
-    repo.save_prompt_template(template)
-    return template
-
-
-@router.put("/prompt-templates/{template_id}", response_model=PromptTemplate)
-def update_prompt_template(
-    template_id: str,
-    template: PromptTemplate,
-    repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> PromptTemplate:
-    """Update an existing prompt template."""
-    existing = repo.get_prompt_template(template_id)
-    _require_found("PromptTemplate", existing, template_id)
-    repo.save_prompt_template(template)
-    return template
-
-
-@router.delete("/prompt-templates/{template_id}")
-def delete_prompt_template(
-    template_id: str,
-    repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> dict:
-    """Delete a prompt template."""
-    deleted = repo.delete_prompt_template(template_id)
-    if not deleted:
-        raise BlueprintNotFoundError("PromptTemplate", template_id)
-    return {"status": "ok", "deleted": template_id}
 
 
 # ==================================================================

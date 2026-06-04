@@ -46,7 +46,6 @@ from backend.api.routers import (  # noqa: E402
     output_composer,
     profiles,
     projects,
-    role_definitions,
     sessions,
     system,
     tags,
@@ -336,7 +335,6 @@ def create_app() -> FastAPI:
     # --- Blueprint Canvas ---
     app.include_router(blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"])
     app.include_router(llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"])
-    app.include_router(role_definitions.router, prefix="/api/v1/blueprints", tags=["blueprints"])
     app.include_router(argumentation_patterns.router, prefix="/api/v1/blueprints", tags=["blueprints"])
     app.include_router(workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"])
     app.include_router(canvas.router, prefix="/api/v1/canvas", tags=["canvas"])
