@@ -228,7 +228,13 @@ class ModuleService:
 
         now = time.time()
         if not force_refresh and self._registry_cache and (now - self._registry_cache_time) < self._registry_cache_ttl:
-            return self._registry_cache.get("modules", [])
+            cached = self._registry_cache
+            if "modules" in cached:
+                return cached["modules"]
+            repo_dict = cached.get("repository")
+            if isinstance(repo_dict, dict):
+                return list(repo_dict.values())
+            return []
 
         try:
             req = urllib.request.Request(
