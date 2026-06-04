@@ -317,9 +317,7 @@ class TestInterjectionNode:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
-    async def test_legacy_zero_pause_timeout_falls_through(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_legacy_zero_pause_timeout_falls_through(self, mock_publish: AsyncMock) -> None:
         """Without ``pause_timeout`` (default 0), an empty queue still
         sets ``is_paused=True`` immediately — the legacy behaviour all
         pre-existing tests rely on.
@@ -338,9 +336,7 @@ class TestInterjectionNodeBlocking:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
-    async def test_drains_service_queue_when_state_empty(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_drains_service_queue_when_state_empty(self, mock_publish: AsyncMock) -> None:
         """Items submitted via ``interjection_service.submit()`` (the API
         path) must be consumed even if the in-state queue is empty.
         """
@@ -368,9 +364,7 @@ class TestInterjectionNodeBlocking:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
-    async def test_blocks_until_submit_then_returns(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_blocks_until_submit_then_returns(self, mock_publish: AsyncMock) -> None:
         """With ``pause_timeout > 0`` and an empty queue, the node must
         wait for ``interjection_service.submit()`` rather than set
         ``is_paused=True`` immediately.

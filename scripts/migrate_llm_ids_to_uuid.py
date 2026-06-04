@@ -142,9 +142,7 @@ def migrate_blueprints_db(conn: sqlite3.Connection, mapping: dict[str, str]) -> 
         counts["audit_log"] = total
 
         # 6. debate_artifacts — JSON data blob
-        rows = conn.execute(
-            "SELECT session_id, data FROM debate_artifacts WHERE data LIKE '%llm_profile_id%'"
-        ).fetchall()
+        rows = conn.execute("SELECT session_id, data FROM debate_artifacts WHERE data LIKE '%llm_profile_id%'").fetchall()
         total = 0
         for session_id, data_str in rows:
             try:
@@ -213,9 +211,7 @@ def migrate_profiles_db(mapping: dict[str, str]) -> dict[str, int]:
     conn = sqlite3.connect(str(PROFILES_DB))
     conn.row_factory = sqlite3.Row
     try:
-        tables = {row[0] for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()}
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
 
         for table in ("active_configurations", "configuration_history"):
             if table not in tables:
@@ -255,9 +251,7 @@ def migrate_case_dbs(mapping: dict[str, str]) -> dict[str, int]:
         conn = sqlite3.connect(str(db_path))
         conn.row_factory = sqlite3.Row
         try:
-            tables = {row[0] for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()}
+            tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             for table in tables:
                 cols_info = conn.execute(f"PRAGMA table_info({table})").fetchall()
                 col_names = {row[1] for row in cols_info}
@@ -274,9 +268,7 @@ def migrate_case_dbs(mapping: dict[str, str]) -> dict[str, int]:
 
             # Also handle JSON blobs in debate_artifacts
             if "debate_artifacts" in tables:
-                da_rows = conn.execute(
-                    "SELECT session_id, data FROM debate_artifacts WHERE data LIKE '%llm_profile_id%'"
-                ).fetchall()
+                da_rows = conn.execute("SELECT session_id, data FROM debate_artifacts WHERE data LIKE '%llm_profile_id%'").fetchall()
                 total = 0
                 for session_id, data_str in da_rows:
                     try:
@@ -335,6 +327,7 @@ def migrate_module_dirs(mapping: dict[str, str], dry_run: bool = False) -> list[
             content = profile_yaml.read_text()
             # Replace 'id: old_id' at the start of a line
             import re
+
             new_content = re.sub(
                 rf"^id:\s*{re.escape(old_id)}\s*$",
                 f"id: {new_id}",

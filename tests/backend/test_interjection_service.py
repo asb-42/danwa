@@ -236,9 +236,7 @@ class TestConsumeBlocking:
     """
 
     @pytest.mark.asyncio
-    async def test_returns_immediately_when_items_present(
-        self, service: InterjectionService
-    ) -> None:
+    async def test_returns_immediately_when_items_present(self, service: InterjectionService) -> None:
         """If items are already queued, consume_blocking() must return
         synchronously (no async wait) and drain them.
         """

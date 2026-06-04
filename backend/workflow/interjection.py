@@ -208,9 +208,7 @@ class InterjectionService:
         _ = queue_size  # keep linter happy
         return []
 
-    async def _drain_pending(
-        self, session_id: str, node_id: str | None
-    ) -> tuple[list[dict[str, Any]], int]:
+    async def _drain_pending(self, session_id: str, node_id: str | None) -> tuple[list[dict[str, Any]], int]:
         """Mark all pending items for ``session_id`` as consumed and return them.
 
         Returns ``(results, queue_size)``.  When ``queue_size`` is zero

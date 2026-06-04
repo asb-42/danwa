@@ -890,11 +890,11 @@ class TestStateUpdateKeys:
         # Find the block that builds state_update
         block_start = src.find("state_update: dict = {")
         assert block_start != -1, "state_update construction not found"
-        block = src[block_start: block_start + 800]
+        block = src[block_start : block_start + 800]
         # current_draft key must be guarded by `if not is_transactional:`
         # and node_outputs + messages must always be present.
         assert '"node_outputs": [output]' in block
         assert '"messages":' in block
         # The current_draft key line should be inside the `if not is_transactional:` block
         # immediately after the state_update dict definition.
-        assert "if not is_transactional:" in src[block_start: block_start + 1200]
+        assert "if not is_transactional:" in src[block_start : block_start + 1200]

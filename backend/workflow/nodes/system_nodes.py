@@ -284,9 +284,7 @@ async def interjection_node(state: WorkflowState) -> dict:
     # immediately" behaviour intact.
     pause_timeout = float(state.get("pause_timeout", 0.0) or 0.0)
     if not queue and pause_timeout > 0:
-        blocked = await interjection_service.consume_blocking(
-            session_id, node_id, timeout=pause_timeout
-        )
+        blocked = await interjection_service.consume_blocking(session_id, node_id, timeout=pause_timeout)
         for item in blocked:
             queue.append(
                 {
