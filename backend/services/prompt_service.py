@@ -3,9 +3,7 @@
 Wraps prompt file loading with caching based on file modification time.
 Supports variant overrides and fallback to default prompts.
 
-When a ``ProfileService`` is provided, DB content (from ``blueprints.db``)
-is checked first — this is the Single Source of Truth.  Filesystem prompts
-serve as fallback for project-specific overrides or when the DB is empty.
+Prompts are loaded from the module filesystem (``modules/prompts-base/prompts/``).
 """
 
 from __future__ import annotations
@@ -18,7 +16,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.models.schemas import TranslationEntry
-    from backend.services.profile_service import ProfileService
 
 
 # Lazy import to avoid circular dependency
@@ -43,7 +40,6 @@ class PromptService:
     def __init__(
         self,
         prompts_dir: Path | str = _DEFAULT_PROMPTS_DIR,
-        profile_service: ProfileService | None = None,
         argumentation_patterns_dir: Path | str | None = None,
     ):
         self.prompts_dir = Path(prompts_dir)
@@ -51,7 +47,6 @@ class PromptService:
         self._legacy_prompts_dir = Path("profiles/prompts")
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
-        self._profile_service = profile_service
 
     def get_prompt(
         self,
@@ -71,17 +66,7 @@ class PromptService:
 
         Returns a dict with keys: content, hash, mtime, path (mtime for filesystem).
         """
-        # 1. Try DB content via ProfileService (SSOT)
-        if self._profile_service is not None:
-            db_data = self._profile_service.get_prompt_content(
-                variant,
-                role,
-                language=language,
-            )
-            if db_data:
-                return db_data
-
-        # 2. Fallback: filesystem with hot-reload caching
+        # Filesystem with hot-reload caching
         # Build candidate file names: language-specific first, then base
         candidates = []
         if language:
