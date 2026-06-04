@@ -66,6 +66,7 @@ exclude = ["archive/", "src/", "tests/test_*.py"]
 "backend/blueprints/migrations.py" = ["E501"]
 "backend/services/debate_workflow.py" = ["E501"]
 "tests/backend/test_migration_v7.py" = ["E501"]
+"backend/workflow/domains.py" = ["E501"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

@@ -83,3 +83,5 @@ class WorkflowState(TypedDict, total=False):
     draft_version: int  # Inkrementiert bei jedem Return-to-Builder
     constructivity_score: float
     consensus_result: dict | None  # {"verdict": "approved"|"revision_required", ...}
+    latest_draft: str | None  # Most recent Builder output (global_revision or raw); distinct from
+    # zero_draft (Strategist's original) and from current_draft (the running debate log).

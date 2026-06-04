@@ -25,7 +25,21 @@ _MAX_JSON_RETRIES = 3
 
 
 def _extract_zero_draft(state: WorkflowState) -> str:
-    """Extract zero draft from state, falling back to parsing from node_outputs."""
+    """Extract the draft the Builder should improve.
+
+    Resolution order:
+      1. ``latest_draft`` — most recent Builder output (``global_revision`` or
+         raw content).  This is the iterative state: the Builder is improving
+         the previous revision, not the original zero draft.
+      2. ``zero_draft`` — original Strategist output, used on the first
+         iteration when no Builder has run yet.
+      3. Most recent ``wf-strategist`` content from ``node_outputs``.
+      4. ``state.context`` — ultimate fallback so the Builder always has
+         something to work with.
+    """
+    latest = state.get("latest_draft")
+    if latest:
+        return latest
     zd = state.get("zero_draft")
     if zd:
         return zd
@@ -58,15 +72,32 @@ def _clean_llm_output(text: str) -> str:
 
 
 def _extract_critic_items(state: WorkflowState) -> list[dict]:
-    """Extract CriticItems from state, falling back to parsing from node_outputs.
+    """Extract CriticItems from state for the current iteration.
 
-    If ``critic_items`` accumulator is populated, returns it directly.
-    Otherwise scans ``node_outputs`` for the most recent ``wf-critic`` entry
-    and attempts to parse its content as a JSON array of ``CriticItem`` objects.
+    The ``critic_items`` accumulator is populated by ``operator.add`` and
+    therefore contains items from every previous round.  When the Builder
+    runs in iteration N we want only the items raised in the current round,
+    not the entire history (otherwise the Builder is asked to re-fix items
+    it has already addressed, which corrupts the output).
+
+    Resolution order:
+      1.  If any item in the accumulator carries a ``round`` field equal to
+          ``state.current_round``, return only those items.
+      2.  If no item has a ``round`` field (e.g. state was constructed
+          before this fix was applied), fall back to the full accumulator —
+          preserves existing behaviour.
+      3.  If the accumulator is empty, scan ``node_outputs`` for the most
+          recent ``wf-critic`` entry and parse its content as a JSON array.
     """
     items = state.get("critic_items", [])
     if items:
-        return items
+        current_round = state.get("current_round", 1)
+        current_round_items = [it for it in items if it.get("round") == current_round]
+        if current_round_items:
+            return current_round_items
+        has_round_tag = any("round" in it for it in items)
+        if not has_round_tag:
+            return items
 
     for no in reversed(state.get("node_outputs", [])):
         if no.get("node_type") == "wf-critic":
@@ -377,6 +408,9 @@ def builder_node_factory(
         }
         if builder_output and builder_output.global_revision:
             state_update["current_draft"] = builder_output.global_revision
+            state_update["latest_draft"] = builder_output.global_revision
+        else:
+            state_update["latest_draft"] = content
 
         return state_update
 

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from backend.api.events import publish_async
 from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
+from backend.workflow.domains import get_decision_matrix
 from backend.workflow.interjection import interjection_service
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
@@ -81,84 +82,27 @@ def agent_node_factory(
             from backend.models.transactional import CriticItem
 
             schema = CriticItem.model_json_schema()
-            decision_matrix = (
-                "Du MUSST jeden Mangel nach dieser Tabelle klassifizieren. "
-                "Es gibt keine Option dazwischen.\n"
-                "\n"
-                "| Severity | Bedingung (mindestens eine muss zutreffen) | Beispiel |\n"
-                "| --- | --- | --- |\n"
-                "| **blocking** | Rechtswidrigkeit (Gesetz, Verordnung, "
-                "höchstrichterliche Entscheidung). Oder: Prozessverlust ist "
-                "wahrscheinlich. Oder: Vertrag ist nichtig oder anfechtbar. | "
-                "Kaution >3 Monate (§ 551 BGB). Haftung für höhere Gewalt. "
-                "Kündigungsfrist 1 Monat bei Gewerbemiete. |\n"
-                "| **critical** | Schwerer rechtlicher Mangel, aber Vertrag bleibt "
-                "wirksam. Oder: Wesentliche wirtschaftliche Risiken für Mandanten. "
-                "Oder: Beweislast ungünstig verteilt. | Schönheitsreparaturen ohne "
-                "Zeitbegrenzung. Unbegrenzte Indexmiete. |\n"
-                "| **warning** | Unschärfe, die im Streitfall unterschiedlich "
-                "ausgelegt werden könnte. Oder: Praktische Probleme, aber keine "
-                "Rechtsverletzung. | 'Gebrauchsspuren' nicht definiert. Kaution "
-                "in bar statt Überweisung. |\n"
-                "| **cosmetic** | Stil, Formatierung, Typos. Keine rechtliche "
-                "Relevanz. | Doppeltes Leerzeichen. 'Mietvertrag' statt "
-                "'Mietverhältnis'. |\n"
-                "\n"
-                "REGELN:\n"
-                "- Wenn ein Gesetzsparagraf verletzt wird: IMMER blocking.\n"
-                "- Wenn eine Klausel im Standard-Mietvertragsrecht "
-                "(BGH-Rechtsprechung) als unzulässig gilt: IMMER critical oder "
-                "blocking.\n"
-                "- warning und cosmetic sind für Fälle, die vor Gericht diskutiert "
-                "werden könnten, aber nicht zwingend verlieren.\n"
-                "- Du darfst NICHT alles als warning klassifizieren, um Konflikte "
-                "zu vermeiden. Das ist ein Fehler.\n"
-                "\n"
-                "BEISPIELE:\n"
-                "\n"
-                "Beispiel 1 (blocking — Gesetzesverstoss):\n"
-                "```json\n"
-                "{\n"
-                '  "critic_id": "c-001",\n'
-                '  "severity": "blocking",\n'
-                '  "target": "§3 Kaution",\n'
-                '  "flaw": "Kaution beträgt 5 Monatsmieten, § 551 Abs. 1 S. 1 '
-                "BGB begrenzt auf 3 Monatsmieten. Verstoss führt zur "
-                'Unwirksamkeit der Kautionsabrede.",\n'
-                '  "principle": "§ 551 Abs. 1 S. 1 BGB",\n'
-                '  "context_quote": "Die Kaution beträgt fünf Monatsmieten"\n'
-                "}\n"
-                "```\n"
-                "\n"
-                "Beispiel 2 (blocking — Haftung bei höherer Gewalt):\n"
-                "```json\n"
-                "{\n"
-                '  "critic_id": "c-002",\n'
-                '  "severity": "blocking",\n'
-                '  "target": "§5 Haftung",\n'
-                '  "flaw": "Mieter haftet für Schäden bei höherer Gewalt. '
-                "§ 278 BGB schliesst höhere Gewalt von der Schuldnerhaftung "
-                'aus. Klausel ist nichtig.",\n'
-                '  "principle": "§ 278 BGB, höhere Gewalt",\n'
-                '  "context_quote": "Mieter haftet für alle Schäden, auch bei '
-                'höherer Gewalt"\n'
-                "}\n"
-                "```\n"
-                "\n"
-                "Beispiel 3 (critical — wirtschaftliches Risiko):\n"
-                "```json\n"
-                "{\n"
-                '  "critic_id": "c-003",\n'
-                '  "severity": "critical",\n'
-                '  "target": "§4 Mieterhöhung",\n'
-                '  "flaw": "Indexmiete ohne Obergrenze. Zulässig nach § 557b '
-                "BGB, aber wirtschaftliches Existenzrisiko für Mieter bei "
-                'starker Inflation.",\n'
-                '  "principle": "§ 557b BGB, wirtschaftliche Zumutbarkeit",\n'
-                '  "context_quote": "Indexmiete nach VPI, aber keine '
-                'Obergrenze"\n'
-                "}\n"
-                "```\n"
+            agent_tags = resolved_config.get("agent_tags") or []
+            decision_matrix = get_decision_matrix(agent_tags)
+            system_prompt = system_prompt + "\n\n" + decision_matrix + "\n\n"
+            system_prompt += (
+                "## Rules\n"
+                "- Maximum 10 CriticItems per round. Prioritize blocking and critical severity.\n"
+                "- You MUST NEVER say 'Das sollte überprüft werden' or 'Man sollte prüfen, ob…'. "
+                "Instead: 'Die Klausel verstößt gegen X, weil Y.'\n"
+                "- Every item MUST have a concrete target, principle, and flaw.\n\n"
+            )
+            system_prompt += "## Output Format\nRespond with a JSON array. Every object must match this schema:\n" + _json.dumps(
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": schema["properties"],
+                        "required": schema.get("required", []),
+                    },
+                },
+                indent=2,
+                ensure_ascii=False,
             )
             system_prompt = system_prompt + "\n\n" + decision_matrix + "\n\n"
             system_prompt += (
@@ -431,26 +375,37 @@ def agent_node_factory(
         # Keep current_draft bounded to prevent unbounded context growth
         # across feedback loops.  Uses head+tail preservation so the start
         # of the debate isn't lost.
+        #
+        # For transactional drafting this concatenation is harmful: the
+        # Strategist's ``zero_draft`` is the artifact being refined, but
+        # appending every critic / angel's-advocate / pragmatist message
+        # turns ``current_draft`` into a garbage dump.  The Builder reads
+        # ``latest_draft`` for the iterative state and ``zero_draft`` for
+        # the first iteration — neither benefits from this concatenation.
         _max_draft_len = 50000
         _trunc_warn = "\n\n[… content truncated …]\n\n"
-        existing_draft = state.get("current_draft", "")
-        new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
-        if len(new_draft) > _max_draft_len:
-            tail_target = _max_draft_len - len(_trunc_warn)
-            head = new_draft[: tail_target // 2]
-            tail = new_draft[-(tail_target // 2) :]
-            new_draft = head + _trunc_warn + tail
-
+        is_transactional = state.get("workflow_template") == "transactional_drafting"
         state_update: dict = {
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],
-            "current_draft": new_draft,
         }
+        if not is_transactional:
+            existing_draft = state.get("current_draft", "")
+            new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
+            if len(new_draft) > _max_draft_len:
+                tail_target = _max_draft_len - len(_trunc_warn)
+                head = new_draft[: tail_target // 2]
+                tail = new_draft[-(tail_target // 2) :]
+                new_draft = head + _trunc_warn + tail
+            state_update["current_draft"] = new_draft
 
         # --- Transactional Drafting: populate domain-specific state keys ---
         if node_type == "wf-critic":
             items = _parse_critic_output(content, node_id)
             if items:
+                for item in items:
+                    if "round" not in item:
+                        item["round"] = current_round
                 state_update["critic_items"] = items
         elif node_type == "wf-strategist":
             state_update["zero_draft"] = content
