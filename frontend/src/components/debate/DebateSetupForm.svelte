@@ -39,7 +39,7 @@
       completedDebates = res || [];
       config.selectedDebateIds = completedDebates.map(d => d.debate_id);
     } catch (e) {
-      console.warn('Failed to load completed debates:', e);
+      if (import.meta.env.DEV) console.warn('Failed to load completed debates:', e);
       completedDebates = [];
     } finally {
       loadingCompletedDebates = false;

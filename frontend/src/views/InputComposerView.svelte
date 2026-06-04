@@ -86,12 +86,12 @@
           selectedTemplateId = workflowTemplates[0].id;
         }
       })
-      .catch((e) => { console.warn('Failed to load workflow templates:', e.message); });
+      .catch((e) => { if (import.meta.env.DEV) console.warn('Failed to load workflow templates:', e.message); });
 
     // Phase 3: Load project documents for RAG
     getDocuments()
       .then((docs) => { documents = docs || []; })
-      .catch((e) => console.warn('Failed to load documents:', e.message));
+      .catch((e) => { if (import.meta.env.DEV) console.warn('Failed to load documents:', e.message) } );
 
     // Phase 4: Start polling for pending A2A jobs
     startA2APolling();
@@ -134,7 +134,7 @@
       }));
     } catch (e) {
       // Silently ignore polling errors (server may not be ready)
-      console.warn('A2A poll failed:', e.message);
+      if (import.meta.env.DEV) console.warn('A2A poll failed:', e.message);
     }
   }
 
@@ -288,7 +288,7 @@
         const res = await getDebates(100, { status: 'completed' });
         completedDebates = res || [];
       } catch (e) {
-        console.warn('Failed to load completed debates:', e);
+        if (import.meta.env.DEV) console.warn('Failed to load completed debates:', e);
         completedDebates = [];
       } finally {
         loadingCompletedDebates = false;

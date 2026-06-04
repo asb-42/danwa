@@ -1,6 +1,6 @@
 <script>
   import { tStore } from '../../lib/i18n/index.js';
-  import { formatNumber } from '../../lib/i18n/index.js';
+  
   import MarkdownRenderer from '../MarkdownRenderer.svelte';
 
   let {

@@ -132,7 +132,7 @@
             }
             if (entity) entityDataMap[entityId] = entity;
           } catch (err) {
-            console.warn(`[BlueprintCanvasView] Failed to load entity ${entityId}:`, err);
+            if (import.meta.env.DEV) console.warn(`[BlueprintCanvasView] Failed to load entity ${entityId}:`, err);
           }
         }
       }
@@ -140,7 +140,7 @@
       canvasStore.loadFromLayout(layoutData, entityDataMap);
     } catch (err) {
       canvasStore.error = err.message;
-      console.error('[BlueprintCanvasView] Failed to load layout:', err);
+      if (import.meta.env.DEV) console.error('[BlueprintCanvasView] Failed to load layout:', err);
     } finally {
       canvasStore.isLoading = false;
     }
@@ -177,7 +177,7 @@
       canvasStore.setMode('workflow');
     } catch (err) {
       canvasStore.error = err.message;
-      console.error('[BlueprintCanvasView] Failed to load workflow:', err);
+      if (import.meta.env.DEV) console.error('[BlueprintCanvasView] Failed to load workflow:', err);
     } finally {
       canvasStore.isLoading = false;
     }
@@ -246,7 +246,7 @@
       const result = await runBlueprintImport();
       if (import.meta.env.DEV) console.log('[BlueprintCanvasView] Import result:', result);
     } catch (err) {
-      console.error('[BlueprintCanvasView] Import failed:', err);
+      if (import.meta.env.DEV) console.error('[BlueprintCanvasView] Import failed:', err);
     }
   }
 

@@ -5,7 +5,7 @@
    */
   import { decideExtension, getHITLStatus } from '../../lib/hitl.js';
   import { hitlStatus } from '../../lib/stores/hitl.svelte.js';
-  import { locale, tStore } from '../../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   let { debateId, extensionRequest } = $props();
 
@@ -29,7 +29,7 @@
       try {
         const status = await getHITLStatus(debateId);
         hitlStatus.set(status);
-      } catch (e) { console.warn('[ExtensionRequestPanel] HITL status refresh failed:', e); }
+      } catch (e) { if (import.meta.env.DEV) console.warn('[ExtensionRequestPanel] HITL status refresh failed:', e); }
     } catch (err) {
       error = err.message || t('error.unknown');
       decision = null;

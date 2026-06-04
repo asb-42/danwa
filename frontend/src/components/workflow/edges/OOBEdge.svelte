@@ -1,5 +1,5 @@
 <script>
-  import { BaseEdge, getBezierPath } from '@xyflow/svelte';
+  import { getBezierPath } from '@xyflow/svelte';
 
   /** @type {{ id: string, sourceX: number, sourceY: number, targetX: number, targetY: number, data?: any }} */
   let { id, sourceX, sourceY, targetX, targetY, data = {} } = $props();

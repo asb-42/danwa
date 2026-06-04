@@ -130,7 +130,7 @@
           tracker = createRenderJobTracker(jobData.job_id);
         }
       }
-    } catch (e) { console.warn('[OutputComposerView] failed to restore active job from localStorage:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[OutputComposerView] failed to restore active job from localStorage:', e); }
 
     listOutputPlugins()
       .then((p) => { plugins = p; })
@@ -145,13 +145,13 @@
   function persistJob(jobData) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(jobData));
-    } catch (e) { console.warn('[OutputComposerView] failed to persist active job:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[OutputComposerView] failed to persist active job:', e); }
   }
 
   function clearPersistedJob() {
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch (e) { console.warn('[OutputComposerView] failed to clear persisted job:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[OutputComposerView] failed to clear persisted job:', e); }
   }
 
   function onSearchInput(e) {

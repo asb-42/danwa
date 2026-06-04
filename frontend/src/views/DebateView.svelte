@@ -1,9 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected, selectedLLMProfile, selectedPromptVariant, selectedPersonas, activeProject, activeCase, autoStartDebate, addToast } from '../lib/stores.js';
+  import { currentDebate, debates, loading, error, sseConnected, activeProject, autoStartDebate, addToast } from '../lib/stores.js';
   import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
-  import { tStore, formatNumber, formatDate, locale, tn } from '../lib/i18n/index.js';
+  import { tStore, formatNumber, formatDate, tn } from '../lib/i18n/index.js';
   import MarkdownRenderer from '../components/MarkdownRenderer.svelte';
   import WorkflowGraph from '../components/WorkflowGraph.svelte';
   import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
@@ -108,7 +108,7 @@
         onEvent: (event) => { handleSSEEvent(event); },
         onOpen: () => { sseConnected.set(true); },
         onClose: () => { sseConnected.set(false); },
-        onError: (err) => { console.error('SSE error:', err); },
+        onError: (err) => { if (import.meta.env.DEV) console.error('SSE error:', err); },
       });
     }
   });
@@ -166,7 +166,7 @@
       onEvent: (event) => { handleSSEEvent(event); },
       onOpen: () => { sseConnected.set(true); },
       onClose: () => { sseConnected.set(false); },
-      onError: (err) => { console.error('SSE error:', err); },
+      onError: (err) => { if (import.meta.env.DEV) console.error('SSE error:', err); },
     });
 
     try {
@@ -209,7 +209,7 @@
     if (import.meta.env.DEV) console.log('SSE event:', event);
 
     try { handleWorkflowSSE(event); } catch (e) {
-      console.warn('Workflow SSE mapping error:', e);
+      if (import.meta.env.DEV) console.warn('Workflow SSE mapping error:', e);
     }
 
     if (event.type === 'title_generating') {
@@ -416,7 +416,7 @@
     try {
       const status = await getHITLStatus($currentDebate.debate_id);
       hitlStatus.set(status);
-    } catch (e) { console.warn('[DebateView] HITL status refresh failed:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[DebateView] HITL status refresh failed:', e); }
   }
 
   async function refreshHITLInteractions() {
@@ -424,7 +424,7 @@
     try {
       const result = await getInteractions($currentDebate.debate_id, { limit: 100 });
       hitlInteractions.set(result.interactions || []);
-    } catch (e) { console.warn('[DebateView] HITL interactions refresh failed:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[DebateView] HITL interactions refresh failed:', e); }
   }
 
   $effect(() => {

@@ -204,7 +204,7 @@
                 nodeOutputs = state.node_outputs;
               }
               if (state.current_round) currentRound = state.current_round;
-            } catch (e) { console.warn('[MvpDebateView] workflow state load failed:', e); }
+            } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] workflow state load failed:', e); }
             startTimer();
             connectSSE(debate.session_id);
           }
@@ -320,7 +320,7 @@
           };
           nodeStatuses = { ...nodeStatuses, [currentNodeId]: 'running' };
           if (!workflowTimer) startWorkflowTimer();
-        } catch (e) { console.warn('[MvpDebateView] onNodeStart error:', e); }
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onNodeStart error:', e); }
       },
       onLLMCallStarted: (data) => {
         try {
@@ -346,12 +346,12 @@
           };
           stopWorkflowTimer();
           startProcessingTimer();
-        } catch (e) { console.warn('[MvpDebateView] onLLMCallStarted error:', e); }
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onLLMCallStarted error:', e); }
       },
       onWebSearch: (data) => {
         try {
           // activity text tracked via workflowPhase
-        } catch (e) { console.warn('[MvpDebateView] onWebSearch error:', e); }
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onWebSearch error:', e); }
       },
       onNodeComplete: (data) => {
         try {
@@ -378,7 +378,7 @@
           workflowPhase = null;
           stopProcessingTimer();
           stopWorkflowTimer();
-        } catch (e) { console.warn('[MvpDebateView] onNodeComplete error:', e); }
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onNodeComplete error:', e); }
       },
       onRoundUpdate: (data) => {
         currentRound = data.round || currentRound;
@@ -420,7 +420,7 @@
       },
       onWorkflowPaused: () => { status = 'paused'; },
       onWorkflowResumed: () => { status = 'running'; },
-      onError: (err) => { console.error('[MvpDebateView] SSE error:', err); },
+      onError: (err) => { if (import.meta.env.DEV) console.error('[MvpDebateView] SSE error:', err); },
       onHITLQuery: (data) => {
         currentAgentQuery.set({
           interrupt_id: data.interrupt_id,
@@ -458,7 +458,7 @@
         try {
           interjectionFeedback = t('mvpDebate.interjection.sent', { preview: `${(data.content || '').substring(0, 60)}${(data.content || '').length > 60 ? '…' : ''}` });
           setTimeout(() => { if (interjectionFeedback.startsWith('✓ Sent:')) interjectionFeedback = ''; }, 5000);
-        } catch (e) { console.warn('[MvpDebateView] onInterjectionReceived error:', e); }
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onInterjectionReceived error:', e); }
       },
       onInterjectionConsumed: (data) => {
         try {
@@ -475,7 +475,7 @@
           }];
           setTimeout(() => { if (interjectionFeedback.startsWith('📨')) interjectionFeedback = ''; }, 8000);
           refreshHITLInteractions();
-        } catch (e) { console.warn('[MvpDebateView] onInterjectionConsumed error:', e); }
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onInterjectionConsumed error:', e); }
       },
       onHITLInject: () => {
         refreshHITLStatus();
@@ -501,7 +501,7 @@
     try {
       const s = await getHITLStatus(debateId);
       hitlStatus.set(s);
-    } catch (e) { console.warn('[MvpDebateView] HITL status refresh failed:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] HITL status refresh failed:', e); }
   }
 
   async function refreshHITLInteractions() {
@@ -509,7 +509,7 @@
     try {
       const result = await getInteractions(debateId, { limit: 100 });
       hitlInteractions.set(result.interactions || []);
-    } catch (e) { console.warn('[MvpDebateView] HITL interactions refresh failed:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] HITL interactions refresh failed:', e); }
   }
 
   async function handleStart() {
@@ -605,7 +605,7 @@
     try {
       await submitInterjection(sessionId, text);
     } catch (err) {
-      console.error('Failed to send interjection:', err);
+      if (import.meta.env.DEV) console.error('Failed to send interjection:', err);
     } finally {
       sendingInterjection = false;
     }

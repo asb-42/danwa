@@ -13,7 +13,7 @@
     listPromptTemplates,
     listRoleTypes,
   } from '../../../lib/blueprint/api.js';
-  import { getRoleDefinition, getAgentBlueprint } from '../../../lib/blueprint/api.js';
+  
 
   /** @type {{ node: any, onsave?: (data: any) => void, ondelete?: () => void }} */
   let { node, onsave = () => {}, ondelete = () => {} } = $props();

@@ -86,7 +86,7 @@
         const data = await getLLMActivity();
         llmActivity = data;
       } catch (e) {
-        console.warn('[Header] LLM activity poll failed:', e);
+        if (import.meta.env.DEV) console.warn('[Header] LLM activity poll failed:', e);
       }
     }, 4000);
     return () => clearInterval(id);

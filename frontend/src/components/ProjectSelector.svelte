@@ -32,7 +32,7 @@
           : null);
       }
     } catch (err) {
-      console.warn('Could not load projects:', err);
+      if (import.meta.env.DEV) console.warn('Could not load projects:', err);
     } finally {
       isLoading = false;
     }

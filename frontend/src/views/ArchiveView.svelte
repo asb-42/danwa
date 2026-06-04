@@ -1,8 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { loading, error, activeProject } from '../lib/stores.js';
-  import { getDebates, listDebateForks, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
-  import { formatNumber, formatDate, tStore } from '../lib/i18n/index.js';
+  import { getDebates, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
+  import { formatDate, tStore } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
 
@@ -151,7 +151,7 @@
     try {
       availableProjects = await getProjects();
     } catch (err) {
-      console.warn('Could not load projects:', err);
+      if (import.meta.env.DEV) console.warn('Could not load projects:', err);
     }
   }
 

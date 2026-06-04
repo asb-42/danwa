@@ -138,7 +138,7 @@
       const data = await getLocaleDetails(localeCode);
       detailStrings = data.strings || [];
     } catch (e) {
-      console.error('Failed to load locale details:', e);
+      if (import.meta.env.DEV) console.error('Failed to load locale details:', e);
       detailStrings = [];
     } finally {
       detailLoading = false;
@@ -165,7 +165,7 @@
       }
       editingKey = null;
     } catch (e) {
-      console.error('Failed to save translation:', e);
+      if (import.meta.env.DEV) console.error('Failed to save translation:', e);
     }
   }
 
@@ -209,12 +209,12 @@
             }
           }
         } catch (e) {
-          console.error('Poll error:', e);
+          if (import.meta.env.DEV) console.error('Poll error:', e);
         }
       }, 800);
     } catch (e) {
       addToast({ message: `Translation failed: ${e.message}`, type: 'error', timeout: 8000 });
-      console.error('LLM translation failed:', e);
+      if (import.meta.env.DEV) console.error('LLM translation failed:', e);
     } finally {
       translatingLocale = null;
     }
@@ -245,7 +245,7 @@
       }
     } catch (e) {
       addToast({ message: `Wipe failed: ${e.message}`, type: 'error', timeout: 8000 });
-      console.error('Wipe failed:', e);
+      if (import.meta.env.DEV) console.error('Wipe failed:', e);
     } finally {
       wipingLocale = null;
     }
@@ -271,7 +271,7 @@
       await loadOverview();
     } catch (e) {
       addLocaleError = e.message || 'Failed to add language';
-      console.error('Failed to register locale:', e);
+      if (import.meta.env.DEV) console.error('Failed to register locale:', e);
     } finally {
       addingLocale = false;
     }

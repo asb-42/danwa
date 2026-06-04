@@ -1,8 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { healthStatus, loading, error, activeProject, activeCase, currentDebate, sseConnected, route } from '../lib/stores.js';
+  import { healthStatus, loading, error, activeProject, currentDebate, route } from '../lib/stores.js';
   import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
-  import { currentUser } from '../lib/stores/auth.svelte.js';
+  
   import { formatNumber, formatDate, tStore, tn } from '../lib/i18n/index.js';
   import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
   import QuotaIndicator from '../components/QuotaIndicator.svelte';
@@ -36,7 +36,7 @@
   async function loadTenant() {
     try {
       tenant = await request('/api/v1/tenants/current');
-    } catch (e) { console.warn('[Dashboard] tenant info load failed (optional):', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[Dashboard] tenant info load failed (optional):', e); }
   }
 
   // Reload when project changes
@@ -67,7 +67,7 @@
       if (running && (!$currentDebate || $currentDebate.status !== 'running')) {
         currentDebate.set(running);
       }
-    } catch (e) { console.warn('[Dashboard] running-debate poll failed:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[Dashboard] running-debate poll failed:', e); }
   }
 
   async function loadDebateStats() {
@@ -81,7 +81,7 @@
         failed: debates.filter((d) => d.status === 'failed').length,
       };
     } catch (err) {
-      console.warn('Could not load debate stats:', err);
+      if (import.meta.env.DEV) console.warn('Could not load debate stats:', err);
     }
   }
 

@@ -3,8 +3,8 @@
    * ContinueDebateModal — Modal zum Fortsetzen einer abgeschlossenen Debatte.
    * Ermöglicht das Erstellen einer neuen Debatte auf Basis der Ergebnisse.
    */
-  import { createDebate, continueDebate, getAgentPersonas, getLLMProfiles, getPromptVariants } from '../../lib/api.js';
-  import { selectedLLMProfile, selectedPromptVariant, selectedPersonas, loading, error, addToast } from '../../lib/stores.js';
+  import { continueDebate, getLLMProfiles, getPromptVariants } from '../../lib/api.js';
+  import { error, addToast } from '../../lib/stores.js';
   import { tStore } from '../../lib/i18n/index.js';
 
   let { debateId = null, debateTitle = '', onClose = () => {}, onCreated = () => {} } = $props();
@@ -28,13 +28,13 @@
     try {
       llmProfiles = await getLLMProfiles();
     } catch (e) {
-      console.warn('[ContinueDebateModal] failed to load LLM profiles:', e);
+      if (import.meta.env.DEV) console.warn('[ContinueDebateModal] failed to load LLM profiles:', e);
       addToast({ message: t('error.unknown'), type: 'error', timeout: 4000 });
     }
     try {
       promptVariants = await getPromptVariants();
     } catch (e) {
-      console.warn('[ContinueDebateModal] failed to load prompt variants:', e);
+      if (import.meta.env.DEV) console.warn('[ContinueDebateModal] failed to load prompt variants:', e);
     }
   }
 

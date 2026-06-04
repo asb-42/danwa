@@ -31,7 +31,7 @@
     try {
       tags = await getTags($currentTenant.id);
     } catch (err) {
-      console.warn('Failed to load tags:', err);
+      if (import.meta.env.DEV) console.warn('Failed to load tags:', err);
     }
   }
 

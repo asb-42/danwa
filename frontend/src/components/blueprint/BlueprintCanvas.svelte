@@ -69,7 +69,7 @@
 
     const result = validateConnection(sourceNode.type, targetNode.type, canvasStore.mode);
     if (!result.valid) {
-      console.warn('[BlueprintCanvas] Invalid connection:', result.reason);
+      if (import.meta.env.DEV) console.warn('[BlueprintCanvas] Invalid connection:', result.reason);
       return;
     }
 
@@ -90,7 +90,7 @@
     // Wire semantic edges to backend FK updates
     if (isSemanticEdge(result.edgeType)) {
       wireEdgeOnConnect(newEdge, canvasStore.nodes, canvasStore.updateNodeData.bind(canvasStore))
-        .catch((err) => console.error('[BlueprintCanvas] Edge wiring failed:', err));
+        .catch((err) => { if (import.meta.env.DEV) console.error('[BlueprintCanvas] Edge wiring failed:', err) } );
     }
   }
 
@@ -116,7 +116,7 @@
       canvasStore.removeEdge(edge.id);
       if (isSemanticEdge(edge.type)) {
         wireEdgeOnDisconnect(edge, canvasStore.nodes, canvasStore.updateNodeData.bind(canvasStore))
-          .catch((err) => console.error('[BlueprintCanvas] Edge unwiring failed:', err));
+          .catch((err) => { if (import.meta.env.DEV) console.error('[BlueprintCanvas] Edge unwiring failed:', err) } );
       }
     }
     for (const node of deletedNodes) {
@@ -227,7 +227,7 @@
           }
         }
       } catch (err) {
-        console.warn('[BlueprintCanvas] Failed to load entity for drop:', err);
+        if (import.meta.env.DEV) console.warn('[BlueprintCanvas] Failed to load entity for drop:', err);
       }
     } else {
       // Draft node drop (new)

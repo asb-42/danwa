@@ -74,7 +74,7 @@
       svgWidth = maxX + 60;
       svgHeight = maxY + 80;
     } catch (err) {
-      console.warn('[DashboardWorkflowGraph] ELK layout failed:', err);
+      if (import.meta.env.DEV) console.warn('[DashboardWorkflowGraph] ELK layout failed:', err);
     }
   });
 
