@@ -443,7 +443,7 @@
   <!-- Tab Navigation -->
   <div class="border-b border-gray-200 dark:border-gray-700">
     <nav class="flex space-x-4" aria-label="Manage tabs">
-      {#each ['llm', 'roleTypes', 'agents', 'prompts', 'workflows', 'cost'] as tab}
+      {#each ['llm', 'workflows', 'cost'] as tab}
         <button
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
             {activeTab === tab
@@ -452,9 +452,6 @@
           onclick={() => { activeTab = tab; previewContent = null; }}
         >
           {#if tab === 'llm'}{t('config.llmProfiles')}
-          {:else if tab === 'agents'}{t('config.agentProfiles')}
-          {:else if tab === 'roleTypes'}🎭 {t('config.roleTypes')}
-          {:else if tab === 'prompts'}{t('config.promptVariants')}
           {:else if tab === 'workflows'}📋 {t('manage.workflows') || 'Workflows'}
           {:else if tab === 'cost'}{t('config.costEstimate')}
           {/if}
@@ -484,83 +481,8 @@
       onSelectProfile={(id) => selectedLLMProfile.set(id)}
     />
 
-  <!-- Role Types Tab -->
-  {:else if activeTab === 'roleTypes'}
-    <div class="space-y-4">
-      <div class="flex justify-end">
-        <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors" onclick={openCreateRoleType}>
-          + {t('config.createRoleType')}
-        </button>
-      </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        {#if roleTypes.length === 0}
-          <div class="flex items-center justify-center h-32">
-            <p class="text-gray-500 dark:text-gray-400">{t('config.noRoleTypes')}</p>
-          </div>
-        {:else}
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-              <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th class="px-4 py-3">ID</th>
-                  <th class="px-4 py-3">{t('config.name')}</th>
-                  <th class="px-4 py-3">{t('config.description')}</th>
-                  <th class="px-4 py-3">{t('config.roleTypeColor')}</th>
-                  <th class="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each roleTypes as rt}
-                  <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td class="px-4 py-3 font-mono text-xs">{rt.id}</td>
-                    <td class="px-4 py-3 font-medium">{rt.name}</td>
-                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{rt.description || '—'}</td>
-                    <td class="px-4 py-3">
-                      <span class="inline-block w-4 h-4 rounded-full" style="background: {rt.color || '#6b7280'}"></span>
-                    </td>
-                    <td class="px-4 py-3 text-right whitespace-nowrap">
-                      <button class="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors" onclick={() => openEditRoleType(rt)}>
-                        {t('common.edit')}
-                      </button>
-                      <button class="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors ml-1" onclick={() => confirmDelete('roleType', rt.id, rt.name)}>
-                        {t('common.delete')}
-                      </button>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </div>
-    </div>
-
-  <!-- Agent Personas Tab -->
-  {:else if activeTab === 'agents'}
-    <PersonaList
-      personas={agentPersonas}
-      selectedPersonas={$selectedPersonas}
-      {blueprintRoleDefIds}
-      onCreate={openCreateAgent}
-      onEdit={openEditAgent}
-      onDelete={(id, name) => confirmDelete('agent', id, name)}
-      onSelectPersona={(role, id) => selectedPersonas.set({ ...$selectedPersonas, [role]: id })}
-    />
-
-  <!-- Prompt Variants Tab -->
-  {:else if activeTab === 'prompts'}
-    <PromptVariantList
-      variants={promptVariants}
-      selectedVariantId={$selectedPromptVariant}
-      {previewContent}
-      {previewRole}
-      {previewVariantId}
-      onCreate={openCreatePrompt}
-      onDelete={(id) => confirmDelete('prompt', id, id)}
-      onPreview={handlePreview}
-      onTranslate={openPromptTranslate}
-      onSelect={(id) => selectedPromptVariant.set(id)}
-    />
+  <!-- Legacy tabs removed — Agent Cores, Argumentation Patterns, and Role Types
+       are now managed via Build → Modules. -->
 
   <!-- Workflows Tab -->
   {:else if activeTab === 'workflows'}
@@ -619,16 +541,6 @@
         <span class="text-gray-500 dark:text-gray-400">{t('config.llmProfile')}:</span>
         <span class="ml-1 font-medium text-gray-800 dark:text-white">{llmProfiles.find(p => p.id === $selectedLLMProfile)?.name || $selectedLLMProfile}</span>
       </div>
-      <div>
-        <span class="text-gray-500 dark:text-gray-400">{t('config.promptVariants')}:</span>
-        <span class="ml-1 font-medium text-gray-800 dark:text-white">{$selectedPromptVariant}</span>
-      </div>
-      {#each Object.entries($selectedPersonas) as [role, personaId]}
-        <div>
-          <span class="text-gray-500 dark:text-gray-400 capitalize">{role}:</span>
-          <span class="ml-1 font-medium text-gray-800 dark:text-white">{personaId}</span>
-        </div>
-      {/each}
     </div>
   </div>
 </div>
@@ -650,154 +562,4 @@
   </div>
 {/if}
 
-<!-- Role Type Modal -->
-{#if showRoleTypeModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeRoleTypeModal} role="dialog" aria-modal="true" aria-labelledby="role-type-modal-title" tabindex="-1">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4" role="presentation" onclick={(e) => e.stopPropagation()}>
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 id="role-type-modal-title" class="text-lg font-semibold text-gray-800 dark:text-white">{roleTypeModalMode === 'create' ? t('config.createRoleType') : t('config.editRoleType')}</h3>
-        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none" onclick={closeRoleTypeModal}>✕</button>
-      </div>
-      <div class="px-6 py-4 space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label for="rt-form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.id')} *</label>
-            <input id="rt-form-id" type="text" bind:value={roleTypeFormData.id} disabled={roleTypeModalMode === 'edit'}
-              class="w-full px-3 py-2 border rounded-lg text-sm {roleTypeFormErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed" placeholder="custom-role"
-              aria-invalid={roleTypeFormErrors.id ? 'true' : 'false'}
-              aria-describedby={roleTypeFormErrors.id ? 'rt-form-id-error' : undefined} />
-            {#if roleTypeFormErrors.id}<p id="rt-form-id-error" class="text-xs text-red-500 mt-1">{roleTypeFormErrors.id}</p>{/if}
-          </div>
-          <div>
-            <label for="rt-form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.name')} *</label>
-            <input id="rt-form-name" type="text" bind:value={roleTypeFormData.name}
-              class="w-full px-3 py-2 border rounded-lg text-sm {roleTypeFormErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Custom Role"
-              aria-invalid={roleTypeFormErrors.name ? 'true' : 'false'}
-              aria-describedby={roleTypeFormErrors.name ? 'rt-form-name-error' : undefined} />
-            {#if roleTypeFormErrors.name}<p id="rt-form-name-error" class="text-xs text-red-500 mt-1">{roleTypeFormErrors.name}</p>{/if}
-          </div>
-          <div>
-            <label for="rt-form-color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.roleTypeColor')}</label>
-            <input id="rt-form-color" type="color" bind:value={roleTypeFormData.color} class="w-full h-10 px-1 py-1 border border-gray-300 dark:border-gray-600 rounded-lg" />
-          </div>
-          <div>
-            <label for="rt-form-icon" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.roleTypeIcon')}</label>
-            <input id="rt-form-icon" type="text" bind:value={roleTypeFormData.icon} class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="🔍" />
-          </div>
-          <div class="md:col-span-2">
-            <label for="rt-form-desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.description')}</label>
-            <input id="rt-form-desc" type="text" bind:value={roleTypeFormData.description} class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Description of this role type" />
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closeRoleTypeModal}>{t('common.cancel')}</button>
-        <button class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSaveRoleType} disabled={isSavingRoleType}>{isSavingRoleType ? '...' : t('common.save')}</button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-<!-- Create Prompt Variant Modal -->
-{#if showPromptCreateModal}
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="button" tabindex="0" onclick={closePromptCreate} onkeydown={(e) => e.key === 'Enter' && closePromptCreate()}>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" role="button" tabindex="0" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === 'Enter' && e.stopPropagation()}>
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{t('config.createPromptVariant') || 'Create Prompt Variant'}</h3>
-        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={closePromptCreate}>✕</button>
-      </div>
-      <div class="p-6 space-y-4">
-        <div>
-          <label for="pv-form-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID *</label>
-          <input id="pv-form-id" type="text" bind:value={promptCreateData.id}
-            class="w-full px-3 py-2 border rounded-lg text-sm {promptCreateErrors.id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="my-custom-variant"
-            aria-invalid={promptCreateErrors.id ? 'true' : 'false'}
-            aria-describedby={promptCreateErrors.id ? 'pv-form-id-error' : undefined} />
-          {#if promptCreateErrors.id}<p id="pv-form-id-error" class="text-xs text-red-500 mt-1">{promptCreateErrors.id}</p>{/if}
-        </div>
-        <div>
-          <label for="pv-form-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.name')} *</label>
-          <input id="pv-form-name" type="text" bind:value={promptCreateData.name}
-            class="w-full px-3 py-2 border rounded-lg text-sm {promptCreateErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="My Custom Variant"
-            aria-invalid={promptCreateErrors.name ? 'true' : 'false'}
-            aria-describedby={promptCreateErrors.name ? 'pv-form-name-error' : undefined} />
-          {#if promptCreateErrors.name}<p id="pv-form-name-error" class="text-xs text-red-500 mt-1">{promptCreateErrors.name}</p>{/if}
-        </div>
-        <div>
-          <label for="pv-form-desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.description')}</label>
-          <input id="pv-form-desc" type="text" bind:value={promptCreateData.description} class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Description of this prompt variant" />
-        </div>
-        <div>
-          <p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prompts per Role</p>
-          <div class="space-y-3">
-            {#each PROMPT_ROLES as role}
-              <div>
-                <label for="pv-prompt-{role.value}" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{role.emoji} {role.label}</label>
-                <textarea id="pv-prompt-{role.value}" value={promptCreateData.prompts[role.value] || ''}
-                  oninput={(e) => { promptCreateData = { ...promptCreateData, prompts: { ...promptCreateData.prompts, [role.value]: e.target.value } }; }}
-                  rows="4" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono" placeholder="System prompt for {role.label}..."></textarea>
-              </div>
-            {/each}
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closePromptCreate}>{t('common.cancel')}</button>
-        <button class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleSavePromptVariant} disabled={isSavingPrompt}>{isSavingPrompt ? '...' : t('common.save')}</button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-<!-- Prompt Translation Modal -->
-{#if showPromptTranslateModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closePromptTranslate} role="dialog" aria-modal="true" aria-labelledby="manage-translate-title" tabindex="-1">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" role="presentation" onclick={(e) => e.stopPropagation()}>
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 id="manage-translate-title" class="text-lg font-semibold text-gray-800 dark:text-white">🌐 {t('config.translatePrompt') || 'Translate Prompt'}</h3>
-        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick={closePromptTranslate}>✕</button>
-      </div>
-      <div class="p-6 space-y-4">
-        <p class="text-sm text-gray-600 dark:text-gray-400">{t('config.translatePromptHint') || 'Translate all roles of this prompt variant to the target language using LLM.'}</p>
-        <div>
-          <label for="translate-lang" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('config.targetLanguage') || 'Target Language'}</label>
-          <select id="translate-lang" bind:value={promptTranslateTargetLang}
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-            <option value="de">Deutsch (de)</option>
-            <option value="en">English (en)</option>
-            <option value="fr">Français (fr)</option>
-            <option value="es">Español (es)</option>
-            <option value="it">Italiano (it)</option>
-            <option value="pt">Português (pt)</option>
-            <option value="ru">Русский (ru)</option>
-            <option value="zh">中文 (zh)</option>
-            <option value="ja">日本語 (ja)</option>
-            <option value="ko">한국어 (ko)</option>
-            <option value="ar">العربية (ar)</option>
-            <option value="he">עברית (he)</option>
-          </select>
-        </div>
-        {#if promptTranslateResult}
-          <div class="p-3 rounded-lg {promptTranslateResult.error ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'}">
-            {#if promptTranslateResult.error}
-              <p class="text-sm font-medium">{promptTranslateResult.error}</p>
-            {:else}
-              <p class="text-sm font-medium">{t('config.translationComplete') || 'Translation complete'}</p>
-              {#if promptTranslateResult.results}
-                <ul class="text-xs mt-2 space-y-1">
-                  {#each promptTranslateResult.results as r}
-                    <li>{r.role}: {r.status === 'ok' ? '✅' : '❌'} {r.error || ''}</li>
-                  {/each}
-                </ul>
-              {/if}
-            {/if}
-          </div>
-        {/if}
-      </div>
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-        <button class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onclick={closePromptTranslate} disabled={isTranslatingPrompt}>{t('common.close')}</button>
-        <button class="px-4 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" onclick={handleTranslatePrompt} disabled={isTranslatingPrompt}>{isTranslatingPrompt ? '...' : (t('config.translate') || 'Translate')}</button>
-      </div>
-    </div>
-  </div>
-{/if}
+<!-- Legacy modals removed — Role Types, Prompt Variants are now managed via Build → Modules. -->
