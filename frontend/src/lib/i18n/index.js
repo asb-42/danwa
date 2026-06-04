@@ -303,6 +303,7 @@ export async function discoverLanguagePacks() {
     const modules = await res.json();
     for (const mod of modules) {
       if (mod.type !== 'language-pack') continue;
+      if (mod.enabled === false) continue;
       const locale = mod.language || mod.module_id.replace(/^lang-/, '').replace(/-[^-]+$/, '');
       if (!locale || SUPPORTED_LOCALES.includes(locale)) continue;
       if (customLocales.has(locale)) continue;

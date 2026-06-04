@@ -1123,13 +1123,36 @@ class UITranslationService:
             seen.add(loc)
 
         # 2. Language-pack modules (have langpack:* namespace entries in DB)
+        #    Only include locales whose module is enabled in module_registry.
+        disabled_modules: set[str] = set()
+        try:
+            import sqlite3
+            blueprints_db = self.base_dir.parent / "blueprints.db"
+            if blueprints_db.exists():
+                bp_conn = sqlite3.connect(str(blueprints_db), timeout=5.0)
+                bp_conn.row_factory = sqlite3.Row
+                bp_rows = bp_conn.execute(
+                    "SELECT id FROM module_registry WHERE enabled = 0"
+                ).fetchall()
+                disabled_modules = {row["id"] for row in bp_rows}
+                bp_conn.close()
+        except Exception:
+            logger.debug("Could not read module_registry for locale filtering", exc_info=True)
+
         conn = self._get_conn()
-        rows = conn.execute("SELECT DISTINCT locale FROM ui_translations WHERE namespace LIKE 'langpack:%'").fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT locale, namespace FROM ui_translations WHERE namespace LIKE 'langpack:%'"
+        ).fetchall()
         conn.close()
 
         for row in sorted(rows, key=lambda r: r["locale"]):
             loc = row["locale"]
             if loc in seen:
+                continue
+            # Extract module_id from namespace "langpack:{module_id}"
+            ns = row["namespace"] or ""
+            module_id = ns.removeprefix("langpack:")
+            if module_id in disabled_modules:
                 continue
             result.append(
                 {
