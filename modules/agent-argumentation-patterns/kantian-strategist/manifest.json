@@ -16,13 +16,13 @@
     "strategist",
     "de"
   ],
-  "language": "de",
+  "language": "en",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "files": [],
   "checksum": "38c506b4b6e9ee3547b7b247325d5e45f0ce5a7cbbcea23bb4f3a3a5f1b6b15a",
   "description": {
-    "en": ""
+    "en": "Develops strategies grounded in Kantian ethics, universalizability, and human dignity."
   },
   "role": "",
   "updated_at": "2026-05-26T10:35:06.682411+00:00",
