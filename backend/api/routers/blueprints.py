@@ -1,18 +1,12 @@
-"""Blueprint Canvas — Agent Blueprints CRUD and bulk import.
+"""Blueprint Canvas — Agent Blueprints CRUD and Bundle management.
 
-LLM Profiles, Prompt Templates, Role Definitions, Role Types, and
-Workflow Definitions have been extracted into their own focused routers:
-
-- ``llm_profiles`` → ``/api/v1/blueprints/llm-profiles``
-- ``role_definitions`` → ``/api/v1/blueprints/role-definitions`` + ``role-types``
-- ``workflow_definitions`` → ``/api/v1/blueprints/workflows``
-
-This router retains Agent Blueprints CRUD and the bulk import trigger.
+LLM Profiles, Role Definitions, Role Types, and Workflow Definitions have
+been extracted into their own focused routers or removed (legacy role
+management is now module-based).
 """
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,7 +14,6 @@ from pydantic import BaseModel
 
 from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
-from backend.blueprints.importer import BlueprintImporter, ImportResult
 from backend.blueprints.models import AgentBlueprint, AgentBundle, ResolvedBundle
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.resolver import BundleResolver
@@ -220,11 +213,11 @@ def _validate_bundle_references(repo: BlueprintRepository, bundle: AgentBundle) 
 
     if not repo.get_llm_profile(bundle.llm_profile_id):
         raise BlueprintNotFoundError("BlueprintLLMProfile", bundle.llm_profile_id)
-    if not resolve_role_type(bundle.role_type_id, repo=repo):
+    if not resolve_role_type(bundle.role_type_id):
         raise BlueprintNotFoundError("RoleType", bundle.role_type_id)
-    if bundle.role_definition_id and not resolve_role_definition(bundle.role_definition_id, repo=repo):
+    if bundle.role_definition_id and not resolve_role_definition(bundle.role_definition_id):
         raise BlueprintNotFoundError("RoleDefinition", bundle.role_definition_id)
-    if bundle.prompt_template_id and not resolve_prompt_template(bundle.prompt_template_id, repo=repo):
+    if bundle.prompt_template_id and not resolve_prompt_template(bundle.prompt_template_id):
         raise BlueprintNotFoundError("PromptTemplate", bundle.prompt_template_id)
     if bundle.tone_profile_id and not repo.get_tone_profile(bundle.tone_profile_id):
         raise BlueprintNotFoundError("ToneProfile", bundle.tone_profile_id)
@@ -290,27 +283,3 @@ def import_bundle_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-# ==================================================================
-# Import
-# ==================================================================
-
-
-@router.post("/import", response_model=ImportResult)
-def run_import(
-    body: dict | None = None,
-    repo: BlueprintRepository = Depends(get_blueprint_repository),
-) -> ImportResult:
-    """Trigger an idempotent import of all blueprint entities.
-
-    Accepts optional ``{"dry_run": true}`` to preview without persisting.
-    """
-    dry_run = False
-    if body and isinstance(body, dict):
-        dry_run = body.get("dry_run", False)
-
-    importer = BlueprintImporter(
-        repo=repo,
-        profile_dir=Path("profiles"),
-        archive_dir=Path("archive/config"),
-    )
-    return importer.import_all(dry_run=dry_run)

@@ -12,7 +12,6 @@
     createCanvasLayout,
     updateCanvasLayout,
     getBlueprintLLMProfile,
-    runBlueprintImport,
     compileWorkflow,
     cloneWorkflow,
     convertLayoutToWorkflow,
@@ -238,15 +237,6 @@
     if (layout && layout.id) {
       await loadLayout(layout.id);
       window.location.hash = `#/blueprint/${layout.id}`;
-    }
-  }
-
-  async function handleImport() {
-    try {
-      const result = await runBlueprintImport();
-      if (import.meta.env.DEV) console.log('[BlueprintCanvasView] Import result:', result);
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('[BlueprintCanvasView] Import failed:', err);
     }
   }
 

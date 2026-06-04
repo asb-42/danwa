@@ -15,13 +15,11 @@ from backend.blueprints.repo_base import BaseRepo
 from backend.blueprints.repo_blueprints import BlueprintRepo
 from backend.blueprints.repo_misc import MiscRepository
 from backend.blueprints.repo_profiles import ProfileRepository
-from backend.blueprints.repo_roles import RoleRepository
 from backend.blueprints.repo_workflows import WorkflowRepository
 
 
 class BlueprintRepository(
     ProfileRepository,
-    RoleRepository,
     BlueprintRepo,
     WorkflowRepository,
     MiscRepository,

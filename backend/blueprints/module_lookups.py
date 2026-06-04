@@ -1,14 +1,12 @@
 """Module-based entity lookups for blueprint models.
 
-Replaces repository CRUD reads for RoleType, RoleDefinition, and PromptTemplate
-with module-sourced data.  During the transition period, falls back to repo
-lookups when module data is not found (will be removed in P3.3a).
+Replaces removed repository CRUD reads for RoleType, RoleDefinition, and
+PromptTemplate with module-sourced data.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from backend.blueprints.models import (
     PromptTemplate,
@@ -16,30 +14,18 @@ from backend.blueprints.models import (
     RoleType,
 )
 
-if TYPE_CHECKING:
-    from backend.blueprints.repository import BlueprintRepository
-
 logger = logging.getLogger(__name__)
 
 
-def resolve_role_type(
-    role_type_id: str,
-    repo: BlueprintRepository | None = None,
-) -> RoleType | None:
-    """Resolve a RoleType by ID.
-
-    Lookup order:
-    1. Module role-type modules (``modules/role-types/*/manifest.json``)
-    2. Repository DB fallback (``repo.get_role_type``)
+def resolve_role_type(role_type_id: str) -> RoleType | None:
+    """Resolve a RoleType by ID from module role-type modules.
 
     Args:
         role_type_id: The RoleType ID to look up.
-        repo: Optional BlueprintRepository for DB fallback.
 
     Returns:
-        RoleType instance or ``None`` if not found.
+        RoleType instance or ``None`` if not found in modules.
     """
-    # 1. Module-based lookup
     try:
         from backend.services.module_profile_sync import get_role_types_from_modules
 
@@ -59,34 +45,20 @@ def resolve_role_type(
                 )
     except Exception:
         logger.debug("Module lookup for RoleType '%s' failed", role_type_id, exc_info=True)
-
-    # 2. Repo fallback (will be removed in P3.3a)
-    if repo is not None:
-        result = repo.get_role_type(role_type_id)
-        if result is not None:
-            return result
-
     return None
 
 
-def resolve_role_definition(
-    role_def_id: str,
-    repo: BlueprintRepository | None = None,
-) -> RoleDefinition | None:
-    """Resolve a RoleDefinition by ID.
+def resolve_role_definition(role_def_id: str) -> RoleDefinition | None:
+    """Resolve a RoleDefinition by ID from module agent-persona modules.
 
-    Lookup order:
-    1. Module agent-persona modules (matched by persona ID or role)
-    2. Repository DB fallback (``repo.get_role_definition``)
+    Matches by persona ID or role field.
 
     Args:
         role_def_id: The RoleDefinition ID to look up.
-        repo: Optional BlueprintRepository for DB fallback.
 
     Returns:
-        RoleDefinition instance or ``None`` if not found.
+        RoleDefinition instance or ``None`` if not found in modules.
     """
-    # 1. Module-based lookup — agent-persona modules map to role definitions
     try:
         from backend.services.module_profile_sync import get_agent_personas_from_modules
 
@@ -107,34 +79,18 @@ def resolve_role_definition(
         logger.debug(
             "Module lookup for RoleDefinition '%s' failed", role_def_id, exc_info=True
         )
-
-    # 2. Repo fallback (will be removed in P3.3a)
-    if repo is not None:
-        result = repo.get_role_definition(role_def_id)
-        if result is not None:
-            return result
-
     return None
 
 
-def resolve_prompt_template(
-    template_id: str,
-    repo: BlueprintRepository | None = None,
-) -> PromptTemplate | None:
-    """Resolve a PromptTemplate by ID.
-
-    Lookup order:
-    1. Module prompt-variant modules
-    2. Repository DB fallback (``repo.get_prompt_template``)
+def resolve_prompt_template(template_id: str) -> PromptTemplate | None:
+    """Resolve a PromptTemplate by ID from module prompt-variant modules.
 
     Args:
         template_id: The PromptTemplate ID to look up.
-        repo: Optional BlueprintRepository for DB fallback.
 
     Returns:
-        PromptTemplate instance or ``None`` if not found.
+        PromptTemplate instance or ``None`` if not found in modules.
     """
-    # 1. Module-based lookup
     try:
         from backend.services.module_profile_sync import get_prompt_templates_from_modules
 
@@ -157,11 +113,4 @@ def resolve_prompt_template(
         logger.debug(
             "Module lookup for PromptTemplate '%s' failed", template_id, exc_info=True
         )
-
-    # 2. Repo fallback (will be removed in P3.3a)
-    if repo is not None:
-        result = repo.get_prompt_template(template_id)
-        if result is not None:
-            return result
-
     return None

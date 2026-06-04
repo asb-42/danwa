@@ -348,18 +348,6 @@ export function listArgumentationPatterns() {
 
 // ─── Import ─────────────────────────────────────────────────────────
 
-/**
- * Run the blueprint importer.
- * @param {{ dry_run?: boolean }} [opts]
- * @returns {Promise<{ created: number, updated: number, skipped: number, errors: string[] }>}
- */
-export function runBlueprintImport({ dry_run = false } = {}) {
-  return request('/api/v1/blueprints/import', {
-    method: 'POST',
-    body: JSON.stringify({ dry_run }),
-  });
-}
-
 // ─── Role Types ────────────────────────────────────────────────────
 
 /**

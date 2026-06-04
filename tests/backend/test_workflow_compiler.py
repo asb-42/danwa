@@ -7,6 +7,7 @@ edges, gate nodes, topological sort, and cycle detection.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -14,6 +15,7 @@ from backend.blueprints.models import (
     AgentBlueprint,
     BlueprintLLMProfile,
     RoleDefinition,
+    RoleType,
 )
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
@@ -25,15 +27,88 @@ from backend.blueprints.workflow_models import (
 from backend.workflow.workflow_compiler import CompiledWorkflow, WorkflowCompiler
 
 
+# Module lookup stubs for testing
+_ROLE_DEFINITIONS = {
+    "role-1": RoleDefinition(
+        id="role-1",
+        name="Strategist",
+        role_type_id="strategist",
+        description="Strategic analyst",
+        consensus_threshold=0.7,
+    ),
+}
+
+_ROLE_TYPES = {
+    "strategist": RoleType(
+        id="strategist",
+        name="Strategist",
+        icon="🧠",
+        color="#3b82f6",
+        default_max_rounds=5,
+        default_consensus_threshold=0.9,
+    ),
+}
+
+
+def _mock_resolve_role_definition(role_def_id: str):
+    return _ROLE_DEFINITIONS.get(role_def_id)
+
+
+def _mock_resolve_role_type(role_type_id: str):
+    return _ROLE_TYPES.get(role_type_id)
+
+
+@pytest.fixture(autouse=True)
+def _patch_module_lookups():
+    """Auto-patch module lookups with test stubs."""
+    with patch(
+        "backend.blueprints.module_lookups.resolve_role_definition",
+        side_effect=_mock_resolve_role_definition,
+    ), patch(
+        "backend.blueprints.module_lookups.resolve_role_type",
+        side_effect=_mock_resolve_role_type,
+    ), patch(
+        "backend.blueprints.compiler.resolve_role_definition",
+        side_effect=_mock_resolve_role_definition,
+    ), patch(
+        "backend.blueprints.compiler.resolve_role_type",
+        side_effect=_mock_resolve_role_type,
+    ), patch(
+        "backend.workflow.workflow_compiler.resolve_role_definition",
+        side_effect=_mock_resolve_role_definition,
+    ), patch(
+        "backend.workflow.workflow_compiler.resolve_role_type",
+        side_effect=_mock_resolve_role_type,
+    ):
+        yield
+
+
 @pytest.fixture()
 def repo(tmp_path: Path) -> BlueprintRepository:
-    """Fresh BlueprintRepository with temp database."""
-    return BlueprintRepository(db_path=tmp_path / "test_blueprints.db")
+    """Fresh BlueprintRepository with temp database.
+
+    Also inserts a stub role_definitions row to satisfy FK constraints,
+    since role definitions are now resolved from modules (not DB).
+    """
+    r = BlueprintRepository(db_path=tmp_path / "test_blueprints.db")
+    # Insert stub row to satisfy FK constraint on agent_blueprints.role_definition_id
+    import sqlite3
+
+    conn = sqlite3.connect(str(tmp_path / "test_blueprints.db"))
+    conn.execute(
+        "INSERT OR IGNORE INTO role_definitions (id, name, role, role_type_id, "
+        "description, max_rounds, consensus_threshold, tags_json, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
+        ("role-1", "Strategist", "strategist", "strategist", "", 5, 0.9, "[]"),
+    )
+    conn.commit()
+    conn.close()
+    return r
 
 
 @pytest.fixture()
 def sample_blueprint(repo: BlueprintRepository) -> AgentBlueprint:
-    """Create a sample blueprint with all dependencies in the repo."""
+    """Create a sample blueprint with LLM profile in the repo."""
     profile = BlueprintLLMProfile(
         id="prof-1",
         name="Test Profile",
@@ -45,15 +120,6 @@ def sample_blueprint(repo: BlueprintRepository) -> AgentBlueprint:
         max_tokens=2048,
     )
     repo.save_llm_profile(profile)
-
-    role = RoleDefinition(
-        id="role-1",
-        name="Strategist",
-        role="strategist",
-        description="Strategic analyst",
-        consensus_threshold=0.7,
-    )
-    repo.save_role_definition(role)
 
     blueprint = AgentBlueprint(
         id="bp-1",

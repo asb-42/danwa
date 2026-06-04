@@ -117,13 +117,13 @@ class CompilerService:
                 continue
 
             # Resolve role definition
-            role_def = resolve_role_definition(blueprint.role_definition_id, repo=self._repo)
+            role_def = resolve_role_definition(blueprint.role_definition_id)
             if role_def is None:
                 errors.append(f"Node '{node_id}': RoleDefinition '{blueprint.role_definition_id}' not found")
                 continue
 
             # Resolve RoleType chain
-            role_type = resolve_role_type(role_def.role_type_id, repo=self._repo)
+            role_type = resolve_role_type(role_def.role_type_id)
             role_type_name = ""
             role_type_icon = "👤"
             role_type_color = "#8b5cf6"
