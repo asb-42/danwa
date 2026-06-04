@@ -24,7 +24,7 @@
         currentTenant.set({ id: tenants[0].tenant_id, name: tenants[0].tenant_name || tenants[0].tenant_id });
       }
     } catch (err) {
-      console.warn('Could not load tenants:', err);
+      if (import.meta.env.DEV) console.warn('Could not load tenants:', err);
     } finally {
       isLoading = false;
     }

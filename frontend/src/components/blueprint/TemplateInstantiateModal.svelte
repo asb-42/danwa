@@ -59,7 +59,7 @@
     try {
       blueprints = await listAgentBlueprints({ active_only: false });
     } catch (err) {
-      console.warn('[TemplateInstantiateModal] Failed to load blueprints:', err);
+      if (import.meta.env.DEV) console.warn('[TemplateInstantiateModal] Failed to load blueprints:', err);
       blueprints = [];
     } finally {
       blueprintsLoading = false;

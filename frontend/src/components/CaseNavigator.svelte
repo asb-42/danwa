@@ -33,7 +33,7 @@
     try {
       cases = await getCases($currentTenant.id);
     } catch (err) {
-      console.warn('Could not load cases:', err);
+      if (import.meta.env.DEV) console.warn('Could not load cases:', err);
     } finally {
       isLoading = false;
     }

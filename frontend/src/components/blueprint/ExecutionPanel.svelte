@@ -140,7 +140,7 @@
         status = 'running';
       },
       onError: (err) => {
-        console.error('[ExecutionPanel] SSE error:', err);
+        if (import.meta.env.DEV) console.error('[ExecutionPanel] SSE error:', err);
       },
     });
   }

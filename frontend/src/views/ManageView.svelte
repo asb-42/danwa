@@ -2,26 +2,7 @@
   import { onMount } from 'svelte';
   import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
   import { tStore } from '../lib/i18n/index.js';
-  import {
-    getLLMProfiles,
-    createLLMProfile,
-    updateLLMProfile,
-    deleteLLMProfile,
-    getAgentPersonas,
-    createAgentPersona,
-    updateAgentPersona,
-    deleteAgentPersona,
-    getPromptVariants,
-    createPromptVariant,
-    deletePromptVariant,
-    translatePromptVariant,
-    estimateCost,
-    previewPromptVariant,
-    reloadProfiles,
-    getServiceEligibleProfiles,
-    getServiceLLMConfig,
-    setServiceLLM,
-  } from '../lib/api.js';
+  import { getLLMProfiles, deleteLLMProfile, getAgentPersonas, deleteAgentPersona, getPromptVariants, createPromptVariant, deletePromptVariant, translatePromptVariant, estimateCost, previewPromptVariant, reloadProfiles, getServiceEligibleProfiles, getServiceLLMConfig, setServiceLLM } from '../lib/api.js';
   import {
     listRoleTypes,
     createRoleType,

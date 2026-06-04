@@ -85,7 +85,7 @@
     try {
       catalogProfiles = await listToneProfiles({ includeSystem: true });
     } catch (err) {
-      console.warn('[ToneProfileForm] Failed to load tone profiles:', err);
+      if (import.meta.env.DEV) console.warn('[ToneProfileForm] Failed to load tone profiles:', err);
     } finally {
       loading = false;
     }

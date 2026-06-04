@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
-  import { getActiveWorkflowSession, clearActiveWorkflowSession, patchActiveWorkflowSession } from '../lib/workflowSession.js';
+  import { getActiveWorkflowSession, clearActiveWorkflowSession } from '../lib/workflowSession.js';
 
   /** @type {{ sessionId?: string|null, navigate?: function }} */
   let {

@@ -75,7 +75,7 @@
       },
       onWorkflowPaused: () => { status = 'paused'; },
       onWorkflowResumed: () => { status = 'running'; },
-      onError: (err) => { console.error('SSE error:', err); },
+      onError: (err) => { if (import.meta.env.DEV) console.error('SSE error:', err); },
     });
   }
 

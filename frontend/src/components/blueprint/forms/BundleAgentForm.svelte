@@ -27,7 +27,7 @@
     try {
       bundles = await listAgentBundles({ active_only: true });
     } catch (err) {
-      console.warn('[BundleAgentForm] Failed to load bundles:', err);
+      if (import.meta.env.DEV) console.warn('[BundleAgentForm] Failed to load bundles:', err);
     } finally {
       loading = false;
     }

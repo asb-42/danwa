@@ -59,7 +59,7 @@
     try {
       savedLayouts = await listCanvasLayouts();
     } catch (err) {
-      console.warn('[Palette] Failed to load layouts:', err);
+      if (import.meta.env.DEV) console.warn('[Palette] Failed to load layouts:', err);
     } finally {
       layoutsLoading = false;
     }
@@ -85,7 +85,7 @@
       toneProfiles = tp;
       agentBundles = bundles;
     } catch (err) {
-      console.warn('[Palette] Failed to load entities:', err);
+      if (import.meta.env.DEV) console.warn('[Palette] Failed to load entities:', err);
     } finally {
       entitiesLoading = false;
     }
@@ -100,7 +100,7 @@
         canvasStore.currentLayoutName = null;
       }
     } catch (err) {
-      console.warn('[Palette] Failed to delete layout:', err);
+      if (import.meta.env.DEV) console.warn('[Palette] Failed to delete layout:', err);
     }
   }
 

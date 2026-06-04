@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { loading, error, backups, backupDetails, isLoadingBackups, backupConfig } from '../lib/stores.js';
+  import { loading, error, backups, backupDetails, isLoadingBackups } from '../lib/stores.js';
   import { tStore } from '../lib/i18n/index.js';
   import {
     reloadProfiles,

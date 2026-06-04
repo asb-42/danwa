@@ -5,7 +5,7 @@
    * Shows: phase name, description, assigned roles (multi-select),
    * max rounds, color, and agent node list within this phase.
    */
-  import { onMount } from 'svelte';
+  
   import { canvasStore } from '../../../lib/blueprint/store.svelte.js';
 
   let { node, onsave, ondelete } = $props();

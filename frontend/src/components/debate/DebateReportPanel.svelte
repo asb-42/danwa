@@ -57,7 +57,7 @@
             reportError = status.error || t('report.status.failed');
           }
         } catch (pollErr) {
-          console.warn('[Report] Poll error:', pollErr);
+          if (import.meta.env.DEV) console.warn('[Report] Poll error:', pollErr);
         }
       }, 2000);
     } catch (err) {

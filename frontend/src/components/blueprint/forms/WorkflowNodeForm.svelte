@@ -96,7 +96,7 @@
         blueprints = await listAgentBlueprints({ active_only: true });
         availablePatterns = await listArgumentationPatterns();
       } catch (err) {
-        console.warn('[WorkflowNodeForm] Failed to load blueprints/patterns:', err);
+        if (import.meta.env.DEV) console.warn('[WorkflowNodeForm] Failed to load blueprints/patterns:', err);
       } finally {
         loading = false;
       }

@@ -1,20 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import {
-		getLLMProfiles,
-		getAgentPersonas,
-		createDebate,
-		getDebate,
-		updateLLMProfile,
-		deleteLLMProfile,
-		updateAgentPersona,
-		deleteAgentPersona,
-		createLLMProfile,
-		createAgentPersona,
-		getAgentPersona,
-		getLLMProfile,
-		forkDebate,
-	} from '../../lib/api.js';
+	import { getLLMProfiles, getAgentPersonas, getDebate, forkDebate } from '../../lib/api.js';
 	import { tStore } from '../../lib/i18n/index.js';
 
 	let { debateId, navigate = () => {} } = $props();
