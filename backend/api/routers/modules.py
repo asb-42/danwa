@@ -214,7 +214,8 @@ async def get_module_profile(module_id: str) -> dict[str, Any]:
             except Exception:
                 pass
 
-    return {
+    # Base metadata
+    result = {
         "module_id": module_id,
         "name": info.name.get("en", info.name.get(list(info.name.keys())[0]) if info.name else module_id),
         "description": info.description.get("en", info.description.get(list(info.description.keys())[0]) if info.description else ""),
@@ -224,8 +225,16 @@ async def get_module_profile(module_id: str) -> dict[str, Any]:
         "language": info.language,
         "tags": info.tags,
         "profile_type": manifest.get("profile_format", "markdown"),
-        "content": profile.get("content", ""),
     }
+    # For YAML/JSON profiles, merge the parsed fields (provider, model, etc.)
+    # so the edit modal can display them as individual form fields.
+    # For markdown profiles, include the raw content string.
+    profile_format = manifest.get("profile_format", "markdown")
+    if profile_format in ("yaml", "json") and isinstance(profile, dict):
+        result.update(profile)
+    else:
+        result["content"] = profile.get("content", "")
+    return result
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -606,16 +615,30 @@ _TYPE_TO_FORMAT = {
 
 _TYPE_TO_PROFILE_KEYS = {
     "llm-profile": [
-        "id", "name", "provider", "model", "api_base", "api_key_env",
-        "max_tokens", "context_window", "temperature", "timeout",
-        "cost_per_1k_input", "cost_per_1k_output", "fallback_llm_profile_id",
-        "a2a_endpoint", "a2a_timeout", "protocol", "profile_type",
+        "id",
+        "name",
+        "provider",
+        "model",
+        "api_base",
+        "api_key_env",
+        "max_tokens",
+        "context_window",
+        "temperature",
+        "timeout",
+        "cost_per_1k_input",
+        "cost_per_1k_output",
+        "fallback_llm_profile_id",
+        "a2a_endpoint",
+        "a2a_timeout",
+        "protocol",
+        "profile_type",
     ],
 }
 
 
 class SyncFromDbRequest(BaseModel):
     """POST /modules/sync-from-db request body."""
+
     type: str = Field(..., description="Module type (e.g. 'llm-profile')")
     ids: list[str] | None = Field(None, description="Specific profile IDs to sync (None = all)")
 
@@ -658,7 +681,8 @@ def sync_from_db(body: SyncFromDbRequest) -> dict[str, Any]:
         if body.ids:
             placeholders = ",".join("?" for _ in body.ids)
             rows = conn.execute(
-                f"SELECT * FROM {table_name} WHERE id IN ({placeholders})", body.ids,
+                f"SELECT * FROM {table_name} WHERE id IN ({placeholders})",
+                body.ids,
             ).fetchall()
         else:
             rows = conn.execute(f"SELECT * FROM {table_name}").fetchall()
@@ -705,7 +729,7 @@ def sync_from_db(body: SyncFromDbRequest) -> dict[str, Any]:
         name_val = profile.get("name", module_id)
         desc_val = profile.get("description", "")
         manifest = {
-            "schema_version": "2.0.0",
+            "schema_version": "3.0.0",
             "module_id": module_id,
             "name": {"en": name_val} if isinstance(name_val, str) else name_val,
             "version": "1.0.0",

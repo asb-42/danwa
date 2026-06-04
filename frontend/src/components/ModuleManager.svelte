@@ -236,7 +236,10 @@
       if (typeof saveData.tags === 'string') {
         saveData.tags = saveData.tags.split(',').map(t => t.trim()).filter(Boolean);
       }
+      // Remove metadata that belongs to manifest, not profile file
       delete saveData.profile_type;
+      delete saveData.module_id;
+      delete saveData.type;
       await updateModuleProfile(editingModule.module_id, saveData);
       statusMessage = 'Profile saved';
       closeEdit();
