@@ -5,7 +5,7 @@
     "en": "Default Optimizer"
   },
   "version": "1.0.0",
-  "type": "agent-persona",
+  "type": "agent-core",
   "category": "agents",
   "author": {
     "name": "Danwa Community"

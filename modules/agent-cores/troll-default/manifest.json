@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "module_id": "agent-troll-default",
   "name": {
-    "en": "Default Troll [Red-Team Adversary] (EN)"
+    "en": "Default Troll"
   },
   "version": "1.0.0",
   "type": "agent-core",
@@ -17,12 +17,13 @@
   ],
   "language": "en",
   "description": {
-    "en": "A raw troll prompt produces noise. A red-team troll produces labeled noise that trains your other agents to recognize and neutralize bad-faith rhetoric. The Tactic Ledger turns disruption into a teaching signal (English)"
+    "en": "A raw troll prompt produces noise. A red-team troll [Red-Team Adversary] produces labeled noise that trains your other agents to recognize and neutralize bad-faith rhetoric. The Tactic Ledger turns disruption into a teaching signal."
   },
   "role": "troll",
   "profile_id": "troll-default",
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "created_at": "2026-05-24T05:43:27+02:00",
-  "updated_at": "2026-05-24T15:33:22+02:00"
+  "updated_at": "2026-06-04T03:40:37.987995+00:00",
+  "checksum": "b46997331ddbe57c101232f1c467914b3605fd42a194b25b99ed0e758a5c0105"
 }

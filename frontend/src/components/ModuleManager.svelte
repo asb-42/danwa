@@ -49,7 +49,7 @@
   /** Map filterCategory → repo type(s) for cross-referencing */
   const CATEGORY_TO_REPO_TYPES = {
     'llm-profiles': ['llm-profile'],
-    'agents': ['role-type', 'agent-persona', 'agent-core'],
+    'agents': ['role-type', 'agent-core'],
     'prompts': ['prompt-variant'],
     'tone-profiles': ['tone-profile'],
     'prompt-modifiers': ['prompt-modifier'],

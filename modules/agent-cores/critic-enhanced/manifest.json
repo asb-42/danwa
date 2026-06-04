@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "module_id": "agent-critic-enhanced",
   "name": {
-    "en": "Enhanced Critic (EN)"
+    "en": "Enhanced Critic"
   },
   "version": "1.0.0",
   "type": "agent-core",
@@ -25,5 +25,6 @@
   "profile_file": "profile.md",
   "profile_format": "markdown",
   "created_at": "2026-05-17T03:22:25+02:00",
-  "updated_at": "2026-05-24T15:33:22+02:00"
+  "updated_at": "2026-06-04T03:38:44.542522+00:00",
+  "checksum": "738ae3b47cf61566fdd913b9eec8a91f1350b58b92a99fb257db00a5a7cbf4c7"
 }
