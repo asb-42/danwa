@@ -1,14 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { loading, error, selectedLLMProfile, selectedPromptVariant, selectedPersonas } from '../lib/stores.js';
+  import { loading, error, selectedLLMProfile } from '../lib/stores.js';
   import { tStore } from '../lib/i18n/index.js';
-  import { getLLMProfiles, deleteLLMProfile, getAgentPersonas, deleteAgentPersona, getPromptVariants, createPromptVariant, deletePromptVariant, translatePromptVariant, estimateCost, previewPromptVariant, reloadProfiles, getServiceEligibleProfiles, getServiceLLMConfig, setServiceLLM } from '../lib/api.js';
+  import { getLLMProfiles, deleteLLMProfile, estimateCost, reloadProfiles, getServiceEligibleProfiles, getServiceLLMConfig, setServiceLLM } from '../lib/api.js';
   import {
-    listRoleTypes,
-    createRoleType,
-    updateRoleType,
-    deleteRoleType,
-    listRoleDefinitions,
     listWorkflowDefinitions,
     deleteWorkflowDefinition,
     cloneWorkflow,
@@ -16,29 +11,13 @@
   } from '../lib/blueprint/api.js';
   import ConfigModal from '../components/config/ConfigModal.svelte';
   import LlmProfileList from '../components/manage/LlmProfileList.svelte';
-  import PersonaList from '../components/manage/PersonaList.svelte';
-  import PromptVariantList from '../components/manage/PromptVariantList.svelte';
   import WorkflowList from '../components/manage/WorkflowList.svelte';
 
   let t = $derived($tStore);
 
-  const PROMPT_ROLES = [
-    { value: 'strategist', label: 'Strategist', emoji: '🧠' },
-    { value: 'critic', label: 'Critic', emoji: '🔍' },
-    { value: 'optimizer', label: 'Optimizer', emoji: '⚡' },
-    { value: 'moderator', label: 'Moderator', emoji: '🎯' },
-  ];
-
   let llmProfiles = $state([]);
-  let agentPersonas = $state([]);
-  let promptVariants = $state([]);
-  let roleTypes = $state([]);
   let workflows = $state([]);
-  let blueprintRoleDefIds = $state(new Set());
   let costEstimate = $state(null);
-  let previewContent = $state(null);
-  let previewRole = $state('strategist');
-  let previewVariantId = $state(null);
   let costNumAgents = $state(4);
   let costNumRounds = $state(3);
   let activeTab = $state('llm');
@@ -59,35 +38,12 @@
   let showDeleteConfirm = $state(false);
   let deleteTarget = $state(null);
 
-  // Role Type modal state
-  let showRoleTypeModal = $state(false);
-  let roleTypeModalMode = $state('create');
-  let roleTypeFormData = $state({});
-  let roleTypeFormErrors = $state({});
-  let isSavingRoleType = $state(false);
-
-  // Prompt create modal state
-  let promptCreateData = $state({ id: '', name: '', description: '', prompts: {} });
-  let promptCreateErrors = $state({});
-  let isSavingPrompt = $state(false);
-  let showPromptCreateModal = $state(false);
-
-  // Prompt translation modal state
-  let showPromptTranslateModal = $state(false);
-  let promptTranslateVariantId = $state('');
-  let promptTranslateTargetLang = $state('de');
-  let promptTranslateResult = $state(null);
-  let isTranslatingPrompt = $state(false);
-
   onMount(async () => {
     error.set(null);
     isLoading = true;
     try {
       const results = await Promise.allSettled([
         getLLMProfiles(),
-        getAgentPersonas(),
-        getPromptVariants(),
-        listRoleTypes(),
         getServiceEligibleProfiles(),
         getServiceLLMConfig(),
         listWorkflowDefinitions(),
@@ -95,15 +51,10 @@
       const errors = [];
       if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
       else errors.push(`LLM Profiles: ${results[0].reason?.message || results[0].reason}`);
-      if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
-      else errors.push(`Agent Personas: ${results[1].reason?.message || results[1].reason}`);
-      if (results[2].status === 'fulfilled') promptVariants = results[2].value;
-      else errors.push(`Prompt Variants: ${results[2].reason?.message || results[2].reason}`);
-      if (results[3].status === 'fulfilled') roleTypes = results[3].value;
-      if (results[4].status === 'fulfilled') serviceEligibleProfiles = results[4].value || [];
-      if (results[5].status === 'fulfilled') serviceLLMConfig = results[5].value || {};
-      if (results[6].status === 'fulfilled') workflows = results[6].value;
-      else errors.push(`Workflows: ${results[6].reason?.message || results[6].reason}`);
+      if (results[1].status === 'fulfilled') serviceEligibleProfiles = results[1].value || [];
+      if (results[2].status === 'fulfilled') serviceLLMConfig = results[2].value || {};
+      if (results[3].status === 'fulfilled') workflows = results[3].value;
+      else errors.push(`Workflows: ${results[3].reason?.message || results[3].reason}`);
       if (errors.length > 0) error.set(errors.join('; '));
     } catch (e) {
       error.set(e.message);
@@ -168,14 +119,10 @@
   }
 
   async function refreshLists() {
-    const results = await Promise.allSettled([getLLMProfiles(), getAgentPersonas(), getPromptVariants(), listRoleTypes(), listRoleDefinitions(), getServiceEligibleProfiles(), listWorkflowDefinitions()]);
+    const results = await Promise.allSettled([getLLMProfiles(), getServiceEligibleProfiles(), listWorkflowDefinitions()]);
     if (results[0].status === 'fulfilled') llmProfiles = results[0].value;
-    if (results[1].status === 'fulfilled') agentPersonas = results[1].value;
-    if (results[2].status === 'fulfilled') promptVariants = results[2].value;
-    if (results[3].status === 'fulfilled') roleTypes = results[3].value;
-    if (results[4].status === 'fulfilled') blueprintRoleDefIds = new Set(results[4].value.map(rd => rd.id));
-    if (results[5].status === 'fulfilled') serviceEligibleProfiles = results[5].value || [];
-    if (results[6].status === 'fulfilled') workflows = results[6].value;
+    if (results[1].status === 'fulfilled') serviceEligibleProfiles = results[1].value || [];
+    if (results[2].status === 'fulfilled') workflows = results[2].value;
   }
 
   function formatCost(cost) {
@@ -219,26 +166,6 @@
     showModal = true;
   }
 
-  function openCreateAgent(role) {
-    modalMode = 'create';
-    modalType = 'agent';
-    formData = {
-      id: '', name: '', role, system_prompt: '',
-      llm_profile_id: llmProfiles.length > 0 ? llmProfiles[0].id : '',
-      max_rounds: 5, consensus_threshold: 0.9, description: '', tags: [],
-    };
-    formErrors = {};
-    showModal = true;
-  }
-
-  function openEditAgent(persona) {
-    modalMode = 'edit';
-    modalType = 'agent';
-    formData = { ...persona, tags: [...(persona.tags || [])] };
-    formErrors = {};
-    showModal = true;
-  }
-
   function closeModal() {
     showModal = false;
     formErrors = {};
@@ -259,9 +186,6 @@
     if (!deleteTarget) return;
     try {
       if (deleteTarget.type === 'llm') await deleteLLMProfile(deleteTarget.id);
-      else if (deleteTarget.type === 'agent') await deleteAgentPersona(deleteTarget.id);
-      else if (deleteTarget.type === 'prompt') await deletePromptVariant(deleteTarget.id);
-      else if (deleteTarget.type === 'roleType') await deleteRoleType(deleteTarget.id);
       else if (deleteTarget.type === 'workflow') await deleteWorkflowDefinition(deleteTarget.id);
       showDeleteConfirm = false;
       deleteTarget = null;
@@ -275,119 +199,9 @@
     deleteTarget = null;
   }
 
-  function openCreatePrompt() {
-    promptCreateData = { id: '', name: '', description: '', prompts: {} };
-    promptCreateErrors = {};
-    showPromptCreateModal = true;
-  }
-
-  function closePromptCreate() {
-    showPromptCreateModal = false;
-  }
-
-  async function handleSavePromptVariant() {
-    promptCreateErrors = {};
-    if (!promptCreateData.id) promptCreateErrors.id = 'Required';
-    if (!promptCreateData.name) promptCreateErrors.name = 'Required';
-    if (Object.keys(promptCreateErrors).length > 0) return;
-    isSavingPrompt = true;
-    try {
-      await createPromptVariant(promptCreateData);
-      showPromptCreateModal = false;
-      statusMessage = `✓ ${t('config.promptVariantSaved') || 'Prompt variant created'}`;
-      await refreshLists();
-    } catch (e) { error.set(e.message); }
-    finally { isSavingPrompt = false; }
-  }
-
-  function openPromptTranslate(variantId) {
-    promptTranslateVariantId = variantId;
-    promptTranslateTargetLang = 'de';
-    promptTranslateResult = null;
-    showPromptTranslateModal = true;
-  }
-
-  function closePromptTranslate() {
-    showPromptTranslateModal = false;
-    promptTranslateResult = null;
-  }
-
-  async function handleTranslatePrompt() {
-    isTranslatingPrompt = true;
-    promptTranslateResult = null;
-    try {
-      const result = await translatePromptVariant(promptTranslateVariantId, {
-        targetLanguage: promptTranslateTargetLang,
-        autoApprove: true,
-      });
-      promptTranslateResult = result;
-      statusMessage = `✓ ${t('config.promptTranslated') || 'Prompt translated'}`;
-    } catch (e) {
-      error.set(e.message);
-      promptTranslateResult = { error: e.message };
-    } finally {
-      isTranslatingPrompt = false;
-    }
-  }
-
-  function openCreateRoleType() {
-    roleTypeModalMode = 'create';
-    roleTypeFormData = { id: '', name: '', description: '', color: '#6b7280', icon: '', active: true };
-    roleTypeFormErrors = {};
-    showRoleTypeModal = true;
-  }
-
-  function openEditRoleType(roleType) {
-    roleTypeModalMode = 'edit';
-    roleTypeFormData = { ...roleType };
-    roleTypeFormErrors = {};
-    showRoleTypeModal = true;
-  }
-
-  function validateRoleTypeForm() {
-    const errors = {};
-    if (!roleTypeFormData.id || !/^[a-z0-9][a-z0-9._-]*$/.test(roleTypeFormData.id)) {
-      errors.id = 'ID: lowercase alphanumeric, dots, hyphens';
-    }
-    if (!roleTypeFormData.name?.trim()) errors.name = t('config.required');
-    roleTypeFormErrors = errors;
-    return Object.keys(errors).length === 0;
-  }
-
-  async function handleSaveRoleType() {
-    if (!validateRoleTypeForm()) return;
-    isSavingRoleType = true;
-    try {
-      const payload = { ...roleTypeFormData };
-      if (!payload.description && payload.description !== 0) payload.description = '';
-      if (!payload.icon) payload.icon = '👤';
-      if (roleTypeModalMode === 'create') await createRoleType(payload);
-      else await updateRoleType(roleTypeFormData.id, payload);
-      showRoleTypeModal = false;
-      statusMessage = `✓ ${t('config.roleTypeSaved')}`;
-      roleTypes = await listRoleTypes();
-    } catch (e) { error.set(e.message); }
-    finally { isSavingRoleType = false; }
-  }
-
-  function closeRoleTypeModal() {
-    showRoleTypeModal = false;
-    roleTypeFormErrors = {};
-  }
-
   async function handleEstimateCost() {
     try {
       costEstimate = await estimateCost($selectedLLMProfile, costNumAgents, costNumRounds);
-    } catch (e) { error.set(e.message); }
-  }
-
-  async function handlePreview(variantId, role) {
-    try {
-      const r = role || previewRole;
-      const result = await previewPromptVariant(variantId, r);
-      previewContent = result.content;
-      previewVariantId = variantId;
-      previewRole = r;
     } catch (e) { error.set(e.message); }
   }
 
