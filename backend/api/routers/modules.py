@@ -397,65 +397,6 @@ async def validate_module(body: ValidateRequest) -> dict[str, Any]:
 
 
 # ------------------------------------------------------------------
-# Translation
-# ------------------------------------------------------------------
-
-
-class TranslateRequest(BaseModel):
-    """Request body for module translation."""
-
-    target_language: str = Field(..., description="Target language code (e.g. 'de')")
-    force: bool = Field(False, description="Force re-translation")
-
-
-@router.post("/{module_id}/translate", response_model=dict[str, Any])
-async def translate_module(module_id: str, body: TranslateRequest) -> dict[str, Any]:
-    """Initiate translation of a module to the target language."""
-    svc = get_module_service()
-    result = svc.translate(module_id, body.target_language, force=body.force)
-    return {
-        "module_id": result.module_id,
-        "target_language": result.target_language,
-        "files_translated": result.files_translated,
-        "files_skipped": result.files_skipped,
-        "quality_scores": result.quality_scores,
-        "status": result.status,
-        "estimated_cost_usd": result.estimated_cost_usd,
-    }
-
-
-@router.get("/{module_id}/translations", response_model=dict[str, Any])
-async def get_translation_status(module_id: str) -> dict[str, Any]:
-    """Get the translation status for all files in a module."""
-    svc = get_module_service()
-    try:
-        import sqlite3
-
-        conn = sqlite3.connect(str(svc.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT file_path, language, source_hash, quality_score, approved, generated_at FROM module_translation_cache WHERE module_id = ?",
-            (module_id,),
-        )
-        entries = []
-        for row in cursor.fetchall():
-            entries.append(
-                {
-                    "file_path": row["file_path"],
-                    "language": row["language"],
-                    "source_hash": row["source_hash"],
-                    "quality_score": row["quality_score"],
-                    "approved": bool(row["approved"]) if "approved" in row.keys() else False,
-                    "generated_at": row["generated_at"],
-                }
-            )
-        conn.close()
-        return {"module_id": module_id, "translations": entries}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ------------------------------------------------------------------
 # Enable / Disable (Activation)
 # ------------------------------------------------------------------

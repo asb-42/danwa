@@ -8,7 +8,6 @@
     duplicateModule,
     uninstallModule,
     exportModule,
-    translateModule,
     enableModule,
     disableModule,
     getRepoIndex,
@@ -44,8 +43,6 @@
   let pendingDeleteModule = $state(null);
 
   // --- Constants ---
-  const TRANSLATABLE_TYPES = ['role-type', 'agent-persona', 'tone-profile', 'prompt-variant'];
-
   /** Map filterCategory → repo type(s) for cross-referencing */
   const CATEGORY_TO_REPO_TYPES = {
     'llm-profiles': ['llm-profile'],
@@ -291,17 +288,6 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       statusMessage = `Exported ${mod.module_id}`;
-    } catch (e) {
-      error = e.message;
-    }
-  }
-
-  async function handleTranslate(mod) {
-    const targetLang = prompt('Target language code (e.g. de, fr, es):', 'de');
-    if (!targetLang || !targetLang.trim()) return;
-    try {
-      await translateModule(mod.module_id, { target_language: targetLang.trim(), force: false, auto_approve: true });
-      statusMessage = `Translation queued for ${mod.module_id} → ${targetLang.trim()}`;
     } catch (e) {
       error = e.message;
     }
@@ -679,18 +665,6 @@
                       >
                         Export
                       </button>
-                      {#if TRANSLATABLE_TYPES.includes(mod.type)}
-                        <button
-                          class="px-2.5 py-1 text-xs rounded transition-colors {mod.language === 'en'
-                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                            : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50'}"
-                          onclick={() => mod.language !== 'en' && handleTranslate(mod)}
-                          disabled={mod.language === 'en'}
-                          title={mod.language === 'en' ? 'English is the source language (SSOT)' : 'Translate module'}
-                        >
-                          Translate
-                        </button>
-                      {/if}
                       <button
                         class="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                         onclick={() => handleDelete(mod)}
