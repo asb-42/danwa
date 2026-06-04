@@ -315,6 +315,107 @@ class TestInterjectionNode:
         assert "Existing" in result["current_draft"]
         assert "User note" in result["current_draft"]
 
+    @pytest.mark.asyncio
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
+    async def test_legacy_zero_pause_timeout_falls_through(
+        self, mock_publish: AsyncMock
+    ) -> None:
+        """Without ``pause_timeout`` (default 0), an empty queue still
+        sets ``is_paused=True`` immediately — the legacy behaviour all
+        pre-existing tests rely on.
+        """
+        state = _make_state(interjection_queue=[])
+        result = await interjection_node(state)
+
+        assert result["is_paused"] is True
+        assert result["node_outputs"][0]["status"] == "pending"
+
+
+class TestInterjectionNodeBlocking:
+    """Test the H6 fix: interjection_node actually waits for human input
+    when ``pause_timeout > 0`` and the queue is empty.
+    """
+
+    @pytest.mark.asyncio
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
+    async def test_drains_service_queue_when_state_empty(
+        self, mock_publish: AsyncMock
+    ) -> None:
+        """Items submitted via ``interjection_service.submit()`` (the API
+        path) must be consumed even if the in-state queue is empty.
+        """
+        import asyncio
+
+        from backend.workflow.interjection import interjection_service
+
+        session_id = "sess-blocking-1"
+        await interjection_service.clear(session_id)
+
+        async def submitter() -> None:
+            await asyncio.sleep(0.01)
+            await interjection_service.submit(session_id, "API note", source="api")
+
+        task = asyncio.create_task(submitter())
+        state = _make_state(session_id=session_id, interjection_queue=[], pause_timeout=2.0)
+        result = await interjection_node(state)
+        await task
+        await interjection_service.clear(session_id)
+
+        assert "is_paused" not in result
+        assert result["interjection_queue"] == []
+        assert len(result["consumed_interjections"]) == 1
+        assert "API note" in result["node_outputs"][0]["content"]
+
+    @pytest.mark.asyncio
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
+    async def test_blocks_until_submit_then_returns(
+        self, mock_publish: AsyncMock
+    ) -> None:
+        """With ``pause_timeout > 0`` and an empty queue, the node must
+        wait for ``interjection_service.submit()`` rather than set
+        ``is_paused=True`` immediately.
+        """
+        import asyncio
+
+        from backend.workflow.interjection import interjection_service
+
+        session_id = "sess-blocking-2"
+        await interjection_service.clear(session_id)
+
+        async def submitter() -> None:
+            await asyncio.sleep(0.05)
+            await interjection_service.submit(session_id, "Delayed", source="user")
+
+        task = asyncio.create_task(submitter())
+        state = _make_state(session_id=session_id, interjection_queue=[], pause_timeout=5.0)
+        result = await interjection_node(state)
+        await task
+        await interjection_service.clear(session_id)
+
+        assert "is_paused" not in result
+        assert len(result["consumed_interjections"]) == 1
+        assert "Delayed" in result["node_outputs"][0]["content"]
+
+    @pytest.mark.asyncio
+    @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
+    async def test_times_out_and_pauses(self, mock_publish: AsyncMock) -> None:
+        """If nothing arrives within ``pause_timeout``, the node must
+        fall back to setting ``is_paused=True`` (preserving the
+        original pause semantics — but now *after* a real wait rather
+        than instantly).
+        """
+        from backend.workflow.interjection import interjection_service
+
+        session_id = "sess-blocking-3"
+        await interjection_service.clear(session_id)
+
+        state = _make_state(session_id=session_id, interjection_queue=[], pause_timeout=0.2)
+        result = await interjection_node(state)
+        await interjection_service.clear(session_id)
+
+        assert result["is_paused"] is True
+        assert result["node_outputs"][0]["status"] == "pending"
+
 
 # ---------------------------------------------------------------------------
 # moderator_node_factory

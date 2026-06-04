@@ -10,6 +10,7 @@ import logging
 
 from backend.api.events import publish_async
 from backend.workflow.audit_logger import get_audit_logger
+from backend.workflow.interjection import interjection_service
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -230,9 +231,23 @@ async def complete_wf_node(state: WorkflowState) -> dict:
 async def interjection_node(state: WorkflowState) -> dict:
     """Interjection node — consumes queued user input or pauses.
 
-    If there are pending interjections in the queue, consumes them and
-    appends to the state.  If the queue is empty, sets ``is_paused=True``
-    to signal the execution engine to pause and wait for user input.
+    Behaviour
+    ---------
+    1. If the in-state ``interjection_queue`` has items, drain them and
+       continue (legacy / engine-injected path).
+    2. Otherwise, also pull from the module-level
+       :data:`interjection_service` (the path used by the API
+       ``POST /sessions/{id}/interject`` endpoint).  This makes the
+       node robust to items arriving *after* the previous node finished
+       but *before* the engine reached this interjection point.
+    3. If both sources are empty **and** the state carries a positive
+       ``pause_timeout``, block on the service queue's wake-up event
+       so the workflow actually waits for human input instead of
+       immediately setting ``is_paused=True`` and racing the resume
+       handler.
+    4. If nothing arrived within ``pause_timeout`` (or the state has
+       no ``pause_timeout`` set), fall back to the legacy behaviour of
+       setting ``is_paused=True`` and emitting ``workflow.paused``.
     """
     session_id = state.get("session_id", "")
     node_id = state.get("current_node_id", "wf-user-injection")
@@ -247,7 +262,40 @@ async def interjection_node(state: WorkflowState) -> dict:
         },
     )
 
-    queue = state.get("interjection_queue", [])
+    # Step 1: legacy in-state queue.
+    queue: list[dict] = list(state.get("interjection_queue", []))
+
+    # Step 2: pull anything the API has already submitted.  This is
+    # non-blocking — if there is nothing, we move on to step 3.
+    service_items = await interjection_service.consume(session_id, node_id)
+    for item in service_items:
+        queue.append(
+            {
+                "id": item.get("interjection_id", ""),
+                "content": item.get("content", ""),
+                "source": item.get("source", "user"),
+                "metadata": item.get("metadata", {}),
+            }
+        )
+
+    # Step 3: if both sources were empty, optionally block waiting for
+    # the user to submit something.  pause_timeout=0 (the default for
+    # tests and pre-existing callers) keeps the old "set is_paused
+    # immediately" behaviour intact.
+    pause_timeout = float(state.get("pause_timeout", 0.0) or 0.0)
+    if not queue and pause_timeout > 0:
+        blocked = await interjection_service.consume_blocking(
+            session_id, node_id, timeout=pause_timeout
+        )
+        for item in blocked:
+            queue.append(
+                {
+                    "id": item.get("interjection_id", ""),
+                    "content": item.get("content", ""),
+                    "source": item.get("source", "user"),
+                    "metadata": item.get("metadata", {}),
+                }
+            )
 
     if queue:
         # Consume all pending interjections
@@ -328,7 +376,11 @@ async def interjection_node(state: WorkflowState) -> dict:
                 workflow_version=state.get("workflow_version", 1),
                 event_type="workflow_paused",
                 actor="system",
-                metadata={"node_id": node_id, "reason": "no_pending_interjections"},
+                metadata={
+                    "node_id": node_id,
+                    "reason": "no_pending_interjections",
+                    "pause_timeout": pause_timeout,
+                },
             )
         except Exception:
             logger.debug("Audit logging failed for interjection_node pause", exc_info=True)
