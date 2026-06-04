@@ -55,8 +55,6 @@ def reload_profiles() -> dict:
             "status": "ok",
             "message": "Profiles and prompts reloaded",
             "llm_profiles": len(ps.list_llm_profiles()),
-            "agent_personas": len(ps.list_agent_personas()),
-            "prompt_variants": len(ps.list_prompt_variants()),
         }
     except Exception as exc:
         logger.error("Profile reload failed: %s", exc, exc_info=True)

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import shutil
 import uuid
 from pathlib import Path
 
@@ -525,74 +524,10 @@ class ProfileService:
     def get_agent_persona(self, persona_id: str) -> AgentPersona | None:
         self.ensure_loaded()
         return self._merged_agent_personas().get(persona_id)
+# ------------------------------------------------------------------
+# Prompt Variants (read-only — CRUD removed in Phase 3 deprecation)
+# ------------------------------------------------------------------
 
-    def save_agent_persona(self, persona: AgentPersona) -> AgentPersona:
-        """Save an agent persona to DB (primary) and YAML (backup)."""
-        self.ensure_loaded()
-
-        # Write to DB (primary)
-        try:
-            from backend.blueprints.models import RoleDefinition
-            from backend.blueprints.repository import BlueprintRepository
-
-            repo = BlueprintRepository(self._db_path)
-            rd = RoleDefinition.from_legacy(persona)
-            repo.save_role_definition(rd)
-        except Exception:
-            logger.exception("Failed to save agent persona %s to DB", persona.id)
-
-        # Write to YAML (backup)
-        try:
-            agents_dir = self.profile_dir / "agents"
-            agents_dir.mkdir(parents=True, exist_ok=True)
-            yaml_path = agents_dir / f"{persona.id}.yaml"
-            yaml_path.write_text(
-                yaml.dump(
-                    persona.model_dump(mode="json"),
-                    default_flow_style=False,
-                    allow_unicode=True,
-                ),
-                encoding="utf-8",
-            )
-        except Exception:
-            logger.exception("Failed to save agent persona %s to YAML", persona.id)
-
-        # Update cache
-        self._agent_cache[persona.id] = persona
-        logger.info("Agent persona saved: %s", persona.id)
-        return persona
-
-    def delete_agent_persona(self, persona_id: str) -> bool:
-        """Delete an agent persona from DB and YAML."""
-        self.ensure_loaded()
-        if persona_id not in self._agent_cache:
-            return False
-
-        # Delete from DB
-        try:
-            from backend.blueprints.repository import BlueprintRepository
-
-            repo = BlueprintRepository(self._db_path)
-            repo.delete_role_definition(persona_id)
-        except Exception:
-            logger.exception("Failed to delete agent persona %s from DB", persona_id)
-
-        # Delete from YAML
-        try:
-            yaml_path = self.profile_dir / "agents" / f"{persona_id}.yaml"
-            if yaml_path.exists():
-                yaml_path.unlink()
-        except Exception:
-            logger.exception("Failed to delete agent persona %s YAML file", persona_id)
-
-        # Update cache
-        del self._agent_cache[persona_id]
-        logger.info("Agent persona deleted: %s", persona_id)
-        return True
-
-    # ------------------------------------------------------------------
-    # Prompt Variants
-    # ------------------------------------------------------------------
 
     def list_prompt_variants(self) -> list[PromptVariant]:
         self.ensure_loaded()
@@ -663,137 +598,10 @@ class ProfileService:
                     }
 
         return None
+# ------------------------------------------------------------------
+# Cost Estimation
+# ------------------------------------------------------------------
 
-    def preview_prompt(self, variant_id: str, agent_role: str) -> str:
-        """Load and return the prompt text for a given variant and agent role.
-
-        Checks DB content cache first, then filesystem.
-        Falls back to the default variant if the requested variant or role
-        prompt is not found.
-        """
-        self.ensure_loaded()
-
-        # Try DB-first via get_prompt_content
-        data = self.get_prompt_content(variant_id, agent_role)
-        if data:
-            return data["content"]
-
-        raise FileNotFoundError(f"Prompt not found for role '{agent_role}' in variant '{variant_id}'")
-
-    def delete_prompt_variant(self, variant_id: str) -> bool:
-        """Delete a prompt variant from DB and filesystem."""
-        self.ensure_loaded()
-        if variant_id not in self._prompt_cache:
-            return False
-
-        # Delete from DB
-        try:
-            from backend.blueprints.repository import BlueprintRepository
-
-            repo = BlueprintRepository(self._db_path)
-            templates = repo.list_prompt_templates(variant=variant_id, limit=500)
-            for pt in templates:
-                repo.delete_prompt_template(pt.id)
-            logger.info(
-                "Deleted %d prompt templates from DB for variant %s",
-                len(templates),
-                variant_id,
-            )
-        except Exception:
-            logger.exception("Failed to delete prompt variant %s from DB", variant_id)
-
-        # Delete from filesystem
-        variant = self._prompt_cache[variant_id]
-        variant_path = Path(variant.base_path)
-        if variant_path.is_dir():
-            shutil.rmtree(variant_path)
-
-        # Remove from content cache
-        keys_to_remove = [k for k in self._prompt_content_cache if k.startswith(f"db:{variant_id}/")]
-        for k in keys_to_remove:
-            del self._prompt_content_cache[k]
-
-        del self._prompt_cache[variant_id]
-        logger.info("Prompt variant deleted: %s", variant_id)
-        return True
-
-    def create_prompt_variant(
-        self,
-        variant_id: str,
-        name: str,
-        description: str = "",
-        prompts: dict[str, str] | None = None,
-    ) -> PromptVariant:
-        """Create a new prompt variant with per-role prompt content.
-
-        Writes to both DB (primary) and filesystem (backup).
-
-        Args:
-            variant_id: Unique identifier (lowercase, alphanumeric + hyphens).
-            name: Display name.
-            description: Optional description.
-            prompts: Dict of role → prompt content (e.g. {"strategist": "...", "critic": "..."}).
-
-        Returns:
-            The created PromptVariant.
-
-        Raises:
-            ValueError: If variant_id already exists.
-        """
-        self.ensure_loaded()
-        if variant_id in self._prompt_cache:
-            raise ValueError(f"Prompt variant '{variant_id}' already exists")
-
-        # Write to DB (primary)
-        try:
-            from backend.blueprints.models import PromptTemplate
-            from backend.blueprints.repository import BlueprintRepository
-
-            repo = BlueprintRepository(self._db_path)
-            if prompts:
-                for role, content in prompts.items():
-                    template = PromptTemplate(
-                        id=f"{variant_id}-{role}",
-                        name=f"{variant_id}/{role}",
-                        role=role,
-                        content=content,
-                        variant=variant_id,
-                    )
-                    repo.save_prompt_template(template)
-                    # Update content cache
-                    cache_key = f"db:{variant_id}/{role}/de"
-                    self._prompt_content_cache[cache_key] = {
-                        "content": content,
-                        "hash": template.content_hash,
-                        "path": f"db:{template.id}",
-                    }
-        except Exception:
-            logger.exception("Failed to save prompt variant %s to DB", variant_id)
-
-        # Write to filesystem (backup)
-        variants_dir = self.profile_dir / "prompts" / "variants"
-        variants_dir.mkdir(parents=True, exist_ok=True)
-        variant_dir = variants_dir / variant_id
-        variant_dir.mkdir(parents=True, exist_ok=True)
-
-        if prompts:
-            for role, content in prompts.items():
-                prompt_file = variant_dir / f"{role}.md"
-                prompt_file.write_text(content, encoding="utf-8")
-
-        variant = PromptVariant(
-            id=variant_id,
-            name=name,
-            base_path=str(variant_dir),
-            description=description,
-        )
-        self._prompt_cache[variant_id] = variant
-        logger.info("Prompt variant created: %s at %s", variant_id, variant_dir)
-        return variant
-
-    # ------------------------------------------------------------------
-    # Cost Estimation
-    # ------------------------------------------------------------------
 
     def estimate_debate_cost(
         self,
