@@ -350,6 +350,7 @@ async def run_debate_workflow(
         "llm_profile_id": fields["llm_profile_id"],
         "prompt_variant": fields["prompt_variant"],
         "agent_persona_ids": fields["agent_persona_ids"],
+        "bundle_ids": fields.get("bundle_ids", []),
         "language": fields["language"],
         "prompt_language": fields["language"],  # Updated when actual prompts are loaded
         "search_mode": fields["search_mode"],

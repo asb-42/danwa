@@ -80,6 +80,7 @@ class DebateState(TypedDict, total=False):
     llm_profile_id: str
     prompt_variant: str
     agent_persona_ids: dict[str, str]  # role → persona_id mapping
+    bundle_ids: list[str]  # AgentBundle IDs (module-based, supersedes agent_persona_ids)
 
     # --- Language (Sprint 4) ---
     language: str  # 'de' or 'en'

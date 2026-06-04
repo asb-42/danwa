@@ -230,17 +230,25 @@ async def run_agent_node(state: DebateState) -> dict:
     )
 
     # --- Resolve system prompt ---
-    project_dir = _get_project_dir(project_id)
-    system_prompt = _resolve_system_prompt(
-        role,
-        prompt_variant,
-        persona_ids,
-        state,
-        language,
-        search_mode,
-        project_id=project_id,
-        project_dir=project_dir,
-    )
+    # Priority 0: Pre-resolved prompt from bundle resolution (ComposerService)
+    pre_resolved = agent.get("system_prompt")
+    if pre_resolved:
+        logger.debug("Using bundle-resolved system_prompt for %s", role)
+        system_prompt = _append_language_instruction(pre_resolved, language)
+        system_prompt = _append_search_instruction(system_prompt, search_mode, language)
+    else:
+        # Legacy path: PromptService template → ComposerService module → Persona → Generic
+        project_dir = _get_project_dir(project_id)
+        system_prompt = _resolve_system_prompt(
+            role,
+            prompt_variant,
+            persona_ids,
+            state,
+            language,
+            search_mode,
+            project_id=project_id,
+            project_dir=project_dir,
+        )
 
     # --- Build user prompt ---
     user_prompt = _build_user_prompt(state, role, language)
@@ -635,6 +643,17 @@ def _append_search_instruction(prompt: str, search_mode: str, language: str = "d
     return prompt + instruction
 
 
+def _is_module_id(value: str) -> bool:
+    """Return True if *value* looks like a UUID module ID."""
+    try:
+        import uuid
+
+        uuid.UUID(value)
+        return True
+    except (ValueError, AttributeError):
+        return False
+
+
 def _resolve_system_prompt(
     role: str,
     prompt_variant: str,
@@ -672,7 +691,23 @@ def _resolve_system_prompt(
         logger.debug("No prompt template for %s/%s (lang=%s), trying persona", prompt_variant, role, language)
         prompt = None
 
-    # 2. Try persona-specific system prompt (always in persona's language)
+    # 2. Try module-based agent core (if persona_id is a UUID module ID)
+    if prompt is None:
+        persona_id = persona_ids.get(role)
+        if persona_id and _is_module_id(persona_id):
+            try:
+                from backend.services.composer_service import ComposerService, Composition
+
+                composition = Composition(agent_core_id=persona_id)
+                composed = ComposerService().compose(composition)
+                if composed.strip():
+                    logger.debug("Using ComposerService for %s (module=%s)", role, persona_id)
+                    prompt = composed
+                    prompt = _append_language_instruction(prompt, language)
+            except Exception as exc:
+                logger.warning("ComposerService failed for %s (module=%s): %s", role, persona_id, exc)
+
+    # 3. Try persona-specific system prompt (legacy, always in persona's language)
     if prompt is None:
         persona_id = persona_ids.get(role)
         if persona_id:
@@ -683,7 +718,7 @@ def _resolve_system_prompt(
                 # Append language instruction so the LLM responds in the debate language
                 prompt = _append_language_instruction(prompt, language)
 
-    # 3. Generic fallback (language-aware)
+    # 4. Generic fallback (language-aware)
     if prompt is None:
         logger.warning(
             "No prompt found for %s/%s (lang=%s), using generic default",
@@ -696,7 +731,7 @@ def _resolve_system_prompt(
         else:
             prompt = f"Du bist ein {role}-Agent, der einen Rechtsfall analysiert. Gib deine Expertenanalyse ab."
 
-    # 4. Append search instructions based on mode
+    # 5. Append search instructions based on mode
     prompt = _append_search_instruction(prompt, search_mode, language)
 
     return prompt
