@@ -73,21 +73,6 @@ class LLMProfile(BaseModel):
         return v
 
 
-class PromptVariant(BaseModel):
-    """A named set of prompt templates for debate agents."""
-
-    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
-    name: str
-    base_path: str  # e.g. "profiles/prompts/default/"
-
-    # Override for specific agents: agent_role → file path
-    overrides: dict[str, str] = {}
-
-    # Metadata
-    description: str | None = None
-    parent_variant: str | None = None  # Inheritance
-
-
 class ActiveConfiguration(BaseModel):
     """Running configuration for a specific debate."""
 

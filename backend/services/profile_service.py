@@ -17,13 +17,21 @@ from pathlib import Path
 
 import yaml
 
-from backend.core.profiles import (
-    LLMProfile,
-    PromptVariant,
-)
+from backend.core.profiles import LLMProfile
+from dataclasses import dataclass, field as dc_field
 from backend.models.project import ProjectConfig
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PromptVariantEntry:
+    """Internal prompt variant entry (replaces legacy PromptVariant Pydantic model)."""
+    id: str
+    name: str
+    base_path: str
+    description: str = ""
+
 
 # Default profile directory (relative to project root)
 _DEFAULT_PROFILE_DIR = Path("profiles")
@@ -54,7 +62,7 @@ class ProfileService:
         self._project_config = project_config
         self._db_path = Path(db_path) if db_path else Path("data/blueprints.db")
         self._llm_cache: dict[str, LLMProfile] = {}
-        self._prompt_cache: dict[str, PromptVariant] = {}
+        self._prompt_cache: dict[str, PromptVariantEntry] = {}
         self._prompt_content_cache: dict[str, dict] = {}  # db:variant/role/lang → {content, hash, path}
         self._loaded = False
 
@@ -168,8 +176,8 @@ class ProfileService:
 
                 for variant_name, templates in variants.items():
                     # Store templates in a special dict keyed by variant/role
-                    # PromptVariant.base_path is unused for DB mode
-                    self._prompt_cache[variant_name] = PromptVariant(
+                    # PromptVariantEntry.base_path is unused for DB mode
+                    self._prompt_cache[variant_name] = PromptVariantEntry(
                         id=variant_name,
                         name=variant_name.capitalize(),
                         base_path=f"db:{variant_name}",
@@ -206,7 +214,7 @@ class ProfileService:
         # Default variant
         default_dir = prompts_dir / "default"
         if default_dir.is_dir():
-            self._prompt_cache["default"] = PromptVariant(
+            self._prompt_cache["default"] = PromptVariantEntry(
                 id="default",
                 name="Default",
                 base_path=str(default_dir),
@@ -218,7 +226,7 @@ class ProfileService:
         if variants_dir.is_dir():
             for variant_dir in sorted(variants_dir.iterdir()):
                 if variant_dir.is_dir():
-                    self._prompt_cache[variant_dir.name] = PromptVariant(
+                    self._prompt_cache[variant_dir.name] = PromptVariantEntry(
                         id=variant_dir.name,
                         name=variant_dir.name.capitalize(),
                         base_path=str(variant_dir),
@@ -311,14 +319,6 @@ class ProfileService:
         # Project overrides win
         if self._project_config and self._project_config.llm_profiles:
             merged.update(self._project_config.llm_profiles)
-        return merged
-
-    def _merged_prompt_variants(self) -> dict[str, PromptVariant]:
-        """Return global prompt variants merged with project overrides."""
-        self.ensure_loaded()
-        merged = dict(self._prompt_cache)
-        if self._project_config and self._project_config.prompt_variants:
-            merged.update(self._project_config.prompt_variants)
         return merged
 
     # ------------------------------------------------------------------

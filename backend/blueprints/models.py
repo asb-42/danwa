@@ -180,8 +180,7 @@ def _compute_content_hash(content: str) -> str:
 class PromptTemplate(BaseModel):
     """A named prompt template with content and metadata.
 
-    Replaces the file-path-only approach of
-    ``backend.core.profiles.PromptVariant``.  Content is stored inline
+    Content is stored inline
     in the database rather than referencing files.
     """
 
