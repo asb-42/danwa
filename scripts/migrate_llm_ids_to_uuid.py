@@ -27,7 +27,7 @@ import shutil
 import sqlite3
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,7 +35,7 @@ BLUEPRINTS_DB = ROOT / "data" / "blueprints.db"
 PROFILES_DB = ROOT / "data" / "profiles.db"
 MODULES_DIR = ROOT / "modules" / "llm-profiles"
 MAPPING_FILE = ROOT / "scripts" / "llm_id_mapping.json"
-BACKUP_SUFFIX = f".bak.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+BACKUP_SUFFIX = f".bak.{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
