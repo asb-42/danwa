@@ -315,8 +315,7 @@ class AgentBlueprint(BaseModel):
     description: str = ""
     # References
     llm_profile_id: str  # References BlueprintLLMProfile.id
-    role_definition_id: str  # References RoleDefinition.id
-    prompt_template_id: str | None = None  # Optional override
+    role_definition_id: str  # References RoleDefinition.id (module-based)
     tone_profile_id: str | None = None  # Optional: ToneProfile for communication style
     tts_voice_id: str | None = None  # TTS voice assignment (MiMo or edge-tts voice)
     # Metadata
@@ -483,15 +482,10 @@ class AgentBundle(BaseModel):
     description: str = ""
     # Core composition
     llm_profile_id: str  # References BlueprintLLMProfile.id
-    role_type_id: str  # References RoleType.id
-    role_definition_id: str | None = None  # Optional: specific RoleDefinition override
-    prompt_template_id: str | None = None  # Optional: specific PromptTemplate override
+    role_type_id: str  # References RoleType.id (module-based)
     tone_profile_id: str | None = None  # Optional: ToneProfile for communication style
-    persona_id: str | None = None  # Optional: legacy AgentPersona reference
-    # Composition (Composer-based assembly — overrides legacy role_definition + prompt_template)
+    # Composition (Composer-based assembly)
     composition: BundleComposition | None = None
-    # When set: system_prompt is assembled via ComposerService from module IDs
-    # When None: legacy path via BundleResolver._assemble_system_prompt()
     # LLM generation parameters (override LLM profile defaults at inference time)
     model_params: dict = Field(
         default_factory=dict,
@@ -520,8 +514,6 @@ class ResolvedBundle(BaseModel):
     bundle_name: str
     llm_profile: BlueprintLLMProfile
     role_type: RoleType
-    role_definition: RoleDefinition | None = None
-    prompt_template: PromptTemplate | None = None
     tone_profile: ToneProfile | None = None
     system_prompt: str = ""
     model_params: dict = Field(

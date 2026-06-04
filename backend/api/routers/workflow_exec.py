@@ -317,7 +317,6 @@ async def start_mvp_debate(
             "llm_model": agent.llm_model,
             "role_definition_id": agent.role_definition_id,
             "role": agent.role,
-            "prompt_template_id": agent.prompt_template_id,
             "role_type_name": agent.role_type_name,
             "role_type_icon": agent.role_type_icon,
             "role_type_color": agent.role_type_color,
@@ -554,7 +553,6 @@ async def start_workflow(
                 "llm_model": agent.llm_model,
                 "role_definition_id": agent.role_definition_id,
                 "role": agent.role,
-                "prompt_template_id": agent.prompt_template_id,
             }
             for agent in compiled.resolved_agents
         },

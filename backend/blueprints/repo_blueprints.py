@@ -39,7 +39,7 @@ class BlueprintRepo:
                     blueprint.description,
                     blueprint.llm_profile_id,
                     blueprint.role_definition_id,
-                    blueprint.prompt_template_id,
+                    None,  # prompt_template_id removed from model
                     blueprint.tts_voice_id,
                     json.dumps(blueprint.tags),
                     int(blueprint.is_active),
@@ -96,7 +96,6 @@ class BlueprintRepo:
             description=row["description"],
             llm_profile_id=row["llm_profile_id"],
             role_definition_id=row["role_definition_id"],
-            prompt_template_id=row["prompt_template_id"],
             tts_voice_id=tts_voice_id,
             tags=json.loads(row["tags_json"]),
             is_active=bool(row["is_active"]),
@@ -200,10 +199,10 @@ class BlueprintRepo:
                     bundle.description,
                     bundle.llm_profile_id,
                     bundle.role_type_id,
-                    bundle.role_definition_id,
-                    bundle.prompt_template_id,
+                    None,  # role_definition_id removed from model
+                    None,  # prompt_template_id removed from model
                     bundle.tone_profile_id,
-                    bundle.persona_id,
+                    None,  # persona_id removed from model
                     json.dumps(bundle.tags),
                     int(bundle.is_active),
                     bundle.created_at.isoformat(),
@@ -276,10 +275,7 @@ class BlueprintRepo:
             description=row["description"],
             llm_profile_id=row["llm_profile_id"],
             role_type_id=row["role_type_id"],
-            role_definition_id=row["role_definition_id"],
-            prompt_template_id=row["prompt_template_id"],
             tone_profile_id=row["tone_profile_id"],
-            persona_id=row["persona_id"],
             tags=json.loads(row["tags_json"]),
             is_active=bool(row["is_active"]),
             created_at=datetime.fromisoformat(row["created_at"]),

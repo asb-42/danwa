@@ -50,9 +50,7 @@ def _get_profile_service() -> ProfileService:
 def _get_prompt_service() -> PromptService:
     global _prompt_service
     if _prompt_service is None:
-        _prompt_service = PromptService(
-            profile_service=_get_profile_service(),
-        )
+        _prompt_service = PromptService()
     return _prompt_service
 
 
@@ -227,7 +225,6 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
         return bundle_system_prompt
 
     role = resolved_config.get("role", "agent")
-    prompt_template_id = resolved_config.get("prompt_template_id")
     role_type_name = resolved_config.get("role_type_name", "")
     role_type_icon = resolved_config.get("role_type_icon", "\U0001f464")
     argumentation_pattern = resolved_config.get("argumentation_pattern")
@@ -237,12 +234,10 @@ def _resolve_system_prompt(resolved_config: dict, state: WorkflowState) -> str:
     # --- Layer 1+2: Use PromptService assemble_prompt ---
     try:
         prompt_service = _get_prompt_service()
-        # Determine workflow variant from prompt_template_id if set
-        workflow_variant = prompt_template_id or "default"
         assembled = prompt_service.assemble_prompt(
             role_type_id=role,
             argumentation_pattern=argumentation_pattern,
-            workflow_variant=workflow_variant,
+            workflow_variant="default",
             language=language,
             translate=(language != "en"),
         )

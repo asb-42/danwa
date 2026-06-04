@@ -298,8 +298,6 @@ class BundleComposer:
             "llm_profile_id": bundle.llm_profile_id,
             "role_type_id": bundle.role_type_id,
             "tone_profile_id": bundle.tone_profile_id,
-            "role_definition_id": bundle.role_definition_id,
-            "prompt_template_id": bundle.prompt_template_id,
             "composition": composition.model_dump() if composition else None,
             "is_active": bundle.is_active,
         }

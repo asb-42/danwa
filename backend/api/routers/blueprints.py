@@ -205,20 +205,12 @@ def resolve_bundle_endpoint(
 
 def _validate_bundle_references(repo: BlueprintRepository, bundle: AgentBundle) -> None:
     """Validate that all required references in a bundle exist."""
-    from backend.blueprints.module_lookups import (
-        resolve_prompt_template,
-        resolve_role_definition,
-        resolve_role_type,
-    )
+    from backend.blueprints.module_lookups import resolve_role_type
 
     if not repo.get_llm_profile(bundle.llm_profile_id):
         raise BlueprintNotFoundError("BlueprintLLMProfile", bundle.llm_profile_id)
     if not resolve_role_type(bundle.role_type_id):
         raise BlueprintNotFoundError("RoleType", bundle.role_type_id)
-    if bundle.role_definition_id and not resolve_role_definition(bundle.role_definition_id):
-        raise BlueprintNotFoundError("RoleDefinition", bundle.role_definition_id)
-    if bundle.prompt_template_id and not resolve_prompt_template(bundle.prompt_template_id):
-        raise BlueprintNotFoundError("PromptTemplate", bundle.prompt_template_id)
     if bundle.tone_profile_id and not repo.get_tone_profile(bundle.tone_profile_id):
         raise BlueprintNotFoundError("ToneProfile", bundle.tone_profile_id)
 

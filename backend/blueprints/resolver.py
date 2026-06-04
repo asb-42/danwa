@@ -10,15 +10,11 @@ import logging
 
 from backend.blueprints.models import (
     AgentBundle,
-    PromptTemplate,
     ResolvedBundle,
-    RoleDefinition,
     RoleType,
     ToneProfile,
 )
 from backend.blueprints.module_lookups import (
-    resolve_prompt_template,
-    resolve_role_definition,
     resolve_role_type,
 )
 from backend.blueprints.repository import BlueprintRepository
@@ -53,26 +49,6 @@ class BundleResolver:
         if not role_type:
             raise ValueError(f"Bundle '{bundle.id}' references non-existent RoleType '{bundle.role_type_id}'")
 
-        role_definition: RoleDefinition | None = None
-        if bundle.role_definition_id:
-            role_definition = resolve_role_definition(bundle.role_definition_id)
-            if not role_definition:
-                logger.warning(
-                    "Bundle '%s' references non-existent RoleDefinition '%s' — skipping",
-                    bundle.id,
-                    bundle.role_definition_id,
-                )
-
-        prompt_template: PromptTemplate | None = None
-        if bundle.prompt_template_id:
-            prompt_template = resolve_prompt_template(bundle.prompt_template_id)
-            if not prompt_template:
-                logger.warning(
-                    "Bundle '%s' references non-existent PromptTemplate '%s' — skipping",
-                    bundle.id,
-                    bundle.prompt_template_id,
-                )
-
         tone_profile: ToneProfile | None = None
         if bundle.tone_profile_id:
             tone_profile = self.repo.get_tone_profile(bundle.tone_profile_id)
@@ -95,8 +71,6 @@ class BundleResolver:
         else:
             system_prompt = self._assemble_system_prompt(
                 role_type=role_type,
-                role_definition=role_definition,
-                prompt_template=prompt_template,
                 tone_profile=tone_profile,
             )
 
@@ -105,8 +79,6 @@ class BundleResolver:
             bundle_name=bundle.name,
             llm_profile=llm_profile,
             role_type=role_type,
-            role_definition=role_definition,
-            prompt_template=prompt_template,
             tone_profile=tone_profile,
             system_prompt=system_prompt,
             model_params=bundle.model_params,
@@ -115,22 +87,16 @@ class BundleResolver:
     @staticmethod
     def _assemble_system_prompt(
         role_type: RoleType,
-        role_definition: RoleDefinition | None = None,
-        prompt_template: PromptTemplate | None = None,
         tone_profile: ToneProfile | None = None,
     ) -> str:
         """Assemble the system prompt from Bundle components.
 
         Priority order:
-        1. PromptTemplate content (if configured)
-        2. RoleDefinition description + argumentation_pattern
-        3. RoleType name + description + category hints
-        4. ToneProfile custom instructions (appended)
+        1. RoleType name + description + category hints
+        2. ToneProfile custom instructions (appended)
 
         Args:
             role_type: The RoleType (always present).
-            role_definition: Optional RoleDefinition override.
-            prompt_template: Optional PromptTemplate with inline content.
             tone_profile: Optional ToneProfile for communication style.
 
         Returns:
@@ -151,20 +117,7 @@ class BundleResolver:
         elif role_type.category == "formative":
             parts.append("\nYou are shaping the discourse and guiding the conversation.")
 
-        # 3. RoleDefinition specifics
-        if role_definition:
-            if role_definition.description:
-                parts.append(f"\n## Your Role\n{role_definition.description}")
-            if role_definition.argumentation_pattern:
-                parts.append(f"\n## Argumentation Pattern\nUse the '{role_definition.argumentation_pattern}' approach.")
-            if role_definition.mode:
-                parts.append(f"\n## Mode\nOperate in '{role_definition.mode}' mode.")
-
-        # 4. PromptTemplate content (highest priority for actual instructions)
-        if prompt_template and prompt_template.content:
-            parts.append(f"\n## Instructions\n{prompt_template.content}")
-
-        # 5. ToneProfile instructions (appended at the end)
+        # 3. ToneProfile instructions (appended at the end)
         if tone_profile:
             tone_hints = _tone_profile_to_instructions(tone_profile)
             if tone_hints:

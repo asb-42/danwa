@@ -654,7 +654,6 @@ async def launch_workflow_from_input(
                 "llm_model": agent.llm_model,
                 "role_definition_id": agent.role_definition_id,
                 "role": agent.role,
-                "prompt_template_id": agent.prompt_template_id,
             }
             for agent in compiled.resolved_agents
         },

@@ -59,7 +59,6 @@ class ResolvedAgentConfig:
     llm_model: str
     role_definition_id: str
     role: str
-    prompt_template_id: str | None = None
     # RoleType metadata (resolved from RoleDefinition.role_type_id or Bundle)
     role_type_name: str = ""
     role_type_icon: str = "👤"
@@ -147,7 +146,6 @@ class WorkflowCompiler:
                         "llm_model": config.llm_model,
                         "role_definition_id": config.role_definition_id,
                         "role": config.role,
-                        "prompt_template_id": config.prompt_template_id,
                         "role_type_name": config.role_type_name,
                         "role_type_icon": config.role_type_icon,
                         "role_type_color": config.role_type_color,
@@ -234,7 +232,6 @@ class WorkflowCompiler:
             llm_model=llm_profile.model,
             role_definition_id=role_def.id,
             role=role_def.role_type_id,
-            prompt_template_id=blueprint.prompt_template_id or role_def.prompt_template_id,
             role_type_name=role_type_name,
             role_type_icon=role_type_icon,
             role_type_color=role_type_color,
@@ -266,16 +263,13 @@ class WorkflowCompiler:
             blueprint_name=resolved.bundle_name,
             llm_profile_id=resolved.llm_profile.id,
             llm_model=resolved.llm_profile.model,
-            role_definition_id=resolved.role_definition.id if resolved.role_definition else "",
+            role_definition_id="",
             role=resolved.role_type.id,
-            prompt_template_id=resolved.prompt_template.id if resolved.prompt_template else None,
             role_type_name=resolved.role_type.name,
             role_type_icon=resolved.role_type.icon,
             role_type_color=resolved.role_type.color,
             default_max_rounds=resolved.role_type.default_max_rounds,
             default_consensus_threshold=resolved.role_type.default_consensus_threshold,
-            argumentation_pattern=resolved.role_definition.argumentation_pattern or "" if resolved.role_definition else "",
-            mode=resolved.role_definition.mode or "" if resolved.role_definition else "",
             system_prompt=resolved.system_prompt,
             model_params=resolved.model_params,
             agent_tags=list(resolved.role_type.tags or []),

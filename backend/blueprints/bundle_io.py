@@ -16,14 +16,10 @@ from backend.blueprints.models import (
     AgentBundle,
     BlueprintLLMProfile,
     BundleComposition,
-    PromptTemplate,
-    RoleDefinition,
     RoleType,
     ToneProfile,
 )
 from backend.blueprints.module_lookups import (
-    resolve_prompt_template,
-    resolve_role_definition,
     resolve_role_type,
 )
 from backend.blueprints.repository import BlueprintRepository
@@ -63,14 +59,6 @@ def export_bundle(bundle_id: str, repo: BlueprintRepository) -> dict[str, Any]:
     if not role_type:
         raise ValueError(f"Referenced RoleType '{bundle.role_type_id}' not found")
 
-    role_definition: RoleDefinition | None = None
-    if bundle.role_definition_id:
-        role_definition = resolve_role_definition(bundle.role_definition_id)
-
-    prompt_template: PromptTemplate | None = None
-    if bundle.prompt_template_id:
-        prompt_template = resolve_prompt_template(bundle.prompt_template_id)
-
     tone_profile: ToneProfile | None = None
     if bundle.tone_profile_id:
         tone_profile = repo.get_tone_profile(bundle.tone_profile_id)
@@ -82,8 +70,6 @@ def export_bundle(bundle_id: str, repo: BlueprintRepository) -> dict[str, Any]:
         "bundle": _serialize_bundle(bundle),
         "llm_profile": _serialize_llm_profile(llm_profile),
         "role_type": _serialize_role_type(role_type),
-        "role_definition": _serialize_role_definition(role_definition) if role_definition else None,
-        "prompt_template": _serialize_prompt_template(prompt_template) if prompt_template else None,
         "tone_profile": _serialize_tone_profile(tone_profile) if tone_profile else None,
     }
 
@@ -169,26 +155,12 @@ def import_bundle(
         raise ValueError("Missing 'llm_profile' in bundle export")
     llm_profile = _import_llm_profile(llm_raw, repo, conflict_strategy, id_map)
 
-    # 3. Resolve RoleDefinition from modules (no DB import needed)
-    role_def: RoleDefinition | None = None
-    if data.get("role_definition"):
-        rd_raw = data["role_definition"]
-        role_def = resolve_role_definition(rd_raw.get("id", ""))
-        if not role_def:
-            role_def = RoleDefinition(**{k: v for k, v in rd_raw.items() if k in RoleDefinition.model_fields})
-
-    # 4. Resolve PromptTemplate from modules (no DB import needed)
-    prompt_template: PromptTemplate | None = None
-    if data.get("prompt_template"):
-        pt_raw = data["prompt_template"]
-        prompt_template = resolve_prompt_template(pt_raw.get("id", ""))
-
-    # 5. Import ToneProfile (optional)
+    # 3. Import ToneProfile (optional)
     tone_profile: ToneProfile | None = None
     if data.get("tone_profile"):
         tone_profile = _import_tone_profile(data["tone_profile"], repo, conflict_strategy, id_map)
 
-    # 6. Import Bundle with resolved references
+    # 4. Import Bundle with resolved references
     bundle_raw = data["bundle"]
     bundle = _import_bundle_entity(
         bundle_raw,
@@ -197,8 +169,6 @@ def import_bundle(
         id_map,
         llm_profile.id,
         role_type.id,
-        role_def.id if role_def else None,
-        prompt_template.id if prompt_template else None,
         tone_profile.id if tone_profile else None,
     )
 
@@ -223,10 +193,7 @@ def _serialize_bundle(b: AgentBundle) -> dict:
         "description": b.description,
         "llm_profile_id": b.llm_profile_id,
         "role_type_id": b.role_type_id,
-        "role_definition_id": b.role_definition_id,
-        "prompt_template_id": b.prompt_template_id,
         "tone_profile_id": b.tone_profile_id,
-        "persona_id": b.persona_id,
         "tags": b.tags,
         "is_active": b.is_active,
         "model_params": b.model_params,
@@ -274,39 +241,6 @@ def _serialize_role_type(rt: RoleType) -> dict:
         "category": rt.category,
         "tags": rt.tags,
         "is_active": rt.is_active,
-    }
-
-
-def _serialize_role_definition(rd: RoleDefinition | None) -> dict | None:
-    if rd is None:
-        return None
-    return {
-        "id": rd.id,
-        "name": rd.name,
-        "role_type_id": rd.role_type_id,
-        "description": rd.description,
-        "argumentation_pattern": rd.argumentation_pattern,
-        "mode": rd.mode,
-        "prompt_template_id": rd.prompt_template_id,
-        "max_rounds": rd.max_rounds,
-        "consensus_threshold": rd.consensus_threshold,
-        "tags": rd.tags,
-    }
-
-
-def _serialize_prompt_template(pt: PromptTemplate | None) -> dict | None:
-    if pt is None:
-        return None
-    return {
-        "id": pt.id,
-        "name": pt.name,
-        "role": pt.role,
-        "content": pt.content,
-        "language": pt.language,
-        "variant": pt.variant,
-        "description": pt.description,
-        "tags": pt.tags,
-        "source_path": pt.source_path,
     }
 
 
@@ -430,8 +364,6 @@ def _import_bundle_entity(
     id_map: dict[str, str],
     resolved_llm_id: str,
     resolved_role_type_id: str,
-    resolved_role_def_id: str | None,
-    resolved_prompt_id: str | None,
     resolved_tone_id: str | None,
 ) -> AgentBundle:
     existing = repo.get_bundle(raw["id"])
@@ -451,10 +383,7 @@ def _import_bundle_entity(
         description=raw.get("description", ""),
         llm_profile_id=resolved_llm_id,
         role_type_id=resolved_role_type_id,
-        role_definition_id=resolved_role_def_id,
-        prompt_template_id=resolved_prompt_id,
         tone_profile_id=resolved_tone_id,
-        persona_id=raw.get("persona_id"),
         composition=composition,
         tags=raw.get("tags", []),
         is_active=raw.get("is_active", True),

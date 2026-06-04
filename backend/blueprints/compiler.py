@@ -38,7 +38,6 @@ class ResolvedAgent:
     llm_model: str
     role_definition_id: str
     role: str
-    prompt_template_id: str | None
     # RoleType metadata (resolved from RoleDefinition.role_type_id)
     role_type_name: str = ""
     role_type_icon: str = "👤"
@@ -151,7 +150,6 @@ class CompilerService:
                     llm_model=llm_profile.model,
                     role_definition_id=role_def.id,
                     role=role_def.role_type_id,
-                    prompt_template_id=blueprint.prompt_template_id or role_def.prompt_template_id,
                     role_type_name=role_type_name,
                     role_type_icon=role_type_icon,
                     role_type_color=role_type_color,
