@@ -176,6 +176,72 @@ class MiscRepository:
             )
         return cursor.rowcount > 0
 
+    def save_provenance_batch(
+        self,
+        session_id: str,
+        workflow_id: str,
+        build_responses: list[dict],
+    ) -> int:
+        """Persist a batch of BuildResponse provenance entries.
+
+        Used by the Pragmatist node to record clause-level lineage
+        (which Critic item a BuildResponse addresses, which draft
+        version it belongs to, and the Pragmatist's verdict/score).
+        The ``build_response_provenance`` table itself is created by
+        migration v32 — we do not re-create it here so the schema
+        stays in one place.
+
+        One row is inserted per BuildResponse — including those with
+        empty or missing ``provenance`` sub-dicts — matching the
+        historical behaviour of the inline ``sqlite3`` implementation
+        in ``pragmatist_nodes._save_provenance_batch``.  Missing
+        fields fall back to column defaults (0, ``''``,
+        ``'conservative'``, NULL).
+
+        Args:
+            session_id: Workflow session ID.
+            workflow_id: Workflow definition ID.
+            build_responses: List of BuildResponse dicts.  Each entry
+                produces one row, regardless of whether it carries a
+                ``provenance`` sub-dict.
+
+        Returns:
+            The number of rows actually inserted.
+        """
+        rows: list[tuple] = []
+        for br in build_responses:
+            prov = br.get("provenance") or {}
+            rows.append(
+                (
+                    session_id,
+                    workflow_id,
+                    br.get("response_to", ""),
+                    int(prov.get("draft_version", 0) or 0),
+                    prov.get("critic_item_id", ""),
+                    prov.get("original_text", ""),
+                    prov.get("revision_type", "conservative"),
+                    prov.get("pragmatist_verdict"),
+                    prov.get("pragmatist_score"),
+                )
+            )
+
+        if not rows:
+            return 0
+
+        with self._connect() as conn:
+            conn.executemany(
+                """INSERT INTO build_response_provenance
+                   (session_id, workflow_id, response_to, draft_version,
+                    critic_item_id, original_text, revision_type,
+                    pragmatist_verdict, pragmatist_score)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows,
+            )
+        logger.debug(
+            "Saved %d provenance records for session %s", len(rows), session_id
+        )
+        return len(rows)
+
     @staticmethod
     def _row_to_prompt_modifier(row: sqlite3.Row) -> PromptModifier:
         """Convert a SQLite row to a PromptModifier model."""
