@@ -16,7 +16,6 @@ import pytest
 
 from backend.workflow.legacy_nodes import _is_module_id, _resolve_system_prompt
 
-
 # ---------------------------------------------------------------------------
 # _is_module_id
 # ---------------------------------------------------------------------------

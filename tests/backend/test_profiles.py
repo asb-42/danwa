@@ -8,10 +8,8 @@ import pytest
 import yaml
 
 from backend.core.profiles import (
-    AgentPersona,
     LLMProfile,
     LLMProvider,
-    PromptVariant,
 )
 from backend.services.profile_service import ProfileService
 from backend.services.prompt_service import PromptService
@@ -25,12 +23,10 @@ from backend.services.prompt_service import PromptService
 def profile_dir(tmp_path) -> Path:
     """Create a temporary profile directory with test YAML files."""
     llm_dir = tmp_path / "llm"
-    agents_dir = tmp_path / "agents"
     prompts_dir = tmp_path / "prompts" / "default"
     variants_dir = tmp_path / "prompts" / "variants" / "test-variant"
 
     llm_dir.mkdir(parents=True)
-    agents_dir.mkdir(parents=True)
     prompts_dir.mkdir(parents=True)
     variants_dir.mkdir(parents=True)
 
@@ -46,17 +42,6 @@ def profile_dir(tmp_path) -> Path:
     }
     (llm_dir / "test-llm.yaml").write_text(yaml.dump(llm_data))
 
-    # Agent persona
-    agent_data = {
-        "id": "test-strategist",
-        "name": "Test Strategist",
-        "role": "strategist",
-        "system_prompt": "You are a test strategist.",
-        "llm_profile_id": "test-llm",
-        "tags": ["test"],
-    }
-    (agents_dir / "test-strategist.yaml").write_text(yaml.dump(agent_data))
-
     # Prompt files
     (prompts_dir / "strategist.md").write_text("# Strategist Prompt\nTest content for {context}")
     (prompts_dir / "critic.md").write_text("# Critic Prompt\nTest content")
@@ -71,10 +56,9 @@ def profile_service(profile_dir, tmp_path) -> ProfileService:
 
 
 @pytest.fixture()
-def prompt_service(profile_dir, profile_service) -> PromptService:
+def prompt_service(profile_dir) -> PromptService:
     return PromptService(
         prompts_dir=profile_dir / "prompts",
-        profile_service=profile_service,
     )
 
 
@@ -147,74 +131,6 @@ class TestProfileServiceLLM:
 
     def test_delete_nonexistent_llm_profile(self, profile_service):
         assert profile_service.delete_llm_profile("nonexistent") is False
-
-
-class TestProfileServiceAgents:
-    def test_list_agent_personas(self, profile_service):
-        personas = profile_service.list_agent_personas()
-        assert len(personas) >= 1
-        ids = [p.id for p in personas]
-        assert "test-strategist" in ids
-        test_persona = profile_service.get_agent_persona("test-strategist")
-        assert test_persona.role == "strategist"
-
-    def test_list_agent_personas_by_role(self, profile_service):
-        strategists = profile_service.list_agent_personas(role="strategist")
-        assert len(strategists) >= 1
-        assert any(p.id == "test-strategist" for p in strategists)
-
-        critics = profile_service.list_agent_personas(role="critic")
-        # Module personas may also contribute critic roles
-        assert len(critics) >= 0
-
-    def test_get_agent_persona(self, profile_service):
-        persona = profile_service.get_agent_persona("test-strategist")
-        assert persona is not None
-        assert persona.name == "Test Strategist"
-        assert persona.system_prompt == "You are a test strategist."
-
-    def test_save_agent_persona(self, profile_service, profile_dir):
-        new_persona = AgentPersona(
-            id="test-critic",
-            name="Test Critic",
-            role="critic",
-            system_prompt="You are a test critic.",
-            llm_profile_id="test-llm",
-        )
-        profile_service.save_agent_persona(new_persona)
-
-        assert profile_service.get_agent_persona("test-critic") is not None
-        yaml_path = profile_dir / "agents" / "test-critic.yaml"
-        assert yaml_path.exists()
-
-    def test_delete_agent_persona(self, profile_service):
-        assert profile_service.delete_agent_persona("test-strategist") is True
-        assert profile_service.get_agent_persona("test-strategist") is None
-
-
-class TestProfileServicePrompts:
-    def test_list_prompt_variants(self, profile_service):
-        variants = profile_service.list_prompt_variants()
-        ids = [v.id for v in variants]
-        assert "default" in ids
-        assert "test-variant" in ids
-
-    def test_preview_prompt(self, profile_service):
-        text = profile_service.preview_prompt("default", "strategist")
-        assert "Strategist Prompt" in text
-
-    def test_preview_variant_prompt(self, profile_service):
-        text = profile_service.preview_prompt("test-variant", "strategist")
-        assert "Variant Strategist" in text
-
-    def test_delete_prompt_variant(self, profile_service):
-        assert profile_service.delete_prompt_variant("test-variant") is True
-
-    def test_cannot_delete_default_variant_via_api(self, client):
-        """Guard is in the API router, not the service."""
-        response = client.delete("/api/v1/profiles/prompts/default")
-        assert response.status_code == 400
-        assert "Cannot delete" in response.json()["detail"]
 
 
 class TestProfileServiceCostEstimation:
@@ -303,48 +219,6 @@ class TestProfileSchemas:
                 model="test/model",
             )
 
-    def test_agent_persona_valid(self):
-        persona = AgentPersona(
-            id="test-agent",
-            name="Test Agent",
-            role="strategist",
-            system_prompt="Test prompt",
-            llm_profile_id="test-llm",
-        )
-        assert persona.role == "strategist"
-
-    def test_agent_persona_custom_role_accepted(self):
-        """Role field is now a free-form str, so custom roles are accepted."""
-        persona = AgentPersona(
-            id="test-agent",
-            name="Test Agent",
-            role="custom-role",
-            system_prompt="Test prompt",
-            llm_profile_id="test-llm",
-        )
-        assert persona.role == "custom-role"
-
-    def test_agent_persona_new_role_types(self):
-        """New role types (analyst, creative, fact-checker) are accepted."""
-        for role in ("analyst", "creative", "fact-checker", "expert-reviewer"):
-            persona = AgentPersona(
-                id=f"test-{role}",
-                name=f"Test {role}",
-                role=role,
-                system_prompt="Test prompt",
-                llm_profile_id="test-llm",
-            )
-            assert persona.role == role
-
-    def test_prompt_variant_valid(self):
-        variant = PromptVariant(
-            id="test-variant",
-            name="Test Variant",
-            base_path="/tmp/test",
-        )
-        assert variant.id == "test-variant"
-
-
 # ---------------------------------------------------------------------------
 # API endpoint tests
 # ---------------------------------------------------------------------------
@@ -357,28 +231,8 @@ class TestProfilesAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_list_agent_personas(self, client):
-        response = client.get("/api/v1/profiles/agents")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
-    def test_list_agent_personas_by_role(self, client):
-        response = client.get("/api/v1/profiles/agents?role=strategist")
-        assert response.status_code == 200
-
-    def test_list_prompt_variants(self, client):
-        response = client.get("/api/v1/profiles/prompts")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
     def test_get_nonexistent_llm_profile(self, client):
         response = client.get("/api/v1/profiles/llm/nonexistent")
-        assert response.status_code == 404
-
-    def test_get_nonexistent_agent_persona(self, client):
-        response = client.get("/api/v1/profiles/agents/nonexistent")
         assert response.status_code == 404
 
     def test_cost_estimate_missing_param(self, client):

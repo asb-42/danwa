@@ -1,11 +1,12 @@
-"""Tests for the Blueprint Canvas API — Phase 2.
+"""Tests for the Blueprint Canvas API.
 
-Covers all CRUD endpoints for LLM Profiles, Prompt Templates,
-Role Definitions, Agent Blueprints, Canvas Layouts, the import
-endpoint, and centralized error handling.
+Covers all CRUD endpoints for LLM Profiles, Agent Blueprints,
+Canvas Layouts, Workflow Definitions, and centralized error handling.
 """
 
 from __future__ import annotations
+
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,6 +19,7 @@ from backend.api.deps import (
     get_project_store,
     get_settings,
 )
+from backend.blueprints.models import RoleDefinition, RoleType
 from backend.blueprints.repository import BlueprintRepository
 from backend.core.config import Settings
 from backend.main import create_app
@@ -111,25 +113,6 @@ def _sample_llm_profile(profile_id: str = "test-llm") -> dict:
     }
 
 
-def _sample_prompt_template(template_id: str = "test-prompt") -> dict:
-    return {
-        "id": template_id,
-        "name": "Test Prompt",
-        "role_type_id": "strategist",
-        "content": "You are a test strategist. Analyze the case.",
-    }
-
-
-def _sample_role_definition(role_id: str = "test-role") -> dict:
-    return {
-        "id": role_id,
-        "name": "Test Role",
-        "role_type_id": "strategist",
-        "description": "A test role definition",
-        "consensus_threshold": 0.8,
-    }
-
-
 def _sample_blueprint(
     blueprint_id: str = "test-bp",
     llm_profile_id: str = "test-llm",
@@ -160,9 +143,8 @@ def _sample_layout(layout_id: str = "test-layout") -> dict:
 
 
 def _seed_prerequisites(client: TestClient) -> None:
-    """Create the LLM profile and role definition required by FK constraints."""
+    """Create the LLM profile required by blueprint references."""
     client.post("/api/v1/blueprints/llm-profiles", json=_sample_llm_profile("test-llm"))
-    client.post("/api/v1/blueprints/role-definitions", json=_sample_role_definition("test-role"))
 
 
 # ===================================================================
@@ -254,282 +236,8 @@ class TestLLMProfileAPI:
 
 
 # ===================================================================
-# Prompt Template CRUD
+# Agent Blueprint CRUD (prompt-template/role-definition endpoints removed)
 # ===================================================================
-
-
-class TestPromptTemplateAPI:
-    """Tests for /api/v1/blueprints/prompt-templates endpoints."""
-
-    def test_list_empty(self, client: TestClient) -> None:
-        response = client.get("/api/v1/blueprints/prompt-templates")
-        assert response.status_code == 200
-        # Module fallback data may be present; assert no DB items
-        data = response.json()
-        db_items = [item for item in data if not item.get("_source_module")]
-        assert db_items == []
-
-    def test_create(self, client: TestClient) -> None:
-        payload = _sample_prompt_template()
-        response = client.post("/api/v1/blueprints/prompt-templates", json=payload)
-        assert response.status_code == 201
-        data = response.json()
-        assert data["id"] == "test-prompt"
-        assert data["role"] == "strategist"
-        assert data["content_hash"]  # auto-computed
-
-    def test_get_by_id(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/prompt-templates", json=_sample_prompt_template())
-        response = client.get("/api/v1/blueprints/prompt-templates/test-prompt")
-        assert response.status_code == 200
-        assert response.json()["id"] == "test-prompt"
-
-    def test_update(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/prompt-templates", json=_sample_prompt_template())
-        updated = _sample_prompt_template()
-        updated["content"] = "Updated content for the prompt."
-        response = client.put("/api/v1/blueprints/prompt-templates/test-prompt", json=updated)
-        assert response.status_code == 200
-        assert response.json()["content"] == "Updated content for the prompt."
-
-    def test_delete(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/prompt-templates", json=_sample_prompt_template())
-        response = client.delete("/api/v1/blueprints/prompt-templates/test-prompt")
-        assert response.status_code == 200
-        response = client.get("/api/v1/blueprints/prompt-templates/test-prompt")
-        assert response.status_code == 404
-
-    def test_filter_by_role(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/prompt-templates", json=_sample_prompt_template("s1"))
-        critic = _sample_prompt_template("c1")
-        critic["role"] = "critic"
-        client.post("/api/v1/blueprints/prompt-templates", json=critic)
-        response = client.get("/api/v1/blueprints/prompt-templates?role=critic")
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 1
-        assert data[0]["role"] == "critic"
-
-    def test_filter_by_variant(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/prompt-templates", json=_sample_prompt_template("v1"))
-        custom = _sample_prompt_template("v2")
-        custom["variant"] = "kantian"
-        client.post("/api/v1/blueprints/prompt-templates", json=custom)
-        response = client.get("/api/v1/blueprints/prompt-templates?variant=kantian")
-        assert response.status_code == 200
-        assert len(response.json()) == 1
-
-    def test_create_conflict(self, client: TestClient) -> None:
-        url = "/api/v1/blueprints/prompt-templates"
-        client.post(url, json=_sample_prompt_template())
-        response = client.post(url, json=_sample_prompt_template())
-        assert response.status_code == 409
-
-    def test_get_not_found(self, client: TestClient) -> None:
-        response = client.get("/api/v1/blueprints/prompt-templates/nonexistent")
-        assert response.status_code == 404
-
-    def test_pagination(self, client: TestClient) -> None:
-        for i in range(5):
-            client.post(
-                "/api/v1/blueprints/prompt-templates",
-                json=_sample_prompt_template(f"pt{i}"),
-            )
-        response = client.get("/api/v1/blueprints/prompt-templates?limit=3&offset=0")
-        assert response.status_code == 200
-        assert len(_db_only(response.json())) == 3
-
-
-# ===================================================================
-# Role Definition CRUD
-# ===================================================================
-
-
-class TestRoleDefinitionAPI:
-    """Tests for /api/v1/blueprints/role-definitions endpoints."""
-
-    def test_list_empty(self, client: TestClient) -> None:
-        response = client.get("/api/v1/blueprints/role-definitions")
-        assert response.status_code == 200
-        # Module fallback data may be present; assert no DB items
-        data = response.json()
-        db_items = [item for item in data if not item.get("_source_module")]
-        assert db_items == []
-
-    def test_create(self, client: TestClient) -> None:
-        payload = _sample_role_definition()
-        response = client.post("/api/v1/blueprints/role-definitions", json=payload)
-        assert response.status_code == 201
-        data = response.json()
-        assert data["id"] == "test-role"
-        assert data["role_type_id"] == "strategist"
-        assert data["consensus_threshold"] == 0.8
-
-    def test_get_by_id(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-definitions", json=_sample_role_definition())
-        response = client.get("/api/v1/blueprints/role-definitions/test-role")
-        assert response.status_code == 200
-        assert response.json()["id"] == "test-role"
-
-    def test_update(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-definitions", json=_sample_role_definition())
-        updated = _sample_role_definition()
-        updated["consensus_threshold"] = 0.95
-        response = client.put("/api/v1/blueprints/role-definitions/test-role", json=updated)
-        assert response.status_code == 200
-        assert response.json()["consensus_threshold"] == 0.95
-
-    def test_delete(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-definitions", json=_sample_role_definition())
-        response = client.delete("/api/v1/blueprints/role-definitions/test-role")
-        assert response.status_code == 200
-        response = client.get("/api/v1/blueprints/role-definitions/test-role")
-        assert response.status_code == 404
-
-    def test_filter_by_role(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-definitions", json=_sample_role_definition("r1"))
-        critic = _sample_role_definition("r2")
-        critic["role_type_id"] = "critic"
-        client.post("/api/v1/blueprints/role-definitions", json=critic)
-        response = client.get("/api/v1/blueprints/role-definitions?role=critic")
-        assert response.status_code == 200
-        data = _db_only(response.json())
-        assert len(data) == 1
-        assert data[0]["role_type_id"] == "critic"
-
-    def test_create_conflict(self, client: TestClient) -> None:
-        url = "/api/v1/blueprints/role-definitions"
-        client.post(url, json=_sample_role_definition())
-        response = client.post(url, json=_sample_role_definition())
-        assert response.status_code == 409
-
-    def test_get_not_found(self, client: TestClient) -> None:
-        response = client.get("/api/v1/blueprints/role-definitions/nonexistent")
-        assert response.status_code == 404
-
-    def test_pagination(self, client: TestClient) -> None:
-        for i in range(5):
-            client.post(
-                "/api/v1/blueprints/role-definitions",
-                json=_sample_role_definition(f"rd{i}"),
-            )
-        response = client.get("/api/v1/blueprints/role-definitions?limit=2&offset=0")
-        assert response.status_code == 200
-        assert len(_db_only(response.json())) == 2
-
-
-# ===================================================================
-# Role Type CRUD
-# ===================================================================
-
-
-def _sample_role_type(role_type_id: str = "test-rt") -> dict:
-    return {
-        "id": role_type_id,
-        "name": f"Role Type {role_type_id}",
-        "description": "A test role type",
-        "icon": "🧠",
-        "color": "#8b5cf6",
-        "default_max_rounds": 5,
-        "default_consensus_threshold": 0.9,
-    }
-
-
-class TestRoleTypeAPI:
-    """Tests for /api/v1/blueprints/role-types endpoints."""
-
-    def test_list_empty(self, client: TestClient) -> None:
-        response = client.get("/api/v1/blueprints/role-types")
-        assert response.status_code == 200
-        # Migration v14 seeds 6 default role types
-        data = response.json()
-        assert len(data) >= 6
-
-    def test_create(self, client: TestClient) -> None:
-        payload = _sample_role_type()
-        response = client.post("/api/v1/blueprints/role-types", json=payload)
-        assert response.status_code == 201
-        data = response.json()
-        assert data["id"] == "test-rt"
-        assert data["name"] == "Role Type test-rt"
-        assert data["icon"] == "🧠"
-        assert data["default_max_rounds"] == 5
-
-    def test_get_by_id(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-types", json=_sample_role_type())
-        response = client.get("/api/v1/blueprints/role-types/test-rt")
-        assert response.status_code == 200
-        assert response.json()["id"] == "test-rt"
-
-    def test_update(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-types", json=_sample_role_type())
-        updated = _sample_role_type()
-        updated["icon"] = "⚡"
-        updated["default_max_rounds"] = 10
-        response = client.put("/api/v1/blueprints/role-types/test-rt", json=updated)
-        assert response.status_code == 200
-        assert response.json()["icon"] == "⚡"
-        assert response.json()["default_max_rounds"] == 10
-
-    def test_delete(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-types", json=_sample_role_type())
-        response = client.delete("/api/v1/blueprints/role-types/test-rt")
-        assert response.status_code == 200
-        response = client.get("/api/v1/blueprints/role-types/test-rt")
-        assert response.status_code == 404
-
-    def test_create_conflict(self, client: TestClient) -> None:
-        url = "/api/v1/blueprints/role-types"
-        client.post(url, json=_sample_role_type())
-        response = client.post(url, json=_sample_role_type())
-        assert response.status_code == 409
-
-    def test_get_not_found(self, client: TestClient) -> None:
-        response = client.get("/api/v1/blueprints/role-types/nonexistent")
-        assert response.status_code == 404
-
-    def test_update_not_found(self, client: TestClient) -> None:
-        response = client.put(
-            "/api/v1/blueprints/role-types/nonexistent",
-            json=_sample_role_type("nonexistent"),
-        )
-        assert response.status_code == 404
-
-    def test_pagination(self, client: TestClient) -> None:
-        for i in range(5):
-            client.post(
-                "/api/v1/blueprints/role-types",
-                json=_sample_role_type(f"rt{i}"),
-            )
-        response = client.get("/api/v1/blueprints/role-types?limit=3&offset=0")
-        assert response.status_code == 200
-        assert len(_db_only(response.json())) == 3
-
-    def test_active_only_filter(self, client: TestClient) -> None:
-        client.post("/api/v1/blueprints/role-types", json=_sample_role_type("active-rt"))
-        inactive = _sample_role_type("inactive-rt")
-        inactive["is_active"] = False
-        client.post("/api/v1/blueprints/role-types", json=inactive)
-        response = client.get("/api/v1/blueprints/role-types?active_only=true")
-        assert response.status_code == 200
-        data = response.json()
-        active_ids = {rt["id"] for rt in data}
-        assert "active-rt" in active_ids
-        assert "inactive-rt" not in active_ids
-
-    def test_validation_error_consensus_threshold(self, client: TestClient) -> None:
-        payload = _sample_role_type()
-        payload["default_consensus_threshold"] = 1.5
-        response = client.post("/api/v1/blueprints/role-types", json=payload)
-        assert response.status_code == 422
-
-    def test_validation_error_max_rounds(self, client: TestClient) -> None:
-        payload = _sample_role_type()
-        payload["default_max_rounds"] = 0
-        response = client.post("/api/v1/blueprints/role-types", json=payload)
-        assert response.status_code == 422
-
-
 # ===================================================================
 # Agent Blueprint CRUD
 # ===================================================================
@@ -722,43 +430,6 @@ class TestCanvasLayoutAPI:
 
 
 # ===================================================================
-# Import Endpoint
-# ===================================================================
-
-
-class TestImportAPI:
-    """Tests for POST /api/v1/blueprints/import."""
-
-    def test_import_returns_result(self, client: TestClient) -> None:
-        response = client.post("/api/v1/blueprints/import", json={})
-        assert response.status_code == 200
-        data = response.json()
-        # ImportResult is a flat dataclass with created/updated/skipped/errors
-        assert "created" in data
-        assert "updated" in data
-        assert "skipped" in data
-        assert "errors" in data
-
-    def test_import_dry_run(self, client: TestClient) -> None:
-        response = client.post("/api/v1/blueprints/import", json={"dry_run": True})
-        assert response.status_code == 200
-        data = response.json()
-        # Dry run should return counts but not persist
-        assert "created" in data
-        assert "errors" in data
-
-    def test_import_idempotent(self, client: TestClient) -> None:
-        """Running import twice should not create duplicates."""
-        r1 = client.post("/api/v1/blueprints/import", json={})
-        r2 = client.post("/api/v1/blueprints/import", json={})
-        assert r1.status_code == 200
-        assert r2.status_code == 200
-        # Second run should create 0 new entities (idempotent)
-        d2 = r2.json()
-        assert d2["created"] == 0
-
-
-# ===================================================================
 # Error Handling
 # ===================================================================
 
@@ -786,20 +457,6 @@ class TestErrorHandling:
         payload = _sample_llm_profile()
         payload["temperature"] = 5.0  # out of range [0, 2]
         response = client.post("/api/v1/blueprints/llm-profiles", json=payload)
-        assert response.status_code == 422
-
-    def test_validation_error_empty_content(self, client: TestClient) -> None:
-        """Empty prompt content should trigger 422."""
-        payload = _sample_prompt_template()
-        payload["content"] = ""
-        response = client.post("/api/v1/blueprints/prompt-templates", json=payload)
-        assert response.status_code == 422
-
-    def test_validation_error_consensus_threshold(self, client: TestClient) -> None:
-        """Invalid consensus_threshold should trigger 422."""
-        payload = _sample_role_definition()
-        payload["consensus_threshold"] = 1.5  # out of range [0, 1]
-        response = client.post("/api/v1/blueprints/role-definitions", json=payload)
         assert response.status_code == 422
 
     def test_validation_error_invalid_id_pattern(self, client: TestClient) -> None:
@@ -968,18 +625,73 @@ class TestWorkflowDefinitionAPI:
 # ===================================================================
 
 
+# Mock module lookups for compiler tests (no DB-backed role_definitions table).
+_ROLE_DEFINITIONS: dict[str, RoleDefinition] = {
+    "bp-role": RoleDefinition(
+        id="bp-role",
+        name="Test Role",
+        role_type_id="strategist",
+    ),
+}
+
+_ROLE_TYPES: dict[str, RoleType] = {
+    "strategist": RoleType(id="strategist", name="Strategist"),
+}
+
+
+def _mock_resolve_role_definition(role_def_id: str):
+    return _ROLE_DEFINITIONS.get(role_def_id)
+
+
+def _mock_resolve_role_type(role_type_id: str):
+    return _ROLE_TYPES.get(role_type_id)
+
+
+@pytest.fixture(autouse=True)
+def _patch_compiler_module_lookups(request):
+    """Auto-patch module lookups for compiler tests only."""
+    if request.node.get_closest_marker("compiler") is not None or (
+        hasattr(request, "cls") and request.cls is TestCompilerAPI
+    ):
+        with (
+            patch(
+                "backend.workflow.workflow_compiler.resolve_role_definition",
+                side_effect=_mock_resolve_role_definition,
+            ),
+            patch(
+                "backend.workflow.workflow_compiler.resolve_role_type",
+                side_effect=_mock_resolve_role_type,
+            ),
+            patch(
+                "backend.blueprints.compiler.resolve_role_definition",
+                side_effect=_mock_resolve_role_definition,
+            ),
+            patch(
+                "backend.blueprints.compiler.resolve_role_type",
+                side_effect=_mock_resolve_role_type,
+            ),
+            patch(
+                "backend.blueprints.module_lookups.resolve_role_definition",
+                side_effect=_mock_resolve_role_definition,
+            ),
+            patch(
+                "backend.blueprints.module_lookups.resolve_role_type",
+                side_effect=_mock_resolve_role_type,
+            ),
+        ):
+            yield
+    else:
+        yield
+
+
 class TestCompilerAPI:
     """Tests for POST /api/v1/blueprints/workflows/{id}/compile."""
 
     def _seed_full_catalog(self, client: TestClient) -> None:
-        """Create LLM profile, role definition, and blueprint for compiler tests."""
+        """Create LLM profile and blueprint for compiler tests."""
         client.post(
             "/api/v1/blueprints/llm-profiles",
             json=_sample_llm_profile("bp-llm"),
-        )
-        client.post(
-            "/api/v1/blueprints/role-definitions",
-            json=_sample_role_definition("bp-role"),
         )
         client.post(
             "/api/v1/blueprints/agent-blueprints",

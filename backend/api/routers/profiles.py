@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
 
 from backend.core.config import is_service_llm_eligible
 from backend.core.profiles import LLMProfile
