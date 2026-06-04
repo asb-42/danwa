@@ -21,7 +21,6 @@ from backend.services.module_profile_sync import (
     get_prompt_modifiers_from_modules,
     get_tone_profiles_from_modules,
 )
-from backend.services.profile_service import ProfileService
 from backend.services.tone_prompt_injector import inject_tone_profile
 
 logger = logging.getLogger(__name__)
@@ -44,8 +43,6 @@ class ComposerService:
     into a single system prompt with clear section delimiters.
     """
 
-    def __init__(self) -> None:
-        self._profile_service = ProfileService()
 
     # ------------------------------------------------------------------
     # Public API
@@ -93,9 +90,13 @@ class ComposerService:
         if not core_id:
             return ""
         try:
-            persona = self._profile_service.get_agent_persona(core_id)
-            if persona and persona.system_prompt.strip():
-                return persona.system_prompt.strip()
+            from backend.services.module_profile_sync import get_agent_personas_from_modules
+
+            for mp in get_agent_personas_from_modules():
+                if mp.get("id") == core_id:
+                    prompt = mp.get("system_prompt", "")
+                    if prompt.strip():
+                        return prompt.strip()
         except Exception:
             logger.exception("Failed to load agent core '%s'", core_id)
         return ""

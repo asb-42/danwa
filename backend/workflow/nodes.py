@@ -707,18 +707,7 @@ def _resolve_system_prompt(
             except Exception as exc:
                 logger.warning("ComposerService failed for %s (module=%s): %s", role, persona_id, exc)
 
-    # 3. Try persona-specific system prompt (legacy, always in persona's language)
-    if prompt is None:
-        persona_id = persona_ids.get(role)
-        if persona_id:
-            persona = _get_profile_service(project_id).get_agent_persona(persona_id)
-            if persona:
-                logger.debug("Using persona system_prompt for %s (persona=%s)", role, persona_id)
-                prompt = persona.system_prompt
-                # Append language instruction so the LLM responds in the debate language
-                prompt = _append_language_instruction(prompt, language)
-
-    # 4. Generic fallback (language-aware)
+    # 3. Generic fallback (language-aware)
     if prompt is None:
         logger.warning(
             "No prompt found for %s/%s (lang=%s), using generic default",

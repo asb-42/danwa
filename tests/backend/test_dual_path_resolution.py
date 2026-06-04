@@ -159,21 +159,15 @@ class TestModuleAwarePersona:
         mock_composer.compose.assert_called_once()
 
     @patch("backend.workflow.legacy_nodes._get_prompt_service")
-    @patch("backend.workflow.legacy_nodes._get_profile_service")
-    def test_legacy_persona_id_uses_profile_service(
-        self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock
+    def test_legacy_persona_id_falls_through_to_generic(
+        self, mock_prompt_svc: MagicMock
     ) -> None:
-        """When persona_id is NOT a UUID, ProfileService.get_agent_persona should be used."""
+        """When persona_id is NOT a UUID, it falls through to the generic fallback."""
         persona_ids = {"strategist": "persona-legacy-1"}
         state: dict = {"context": "Test"}
 
         # PromptService raises FileNotFoundError (no template)
         mock_prompt_svc.return_value.render.side_effect = FileNotFoundError
-
-        # ProfileService returns a persona
-        mock_persona = MagicMock()
-        mock_persona.system_prompt = "You are a legacy persona."
-        mock_profile_svc.return_value.get_agent_persona.return_value = mock_persona
 
         result = _resolve_system_prompt(
             role="strategist",
@@ -184,8 +178,8 @@ class TestModuleAwarePersona:
             search_mode="off",
         )
 
-        assert "legacy persona" in result
-        mock_profile_svc.return_value.get_agent_persona.assert_called_once_with("persona-legacy-1")
+        # Non-UUID persona_ids no longer resolve — falls through to generic
+        assert "strategist" in result.lower()
 
     @patch("backend.workflow.legacy_nodes._get_prompt_service")
     @patch("backend.workflow.legacy_nodes._get_profile_service")
