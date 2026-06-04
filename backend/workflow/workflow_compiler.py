@@ -67,6 +67,7 @@ class ResolvedAgentConfig:
     system_prompt: str = ""  # Assembled system prompt (from Bundle or legacy assembly)
     model_params: dict = field(default_factory=dict)  # LLM inference overrides (top_p, frequency_penalty, etc.)
     node_config: dict = field(default_factory=dict)  # WorkflowNode.config fields (mode, template, etc.)
+    agent_tags: list[str] = field(default_factory=list)  # Blueprint / RoleType tags, used to pick domain-specific prompts
 
 
 @dataclass
@@ -153,6 +154,7 @@ class WorkflowCompiler:
                         "system_prompt": config.system_prompt,
                         "model_params": config.model_params,
                         "node_config": config.node_config,
+                        "agent_tags": list(config.agent_tags),
                     }
                     result.resolved_agents.append(config)
 
@@ -237,6 +239,7 @@ class WorkflowCompiler:
             argumentation_pattern=role_def.argumentation_pattern or "",
             mode=role_def.mode or "",
             node_config=node.config or {},
+            agent_tags=list(blueprint.tags or []),
         )
 
     def _resolve_bundle_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:
@@ -271,6 +274,7 @@ class WorkflowCompiler:
             mode=resolved.role_definition.mode or "" if resolved.role_definition else "",
             system_prompt=resolved.system_prompt,
             model_params=resolved.model_params,
+            agent_tags=list(resolved.role_type.tags or []),
         )
 
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:

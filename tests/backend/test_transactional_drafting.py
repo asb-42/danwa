@@ -549,3 +549,352 @@ class TestVerdictThresholds:
         )
         assert ev.verdict == "reject"
         assert ev.feasibility < 0.4
+
+
+# ---------------------------------------------------------------------------
+# 10. Domain-aware Critic decision matrix (sprint 27)
+# ---------------------------------------------------------------------------
+
+
+class TestDomainDecisionMatrix:
+    """Verify the Critic decision matrix is picked by blueprint tags."""
+
+    def test_rental_law_tag_returns_rental_matrix(self):
+        from backend.workflow.domains import get_decision_matrix, is_rental_law
+
+        matrix = get_decision_matrix(["mietrecht"])
+        assert "§ 551" in matrix
+        assert "Kaution" in matrix
+        assert is_rental_law(["mietrecht"]) is True
+
+    def test_rental_law_aliases(self):
+        """All canonical rental-law tags should activate the rental matrix."""
+        from backend.workflow.domains import is_rental_law
+
+        for tag in ("mietrecht", "rental", "rental_law", "mietvertrag"):
+            assert is_rental_law([tag]) is True, f"Tag {tag!r} should activate rental law"
+
+    def test_tag_matching_is_case_insensitive(self):
+        from backend.workflow.domains import get_decision_matrix, is_rental_law
+
+        matrix = get_decision_matrix(["MIETRECHT", "Mietvertrag"])
+        assert "§ 551" in matrix
+        assert is_rental_law(["MietVertrag"]) is True
+
+    def test_no_rental_tag_returns_generic_matrix(self):
+        from backend.workflow.domains import get_decision_matrix, is_rental_law
+
+        matrix = get_decision_matrix(["transactional", "default"])
+        assert "§ 551" not in matrix, "Generic matrix should not mention § 551 BGB"
+        assert "Kaution" not in matrix
+        # Generic matrix still talks about severity levels, just generically
+        assert "blocking" in matrix
+        assert "critical" in matrix
+        assert is_rental_law(["transactional"]) is False
+
+    def test_empty_tag_list_returns_generic_matrix(self):
+        from backend.workflow.domains import get_decision_matrix
+
+        matrix = get_decision_matrix([])
+        assert "§ 551" not in matrix
+
+    def test_none_tag_list_returns_generic_matrix(self):
+        from backend.workflow.domains import get_decision_matrix
+
+        matrix = get_decision_matrix(None)
+        assert "§ 551" not in matrix
+
+    def test_generic_matrix_uses_domänen_agnostisch_phrase(self):
+        """The generic matrix is supposed to be domain-agnostic."""
+        from backend.workflow.domains import get_decision_matrix
+
+        matrix = get_decision_matrix(["some_other_tag"])
+        assert "domänen-agnostisch" in matrix or "domän" in matrix.lower()
+
+    def test_matrix_returned_is_total(self):
+        """get_decision_matrix must always return a non-empty string."""
+        from backend.workflow.domains import get_decision_matrix
+
+        for tags in (
+            None,
+            [],
+            ["mietrecht"],
+            ["unknown_tag"],
+            ["transactional", "default"],
+            [""],
+        ):
+            result = get_decision_matrix(tags)
+            assert isinstance(result, str)
+            assert len(result) > 100, f"Matrix for tags {tags!r} is suspiciously short"
+
+
+# ---------------------------------------------------------------------------
+# 11. Builder uses latest_draft and filters critic_items by round (sprint 27)
+# ---------------------------------------------------------------------------
+
+
+class TestBuilderDraftExtraction:
+    """Verify the Builder's draft-resolution order prefers latest_draft over zero_draft."""
+
+    def test_latest_draft_takes_precedence_over_zero_draft(self):
+        from backend.workflow.nodes.builder_nodes import _extract_zero_draft
+
+        state = {
+            "zero_draft": "ORIGINAL zero draft from Strategist",
+            "latest_draft": "ITERATION 2 revision",
+            "context": "user case text",
+        }
+        assert _extract_zero_draft(state) == "ITERATION 2 revision"
+
+    def test_zero_draft_used_on_first_iteration(self):
+        """When no Builder has run yet, the original zero_draft is used."""
+        from backend.workflow.nodes.builder_nodes import _extract_zero_draft
+
+        state = {
+            "zero_draft": "Original zero draft",
+            "latest_draft": None,
+            "context": "user case text",
+        }
+        assert _extract_zero_draft(state) == "Original zero draft"
+
+    def test_empty_latest_draft_falls_back_to_zero_draft(self):
+        from backend.workflow.nodes.builder_nodes import _extract_zero_draft
+
+        state = {
+            "zero_draft": "Original zero draft",
+            "latest_draft": "",
+            "context": "user case text",
+        }
+        assert _extract_zero_draft(state) == "Original zero draft"
+
+    def test_falls_back_to_strategist_node_output(self):
+        from backend.workflow.nodes.builder_nodes import _extract_zero_draft
+
+        state = {
+            "zero_draft": None,
+            "latest_draft": None,
+            "node_outputs": [
+                {"node_type": "wf-critic", "content": "critique"},
+                {"node_type": "wf-strategist", "content": "Strategy output"},
+            ],
+            "context": "user case text",
+        }
+        assert _extract_zero_draft(state) == "Strategy output"
+
+    def test_final_fallback_to_context(self):
+        from backend.workflow.nodes.builder_nodes import _extract_zero_draft
+
+        state = {"context": "user case text"}
+        assert _extract_zero_draft(state) == "user case text"
+
+
+class TestBuilderCriticItemExtraction:
+    """Verify the Builder's critic-item extraction filters to the current round."""
+
+    def test_filters_critic_items_to_current_round(self):
+        """Iteration 2 should only see items raised in round 2, not round 1."""
+        from backend.workflow.nodes.builder_nodes import _extract_critic_items
+
+        state = {
+            "current_round": 2,
+            "critic_items": [
+                {"critic_id": "c-1-001", "severity": "blocking", "round": 1},
+                {"critic_id": "c-1-002", "severity": "critical", "round": 1},
+                {"critic_id": "c-2-001", "severity": "blocking", "round": 2},
+                {"critic_id": "c-2-002", "severity": "warning", "round": 2},
+            ],
+        }
+        result = _extract_critic_items(state)
+        assert len(result) == 2
+        assert all(item["round"] == 2 for item in result)
+        assert {it["critic_id"] for it in result} == {"c-2-001", "c-2-002"}
+
+    def test_round_1_returns_only_round_1_items(self):
+        from backend.workflow.nodes.builder_nodes import _extract_critic_items
+
+        state = {
+            "current_round": 1,
+            "critic_items": [
+                {"critic_id": "c-1-001", "round": 1},
+                {"critic_id": "c-1-002", "round": 1},
+            ],
+        }
+        result = _extract_critic_items(state)
+        assert len(result) == 2
+
+    def test_legacy_state_without_round_field_falls_back_to_full(self):
+        """Backward compatibility: if no item has a round field, return all."""
+        from backend.workflow.nodes.builder_nodes import _extract_critic_items
+
+        state = {
+            "current_round": 2,
+            "critic_items": [
+                {"critic_id": "c-1-001"},
+                {"critic_id": "c-1-002"},
+            ],
+        }
+        result = _extract_critic_items(state)
+        assert len(result) == 2
+
+    def test_empty_critic_items_returns_empty(self):
+        from backend.workflow.nodes.builder_nodes import _extract_critic_items
+
+        state = {"current_round": 1, "critic_items": []}
+        result = _extract_critic_items(state)
+        assert result == []
+
+    def test_round_mismatch_returns_empty(self):
+        """If no items match the current round, return empty (signals re-run)."""
+        from backend.workflow.nodes.builder_nodes import _extract_critic_items
+
+        state = {
+            "current_round": 3,
+            "critic_items": [
+                {"critic_id": "c-1-001", "round": 1},
+                {"critic_id": "c-2-001", "round": 2},
+            ],
+        }
+        result = _extract_critic_items(state)
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# 12. State field latest_draft (sprint 27)
+# ---------------------------------------------------------------------------
+
+
+class TestLatestDraftStateField:
+    """Verify the WorkflowState TypedDict has the new optional latest_draft field."""
+
+    def test_latest_draft_is_optional(self):
+        from backend.workflow.workflow_state import WorkflowState
+
+        state: WorkflowState = {"current_draft": "foo"}
+        # latest_draft is optional (TypedDict total=False)
+        assert state.get("latest_draft") is None
+
+    def test_latest_draft_round_trip(self):
+        from backend.workflow.workflow_state import WorkflowState
+
+        state: WorkflowState = {"latest_draft": "Rev 2 output"}
+        assert state["latest_draft"] == "Rev 2 output"
+
+
+# ---------------------------------------------------------------------------
+# 13. ResolvedAgentConfig carries agent_tags (sprint 27)
+# ---------------------------------------------------------------------------
+
+
+class TestResolvedAgentConfigAgentTags:
+    """Verify the compiler attaches agent blueprint tags to the resolved config."""
+
+    def test_agent_tags_default_to_empty_list(self):
+        from backend.workflow.workflow_compiler import ResolvedAgentConfig
+
+        cfg = ResolvedAgentConfig(
+            node_id="n1",
+            blueprint_id="bp1",
+            blueprint_name="BP",
+            llm_profile_id="lp",
+            llm_model="m",
+            role_definition_id="rd",
+            role="critic",
+        )
+        assert cfg.agent_tags == []
+
+    def test_agent_tags_can_be_set(self):
+        from backend.workflow.workflow_compiler import ResolvedAgentConfig
+
+        cfg = ResolvedAgentConfig(
+            node_id="n1",
+            blueprint_id="bp1",
+            blueprint_name="BP",
+            llm_profile_id="lp",
+            llm_model="m",
+            role_definition_id="rd",
+            role="critic",
+            agent_tags=["mietrecht", "default"],
+        )
+        assert cfg.agent_tags == ["mietrecht", "default"]
+
+
+# ---------------------------------------------------------------------------
+# 14. Critic items are tagged with round at parse time (sprint 27)
+# ---------------------------------------------------------------------------
+
+
+class TestCriticItemsGetRoundTag:
+    """Verify items parsed from Critic output carry a round field."""
+
+    def test_parse_critic_output_includes_round_when_caller_passes_it(self):
+        """The parser does not set round itself — the caller (agent_node) does.
+        This test pins the contract: caller is responsible for tagging round.
+        """
+        from backend.workflow.nodes.agent_nodes import _parse_critic_output
+
+        raw = json.dumps(
+            [
+                {
+                    "critic_id": "c-critic_1-001",
+                    "severity": "blocking",
+                    "target": "§3",
+                    "flaw": "Missing limitation",
+                    "principle": "Rechtssicherheit",
+                }
+            ]
+        )
+        items = _parse_critic_output(raw, "test_node")
+        assert items is not None
+        assert len(items) == 1
+        # The parser does not set round; the agent_node tags it post-parse
+        assert "round" not in items[0]
+
+
+# ---------------------------------------------------------------------------
+# 15. current_draft not corrupted in transactional_drafting path (sprint 27)
+# ---------------------------------------------------------------------------
+
+
+class TestCurrentDraftTransactionalPath:
+    """The agent_node must NOT concatenate every agent's output into current_draft
+    when the workflow is transactional_drafting.  Concatenation is still
+    performed for the standard debate workflow."""
+
+    def test_agent_node_skips_current_draft_concat_for_transactional(self):
+        """Inspect the agent_node_factory source to confirm the guard exists."""
+        from pathlib import Path
+
+        src = Path("backend/workflow/nodes/agent_nodes.py").read_text(encoding="utf-8")
+        # The guard: the current_draft concatenation block is gated on
+        # is_transactional = state.get("workflow_template") == "transactional_drafting"
+        assert 'is_transactional = state.get("workflow_template") == "transactional_drafting"' in src
+        # And the state_update["current_draft"] assignment is inside the
+        # `if not is_transactional:` branch
+        assert "if not is_transactional:" in src
+
+
+# ---------------------------------------------------------------------------
+# 16. Integration: state_update keys for transactional path
+# ---------------------------------------------------------------------------
+
+
+class TestStateUpdateKeys:
+    """Verify the agent_node no longer writes current_draft for transactional
+    workflows, but still writes node_outputs and messages."""
+
+    def test_state_update_construction_omits_current_draft_when_transactional(self):
+        """Direct read of the source to confirm the state_update dict structure."""
+        from pathlib import Path
+
+        src = Path("backend/workflow/nodes/agent_nodes.py").read_text(encoding="utf-8")
+        # Find the block that builds state_update
+        block_start = src.find("state_update: dict = {")
+        assert block_start != -1, "state_update construction not found"
+        block = src[block_start: block_start + 800]
+        # current_draft key must be guarded by `if not is_transactional:`
+        # and node_outputs + messages must always be present.
+        assert '"node_outputs": [output]' in block
+        assert '"messages":' in block
+        # The current_draft key line should be inside the `if not is_transactional:` block
+        # immediately after the state_update dict definition.
+        assert "if not is_transactional:" in src[block_start: block_start + 1200]
