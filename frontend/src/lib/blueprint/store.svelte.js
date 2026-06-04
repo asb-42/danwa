@@ -187,11 +187,7 @@ class BlueprintCanvasStore {
    */
   loadFromLayout(layoutJson, entityDataMap = {}) {
     const nodeTypeMap = {
-      'agent-blueprint': 'agent-blueprint',
       'llm-profile': 'llm-profile',
-      'role-definition': 'role-definition',
-      'prompt-template': 'prompt-template',
-      'role-type': 'role-type',
       'wf-input': 'wf-input',
       'wf-initialize': 'wf-initialize',
       'wf-strategist': 'wf-strategist',

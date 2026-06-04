@@ -9,11 +9,7 @@
   import { canvasStore } from '../../lib/blueprint/store.svelte.js';
 
   // Forms
-  import AgentBlueprintForm from './forms/AgentBlueprintForm.svelte';
   import LLMProfileForm from './forms/LLMProfileForm.svelte';
-  import RoleDefinitionForm from './forms/RoleDefinitionForm.svelte';
-  import PromptTemplateForm from './forms/PromptTemplateForm.svelte';
-  import RoleTypeForm from './forms/RoleTypeForm.svelte';
   import AgentCoreForm from './forms/AgentCoreForm.svelte';
   import WorkflowNodeForm from './forms/WorkflowNodeForm.svelte';
   import ToneProfileForm from './forms/ToneProfileForm.svelte';
@@ -49,16 +45,8 @@
     </div>
 
     <div class="inspector-content">
-      {#if nodeType === 'agent-blueprint'}
-        <AgentBlueprintForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
-      {:else if nodeType === 'llm-profile'}
+      {#if nodeType === 'llm-profile'}
         <LLMProfileForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
-      {:else if nodeType === 'role-definition'}
-        <RoleDefinitionForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
-      {:else if nodeType === 'prompt-template'}
-        <PromptTemplateForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
-      {:else if nodeType === 'role-type'}
-        <RoleTypeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'agent-core'}
         <AgentCoreForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'wf-tone-profile' || nodeType === 'tone-profile'}

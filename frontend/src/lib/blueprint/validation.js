@@ -12,29 +12,17 @@ import { getNodeRegistration } from './registry.js';
 /**
  * Valid outgoing connections per source node type (semantic/asset edges).
  * Keys are source node types, values are arrays of allowed target types.
+ * Legacy types (agent-blueprint, role-definition, role-type, prompt-template)
+ * removed — only llm-profile, agent-core, and tone-profile remain as assets.
  * @type {Record<string, string[]>}
  */
-export const VALID_CONNECTIONS = {
-  'agent-blueprint': ['llm-profile', 'role-definition', 'prompt-template', 'tone-profile', 'agent-core'],
-  'role-definition': ['prompt-template'],
-  'role-type': ['role-definition'],
-  // llm-profile and prompt-template have no outgoing edges
-  // tone-profile has no outgoing edges in blueprint mode
-};
+export const VALID_CONNECTIONS = {};
 
 /**
  * Maps "sourceType→targetType" to the semantic edge type.
  * @type {Record<string, string>}
  */
-export const EDGE_TYPE_MAP = {
-  'agent-blueprint→llm-profile': 'uses_llm',
-  'agent-blueprint→role-definition': 'implements_role',
-  'agent-blueprint→prompt-template': 'overrides_prompt',
-  'agent-blueprint→tone-profile': 'uses_tone',
-  'role-definition→prompt-template': 'prompted_by',
-  'role-type→role-definition': 'defines_role',
-  'agent-blueprint→agent-core': 'uses_core',
-};
+export const EDGE_TYPE_MAP = {};
 
 /**
  * Edge type display metadata (color, style, label).
@@ -42,12 +30,8 @@ export const EDGE_TYPE_MAP = {
  */
 export const EDGE_STYLES = {
   uses_llm: { color: '#3b82f6', style: 'solid', label: 'Uses LLM' },
-  implements_role: { color: '#8b5cf6', style: 'solid', label: 'Implements Role' },
-  prompted_by: { color: '#10b981', style: 'dashed', label: 'Prompted By' },
-  overrides_prompt: { color: '#f59e0b', style: 'dotted', label: 'Overrides Prompt' },
-  defines_role: { color: '#ec4899', style: 'solid', label: 'Defines Role' },
-  uses_tone: { color: '#f59e0b', style: 'solid', label: 'Uses Tone' },
   uses_core: { color: '#0d9488', style: 'solid', label: 'Uses Core' },
+  uses_tone: { color: '#f59e0b', style: 'solid', label: 'Uses Tone' },
   sequential: { color: '#6366f1', style: 'solid', label: 'Sequential' },
   conditional: { color: '#f59e0b', style: 'dashed', label: 'Conditional' },
   interjection: { color: '#f43f5e', style: 'dotted', label: 'Interjection' },

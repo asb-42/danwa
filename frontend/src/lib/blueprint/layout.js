@@ -30,11 +30,7 @@ const PHASE_CONTAINER_PADDING = 60;
  * @type {Record<string, { width: number, height: number }>}
  */
 const NODE_DIMENSIONS = {
-  'agent-blueprint': { width: 220, height: 120 },
   'llm-profile': { width: 200, height: 100 },
-  'role-definition': { width: 200, height: 100 },
-  'prompt-template': { width: 200, height: 110 },
-  'role-type': { width: 200, height: 100 },
   'agent-core': { width: 200, height: 100 },
   'wf-input': { width: 180, height: 80 },
   'wf-initialize': { width: 180, height: 80 },

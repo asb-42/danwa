@@ -2,22 +2,19 @@
  * Blueprint Canvas — Register all node and edge types.
  *
  * Called once at app initialization to populate the central registry
- * with all asset nodes (Phase 3) and workflow nodes (Phase 4 placeholders).
+ * with all asset nodes and workflow nodes.
  *
  * @module registerAll
  */
 
 import { registerNode, registerEdge } from './registry.js';
 
-// Asset node components (Phase 3)
-import AgentBlueprintNode from '../../components/blueprint/nodes/AgentBlueprintNode.svelte';
+// Asset node components
 import LLMProfileNode from '../../components/blueprint/nodes/LLMProfileNode.svelte';
-import RoleDefinitionNode from '../../components/blueprint/nodes/RoleDefinitionNode.svelte';
-import PromptTemplateNode from '../../components/blueprint/nodes/PromptTemplateNode.svelte';
-import RoleTypeNode from '../../components/blueprint/nodes/RoleTypeNode.svelte';
 import AgentCoreNode from '../../components/blueprint/nodes/AgentCoreNode.svelte';
+import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
 
-// Workflow node components (Phase 1 — specialized per type)
+// Workflow node components
 import InputNode from '../../components/blueprint/nodes/InputNode.svelte';
 import InitializeNode from '../../components/blueprint/nodes/InitializeNode.svelte';
 import StrategistNode from '../../components/blueprint/nodes/StrategistNode.svelte';
@@ -38,21 +35,17 @@ import SynthesizerNode from '../../components/blueprint/nodes/SynthesizerNode.sv
 import PhaseNode from '../../components/blueprint/nodes/PhaseNode.svelte';
 import UserInjectionNode from '../../components/blueprint/nodes/UserInjectionNode.svelte';
 import GateNode from '../../components/blueprint/nodes/GateNode.svelte';
-import ToneProfileNode from '../../components/blueprint/nodes/ToneProfileNode.svelte';
 import AgentNode from '../../components/blueprint/nodes/AgentNode.svelte';
 import AngelsAdvocateNode from '../../components/blueprint/nodes/AngelsAdvocateNode.svelte';
 import BuilderNode from '../../components/blueprint/nodes/BuilderNode.svelte';
 import PragmatistNode from '../../components/blueprint/nodes/PragmatistNode.svelte';
 
-// Semantic edge components (Phase 3)
+// Semantic edge components
 import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
-import ImplementsRoleEdge from '../../components/blueprint/edges/ImplementsRoleEdge.svelte';
 import UsesCoreEdge from '../../components/blueprint/edges/UsesCoreEdge.svelte';
-import PromptedByEdge from '../../components/blueprint/edges/PromptedByEdge.svelte';
-import OverridesPromptEdge from '../../components/blueprint/edges/OverridesPromptEdge.svelte';
 import UsesToneEdge from '../../components/blueprint/edges/UsesToneEdge.svelte';
 
-// Control flow edge components (Phase 4)
+// Control flow edge components
 import SequentialEdge from '../../components/blueprint/edges/SequentialEdge.svelte';
 import ConditionalEdge from '../../components/blueprint/edges/ConditionalEdge.svelte';
 import InterjectionEdge from '../../components/blueprint/edges/InterjectionEdge.svelte';
@@ -62,31 +55,12 @@ import BuildsUponEdge from '../../components/blueprint/edges/BuildsUponEdge.svel
 import ValidatesEdge from '../../components/blueprint/edges/ValidatesEdge.svelte';
 import DecisionEdge from '../../components/blueprint/edges/DecisionEdge.svelte';
 
-// RoleType edge component
-import DefinesRoleEdge from '../../components/blueprint/edges/DefinesRoleEdge.svelte';
-
 /**
  * Register all node and edge types in the central registry.
  * Should be called once during app initialization.
  */
 export function registerAllNodeTypes() {
-  // ── Asset nodes (Phase 3) ──────────────────────────────────────────
-
-  registerNode({
-    type: 'agent-blueprint',
-    component: AgentBlueprintNode,
-    category: 'asset',
-    schemaRef: 'AgentBlueprint',
-    icon: '🤖',
-    labelKey: 'blueprint.palette.agentBlueprint',
-    defaultData: () => ({
-      isDraft: true,
-      name: '',
-      description: '',
-      tags: [],
-    }),
-    active: true,
-  });
+  // ── Asset nodes ──────────────────────────────────────────────────────
 
   registerNode({
     type: 'llm-profile',
@@ -100,56 +74,6 @@ export function registerAllNodeTypes() {
       name: '',
       provider: 'openrouter',
       model: '',
-    }),
-    active: true,
-  });
-
-  registerNode({
-    type: 'role-definition',
-    component: RoleDefinitionNode,
-    category: 'asset',
-    schemaRef: 'RoleDefinition',
-    icon: '👤',
-    labelKey: 'blueprint.palette.roleDefinition',
-    defaultData: () => ({
-      isDraft: true,
-      name: '',
-      role: 'strategist',
-    }),
-    active: true,
-  });
-
-  registerNode({
-    type: 'prompt-template',
-    component: PromptTemplateNode,
-    category: 'asset',
-    schemaRef: 'PromptTemplate',
-    icon: '📝',
-    labelKey: 'blueprint.palette.promptTemplate',
-    defaultData: () => ({
-      isDraft: true,
-      name: '',
-      content: '',
-      role: 'strategist',
-    }),
-    active: true,
-  });
-
-  registerNode({
-    type: 'role-type',
-    component: RoleTypeNode,
-    category: 'asset',
-    schemaRef: 'RoleType',
-    icon: '🏷️',
-    labelKey: 'blueprint.palette.roleType',
-    defaultData: () => ({
-      isDraft: true,
-      name: '',
-      description: '',
-      icon: '👤',
-      color: '#8b5cf6',
-      default_max_rounds: 5,
-      default_consensus_threshold: 0.9,
     }),
     active: true,
   });
@@ -187,7 +111,7 @@ export function registerAllNodeTypes() {
     active: true,
   });
 
-  // ── Workflow nodes (Phase 1 — specialized components) ──────────────
+  // ── Workflow nodes (specialized components) ──────────────────────────
 
   registerNode({
     type: 'wf-input',
@@ -572,41 +496,11 @@ export function registerAllNodeTypes() {
     active: true,
   });
 
-  // ── Semantic edges (Phase 3) ───────────────────────────────────────
+  // ── Semantic edges ──────────────────────────────────────────────────
 
   registerEdge({
     type: 'uses_llm',
     component: UsesLlmEdge,
-    category: 'semantic',
-  });
-
-  registerEdge({
-    type: 'implements_role',
-    component: ImplementsRoleEdge,
-    category: 'semantic',
-  });
-
-  registerEdge({
-    type: 'prompted_by',
-    component: PromptedByEdge,
-    category: 'semantic',
-  });
-
-  registerEdge({
-    type: 'overrides_prompt',
-    component: OverridesPromptEdge,
-    category: 'semantic',
-  });
-
-  registerEdge({
-    type: 'defines_role',
-    component: DefinesRoleEdge,
-    category: 'semantic',
-  });
-
-  registerEdge({
-    type: 'uses_tone',
-    component: UsesToneEdge,
     category: 'semantic',
   });
 
@@ -616,7 +510,13 @@ export function registerAllNodeTypes() {
     category: 'semantic',
   });
 
-  // ── Control flow edges (Phase 4) ───────────────────────────────────
+  registerEdge({
+    type: 'uses_tone',
+    component: UsesToneEdge,
+    category: 'semantic',
+  });
+
+  // ── Control flow edges ──────────────────────────────────────────────
 
   registerEdge({
     type: 'sequential',

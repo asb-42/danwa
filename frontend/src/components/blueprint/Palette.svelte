@@ -13,10 +13,6 @@
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
   import { listCanvasLayouts, deleteCanvasLayout } from '../../lib/blueprint/api.js';
   import { listBlueprintLLMProfiles } from '../../lib/blueprint/api.js';
-  import { listRoleDefinitions } from '../../lib/blueprint/api.js';
-  import { listPromptTemplates } from '../../lib/blueprint/api.js';
-  import { listAgentBlueprints } from '../../lib/blueprint/api.js';
-  import { listRoleTypes } from '../../lib/blueprint/api.js';
   import { listToneProfiles } from '../../lib/blueprint/api.js';
   import { listAgentBundles } from '../../lib/blueprint/api.js';
   import { getModules } from '../../lib/api/module.js';
@@ -33,10 +29,6 @@
 
   // DB entity lists for palette
   let llmProfiles = $state([]);
-  let roleDefinitions = $state([]);
-  let promptTemplates = $state([]);
-  let agentBlueprints = $state([]);
-  let roleTypes = $state([]);
   let toneProfiles = $state([]);
   let agentBundles = $state([]);
   let agentCores = $state([]);
@@ -70,21 +62,13 @@
   async function loadEntities() {
     entitiesLoading = true;
     try {
-      const [lp, rd, pt, ab, rt, tp, bundles, modules] = await Promise.all([
+      const [lp, tp, bundles, modules] = await Promise.all([
         listBlueprintLLMProfiles().catch(() => []),
-        listRoleDefinitions().catch(() => []),
-        listPromptTemplates().catch(() => []),
-        listAgentBlueprints().catch(() => []),
-        listRoleTypes().catch(() => []),
         listToneProfiles().catch(() => []),
         listAgentBundles().catch(() => []),
         getModules().catch(() => []),
       ]);
       llmProfiles = lp;
-      roleDefinitions = rd;
-      promptTemplates = pt;
-      agentBlueprints = ab;
-      roleTypes = rt;
       toneProfiles = tp;
       agentBundles = bundles;
       agentCores = (modules || [])
@@ -132,36 +116,6 @@
         <span class="loading-dot">⏳</span>
       {/if}
     </h3>
-    <PaletteEntityList
-      label={t('blueprint.palette.llmProfiles')}
-      icon="🧠"
-      nodeType="llm-profile"
-      entities={llmProfiles}
-    />
-    <PaletteEntityList
-      label={t('blueprint.palette.roleDefinitions')}
-      icon="👤"
-      nodeType="role-definition"
-      entities={roleDefinitions}
-    />
-    <PaletteEntityList
-      label={t('blueprint.palette.promptTemplates')}
-      icon="📝"
-      nodeType="prompt-template"
-      entities={promptTemplates}
-    />
-    <PaletteEntityList
-      label={t('blueprint.palette.agentBlueprints')}
-      icon="🤖"
-      nodeType="agent-blueprint"
-      entities={agentBlueprints}
-    />
-    <PaletteEntityList
-      label={t('blueprint.palette.roleTypes')}
-      icon="🏷️"
-      nodeType="role-type"
-      entities={roleTypes}
-    />
     <PaletteEntityList
       label={t('blueprint.palette.toneProfiles')}
       icon="🎵"

@@ -11,16 +11,14 @@
     getCanvasLayout,
     createCanvasLayout,
     updateCanvasLayout,
-    getAgentBlueprint,
     getBlueprintLLMProfile,
-    getRoleDefinition,
-    getPromptTemplate,
     runBlueprintImport,
     compileWorkflow,
     cloneWorkflow,
     convertLayoutToWorkflow,
     getWorkflowDefinition,
   } from '../lib/blueprint/api.js';
+  import { getModule } from '../lib/api/module.js';
   import { startWorkflow } from '../lib/workflowExec.js';
   import {
     getActiveWorkflowSession,
@@ -117,18 +115,20 @@
           try {
             let entity;
             switch (node.type) {
-              case 'agent-blueprint':
-                entity = await getAgentBlueprint(entityId);
-                break;
               case 'llm-profile':
                 entity = await getBlueprintLLMProfile(entityId);
                 break;
-              case 'role-definition':
-                entity = await getRoleDefinition(entityId);
+              case 'agent-core': {
+                const mod = await getModule(entityId);
+                entity = {
+                  id: entityId,
+                  module_id: entityId,
+                  name: mod.name || mod.manifest?.name || '',
+                  role: mod.manifest?.role || '',
+                  description: mod.manifest?.description || '',
+                };
                 break;
-              case 'prompt-template':
-                entity = await getPromptTemplate(entityId);
-                break;
+              }
             }
             if (entity) entityDataMap[entityId] = entity;
           } catch (err) {

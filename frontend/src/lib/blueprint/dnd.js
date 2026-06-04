@@ -10,15 +10,6 @@
  * @type {Record<string, object>}
  */
 const DEFAULT_NODE_DATA = {
-  'agent-blueprint': {
-    name: 'New Agent Blueprint',
-    description: '',
-    llm_profile_id: '',
-    role_definition_id: '',
-    prompt_template_id: null,
-    tags: [],
-    is_active: true,
-  },
   'llm-profile': {
     name: 'New LLM Profile',
     provider: 'openrouter',
@@ -28,23 +19,6 @@ const DEFAULT_NODE_DATA = {
     api_base: null,
     api_key_env: null,
     a2a_endpoint: null,
-  },
-  'role-definition': {
-    name: 'New Role Definition',
-    role: 'strategist',
-    description: '',
-    prompt_template_id: null,
-    max_rounds: 3,
-    consensus_threshold: 0.7,
-    tags: [],
-  },
-  'prompt-template': {
-    name: 'New Prompt Template',
-    role: 'strategist',
-    variant: 'default',
-    language: 'de',
-    content: '',
-    variables: [],
   },
   'agent-core': {
     name: 'Agent Core',

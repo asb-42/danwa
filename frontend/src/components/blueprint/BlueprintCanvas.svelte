@@ -13,12 +13,8 @@
   import { validateConnection } from '../../lib/blueprint/validation.js';
   import { createDraftNode, getNodeTypeFromDrop, getEntityIdFromDrop, createEntityNode } from '../../lib/blueprint/dnd.js';
   import {
-    getAgentBlueprint,
     getAgentBundle,
     getBlueprintLLMProfile,
-    getRoleDefinition,
-    getPromptTemplate,
-    getRoleType,
     getToneProfile,
   } from '../../lib/blueprint/api.js';
   import { getModule } from '../../lib/api/module.js';
@@ -180,20 +176,8 @@
       try {
         let entityData = $state(null);
         switch (nodeType) {
-          case 'agent-blueprint':
-            entityData = await getAgentBlueprint(entityId);
-            break;
           case 'llm-profile':
             entityData = await getBlueprintLLMProfile(entityId);
-            break;
-          case 'role-definition':
-            entityData = await getRoleDefinition(entityId);
-            break;
-          case 'prompt-template':
-            entityData = await getPromptTemplate(entityId);
-            break;
-          case 'role-type':
-            entityData = await getRoleType(entityId);
             break;
           case 'tone-profile':
             entityData = await getToneProfile(entityId);
