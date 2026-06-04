@@ -5,13 +5,28 @@ structured node types, conditional edges, feedback loops, and interjections.
 
 Also carries transactional-drafting-specific keys (zero_draft, critic_items,
 build_responses, pragmatist_output, etc.) — these are only used when the
-workflow template is ``transactional_drafting``.
+workflow template is :attr:`WorkflowTemplate.TRANSACTIONAL_DRAFTING`.
 """
 
 from __future__ import annotations
 
 import operator
+from enum import StrEnum
 from typing import Annotated, Any, TypedDict
+
+
+class WorkflowTemplate(StrEnum):
+    """Identifiers for the built-in workflow templates.
+
+    Used as values for ``WorkflowState.workflow_template`` and as
+    template IDs throughout the backend.  :class:`StrEnum` keeps the
+    values identical to the historical string literals so that state
+    dicts serialised before the enum existed round-trip cleanly.
+    """
+
+    DEBATE = "debate"
+    ACADEMIC_DEBATE = "academic_debate"
+    TRANSACTIONAL_DRAFTING = "transactional_drafting"
 
 
 class WorkflowNodeOutput(TypedDict):
@@ -85,3 +100,6 @@ class WorkflowState(TypedDict, total=False):
     consensus_result: dict | None  # {"verdict": "approved"|"revision_required", ...}
     latest_draft: str | None  # Most recent Builder output (global_revision or raw); distinct from
     # zero_draft (Strategist's original) and from current_draft (the running debate log).
+
+    # --- Workflow template identifier ---
+    workflow_template: str  # WorkflowTemplate enum value

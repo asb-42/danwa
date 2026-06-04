@@ -23,6 +23,7 @@ from backend.workflow.immutability import lock_session
 from backend.workflow.interjection import interjection_service
 from backend.workflow.state_snapshot import StateSnapshotStore
 from backend.workflow.workflow_compiler import CompiledWorkflow
+from backend.workflow.workflow_state import WorkflowTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -562,7 +563,7 @@ def _build_artifact_from_state(
     """
 
     # Transactional Drafting: build transcript from state keys directly
-    if state.get("workflow_template") == "transactional_drafting":
+    if state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING:
         entries = normalize_transcript_for_display(state)
         turns = [Turn(**entry) for entry in entries]
         # Skip the standard node_outputs loop below — turns already built
@@ -709,7 +710,7 @@ def _build_artifact_common(
     }
 
     # Include transactional drafting data in metadata for report generation
-    if state.get("workflow_template") == "transactional_drafting":
+    if state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING:
         pragmatist_out = state.get("pragmatist_output")
         metadata["transactional"] = {
             "critic_items": state.get("critic_items", []),

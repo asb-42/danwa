@@ -17,7 +17,7 @@ from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.domains import get_decision_matrix
 from backend.workflow.interjection import interjection_service
-from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
+from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState, WorkflowTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def agent_node_factory(
         # --- Inject CriticItem JSON schema + decision matrix for wf-critic ---
         # IMPORTANT: Decision matrix only applies to Transactional Drafting,
         # not standard debate workflows (Akzeptanzkriterium).
-        if node_type == "wf-critic" and state.get("workflow_template") == "transactional_drafting":
+        if node_type == "wf-critic" and state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING:
             from backend.models.transactional import CriticItem
 
             schema = CriticItem.model_json_schema()
@@ -384,7 +384,7 @@ def agent_node_factory(
         # the first iteration — neither benefits from this concatenation.
         _max_draft_len = 50000
         _trunc_warn = "\n\n[… content truncated …]\n\n"
-        is_transactional = state.get("workflow_template") == "transactional_drafting"
+        is_transactional = state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING
         state_update: dict = {
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],

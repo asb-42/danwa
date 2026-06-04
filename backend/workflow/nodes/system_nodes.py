@@ -213,7 +213,7 @@ async def complete_wf_node(state: WorkflowState) -> dict:
     except Exception:
         logger.debug("Audit logging failed for complete_wf_node", exc_info=True)
 
-    # Only include transactional_drafting fields in output if they carry data
+    # Only include Transactional-Drafting fields in output if they carry data
     result: dict = {
         "output": final_output,
         "status": "completed",
