@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
 
 # Current schema version — bump when adding new migrations.
-SCHEMA_VERSION = 32
+SCHEMA_VERSION = 33
 
 
 def _ensure_schema_version_table(conn: sqlite3.Connection) -> None:
@@ -475,44 +475,8 @@ _MIGRATION_V13_TABLES = [
     "CREATE INDEX IF NOT EXISTS idx_llm_profiles_type ON blueprint_llm_profiles (profile_type)",
 ]
 
-# ---------------------------------------------------------------------------
-# V14 — Seed default role types
-# ---------------------------------------------------------------------------
-
-_MIGRATION_V14_SEEDS = [
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('strategist', 'Strategist', 'Develops strategic approaches and frameworks for analysis', '🧠', '#3b82f6', 5, 0.9, 1, datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('critic', 'Critic', 'Challenges assumptions and identifies weaknesses in arguments', '🔍', '#ef4444', 5, 0.9, 1, datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('optimizer', 'Optimizer', 'Refines and improves proposals for efficiency and effectiveness', '⚡', '#f59e0b', 5, 0.9, 1, datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('moderator', 'Moderator', 'Facilitates discussion and guides the group toward consensus', '🎯', '#10b981', 5, 0.9, 1, datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('fact-checker', 'Fact Checker', 'Verifies factual claims and cross-references sources', '✅', '#8b5cf6', 5, 0.9, 1, datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('expert-reviewer', 'Expert Reviewer', 'Provides domain-specific expert assessment and validation', '🎓', '#06b6d4', 5, 0.9, 1, datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('analyst', 'Analyst', 'Conducts in-depth data analysis and identifies key patterns', '📊', '#06b6d4', 5, 0.9, 1 ,datetime('now'), datetime('now'))
-    """,
-    """
-    INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-    VALUES ('creative', 'Creative Thinker', 'Generates unconventional ideas and new perspectives', '💡', '#ec4899', 5, 0.9, 1 ,datetime('now'), datetime('now'))
-    """,
-]
+# V14 — Seed default role types (seeds removed in V33; tables dropped)
+_MIGRATION_V14_SEEDS: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -873,26 +837,10 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             conn.commit()
             logger.info("Migration v17 applied successfully")
 
+        # V18 — role_types seeds removed (table dropped in V33)
         if current < 18:
-            logger.info("Applying migration v18: seed analyst, creative, expert-reviewer role types")
-            try:
-                conn.execute("""
-                     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-                     VALUES ('analyst', 'Analyst', 'Conducts in-depth data analysis and identifies key patterns', '📊', '#06b6d4', 5, 0.9, 1, 1, datetime('now'), datetime('now'))
-                 """)
-                conn.execute("""
-                     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-                     VALUES ('creative', 'Creative Thinker', 'Generates unconventional ideas and new perspectives', '💡', '#ec4899', 5, 0.9, 1, 1, datetime('now'), datetime('now'))
-                 """)
-                conn.execute("""
-                     INSERT OR IGNORE INTO role_types (id, name, description, icon, color, default_max_rounds, default_consensus_threshold, is_active, created_at, updated_at)
-                     VALUES ('expert-reviewer', 'Expert Reviewer', 'Provides domain-specific expert assessment and validation', '🎓', '#06b6d4', 5, 0.9, 'functional', 1, datetime('now'), datetime('now'))
-                 """)
-            except sqlite3.OperationalError as exc:
-                logger.debug("V18 seed migration failed: %s", exc)
-            _record_version(conn, 18, "Seed analyst, creative, expert-reviewer role types")
+            _record_version(conn, 18, "Seed analyst, creative, expert-reviewer role types (removed in V33)")
             conn.commit()
-            logger.info("Migration v18 applied successfully")
 
         if current < 19:
             logger.info("Applying migration v19: module_registry + module_translation_cache")
@@ -1078,6 +1026,113 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
             _record_version(conn, 32, "Create build_response_provenance table for clause lineage tracking")
             conn.commit()
             logger.info("Migration v32 applied successfully")
+
+        # ── V33 — Drop legacy role_types, role_definitions, prompt_templates tables ──
+        if current < 33:
+            logger.info("Applying migration v33: drop legacy role_types, role_definitions, prompt_templates")
+
+            # SQLite doesn't support ALTER TABLE … DROP CONSTRAINT.
+            # Recreate agent_blueprints and agent_bundles without the FK
+            # constraints that reference the three legacy tables, then drop
+            # the legacy tables.
+            conn.execute("PRAGMA foreign_keys=OFF")
+
+            # ── Recreate agent_blueprints (keep llm_profile_id FK only) ──
+            conn.execute("ALTER TABLE agent_blueprints RENAME TO _ab_old")
+            conn.execute("""
+                CREATE TABLE agent_blueprints (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    llm_profile_id TEXT NOT NULL,
+                    role_definition_id TEXT NOT NULL,
+                    prompt_template_id TEXT,
+                    tags_json TEXT DEFAULT '[]',
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    tts_voice_id TEXT DEFAULT NULL,
+                    FOREIGN KEY (llm_profile_id)
+                        REFERENCES blueprint_llm_profiles(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute(
+                "INSERT INTO agent_blueprints "
+                "SELECT id, name, description, llm_profile_id, role_definition_id, "
+                "       prompt_template_id, tags_json, is_active, created_at, updated_at, "
+                "       tts_voice_id "
+                "FROM _ab_old"
+            )
+            conn.execute("DROP TABLE _ab_old")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_agent_blueprints_llm "
+                "ON agent_blueprints (llm_profile_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_agent_blueprints_role "
+                "ON agent_blueprints (role_definition_id)"
+            )
+
+            # ── Recreate agent_bundles (keep llm_profile_id + tone_profile_id FKs) ──
+            conn.execute("ALTER TABLE agent_bundles RENAME TO _bun_old")
+            conn.execute("""
+                CREATE TABLE agent_bundles (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    llm_profile_id TEXT NOT NULL,
+                    role_type_id TEXT NOT NULL,
+                    role_definition_id TEXT,
+                    prompt_template_id TEXT,
+                    tone_profile_id TEXT,
+                    persona_id TEXT,
+                    tags_json TEXT DEFAULT '[]',
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    composition_json TEXT,
+                    model_params_json TEXT DEFAULT '{}',
+                    FOREIGN KEY (llm_profile_id)
+                        REFERENCES blueprint_llm_profiles(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tone_profile_id)
+                        REFERENCES tone_profiles(id) ON DELETE SET NULL
+                )
+            """)
+            conn.execute(
+                "INSERT INTO agent_bundles "
+                "SELECT id, name, description, llm_profile_id, role_type_id, "
+                "       role_definition_id, prompt_template_id, tone_profile_id, persona_id, "
+                "       tags_json, is_active, created_at, updated_at, "
+                "       composition_json, model_params_json "
+                "FROM _bun_old"
+            )
+            conn.execute("DROP TABLE _bun_old")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_agent_bundles_llm "
+                "ON agent_bundles (llm_profile_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_agent_bundles_role_type "
+                "ON agent_bundles (role_type_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_agent_bundles_active "
+                "ON agent_bundles (is_active)"
+            )
+
+            # ── Drop legacy tables ──
+            conn.execute("DROP TABLE IF EXISTS prompt_templates")
+            conn.execute("DROP TABLE IF EXISTS role_definitions")
+            conn.execute("DROP TABLE IF EXISTS role_types")
+
+            conn.execute("PRAGMA foreign_keys=ON")
+            _record_version(
+                conn, 33,
+                "Drop legacy role_types, role_definitions, prompt_templates; "
+                "remove FK constraints from agent_blueprints and agent_bundles",
+            )
+            conn.commit()
+            logger.info("Migration v33 applied successfully")
 
         if current >= SCHEMA_VERSION:
             logger.debug("Schema already at version %d — no migrations needed", current)

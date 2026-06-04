@@ -26,7 +26,6 @@ from backend.blueprints.workflow_models import (
 )
 from backend.workflow.workflow_compiler import CompiledWorkflow, WorkflowCompiler
 
-
 # Module lookup stubs for testing
 _ROLE_DEFINITIONS = {
     "role-1": RoleDefinition(
@@ -85,25 +84,8 @@ def _patch_module_lookups():
 
 @pytest.fixture()
 def repo(tmp_path: Path) -> BlueprintRepository:
-    """Fresh BlueprintRepository with temp database.
-
-    Also inserts a stub role_definitions row to satisfy FK constraints,
-    since role definitions are now resolved from modules (not DB).
-    """
-    r = BlueprintRepository(db_path=tmp_path / "test_blueprints.db")
-    # Insert stub row to satisfy FK constraint on agent_blueprints.role_definition_id
-    import sqlite3
-
-    conn = sqlite3.connect(str(tmp_path / "test_blueprints.db"))
-    conn.execute(
-        "INSERT OR IGNORE INTO role_definitions (id, name, role, role_type_id, "
-        "description, max_rounds, consensus_threshold, tags_json, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
-        ("role-1", "Strategist", "strategist", "strategist", "", 5, 0.9, "[]"),
-    )
-    conn.commit()
-    conn.close()
-    return r
+    """Fresh BlueprintRepository with temp database."""
+    return BlueprintRepository(db_path=tmp_path / "test_blueprints.db")
 
 
 @pytest.fixture()
