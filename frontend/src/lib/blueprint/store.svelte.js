@@ -218,6 +218,7 @@ class BlueprintCanvasStore {
       'wf-angels-advocate': 'wf-angels-advocate',
       'wf-phase': 'wf-phase',
       'tone-profile': 'tone-profile',
+      'agent-core': 'agent-core',
     };
 
     this.nodes = (layoutJson.nodes || []).map((n) => ({

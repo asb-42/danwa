@@ -21,6 +21,7 @@
     getRoleType,
     getToneProfile,
   } from '../../lib/blueprint/api.js';
+  import { getModule } from '../../lib/api/module.js';
   import { applyBlueprintLayout } from '../../lib/blueprint/layout.js';
   import { getNodeTypes, getEdgeTypes } from '../../lib/blueprint/registry.js';
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
@@ -200,6 +201,17 @@
           case 'agent-bundle':
             entityData = await getAgentBundle(entityId);
             break;
+          case 'agent-core': {
+            const mod = await getModule(entityId);
+            entityData = {
+              id: entityId,
+              module_id: entityId,
+              name: mod.name || mod.manifest?.name || '',
+              role: mod.manifest?.role || '',
+              description: mod.manifest?.description || '',
+            };
+            break;
+          }
         }
         if (entityData) {
           if (nodeType === 'agent-bundle') {

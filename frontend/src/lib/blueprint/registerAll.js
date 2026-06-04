@@ -15,6 +15,7 @@ import LLMProfileNode from '../../components/blueprint/nodes/LLMProfileNode.svel
 import RoleDefinitionNode from '../../components/blueprint/nodes/RoleDefinitionNode.svelte';
 import PromptTemplateNode from '../../components/blueprint/nodes/PromptTemplateNode.svelte';
 import RoleTypeNode from '../../components/blueprint/nodes/RoleTypeNode.svelte';
+import AgentCoreNode from '../../components/blueprint/nodes/AgentCoreNode.svelte';
 
 // Workflow node components (Phase 1 — specialized per type)
 import InputNode from '../../components/blueprint/nodes/InputNode.svelte';
@@ -46,6 +47,7 @@ import PragmatistNode from '../../components/blueprint/nodes/PragmatistNode.svel
 // Semantic edge components (Phase 3)
 import UsesLlmEdge from '../../components/blueprint/edges/UsesLlmEdge.svelte';
 import ImplementsRoleEdge from '../../components/blueprint/edges/ImplementsRoleEdge.svelte';
+import UsesCoreEdge from '../../components/blueprint/edges/UsesCoreEdge.svelte';
 import PromptedByEdge from '../../components/blueprint/edges/PromptedByEdge.svelte';
 import OverridesPromptEdge from '../../components/blueprint/edges/OverridesPromptEdge.svelte';
 import UsesToneEdge from '../../components/blueprint/edges/UsesToneEdge.svelte';
@@ -148,6 +150,23 @@ export function registerAllNodeTypes() {
       color: '#8b5cf6',
       default_max_rounds: 5,
       default_consensus_threshold: 0.9,
+    }),
+    active: true,
+  });
+
+  registerNode({
+    type: 'agent-core',
+    component: AgentCoreNode,
+    category: 'asset',
+    schemaRef: null,
+    icon: '🧬',
+    labelKey: 'blueprint.palette.agentCore',
+    defaultData: () => ({
+      isDraft: true,
+      module_id: null,
+      name: '',
+      role: '',
+      description: '',
     }),
     active: true,
   });
@@ -588,6 +607,12 @@ export function registerAllNodeTypes() {
   registerEdge({
     type: 'uses_tone',
     component: UsesToneEdge,
+    category: 'semantic',
+  });
+
+  registerEdge({
+    type: 'uses_core',
+    component: UsesCoreEdge,
     category: 'semantic',
   });
 

@@ -46,6 +46,12 @@ const DEFAULT_NODE_DATA = {
     content: '',
     variables: [],
   },
+  'agent-core': {
+    name: 'Agent Core',
+    module_id: null,
+    role: '',
+    description: '',
+  },
   // Workflow node types (Phase 1)
   'wf-input': {
     label: 'Input',

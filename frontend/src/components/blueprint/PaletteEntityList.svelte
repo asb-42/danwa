@@ -47,6 +47,9 @@
             {#if nodeType === 'tone-profile' && entity.tone}
               <span class="entity-meta">{entity.tone}</span>
             {/if}
+            {#if nodeType === 'agent-core' && entity.role}
+              <span class="entity-meta">{entity.role}</span>
+            {/if}
           </div>
         {/each}
       </div>

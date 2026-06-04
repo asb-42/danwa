@@ -19,6 +19,7 @@
   import { listRoleTypes } from '../../lib/blueprint/api.js';
   import { listToneProfiles } from '../../lib/blueprint/api.js';
   import { listAgentBundles } from '../../lib/blueprint/api.js';
+  import { getModules } from '../../lib/api/module.js';
   import PaletteCategory from './PaletteCategory.svelte';
   import PaletteEntityList from './PaletteEntityList.svelte';
 
@@ -38,6 +39,7 @@
   let roleTypes = $state([]);
   let toneProfiles = $state([]);
   let agentBundles = $state([]);
+  let agentCores = $state([]);
   let entitiesLoading = $state(false);
 
   // Ensure registry is populated before reading categories
@@ -68,7 +70,7 @@
   async function loadEntities() {
     entitiesLoading = true;
     try {
-      const [lp, rd, pt, ab, rt, tp, bundles] = await Promise.all([
+      const [lp, rd, pt, ab, rt, tp, bundles, modules] = await Promise.all([
         listBlueprintLLMProfiles().catch(() => []),
         listRoleDefinitions().catch(() => []),
         listPromptTemplates().catch(() => []),
@@ -76,6 +78,7 @@
         listRoleTypes().catch(() => []),
         listToneProfiles().catch(() => []),
         listAgentBundles().catch(() => []),
+        getModules().catch(() => []),
       ]);
       llmProfiles = lp;
       roleDefinitions = rd;
@@ -84,6 +87,9 @@
       roleTypes = rt;
       toneProfiles = tp;
       agentBundles = bundles;
+      agentCores = (modules || [])
+        .filter(m => m.category === 'agent-core' && m.enabled !== false)
+        .map(m => ({ id: m.module_id || m.id, name: m.name, role: m.role || '', description: m.description || '' }));
     } catch (err) {
       if (import.meta.env.DEV) console.warn('[Palette] Failed to load entities:', err);
     } finally {
@@ -161,6 +167,12 @@
       icon="🎵"
       nodeType="tone-profile"
       entities={toneProfiles}
+    />
+    <PaletteEntityList
+      label={t('blueprint.palette.agentCores')}
+      icon="🧬"
+      nodeType="agent-core"
+      entities={agentCores}
     />
     <PaletteEntityList
       label={t('blueprint.palette.agentBundles')}

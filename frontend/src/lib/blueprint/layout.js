@@ -35,6 +35,7 @@ const NODE_DIMENSIONS = {
   'role-definition': { width: 200, height: 100 },
   'prompt-template': { width: 200, height: 110 },
   'role-type': { width: 200, height: 100 },
+  'agent-core': { width: 200, height: 100 },
   'wf-input': { width: 180, height: 80 },
   'wf-initialize': { width: 180, height: 80 },
   'wf-strategist': { width: 200, height: 90 },

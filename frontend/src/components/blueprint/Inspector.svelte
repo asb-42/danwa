@@ -14,6 +14,7 @@
   import RoleDefinitionForm from './forms/RoleDefinitionForm.svelte';
   import PromptTemplateForm from './forms/PromptTemplateForm.svelte';
   import RoleTypeForm from './forms/RoleTypeForm.svelte';
+  import AgentCoreForm from './forms/AgentCoreForm.svelte';
   import WorkflowNodeForm from './forms/WorkflowNodeForm.svelte';
   import ToneProfileForm from './forms/ToneProfileForm.svelte';
   import BundleAgentForm from './forms/BundleAgentForm.svelte';
@@ -58,6 +59,8 @@
         <PromptTemplateForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'role-type'}
         <RoleTypeForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
+      {:else if nodeType === 'agent-core'}
+        <AgentCoreForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'wf-tone-profile' || nodeType === 'tone-profile'}
         <ToneProfileForm node={selectedNode} onsave={handleSave} ondelete={handleDelete} />
       {:else if nodeType === 'wf-agent'}

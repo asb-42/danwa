@@ -15,7 +15,7 @@ import { getNodeRegistration } from './registry.js';
  * @type {Record<string, string[]>}
  */
 export const VALID_CONNECTIONS = {
-  'agent-blueprint': ['llm-profile', 'role-definition', 'prompt-template', 'tone-profile'],
+  'agent-blueprint': ['llm-profile', 'role-definition', 'prompt-template', 'tone-profile', 'agent-core'],
   'role-definition': ['prompt-template'],
   'role-type': ['role-definition'],
   // llm-profile and prompt-template have no outgoing edges
@@ -33,6 +33,7 @@ export const EDGE_TYPE_MAP = {
   'agent-blueprint→tone-profile': 'uses_tone',
   'role-definition→prompt-template': 'prompted_by',
   'role-type→role-definition': 'defines_role',
+  'agent-blueprint→agent-core': 'uses_core',
 };
 
 /**
@@ -46,6 +47,7 @@ export const EDGE_STYLES = {
   overrides_prompt: { color: '#f59e0b', style: 'dotted', label: 'Overrides Prompt' },
   defines_role: { color: '#ec4899', style: 'solid', label: 'Defines Role' },
   uses_tone: { color: '#f59e0b', style: 'solid', label: 'Uses Tone' },
+  uses_core: { color: '#0d9488', style: 'solid', label: 'Uses Core' },
   sequential: { color: '#6366f1', style: 'solid', label: 'Sequential' },
   conditional: { color: '#f59e0b', style: 'dashed', label: 'Conditional' },
   interjection: { color: '#f43f5e', style: 'dotted', label: 'Interjection' },

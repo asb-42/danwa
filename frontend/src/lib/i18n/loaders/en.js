@@ -548,6 +548,8 @@ export default {
   'blueprint.palette.toneProfile': 'Tone Profile',
   'blueprint.palette.toneProfiles': 'Tone Profiles',
   'blueprint.palette.agentBundles': 'Agent Bundles',
+  'blueprint.palette.agentCore': 'Agent Core',
+  'blueprint.palette.agentCores': 'Agent Cores',
   'blueprint.node.linked': 'Linked',
   'blueprint.node.notLinked': 'Not linked',
   'blueprint.edge.sequential': 'Sequential',
