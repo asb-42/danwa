@@ -13,6 +13,10 @@ from dataclasses import dataclass, field
 from langgraph.graph import END, StateGraph
 
 from backend.blueprints.compiler import CompilerService
+from backend.blueprints.module_lookups import (
+    resolve_role_definition,
+    resolve_role_type,
+)
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.resolver import BundleResolver
 from backend.blueprints.workflow_models import (
@@ -197,13 +201,13 @@ class WorkflowCompiler:
             errors.append(f"LLMProfile '{blueprint.llm_profile_id}' not found for blueprint '{blueprint_id}'")
             return None
 
-        role_def = self._repo.get_role_definition(blueprint.role_definition_id)
+        role_def = resolve_role_definition(blueprint.role_definition_id, repo=self._repo)
         if role_def is None:
             errors.append(f"RoleDefinition '{blueprint.role_definition_id}' not found for blueprint '{blueprint_id}'")
             return None
 
         # Resolve RoleType chain: RoleDefinition.role_type_id → RoleType
-        role_type = self._repo.get_role_type(role_def.role_type_id)
+        role_type = resolve_role_type(role_def.role_type_id, repo=self._repo)
         role_type_name = ""
         role_type_icon = "👤"
         role_type_color = "#8b5cf6"

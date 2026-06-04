@@ -11,6 +11,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from backend.blueprints.module_lookups import (
+    resolve_role_definition,
+    resolve_role_type,
+)
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
     AGENT_NODE_TYPES,
@@ -113,13 +117,13 @@ class CompilerService:
                 continue
 
             # Resolve role definition
-            role_def = self._repo.get_role_definition(blueprint.role_definition_id)
+            role_def = resolve_role_definition(blueprint.role_definition_id, repo=self._repo)
             if role_def is None:
                 errors.append(f"Node '{node_id}': RoleDefinition '{blueprint.role_definition_id}' not found")
                 continue
 
             # Resolve RoleType chain
-            role_type = self._repo.get_role_type(role_def.role_type_id)
+            role_type = resolve_role_type(role_def.role_type_id, repo=self._repo)
             role_type_name = ""
             role_type_icon = "👤"
             role_type_color = "#8b5cf6"

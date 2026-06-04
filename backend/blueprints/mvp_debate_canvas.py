@@ -18,9 +18,6 @@ from datetime import UTC, datetime
 from backend.blueprints.models import (
     AgentBlueprint,
     BlueprintLLMProfile,
-    PromptTemplate,
-    RoleDefinition,
-    RoleType,
 )
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
@@ -69,58 +66,6 @@ def _ensure_llm_profile_in_db(repo: BlueprintRepository, profile_id: str) -> Non
     raise ValueError(f"LLM profile '{profile_id}' not found in DB or modules")
 
 
-def _ensure_role_type(repo: BlueprintRepository, role: str) -> RoleType:
-    """Ensure a RoleType exists for the given role, creating it if needed."""
-    existing = repo.get_role_type(role)
-    if existing:
-        return existing
-
-    role_type = RoleType(
-        id=role,
-        name=role.title(),
-        description=f"{role.title()} role type",
-        icon={"strategist": "🧠", "critic": "🔍", "optimizer": "⚡", "moderator": "🎯"}.get(role, "👤"),
-        color={"strategist": "#3b82f6", "critic": "#ef4444", "optimizer": "#10b981", "moderator": "#8b5cf6"}.get(role, "#8b5cf6"),
-        default_max_rounds=5,
-        default_consensus_threshold=0.9,
-    )
-    repo.save_role_type(role_type)
-    logger.info("Created RoleType '%s'", role)
-    return role_type
-
-
-def _ensure_role_definition(repo: BlueprintRepository, role: str) -> RoleDefinition:
-    """Ensure a RoleDefinition exists for the given role."""
-    existing = repo.get_role_definition(role)
-    if existing:
-        return existing
-
-    _ensure_role_type(repo, role)
-
-    role_def = RoleDefinition(
-        id=role,
-        name=role.title(),
-        role_type_id=role,
-        description=f"{role.title()} agent role",
-        max_rounds=5,
-        consensus_threshold=0.9,
-    )
-    repo.save_role_definition(role_def)
-    logger.info("Created RoleDefinition '%s'", role)
-    return role_def
-
-
-def _ensure_prompt_template(repo: BlueprintRepository, role: str) -> PromptTemplate | None:
-    """Ensure a PromptTemplate exists for the given role (optional)."""
-    template_id = f"prompt-{role}"
-    existing = repo.get_prompt_template(template_id)
-    if existing:
-        return existing
-
-    # Don't create default prompts — let the prompt service handle file-based resolution
-    return None
-
-
 def _ensure_blueprint(
     repo: BlueprintRepository,
     role: str,
@@ -145,7 +90,6 @@ def _ensure_blueprint(
             )
         return existing
 
-    _ensure_role_definition(repo, role)
     _ensure_llm_profile_in_db(repo, llm_profile_id)
 
     blueprint = AgentBlueprint(

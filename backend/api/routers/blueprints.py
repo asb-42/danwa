@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from backend.api.deps import get_blueprint_repository
 from backend.api.errors import BlueprintConflictError, BlueprintNotFoundError
 from backend.blueprints.importer import BlueprintImporter, ImportResult
-from backend.blueprints.models import AgentBlueprint, AgentBundle, PromptTemplate, ResolvedBundle
+from backend.blueprints.models import AgentBlueprint, AgentBundle, ResolvedBundle
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.resolver import BundleResolver
 from backend.services.module_profile_sync import (
@@ -212,13 +212,19 @@ def resolve_bundle_endpoint(
 
 def _validate_bundle_references(repo: BlueprintRepository, bundle: AgentBundle) -> None:
     """Validate that all required references in a bundle exist."""
+    from backend.blueprints.module_lookups import (
+        resolve_prompt_template,
+        resolve_role_definition,
+        resolve_role_type,
+    )
+
     if not repo.get_llm_profile(bundle.llm_profile_id):
         raise BlueprintNotFoundError("BlueprintLLMProfile", bundle.llm_profile_id)
-    if not repo.get_role_type(bundle.role_type_id):
+    if not resolve_role_type(bundle.role_type_id, repo=repo):
         raise BlueprintNotFoundError("RoleType", bundle.role_type_id)
-    if bundle.role_definition_id and not repo.get_role_definition(bundle.role_definition_id):
+    if bundle.role_definition_id and not resolve_role_definition(bundle.role_definition_id, repo=repo):
         raise BlueprintNotFoundError("RoleDefinition", bundle.role_definition_id)
-    if bundle.prompt_template_id and not repo.get_prompt_template(bundle.prompt_template_id):
+    if bundle.prompt_template_id and not resolve_prompt_template(bundle.prompt_template_id, repo=repo):
         raise BlueprintNotFoundError("PromptTemplate", bundle.prompt_template_id)
     if bundle.tone_profile_id and not repo.get_tone_profile(bundle.tone_profile_id):
         raise BlueprintNotFoundError("ToneProfile", bundle.tone_profile_id)

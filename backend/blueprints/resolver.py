@@ -16,6 +16,11 @@ from backend.blueprints.models import (
     RoleType,
     ToneProfile,
 )
+from backend.blueprints.module_lookups import (
+    resolve_prompt_template,
+    resolve_role_definition,
+    resolve_role_type,
+)
 from backend.blueprints.repository import BlueprintRepository
 from backend.services.composer_service import ComposerService, Composition
 
@@ -44,13 +49,13 @@ class BundleResolver:
         if not llm_profile:
             raise ValueError(f"Bundle '{bundle.id}' references non-existent LLM profile '{bundle.llm_profile_id}'")
 
-        role_type = self.repo.get_role_type(bundle.role_type_id)
+        role_type = resolve_role_type(bundle.role_type_id, repo=self.repo)
         if not role_type:
             raise ValueError(f"Bundle '{bundle.id}' references non-existent RoleType '{bundle.role_type_id}'")
 
         role_definition: RoleDefinition | None = None
         if bundle.role_definition_id:
-            role_definition = self.repo.get_role_definition(bundle.role_definition_id)
+            role_definition = resolve_role_definition(bundle.role_definition_id, repo=self.repo)
             if not role_definition:
                 logger.warning(
                     "Bundle '%s' references non-existent RoleDefinition '%s' — skipping",
@@ -60,7 +65,7 @@ class BundleResolver:
 
         prompt_template: PromptTemplate | None = None
         if bundle.prompt_template_id:
-            prompt_template = self.repo.get_prompt_template(bundle.prompt_template_id)
+            prompt_template = resolve_prompt_template(bundle.prompt_template_id, repo=self.repo)
             if not prompt_template:
                 logger.warning(
                     "Bundle '%s' references non-existent PromptTemplate '%s' — skipping",
