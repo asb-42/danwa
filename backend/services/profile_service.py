@@ -18,7 +18,6 @@ from pathlib import Path
 import yaml
 
 from backend.core.profiles import (
-    AgentPersona,
     LLMProfile,
     PromptVariant,
 )
@@ -31,7 +30,7 @@ _DEFAULT_PROFILE_DIR = Path("profiles")
 
 
 class ProfileService:
-    """Manages LLM profiles, agent personas, and prompt variants.
+    """Manages LLM profiles and prompt variants.
 
     LLM profiles use ``blueprints.db`` as Single Source of Truth.
     YAML files in ``profiles/llm/`` serve as seed source — on first
@@ -55,7 +54,6 @@ class ProfileService:
         self._project_config = project_config
         self._db_path = Path(db_path) if db_path else Path("data/blueprints.db")
         self._llm_cache: dict[str, LLMProfile] = {}
-        self._agent_cache: dict[str, AgentPersona] = {}
         self._prompt_cache: dict[str, PromptVariant] = {}
         self._prompt_content_cache: dict[str, dict] = {}  # db:variant/role/lang → {content, hash, path}
         self._loaded = False
@@ -69,13 +67,11 @@ class ProfileService:
         if self._loaded:
             return
         self._load_llm_profiles()
-        self._load_agent_personas()
         self._load_prompt_variants()
         self._loaded = True
         logger.info(
-            "Profiles loaded: %d LLM, %d agents, %d prompt variants",
+            "Profiles loaded: %d LLM, %d prompt variants",
             len(self._llm_cache),
-            len(self._agent_cache),
             len(self._prompt_cache),
         )
 
@@ -149,82 +145,6 @@ class ProfileService:
             logger.info("Seeded %d LLM profiles from YAML into DB", count)
         except Exception:
             logger.exception("Failed to seed LLM profiles to DB")
-
-    def _load_agent_personas(self) -> None:
-        """Load agent personas from DB (primary) with YAML fallback."""
-        if self._load_agent_personas_from_db():
-            return
-        self._load_agent_personas_from_yaml()
-        self._seed_agent_personas_to_db()
-
-    def _load_agent_personas_from_db(self) -> bool:
-        """Load agent personas from role_definitions in blueprints.db."""
-        try:
-            from backend.blueprints.repository import BlueprintRepository
-
-            repo = BlueprintRepository(self._db_path)
-            db_roles = repo.list_role_definitions(limit=500)
-            if db_roles:
-                for rd in db_roles:
-                    try:
-                        # Resolve prompt content for system_prompt
-                        system_prompt = ""
-                        if rd.prompt_template_id:
-                            pt = repo.get_prompt_template(rd.prompt_template_id)
-                            if pt:
-                                system_prompt = pt.content
-                        legacy = rd.to_legacy(
-                            system_prompt=system_prompt,
-                        )
-                        self._agent_cache[legacy.id] = legacy
-                    except Exception:
-                        logger.exception("Failed to convert DB role definition %s", rd.id)
-                logger.info(
-                    "Loaded %d agent personas from DB",
-                    len(self._agent_cache),
-                )
-                return True
-        except Exception:
-            logger.warning(
-                "Could not load agent personas from DB, falling back to YAML",
-                exc_info=True,
-            )
-        return False
-
-    def _load_agent_personas_from_yaml(self) -> None:
-        """Load agent personas from YAML files (legacy/seed source)."""
-        agents_dir = self.profile_dir / "agents"
-        if not agents_dir.is_dir():
-            logger.warning("Agent personas directory not found: %s", agents_dir)
-            return
-        for yaml_file in sorted(agents_dir.glob("*.yaml")):
-            try:
-                data = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
-                persona = AgentPersona(**data)
-                self._agent_cache[persona.id] = persona
-            except Exception:
-                logger.exception("Failed to load agent persona from %s", yaml_file)
-
-    def _seed_agent_personas_to_db(self) -> None:
-        """Seed loaded YAML agent personas into the DB."""
-        if not self._agent_cache:
-            return
-        try:
-            from backend.blueprints.models import RoleDefinition
-            from backend.blueprints.repository import BlueprintRepository
-
-            repo = BlueprintRepository(self._db_path)
-            count = 0
-            for persona in self._agent_cache.values():
-                try:
-                    rd = RoleDefinition.from_legacy(persona)
-                    repo.save_role_definition(rd)
-                    count += 1
-                except Exception:
-                    logger.exception("Failed to seed agent persona %s to DB", persona.id)
-            logger.info("Seeded %d agent personas from YAML into DB", count)
-        except Exception:
-            logger.exception("Failed to seed agent personas to DB")
 
     def _load_prompt_variants(self) -> None:
         """Load prompt variants from DB (primary) with YAML fallback."""
@@ -393,29 +313,6 @@ class ProfileService:
             merged.update(self._project_config.llm_profiles)
         return merged
 
-    def _merged_agent_personas(self) -> dict[str, AgentPersona]:
-        """Return agent personas merged: project > DB > modules."""
-        self.ensure_loaded()
-        merged = {}
-        from backend.services.module_profile_sync import get_agent_personas_from_modules
-
-        for mp in get_agent_personas_from_modules():
-            try:
-                clean = {k: v for k, v in mp.items() if not k.startswith("_") and k in AgentPersona.model_fields}
-                clean.setdefault("argumentation_pattern", None)
-                clean.setdefault("mode", None)
-                persona = AgentPersona(**clean)
-                persona._source_module = mp.get("_source_module")  # type: ignore[attr-defined]
-                persona._readonly = mp.get("_readonly", False)  # type: ignore[attr-defined]
-                merged[persona.id] = persona
-            except Exception:
-                logger.warning("Failed to convert module agent persona %s", mp.get("id", "?"))
-
-        merged.update(self._agent_cache)
-        if self._project_config and self._project_config.agent_personas:
-            merged.update(self._project_config.agent_personas)
-        return merged
-
     def _merged_prompt_variants(self) -> dict[str, PromptVariant]:
         """Return global prompt variants merged with project overrides."""
         self.ensure_loaded()
@@ -509,33 +406,6 @@ class ProfileService:
         del self._llm_cache[profile_id]
         logger.info("LLM profile deleted: %s", profile_id)
         return True
-
-    # ------------------------------------------------------------------
-    # Agent Personas
-    # ------------------------------------------------------------------
-
-    def list_agent_personas(self, role: str | None = None) -> list[AgentPersona]:
-        self.ensure_loaded()
-        personas = list(self._merged_agent_personas().values())
-        if role:
-            personas = [p for p in personas if p.role == role]
-        return personas
-
-    def get_agent_persona(self, persona_id: str) -> AgentPersona | None:
-        self.ensure_loaded()
-        return self._merged_agent_personas().get(persona_id)
-# ------------------------------------------------------------------
-# Prompt Variants (read-only — CRUD removed in Phase 3 deprecation)
-# ------------------------------------------------------------------
-
-
-    def list_prompt_variants(self) -> list[PromptVariant]:
-        self.ensure_loaded()
-        return list(self._merged_prompt_variants().values())
-
-    def get_prompt_variant(self, variant_id: str) -> PromptVariant | None:
-        self.ensure_loaded()
-        return self._merged_prompt_variants().get(variant_id)
 
     def get_prompt_content(
         self,

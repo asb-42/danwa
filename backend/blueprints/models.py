@@ -22,7 +22,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from backend.core.profiles import AgentPersona, LLMProfile
+from backend.core.profiles import LLMProfile
 
 # ---------------------------------------------------------------------------
 # 2.2 BlueprintLLMProfile
@@ -252,56 +252,6 @@ class RoleDefinition(BaseModel):
         return v
 
     # -- Legacy conversion ---------------------------------------------------
-
-    @classmethod
-    def from_legacy(
-        cls,
-        legacy: AgentPersona,
-        prompt_template_id: str | None = None,
-    ) -> RoleDefinition:
-        """Convert from ``backend.core.profiles.AgentPersona``.
-
-        The ``system_prompt`` field is dropped — prompt content is now
-        referenced via ``prompt_template_id``.
-        """
-        now = datetime.now(UTC)
-        return cls(
-            id=legacy.id,
-            name=legacy.name,
-            role_type_id=legacy.role,
-            description=legacy.description or "",
-            prompt_template_id=prompt_template_id,
-            argumentation_pattern=getattr(legacy, "argumentation_pattern", None),
-            mode=getattr(legacy, "mode", None),
-            max_rounds=legacy.max_rounds,
-            consensus_threshold=legacy.consensus_threshold,
-            tags=list(legacy.tags) if legacy.tags else [],
-            created_at=now,
-            updated_at=now,
-        )
-
-    def to_legacy(
-        self,
-        system_prompt: str = "",
-        llm_profile_id: str | None = None,
-    ) -> AgentPersona:
-        """Convert to ``backend.core.profiles.AgentPersona`` for backward compat.
-
-        Args:
-            system_prompt: The prompt content (resolved from PromptTemplate).
-            llm_profile_id: Optional LLM profile ID for the persona.
-        """
-        return AgentPersona(
-            id=self.id.replace("_", "-"),
-            name=self.name,
-            role=self.role_type_id,  # type: ignore[arg-type]
-            system_prompt=system_prompt or f"# {self.name}\n(No prompt configured)",
-            llm_profile_id=llm_profile_id,
-            max_rounds=self.max_rounds,
-            consensus_threshold=self.consensus_threshold,
-            description=self.description,
-            tags=list(self.tags) if self.tags else [],
-        )
 
 
 # ---------------------------------------------------------------------------

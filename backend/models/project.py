@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
-from backend.core.profiles import AgentPersona, LLMProfile, PromptVariant
+from backend.core.profiles import LLMProfile, PromptVariant
 
 
 class ProjectConfig(BaseModel):
@@ -33,7 +33,6 @@ class ProjectConfig(BaseModel):
 
     # --- Profile overrides (ID → profile, merged with global) ---
     llm_profiles: dict[str, LLMProfile] = Field(default_factory=dict)
-    agent_personas: dict[str, AgentPersona] = Field(default_factory=dict)
     prompt_variants: dict[str, PromptVariant] = Field(default_factory=dict)
 
 

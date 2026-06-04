@@ -73,37 +73,6 @@ class LLMProfile(BaseModel):
         return v
 
 
-class AgentPersona(BaseModel):
-    """Configuration for a debate agent persona."""
-
-    id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9.-]*$")
-    name: str
-    role: str  # Legacy role; widened for new role types (analyst, creative, etc.)
-    system_prompt: str
-
-    # Behaviour constraints
-    max_rounds: int = 5
-    consensus_threshold: float = 0.9
-
-    # Argumentation & mode (for blueprint system compatibility)
-    argumentation_pattern: str | None = None
-    mode: str | None = None
-
-    # LLM profile binding
-    llm_profile_id: str | None = None
-
-    # Metadata
-    description: str | None = None
-    tags: list[str] = []
-
-    @field_validator("consensus_threshold")
-    @classmethod
-    def validate_threshold(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError("consensus_threshold must be between 0 and 1")
-        return v
-
-
 class PromptVariant(BaseModel):
     """A named set of prompt templates for debate agents."""
 
