@@ -4,8 +4,6 @@
   import ModuleManager from '../components/ModuleManager.svelte';
   import {
     listComposerBundles,
-    createComposerBundle,
-    getComposerBundle,
     exportComposerBundle,
     importComposerBundle,
   } from '../lib/blueprint/api.js';
@@ -33,10 +31,6 @@
   let bundles = $state([]);
   let isLoadingBundles = $state(false);
   let bundleError = $state('');
-  let bundleName = $state('');
-  let bundleDescription = $state('');
-  let isSavingBundle = $state(false);
-  let selectedBundleId = $state('');
 
   onMount(async () => {
     // No initial load needed — ModuleManager fetches on mount
@@ -56,45 +50,10 @@
     }
   }
 
-  async function handleCreateBundle() {
-    if (!bundleName.trim()) return;
-    isSavingBundle = true;
+  async function handleExportBundle(bundleId) {
     bundleError = '';
     try {
-      const bundle = await createComposerBundle({
-        name: bundleName.trim(),
-        description: bundleDescription.trim(),
-        composition: {},
-      });
-      statusMessage = `Bundle "${bundle.name}" created (${bundle.id})`;
-      bundleName = '';
-      bundleDescription = '';
-      await loadBundles();
-    } catch (e) {
-      bundleError = e.message;
-    } finally {
-      isSavingBundle = false;
-    }
-  }
-
-  async function handleLoadBundle() {
-    if (!selectedBundleId) return;
-    bundleError = '';
-    try {
-      const bundle = await getComposerBundle(selectedBundleId);
-      bundleName = bundle.name || '';
-      bundleDescription = bundle.description || '';
-      statusMessage = `Loaded bundle "${bundle.name}"`;
-    } catch (e) {
-      bundleError = e.message;
-    }
-  }
-
-  async function handleExportBundle() {
-    if (!selectedBundleId) return;
-    bundleError = '';
-    try {
-      const result = await exportComposerBundle(selectedBundleId, true);
+      const result = await exportComposerBundle(bundleId, true);
       statusMessage = `Bundle exported to ${result.path}`;
     } catch (e) {
       bundleError = e.message;
@@ -172,43 +131,30 @@
         </div>
       {/if}
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Create Bundle</h3>
-        <div class="space-y-3">
-          <input
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Bundle name"
-            bind:value={bundleName}
-          />
-          <textarea
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Description (optional)"
-            rows="2"
-            bind:value={bundleDescription}
-          ></textarea>
-          <button
-            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:hover:bg-green-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            onclick={handleCreateBundle}
-            disabled={isSavingBundle || !bundleName.trim()}
-          >
-            {isSavingBundle ? 'Saving...' : 'Create Bundle'}
-          </button>
-        </div>
+      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-blue-700 dark:text-blue-300 text-sm">
+        💡 Create and edit bundles using the <button class="underline font-medium" onclick={() => navigate('bundle-composer')}>Bundle Composer</button>.
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
             Saved Bundles
             {#if !isLoadingBundles}
               <span class="text-sm font-normal text-gray-400 ml-2">({bundles.length})</span>
             {/if}
           </h3>
+          <button
+            class="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            onclick={loadBundles}
+            disabled={isLoadingBundles}
+          >
+            🔄 Refresh
+          </button>
         </div>
         {#if isLoadingBundles}
           <div class="p-6 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
         {:else if bundles.length === 0}
-          <div class="p-6 text-center text-gray-500 dark:text-gray-400">No bundles yet.</div>
+          <div class="p-6 text-center text-gray-500 dark:text-gray-400">No bundles yet. Create one in the Bundle Composer.</div>
         {:else}
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -230,13 +176,13 @@
                       <div class="flex items-center justify-end gap-1">
                         <button
                           class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                          onclick={() => { selectedBundleId = bundle.id; handleLoadBundle(); }}
+                          onclick={() => navigate(`bundle-composer?bundle=${bundle.id}`)}
                         >
-                          Load
+                          Edit in Composer
                         </button>
                         <button
                           class="px-2.5 py-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
-                          onclick={() => { selectedBundleId = bundle.id; handleExportBundle(); }}
+                          onclick={() => handleExportBundle(bundle.id)}
                         >
                           Export
                         </button>
@@ -258,10 +204,10 @@
           Import from Disk
         </button>
         <button
-          class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
           onclick={() => navigate('bundle-composer')}
         >
-          Open Full Composer →
+          Open Bundle Composer →
         </button>
       </div>
     </div>
