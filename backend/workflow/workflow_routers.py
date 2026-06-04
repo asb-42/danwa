@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from backend.workflow.safe_eval import SafeEvalError, evaluate_condition
 from backend.workflow.workflow_state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,19 @@ def route_conditional(
 
     Args:
         conditions: Mapping of ``{target_node_id: condition_expression}``.
-            Condition expressions are simple Python expressions evaluated
-            against the state dict (e.g. ``"current_round >= 3"``).
+            Condition expressions are either:
+
+            * a named condition (e.g. ``"consensus_reached"``,
+              ``"max_rounds_reached"``, ``"extension_granted"``) — see
+              :data:`backend.workflow.safe_eval.NAMED_CONDITIONS` for
+              the full registry; or
+            * a safe Python expression over the ``state`` mapping (e.g.
+              ``"state['current_round'] >= 3"``).
+
+            Expressions are evaluated with :func:`safe_eval.evaluate_condition`
+            which uses an AST whitelist — there is no Python ``eval()``
+            involved, so the sandbox cannot be escaped via dunder
+            traversal or ``__import__``.
 
     Returns:
         A router function suitable for ``graph.add_conditional_edges()``.
@@ -39,13 +51,21 @@ def route_conditional(
     def _router(state: WorkflowState) -> str:
         for target_node_id, expr in conditions.items():
             try:
-                if eval(expr, {"__builtins__": {}}, dict(state)):  # noqa: S307
+                if evaluate_condition(expr, dict(state)):
                     return target_node_id
-            except Exception:
+            except SafeEvalError as exc:
                 logger.warning(
-                    "Gate condition '%s' for target '%s' raised an exception, skipping",
+                    "Gate condition '%s' for target '%s' is not safe (%s), skipping",
                     expr,
                     target_node_id,
+                    exc,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Gate condition '%s' for target '%s' raised %s, skipping",
+                    expr,
+                    target_node_id,
+                    type(exc).__name__,
                 )
         # Fallback: return last target if no condition matched
         fallback = list(conditions.keys())[-1] if conditions else "end"
@@ -113,6 +133,23 @@ def route_after_interjection(state: WorkflowState) -> str:
     return "next"
 
 
+def _resolve_max_draft_versions(state: WorkflowState) -> int:
+    """Read ``max_draft_versions`` from ``termination_conditions``; fall back to 5.
+
+    Workflow authors can override the historical default of 5 by adding an
+    entry like ``{"type": "max_draft_versions", "value": 8}`` to
+    ``WorkflowDefinition.termination_conditions``.  The default is kept
+    at 5 to preserve existing behaviour for the seeded
+    ``transactional_drafting`` template.
+    """
+    for tc in state.get("termination_conditions", []) or []:
+        if isinstance(tc, dict) and tc.get("type") == "max_draft_versions":
+            value = tc.get("value")
+            if isinstance(value, int) and value > 0:
+                return value
+    return 5
+
+
 def route_decision(max_rounds: int = 5) -> Any:
     """Factory that returns a router for the Moderator's decision in Transactional Drafting.
 
@@ -122,7 +159,10 @@ def route_decision(max_rounds: int = 5) -> Any:
     - ``"approved"`` → ``"approved"`` (→ END)
     - ``"revision_required"`` → ``"return_to_builder"`` (→ BuilderNode)
 
-    Deadlock fallback: if ``draft_version >= 5``, returns ``"construction_deadlock"``.
+    Deadlock fallback: if ``draft_version >= max_draft_versions`` (read from
+    ``termination_conditions`` or 5 by default), returns
+    ``"construction_deadlock"``.  Workflow authors can override the threshold
+    per template — see :func:`_resolve_max_draft_versions`.
 
     Args:
         max_rounds: Maximum number of drafting rounds before forced termination.
@@ -132,6 +172,7 @@ def route_decision(max_rounds: int = 5) -> Any:
         current_round = state.get("current_round", 1)
         draft_version = state.get("draft_version", 1)
         effective_max = max_rounds or state.get("max_rounds", 5)
+        max_draft_versions = _resolve_max_draft_versions(state)
 
         if current_round > effective_max:
             logger.warning(
@@ -141,8 +182,12 @@ def route_decision(max_rounds: int = 5) -> Any:
             )
             return "construction_deadlock"
 
-        if draft_version >= 5:
-            logger.warning("Decision router: construction deadlock at draft_version=%d", draft_version)
+        if draft_version >= max_draft_versions:
+            logger.warning(
+                "Decision router: construction deadlock at draft_version=%d (max=%d)",
+                draft_version,
+                max_draft_versions,
+            )
             return "construction_deadlock"
 
         result = state.get("consensus_result", {})

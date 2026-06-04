@@ -13,9 +13,47 @@ from collections.abc import Callable
 
 from backend.api.events import publish_async
 from backend.workflow.audit_logger import get_audit_logger
+from backend.workflow.safe_eval import SafeEvalError, evaluate_condition
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
+
+
+# Hard structural thresholds below which a PragmatistEvaluation is treated
+# as a veto, regardless of the LLM's overall ``reality_score``.  These
+# values are deliberately conservative — they only catch the obvious
+# "this proposal is unusable" cases, not subjective quality issues.
+_EVALUATION_FEASIBILITY_FLOOR = 0.3
+
+
+def _is_evaluation_acceptable(evaluation: dict | None) -> bool:
+    """Return True iff a single PragmatistEvaluation is structurally acceptable.
+
+    A evaluation is acceptable when:
+
+    * its verdict is not ``"reject"`` — the Pragmatist explicitly vetoed
+      this build response; and
+    * its feasibility is at least the hard floor
+      :data:`_EVALUATION_FEASIBILITY_FLOOR` — below this the proposal is
+      treated as unusable even if the verdict is ``"revise"`` or
+      ``"accept"``.
+
+    The check is intentionally minimal.  Subjective quality (writing
+    style, prose quality, evidence strength) is the LLM's job via
+    ``reality_score``; this function only catches the cases where the
+    LLM is provably contradicting itself.
+    """
+    if not isinstance(evaluation, dict):
+        return False
+    verdict = evaluation.get("verdict")
+    if verdict == "reject":
+        return False
+    feasibility = evaluation.get("feasibility")
+    if not isinstance(feasibility, (int, float)):
+        return False
+    if feasibility < _EVALUATION_FEASIBILITY_FLOOR:
+        return False
+    return True
 
 
 def moderator_node_factory(
@@ -45,13 +83,36 @@ def moderator_node_factory(
             if pragmatist_output:
                 reality_score = pragmatist_output.get("reality_score", 0.0)
                 blocking_concerns = pragmatist_output.get("blocking_concerns", [])
-                approved = reality_score >= 0.6 and not blocking_concerns
-                consensus = reality_score
-                verdict = "approved" if approved else "revision_required"
+                evaluations = pragmatist_output.get("evaluations", []) or []
+
+                # Structural check: a PragmatistEvaluation with
+                # verdict == "reject" or feasibility below the hard
+                # floor vetoes the whole batch, even if the LLM
+                # rewarded itself with a high ``reality_score``.
+                # Without this, an over-optimistic LLM could approve
+                # a draft that contains hard-rejected items.
+                hard_rejects = [e for e in evaluations if not _is_evaluation_acceptable(e)]
+                if hard_rejects:
+                    hard_reject_ids = [e.get("response_to", "?") for e in hard_rejects]
+                    logger.info(
+                        "Moderator: %d hard-rejected evaluation(s) override reality_score=%.2f: %s",
+                        len(hard_rejects),
+                        reality_score,
+                        hard_reject_ids,
+                    )
+                    verdict = "revision_required"
+                    consensus = reality_score
+                    blocking_concerns = list(blocking_concerns) + [f"Hard-rejected build response(s): {', '.join(hard_reject_ids)}"]
+                else:
+                    approved = reality_score >= 0.6 and not blocking_concerns
+                    verdict = "approved" if approved else "revision_required"
+                    consensus = reality_score
+
                 result["consensus_result"] = {
                     "verdict": verdict,
                     "reality_score": reality_score,
                     "blocking_concerns": blocking_concerns,
+                    "structural_reject_count": len(hard_rejects),
                 }
             else:
                 # No pragmatist_output — Builder likely failed JSON parsing.
@@ -262,15 +323,23 @@ def gate_node_factory(
             },
         )
 
-        # Evaluate condition for logging
+        # Evaluate condition for logging.  We use the AST-safe
+        # ``evaluate_condition`` helper instead of Python's ``eval`` so
+        # the gate cannot be tricked into running arbitrary code via
+        # dunder traversal of built-in types.
         condition_result = False
-        try:
-            if condition_expr:
-                condition_result = bool(
-                    eval(condition_expr, {"__builtins__": {}}, dict(state))  # noqa: S307
+        if condition_expr:
+            try:
+                condition_result = evaluate_condition(condition_expr, dict(state))
+            except SafeEvalError as exc:
+                logger.warning("Gate condition '%s' is not safe: %s", condition_expr, exc)
+            except Exception as exc:
+                logger.warning(
+                    "Gate condition '%s' raised %s: %s",
+                    condition_expr,
+                    type(exc).__name__,
+                    exc,
                 )
-        except Exception as exc:
-            logger.warning("Gate condition '%s' raised: %s", condition_expr, exc)
 
         output: WorkflowNodeOutput = {
             "node_id": node_id,

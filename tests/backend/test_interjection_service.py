@@ -223,3 +223,132 @@ class TestInterjectionDataclass:
         )
         assert ij.metadata == {"key": "val"}
         assert ij.status == "consumed"
+
+
+# ---------------------------------------------------------------------------
+# consume_blocking — wake-up semantics for the interjection node
+# ---------------------------------------------------------------------------
+
+
+class TestConsumeBlocking:
+    """Test consume_blocking() — the H6 fix that lets a workflow actually
+    wait for human input instead of racing the resume handler.
+    """
+
+    @pytest.mark.asyncio
+    async def test_returns_immediately_when_items_present(
+        self, service: InterjectionService
+    ) -> None:
+        """If items are already queued, consume_blocking() must return
+        synchronously (no async wait) and drain them.
+        """
+        await service.submit("sess-1", "Hello", source="user")
+
+        results = await service.consume_blocking("sess-1", timeout=10.0)
+
+        assert len(results) == 1
+        assert results[0]["content"] == "Hello"
+        # Queue is now empty.
+        pending = await service.get_pending("sess-1")
+        assert pending == []
+
+    @pytest.mark.asyncio
+    async def test_waits_and_wakes_on_submit(self, service: InterjectionService) -> None:
+        """If the queue is empty, consume_blocking() must block until a
+        concurrent submit() arrives, then return that item.
+        """
+        import asyncio
+
+        async def submitter() -> None:
+            await asyncio.sleep(0.05)
+            await service.submit("sess-1", "Late arrival", source="api")
+
+        task = asyncio.create_task(submitter())
+        results = await service.consume_blocking("sess-1", timeout=5.0)
+        await task
+
+        assert len(results) == 1
+        assert results[0]["content"] == "Late arrival"
+        assert results[0]["source"] == "api"
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_timeout(self, service: InterjectionService) -> None:
+        """If no submit() arrives within the timeout, consume_blocking()
+        must return an empty list (so the node can fall back to
+        ``is_paused=True``).
+        """
+        results = await service.consume_blocking("sess-1", timeout=0.1)
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_timeout_zero_skips_wait(self, service: InterjectionService) -> None:
+        """``timeout=0`` is a useful escape hatch in tests — must return
+        immediately without waiting for any wake event.
+        """
+        results = await service.consume_blocking("sess-1", timeout=0.0)
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_second_blocking_after_drain(self, service: InterjectionService) -> None:
+        """After a successful consume_blocking(), a follow-up call must
+        block again (i.e. the wake event is correctly cleared).
+        """
+        import asyncio
+
+        await service.submit("sess-1", "First")
+        first = await service.consume_blocking("sess-1", timeout=0.1)
+        assert len(first) == 1
+
+        async def submitter() -> None:
+            await asyncio.sleep(0.05)
+            await service.submit("sess-1", "Second")
+
+        task = asyncio.create_task(submitter())
+        second = await service.consume_blocking("sess-1", timeout=5.0)
+        await task
+
+        assert len(second) == 1
+        assert second[0]["content"] == "Second"
+
+    @pytest.mark.asyncio
+    async def test_blocks_with_multiple_consumers(self, service: InterjectionService) -> None:
+        """Two concurrent consumers must not deadlock: one wakes on the
+        first submit(), the other wakes on the next.
+        """
+        import asyncio
+
+        async def submitter() -> None:
+            await asyncio.sleep(0.05)
+            await service.submit("sess-1", "first")
+            await asyncio.sleep(0.05)
+            await service.submit("sess-1", "second")
+
+        task = asyncio.create_task(submitter())
+        first = await service.consume_blocking("sess-1", timeout=5.0)
+        second = await service.consume_blocking("sess-1", timeout=5.0)
+        await task
+
+        contents = {first[0]["content"], second[0]["content"]}
+        assert contents == {"first", "second"}
+
+    @pytest.mark.asyncio
+    async def test_clear_resets_wake_event(self, service: InterjectionService) -> None:
+        """After clear(), consume_blocking() must block again rather
+        than returning whatever was previously in the queue.
+        """
+        import asyncio
+
+        await service.submit("sess-1", "Doomed")
+        await service.clear("sess-1")
+
+        async def submitter() -> None:
+            await asyncio.sleep(0.05)
+            await service.submit("sess-1", "Survivor")
+
+        task = asyncio.create_task(submitter())
+        results = await service.consume_blocking("sess-1", timeout=5.0)
+        await task
+
+        assert len(results) == 1
+        assert results[0]["content"] == "Survivor"
