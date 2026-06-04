@@ -1,15 +1,16 @@
 a2a_endpoint: null
 a2a_timeout: 120
-api_base: http://localhost:1234/v1
+api_base: http://192.168.178.200:1234/v1
 api_key_env: LM_STUDIO_KEY
 context_window: 32768
 cost_per_1k_input: null
 cost_per_1k_output: null
 fallback_llm_profile_id: null
 id: local-glm-4-32b-0414-uncensored-heretic-v1
-max_tokens: 4096
+max_tokens: 16000
 model: glm-4-32b-0414-uncensored-heretic-v1
 name: glm-4-32b-0414-uncensored-heretic-v1 (LM Studio)
+profile_type: text
 protocol: litellm
 provider: local
 temperature: 0.4

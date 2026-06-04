@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-fa",
+  "name": {
+    "en": "فارسی (Persian)",
+    "fa": "فارسی"
+  },
+  "description": {
+    "en": "UI translation pack for Persian (فارسی)",
+    "fa": "UI-Übersetzungspaket für Persian (فارسی)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "fa",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "fa"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-21T02:31:29.748810+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "3f253da0e5f9c9826facb25e89e36ad8bd735316be1aefa16acfda110e89ad66",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T04:00:04.954945+00:00"
+}

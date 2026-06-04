@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-te",
+  "name": {
+    "en": "తెలుగు (Telugu)",
+    "te": "తెలుగు"
+  },
+  "description": {
+    "en": "UI translation pack for Telugu (తెలుగు)",
+    "te": "UI-Übersetzungspaket für Telugu (తెలుగు)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "te",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "te"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:45:42.197436+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "d28cd2160705dae81b55ba61dc4ed89a4d16a3bd4f057f05da465fb437ed9e68",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T04:00:04.954945+00:00"
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-id",
+  "name": {
+    "en": "Bahasa Indonesia (Indonesian)",
+    "id": "Bahasa Indonesia"
+  },
+  "description": {
+    "en": "UI translation pack for Indonesian (Bahasa Indonesia)",
+    "id": "UI-Übersetzungspaket für Indonesian (Bahasa Indonesia)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "id",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "id"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:45:53.719607+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "336da0c4995bbd8c49fe06acbeb02e32998185b71d3ffe1d526adb0fb662258f",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T04:00:04.954945+00:00"
+}

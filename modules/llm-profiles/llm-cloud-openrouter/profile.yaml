@@ -2,7 +2,7 @@ a2a_endpoint: null
 a2a_timeout: 120
 api_base: https://openrouter.ai/api/v1
 api_key_env: YOUR_API_KEY_ENV_VAR
-context_window: null
+context_window: 200000
 cost_per_1k_input: null
 cost_per_1k_output: null
 fallback_llm_profile_id: null

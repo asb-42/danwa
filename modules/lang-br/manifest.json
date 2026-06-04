@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-br",
+  "name": {
+    "en": "Brezhoneg (Breton)",
+    "br": "Brezhoneg"
+  },
+  "description": {
+    "en": "UI translation pack for Breton (Brezhoneg)",
+    "br": "UI-Übersetzungspaket für Breton (Brezhoneg)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "br",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "br"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:45:35.175779+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "bbe320f254d39ca98098ad40317841bbf20673fac08c23003b889059ab05dd96",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T04:00:04.954945+00:00"
+}

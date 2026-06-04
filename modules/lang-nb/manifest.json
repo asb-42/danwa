@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-nb",
+  "name": {
+    "en": "Norsk Bokmål (Norwegian Bokmål)",
+    "nb": "Norsk Bokmål"
+  },
+  "description": {
+    "en": "UI translation pack for Norwegian Bokmål (Norsk Bokmål)",
+    "nb": "UI-Übersetzungspaket für Norwegian Bokmål (Norsk Bokmål)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "nb",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "nb"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:46:07.131186+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "073a69af5efa23fb3487b2ab0a72278d0d7a260e1f6360fe36d4e4b6acd3b186",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T04:00:04.954945+00:00"
+}

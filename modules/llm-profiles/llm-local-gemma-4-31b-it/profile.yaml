@@ -1,12 +1,17 @@
-id: local-gemma-4-31b-it
-name: gemma-4-31b-it (LM Studio)
-provider: local
-model: gemma-4-31b-it
+a2a_endpoint: null
+a2a_timeout: 120
 api_base: http://192.168.178.200:1234/v1
 api_key_env: LM_STUDIO_KEY
-max_tokens: 4096
 context_window: 262144
+cost_per_1k_input: null
+cost_per_1k_output: null
+fallback_llm_profile_id: null
+id: local-gemma-4-31b-it
+max_tokens: 32000
+model: gemma-4-31b-it
+name: gemma-4-31b-it (LM Studio)
+profile_type: text
+protocol: litellm
+provider: local
 temperature: 0.4
 timeout: 600
-cost_per_1k_input: 0.0
-cost_per_1k_output: 0.0

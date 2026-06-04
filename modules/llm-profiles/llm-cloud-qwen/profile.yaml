@@ -10,6 +10,7 @@ id: cloud-qwen
 max_tokens: 16000
 model: qwen/qwen3.5-plus-20260420
 name: qwen3.5-plus (Openrouter)
+profile_type: text
 protocol: litellm
 provider: openrouter
 temperature: 0.5

@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-zh",
+  "name": {
+    "en": "中文 (Chinese)",
+    "zh": "中文"
+  },
+  "description": {
+    "en": "UI translation pack for Chinese (中文)",
+    "zh": "UI-Übersetzungspaket für Chinese (中文)"
+  },
+  "version": "1.0.1",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "zh",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "zh"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:46:27.643353+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "9fb87d46f141b29e2c05eb386974dc4a0b51543b665a0c018e150366a2122148",
+  "string_count": 1275,
+  "updated_at": "2026-06-03T20:00:27.796238+00:00"
+}

@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "module_id": "workflow-tpl-streitgespraech",
   "name": {
-    "en": "Streitgespräch (Adversarial Debate)"
+    "en": "Adversarial Debate"
   },
   "version": "1.0.0",
   "type": "workflow-template",
@@ -26,7 +26,8 @@
   "description": {
     "en": "A confrontational debate format where an Advocate defends one position while an Adversary attacks it. A Referee ensures fair play, and the Moderator synthesizes the outcome. Based on the adversarial method of philosophical inquiry."
   },
-  "checksum": "9c284f4a1695fddf55bf8391edfa279ead4cd3205adadb646a26d0fa607469d7",
+  "checksum": "c9fc9aa602ffb1b6ef48c91ed15cadd646410a5fc00098aca843f7bb21a1be38",
   "created_at": "2026-05-17T03:22:25+02:00",
-  "updated_at": "2026-05-21T14:39:38+02:00"
+  "updated_at": "2026-06-03T21:22:27.681862+00:00",
+  "role": ""
 }

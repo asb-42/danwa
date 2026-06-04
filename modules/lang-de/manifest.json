@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-de",
+  "name": {
+    "en": "Deutsch (German)",
+    "de": "Deutsch"
+  },
+  "description": {
+    "en": "UI translation pack for German (Deutsch)",
+    "de": "UI-Übersetzungspaket für German (Deutsch)"
+  },
+  "version": "1.0.1",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "de",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "de"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:46:38.917120+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "988199dfba59b70978a15f9500efa07669161900d1bf91c3b32f4f378a2d15c5",
+  "string_count": 1276,
+  "updated_at": "2026-06-03T20:00:27.539753+00:00"
+}

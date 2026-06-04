@@ -1,0 +1,37 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-ko",
+  "name": {
+    "en": "한국어 (Korean)",
+    "ko": "한국어"
+  },
+  "description": {
+    "en": "UI translation pack for 한국어 (Korean)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "ko",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "ko"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-31T03:59:55.109875+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "c363c0ac4fb6e16b8792209db72f2d2b3dd4e2997d77a1ad324d239e12fbcd1f",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T03:59:55.109875+00:00"
+}

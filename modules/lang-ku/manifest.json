@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "lang-ku",
+  "name": {
+    "en": "Kurdî (Kurdish)",
+    "ku": "Kurdî"
+  },
+  "description": {
+    "en": "UI translation pack for Kurdish (Kurdî)",
+    "ku": "UI-Übersetzungspaket für Kurdish (Kurdî)"
+  },
+  "version": "1.0.0",
+  "type": "language-pack",
+  "category": "translations",
+  "language": "ku",
+  "author": {
+    "name": "Danwa User"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "ku"
+  ],
+  "profile_file": "ui_strings.json",
+  "profile_format": "json",
+  "created_at": "2026-05-27T15:45:26.075919+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "d26163d8abcc46af7ce8964b4435e5157ff67b8d6b7b5992e73e1743d33128fc",
+  "string_count": 1155,
+  "updated_at": "2026-05-31T04:00:04.954945+00:00"
+}
