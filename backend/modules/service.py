@@ -239,7 +239,13 @@ class ModuleService:
                 data = json.loads(resp.read().decode("utf-8"))
             self._registry_cache = data
             self._registry_cache_time = now
-            return data.get("modules", [])
+            # Support both schema v3 ("modules" list) and legacy ("repository" dict)
+            if "modules" in data:
+                return data["modules"]
+            repo_dict = data.get("repository")
+            if isinstance(repo_dict, dict):
+                return list(repo_dict.values())
+            return []
         except Exception as exc:
             logger.warning("Module repo index not reachable (%s): %s", repo_url, exc)
             raise ConnectionError(f"Module repository not reachable: {exc}") from exc
