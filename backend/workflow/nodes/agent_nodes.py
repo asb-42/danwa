@@ -22,6 +22,14 @@ from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState, W
 logger = logging.getLogger(__name__)
 
 
+# Sprint 35 (L2 fix): promote the ``_max_draft_len`` magic number
+# (formerly a function-local 50000 in the non-transactional concat
+# branch) to a module-level constant so its purpose is discoverable
+# from the module top and so future tuning lives in one place.
+_MAX_DRAFT_LEN = 50000
+_DRAFT_TRUNCATION_MARKER = "\n\n[… content truncated …]\n\n"
+
+
 def _estimate_tokens(content: str) -> int:
     """Best-effort token estimate for a piece of LLM-generated text.
 
@@ -70,7 +78,9 @@ def agent_node_factory(
 
     role = resolved_config.get("role", node_type.replace("wf-", ""))
     llm_profile_id = resolved_config.get("llm_profile_id", "")
-    resolved_config.get("blueprint_name", role)
+    # Sprint 35 (L1 fix): removed dead blueprint_name lookup — the result
+    # was discarded.  The docstring above still describes the key for
+    # callers, and the name is never read in this module.
     model_params = resolved_config.get("model_params", {}) or {}
 
     # Extract tone_profile_source_node_id from resolved config
@@ -431,8 +441,6 @@ def agent_node_factory(
         # turns ``current_draft`` into a garbage dump.  The Builder reads
         # ``latest_draft`` for the iterative state and ``zero_draft`` for
         # the first iteration — neither benefits from this concatenation.
-        _max_draft_len = 50000
-        _trunc_warn = "\n\n[… content truncated …]\n\n"
         is_transactional = state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING
         state_update: dict = {
             "node_outputs": [output],
@@ -441,11 +449,11 @@ def agent_node_factory(
         if not is_transactional:
             existing_draft = state.get("current_draft", "")
             new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
-            if len(new_draft) > _max_draft_len:
-                tail_target = _max_draft_len - len(_trunc_warn)
+            if len(new_draft) > _MAX_DRAFT_LEN:
+                tail_target = _MAX_DRAFT_LEN - len(_DRAFT_TRUNCATION_MARKER)
                 head = new_draft[: tail_target // 2]
                 tail = new_draft[-(tail_target // 2) :]
-                new_draft = head + _trunc_warn + tail
+                new_draft = head + _DRAFT_TRUNCATION_MARKER + tail
             state_update["current_draft"] = new_draft
 
         # --- Transactional Drafting: populate domain-specific state keys ---
