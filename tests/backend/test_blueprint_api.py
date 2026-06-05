@@ -650,9 +650,7 @@ def _mock_resolve_role_type(role_type_id: str):
 @pytest.fixture(autouse=True)
 def _patch_compiler_module_lookups(request):
     """Auto-patch module lookups for compiler tests only."""
-    if request.node.get_closest_marker("compiler") is not None or (
-        hasattr(request, "cls") and request.cls is TestCompilerAPI
-    ):
+    if request.node.get_closest_marker("compiler") is not None or (hasattr(request, "cls") and request.cls is TestCompilerAPI):
         with (
             patch(
                 "backend.workflow.workflow_compiler.resolve_role_definition",

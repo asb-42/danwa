@@ -128,9 +128,7 @@ class TestModuleAwarePersona:
 
     @patch("backend.workflow.legacy_nodes._get_prompt_service")
     @patch("backend.workflow.legacy_nodes._get_profile_service")
-    def test_module_id_uses_composer_service(
-        self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock
-    ) -> None:
+    def test_module_id_uses_composer_service(self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock) -> None:
         """When persona_id is a UUID, ComposerService should be used."""
         module_id = str(uuid4())
         composed_prompt = "## Agent Core\n\nYou are an analyst."
@@ -158,9 +156,7 @@ class TestModuleAwarePersona:
         mock_composer.compose.assert_called_once()
 
     @patch("backend.workflow.legacy_nodes._get_prompt_service")
-    def test_legacy_persona_id_falls_through_to_generic(
-        self, mock_prompt_svc: MagicMock
-    ) -> None:
+    def test_legacy_persona_id_falls_through_to_generic(self, mock_prompt_svc: MagicMock) -> None:
         """When persona_id is NOT a UUID, it falls through to the generic fallback."""
         persona_ids = {"strategist": "persona-legacy-1"}
         state: dict = {"context": "Test"}
@@ -182,9 +178,7 @@ class TestModuleAwarePersona:
 
     @patch("backend.workflow.legacy_nodes._get_prompt_service")
     @patch("backend.workflow.legacy_nodes._get_profile_service")
-    def test_prompt_service_template_takes_priority(
-        self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock
-    ) -> None:
+    def test_prompt_service_template_takes_priority(self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock) -> None:
         """When PromptService has a template, it should be used regardless of persona_ids."""
         module_id = str(uuid4())
         persona_ids = {"strategist": module_id}
@@ -208,9 +202,7 @@ class TestModuleAwarePersona:
 
     @patch("backend.workflow.legacy_nodes._get_prompt_service")
     @patch("backend.workflow.legacy_nodes._get_profile_service")
-    def test_generic_fallback_when_no_template_no_persona(
-        self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock
-    ) -> None:
+    def test_generic_fallback_when_no_template_no_persona(self, mock_profile_svc: MagicMock, mock_prompt_svc: MagicMock) -> None:
         """When no template and no persona match, generic fallback should be used."""
         persona_ids: dict[str, str] = {}
         state: dict = {"context": "Test"}

@@ -43,7 +43,6 @@ class ComposerService:
     into a single system prompt with clear section delimiters.
     """
 
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------

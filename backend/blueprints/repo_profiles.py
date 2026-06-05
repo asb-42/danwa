@@ -114,4 +114,3 @@ class ProfileRepository:
             a2a_config=json.loads(row["a2a_config_json"]) if "a2a_config_json" in row.keys() and row["a2a_config_json"] else {},
             service_eligible=row["service_eligible"] if "service_eligible" in row.keys() else True,
         )
-

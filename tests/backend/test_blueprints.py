@@ -773,12 +773,15 @@ class TestCompilerService:
     @pytest.fixture(autouse=True)
     def _patch_module_lookups(self):
         """Auto-patch module lookups with test stubs."""
-        with patch(
-            "backend.blueprints.compiler.resolve_role_definition",
-            side_effect=_mock_resolve_role_definition,
-        ), patch(
-            "backend.blueprints.compiler.resolve_role_type",
-            side_effect=_mock_resolve_role_type,
+        with (
+            patch(
+                "backend.blueprints.compiler.resolve_role_definition",
+                side_effect=_mock_resolve_role_definition,
+            ),
+            patch(
+                "backend.blueprints.compiler.resolve_role_type",
+                side_effect=_mock_resolve_role_type,
+            ),
         ):
             yield
 
@@ -1278,12 +1281,15 @@ class TestSteigerungsrollen:
             execution_order=["n1"],
         )
         compiler = CompilerService(repo)
-        with patch(
-            "backend.blueprints.compiler.resolve_role_definition",
-            side_effect=_mock_resolve_role_definition,
-        ), patch(
-            "backend.blueprints.compiler.resolve_role_type",
-            side_effect=_mock_resolve_role_type,
+        with (
+            patch(
+                "backend.blueprints.compiler.resolve_role_definition",
+                side_effect=_mock_resolve_role_definition,
+            ),
+            patch(
+                "backend.blueprints.compiler.resolve_role_type",
+                side_effect=_mock_resolve_role_type,
+            ),
         ):
             result = compiler.compile(wf)
 

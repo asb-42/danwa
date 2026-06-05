@@ -60,24 +60,31 @@ def _mock_resolve_role_type(role_type_id: str):
 @pytest.fixture(autouse=True)
 def _patch_module_lookups():
     """Auto-patch module lookups with test stubs."""
-    with patch(
-        "backend.blueprints.module_lookups.resolve_role_definition",
-        side_effect=_mock_resolve_role_definition,
-    ), patch(
-        "backend.blueprints.module_lookups.resolve_role_type",
-        side_effect=_mock_resolve_role_type,
-    ), patch(
-        "backend.blueprints.compiler.resolve_role_definition",
-        side_effect=_mock_resolve_role_definition,
-    ), patch(
-        "backend.blueprints.compiler.resolve_role_type",
-        side_effect=_mock_resolve_role_type,
-    ), patch(
-        "backend.workflow.workflow_compiler.resolve_role_definition",
-        side_effect=_mock_resolve_role_definition,
-    ), patch(
-        "backend.workflow.workflow_compiler.resolve_role_type",
-        side_effect=_mock_resolve_role_type,
+    with (
+        patch(
+            "backend.blueprints.module_lookups.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+        patch(
+            "backend.blueprints.module_lookups.resolve_role_type",
+            side_effect=_mock_resolve_role_type,
+        ),
+        patch(
+            "backend.blueprints.compiler.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+        patch(
+            "backend.blueprints.compiler.resolve_role_type",
+            side_effect=_mock_resolve_role_type,
+        ),
+        patch(
+            "backend.workflow.workflow_compiler.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+        patch(
+            "backend.workflow.workflow_compiler.resolve_role_type",
+            side_effect=_mock_resolve_role_type,
+        ),
     ):
         yield
 

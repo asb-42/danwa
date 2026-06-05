@@ -1064,14 +1064,8 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                 "FROM _ab_old"
             )
             conn.execute("DROP TABLE _ab_old")
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_agent_blueprints_llm "
-                "ON agent_blueprints (llm_profile_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_agent_blueprints_role "
-                "ON agent_blueprints (role_definition_id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_blueprints_llm ON agent_blueprints (llm_profile_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_blueprints_role ON agent_blueprints (role_definition_id)")
 
             # ── Recreate agent_bundles (keep llm_profile_id + tone_profile_id FKs) ──
             conn.execute("ALTER TABLE agent_bundles RENAME TO _bun_old")
@@ -1107,18 +1101,9 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
                 "FROM _bun_old"
             )
             conn.execute("DROP TABLE _bun_old")
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_agent_bundles_llm "
-                "ON agent_bundles (llm_profile_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_agent_bundles_role_type "
-                "ON agent_bundles (role_type_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_agent_bundles_active "
-                "ON agent_bundles (is_active)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_bundles_llm ON agent_bundles (llm_profile_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_bundles_role_type ON agent_bundles (role_type_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_bundles_active ON agent_bundles (is_active)")
 
             # ── Drop legacy tables ──
             conn.execute("DROP TABLE IF EXISTS prompt_templates")
@@ -1127,9 +1112,9 @@ def run_migrations(db_path: Path | str = _DEFAULT_DB_PATH) -> None:
 
             conn.execute("PRAGMA foreign_keys=ON")
             _record_version(
-                conn, 33,
-                "Drop legacy role_types, role_definitions, prompt_templates; "
-                "remove FK constraints from agent_blueprints and agent_bundles",
+                conn,
+                33,
+                "Drop legacy role_types, role_definitions, prompt_templates; remove FK constraints from agent_blueprints and agent_bundles",
             )
             conn.commit()
             logger.info("Migration v33 applied successfully")

@@ -76,9 +76,7 @@ def resolve_role_definition(role_def_id: str) -> RoleDefinition | None:
                     tags=persona.get("tags", []),
                 )
     except Exception:
-        logger.debug(
-            "Module lookup for RoleDefinition '%s' failed", role_def_id, exc_info=True
-        )
+        logger.debug("Module lookup for RoleDefinition '%s' failed", role_def_id, exc_info=True)
     return None
 
 
@@ -110,7 +108,5 @@ def resolve_prompt_template(template_id: str) -> PromptTemplate | None:
                     tags=pt.get("tags", []),
                 )
     except Exception:
-        logger.debug(
-            "Module lookup for PromptTemplate '%s' failed", template_id, exc_info=True
-        )
+        logger.debug("Module lookup for PromptTemplate '%s' failed", template_id, exc_info=True)
     return None
