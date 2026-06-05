@@ -1123,8 +1123,8 @@ class UITranslationService:
             seen.add(loc)
 
         # 2. Language-pack modules (have langpack:* namespace entries in DB)
-        #    Only include locales whose module is enabled in module_registry.
-        disabled_modules: set[str] = set()
+        #    Only include locales whose module is explicitly enabled in module_registry.
+        enabled_modules: set[str] = set()
         try:
             import sqlite3
 
@@ -1132,8 +1132,8 @@ class UITranslationService:
             if blueprints_db.exists():
                 bp_conn = sqlite3.connect(str(blueprints_db), timeout=5.0)
                 bp_conn.row_factory = sqlite3.Row
-                bp_rows = bp_conn.execute("SELECT id FROM module_registry WHERE enabled = 0").fetchall()
-                disabled_modules = {row["id"] for row in bp_rows}
+                bp_rows = bp_conn.execute("SELECT id FROM module_registry WHERE enabled = 1").fetchall()
+                enabled_modules = {row["id"] for row in bp_rows}
                 bp_conn.close()
         except Exception:
             logger.debug("Could not read module_registry for locale filtering", exc_info=True)
@@ -1149,7 +1149,7 @@ class UITranslationService:
             # Extract module_id from namespace "langpack:{module_id}"
             ns = row["namespace"] or ""
             module_id = ns.removeprefix("langpack:")
-            if module_id in disabled_modules:
+            if module_id not in enabled_modules:
                 continue
             result.append(
                 {
