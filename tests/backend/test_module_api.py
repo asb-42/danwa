@@ -332,7 +332,7 @@ class TestValidateModule:
 
 
 class TestTranslateModule:
-    """POST /api/v1/modules/{module_id}/translate"""
+    """POST /api/v1/translation/{module_id}/translate"""
 
     def test_translate_success(self):
         client, _ = _make_app_with_service()
@@ -346,7 +346,7 @@ class TestTranslateModule:
         )
 
         response = client.post(
-            "/api/v1/modules/danwa-translate-test/translate",
+            "/api/v1/translation/danwa-translate-test/translate",
             json={
                 "target_language": "de",
                 "force": False,
@@ -359,7 +359,7 @@ class TestTranslateModule:
 
 
 class TestTranslationStatus:
-    """GET /api/v1/modules/{module_id}/translations"""
+    """GET /api/v1/translation/{module_id}/status"""
 
     def test_translation_status(self):
         client, _ = _make_app_with_service()
@@ -372,13 +372,13 @@ class TestTranslationStatus:
             },
         )
         client.post(
-            "/api/v1/modules/danwa-trans-status/translate",
+            "/api/v1/translation/danwa-trans-status/translate",
             json={
                 "target_language": "de",
             },
         )
 
-        response = client.get("/api/v1/modules/danwa-trans-status/translations")
+        response = client.get("/api/v1/translation/danwa-trans-status/status")
         assert response.status_code == 200
         data = response.json()
         assert "module_id" in data

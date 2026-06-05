@@ -21,7 +21,6 @@ from fastapi.testclient import TestClient
 from backend.blueprints.models import (
     AgentBlueprint,
     BlueprintLLMProfile,
-    RoleDefinition,
 )
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
@@ -52,15 +51,6 @@ def sample_blueprint(repo: BlueprintRepository) -> AgentBlueprint:
         max_tokens=2048,
     )
     repo.save_llm_profile(profile)
-
-    role = RoleDefinition(
-        id="role-1",
-        name="Strategist",
-        role="strategist",
-        description="Strategic analyst",
-        consensus_threshold=0.7,
-    )
-    repo.save_role_definition(role)
 
     blueprint = AgentBlueprint(
         id="bp-1",

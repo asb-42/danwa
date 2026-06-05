@@ -20,7 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.deps import get_blueprint_repository
-from backend.blueprints.models import AgentBlueprint, BlueprintLLMProfile, RoleDefinition
+from backend.blueprints.models import AgentBlueprint, BlueprintLLMProfile
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
     TemplatePlaceholder,
@@ -88,14 +88,6 @@ def sample_blueprint(repo) -> AgentBlueprint:
         model="gpt-4",
     )
     repo.save_llm_profile(llm)
-
-    role = RoleDefinition(
-        id="role-strategist",
-        name="Strategist",
-        role="strategist",
-        role_type_id="strategist",
-    )
-    repo.save_role_definition(role)
 
     bp = AgentBlueprint(
         id="bp-strategist",

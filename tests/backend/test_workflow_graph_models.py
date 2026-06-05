@@ -22,8 +22,6 @@ from backend.blueprints.migrations import run_migrations
 from backend.blueprints.models import (
     AgentBlueprint,
     BlueprintLLMProfile,
-    PromptTemplate,
-    RoleDefinition,
 )
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
@@ -56,28 +54,11 @@ def sample_blueprint(repo: BlueprintRepository) -> AgentBlueprint:
     )
     repo.save_llm_profile(profile)
 
-    template = PromptTemplate(
-        id="pt-1",
-        name="Test Prompt",
-        role="strategist",
-        content="You are a strategist.",
-    )
-    repo.save_prompt_template(template)
-
-    role_def = RoleDefinition(
-        id="rd-1",
-        name="Strategist Role",
-        role="strategist",
-        prompt_template_id="pt-1",
-    )
-    repo.save_role_definition(role_def)
-
     blueprint = AgentBlueprint(
         id="bp-1",
         name="Test Blueprint",
         llm_profile_id="llm-1",
         role_definition_id="rd-1",
-        prompt_template_id="pt-1",
     )
     repo.save_blueprint(blueprint)
     return blueprint
@@ -532,6 +513,20 @@ class TestCompilerValidation:
 
     def test_valid_workflow_passes(self, repo: BlueprintRepository, sample_blueprint):
         """A valid workflow should pass compilation."""
+        from unittest.mock import patch
+
+        from backend.blueprints.models import RoleDefinition, RoleType
+
+        mock_role_def = RoleDefinition(
+            id="rd-1",
+            name="Strategist Role",
+            role_type_id="strategist",
+        )
+        mock_role_type = RoleType(
+            id="strategist",
+            name="Strategist",
+            description="",
+        )
         wf = WorkflowDefinition(
             name="Valid",
             nodes=[
@@ -545,7 +540,17 @@ class TestCompilerValidation:
         repo.save_workflow_definition(wf)
 
         compiler = CompilerService(repo)
-        result = compiler.compile(wf)
+        with (
+            patch(
+                "backend.blueprints.compiler.resolve_role_definition",
+                return_value=mock_role_def,
+            ),
+            patch(
+                "backend.blueprints.compiler.resolve_role_type",
+                return_value=mock_role_type,
+            ),
+        ):
+            result = compiler.compile(wf)
         assert result.is_valid
         assert len(result.errors) == 0
 
