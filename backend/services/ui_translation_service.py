@@ -466,9 +466,18 @@ class UITranslationService:
             return {}
 
         result = {}
-        installed = self.get_installed_locales()
-        for loc in installed:
-            locale = loc["code"]
+        # Discover all locales that have translations in the DB,
+        # regardless of module enabled status — coverage should be comprehensive.
+        all_db_locales: set[str] = set()
+        try:
+            conn = self._get_conn()
+            rows = conn.execute("SELECT DISTINCT locale FROM ui_translations").fetchall()
+            conn.close()
+            all_db_locales = {r["locale"] for r in rows}
+        except Exception:
+            logger.debug("Could not query ui_translations for locale list", exc_info=True)
+        for loc_code in sorted(all_db_locales | set(bundled.keys())):
+            locale = loc_code
             if locale in bundled:
                 bundle_keys = set(bundled[locale].keys())
                 translated = len(bundle_keys & en_keys)
@@ -487,7 +496,7 @@ class UITranslationService:
                 "total_keys": len(en_keys),
                 "translated": translated,
                 "coverage_pct": round(coverage, 1),
-                "source": loc["source"],
+                "source": "bundled" if locale in bundled else "db",
             }
 
         return result
