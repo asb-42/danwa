@@ -13,9 +13,11 @@ Verifies that:
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
+from backend.blueprints.models import AgentBlueprint, BlueprintLLMProfile, RoleDefinition
 from backend.blueprints.repository import BlueprintRepository
 from backend.blueprints.workflow_models import (
     TerminationCondition,
@@ -25,6 +27,49 @@ from backend.blueprints.workflow_models import (
 )
 from backend.workflow.workflow_compiler import WorkflowCompiler
 from backend.workflow.workflow_routers import route_decision
+
+# ---------------------------------------------------------------------------
+# Module-lookup mocks — main's P3 refactor moved RoleDefinition / RoleType
+# resolution from BlueprintRepository to module_lookups.resolve_*().  These
+# test stubs replace the real module lookups with in-memory dicts.
+# ---------------------------------------------------------------------------
+
+
+_ROLE_DEFINITIONS: dict[str, RoleDefinition] = {
+    "role-1": RoleDefinition(
+        id="role-1",
+        name="Strategist",
+        role="strategist",
+        description="Strategic analyst",
+        consensus_threshold=0.7,
+    ),
+}
+
+
+def _mock_resolve_role_definition(role_def_id: str) -> RoleDefinition | None:
+    return _ROLE_DEFINITIONS.get(role_def_id)
+
+
+@pytest.fixture(autouse=True)
+def _patch_module_lookups():
+    """Auto-patch module_lookups / compiler / workflow_compiler
+    resolve_*  functions with the in-memory test stubs.
+
+    The P3 refactor removed ``BlueprintRepository.save_role_definition``
+    and friends, so the compiler now reads role definitions via
+    ``backend.blueprints.module_lookups.resolve_role_definition``.
+    """
+    with (
+        patch(
+            "backend.blueprints.module_lookups.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+        patch(
+            "backend.workflow.workflow_compiler.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+    ):
+        yield
 
 # ---------------------------------------------------------------------------
 # route_decision — verdict_map parameter
@@ -166,13 +211,14 @@ class TestCompilerDecisionMapping:
 
     @pytest.fixture()
     def sample_blueprint_id(self, repo: BlueprintRepository) -> str:
-        """Create a sample blueprint and return its id."""
-        from backend.blueprints.models import (
-            AgentBlueprint,
-            BlueprintLLMProfile,
-            RoleDefinition,
-        )
+        """Create a sample blueprint and return its id.
 
+        The RoleDefinition itself is no longer saved to the
+        BlueprintRepository (P3 refactor) — the compiler resolves it
+        via ``module_lookups.resolve_role_definition`` which is
+        patched by the autouse ``_patch_module_lookups`` fixture to
+        return from the ``_ROLE_DEFINITIONS`` dict.
+        """
         profile = BlueprintLLMProfile(
             id="prof-1",
             name="Test Profile",
@@ -184,15 +230,6 @@ class TestCompilerDecisionMapping:
             max_tokens=2048,
         )
         repo.save_llm_profile(profile)
-
-        role = RoleDefinition(
-            id="role-1",
-            name="Strategist",
-            role="strategist",
-            description="Strategic analyst",
-            consensus_threshold=0.7,
-        )
-        repo.save_role_definition(role)
 
         blueprint = AgentBlueprint(
             id="bp-1",

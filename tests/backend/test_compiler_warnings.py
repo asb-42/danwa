@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -29,6 +30,45 @@ from backend.blueprints.workflow_models import (
 )
 from backend.workflow.workflow_compiler import WorkflowCompiler
 
+# ---------------------------------------------------------------------------
+# Module-lookup mocks — see tests/backend/test_decision_mapping.py for
+# the rationale.  The P3 refactor moved RoleDefinition / RoleType
+# resolution from BlueprintRepository to module_lookups.resolve_*().
+# ---------------------------------------------------------------------------
+
+
+_ROLE_DEFINITIONS: dict[str, RoleDefinition] = {
+    "role-1": RoleDefinition(
+        id="role-1",
+        name="Strategist",
+        role="strategist",
+        description="Strategic analyst",
+        consensus_threshold=0.7,
+    ),
+}
+
+
+def _mock_resolve_role_definition(role_def_id: str) -> RoleDefinition | None:
+    return _ROLE_DEFINITIONS.get(role_def_id)
+
+
+@pytest.fixture(autouse=True)
+def _patch_module_lookups():
+    """Auto-patch module_lookups / compiler / workflow_compiler
+    resolve_*  functions with the in-memory test stubs.
+    """
+    with (
+        patch(
+            "backend.blueprints.module_lookups.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+        patch(
+            "backend.workflow.workflow_compiler.resolve_role_definition",
+            side_effect=_mock_resolve_role_definition,
+        ),
+    ):
+        yield
+
 
 @pytest.fixture()
 def repo(tmp_path: Path) -> BlueprintRepository:
@@ -37,6 +77,9 @@ def repo(tmp_path: Path) -> BlueprintRepository:
 
 @pytest.fixture()
 def sample_blueprint_id(repo: BlueprintRepository) -> str:
+    """Save LLM profile + blueprint; RoleDefinition is resolved via the
+    autouse ``_patch_module_lookups`` fixture's stub.
+    """
     profile = BlueprintLLMProfile(
         id="prof-1",
         name="Test Profile",
@@ -48,14 +91,6 @@ def sample_blueprint_id(repo: BlueprintRepository) -> str:
         max_tokens=2048,
     )
     repo.save_llm_profile(profile)
-    role = RoleDefinition(
-        id="role-1",
-        name="Strategist",
-        role="strategist",
-        description="Strategic analyst",
-        consensus_threshold=0.7,
-    )
-    repo.save_role_definition(role)
     blueprint = AgentBlueprint(
         id="bp-1",
         name="Strategist Agent",
