@@ -189,19 +189,30 @@ def instantiate_workflow_template(
         raise HTTPException(status_code=422, detail=str(exc))
 
     # --- Step 3: Validate blueprint_ref placeholders ---
+    # Collect valid IDs from both DB blueprints and module agent cores
+    _module_core_ids: set[str] = set()
+    try:
+        from backend.services.module_profile_sync import get_agent_personas_from_modules
+
+        for mp in get_agent_personas_from_modules():
+            _module_core_ids.add(mp.get("id", ""))
+    except Exception:
+        pass
+
     for ph in template.placeholders:
         if ph.type == "blueprint_ref":
             value = body.placeholder_values.get(ph.key, ph.default)
             if value is not None:
-                bp = repo.get_blueprint(str(value))
-                if bp is None:
+                value_str = str(value)
+                bp = repo.get_blueprint(value_str)
+                if bp is None and value_str not in _module_core_ids:
                     raise HTTPException(
                         status_code=422,
                         detail={
                             "error": "invalid_blueprint_ref",
                             "placeholder": ph.key,
-                            "value": str(value),
-                            "message": f"AgentBlueprint '{value}' not found for placeholder '{ph.key}'",
+                            "value": value_str,
+                            "message": f"AgentBlueprint or Agent Core '{value_str}' not found for placeholder '{ph.key}'",
                         },
                     )
 

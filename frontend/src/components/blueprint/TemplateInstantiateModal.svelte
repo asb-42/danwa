@@ -9,6 +9,7 @@
   import {
     instantiateWorkflowTemplate,
     listAgentBlueprints,
+    listComposerComponents,
     getWorkflowTemplate,
   } from '../../lib/blueprint/api.js';
 
@@ -57,7 +58,25 @@
   async function loadBlueprints() {
     blueprintsLoading = true;
     try {
-      blueprints = await listAgentBlueprints({ active_only: false });
+      const [dbBlueprints, components] = await Promise.all([
+        listAgentBlueprints({ active_only: false }).catch(() => []),
+        listComposerComponents().catch(() => ({ agent_cores: [] })),
+      ]);
+      // Merge DB blueprints with module agent cores
+      const dbItems = (dbBlueprints || []).map((bp) => ({
+        id: bp.id,
+        name: bp.name,
+        source: 'blueprint',
+      }));
+      const moduleItems = (components.agent_cores || []).map((ac) => ({
+        id: ac.id,
+        name: ac.name || ac.id,
+        source: 'module',
+      }));
+      // Deduplicate: DB blueprints take precedence
+      const dbIds = new Set(dbItems.map((b) => b.id));
+      const uniqueModules = moduleItems.filter((m) => !dbIds.has(m.id));
+      blueprints = [...dbItems, ...uniqueModules];
     } catch (err) {
       if (import.meta.env.DEV) console.warn('[TemplateInstantiateModal] Failed to load blueprints:', err);
       blueprints = [];
@@ -152,7 +171,7 @@
                 {:else}
                   <option value="">{t('template.instantiate.selectBlueprint')}</option>
                   {#each blueprints as bp}
-                    <option value={bp.id}>{bp.name} ({bp.id})</option>
+                    <option value={bp.id}>{bp.name} ({bp.id}){bp.source === 'module' ? ' ★' : ''}</option>
                   {/each}
                 {/if}
               </select>
