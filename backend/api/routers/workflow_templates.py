@@ -71,9 +71,16 @@ def get_workflow_template(
     template_id: str,
     repo: BlueprintRepository = Depends(get_blueprint_repository),
 ) -> WorkflowTemplate:
-    """Get a single workflow template by ID."""
+    """Get a single workflow template by ID.
+
+    Falls back to module workflow templates if not found in the DB.
+    """
     template = repo.get_workflow_template(template_id)
     if template is None:
+        # Check module workflow templates
+        for mt in get_workflow_templates_from_modules():
+            if mt.get("id") == template_id:
+                return WorkflowTemplate(**mt)
         raise BlueprintNotFoundError("WorkflowTemplate", template_id)
     return template
 
