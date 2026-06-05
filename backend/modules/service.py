@@ -824,7 +824,7 @@ class ModuleService:
             language=manifest_data.get("language", "en"),
             checksum=manifest_data.get("checksum", ""),
             installed=True,
-            enabled=db_info.get("enabled", True) if db_info else True,
+            enabled=bool(db_info.get("enabled", True)) if db_info else True,
             installed_at=db_info.get("installed_at") if db_info else None,
             created_at=manifest_created,
             updated_at=manifest_updated or (db_info.get("updated_at") if db_info else None),

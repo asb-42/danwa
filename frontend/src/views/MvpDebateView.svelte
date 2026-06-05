@@ -99,15 +99,19 @@
   let cumulativeTokens = $state(0);
   let processingStartTime = $state(null);
   let processingElapsed = $state(0);
-  let processingTimer = $state(null);
+  // NOTE: timer IDs are plain variables (not $state) on purpose.
+  // They are setInterval handles, not UI state. Declaring them as $state
+  // would make the HITL-polling $effect (which both reads and writes
+  // hitlPollTimer) re-run on every assignment → effect_update_depth_exceeded.
+  let processingTimer;
   let workflowPhase = $state(null);
   let workflowStartTime = $state(null);
   let workflowElapsed = $state(0);
-  let workflowTimer = $state(null);
+  let workflowTimer;
 
   let startTime = $state(null);
-  let timerInterval = $state(null);
-  let hitlPollTimer = $state(null);
+  let timerInterval;
+  let hitlPollTimer;
 
   $effect(() => {
     Promise.all([
