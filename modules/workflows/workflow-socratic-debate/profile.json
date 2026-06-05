@@ -1,56 +1,93 @@
 {
+  "id": "workflow-socratic-debate",
   "name": "Socratic Debate",
   "description": "A debate workflow using the Socratic method for deep examination of claims.",
-  "version": "1.0.0",
-  "nodes": [
-    {
-      "id": "strategist",
-      "type": "agent",
-      "label": "Socratic Strategist",
-      "agent_blueprint_id": null,
-      "config": {
-        "role": "strategist",
-        "pattern": "socratic"
+  "category": "system",
+  "tags": ["socratic", "debate", "structured", "inquiry"],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Claim / Thesis",
+        "position": { "x": 100, "y": 200 }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Frame the Inquiry",
+        "position": { "x": 350, "y": 200 }
+      },
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Thesis Holder",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "position": { "x": 600, "y": 100 }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Socratic Examiner",
+        "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "position": { "x": 600, "y": 300 }
+      },
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Examination Judge",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": { "x": 900, "y": 200 }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Examination Complete?",
+        "config": { "condition": "consensus_reached" },
+        "position": { "x": 900, "y": 400 }
       }
+    ],
+    "edges": [
+      { "id": "e1", "source": "input-1", "target": "init-1", "type": "sequential" },
+      { "id": "e2", "source": "init-1", "target": "strategist-1", "type": "sequential" },
+      { "id": "e3", "source": "init-1", "target": "critic-1", "type": "sequential" },
+      { "id": "e4", "source": "strategist-1", "target": "moderator-1", "type": "sequential" },
+      { "id": "e5", "source": "critic-1", "target": "moderator-1", "type": "sequential" },
+      { "id": "e6", "source": "moderator-1", "target": "gate-1", "type": "sequential" },
+      { "id": "e7", "source": "gate-1", "target": "strategist-1", "type": "feedback", "label": "deeper examination" },
+      { "id": "e8", "source": "gate-1", "target": "moderator-1", "type": "conditional", "condition": "consensus_reached", "label": "examination complete" }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      { "type": "max_rounds", "value": "{{max_rounds}}", "description": "Maximum Socratic examination rounds" },
+      { "type": "consensus_reached", "value": 0.8, "description": "Examination completeness threshold" }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "strategist_blueprint_id",
+      "type": "blueprint_ref",
+      "default": "strategist-default-en",
+      "description": "Agent Blueprint for the Thesis Holder (proposes and defends the claim)"
     },
     {
-      "id": "critic",
-      "type": "agent",
-      "label": "Critical Examiner",
-      "agent_blueprint_id": null,
-      "config": {
-        "role": "critic",
-        "pattern": "socratic"
-      }
-    }
-  ],
-  "edges": [
-    {
-      "id": "e1",
-      "source": "strategist",
-      "target": "critic",
-      "type": "sequential"
+      "key": "critic_blueprint_id",
+      "type": "blueprint_ref",
+      "default": "socratic-questioner-default",
+      "description": "Agent Blueprint for the Socratic Examiner (challenges through questions)"
     },
     {
-      "id": "e2",
-      "source": "critic",
-      "target": "strategist",
-      "type": "sequential"
-    }
-  ],
-  "entry_point": "strategist",
-  "termination_conditions": [
-    {
-      "type": "max_rounds",
-      "value": 4
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "default": "moderator-default-en",
+      "description": "Agent Blueprint for the Examination Judge (evaluates thoroughness)"
     },
     {
-      "type": "consensus",
-      "threshold": 0.8
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 4,
+      "description": "Maximum Socratic examination rounds"
     }
   ],
-  "input_config": {
-    "case_text": true,
-    "documents": false
-  }
+  "is_system": true
 }
