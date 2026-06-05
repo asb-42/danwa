@@ -137,16 +137,19 @@
     {
       "key": "strategist_blueprint_id",
       "type": "blueprint_ref",
+      "default": "strategist-default-en",
       "description": "Agent Blueprint for the Interviewer (Strategist)"
     },
     {
       "key": "analyst_blueprint_id",
       "type": "blueprint_ref",
+      "default": "analyst-default",
       "description": "Agent Blueprint for the Deep Analyst"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
+      "default": "moderator-default-en",
       "description": "Agent Blueprint for the Summarizer (Moderator)"
     },
     {

@@ -145,16 +145,19 @@
     {
       "key": "advocate_blueprint_id",
       "type": "blueprint_ref",
-      "description": "Agent Blueprint for the Advocate"
+      "default": "strategist-default-en",
+      "description": "Agent Blueprint for the Advocate (Strategist role)"
     },
     {
       "key": "adversary_blueprint_id",
       "type": "blueprint_ref",
-      "description": "Agent Blueprint for the Adversary"
+      "default": "critic-default-en",
+      "description": "Agent Blueprint for the Adversary (Critic role)"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
+      "default": "moderator-default-en",
       "description": "Agent Blueprint for the Referee/Moderator"
     },
     {

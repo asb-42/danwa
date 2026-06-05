@@ -65,16 +65,19 @@
     {
       "key": "strategist_blueprint_id",
       "type": "blueprint_ref",
+      "default": "strategist-default-en",
       "description": "Agent Blueprint for principled ethical analysis"
     },
     {
       "key": "critic_blueprint_id",
       "type": "blueprint_ref",
+      "default": "critic-default-en",
       "description": "Agent Blueprint for categorical imperative critique"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
+      "default": "moderator-default-en",
       "description": "Agent Blueprint for synthesis and conclusion"
     },
     {

@@ -159,21 +159,25 @@
     {
       "key": "position_a_blueprint_id",
       "type": "blueprint_ref",
-      "description": "Agent Blueprint for Position A"
+      "default": "strategist-default-en",
+      "description": "Agent Blueprint for Position A (Strategist role)"
     },
     {
       "key": "position_b_blueprint_id",
       "type": "blueprint_ref",
-      "description": "Agent Blueprint for Position B"
+      "default": "critic-default-en",
+      "description": "Agent Blueprint for Position B (Critic role)"
     },
     {
       "key": "optimizer_blueprint_id",
       "type": "blueprint_ref",
+      "default": "optimizer-default-en",
       "description": "Agent Blueprint for the Optimizer/Mediator"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
+      "default": "moderator-default-en",
       "description": "Agent Blueprint for the Final Agreement Moderator"
     },
     {

@@ -66,21 +66,25 @@
     {
       "key": "strategist_blueprint_id",
       "type": "blueprint_ref",
+      "default": "strategist-default-en",
       "description": "Agent Blueprint for the Strategist role"
     },
     {
       "key": "critic_blueprint_id",
       "type": "blueprint_ref",
+      "default": "critic-default-en",
       "description": "Agent Blueprint for the Critic role"
     },
     {
       "key": "optimizer_blueprint_id",
       "type": "blueprint_ref",
+      "default": "optimizer-default-en",
       "description": "Agent Blueprint for the Optimizer role"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
+      "default": "moderator-default-en",
       "description": "Agent Blueprint for the Moderator role"
     },
     {
