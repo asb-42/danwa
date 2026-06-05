@@ -7,7 +7,7 @@ produces a compiled LangGraph graph that can be executed via ``graph.ainvoke()``
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 from langgraph.graph import END, StateGraph
@@ -169,8 +169,9 @@ class WorkflowCompiler:
 
         # --- Step 4: Build StateGraph ---
         try:
-            graph = self._build_graph(workflow, node_map, resolved_configs)
+            graph, graph_warnings = self._build_graph(workflow, node_map, resolved_configs)
             result.graph = graph
+            result.warnings.extend(graph_warnings)
         except Exception as exc:
             result.errors.append(f"Graph compilation failed: {exc}")
             logger.error("Workflow compilation failed: %s", exc, exc_info=True)
@@ -291,17 +292,21 @@ class WorkflowCompiler:
                 adj[edge.source].append(edge.target)
                 in_degree[edge.target] = in_degree.get(edge.target, 0) + 1
 
-        # Kahn's algorithm
-        queue = [nid for nid in node_ids if in_degree.get(nid, 0) == 0]
+        # Kahn's algorithm — use deque for O(1) popleft instead of O(n) list.pop(0).
+        # M2 fix (Sprint 33): scales linearly for large workflows.
+        queue: deque[str] = deque(
+            nid for nid in node_ids if in_degree.get(nid, 0) == 0
+        )
         result: list[str] = []
 
         while queue:
             # Prefer entry_point first
             if workflow.entry_point in queue:
                 current = workflow.entry_point
+                # O(n) — but entry_point is at most one node per call
                 queue.remove(current)
             else:
-                current = queue.pop(0)
+                current = queue.popleft()
 
             result.append(current)
             for neighbor in adj.get(current, []):
@@ -321,9 +326,18 @@ class WorkflowCompiler:
         workflow: WorkflowDefinition,
         node_map: dict[str, WorkflowNode],
         resolved_configs: dict[str, dict],
-    ) -> object:
-        """Build and compile the LangGraph StateGraph."""
+    ) -> tuple[object, list[str]]:
+        """Build and compile the LangGraph StateGraph.
+
+        Returns ``(graph, warnings)`` where ``warnings`` collects
+        non-fatal issues encountered during edge construction
+        (e.g. a non-gate node with multiple non-feedback outgoing
+        edges — see M1 fix in Sprint 33).  Callers should surface
+        these to the workflow author so silent-fallback issues
+        don't go unnoticed.
+        """
         graph = StateGraph(WorkflowState)
+        warnings: list[str] = []
 
         # --- Resolve injects_config edges ---
         # For each agent node, find if a tone_profile node injects config into it
@@ -525,12 +539,14 @@ class WorkflowCompiler:
             elif len(non_feedback) > 1:
                 # Multiple targets without gate — use first as primary
                 graph.add_edge(node.id, non_feedback[0].target)
-                logger.warning(
-                    "Node '%s' has %d non-feedback outgoing edges but is not a gate. Using first target '%s'.",
-                    node.id,
-                    len(non_feedback),
-                    non_feedback[0].target,
+                msg = (
+                    f"Node '{node.id}' has {len(non_feedback)} non-feedback "
+                    f"outgoing edges but is not a gate. Using first target "
+                    f"'{non_feedback[0].target}' — other targets are ignored. "
+                    f"Wrap in a wf-gate node or split into multiple nodes."
                 )
+                logger.warning(msg)
+                warnings.append(msg)
 
         # --- Ensure terminal nodes connect to END ---
         # Find nodes with no outgoing edges that aren't already connected
@@ -547,7 +563,7 @@ class WorkflowCompiler:
             entry_point,
         )
 
-        return graph.compile()
+        return graph.compile(), warnings
 
     def _create_node_function(
         self,
