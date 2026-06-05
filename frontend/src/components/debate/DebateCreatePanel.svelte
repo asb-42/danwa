@@ -6,7 +6,7 @@
    */
   import { onMount } from 'svelte';
   import { loading, error, selectedLLMProfile, activeProject, userLanguage } from '../../lib/stores.js';
-  import { createDebate, getDocuments } from '../../lib/api.js';
+  import { createDebate, startDebate, getDocuments } from '../../lib/api.js';
   import { startWorkflow } from '../../lib/workflowExec.js';
   import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
   import { discoverA2A } from '../../lib/a2aApi.js';
@@ -183,11 +183,14 @@
           enable_extra_rounds: enableExtraRounds,
           a2a_agents: validA2AAgents,
         });
+        // The "Create Debate" button starts the debate immediately
+        // (no separate "Start" step in the legacy flow).
+        const started = await startDebate(response.debate_id);
         caseText = '';
         selectedDocumentIds = [];
         ragAutoRetrieve = false;
         a2aAgents = [];
-        onCreated(response);
+        onCreated({ ...response, ...started });
       }
     } catch (err) {
       error.set(err.message);
