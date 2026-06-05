@@ -1142,6 +1142,9 @@ class UITranslationService:
         rows = conn.execute("SELECT DISTINCT locale, namespace FROM ui_translations WHERE namespace LIKE 'langpack:%'").fetchall()
         conn.close()
 
+        # Track locales that belong to disabled langpack modules
+        disabled_locales: set[str] = set()
+
         for row in sorted(rows, key=lambda r: r["locale"]):
             loc = row["locale"]
             if loc in seen:
@@ -1150,6 +1153,7 @@ class UITranslationService:
             ns = row["namespace"] or ""
             module_id = ns.removeprefix("langpack:")
             if module_id not in enabled_modules:
+                disabled_locales.add(loc)
                 continue
             result.append(
                 {
@@ -1162,9 +1166,10 @@ class UITranslationService:
             seen.add(loc)
 
         # 3. Custom registered locales
+        #    Exclude locales that belong to disabled langpack modules.
         for custom in self.get_custom_locales():
             loc = custom["locale"]
-            if loc in seen:
+            if loc in seen or loc in disabled_locales:
                 continue
             result.append(
                 {
