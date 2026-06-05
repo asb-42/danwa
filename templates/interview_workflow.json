@@ -137,19 +137,19 @@
     {
       "key": "strategist_blueprint_id",
       "type": "blueprint_ref",
-      "default": "interviewer-default-en",
+      "default_role": "interviewer",
       "description": "Agent Blueprint for the Interviewer (structured inquiry)"
     },
     {
       "key": "analyst_blueprint_id",
       "type": "blueprint_ref",
-      "default": "interviewee-default-en",
+      "default_role": "interviewee",
       "description": "Agent Blueprint for the Interviewee (knowledgeable subject)"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "moderator-default-en",
+      "default_role": "moderator",
       "description": "Agent Blueprint for the Summarizer (Moderator)"
     },
     {

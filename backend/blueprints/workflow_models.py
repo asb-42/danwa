@@ -386,6 +386,7 @@ class TemplatePlaceholder(BaseModel):
     key: str = Field(..., min_length=1, max_length=100, pattern=r"^[a-z0-9_]+$")
     type: Literal["string", "blueprint_ref", "integer", "float"] = "string"
     default: str | int | float | None = None
+    default_role: str | None = None
     description: str = ""
 
 
@@ -456,20 +457,22 @@ class WorkflowTemplate(BaseModel):
         Raises ValueError if required placeholders are missing.
         """
         # Check for missing required placeholders
+        # A placeholder is optional if it has a default, default_role, or a provided value
         {p.key for p in self.placeholders}
         self.extract_placeholder_keys()
-        required_keys = {p.key for p in self.placeholders if p.default is None}
+        required_keys = {p.key for p in self.placeholders if p.default is None and p.default_role is None}
         missing = required_keys - set(values.keys())
         if missing:
             raise ValueError(f"Missing placeholder values: {sorted(missing)}")
 
-        # Merge defaults with provided values
+        # Merge defaults with provided values (default_role resolved by caller)
         merged: dict[str, Any] = {}
         for p in self.placeholders:
             if p.key in values:
                 merged[p.key] = values[p.key]
             elif p.default is not None:
                 merged[p.key] = p.default
+            # default_role placeholders: caller must have resolved and added to values
 
         # Deep-replace placeholders in the serialized template data
         raw = json.dumps(self.template_data, default=str)

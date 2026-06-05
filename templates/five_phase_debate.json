@@ -236,97 +236,97 @@
     {
       "key": "analyst_blueprint_id",
       "type": "blueprint_ref",
-      "default": "analyst-default",
+      "default_role": "analyst",
       "description": "Agent Blueprint for the Analyst — Problem Framing phase"
     },
     {
       "key": "creative_blueprint_id",
       "type": "blueprint_ref",
-      "default": "creative-thinker-default",
+      "default_role": "creative",
       "description": "Agent Blueprint for the Creative Thinker — Problem Framing phase"
     },
     {
       "key": "socratic_blueprint_id",
       "type": "blueprint_ref",
-      "default": "socratic-questioner-default",
+      "default_role": "socratic-questioner",
       "description": "Agent Blueprint for the Socratic Questioner — Problem Framing phase"
     },
     {
       "key": "strategist_blueprint_id",
       "type": "blueprint_ref",
-      "default": "strategist-default-en",
+      "default_role": "strategist",
       "description": "Agent Blueprint for the Strategist — Position Building phase"
     },
     {
       "key": "expert_blueprint_id",
       "type": "blueprint_ref",
-      "default": "expert-reviewer-default",
+      "default_role": "expert-reviewer",
       "description": "Agent Blueprint for the Expert Reviewer — Position Building phase"
     },
     {
       "key": "steel_manner_blueprint_id",
       "type": "blueprint_ref",
-      "default": "steel-manner-default",
+      "default_role": "steel-manner",
       "description": "Agent Blueprint for the Steel-manner — Position Building phase (steelmans opposing views)"
     },
     {
       "key": "devils_advocate_blueprint_id",
       "type": "blueprint_ref",
-      "default": "devils-advocate-default",
+      "default_role": "devils-advocate",
       "description": "Agent Blueprint for the Devil's Advocate — Stress Testing phase (logical robustness, good faith)"
     },
     {
       "key": "fact_checker_blueprint_id",
       "type": "blueprint_ref",
-      "default": "fact-checker-default",
+      "default_role": "fact-checker",
       "description": "Agent Blueprint for the Fact Checker — Stress Testing phase"
     },
     {
       "key": "troll_blueprint_id",
       "type": "blueprint_ref",
-      "default": "troll-default",
+      "default_role": "troll",
       "description": "Agent Blueprint for the Troll — Stress Testing phase (rhetorical robustness, bad faith, labeled)"
     },
     {
       "key": "mediator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "mediator-default",
+      "default_role": "mediator",
       "description": "Agent Blueprint for the Mediator — Integration phase"
     },
     {
       "key": "ethicist_blueprint_id",
       "type": "blueprint_ref",
-      "default": "ethicist-default",
+      "default_role": "ethicist",
       "description": "Agent Blueprint for the Ethicist — Integration phase"
     },
     {
       "key": "synthesizer_blueprint_id",
       "type": "blueprint_ref",
-      "default": "synthesizer-default",
+      "default_role": "synthesizer",
       "description": "Agent Blueprint for the Synthesizer — Integration phase"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "moderator-default-en",
+      "default_role": "moderator",
       "description": "Agent Blueprint for the Moderator — Closure phase"
     },
     {
       "key": "critic_blueprint_id",
       "type": "blueprint_ref",
-      "default": "critic-default-en",
+      "default_role": "critic",
       "description": "Agent Blueprint for the Critic — Closure phase"
     },
     {
       "key": "optimizer_blueprint_id",
       "type": "blueprint_ref",
-      "default": "optimizer-default-en",
+      "default_role": "optimizer",
       "description": "Agent Blueprint for the Optimizer — Closure phase"
     },
     {
       "key": "orchestrator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "orchestrator-default",
+      "default_role": "orchestrator",
       "description": "Agent Blueprint for the Orchestrator meta-agent — reads debate state, decides which role speaks next"
     },
     {

@@ -5,12 +5,12 @@
   "category": "system",
   "tags": ["drafting", "transactional", "builder", "pragmatist", "critic", "angels-advocate"],
   "placeholders": [
-    { "key": "strategist_blueprint_id", "type": "blueprint_ref", "default": "strategist-default-en", "description": "Strategist that creates the zero draft" },
-    { "key": "critic_blueprint_id", "type": "blueprint_ref", "default": "critic-default-en", "description": "Critic that analyses the draft" },
-    { "key": "angels_advocate_blueprint_id", "type": "blueprint_ref", "default": "expert-reviewer-default", "description": "Angel's Advocate that identifies elements to preserve" },
-    { "key": "builder_blueprint_id", "type": "blueprint_ref", "default": "optimizer-default-en", "description": "Builder that addresses critique" },
-    { "key": "pragmatist_blueprint_id", "type": "blueprint_ref", "default": "analyst-default", "description": "Pragmatist that evaluates feasibility" },
-    { "key": "moderator_blueprint_id", "type": "blueprint_ref", "default": "moderator-default-en", "description": "Moderator that makes the approval decision" }
+    { "key": "strategist_blueprint_id", "type": "blueprint_ref", "default_role": "strategist", "description": "Strategist that creates the zero draft" },
+    { "key": "critic_blueprint_id", "type": "blueprint_ref", "default_role": "critic", "description": "Critic that analyses the draft" },
+    { "key": "angels_advocate_blueprint_id", "type": "blueprint_ref", "default_role": "expert-reviewer", "description": "Angel's Advocate that identifies elements to preserve" },
+    { "key": "builder_blueprint_id", "type": "blueprint_ref", "default_role": "optimizer", "description": "Builder that addresses critique" },
+    { "key": "pragmatist_blueprint_id", "type": "blueprint_ref", "default_role": "analyst", "description": "Pragmatist that evaluates feasibility" },
+    { "key": "moderator_blueprint_id", "type": "blueprint_ref", "default_role": "moderator", "description": "Moderator that makes the approval decision" }
   ],
   "template_data": {
     "nodes": [

@@ -159,19 +159,55 @@ def instantiate_workflow_template(
     """Instantiate a workflow template into a concrete WorkflowDefinition.
 
     1. Load the template.
-    2. Replace all {{key}} placeholders with provided values.
-    3. Validate blueprint_ref placeholders against the catalog.
-    4. Validate the resulting graph structure.
-    5. Create and persist a new WorkflowDefinition.
+    2. Resolve default_role placeholders from installed agent cores.
+    3. Check for missing required placeholders.
+    4. Merge defaults and instantiate.
+    5. Validate blueprint_ref placeholders against the catalog.
+    6. Validate the resulting graph structure.
+    7. Create and persist a new WorkflowDefinition.
     """
     template = repo.get_workflow_template(template_id)
     if template is None:
         raise BlueprintNotFoundError("WorkflowTemplate", template_id)
 
-    # --- Step 1: Check for missing placeholders ---
-    required_keys = {p.key for p in template.placeholders if p.default is None}
-    provided = set(body.placeholder_values.keys())
+    # --- Step 1: Load agent cores from modules (for role resolution + validation) ---
+    _agent_cores_by_role: dict[str, list[dict[str, Any]]] = {}
+    _agent_cores_by_id: dict[str, dict[str, Any]] = {}
+    try:
+        from backend.services.module_profile_sync import get_agent_personas_from_modules
+
+        for mp in get_agent_personas_from_modules():
+            _agent_cores_by_id[mp.get("id", "")] = mp
+            role = mp.get("role", "")
+            if role:
+                _agent_cores_by_role.setdefault(role, []).append(mp)
+    except Exception:
+        pass
+
+    # --- Step 2: Resolve default_role placeholders ---
+    placeholder_values = dict(body.placeholder_values)
+    for ph in template.placeholders:
+        if ph.default_role and ph.key not in placeholder_values:
+            role_cores = _agent_cores_by_role.get(ph.default_role, [])
+            if role_cores:
+                # Prefer cores tagged "default" or with "en" in language
+                best = role_cores[0]
+                for core in role_cores:
+                    tags = core.get("tags", [])
+                    if "default" in tags:
+                        best = core
+                        break
+                placeholder_values[ph.key] = best.get("id", "")
+            # If no core found for role, leave it missing — will be caught in step 3
+
+    # --- Step 3: Check for missing required placeholders ---
+    required_keys = {p.key for p in template.placeholders if p.default is None and p.default_role is None}
+    provided = set(placeholder_values.keys())
     missing = required_keys - provided
+    # Also check default_role placeholders that couldn't be resolved
+    for ph in template.placeholders:
+        if ph.default_role and ph.key not in placeholder_values:
+            missing.add(ph.key)
     if missing:
         raise HTTPException(
             status_code=422,
@@ -182,30 +218,20 @@ def instantiate_workflow_template(
             },
         )
 
-    # --- Step 2: Merge defaults and instantiate ---
+    # --- Step 4: Merge defaults and instantiate ---
     try:
-        resolved_data = template.instantiate(body.placeholder_values)
+        resolved_data = template.instantiate(placeholder_values)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    # --- Step 3: Validate blueprint_ref placeholders ---
-    # Collect valid IDs from both DB blueprints and module agent cores
-    _module_core_ids: set[str] = set()
-    try:
-        from backend.services.module_profile_sync import get_agent_personas_from_modules
-
-        for mp in get_agent_personas_from_modules():
-            _module_core_ids.add(mp.get("id", ""))
-    except Exception:
-        pass
-
+    # --- Step 5: Validate blueprint_ref placeholders ---
     for ph in template.placeholders:
         if ph.type == "blueprint_ref":
-            value = body.placeholder_values.get(ph.key, ph.default)
+            value = placeholder_values.get(ph.key, ph.default)
             if value is not None:
                 value_str = str(value)
                 bp = repo.get_blueprint(value_str)
-                if bp is None and value_str not in _module_core_ids:
+                if bp is None and value_str not in _agent_cores_by_id:
                     raise HTTPException(
                         status_code=422,
                         detail={
@@ -216,7 +242,7 @@ def instantiate_workflow_template(
                         },
                     )
 
-    # --- Step 4: Build WorkflowDefinition ---
+    # --- Step 6: Build WorkflowDefinition ---
     now = datetime.now(UTC)
     wf_name = body.name or f"{template.name} – {now.strftime('%Y-%m-%d %H:%M')}"
 

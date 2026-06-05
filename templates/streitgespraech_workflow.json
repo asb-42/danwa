@@ -145,19 +145,19 @@
     {
       "key": "advocate_blueprint_id",
       "type": "blueprint_ref",
-      "default": "advocate-default-en",
+      "default_role": "advocate",
       "description": "Agent Blueprint for the Advocate (position defender)"
     },
     {
       "key": "adversary_blueprint_id",
       "type": "blueprint_ref",
-      "default": "adversary-default-en",
+      "default_role": "adversary",
       "description": "Agent Blueprint for the Adversary (position attacker)"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "referee-default-en",
+      "default_role": "referee",
       "description": "Agent Blueprint for the Referee (neutral debate judge)"
     },
     {

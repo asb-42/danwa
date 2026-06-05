@@ -48,13 +48,13 @@
     {
       "key": "reviewer_blueprint_id",
       "type": "blueprint_ref",
-      "default": "reviewer-default-en",
+      "default_role": "reviewer",
       "description": "Agent Blueprint for the initial review (Reviewer role)"
     },
     {
       "key": "reviser_blueprint_id",
       "type": "blueprint_ref",
-      "default": "reviser-default-en",
+      "default_role": "reviser",
       "description": "Agent Blueprint for revision based on user feedback (Reviser role)"
     }
   ],

@@ -66,22 +66,43 @@
       const dbItems = (dbBlueprints || []).map((bp) => ({
         id: bp.id,
         name: bp.name,
+        role: bp.role || '',
         source: 'blueprint',
       }));
       const moduleItems = (components.agent_cores || []).map((ac) => ({
         id: ac.id,
         name: ac.name || ac.id,
+        role: ac.role || '',
         source: 'module',
       }));
       // Deduplicate: DB blueprints take precedence
       const dbIds = new Set(dbItems.map((b) => b.id));
       const uniqueModules = moduleItems.filter((m) => !dbIds.has(m.id));
       blueprints = [...dbItems, ...uniqueModules];
+
+      // Resolve default_role placeholders after blueprints are loaded
+      resolveDefaultRoles();
     } catch (err) {
       if (import.meta.env.DEV) console.warn('[TemplateInstantiateModal] Failed to load blueprints:', err);
       blueprints = [];
     } finally {
       blueprintsLoading = false;
+    }
+  }
+
+  /** Resolve default_role placeholders: find best matching agent core by role. */
+  function resolveDefaultRoles() {
+    for (const ph of templatePlaceholders) {
+      if (ph.default_role && !placeholderValues[ph.key]) {
+        // Find all blueprints matching this role
+        const matching = blueprints.filter((bp) => bp.role === ph.default_role);
+        if (matching.length > 0) {
+          // Prefer modules tagged "default" (by name heuristic)
+          const best = matching.find((bp) => bp.name.toLowerCase().includes('default')) || matching[0];
+          placeholderValues[ph.key] = best.id;
+        }
+        // If no match, leave empty — the dropdown will show a warning
+      }
     }
   }
 
@@ -175,6 +196,9 @@
                   {/each}
                 {/if}
               </select>
+              {#if ph.default_role && !placeholderValues[ph.key] && !blueprintsLoading}
+                <p class="field-warning">⚠ No agent core found for role "{ph.default_role}". Install one from the Module Manager.</p>
+              {/if}
             {:else if ph.type === 'integer'}
               <input
                 id="ph-{ph.key}"
@@ -325,6 +349,12 @@
   .field-type-badge.blueprint {
     background: rgba(137, 180, 250, 0.15);
     color: var(--color-primary, #89b4fa);
+  }
+
+  .field-warning {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    margin: 2px 0 0;
   }
 
   .field-hint {

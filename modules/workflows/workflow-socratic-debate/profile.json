@@ -67,19 +67,19 @@
     {
       "key": "strategist_blueprint_id",
       "type": "blueprint_ref",
-      "default": "strategist-default-en",
+      "default_role": "strategist",
       "description": "Agent Blueprint for the Thesis Holder (proposes and defends the claim)"
     },
     {
       "key": "critic_blueprint_id",
       "type": "blueprint_ref",
-      "default": "socratic-questioner-default",
+      "default_role": "socratic-questioner",
       "description": "Agent Blueprint for the Socratic Examiner (challenges through questions)"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "moderator-default-en",
+      "default_role": "moderator",
       "description": "Agent Blueprint for the Examination Judge (evaluates thoroughness)"
     },
     {
