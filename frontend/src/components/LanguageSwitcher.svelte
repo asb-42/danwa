@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { i18n, locale, tStore } from '../lib/i18n/index.js';
   import { LOCALE_NAMES, RTL_LOCALES, customLocales, registerCustomLocale, getAllLocales } from '../lib/i18n/config.js';
-  import { setLanguage, getCustomLocales } from '../lib/api.js';
+  import { setLanguage, getSupportedLocales } from '../lib/api.js';
   import { userLanguage } from '../lib/stores.js';
 
   let t = $derived($tStore);
@@ -18,13 +18,25 @@
   };
 
   onMount(async () => {
+    // Use /api/v1/i18n/locales (getSupportedLocales) — it is backed by
+    // UITranslationService.get_installed_locales(), which already filters
+    // out language-pack modules whose module_registry entry is disabled.
+    // The legacy /api/v1/i18n/custom-locales endpoint returned EVERY entry
+    // from ui_translation_metadata, including disabled packs, which is why
+    // the dropdown previously listed all installable languages.
     try {
-      const res = await getCustomLocales();
-      for (const info of res.custom_locales || []) {
-        registerCustomLocale(info);
+      const res = await getSupportedLocales();
+      for (const info of res.locales || []) {
+        if (!info || !info.code) continue;
+        if (LOCALE_NAMES[info.code] && !customLocales.has(info.code)) continue;
+        registerCustomLocale({
+          locale: info.code,
+          name: info.name,
+          is_rtl: !!info.is_rtl,
+        });
       }
     } catch {
-      // Backend unreachable — use bundled locales only
+      // Backend unreachable — fall back to bundled + discoverLanguagePacks() result
     }
     document.addEventListener('click', handleDocClick);
     document.addEventListener('keydown', handleKeydown);
