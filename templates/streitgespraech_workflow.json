@@ -1,6 +1,6 @@
 {
   "id": "tpl-streitgespraech",
-  "name": "Streitgespräch (Adversarial Debate)",
+  "name": "Adversarial Debate",
   "description": "A confrontational debate format where an Advocate defends one position while an Adversary attacks it. A Referee ensures fair play, and the Moderator synthesizes the outcome. Based on the adversarial method of philosophical inquiry.",
   "category": "system",
   "tags": [
