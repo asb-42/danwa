@@ -1,18 +1,31 @@
 <script>
   /**
-   * WorkflowGraph — Wrapper around WorkflowCanvas.
-   * This file exists for backward compatibility; the actual implementation
-   * lives in workflow/WorkflowCanvas.svelte.
+   * WorkflowGraph — thin wrapper around WorkflowPipeline.
+   *
+   * Kept for backward compatibility with existing call sites
+   * (e.g. DebateView.svelte). New code should import WorkflowPipeline
+   * directly and pick a mode + adapter.
    */
-  import WorkflowCanvas from './workflow/WorkflowCanvas.svelte';
+  import WorkflowPipeline from './workflow/WorkflowPipeline.svelte';
   import OOBInputPanel from './workflow/OOBInputPanel.svelte';
+  import { useLiveWorkflowPipeline } from '../lib/workflowPipelineAdapter.js';
 
   /** @type {{ debateId?: string, isRunning?: boolean }} */
   let { debateId = null, isRunning = false } = $props();
+
+  const pipeline = useLiveWorkflowPipeline(debateId);
 </script>
 
 <div class="workflow-graph-container">
-  <WorkflowCanvas />
+  <WorkflowPipeline
+    meta={pipeline.meta}
+    nodes={pipeline.nodes}
+    edges={pipeline.edges}
+    activeNodeId={pipeline.activeNodeId}
+    mode="live"
+    interactive
+    showMetrics
+  />
 
   {#if isRunning && debateId}
     <OOBInputPanel {debateId} />

@@ -4,8 +4,11 @@
   import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
   
   import { formatNumber, formatDate, tStore, tn } from '../lib/i18n/index.js';
-  import DashboardWorkflowGraph from '../components/DashboardWorkflowGraph.svelte';
+  import WorkflowPipeline from '../components/workflow/WorkflowPipeline.svelte';
+  import { useLastCompletedDebatePipeline } from '../lib/workflowPipelineAdapter.js';
   import QuotaIndicator from '../components/QuotaIndicator.svelte';
+
+  const lastCompleted = useLastCompletedDebatePipeline();
 
   let { navigate = () => {} } = $props();
 
@@ -111,18 +114,6 @@
   }
 
   let graphStatus = $derived($currentDebate?.status === 'running' ? 'running' : $currentDebate?.status === 'completed' ? 'completed' : 'idle');
-
-  // Derive active pipeline node from current_round for live highlighting.
-  // Pipeline: input → strategist → critic → optimizer → moderator → result
-  // current_round = N means rounds 0..N-1 are complete, round N is in progress.
-  // Since the Dashboard only has round-level polling data (no per-agent SSE),
-  // we highlight the first agent of the current round as a best-effort approximation.
-  const PIPELINE_NODES = ['input', 'strategist', 'critic', 'optimizer', 'moderator', 'result'];
-  let activePipelineNode = $derived(
-    $currentDebate?.status !== 'running'
-      ? null
-      : PIPELINE_NODES[Math.min($currentDebate?.current_round ?? 0, PIPELINE_NODES.length - 1)]
-  );
 </script>
 
 <div class="space-y-6">
@@ -259,8 +250,15 @@
     </div>
   {/if}
 
-  <!-- Workflow graph -->
-  <DashboardWorkflowGraph status={graphStatus} activeNodeId={activePipelineNode} />
+  <!-- Workflow graph: last completed debate as an exemplar -->
+  <WorkflowPipeline
+    meta={lastCompleted.meta}
+    nodes={lastCompleted.nodes}
+    edges={lastCompleted.edges}
+    activeNodeId={lastCompleted.activeNodeId}
+    mode="replay"
+    compact
+  />
 </div>
 
 
