@@ -208,6 +208,18 @@ class ModuleService:
         modules = self.discover_local()
         if category:
             modules = [m for m in modules if m.category.value == category]
+        # Merge enabled status from module_registry
+        db_status = self._get_db_status_map()
+        for m in modules:
+            db_info = db_status.get(m.module_id, {})
+            if db_info:
+                m.enabled = bool(db_info.get("enabled", True))
+                m.installed = True
+                m.installed_at = db_info.get("installed_at")
+            else:
+                # Not in registry → treat as not installed/enabled
+                m.enabled = False
+                m.installed = False
         return modules
 
     def fetch_repo_index(
