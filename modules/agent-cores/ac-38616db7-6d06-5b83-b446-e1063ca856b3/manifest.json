@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-38616db7-6d06-5b83-b446-e1063ca856b3",
+  "name": {
+    "en": "Default Synthesizer"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Synthesizer."
+  },
+  "role": "synthesizer",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.008499+00:00",
+  "checksum": "aeb3d20a7814029160b055d40c6afc0143ac856f4998e1b0c29f2277ae1c86b8"
+}

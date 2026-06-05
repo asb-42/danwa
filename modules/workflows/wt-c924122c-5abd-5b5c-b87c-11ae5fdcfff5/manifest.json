@@ -1,0 +1,31 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "wt-c924122c-5abd-5b5c-b87c-11ae5fdcfff5",
+  "name": {
+    "en": "5-Phase Structured Debate"
+  },
+  "description": {
+    "en": "A comprehensive multi-phase debate workflow with five consecutive phases: Problem Framing, Position Building, Stress Testing, Integration, and Closure. Uses 15 specialized agent bundles in structured phase containers."
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "multi-phase",
+    "structured",
+    "debate",
+    "5-phase",
+    "advanced"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "checksum": "8ce21579ab5523c70c9ec2cff3f678dfa1ce9c52f8562587866a499b34206192",
+  "created_at": "2026-05-25T05:49:22+02:00",
+  "updated_at": "2026-06-05T21:46:03.023842+00:00"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-96392ba1-ef55-5598-bab3-1c90fc9aba9d",
+  "name": {
+    "en": "Enhanced Critic"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "rigorous",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Rigorous critic for fundamental weakness analysis (English)"
+  },
+  "role": "critic",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.954957+00:00",
+  "checksum": "738ae3b47cf61566fdd913b9eec8a91f1350b58b92a99fb257db00a5a7cbf4c7"
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "tp-fa10c07a-53c1-5dab-999d-a03bf85ae0f2",
+  "name": {
+    "en": "Heated Debate"
+  },
+  "version": "1.0.0",
+  "type": "tone-profile",
+  "category": "tone-profiles",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "description": {
+    "en": "A confrontational, emotionally charged debate style. Agents challenge each other aggressively and use rhetorical devices."
+  },
+  "checksum": "2eeeeba99e3a7521c8735f047c078947331223ca3039477655e83343a44eff0c",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.009181+00:00"
+}

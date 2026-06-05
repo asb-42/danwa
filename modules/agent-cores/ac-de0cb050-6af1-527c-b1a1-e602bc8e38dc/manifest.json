@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-de0cb050-6af1-527c-b1a1-e602bc8e38dc",
+  "name": {
+    "en": "Default Orchestrator"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Orchestrator (Meta-Agent) - Unlike the other agents, the Orchestrator does not generate debate content. Instead, it acts as the \"brain\" of your routing system, evaluating the current state of the conversation and programmatically deciding which agent should speak next, what they should focus on, and when the debate should end."
+  },
+  "role": "orchestrator",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-24T05:43:27+02:00",
+  "updated_at": "2026-06-05T21:46:02.959905+00:00",
+  "checksum": "a04b29a6e858ec1d49aa22cf1c649c8e045d7ece1500568536400e3a8a0fcb41"
+}

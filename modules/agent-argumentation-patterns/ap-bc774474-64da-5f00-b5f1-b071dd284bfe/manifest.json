@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-bc774474-64da-5f00-b5f1-b071dd284bfe",
+  "name": {
+    "en": "Default Moderator"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "moderator",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "90aa94838e4f26857b2d11f11f82b97cc2be528312a33146c97fa2dbb8cd5e91",
+  "description": {
+    "en": ""
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.759897+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

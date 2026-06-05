@@ -1,0 +1,38 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "ac-3debf8c9-1b03-5c4f-9034-6efc1ed6bffb",
+  "name": {
+    "en": "Default Reviewer (EN)"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "review",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Reviews content and provides structured, actionable feedback. For review workflows."
+  },
+  "role": "reviewer",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-06-05T15:37:00+00:00",
+  "updated_at": "2026-06-05T21:46:02.960430+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "5d87ab0644c8dcf104128c918abae0a58196e6e11539c436a13286347b31f944"
+}

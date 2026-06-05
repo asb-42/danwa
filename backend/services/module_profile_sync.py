@@ -200,8 +200,9 @@ def get_agent_personas_from_modules(modules_dir: Path = MODULES_DIR) -> list[dic
             continue
 
         manifest = mod["manifest"]
+        # Use module_id as canonical entity ID (profile_id is deprecated)
         profile = {
-            "id": manifest.get("profile_id", mod["module_id"].replace("agent-", "", 1)),
+            "id": mod["module_id"],
             "name": _localized(manifest.get("name", {}), mod["module_id"]),
             "role": manifest.get("role", ""),
             "description": _localized(manifest.get("description", {})),
@@ -232,8 +233,9 @@ def get_tone_profiles_from_modules(modules_dir: Path = MODULES_DIR) -> list[dict
             continue
 
         manifest = mod["manifest"]
+        # Use module_id as canonical entity ID (profile_id is deprecated)
         profile: dict[str, Any] = {
-            "id": manifest.get("profile_id", mod["module_id"]),
+            "id": mod["module_id"],
             "name": _localized(manifest.get("name", {}), mod["module_id"]),
             "description": _localized(manifest.get("description", {})),
         }

@@ -1,0 +1,46 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "wt-a0f02bc8-271c-589f-8430-d5321eb6de6c",
+  "name": {
+    "en": "Socratic Debate"
+  },
+  "version": "2.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "MIT",
+  "tags": [
+    "socratic",
+    "debate",
+    "structured",
+    "inquiry"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A debate workflow using the Socratic method for deep examination of claims. The Strategist proposes a thesis, the Critic applies Socratic questioning to challenge it, and a Moderator evaluates whether the examination has been thorough."
+  },
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.023584+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v2.0.0"
+  },
+  "checksum": "4d36f118105c83ac4010d128019ae9f2362cad434f56d3f09c811b898c95d0a9",
+  "dependencies": {
+    "roles": [
+      "strategist",
+      "socratic-questioner",
+      "moderator"
+    ]
+  }
+}

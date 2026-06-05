@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-53baf28c-1c08-5f67-bcb1-42887879b8d3",
+  "name": {
+    "en": "Default Optimizer"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "optimizer",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "4081d545cf842a6493aadb8c2160f4ce9622c15e0f5b0dd795cced78251f27b3",
+  "description": {
+    "en": ""
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.760169+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

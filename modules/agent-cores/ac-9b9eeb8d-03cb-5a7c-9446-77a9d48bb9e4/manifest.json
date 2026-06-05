@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-9b9eeb8d-03cb-5a7c-9446-77a9d48bb9e4",
+  "name": {
+    "en": "Default Mediator"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Mediator."
+  },
+  "role": "mediator",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.957368+00:00",
+  "checksum": "90e9644995e439de7ce43ca7a96a21fda00d831e97937116342c699a3a2fd9e8"
+}

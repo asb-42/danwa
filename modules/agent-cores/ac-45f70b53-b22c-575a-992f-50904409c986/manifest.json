@@ -1,0 +1,26 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-45f70b53-b22c-575a-992f-50904409c986",
+  "name": {
+    "en": "Custom Moderator"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Team",
+    "email": "team@danwa.example"
+  },
+  "license": "MIT",
+  "tags": [],
+  "language": "en",
+  "description": {
+    "en": "A neutral moderator who focuses on identifying logical fallacies and ensuring balanced discussion. Uses the Socratic method to probe underlying assumptions.\n"
+  },
+  "checksum": "400cbf7a9878af04d29f8a15f960f70caff4c3978741d37e26c6ec927e6220e2",
+  "role": "",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.955643+00:00"
+}

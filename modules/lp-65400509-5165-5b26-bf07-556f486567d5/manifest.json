@@ -1,28 +1,28 @@
 {
   "schema_version": "3.0.0",
-  "module_id": "lp-6a4a88da-8fb2-5ab1-afa3-daf85e3d9eb0",
+  "module_id": "lp-65400509-5165-5b26-bf07-556f486567d5",
   "name": {
-    "en": "Русский (Russian)",
-    "ru": "Русский"
+    "en": "Eesti (Estonian)",
+    "et": "Eesti"
   },
   "description": {
-    "en": "UI translation pack for Russian (Русский)",
-    "ru": "UI-Übersetzungspaket für Russian (Русский)"
+    "en": "UI translation pack for Estonian (Eesti)",
+    "et": "UI-Übersetzungspaket für Estonian (Eesti)"
   },
-  "version": "1.0.1",
+  "version": "1.0.0",
   "type": "language-pack",
   "category": "translations",
-  "language": "ru",
+  "language": "et",
   "author": {
     "name": "Danwa User"
   },
   "license": "CC-BY-4.0",
   "tags": [
-    "ru"
+    "et"
   ],
   "profile_file": "ui_strings.json",
   "profile_format": "json",
-  "created_at": "2026-05-27T15:46:30.546676+00:00",
+  "created_at": "2026-05-27T15:45:36.266637+00:00",
   "compatibility": {
     "danwa_min_version": "2.1.0",
     "danwa_max_version": null
@@ -33,6 +33,6 @@
     "ref": "v1.0.0"
   },
   "checksum": "",
-  "string_count": 1275,
-  "updated_at": "2026-06-05T21:46:03.019444+00:00"
+  "string_count": 1155,
+  "updated_at": "2026-06-05T21:46:03.012174+00:00"
 }

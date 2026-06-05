@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-d75a4b7b-d343-5499-bdec-360ac07abe8c",
+  "name": {
+    "en": "Dialectic Strategist"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "dialectic",
+    "strategist",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "13217feeabba59a0a8c418fd7e742238f66123c9e18c0e862af47bef6194e975",
+  "description": {
+    "en": ""
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.759164+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

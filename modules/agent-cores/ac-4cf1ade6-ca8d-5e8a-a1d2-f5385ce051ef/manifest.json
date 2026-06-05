@@ -1,0 +1,39 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "ac-4cf1ade6-ca8d-5e8a-a1d2-f5385ce051ef",
+  "name": {
+    "en": "Default Advocate (EN)"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "adversarial",
+    "advocate",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Constructs the strongest possible case in defense of a position. For adversarial debate workflows."
+  },
+  "role": "advocate",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-06-05T15:37:00+00:00",
+  "updated_at": "2026-06-05T21:46:02.953975+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "f8326ed6195adf2be75f46515bb384ef05ce2669e980236fc92c4e7150a10258"
+}

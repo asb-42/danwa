@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-82a54c1a-cf1b-5d91-b7a8-bb198720f329",
+  "name": {
+    "en": "Default Strategist"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "balanced",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Default strategist with balanced analysis approach"
+  },
+  "role": "strategist",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "checksum": "3c3b2d16732e2f708b075ef35c59c8d5b8d44e67550c60f4c7366913abefb1f5",
+  "updated_at": "2026-06-05T21:46:03.007548+00:00",
+  "created_at": "2026-05-17T03:22:25+02:00"
+}

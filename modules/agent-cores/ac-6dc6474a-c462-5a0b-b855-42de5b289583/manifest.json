@@ -1,0 +1,39 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "ac-6dc6474a-c462-5a0b-b855-42de5b289583",
+  "name": {
+    "en": "Default Interviewer (EN)"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "interview",
+    "structured-inquiry",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Asks probing, structured questions to explore a topic deeply. For interview workflows."
+  },
+  "role": "interviewer",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-06-05T15:37:00+00:00",
+  "updated_at": "2026-06-05T21:46:02.957134+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "5ee2c4def224b328ad90a7603bb2273df180594921865532ee7ff70495a09bd5"
+}

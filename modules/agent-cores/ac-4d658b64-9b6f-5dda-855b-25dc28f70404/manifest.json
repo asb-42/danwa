@@ -1,0 +1,39 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "ac-4d658b64-9b6f-5dda-855b-25dc28f70404",
+  "name": {
+    "en": "Default Reviser (EN)"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "review",
+    "revision",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Takes structured feedback and produces an improved revision. For review workflows."
+  },
+  "role": "reviser",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-06-05T15:37:00+00:00",
+  "updated_at": "2026-06-05T21:46:02.960703+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "d4b7b67e62559b28a656fdb7a229a99c840387e2eb8bcc761ba134ecc89d6a4a"
+}

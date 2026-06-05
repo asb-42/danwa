@@ -1,0 +1,31 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "wt-a19298f0-13fb-58fc-820f-49861aaa6383",
+  "name": {
+    "en": "Hegelian Dialectic Debate"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "dialectic",
+    "hegel",
+    "thesis-antithesis-synthesis",
+    "structured",
+    "philosophy"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A three-stage dialectical workflow following Hegel's method. The Strategist formulates the thesis (These), the Critic develops the antithesis (Antithese), and the Optimizer synthesizes both into a higher unity (synthesis/Aufhebung). Supports multiple rounds of dialectical refinement."
+  },
+  "checksum": "04328f9980020eaf1219fe38047b0d4e94f0ba9857a769e26315df78d9e26714",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.024106+00:00"
+}

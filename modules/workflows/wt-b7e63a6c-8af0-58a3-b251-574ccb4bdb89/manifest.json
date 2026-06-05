@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "wt-b7e63a6c-8af0-58a3-b251-574ccb4bdb89",
+  "name": {
+    "en": "Standard Debate"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "debate",
+    "multi-agent",
+    "classic"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A classic multi-agent debate with strategist, critic, optimizer, and moderator. Suitable for most analytical tasks."
+  },
+  "checksum": "71fea6989e720b1d8512f34a3ec84525060dccebd1788c818500764a2eed0e44",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.025300+00:00"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-6be6ecaf-03dd-50ea-8d3c-1a0b0a406cdd",
+  "name": {
+    "en": "Critic (Steiner)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "steiner",
+    "critic",
+    "de"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "e257a3df3eb82bb050c94fa6984bd7eaa3145fc9265371219e35edb833a3adae",
+  "created_at": "2026-05-17T03:53:23+02:00",
+  "updated_at": "2026-06-05T21:46:02.760490+00:00",
+  "description": {
+    "en": "Evaluates strategies using Rudolf Steiner's anthroposophical threefold social framework."
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ka-15d890fe-8cf2-5096-8570-0fcf40bf7354",
+  "name": {
+    "en": "Kitsune Assistant"
+  },
+  "description": {
+    "en": "System prompt for the Danwa Kitsune assistant — the intelligent assistant of the Danwa Debate Engine system."
+  },
+  "version": "1.0.0",
+  "type": "kitsune-assistant",
+  "category": "kitsune",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "kitsune",
+    "assistant",
+    "system"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "cea87d9552a509399a00ef43fe3ea4f16a5a7467e937adfa5daee2b73a477663",
+  "role": "",
+  "updated_at": "2026-06-05T21:46:03.009644+00:00",
+  "created_at": "2026-05-25T04:20:17+02:00"
+}

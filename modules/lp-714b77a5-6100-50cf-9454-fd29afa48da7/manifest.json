@@ -1,28 +1,28 @@
 {
   "schema_version": "3.0.0",
-  "module_id": "lp-6a4a88da-8fb2-5ab1-afa3-daf85e3d9eb0",
+  "module_id": "lp-714b77a5-6100-50cf-9454-fd29afa48da7",
   "name": {
-    "en": "Русский (Russian)",
-    "ru": "Русский"
+    "en": "Bahasa Indonesia (Indonesian)",
+    "id": "Bahasa Indonesia"
   },
   "description": {
-    "en": "UI translation pack for Russian (Русский)",
-    "ru": "UI-Übersetzungspaket für Russian (Русский)"
+    "en": "UI translation pack for Indonesian (Bahasa Indonesia)",
+    "id": "UI-Übersetzungspaket für Indonesian (Bahasa Indonesia)"
   },
-  "version": "1.0.1",
+  "version": "1.0.0",
   "type": "language-pack",
   "category": "translations",
-  "language": "ru",
+  "language": "id",
   "author": {
     "name": "Danwa User"
   },
   "license": "CC-BY-4.0",
   "tags": [
-    "ru"
+    "id"
   ],
   "profile_file": "ui_strings.json",
   "profile_format": "json",
-  "created_at": "2026-05-27T15:46:30.546676+00:00",
+  "created_at": "2026-05-27T15:45:53.719607+00:00",
   "compatibility": {
     "danwa_min_version": "2.1.0",
     "danwa_max_version": null
@@ -33,6 +33,6 @@
     "ref": "v1.0.0"
   },
   "checksum": "",
-  "string_count": 1275,
-  "updated_at": "2026-06-05T21:46:03.019444+00:00"
+  "string_count": 1155,
+  "updated_at": "2026-06-05T21:46:03.014329+00:00"
 }

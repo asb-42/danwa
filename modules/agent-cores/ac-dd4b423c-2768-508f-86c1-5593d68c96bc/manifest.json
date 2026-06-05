@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-dd4b423c-2768-508f-86c1-5593d68c96bc",
+  "name": {
+    "en": "Default Analyst"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Conducts in-depth data analysis and identifies key patterns."
+  },
+  "role": "analyst",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.954206+00:00",
+  "checksum": "7e14748107ac8b418d569aa373dd8aa9a8586d712eab33270e49c7ac68cc6158"
+}

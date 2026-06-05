@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-24d8593f-5f91-54dc-a53d-d2b9e814bc36",
+  "name": {
+    "en": "Default Devil's Advocate"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Devil's Advocate [good-faith opposition — distinct from Troll] (English)"
+  },
+  "role": "devils-advocate",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.955879+00:00",
+  "checksum": "1edf8dd5245819cad925d6e3e4c3da20a0626c5370c65f7f086b0baf98641989"
+}

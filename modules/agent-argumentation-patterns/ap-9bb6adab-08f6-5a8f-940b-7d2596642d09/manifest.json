@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-9bb6adab-08f6-5a8f-940b-7d2596642d09",
+  "name": {
+    "en": "Kantian Strategist"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "kantian",
+    "strategist",
+    "de"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "38c506b4b6e9ee3547b7b247325d5e45f0ce5a7cbbcea23bb4f3a3a5f1b6b15a",
+  "description": {
+    "en": "Develops strategies grounded in Kantian ethics, universalizability, and human dignity."
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.759676+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

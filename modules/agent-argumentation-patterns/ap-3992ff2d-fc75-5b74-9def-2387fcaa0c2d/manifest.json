@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-3992ff2d-fc75-5b74-9def-2387fcaa0c2d",
+  "name": {
+    "en": "Strategist (Steiner)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "steiner",
+    "strategist",
+    "de"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "8a0630d8723524ac7e0148333f0a1124b5699c71075cec59e0f78ab2e464b123",
+  "created_at": "2026-05-17T03:53:23+02:00",
+  "updated_at": "2026-06-05T21:46:02.760829+00:00",
+  "description": {
+    "en": "Develops strategies inspired by Steiner's anthroposophy: thinking, feeling, willing."
+  }
+}

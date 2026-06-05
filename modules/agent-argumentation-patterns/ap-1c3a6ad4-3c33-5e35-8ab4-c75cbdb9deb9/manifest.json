@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-1c3a6ad4-3c33-5e35-8ab4-c75cbdb9deb9",
+  "name": {
+    "en": "Critic (Kantian)"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "kantian",
+    "critic",
+    "de"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "4ed2a9602e3a111e0df59e9ab8e3c7df4032a93520d54a69fbfc36b4bad778f0",
+  "created_at": "2026-05-17T03:53:23+02:00",
+  "updated_at": "2026-06-05T21:46:02.759389+00:00",
+  "description": {
+    "en": "Evaluates strategies through Kantian ethical principles and the categorical imperative."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-46be42ec-b359-5cda-af5f-8d3411ce1e95",
+  "name": {
+    "en": "Example Strategist"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "balanced"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Example strategist with balanced analysis approach"
+  },
+  "checksum": "94be20b8e03bc93304765a37e864374fd79eb384a810d767208b9cfe4fc8585c",
+  "role": "strategist",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.008039+00:00"
+}

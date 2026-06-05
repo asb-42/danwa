@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "wt-0fc61cc2-1b0e-5faa-8902-dde536aae4fa",
+  "name": {
+    "en": "Quick Review"
+  },
+  "version": "1.0.0",
+  "type": "workflow-template",
+  "category": "workflows",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "quick",
+    "lightweight",
+    "single-agent",
+    "review"
+  ],
+  "language": "en",
+  "profile_file": "profile.json",
+  "profile_format": "json",
+  "files": [],
+  "description": {
+    "en": "A lightweight single-agent review with optional user injection. Fast turnaround for simple tasks."
+  },
+  "checksum": "8795c024c49c14805ffc2f86c5a50307ae54b9efb46a1f7262e0c703da3aac48",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.025060+00:00"
+}

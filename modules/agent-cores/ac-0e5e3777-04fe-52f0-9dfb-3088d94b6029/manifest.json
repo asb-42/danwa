@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-0e5e3777-04fe-52f0-9dfb-3088d94b6029",
+  "name": {
+    "en": "Stoic Critic"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "philosophy",
+    "stoic"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Critic applying Stoic philosophical framework"
+  },
+  "checksum": "1ec5399d7a7054cf0884384fc2225a688ad45841d84cc98d23697f05e308ec9c",
+  "role": "critic",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.955427+00:00"
+}

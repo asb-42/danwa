@@ -1,28 +1,28 @@
 {
   "schema_version": "3.0.0",
-  "module_id": "lp-6a4a88da-8fb2-5ab1-afa3-daf85e3d9eb0",
+  "module_id": "lp-987f6f04-9471-5806-88b2-a0bd6d263851",
   "name": {
-    "en": "Русский (Russian)",
-    "ru": "Русский"
+    "en": "Dansk (Danish)",
+    "da": "Dansk"
   },
   "description": {
-    "en": "UI translation pack for Russian (Русский)",
-    "ru": "UI-Übersetzungspaket für Russian (Русский)"
+    "en": "UI translation pack for Danish (Dansk)",
+    "da": "UI-Übersetzungspaket für Danish (Dansk)"
   },
-  "version": "1.0.1",
+  "version": "1.0.0",
   "type": "language-pack",
   "category": "translations",
-  "language": "ru",
+  "language": "da",
   "author": {
     "name": "Danwa User"
   },
   "license": "CC-BY-4.0",
   "tags": [
-    "ru"
+    "da"
   ],
   "profile_file": "ui_strings.json",
   "profile_format": "json",
-  "created_at": "2026-05-27T15:46:30.546676+00:00",
+  "created_at": "2026-05-27T15:46:16.700847+00:00",
   "compatibility": {
     "danwa_min_version": "2.1.0",
     "danwa_max_version": null
@@ -33,6 +33,6 @@
     "ref": "v1.0.0"
   },
   "checksum": "",
-  "string_count": 1275,
-  "updated_at": "2026-06-05T21:46:03.019444+00:00"
+  "string_count": 1155,
+  "updated_at": "2026-06-05T21:46:03.011097+00:00"
 }

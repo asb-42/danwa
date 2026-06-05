@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-3a583276-e351-5a5d-bbb6-8c1bf7dfb563",
+  "name": {
+    "en": "Example Critic"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "rigorous"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Example critic with rigorous evaluation approach"
+  },
+  "checksum": "d29499b869bb8d07b019c128369d3181557b3f5d93e8a0b91e8221b4af0fa5f6",
+  "role": "critic",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.955206+00:00"
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-6891918e-20bd-5bf9-a785-b2bca2f27385",
+  "name": {
+    "en": "Default Ethicist"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Ethicist."
+  },
+  "role": "ethicist",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.956128+00:00",
+  "checksum": "131ec3cdba2dfca0a5c5517f23c01b9d54763583fea044a0677b2cebd6c71d83"
+}

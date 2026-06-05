@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-4726260a-c35c-531c-bd05-d48dbc32ac15",
+  "name": {
+    "en": "Default Critic"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "critic",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "07f713d54bfb71abb03f30e722d31eb21e8a198ea6964681b6f590af0b630d1f",
+  "description": {
+    "en": ""
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.670090+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

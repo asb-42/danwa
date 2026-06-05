@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-baf3b160-da58-5e9d-b7b4-79b6a262568c",
+  "name": {
+    "en": "Default Moderator"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "neutral",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Neutral moderator for consensus evaluation"
+  },
+  "role": "moderator",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "checksum": "90aa94838e4f26857b2d11f11f82b97cc2be528312a33146c97fa2dbb8cd5e91",
+  "updated_at": "2026-06-05T21:46:02.957591+00:00",
+  "created_at": "2026-05-17T03:22:25+02:00"
+}

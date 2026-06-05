@@ -1,0 +1,39 @@
+{
+  "schema_version": "3.0.0",
+  "module_id": "ac-50f060c1-7e68-50c5-909d-604ad490122b",
+  "name": {
+    "en": "Default Interviewee (EN)"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "interview",
+    "structured-inquiry",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Provides detailed, evidence-based answers to structured interview questions. For interview workflows."
+  },
+  "role": "interviewee",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-06-05T15:37:00+00:00",
+  "updated_at": "2026-06-05T21:46:02.956903+00:00",
+  "compatibility": {
+    "danwa_min_version": "2.1.0",
+    "danwa_max_version": null
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/asb-42/danwa-modules",
+    "ref": "v1.0.0"
+  },
+  "checksum": "250f3c7ed91dc931e35306911747affc3d30a7c57a27de6ca956364984148e18"
+}

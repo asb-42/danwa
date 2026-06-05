@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-c789933b-a928-5e14-9cf7-645aba6c0fb9",
+  "name": {
+    "en": "Default Steel-manner"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Steel-manner."
+  },
+  "role": "steel-manner",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:03.007225+00:00",
+  "checksum": "567222e7757c9531832c3451c170e4e6c6920d32e506dd65ee088fbb57e15617"
+}

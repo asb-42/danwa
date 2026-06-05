@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-69958030-8440-5d8a-919f-628b573b5d71",
+  "name": {
+    "en": "Default Fact Checker"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Verifies claims against evidence and identifies factual inaccuracies. (English)"
+  },
+  "role": "fact-checker",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.956663+00:00",
+  "checksum": "52634c214008f98f06d86a105b857acf7e69c81e8aa8695489edcf9671118f8f"
+}

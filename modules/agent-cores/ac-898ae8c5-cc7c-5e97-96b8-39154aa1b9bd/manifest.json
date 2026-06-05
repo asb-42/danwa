@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-898ae8c5-cc7c-5e97-96b8-39154aa1b9bd",
+  "name": {
+    "en": "Enhanced Moderator"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "neutral",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Neutral moderator for consensus evaluation (English)"
+  },
+  "role": "moderator",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.957840+00:00",
+  "checksum": "4dcc9efdcc188a89fabdc1a22598e5e332f34bfb7e00a866dd7333116ae722b9"
+}

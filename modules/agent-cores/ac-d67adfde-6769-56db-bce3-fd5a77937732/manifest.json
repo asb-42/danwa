@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-d67adfde-6769-56db-bce3-fd5a77937732",
+  "name": {
+    "en": "Example Moderator"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "neutral"
+  ],
+  "language": "en",
+  "description": {
+    "en": "Example moderator for balanced debate facilitation"
+  },
+  "checksum": "98d9195041d383cc4a1893d432c98c1d15e0a6930c209a76be45271fd79e9846",
+  "role": "moderator",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-17T03:22:25+02:00",
+  "updated_at": "2026-06-05T21:46:02.958833+00:00"
+}

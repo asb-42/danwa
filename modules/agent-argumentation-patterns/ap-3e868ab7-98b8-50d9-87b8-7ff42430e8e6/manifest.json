@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-3e868ab7-98b8-50d9-87b8-7ff42430e8e6",
+  "name": {
+    "en": "Dialectic Moderator"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "dialectic",
+    "moderator",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "c8b0dbe785375ca9b687f5271da5d6c04ff4bb5add8ebb5ea689d26bf264d7a7",
+  "description": {
+    "en": ""
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.758697+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

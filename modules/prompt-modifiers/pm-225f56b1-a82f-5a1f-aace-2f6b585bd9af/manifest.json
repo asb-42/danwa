@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "pm-225f56b1-a82f-5a1f-aace-2f6b585bd9af",
+  "name": {
+    "en": "Structured Analysis"
+  },
+  "description": {
+    "en": "Default prompt modifier — clean output formatting without additional constraints."
+  },
+  "version": "1.0.0",
+  "type": "prompt-modifier",
+  "category": "prompt-modifiers",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "structured"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "b38e17412b2eafe78a531af78e06fe33f1144984611cdfe2d6e62ed3e1b9a4be",
+  "role": "",
+  "updated_at": "2026-06-05T21:46:03.023339+00:00",
+  "created_at": "2026-05-24T06:06:45+02:00"
+}

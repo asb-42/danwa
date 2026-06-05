@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "pm-061f5af8-9477-593f-859b-bada87176198",
+  "name": {
+    "en": "Text only"
+  },
+  "description": {
+    "en": "Text only output for TTS"
+  },
+  "version": "1.0.0",
+  "type": "prompt-modifier",
+  "category": "prompt-modifiers",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "text-only"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "4881cd1db9afd922c314de5883877770f41cc633d3891f43ac4e5dc36077858c",
+  "role": "",
+  "updated_at": "2026-06-05T21:46:03.023071+00:00",
+  "created_at": "2026-05-27T02:28:01.906326+00:00"
+}

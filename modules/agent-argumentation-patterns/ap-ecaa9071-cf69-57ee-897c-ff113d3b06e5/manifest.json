@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ap-ecaa9071-cf69-57ee-897c-ff113d3b06e5",
+  "name": {
+    "en": "Dialectic Critic"
+  },
+  "version": "1.0.0",
+  "type": "prompt-variant",
+  "category": "prompts",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "dialectic",
+    "critic",
+    "en"
+  ],
+  "language": "en",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "files": [],
+  "checksum": "a879fa15a4ddd343d91f643a63537e2e1bd82686408cbe02ec018ae57646cf33",
+  "description": {
+    "en": ""
+  },
+  "role": "",
+  "updated_at": "2026-06-05T21:46:02.758365+00:00",
+  "created_at": "2026-05-17T03:53:23+02:00"
+}

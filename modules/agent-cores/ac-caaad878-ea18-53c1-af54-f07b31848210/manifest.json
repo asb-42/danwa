@@ -1,0 +1,28 @@
+{
+  "schema_version": "2.0.0",
+  "module_id": "ac-caaad878-ea18-53c1-af54-f07b31848210",
+  "name": {
+    "en": "Default Troll"
+  },
+  "version": "1.0.0",
+  "type": "agent-core",
+  "category": "agents",
+  "author": {
+    "name": "Danwa Community"
+  },
+  "license": "CC-BY-4.0",
+  "tags": [
+    "default",
+    "english"
+  ],
+  "language": "en",
+  "description": {
+    "en": "A raw troll prompt produces noise. A red-team troll [Red-Team Adversary] produces labeled noise that trains your other agents to recognize and neutralize bad-faith rhetoric. The Tactic Ledger turns disruption into a teaching signal."
+  },
+  "role": "troll",
+  "profile_file": "profile.md",
+  "profile_format": "markdown",
+  "created_at": "2026-05-24T05:43:27+02:00",
+  "updated_at": "2026-06-05T21:46:03.008726+00:00",
+  "checksum": "b46997331ddbe57c101232f1c467914b3605fd42a194b25b99ed0e758a5c0105"
+}

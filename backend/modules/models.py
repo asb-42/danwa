@@ -184,7 +184,7 @@ class ModuleManifest(BaseModel):
     """
 
     schema_version: str = "2.0.0"
-    module_id: str = Field(..., pattern=r"^[a-z][a-z0-9.-]*$")
+    module_id: str = Field(..., pattern=r"^[a-z][a-z0-9-]*$")
     name: dict[str, str] = Field(default_factory=dict)
     description: dict[str, str] = Field(default_factory=dict)
     version: str = "1.0.0"
@@ -219,6 +219,19 @@ class ModuleManifest(BaseModel):
         if not v.startswith("danwa-") and "-" not in v:
             raise ValueError(f"module_id must contain at least one hyphen (non-danwa module), got '{v}'")
         return v
+
+    @property
+    def uuid(self) -> str | None:
+        """Extract the UUID portion from a UUID-based module_id (e.g. 'ac-550e8400-...')."""
+        parts = self.module_id.split("-", 1)
+        if len(parts) == 2:
+            try:
+                import uuid as _uuid
+                _uuid.UUID(parts[1])
+                return parts[1]
+            except ValueError:
+                pass
+        return None
 
     @field_validator("dependencies", mode="before")
     @classmethod
