@@ -16,6 +16,7 @@
  *         Returns null meta/nodes while loading.
  */
 
+import { get } from 'svelte/store';
 import { getDebates, getDebate } from './api/debate.js';
 import { getWorkflowState } from './workflowExec.js';
 import { createWorkflowSSE } from './workflowSSE.js';
@@ -128,7 +129,7 @@ export function useLastCompletedDebatePipeline() {
     result.loading = true;
     result.error = null;
     try {
-      const projectId = $activeProject?.id;
+      const projectId = get(activeProject)?.id;
       const debate = await fetchLastCompletedDebate(projectId);
       if (!debate) {
         result.meta = null;
@@ -170,7 +171,7 @@ export function useLastCompletedDebatePipeline() {
 
   // Auto-load on construction and whenever the project changes
   $effect(() => {
-    void $activeProject?.id; // dependency tracking
+    void get(activeProject)?.id; // dependency tracking
     load();
   });
 

@@ -5,7 +5,7 @@
   
   import { formatNumber, formatDate, tStore, tn } from '../lib/i18n/index.js';
   import WorkflowPipeline from '../components/workflow/WorkflowPipeline.svelte';
-  import { useLastCompletedDebatePipeline } from '../lib/workflowPipelineAdapter.js';
+  import { useLastCompletedDebatePipeline } from '../lib/workflowPipelineAdapter.svelte.js';
   import QuotaIndicator from '../components/QuotaIndicator.svelte';
 
   const lastCompleted = useLastCompletedDebatePipeline();

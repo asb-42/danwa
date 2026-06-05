@@ -8,7 +8,7 @@
    */
   import WorkflowPipeline from './workflow/WorkflowPipeline.svelte';
   import OOBInputPanel from './workflow/OOBInputPanel.svelte';
-  import { useLiveWorkflowPipeline } from '../lib/workflowPipelineAdapter.js';
+  import { useLiveWorkflowPipeline } from '../lib/workflowPipelineAdapter.svelte.js';
 
   /** @type {{ debateId?: string, isRunning?: boolean }} */
   let { debateId = null, isRunning = false } = $props();
