@@ -317,9 +317,22 @@ class ModuleService:
         installed_local = self.discover_local()
         installed_map = {m.module_id: m.version for m in installed_local}
 
+        raw_deps = target.get("dependencies", {})
+        # Handle both legacy flat dict and new structured format
+        if isinstance(raw_deps, dict) and "modules" in raw_deps:
+            module_deps = raw_deps.get("modules", {})
+            role_deps = raw_deps.get("roles", [])
+        elif isinstance(raw_deps, dict):
+            module_deps = raw_deps
+            role_deps = []
+        else:
+            module_deps = {}
+            role_deps = []
+
+        # 1. Module-level dependency check (semver constraints)
         errors = self.dependency_resolver.resolve(
             module_id,
-            target.get("dependencies", {}),
+            module_deps if isinstance(module_deps, dict) else {},
             installed_map,
         )
         if errors:
@@ -331,10 +344,32 @@ class ModuleService:
             )
             return report
 
+        # 2. Role-based dependency check (warn if roles are missing)
+        warnings: list[str] = []
+        if role_deps and isinstance(role_deps, list):
+            installed_info = [
+                {
+                    "module_id": m.module_id,
+                    "type": str(m.type) if m.type else "",
+                    "role": m.role or "",
+                    "tags": m.tags,
+                }
+                for m in installed_local
+            ]
+            role_errors, _ = self.dependency_resolver.resolve_roles(
+                module_id,
+                role_deps,
+                installed_info,
+            )
+            # In Phase 2: warn only, don't block installation
+            warnings.extend(role_errors)
+
         try:
             report = self.installer.install_from_url(download_url)
             if report.status == "ok" and checksum and not report.checksum:
                 report.checksum = checksum
+            if warnings:
+                report.warnings.extend(warnings)
             return report
         except Exception as download_err:
             # If download fails for a language-pack module, fall back to
@@ -835,6 +870,7 @@ class ModuleService:
             tags=manifest_data.get("tags", []),
             language=manifest_data.get("language", "en"),
             checksum=manifest_data.get("checksum", ""),
+            role=manifest_data.get("role"),
             installed=True,
             enabled=bool(db_info.get("enabled", True)) if db_info else True,
             installed_at=db_info.get("installed_at") if db_info else None,

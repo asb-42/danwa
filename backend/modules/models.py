@@ -163,6 +163,18 @@ class ManifestRepository(BaseModel):
     ref: str | None = None
 
 
+class ModuleDependencies(BaseModel):
+    """Dependency declaration for a module.
+
+    Supports two kinds of dependencies:
+    - ``modules``: explicit module_id → semver constraint pairs
+    - ``roles``: required agent-core roles (resolved dynamically at install time)
+    """
+
+    modules: dict[str, str] = Field(default_factory=dict)
+    roles: list[str] = Field(default_factory=list)
+
+
 class ModuleManifest(BaseModel):
     """Manifest for a Danwa module.
 
@@ -180,10 +192,11 @@ class ModuleManifest(BaseModel):
     category: ModuleCategory | None = None  # Derived from directory if absent
     author: dict[str, str] = Field(default_factory=dict)
     license: str = "CC-BY-4.0"
-    dependencies: dict[str, str] = Field(default_factory=dict)
+    dependencies: ModuleDependencies = Field(default_factory=ModuleDependencies)
     tags: list[str] = Field(default_factory=list)
     language: str = "en"
     checksum: str = ""
+    role: str | None = None  # Agent-core role name (e.g. "strategist", "critic")
 
     # v2: single profile file
     profile_file: str | None = None  # e.g. "profile.yaml"
@@ -205,6 +218,14 @@ class ModuleManifest(BaseModel):
         v = v.replace("_", "-")
         if not v.startswith("danwa-") and "-" not in v:
             raise ValueError(f"module_id must contain at least one hyphen (non-danwa module), got '{v}'")
+        return v
+
+    @field_validator("dependencies", mode="before")
+    @classmethod
+    def coerce_dependencies(cls, v: Any) -> Any:
+        """Accept legacy flat dict ``{module_id: constraint}`` and wrap it."""
+        if isinstance(v, dict) and "modules" not in v and "roles" not in v:
+            return {"modules": v}
         return v
 
 
@@ -248,12 +269,13 @@ class ModuleInfo(BaseModel):
     tags: list[str] = Field(default_factory=list)
     language: str = "en"
     checksum: str = ""
+    role: str | None = None
+    dependencies: dict[str, Any] = Field(default_factory=dict)
     installed: bool = False
     enabled: bool = True
     installed_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    dependencies: dict[str, str] = Field(default_factory=dict)
     file_count: int = 0
 
     # v2: profile preview data (parsed from profile file)

@@ -99,14 +99,18 @@ When installing a module via `ModuleService.install_from_repo()`:
 | Update all 9 template JSON files: `default` → `default_role` | `templates/*.json` |
 | Frontend: pre-select role match, show warning if none found | [`TemplateInstantiateModal.svelte`](frontend/src/components/blueprint/TemplateInstantiateModal.svelte:158) |
 
-### Phase 2: Module dependency declarations (near-term)
+### Phase 2: Module dependency declarations ✅ (completed)
 
-| Task | File |
-|------|------|
-| Add `dependencies` field to `ModuleManifest` | [`models.py`](backend/modules/models.py:166) |
-| Add dependency resolution to install flow | [`module_service.py`](backend/modules/service.py:275) |
-| Update repo index generation to include dependency metadata | `danwa-modules/scripts/generate_index.py` |
-| Update module manifests for workflow template modules | `danwa-modules/workflows/*/manifest.json` |
+| Task | File | Status |
+|------|------|--------|
+| Add `ModuleDependencies` model + `role` field to `ModuleManifest` | [`models.py`](backend/modules/models.py:166) | ✅ |
+| Add `resolve_roles()` + `find_missing_roles()` to `DependencyResolver` | [`dependency_resolver.py`](backend/modules/dependency_resolver.py:26) | ✅ |
+| Add role-based dependency checking to install flow (warn-only) | [`service.py`](backend/modules/service.py:275) | ✅ |
+| Add `role` field to `ModuleInfo` + populate in `_dir_to_info` | [`models.py`](backend/modules/models.py:258), [`service.py`](backend/modules/service.py:813) | ✅ |
+| Update repo index generation to include `role` + structured deps | `danwa-modules/scripts/generate_index.py` | ✅ |
+| Update 8 workflow template manifests with `dependencies.roles` | `danwa-modules/workflows/*/manifest.json` | ✅ |
+| Update local Socratic Debate manifest | `modules/workflows/workflow-socratic-debate/manifest.json` | ✅ |
+| Regenerate `index.json` | `danwa-modules/index.json` | ✅ |
 
 ### Phase 3: Auto-install dependencies (medium-term)
 
