@@ -48,14 +48,14 @@
     {
       "key": "reviewer_blueprint_id",
       "type": "blueprint_ref",
-      "default": "strategist-default-en",
-      "description": "Agent Blueprint for the initial review (Strategist role)"
+      "default": "reviewer-default-en",
+      "description": "Agent Blueprint for the initial review (Reviewer role)"
     },
     {
       "key": "reviser_blueprint_id",
       "type": "blueprint_ref",
-      "default": "critic-default-en",
-      "description": "Agent Blueprint for revision based on user feedback (Critic role)"
+      "default": "reviser-default-en",
+      "description": "Agent Blueprint for revision based on user feedback (Reviser role)"
     }
   ],
   "is_system": true

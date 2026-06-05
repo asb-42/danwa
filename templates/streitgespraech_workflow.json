@@ -145,20 +145,20 @@
     {
       "key": "advocate_blueprint_id",
       "type": "blueprint_ref",
-      "default": "strategist-default-en",
-      "description": "Agent Blueprint for the Advocate (Strategist role)"
+      "default": "advocate-default-en",
+      "description": "Agent Blueprint for the Advocate (position defender)"
     },
     {
       "key": "adversary_blueprint_id",
       "type": "blueprint_ref",
-      "default": "critic-default-en",
-      "description": "Agent Blueprint for the Adversary (Critic role)"
+      "default": "adversary-default-en",
+      "description": "Agent Blueprint for the Adversary (position attacker)"
     },
     {
       "key": "moderator_blueprint_id",
       "type": "blueprint_ref",
-      "default": "moderator-default-en",
-      "description": "Agent Blueprint for the Referee/Moderator"
+      "default": "referee-default-en",
+      "description": "Agent Blueprint for the Referee (neutral debate judge)"
     },
     {
       "key": "max_rounds",
