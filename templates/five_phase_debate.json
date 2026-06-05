@@ -1,0 +1,330 @@
+{
+  "id": "tpl-five-phase-debate",
+  "name": "5-Phase Debate (Extended Roles)",
+  "description": "A comprehensive 5-phase debate workflow with 15 specialized roles and a meta-orchestrator.\n\nPhase 1 — Problem Framing: Analyst, Creative Thinker, Socratic Questioner\nPhase 2 — Position Building: Strategist, Expert Reviewer, Steel-manner\nPhase 3 — Stress Testing: Devil's Advocate, Fact Checker, Troll (bad faith, labeled)\nPhase 4 — Integration: Mediator, Ethicist, Synthesizer\nPhase 5 — Closure: Moderator, Critic, Optimizer\n\nKey design choice: Troll and Devil's Advocate are separate roles — Troll tests rhetorical robustness (bad faith, labeled); Devil's Advocate tests logical robustness (good faith). Conflating them weakens both signals.\n\nThe Orchestrator meta-agent reads debate state and decides which role speaks next, preventing role-stacking fatigue and keeping the debate dynamic.",
+  "category": "system",
+  "tags": [
+    "debate",
+    "5-phase",
+    "extended",
+    "multi-agent",
+    "orchestrator",
+    "troll",
+    "devils-advocate",
+    "stress-testing",
+    "structured"
+  ],
+  "template_data": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "wf-input",
+        "label": "Debate Topic",
+        "position": { "x": 100, "y": 300 }
+      },
+      {
+        "id": "init-1",
+        "type": "wf-initialize",
+        "label": "Initialize Context",
+        "position": { "x": 300, "y": 300 }
+      },
+
+      {
+        "id": "analyst-1",
+        "type": "wf-analyst",
+        "label": "Analyst (Problem Framing)",
+        "agent_blueprint_id": "{{analyst_blueprint_id}}",
+        "position": { "x": 550, "y": 150 }
+      },
+      {
+        "id": "creative-1",
+        "type": "wf-creative",
+        "label": "Creative Thinker (Problem Framing)",
+        "agent_blueprint_id": "{{creative_blueprint_id}}",
+        "position": { "x": 550, "y": 300 }
+      },
+      {
+        "id": "socratic-1",
+        "type": "wf-socratic-questioner",
+        "label": "Socratic Questioner (Problem Framing)",
+        "agent_blueprint_id": "{{socratic_blueprint_id}}",
+        "position": { "x": 550, "y": 450 }
+      },
+      {
+        "id": "gate-1",
+        "type": "wf-gate",
+        "label": "Framing Complete?",
+        "config": { "condition": "framing_complete" },
+        "position": { "x": 780, "y": 300 }
+      },
+
+      {
+        "id": "strategist-1",
+        "type": "wf-strategist",
+        "label": "Strategist (Position Building)",
+        "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "position": { "x": 1030, "y": 150 }
+      },
+      {
+        "id": "expert-1",
+        "type": "wf-expert-reviewer",
+        "label": "Expert Reviewer (Position Building)",
+        "agent_blueprint_id": "{{expert_blueprint_id}}",
+        "position": { "x": 1030, "y": 300 }
+      },
+      {
+        "id": "steel-1",
+        "type": "wf-steel-manner",
+        "label": "Steel-manner (Position Building)",
+        "agent_blueprint_id": "{{steel_manner_blueprint_id}}",
+        "position": { "x": 1030, "y": 450 }
+      },
+      {
+        "id": "gate-2",
+        "type": "wf-gate",
+        "label": "Positions Ready?",
+        "config": { "condition": "positions_ready" },
+        "position": { "x": 1260, "y": 300 }
+      },
+
+      {
+        "id": "devils-1",
+        "type": "wf-devils-advocate",
+        "label": "Devil's Advocate (Stress Testing — good faith)",
+        "agent_blueprint_id": "{{devils_advocate_blueprint_id}}",
+        "position": { "x": 1510, "y": 150 }
+      },
+      {
+        "id": "fact-checker-1",
+        "type": "wf-fact-checker",
+        "label": "Fact Checker (Stress Testing)",
+        "agent_blueprint_id": "{{fact_checker_blueprint_id}}",
+        "position": { "x": 1510, "y": 300 }
+      },
+      {
+        "id": "troll-1",
+        "type": "wf-troll",
+        "label": "Troll (Stress Testing — bad faith, labeled)",
+        "agent_blueprint_id": "{{troll_blueprint_id}}",
+        "position": { "x": 1510, "y": 450 }
+      },
+      {
+        "id": "gate-3",
+        "type": "wf-gate",
+        "label": "Stress Test Complete?",
+        "config": { "condition": "stress_test_complete" },
+        "position": { "x": 1740, "y": 300 }
+      },
+
+      {
+        "id": "mediator-1",
+        "type": "wf-mediator",
+        "label": "Mediator (Integration)",
+        "agent_blueprint_id": "{{mediator_blueprint_id}}",
+        "position": { "x": 1990, "y": 150 }
+      },
+      {
+        "id": "ethicist-1",
+        "type": "wf-ethicist",
+        "label": "Ethicist (Integration)",
+        "agent_blueprint_id": "{{ethicist_blueprint_id}}",
+        "position": { "x": 1990, "y": 300 }
+      },
+      {
+        "id": "synthesizer-1",
+        "type": "wf-synthesizer",
+        "label": "Synthesizer (Integration)",
+        "agent_blueprint_id": "{{synthesizer_blueprint_id}}",
+        "position": { "x": 1990, "y": 450 }
+      },
+      {
+        "id": "gate-4",
+        "type": "wf-gate",
+        "label": "Integration Complete?",
+        "config": { "condition": "integration_complete" },
+        "position": { "x": 2220, "y": 300 }
+      },
+
+      {
+        "id": "moderator-1",
+        "type": "wf-moderator",
+        "label": "Moderator (Closure)",
+        "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "position": { "x": 2470, "y": 150 }
+      },
+      {
+        "id": "critic-1",
+        "type": "wf-critic",
+        "label": "Critic (Closure)",
+        "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "position": { "x": 2470, "y": 300 }
+      },
+      {
+        "id": "optimizer-1",
+        "type": "wf-optimizer",
+        "label": "Optimizer (Closure)",
+        "agent_blueprint_id": "{{optimizer_blueprint_id}}",
+        "position": { "x": 2470, "y": 450 }
+      },
+
+      {
+        "id": "orchestrator-1",
+        "type": "wf-moderator",
+        "label": "Orchestrator (Meta-Agent — reads state, decides flow)",
+        "agent_blueprint_id": "{{orchestrator_blueprint_id}}",
+        "position": { "x": 2700, "y": 300 }
+      },
+      {
+        "id": "gate-5",
+        "type": "wf-gate",
+        "label": "Continue or Terminate?",
+        "config": { "condition": "rounds_exhausted" },
+        "position": { "x": 2930, "y": 300 }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "input-1", "target": "init-1", "type": "sequential" },
+
+      { "id": "e2", "source": "init-1", "target": "analyst-1", "type": "sequential" },
+      { "id": "e3", "source": "init-1", "target": "creative-1", "type": "sequential" },
+      { "id": "e4", "source": "init-1", "target": "socratic-1", "type": "sequential" },
+
+      { "id": "e5", "source": "analyst-1", "target": "gate-1", "type": "sequential" },
+      { "id": "e6", "source": "creative-1", "target": "gate-1", "type": "sequential" },
+      { "id": "e7", "source": "socratic-1", "target": "gate-1", "type": "sequential" },
+
+      { "id": "e8", "source": "gate-1", "target": "strategist-1", "type": "conditional", "condition": "framing_complete", "label": "proceed to Position Building" },
+      { "id": "e9", "source": "gate-1", "target": "analyst-1", "type": "feedback", "label": "refine framing" },
+
+      { "id": "e10", "source": "strategist-1", "target": "gate-2", "type": "sequential" },
+      { "id": "e11", "source": "expert-1", "target": "gate-2", "type": "sequential" },
+      { "id": "e12", "source": "steel-1", "target": "gate-2", "type": "sequential" },
+
+      { "id": "e13", "source": "gate-2", "target": "devils-1", "type": "conditional", "condition": "positions_ready", "label": "proceed to Stress Testing" },
+      { "id": "e14", "source": "gate-2", "target": "strategist-1", "type": "feedback", "label": "refine positions" },
+
+      { "id": "e15", "source": "devils-1", "target": "gate-3", "type": "sequential" },
+      { "id": "e16", "source": "fact-checker-1", "target": "gate-3", "type": "sequential" },
+      { "id": "e17", "source": "troll-1", "target": "gate-3", "type": "sequential" },
+
+      { "id": "e18", "source": "gate-3", "target": "mediator-1", "type": "conditional", "condition": "stress_test_complete", "label": "proceed to Integration" },
+      { "id": "e19", "source": "gate-3", "target": "devils-1", "type": "feedback", "label": "more stress testing" },
+
+      { "id": "e20", "source": "mediator-1", "target": "gate-4", "type": "sequential" },
+      { "id": "e21", "source": "ethicist-1", "target": "gate-4", "type": "sequential" },
+      { "id": "e22", "source": "synthesizer-1", "target": "gate-4", "type": "sequential" },
+
+      { "id": "e23", "source": "gate-4", "target": "moderator-1", "type": "conditional", "condition": "integration_complete", "label": "proceed to Closure" },
+      { "id": "e24", "source": "gate-4", "target": "mediator-1", "type": "feedback", "label": "more integration" },
+
+      { "id": "e25", "source": "moderator-1", "target": "orchestrator-1", "type": "sequential" },
+      { "id": "e26", "source": "critic-1", "target": "orchestrator-1", "type": "sequential" },
+      { "id": "e27", "source": "optimizer-1", "target": "orchestrator-1", "type": "sequential" },
+
+      { "id": "e28", "source": "orchestrator-1", "target": "gate-5", "type": "sequential" },
+
+      { "id": "e29", "source": "gate-5", "target": "__end__", "type": "conditional", "condition": "rounds_exhausted", "label": "terminate" },
+      { "id": "e30", "source": "gate-5", "target": "analyst-1", "type": "feedback", "label": "full debate cycle restart" }
+    ],
+    "entry_point": "input-1",
+    "termination_conditions": [
+      { "type": "max_rounds", "value": "{{max_rounds}}", "description": "Maximum full debate cycles across all phases" },
+      { "type": "consensus_reached", "value": "{{consensus_threshold}}", "description": "Global consensus threshold for early termination" }
+    ]
+  },
+  "placeholders": [
+    {
+      "key": "analyst_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Analyst — Problem Framing phase"
+    },
+    {
+      "key": "creative_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Creative Thinker — Problem Framing phase"
+    },
+    {
+      "key": "socratic_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Socratic Questioner — Problem Framing phase"
+    },
+    {
+      "key": "strategist_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Strategist — Position Building phase"
+    },
+    {
+      "key": "expert_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Expert Reviewer — Position Building phase"
+    },
+    {
+      "key": "steel_manner_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Steel-manner — Position Building phase (steelmans opposing views)"
+    },
+    {
+      "key": "devils_advocate_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Devil's Advocate — Stress Testing phase (logical robustness, good faith)"
+    },
+    {
+      "key": "fact_checker_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Fact Checker — Stress Testing phase"
+    },
+    {
+      "key": "troll_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Troll — Stress Testing phase (rhetorical robustness, bad faith, labeled)"
+    },
+    {
+      "key": "mediator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Mediator — Integration phase"
+    },
+    {
+      "key": "ethicist_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Ethicist — Integration phase"
+    },
+    {
+      "key": "synthesizer_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Synthesizer — Integration phase"
+    },
+    {
+      "key": "moderator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Moderator — Closure phase"
+    },
+    {
+      "key": "critic_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Critic — Closure phase"
+    },
+    {
+      "key": "optimizer_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Optimizer — Closure phase"
+    },
+    {
+      "key": "orchestrator_blueprint_id",
+      "type": "blueprint_ref",
+      "description": "Agent Blueprint for the Orchestrator meta-agent — reads debate state, decides which role speaks next"
+    },
+    {
+      "key": "max_rounds",
+      "type": "integer",
+      "default": 3,
+      "description": "Maximum number of full debate cycles (all 5 phases = 1 cycle)"
+    },
+    {
+      "key": "consensus_threshold",
+      "type": "float",
+      "default": 0.85,
+      "description": "Global consensus threshold for early termination (0.0-1.0)"
+    }
+  ],
+  "is_system": true
+}
