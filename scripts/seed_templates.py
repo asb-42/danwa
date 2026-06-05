@@ -91,7 +91,9 @@ def _upsert_template(
         # Compare serialized content to detect changes
         old_hash = json.dumps(existing.template_data, sort_keys=True)
         new_hash = json.dumps(template.template_data, sort_keys=True)
-        if old_hash == new_hash and existing.name == template.name:
+        old_ph = json.dumps([p.model_dump() for p in existing.placeholders], sort_keys=True)
+        new_ph = json.dumps([p.model_dump() for p in template.placeholders], sort_keys=True)
+        if old_hash == new_hash and existing.name == template.name and old_ph == new_ph:
             result["skipped"] += 1
             return
         template.updated_at = datetime.now(UTC)
