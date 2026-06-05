@@ -1,10 +1,9 @@
 """LLM Profile ID alias resolver.
 
-After the UUID migration, legacy semantic IDs (like ``openrouter-claude``)
+After the UUID migration, legacy semantic IDs (like ``xiaomi-mimo-v2.5-pro``)
 no longer exist in the database.  This module provides a runtime resolver
 that maps any legacy ID to its UUID equivalent, so that:
 
-- Hardcoded defaults (``"openrouter-claude"``) resolve to a valid profile
 - Old references stored in YAML / JSON / persisted frontend state still work
 - The service LLM fallback is always available
 
@@ -12,7 +11,7 @@ Usage::
 
     from backend.core.llm_id_aliases import resolve_llm_id
 
-    profile_id = resolve_llm_id("openrouter-claude")  # → UUID
+    profile_id = resolve_llm_id("xiaomi-mimo-v2.5-pro")  # → UUID
 """
 
 from __future__ import annotations
@@ -32,6 +31,9 @@ _LEGACY_ALIASES: dict[str, str] = {}
 
 _MAPPING_FILE = Path(__file__).resolve().parent.parent.parent / "scripts" / "llm_id_mapping.json"
 
+# Canonical active default — what the user sees in the UI as "Standard-Modell"
+_ACTIVE_DEFAULT_ALIAS = "xiaomi-mimo-v2.5-pro"
+
 
 def _load_mapping() -> dict[str, str]:
     """Load the old→new mapping from the migration script output."""
@@ -49,12 +51,6 @@ def _ensure_loaded() -> None:
     """Lazily load the mapping on first use."""
     if not _LEGACY_ALIASES:
         _LEGACY_ALIASES.update(_load_mapping())
-        # Also add common hardcoded aliases that don't exist in the DB
-        # "openrouter-claude" was a legacy default that never had a DB entry.
-        # Map it to the cloud-openrouter profile (claude-3-5-sonnet on OpenRouter).
-        cloud_openrouter_uuid = _LEGACY_ALIASES.get("cloud-openrouter", "")
-        if cloud_openrouter_uuid:
-            _LEGACY_ALIASES.setdefault("openrouter-claude", cloud_openrouter_uuid)
 
 
 def resolve_llm_id(profile_id: str | None) -> str:
@@ -70,11 +66,11 @@ def resolve_llm_id(profile_id: str | None) -> str:
 
 
 def get_default_llm_profile_id() -> str:
-    """Return the UUID of the default service LLM profile.
+    """Return the UUID of the active default service LLM profile.
 
-    This replaces the hardcoded ``"openrouter-claude"`` default used
-    throughout the codebase.
+    This is the canonical fallback when a debate is started without
+    an explicit LLM choice.  Never returns a hardcoded provider name —
+    always the active default (currently ``xiaomi-mimo-v2.5-pro``).
     """
     _ensure_loaded()
-    # The service LLM (previously xiaomi-mimo-v2.5-pro) is the canonical default
-    return _LEGACY_ALIASES.get("xiaomi-mimo-v2.5-pro", "")
+    return _LEGACY_ALIASES.get(_ACTIVE_DEFAULT_ALIAS, "")

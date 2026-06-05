@@ -89,6 +89,8 @@ def extract_request_fields(req: object | dict) -> dict:
 
     user_lang = get_user_language()
 
+    from backend.core.llm_id_aliases import resolve_llm_id, get_default_llm_profile_id
+
     if hasattr(req, "case"):
         case_text = req.case.text
         max_rounds = req.max_rounds
@@ -120,7 +122,11 @@ def extract_request_fields(req: object | dict) -> dict:
         consensus_threshold = req.get("consensus_threshold", 0.8)
         enable_fact_check = req.get("enable_fact_check", False)
         enable_memory = req.get("enable_memory", False)
-        llm_profile_id = req.get("llm_profile_id", "") or settings.service_llm_profile_id
+        llm_profile_id = (
+            resolve_llm_id(req.get("llm_profile_id", ""))
+            or get_default_llm_profile_id()
+            or settings.service_llm_profile_id
+        )
         prompt_variant = req.get("prompt_variant", "default")
         agent_persona_ids = req.get("agent_persona_ids", {})
         language = req.get("language") or user_lang
@@ -379,6 +385,20 @@ async def run_debate_workflow(
         "enable_extra_rounds": fields.get("enable_extra_rounds", False),
         "extension_granted": None,
     }
+
+    # Log which LLM profile this debate will use — helps debug hardcoded-model bugs
+    from backend.services.profile_service import ProfileService
+    _llm_profile = ProfileService().get_llm_profile(fields["llm_profile_id"]) if fields["llm_profile_id"] else None
+    if _llm_profile:
+        logger.info(
+            "Debate %s starting with LLM profile %s (model=%s, provider=%s)",
+            debate_id, _llm_profile.id, _llm_profile.model, _llm_profile.provider.value,
+        )
+    else:
+        logger.warning(
+            "Debate %s has no resolvable LLM profile (requested=%s) — will fall back at agent-run time",
+            debate_id, fields["llm_profile_id"],
+        )
 
     # --- A2A configuration ---
     a2a_config = build_a2a_config(fields["a2a_agents_raw"])

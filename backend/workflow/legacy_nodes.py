@@ -149,7 +149,13 @@ async def run_agent_node(state: DebateState) -> dict:
     project_id = state.get("project_id")
 
     # Profile configuration from state
-    llm_profile_id = state.get("llm_profile_id", "") or settings.service_llm_profile_id
+    from backend.core.llm_id_aliases import resolve_llm_id, get_default_llm_profile_id
+
+    llm_profile_id = (
+        resolve_llm_id(state.get("llm_profile_id", ""))
+        or get_default_llm_profile_id()
+        or settings.service_llm_profile_id
+    )
     prompt_variant = state.get("prompt_variant", "default")
     persona_ids = state.get("agent_persona_ids", {})
     language = state.get("language", "de")
