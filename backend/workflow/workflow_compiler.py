@@ -387,16 +387,67 @@ class WorkflowCompiler:
                     cond = edge.condition or "approved"
                     tgt: object = END if edge.target in ("__end__", "") else edge.target
                     targets[cond] = tgt
-                approved_target = targets.get("approved", "__complete__")
-                # return_to_builder → feedback target, or the decision edge's
-                # revision_required target, or END fallback
-                revision_target: object = feedback_edges[0].target if feedback_edges else targets.get("revision_required", END)
-                mapping = {
-                    "approved": approved_target,
-                    "return_to_builder": revision_target,
-                    "construction_deadlock": END,
-                }
-                graph.add_conditional_edges(node.id, route_decision(decision_max_rounds), mapping)
+
+                # Build verdict_map: maps consensus_result['verdict'] values
+                # to mapping keys.  Sprint 32 (C3 fix) — derive from the
+                # actual decision edges so renamed conditions don't route
+                # to the silent "__complete__" fallback any more.
+                verdict_map: dict[str, str] = {}
+                _known_verdicts = {"approved", "revision_required", "construction_deadlock"}
+                for edge in decision_edges:
+                    cond = edge.condition or "approved"
+                    if cond in _known_verdicts:
+                        # Standard conditions map to themselves as mapping
+                        # keys — preserving the historical "approved" →
+                        # "approved", "revision_required" → "return_to_builder"
+                        # contract.
+                        verdict_map[cond] = {
+                            "approved": "approved",
+                            "revision_required": "return_to_builder",
+                            "construction_deadlock": "construction_deadlock",
+                        }[cond]
+                    else:
+                        # Custom condition — accept it as both verdict value
+                        # and mapping key.  Log a warning so the designer
+                        # knows their template uses a non-standard verb.
+                        verdict_map[cond] = cond
+                        logger.warning(
+                            "Decision edge uses custom condition '%s' (not in "
+                            "known set %s) — accepting as both verdict value "
+                            "and mapping key for node '%s'",
+                            cond,
+                            sorted(_known_verdicts),
+                            node.id,
+                        )
+
+                # Build the LangGraph mapping from the verdict_map keys
+                # to their actual target nodes.  End-of-debate verdicts
+                # (approved, construction_deadlock) terminate; others
+                # route to the next builder.
+                mapping: dict[str, object] = {}
+                for verdict_value, key in verdict_map.items():
+                    if verdict_value == "construction_deadlock":
+                        mapping[key] = END
+                    else:
+                        target = targets.get(verdict_value, END)
+                        if target == END and verdict_value not in targets:
+                            logger.warning(
+                                "Decision node '%s': verdict '%s' has no "
+                                "matching decision edge — falling back to END",
+                                node.id,
+                                verdict_value,
+                            )
+                        mapping[key] = target
+                # construction_deadlock is always present (from the
+                # verdict_map we built above) but make it explicit.
+                if "construction_deadlock" not in mapping:
+                    mapping["construction_deadlock"] = END
+
+                graph.add_conditional_edges(
+                    node.id,
+                    route_decision(decision_max_rounds, verdict_map=verdict_map),
+                    mapping,
+                )
 
             # Handle gate nodes (conditional routing)
             elif node.type == "wf-gate" and len(non_feedback) >= 2:
