@@ -262,6 +262,7 @@
       // Convert WorkflowDefinition to canvas layout format and load directly
       canvasStore.reset();
       canvasStore.currentWorkflowId = wf.id;
+      canvasStore.currentLayoutId = wf.id;
       canvasStore.currentLayoutName = wf.name;
 
       // Convert WorkflowDefinition nodes/edges to layout format
