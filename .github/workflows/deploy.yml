@@ -59,24 +59,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to Production
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          script: |
-            cd /opt/danwa
-            git pull origin main
-            export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
-            docker compose build
-            docker compose up -d --remove-orphans
-            docker compose ps
+  # deploy:
+  #   name: Deploy to Production
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy via SSH
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.DEPLOY_HOST }}
+  #         username: ${{ secrets.DEPLOY_USER }}
+  #         key: ${{ secrets.DEPLOY_KEY }}
+  #         script: |
+  #           cd /opt/danwa
+  #           git pull origin main
+  #           export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
+  #           docker compose build
+  #           docker compose up -d --remove-orphans
+  #           docker compose ps
