@@ -58,9 +58,7 @@ class TestInMemoryExtensionSignal:
         state.set_extension_signal(sid)
         # Run the wait via asyncio.run to avoid the deprecated
         # ``asyncio.get_event_loop()`` access pattern.
-        result = asyncio.run(
-            state.wait_for_extension_signal(sid, timeout=0.5)
-        )
+        result = asyncio.run(state.wait_for_extension_signal(sid, timeout=0.5))
         assert result is True
 
     @pytest.mark.asyncio
@@ -243,9 +241,7 @@ class TestExtensionWaitIntegration:
                     granted = debate["extension_granted"]
                     return
                 remaining = deadline - loop.time()
-                await state.wait_for_extension_signal(
-                    sid, timeout=min(2.0, max(0.1, remaining))
-                )
+                await state.wait_for_extension_signal(sid, timeout=min(2.0, max(0.1, remaining)))
 
         waiter = asyncio.create_task(wait_for_decision())
         await asyncio.sleep(0.05)
@@ -271,9 +267,7 @@ class TestExtensionWaitIntegration:
             # Short deadline (0.2 s) for the test
             deadline = loop.time() + 0.2
             while loop.time() < deadline:
-                await state.wait_for_extension_signal(
-                    sid, timeout=min(0.1, max(0.05, deadline - loop.time()))
-                )
+                await state.wait_for_extension_signal(sid, timeout=min(0.1, max(0.05, deadline - loop.time())))
             return False  # timeout fallback
 
         result = await wait_for_decision()
@@ -415,9 +409,7 @@ class TestExtensionRequestNodeSignal:
         asyncio.create_task(user_responds())
 
         while loop.time() < deadline:
-            await backend.wait_for_extension_signal(
-                did, timeout=min(2.0, max(0.1, deadline - loop.time()))
-            )
+            await backend.wait_for_extension_signal(did, timeout=min(2.0, max(0.1, deadline - loop.time())))
             interrupt = get_active_interrupt(did)
             if interrupt is None:
                 # Resolved
@@ -431,4 +423,3 @@ class TestExtensionRequestNodeSignal:
         # test environment, not 2 s which is the poll interval).
         assert woke_at is not None
         assert woke_at < 0.5  # generous threshold for CI jitter
-

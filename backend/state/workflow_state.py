@@ -51,13 +51,9 @@ class WorkflowStateBackend(Protocol):
     def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool: ...
     def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool: ...
     def set_extension_signal(self, session_id: str) -> None: ...
-    def wait_for_extension_signal(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool: ...
+    def wait_for_extension_signal(self, session_id: str, timeout: float | None = None) -> bool: ...
     def get_hitl_pause(self, debate_id: str) -> dict | None: ...
-    def set_hitl_pause(
-        self, debate_id: str, paused_at: str, reason: str | None
-    ) -> None: ...
+    def set_hitl_pause(self, debate_id: str, paused_at: str, reason: str | None) -> None: ...
     def clear_hitl_pause(self, debate_id: str) -> None: ...
     def cleanup(self, session_id: str) -> None: ...
 
@@ -248,9 +244,7 @@ class InMemoryWorkflowState:
         """
         self._get_extension_wait_event(session_id).set()
 
-    async def wait_for_extension_signal(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool:
+    async def wait_for_extension_signal(self, session_id: str, timeout: float | None = None) -> bool:
         """Block until the extension-decision signal fires (or timeout).
 
         Returns ``True`` if the extension channel was set (locally
@@ -288,9 +282,7 @@ class InMemoryWorkflowState:
         # state by holding a reference.
         return dict(record)
 
-    def set_hitl_pause(
-        self, debate_id: str, paused_at: str, reason: str | None
-    ) -> None:
+    def set_hitl_pause(self, debate_id: str, paused_at: str, reason: str | None) -> None:
         """Mark a debate as HITL-paused.
 
         Stores ``{paused_at, reason}`` keyed by ``debate_id``.
@@ -437,9 +429,7 @@ class RedisWorkflowState:
         """
         self._get_extension_wait_event(session_id).set()
 
-    async def wait_for_extension_signal(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool:
+    async def wait_for_extension_signal(self, session_id: str, timeout: float | None = None) -> bool:
         """Block until the extension-decision signal fires.
 
         See :meth:`InMemoryWorkflowState.wait_for_extension_signal`
@@ -484,9 +474,7 @@ class RedisWorkflowState:
             return None
         return data
 
-    def set_hitl_pause(
-        self, debate_id: str, paused_at: str, reason: str | None
-    ) -> None:
+    def set_hitl_pause(self, debate_id: str, paused_at: str, reason: str | None) -> None:
         """Mark a debate as HITL-paused.
 
         Stores a JSON-encoded record at

@@ -371,9 +371,7 @@ class TestHITLStateManagement:
         assert is_paused("debate-1") is False
 
     def test_is_paused_after_set(self):
-        get_workflow_state().set_hitl_pause(
-            "debate-1", paused_at="2024-01-01T00:00:00Z", reason=None
-        )
+        get_workflow_state().set_hitl_pause("debate-1", paused_at="2024-01-01T00:00:00Z", reason=None)
         assert is_paused("debate-1") is True
 
     def test_get_active_interrupt_default_none(self):
@@ -564,9 +562,7 @@ class TestHITLStateManagement:
 
     def test_cleanup_hitl_state(self):
         _active_interrupts["debate-1"] = {"interrupt_id": "x"}
-        get_workflow_state().set_hitl_pause(
-            "debate-1", paused_at="now", reason=None
-        )
+        get_workflow_state().set_hitl_pause("debate-1", paused_at="now", reason=None)
         _hitl_config["debate-1"] = {"hitl_enabled": True}
         _interaction_log["debate-1"] = [{"type": "inject"}]
 

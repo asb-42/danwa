@@ -366,9 +366,7 @@ class TestHitlPauseStorage:
     def test_set_hitl_pause_then_get(self) -> None:
         backend = get_workflow_state()
         did = _id()
-        backend.set_hitl_pause(
-            did, paused_at="2024-01-01T00:00:00Z", reason="user request"
-        )
+        backend.set_hitl_pause(did, paused_at="2024-01-01T00:00:00Z", reason="user request")
         record = backend.get_hitl_pause(did)
         assert record == {
             "paused_at": "2024-01-01T00:00:00Z",
@@ -391,12 +389,8 @@ class TestHitlPauseStorage:
         """
         backend = get_workflow_state()
         did = _id()
-        backend.set_hitl_pause(
-            did, paused_at="2024-01-01T00:00:00Z", reason="first"
-        )
-        backend.set_hitl_pause(
-            did, paused_at="2024-01-01T00:01:00Z", reason="second"
-        )
+        backend.set_hitl_pause(did, paused_at="2024-01-01T00:00:00Z", reason="first")
+        backend.set_hitl_pause(did, paused_at="2024-01-01T00:01:00Z", reason="second")
         record = backend.get_hitl_pause(did)
         assert record == {
             "paused_at": "2024-01-01T00:01:00Z",
@@ -464,9 +458,7 @@ class TestHitlPauseFromHitlApi:
 
         did = _id()
         assert is_paused(did) is False
-        get_workflow_state().set_hitl_pause(
-            did, paused_at="now", reason="user"
-        )
+        get_workflow_state().set_hitl_pause(did, paused_at="now", reason="user")
         assert is_paused(did) is True
         get_workflow_state().clear_hitl_pause(did)
         assert is_paused(did) is False
@@ -479,6 +471,5 @@ class TestHitlPauseFromHitlApi:
         import backend.workflow.hitl.api as hitl_api
 
         assert not hasattr(hitl_api, "_paused_debates"), (
-            "_paused_debates must be removed from hitl/api.py — "
-            "use get_workflow_state().get_hitl_pause(...) instead"
+            "_paused_debates must be removed from hitl/api.py — use get_workflow_state().get_hitl_pause(...) instead"
         )

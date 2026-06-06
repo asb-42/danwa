@@ -512,9 +512,7 @@ async def pause_debate(
     now = datetime.now(UTC).isoformat()
 
     if body.action == "pause":
-        get_workflow_state().set_hitl_pause(
-            debate_id, paused_at=now, reason=body.reason
-        )
+        get_workflow_state().set_hitl_pause(debate_id, paused_at=now, reason=body.reason)
         message = body.reason or "Debate paused by user"
 
         # Emit SSE event
