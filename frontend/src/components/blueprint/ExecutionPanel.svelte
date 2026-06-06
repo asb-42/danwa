@@ -170,7 +170,6 @@
       currentRound = 0;
       consensus = 0;
       elapsedMs = 0;
-      onExecutionReset();
       startTimer();
       connectSSE(initialSessionId);
     }

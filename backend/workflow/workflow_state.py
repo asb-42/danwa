@@ -15,6 +15,22 @@ from enum import StrEnum
 from typing import Annotated, Any, TypedDict
 
 
+def _merge_drafts(a: str, b: str) -> str:
+    """Merge concurrent ``current_draft`` writes from fan-out agents.
+
+    Each agent reads the same base and appends its section.
+    With ``node_outputs`` (``operator.add``) capturing all individual
+    outputs, ``current_draft`` is a convenience summary.
+    Keep the longest value to avoid ``InvalidUpdateError`` when
+    multiple agents write in the same LangGraph step.
+    """
+    if not a:
+        return b
+    if not b:
+        return a
+    return max(a, b, key=len)
+
+
 class WorkflowTemplate(StrEnum):
     """Identifiers for the built-in workflow templates.
 
@@ -72,7 +88,7 @@ class WorkflowState(TypedDict, total=False):
     # --- Accumulators ---
     node_outputs: Annotated[list[WorkflowNodeOutput], operator.add]
     messages: Annotated[list[dict], operator.add]  # Full message log
-    current_draft: str
+    current_draft: Annotated[str, _merge_drafts]
 
     # --- Interjection ---
     interjection_queue: list[dict]  # Pending interjections
