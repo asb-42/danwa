@@ -433,12 +433,6 @@
       // Close run dialog, open execution panel with session ID
       showRunDialog = false;
 
-      if (result.debate_id) {
-        // Navigate to rich debate view
-        navigate('mvp-debate/' + result.debate_id);
-        return;
-      }
-
       executionContext = params.topic;
       executionOptions = {
         language: params.language,
@@ -584,6 +578,7 @@
       onsaveas={handleSaveAs}
       onnewworkflow={handleNewWorkflow}
       onsaveastemplate={handleSaveAsTemplate}
+      onrun={handleOpenRunDialog}
     />
   </main>
 

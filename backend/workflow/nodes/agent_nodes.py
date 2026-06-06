@@ -6,6 +6,7 @@ runtime and call the LLM via ``LLMService``.
 
 from __future__ import annotations
 
+import asyncio
 import json as _json
 import logging
 import re
@@ -89,6 +90,12 @@ def agent_node_factory(
     async def _agent_node(state: WorkflowState) -> dict:
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
+
+        # Check for cancellation before starting work
+        from backend.workflow.workflow_runner import is_cancelled
+        if is_cancelled(session_id):
+            raise asyncio.CancelledError(f"Workflow session {session_id} was cancelled")
+
         start_time = time.monotonic()
 
         # --- Publish: node started ---

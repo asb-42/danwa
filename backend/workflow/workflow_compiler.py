@@ -317,8 +317,16 @@ class WorkflowCompiler:
             agent_tags=list(mod_agent.tags),
         )
 
+    _API_KEY_PLACEHOLDERS = frozenset({
+        "YOUR_API_KEY_ENV_VAR", "YOUR_API_KEY", "REPLACE_ME", "CHANGEME", "",
+    })
+
     def _get_fallback_llm_profile_id(self, errors: list[str]) -> str:
-        """Find a usable LLM profile from the service default or first available."""
+        """Find a usable LLM profile from the service default or first available.
+
+        Prefers profiles with a real api_key_env (not a placeholder) and
+        an actual API key set (BYOK) or a valid env var name.
+        """
         try:
             from backend.core.config import get_settings
             settings = get_settings()
@@ -329,6 +337,14 @@ class WorkflowCompiler:
         try:
             profiles = self._repo.list_llm_profiles()
             if profiles:
+                # Prefer profiles with real api_key_env or BYOK key set
+                for p in profiles:
+                    if p.api_key:
+                        return p.id
+                for p in profiles:
+                    if p.api_key_env and p.api_key_env not in self._API_KEY_PLACEHOLDERS:
+                        return p.id
+                # Last resort: return first profile even if placeholder
                 return profiles[0].id
         except Exception:
             pass

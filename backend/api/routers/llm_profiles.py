@@ -6,6 +6,7 @@ Single Responsibility Principle.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -17,6 +18,7 @@ from backend.blueprints.repository import BlueprintRepository
 from backend.services.module_profile_sync import get_llm_profiles_from_modules
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _require_found(entity: str, obj: object, entity_id: str) -> None:
@@ -53,6 +55,11 @@ def list_llm_profiles(
     return combined
 
 
+_PLACEHOLDER_API_KEY_ENVS = frozenset({
+    "YOUR_API_KEY_ENV_VAR", "YOUR_API_KEY", "REPLACE_ME", "CHANGEME", "",
+})
+
+
 @router.get("/{profile_id}", response_model=BlueprintLLMProfile)
 def get_llm_profile(
     profile_id: str,
@@ -61,6 +68,17 @@ def get_llm_profile(
     """Get a single LLM profile by ID (DB or module)."""
     profile = repo.get_llm_profile(profile_id)
     if profile:
+        # Auto-fix stale placeholder api_key_env from module source
+        if profile.api_key_env in _PLACEHOLDER_API_KEY_ENVS:
+            module_profiles = get_llm_profiles_from_modules()
+            for mp in module_profiles:
+                if mp.get("id") == profile_id:
+                    module_env = mp.get("api_key_env", "")
+                    if module_env and module_env not in _PLACEHOLDER_API_KEY_ENVS:
+                        profile.api_key_env = module_env
+                        repo.save_llm_profile(profile)
+                        logger.info("Auto-fixed stale api_key_env for profile '%s'", profile_id)
+                    break
         return profile  # type: ignore[return-value]
     # Fallback: check module profiles
     module_profiles = get_llm_profiles_from_modules()

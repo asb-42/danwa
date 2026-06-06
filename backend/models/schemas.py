@@ -18,6 +18,7 @@ class DebateStatus(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class AgentRole(StrEnum):

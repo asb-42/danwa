@@ -67,6 +67,28 @@ class LLMService:
     def profile(self) -> LLMProfile | None:
         return self._profile
 
+    # Known placeholder values that should be treated as unset
+    _API_KEY_PLACEHOLDERS = frozenset({
+        "YOUR_API_KEY_ENV_VAR",
+        "YOUR_API_KEY",
+        "REPLACE_ME",
+        "CHANGEME",
+        "",
+    })
+
+    # Provider → list of well-known env var names to try as fallback
+    _PROVIDER_DEFAULT_ENV_VARS: dict[str, list[str]] = {
+        "openrouter": ["OPENROUTER_API_KEY", "OPENAI_API_KEY"],
+        "openai": ["OPENAI_API_KEY"],
+        "anthropic": ["ANTHROPIC_API_KEY"],
+        "google": ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
+        "local": ["LM_STUDIO_KEY", "LOCAL_LLM_API_KEY"],
+        "ollama": ["OLLAMA_API_KEY", "LM_STUDIO_KEY"],
+        "cloudflare": ["CLOUDFLARE_API_TOKEN"],
+        "xiaomi": ["XIAOMI_API_KEY"],
+        "opencode-zen": ["OPENCODE_ZEN_API_KEY"],
+    }
+
     def _resolve_api_key(self, required: bool = True) -> str:
         """Resolve the API key for this profile using the BYOK priority chain.
 
@@ -74,6 +96,7 @@ class LLMService:
         1. Profile's direct ``api_key`` field (BYOK — set via API or UI)
         2. User-scoped key override (if user_id is set on the service)
         3. Environment variable (``api_key_env``)
+        4. Provider-specific default env vars (fallback for placeholder configs)
 
         Args:
             required: If True, raises ValueError when no key is found.
@@ -98,15 +121,44 @@ class LLMService:
                 pass  # Fall through to env var
 
         # 3. Environment variable fallback
-        env_key = os.getenv(self._profile.api_key_env, "")
-        if env_key:
-            return env_key
+        api_key_env = self._profile.api_key_env
+        # Skip known placeholder values
+        if api_key_env and api_key_env not in self._API_KEY_PLACEHOLDERS:
+            env_key = os.getenv(api_key_env, "")
+            if env_key:
+                return env_key
+
+        # 4. Provider-specific default env vars (handles stale placeholder configs)
+        provider = getattr(self._profile, "provider", None)
+        provider_str = provider.value if hasattr(provider, "value") else str(provider or "")
+        for env_name in self._PROVIDER_DEFAULT_ENV_VARS.get(provider_str, []):
+            env_key = os.getenv(env_name, "")
+            if env_key:
+                logger.info(
+                    "API key for profile '%s' resolved via provider fallback '%s'",
+                    self._profile.id, env_name,
+                )
+                return env_key
+
+        # Also try common universal env vars
+        for env_name in ("OPENAI_API_KEY", "LLM_API_KEY"):
+            env_key = os.getenv(env_name, "")
+            if env_key:
+                logger.info(
+                    "API key for profile '%s' resolved via universal fallback '%s'",
+                    self._profile.id, env_name,
+                )
+                return env_key
 
         if required:
+            env_hint = (
+                f"Set the {api_key_env} environment variable"
+                if api_key_env and api_key_env not in self._API_KEY_PLACEHOLDERS
+                else "Configure the api_key_env in the LLM profile or set an API key (BYOK)"
+            )
             raise ValueError(
-                f"API key not found for profile '{self._profile.id}'. "
-                f"Set the {self._profile.api_key_env} environment variable, "
-                f"or configure a key in the profile settings (BYOK)."
+                f"API key not found for profile '{self._profile.id}' ({self._profile.name}). "
+                f"{env_hint}, or configure a key in the profile settings (BYOK)."
             )
         return ""
 

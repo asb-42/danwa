@@ -23,14 +23,13 @@
   import { registerAllNodeTypes } from '../../lib/blueprint/registerAll.js';
   import { wireEdgeOnConnect, wireEdgeOnDisconnect, isSemanticEdge } from '../../lib/blueprint/edgeWiring.js';
   import ModeSwitcher from './ModeSwitcher.svelte';
-  import ExecutionPanel from './ExecutionPanel.svelte';
   import ProposalsPanel from './ProposalsPanel.svelte';
   import SvelteFlowInstanceBridge from './SvelteFlowInstanceBridge.svelte';
 
   // Initialize registry (idempotent — safe to call multiple times)
   registerAllNodeTypes();
 
-  let { onsave = () => {}, onsaveas = () => {}, onnewworkflow = () => {}, onsaveastemplate = () => {} } = $props();
+  let { onsave = () => {}, onsaveas = () => {}, onnewworkflow = () => {}, onsaveastemplate = () => {}, onrun = () => {} } = $props();
 
   let t = $derived($tStore);
 
@@ -234,23 +233,6 @@
     }
   }
 
-  // ─── Execution state ──────────────────────────────────────────────
-  let showExecutionPanel = $state(false);
-  let activeWorkflowId = $state(null);
-  let nodeExecutionStatus = $state({}); // nodeId → 'idle' | 'running' | 'completed' | 'failed' | 'paused'
-
-  function handleToggleExecution() {
-    showExecutionPanel = !showExecutionPanel;
-    if (showExecutionPanel) {
-      // Find the current workflow ID from the store
-      activeWorkflowId = canvasStore.currentWorkflowId || null;
-    }
-  }
-
-  function handleCloseExecution() {
-    showExecutionPanel = false;
-    nodeExecutionStatus = {};
-  }
 
   // ─── Reflection state ──────────────────────────────────────────────
   let showProposalsPanel = $state(false);
@@ -281,11 +263,6 @@
     }
   }
 
-  function handleNodeStatusUpdate(nodeId, execStatus) {
-    nodeExecutionStatus = { ...nodeExecutionStatus, [nodeId]: execStatus };
-    // Update the node's data.executionStatus in the store
-    canvasStore.updateNodeData(nodeId, { executionStatus: execStatus });
-  }
 
   let isWorkflowMode = $derived(canvasStore.mode === 'workflow');
   let hasNodes = $derived(nodes.length > 0);
@@ -393,8 +370,7 @@
       </button>
       <button
         class="toolbar-btn toolbar-btn-execute"
-        class:active={showExecutionPanel}
-        onclick={handleToggleExecution}
+        onclick={onrun}
         title={t('workflow.execution.title')}
         data-testid="canvas-execute"
       >
@@ -467,13 +443,6 @@
     </div>
   {/if}
 
-  <!-- Execution Panel -->
-  <ExecutionPanel
-    workflowId={activeWorkflowId}
-    visible={showExecutionPanel}
-    onclose={handleCloseExecution}
-    onNodeStatusUpdate={handleNodeStatusUpdate}
-  />
 
   <!-- Proposals Panel -->
   {#if showProposalsPanel && canvasStore.currentWorkflowId}

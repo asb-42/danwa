@@ -37,31 +37,59 @@ MVP_DEBATE_ROLES: list[str] = ["strategist", "critic", "optimizer", "moderator"]
 DEFAULT_LLM_ASSIGNMENTS: dict[str, str] = {}
 
 
+_PLACEHOLDER_API_KEY_ENVS = frozenset({
+    "YOUR_API_KEY_ENV_VAR", "YOUR_API_KEY", "REPLACE_ME", "CHANGEME", "",
+})
+
+
 def _ensure_llm_profile_in_db(repo: BlueprintRepository, profile_id: str) -> None:
-    """Ensure an LLM profile exists in the DB. Sync from module if needed."""
-    if repo.get_llm_profile(profile_id) is not None:
-        return
+    """Ensure an LLM profile exists in the DB. Sync from module if needed.
+
+    Also updates stale ``api_key_env`` placeholder values in the DB
+    with the current module manifest value.
+    """
+    existing = repo.get_llm_profile(profile_id)
 
     from backend.services.module_profile_sync import get_llm_profiles_from_modules
 
+    module_profile = None
     for mp in get_llm_profiles_from_modules():
         if mp.get("id") == profile_id:
-            profile = BlueprintLLMProfile(
-                id=mp["id"],
-                name=mp.get("name", profile_id),
-                provider=mp.get("provider", "local"),
-                model=mp.get("model", profile_id),
-                api_base=mp.get("api_base"),
-                api_key_env=mp.get("api_key_env", "OPENROUTER_API_KEY"),
-                max_tokens=mp.get("max_tokens", 4096),
-                context_window=mp.get("context_window"),
-                temperature=mp.get("temperature", 0.7),
-                timeout=mp.get("timeout", 600),
-                profile_type=mp.get("profile_type", "text"),
+            module_profile = mp
+            break
+
+    if existing is not None:
+        # Update stale placeholder api_key_env from module source
+        if (
+            module_profile
+            and existing.api_key_env in _PLACEHOLDER_API_KEY_ENVS
+            and module_profile.get("api_key_env", "") not in _PLACEHOLDER_API_KEY_ENVS
+        ):
+            existing.api_key_env = module_profile["api_key_env"]
+            repo.save_llm_profile(existing)
+            logger.info(
+                "Updated stale api_key_env for profile '%s' from module manifest",
+                profile_id,
             )
-            repo.save_llm_profile(profile)
-            logger.info("Synced LLM profile '%s' from module to DB", profile_id)
-            return
+        return
+
+    if module_profile:
+        profile = BlueprintLLMProfile(
+            id=module_profile["id"],
+            name=module_profile.get("name", profile_id),
+            provider=module_profile.get("provider", "local"),
+            model=module_profile.get("model", profile_id),
+            api_base=module_profile.get("api_base"),
+            api_key_env=module_profile.get("api_key_env", "OPENROUTER_API_KEY"),
+            max_tokens=module_profile.get("max_tokens", 4096),
+            context_window=module_profile.get("context_window"),
+            temperature=module_profile.get("temperature", 0.7),
+            timeout=module_profile.get("timeout", 600),
+            profile_type=module_profile.get("profile_type", "text"),
+        )
+        repo.save_llm_profile(profile)
+        logger.info("Synced LLM profile '%s' from module to DB", profile_id)
+        return
 
     raise ValueError(f"LLM profile '{profile_id}' not found in DB or modules")
 

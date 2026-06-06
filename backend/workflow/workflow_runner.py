@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 _pause_events: dict[str, asyncio.Event] = {}
 _cancelled_sessions: set[str] = set()
 _session_status: dict[str, str] = {}  # session_id → status string
+_running_tasks: dict[str, asyncio.Task] = {}  # session_id → asyncio.Task for cancellation
 
 
 def is_cancelled(session_id: str) -> bool:
@@ -39,9 +40,12 @@ def is_cancelled(session_id: str) -> bool:
 
 
 def cancel_session(session_id: str) -> None:
-    """Mark a session as cancelled."""
+    """Mark a session as cancelled and cancel the running asyncio task."""
     _cancelled_sessions.add(session_id)
     _session_status[session_id] = "cancelled"
+    task = _running_tasks.get(session_id)
+    if task and not task.done():
+        task.cancel()
 
 
 def get_session_status(session_id: str) -> str:
@@ -150,11 +154,18 @@ async def run_workflow_background(
             max_rounds,
         )
 
-        # Invoke the compiled graph with a hard recursion limit
-        final_state = await graph.ainvoke(
-            initial_state,
-            config={"recursion_limit": recursion_limit},
-        )
+        # Invoke the compiled graph with a hard recursion limit.
+        # Wrap in a tracked task so cancel_session() can interrupt it.
+        graph_task = asyncio.current_task()
+        if graph_task:
+            _running_tasks[session_id] = graph_task
+        try:
+            final_state = await graph.ainvoke(
+                initial_state,
+                config={"recursion_limit": recursion_limit},
+            )
+        finally:
+            _running_tasks.pop(session_id, None)
 
         # Save final snapshot
         snapshot_store.save(
@@ -249,6 +260,39 @@ async def run_workflow_background(
             duration_ms,
         )
 
+    except asyncio.CancelledError:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        logger.info("Workflow %s cancelled for session %s after %dms", workflow_id, session_id, duration_ms)
+
+        await publish_async(
+            session_id,
+            "workflow.cancelled",
+            {
+                "type": "workflow.cancelled",
+                "session_id": session_id,
+                "workflow_id": workflow_id,
+                "duration_ms": duration_ms,
+            },
+        )
+
+        set_session_status(session_id, "cancelled")
+
+        debate_id = initial_state.get("debate_id")
+        if debate_id:
+            try:
+                from backend.api.deps import get_debate_store_for_project
+                from backend.persistence.debate_store import DebateStatus
+                from backend.persistence.project_store import ProjectStore
+
+                project_store = ProjectStore()
+                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate = debate_store.get(debate_id)
+                if debate:
+                    debate["status"] = DebateStatus.CANCELLED
+                    debate_store.put(debate_id, debate)
+            except Exception:
+                logger.warning("Failed to update debate record %s", debate_id, exc_info=True)
+
     except Exception as exc:
         duration_ms = int((time.monotonic() - start_time) * 1000)
         logger.error(
@@ -314,6 +358,7 @@ async def run_workflow_background(
         # Cleanup shared state
         _pause_events.pop(session_id, None)
         _cancelled_sessions.discard(session_id)
+        _running_tasks.pop(session_id, None)
         await interjection_service.clear(session_id)
 
 
