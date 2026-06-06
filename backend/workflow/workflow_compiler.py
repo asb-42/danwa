@@ -364,29 +364,61 @@ class WorkflowCompiler:
     def _get_fallback_llm_profile_id(self, errors: list[str]) -> str:
         """Find a usable LLM profile from the service default or first available.
 
-        Prefers profiles with a real api_key_env (not a placeholder) and
-        an actual API key set (BYOK) or a valid env var name.
+        Priority order:
+        1. ``settings.service_llm_profile_id`` (user-configured utility LLM).
+        2. First profile with BYOK ``api_key`` set directly.
+        3. First profile whose ``api_key_env`` resolves to a real env var.
+        4. First profile with a non-placeholder ``api_key_env``.
+        5. Absolute first profile in the DB.
         """
-        try:
-            from backend.core.config import get_settings
+        import os
 
-            settings = get_settings()
-            if settings.service_llm_profile_id:
-                return settings.service_llm_profile_id
+        # --- 1. Explicit service default ---
+        try:
+            from backend.core.config import settings as _settings
+
+            if _settings.service_llm_profile_id:
+                logger.info(
+                    "Using configured service LLM profile: %s",
+                    _settings.service_llm_profile_id,
+                )
+                return _settings.service_llm_profile_id
         except Exception:
             pass
         try:
             profiles = self._repo.list_llm_profiles()
-            if profiles:
-                # Prefer profiles with real api_key_env or BYOK key set
-                for p in profiles:
-                    if p.api_key:
-                        return p.id
-                for p in profiles:
-                    if p.api_key_env and p.api_key_env not in self._API_KEY_PLACEHOLDERS:
-                        return p.id
-                # Last resort: return first profile even if placeholder
-                return profiles[0].id
+            if not profiles:
+                return ""
+            # --- 2. BYOK (direct api_key on profile) ---
+            for p in profiles:
+                if p.api_key:
+                    logger.info("Fallback LLM: BYOK profile '%s'", p.id)
+                    return p.id
+            # --- 3. Env var is actually set in the environment ---
+            for p in profiles:
+                if (
+                    p.api_key_env
+                    and p.api_key_env not in self._API_KEY_PLACEHOLDERS
+                    and os.environ.get(p.api_key_env)
+                ):
+                    logger.info(
+                        "Fallback LLM: env '%s' is set → profile '%s'",
+                        p.api_key_env,
+                        p.id,
+                    )
+                    return p.id
+            # --- 4. Non-placeholder env var name (but env not set) ---
+            for p in profiles:
+                if p.api_key_env and p.api_key_env not in self._API_KEY_PLACEHOLDERS:
+                    logger.warning(
+                        "Fallback LLM: env '%s' not set, using profile '%s' anyway",
+                        p.api_key_env,
+                        p.id,
+                    )
+                    return p.id
+            # --- 5. Last resort ---
+            logger.warning("Fallback LLM: no good candidate, using first profile '%s'", profiles[0].id)
+            return profiles[0].id
         except Exception:
             pass
         return ""
@@ -737,18 +769,18 @@ class WorkflowCompiler:
                 target = non_feedback[0].target
                 graph.add_edge(node.id, target)
 
-            # Handle multiple non-feedback, non-gate edges (take first)
+            # Handle multiple non-feedback, non-gate edges (fan-out)
             elif len(non_feedback) > 1:
-                # Multiple targets without gate — use first as primary
-                graph.add_edge(node.id, non_feedback[0].target)
-                msg = (
-                    f"Node '{node.id}' has {len(non_feedback)} non-feedback "
-                    f"outgoing edges but is not a gate. Using first target "
-                    f"'{non_feedback[0].target}' — other targets are ignored. "
-                    f"Wrap in a wf-gate node or split into multiple nodes."
+                # Fan-out: add edges to ALL targets. LangGraph runs them
+                # in parallel and waits at the fan-in node (the gate).
+                for edge in non_feedback:
+                    graph.add_edge(node.id, edge.target)
+                logger.info(
+                    "Fan-out from '%s' to %d targets: %s",
+                    node.id,
+                    len(non_feedback),
+                    [e.target for e in non_feedback],
                 )
-                logger.warning(msg)
-                warnings.append(msg)
 
         # --- Ensure terminal nodes connect to END ---
         # Find nodes with no outgoing edges that aren't already connected
