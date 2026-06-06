@@ -181,9 +181,7 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
         rnd = ao.get("round") or 0
         rounds_map.setdefault(rnd, []).append(ao)
 
-    final_consensus = state.get(
-        "final_consensus", debate_data.get("result", {}).get("consensus", 0.0)
-    )
+    final_consensus = state.get("final_consensus", debate_data.get("result", {}).get("consensus", 0.0))
     current_round = state.get("current_round", debate_data.get("current_round", 1))
 
     # If no round info was available, fall back to single round

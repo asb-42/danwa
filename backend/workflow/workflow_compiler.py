@@ -60,9 +60,10 @@ class ResolvedAgentConfig:
     blueprint_name: str
     llm_profile_id: str
     llm_model: str
-    llm_profile_name: str = ""  # Human-readable LLM profile name (never a raw UUID)
     role_definition_id: str
     role: str
+    # Human-readable LLM profile name (never a raw UUID)
+    llm_profile_name: str = ""
     # RoleType metadata (resolved from RoleDefinition.role_type_id or Bundle)
     role_type_name: str = ""
     role_type_icon: str = "👤"
