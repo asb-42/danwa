@@ -296,57 +296,16 @@ def _save_provenance_batch(
     workflow_id: str,
     build_responses: list[dict],
 ) -> None:
-    """Persist provenance entries to the build_response_provenance SQLite table."""
-    import sqlite3
-    from pathlib import Path
+    """Persist provenance entries to the build_response_provenance SQLite table.
 
-    db_path = Path("data/blueprints.db")
+    Delegates to :meth:`MiscRepository.save_provenance_batch` so the
+    database path is configurable (default ``data/blueprints.db``) and
+    the schema lives in one place — migration v32.
+    """
+    from backend.blueprints.repository import BlueprintRepository
+
     try:
-        conn = sqlite3.connect(str(db_path))
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS build_response_provenance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                workflow_id TEXT NOT NULL,
-                response_to TEXT NOT NULL,
-                draft_version INTEGER DEFAULT 0,
-                critic_item_id TEXT DEFAULT '',
-                original_text TEXT DEFAULT '',
-                revision_type TEXT DEFAULT 'conservative',
-                pragmatist_verdict TEXT,
-                pragmatist_score REAL,
-                created_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
-        rows = []
-        for br in build_responses:
-            prov = br.get("provenance") or {}
-            rows.append(
-                (
-                    session_id,
-                    workflow_id,
-                    br.get("response_to", ""),
-                    prov.get("draft_version", 0),
-                    prov.get("critic_item_id", ""),
-                    prov.get("original_text", ""),
-                    prov.get("revision_type", "conservative"),
-                    prov.get("pragmatist_verdict"),
-                    prov.get("pragmatist_score"),
-                )
-            )
-        conn.executemany(
-            """INSERT INTO build_response_provenance
-               (session_id, workflow_id, response_to, draft_version, critic_item_id,
-                original_text, revision_type, pragmatist_verdict, pragmatist_score)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            rows,
-        )
-        conn.commit()
-        logger.info("Saved %d provenance records for session %s", len(rows), session_id)
+        repo = BlueprintRepository()
+        repo.save_provenance_batch(session_id, workflow_id, build_responses)
     except Exception as exc:
         logger.warning("Failed to save provenance for session %s: %s", session_id, exc)
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass

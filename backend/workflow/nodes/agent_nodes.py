@@ -17,9 +17,38 @@ from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.domains import get_decision_matrix
 from backend.workflow.interjection import interjection_service
-from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
+from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState, WorkflowTemplate
 
 logger = logging.getLogger(__name__)
+
+
+# Sprint 35 (L2 fix): promote the ``_max_draft_len`` magic number
+# (formerly a function-local 50000 in the non-transactional concat
+# branch) to a module-level constant so its purpose is discoverable
+# from the module top and so future tuning lives in one place.
+_MAX_DRAFT_LEN = 50000
+_DRAFT_TRUNCATION_MARKER = "\n\n[… content truncated …]\n\n"
+
+
+def _estimate_tokens(content: str) -> int:
+    """Best-effort token estimate for a piece of LLM-generated text.
+
+    Used as a fallback when the LLM response object reports
+    ``tokens_out == 0`` (some providers omit the count for streaming
+    or non-billing contexts).  The historical estimate
+    ``len(content.split())`` counted whitespace-separated tokens, not
+    LLM tokens, and underestimated the real cost by ~3-4x for
+    English / German prose.
+
+    The rule of thumb ``1 token ≈ 4 characters`` is an industry
+    standard used by tiktoken, OpenAI cookbook, and Anthropic docs;
+    we apply it to the raw character count and round up to at least
+    1 for any non-empty content so the audit log never records
+    ``tokens_used=0`` for a successful LLM call.
+    """
+    if not content:
+        return 0
+    return max(1, len(content) // 4)
 
 
 def agent_node_factory(
@@ -49,7 +78,9 @@ def agent_node_factory(
 
     role = resolved_config.get("role", node_type.replace("wf-", ""))
     llm_profile_id = resolved_config.get("llm_profile_id", "")
-    resolved_config.get("blueprint_name", role)
+    # Sprint 35 (L1 fix): removed dead blueprint_name lookup — the result
+    # was discarded.  The docstring above still describes the key for
+    # callers, and the name is never read in this module.
     model_params = resolved_config.get("model_params", {}) or {}
 
     # Extract tone_profile_source_node_id from resolved config
@@ -78,7 +109,7 @@ def agent_node_factory(
         # --- Inject CriticItem JSON schema + decision matrix for wf-critic ---
         # IMPORTANT: Decision matrix only applies to Transactional Drafting,
         # not standard debate workflows (Akzeptanzkriterium).
-        if node_type == "wf-critic" and state.get("workflow_template") == "transactional_drafting":
+        if node_type == "wf-critic" and state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING:
             from backend.models.transactional import CriticItem
 
             schema = CriticItem.model_json_schema()
@@ -126,7 +157,13 @@ def agent_node_factory(
             )
 
         # --- Inject tone profile if configured ---
-        tone_profile_name = None
+        tone_profile_name: str | None = None
+        # Sprint 34 (M4 fix): track tone profile injection failures
+        # explicitly so the user (or the audit log) can see when a
+        # configured profile failed to apply.  Previously the
+        # ``except Exception`` swallowed the error and the workflow
+        # silently continued without a tone profile.
+        tone_profile_error: str | None = None
         if tone_profile_source_node_id:
             tone_profiles = state.get("tone_profiles", {})
             profile_data = tone_profiles.get(tone_profile_source_node_id)
@@ -145,12 +182,28 @@ def agent_node_factory(
                         node_id,
                     )
                 except Exception as exc:
+                    tone_profile_error = f"{type(exc).__name__}: {exc}"
                     logger.warning(
                         "Failed to inject tone profile for agent %s (node %s): %s",
                         role,
                         node_id,
                         exc,
                     )
+            else:
+                # Source node is configured but produced no profile —
+                # the upstream tone-profile node may have failed or not
+                # run yet.  Surface this so callers can see that the
+                # profile was *expected* but *missing*.
+                tone_profile_error = (
+                    f"tone_profile_source_node_id '{tone_profile_source_node_id}' "
+                    "produced no profile_data in state['tone_profiles']"
+                )
+                logger.warning(
+                    "Tone profile source '%s' produced no data for agent %s (node %s)",
+                    tone_profile_source_node_id,
+                    role,
+                    node_id,
+                )
 
         # --- Build user prompt ---
         context = state.get("context", "")
@@ -277,9 +330,13 @@ def agent_node_factory(
             # Optional mode: check for [SEARCH: ...] markers after LLM response
             if state.get("search_mode") == "optional":
                 content = await _perform_optional_search(content, role, language, session_id, state)
-                tokens_used = len(content.split())
+                tokens_used = _estimate_tokens(content)
 
-            tokens_used = gen_result.tokens_out if gen_result.tokens_out > 0 else len(content.split())
+            tokens_used = (
+                gen_result.tokens_out
+                if gen_result.tokens_out > 0
+                else _estimate_tokens(content)
+            )
             duration_ms = gen_result.duration_ms
 
             logger.info(
@@ -301,7 +358,7 @@ def agent_node_factory(
                 exc_info=True,
             )
             content = f"[{role}] Round {current_round}: LLM call failed ({exc})"
-            tokens_used = len(content.split())
+            tokens_used = _estimate_tokens(content)
             status = "failed"
 
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
@@ -338,6 +395,8 @@ def agent_node_factory(
             audit_metadata = {}
             if tone_profile_name:
                 audit_metadata["tone_profile_name"] = tone_profile_name
+            if tone_profile_error:
+                audit_metadata["tone_profile_error"] = tone_profile_error
 
             if status == "failed":
                 al.log_node_failed(
@@ -382,9 +441,7 @@ def agent_node_factory(
         # turns ``current_draft`` into a garbage dump.  The Builder reads
         # ``latest_draft`` for the iterative state and ``zero_draft`` for
         # the first iteration — neither benefits from this concatenation.
-        _max_draft_len = 50000
-        _trunc_warn = "\n\n[… content truncated …]\n\n"
-        is_transactional = state.get("workflow_template") == "transactional_drafting"
+        is_transactional = state.get("workflow_template") == WorkflowTemplate.TRANSACTIONAL_DRAFTING
         state_update: dict = {
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],
@@ -392,11 +449,11 @@ def agent_node_factory(
         if not is_transactional:
             existing_draft = state.get("current_draft", "")
             new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
-            if len(new_draft) > _max_draft_len:
-                tail_target = _max_draft_len - len(_trunc_warn)
+            if len(new_draft) > _MAX_DRAFT_LEN:
+                tail_target = _MAX_DRAFT_LEN - len(_DRAFT_TRUNCATION_MARKER)
                 head = new_draft[: tail_target // 2]
                 tail = new_draft[-(tail_target // 2) :]
-                new_draft = head + _trunc_warn + tail
+                new_draft = head + _DRAFT_TRUNCATION_MARKER + tail
             state_update["current_draft"] = new_draft
 
         # --- Transactional Drafting: populate domain-specific state keys ---

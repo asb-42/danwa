@@ -14,7 +14,7 @@ from collections.abc import Callable
 from backend.api.events import publish_async
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.safe_eval import SafeEvalError, evaluate_condition
-from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
+from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState, WorkflowTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def moderator_node_factory(
         pragmatist_output = state.get("pragmatist_output")
         workflow_template = state.get("workflow_template", "")
 
-        if workflow_template == "transactional_drafting":
+        if workflow_template == WorkflowTemplate.TRANSACTIONAL_DRAFTING:
             # --- Transactional Drafting decision logic ---
             if pragmatist_output:
                 reality_score = pragmatist_output.get("reality_score", 0.0)

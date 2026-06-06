@@ -866,8 +866,15 @@ class TestCurrentDraftTransactionalPath:
 
         src = Path("backend/workflow/nodes/agent_nodes.py").read_text(encoding="utf-8")
         # The guard: the current_draft concatenation block is gated on
-        # is_transactional = state.get("workflow_template") == "transactional_drafting"
-        assert 'is_transactional = state.get("workflow_template") == "transactional_drafting"' in src
+        # ``is_transactional = state.get("workflow_template") == <Transactional marker>``.
+        # Sprint 30 replaced the literal with the WorkflowTemplate enum
+        # (H4 fix), so accept either form.
+        assert (
+            'is_transactional = state.get("workflow_template") == "transactional_drafting"'
+            in src
+            or "is_transactional = state.get(\"workflow_template\") == WorkflowTemplate.TRANSACTIONAL_DRAFTING"
+            in src
+        )
         # And the state_update["current_draft"] assignment is inside the
         # `if not is_transactional:` branch
         assert "if not is_transactional:" in src

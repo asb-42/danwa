@@ -18,6 +18,7 @@ from backend.services.output.base import OutputPlugin, ProgressCallback, _noop_p
 from backend.services.output.plugins.print_layout_engine import PrintLayoutEngine
 from backend.services.output.plugins.print_models import PrintDocument
 from backend.services.output.registry import register_plugin
+from backend.workflow.workflow_state import WorkflowTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class PrintOutputPlugin(OutputPlugin):
 
         # Auto-detect transactional drafting from artifact metadata
         wf_template = (artifact.metadata or {}).get("workflow_template", "")
-        is_td = wf_template == "transactional_drafting"
+        is_td = wf_template == WorkflowTemplate.TRANSACTIONAL_DRAFTING
         if is_td and config.template_name == PrintTemplate.ACADEMIC_DEBATE:
             config.template_name = PrintTemplate.TRANSACTIONAL_DRAFTING
 

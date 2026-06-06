@@ -7,7 +7,7 @@ produces a compiled LangGraph graph that can be executed via ``graph.ainvoke()``
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 from langgraph.graph import END, StateGraph
@@ -171,8 +171,9 @@ class WorkflowCompiler:
 
         # --- Step 4: Build StateGraph ---
         try:
-            graph = self._build_graph(workflow, node_map, resolved_configs)
+            graph, graph_warnings = self._build_graph(workflow, node_map, resolved_configs)
             result.graph = graph
+            result.warnings.extend(graph_warnings)
         except Exception as exc:
             result.errors.append(f"Graph compilation failed: {exc}")
             logger.error("Workflow compilation failed: %s", exc, exc_info=True)
@@ -381,17 +382,21 @@ class WorkflowCompiler:
                 adj[edge.source].append(edge.target)
                 in_degree[edge.target] = in_degree.get(edge.target, 0) + 1
 
-        # Kahn's algorithm
-        queue = [nid for nid in node_ids if in_degree.get(nid, 0) == 0]
+        # Kahn's algorithm — use deque for O(1) popleft instead of O(n) list.pop(0).
+        # M2 fix (Sprint 33): scales linearly for large workflows.
+        queue: deque[str] = deque(
+            nid for nid in node_ids if in_degree.get(nid, 0) == 0
+        )
         result: list[str] = []
 
         while queue:
             # Prefer entry_point first
             if workflow.entry_point in queue:
                 current = workflow.entry_point
+                # O(n) — but entry_point is at most one node per call
                 queue.remove(current)
             else:
-                current = queue.pop(0)
+                current = queue.popleft()
 
             result.append(current)
             for neighbor in adj.get(current, []):
@@ -411,9 +416,18 @@ class WorkflowCompiler:
         workflow: WorkflowDefinition,
         node_map: dict[str, WorkflowNode],
         resolved_configs: dict[str, dict],
-    ) -> object:
-        """Build and compile the LangGraph StateGraph."""
+    ) -> tuple[object, list[str]]:
+        """Build and compile the LangGraph StateGraph.
+
+        Returns ``(graph, warnings)`` where ``warnings`` collects
+        non-fatal issues encountered during edge construction
+        (e.g. a non-gate node with multiple non-feedback outgoing
+        edges — see M1 fix in Sprint 33).  Callers should surface
+        these to the workflow author so silent-fallback issues
+        don't go unnoticed.
+        """
         graph = StateGraph(WorkflowState)
+        warnings: list[str] = []
 
         # --- Resolve injects_config edges ---
         # For each agent node, find if a tone_profile node injects config into it
@@ -477,16 +491,67 @@ class WorkflowCompiler:
                     cond = edge.condition or "approved"
                     tgt: object = END if edge.target in ("__end__", "") else edge.target
                     targets[cond] = tgt
-                approved_target = targets.get("approved", "__complete__")
-                # return_to_builder → feedback target, or the decision edge's
-                # revision_required target, or END fallback
-                revision_target: object = feedback_edges[0].target if feedback_edges else targets.get("revision_required", END)
-                mapping = {
-                    "approved": approved_target,
-                    "return_to_builder": revision_target,
-                    "construction_deadlock": END,
-                }
-                graph.add_conditional_edges(node.id, route_decision(decision_max_rounds), mapping)
+
+                # Build verdict_map: maps consensus_result['verdict'] values
+                # to mapping keys.  Sprint 32 (C3 fix) — derive from the
+                # actual decision edges so renamed conditions don't route
+                # to the silent "__complete__" fallback any more.
+                verdict_map: dict[str, str] = {}
+                _known_verdicts = {"approved", "revision_required", "construction_deadlock"}
+                for edge in decision_edges:
+                    cond = edge.condition or "approved"
+                    if cond in _known_verdicts:
+                        # Standard conditions map to themselves as mapping
+                        # keys — preserving the historical "approved" →
+                        # "approved", "revision_required" → "return_to_builder"
+                        # contract.
+                        verdict_map[cond] = {
+                            "approved": "approved",
+                            "revision_required": "return_to_builder",
+                            "construction_deadlock": "construction_deadlock",
+                        }[cond]
+                    else:
+                        # Custom condition — accept it as both verdict value
+                        # and mapping key.  Log a warning so the designer
+                        # knows their template uses a non-standard verb.
+                        verdict_map[cond] = cond
+                        logger.warning(
+                            "Decision edge uses custom condition '%s' (not in "
+                            "known set %s) — accepting as both verdict value "
+                            "and mapping key for node '%s'",
+                            cond,
+                            sorted(_known_verdicts),
+                            node.id,
+                        )
+
+                # Build the LangGraph mapping from the verdict_map keys
+                # to their actual target nodes.  End-of-debate verdicts
+                # (approved, construction_deadlock) terminate; others
+                # route to the next builder.
+                mapping: dict[str, object] = {}
+                for verdict_value, key in verdict_map.items():
+                    if verdict_value == "construction_deadlock":
+                        mapping[key] = END
+                    else:
+                        target = targets.get(verdict_value, END)
+                        if target == END and verdict_value not in targets:
+                            logger.warning(
+                                "Decision node '%s': verdict '%s' has no "
+                                "matching decision edge — falling back to END",
+                                node.id,
+                                verdict_value,
+                            )
+                        mapping[key] = target
+                # construction_deadlock is always present (from the
+                # verdict_map we built above) but make it explicit.
+                if "construction_deadlock" not in mapping:
+                    mapping["construction_deadlock"] = END
+
+                graph.add_conditional_edges(
+                    node.id,
+                    route_decision(decision_max_rounds, verdict_map=verdict_map),
+                    mapping,
+                )
 
             # Handle gate nodes (conditional routing)
             elif node.type == "wf-gate" and len(non_feedback) >= 2:
@@ -564,12 +629,14 @@ class WorkflowCompiler:
             elif len(non_feedback) > 1:
                 # Multiple targets without gate — use first as primary
                 graph.add_edge(node.id, non_feedback[0].target)
-                logger.warning(
-                    "Node '%s' has %d non-feedback outgoing edges but is not a gate. Using first target '%s'.",
-                    node.id,
-                    len(non_feedback),
-                    non_feedback[0].target,
+                msg = (
+                    f"Node '{node.id}' has {len(non_feedback)} non-feedback "
+                    f"outgoing edges but is not a gate. Using first target "
+                    f"'{non_feedback[0].target}' — other targets are ignored. "
+                    f"Wrap in a wf-gate node or split into multiple nodes."
                 )
+                logger.warning(msg)
+                warnings.append(msg)
 
         # --- Ensure terminal nodes connect to END ---
         # Find nodes with no outgoing edges that aren't already connected
@@ -586,7 +653,7 @@ class WorkflowCompiler:
             entry_point,
         )
 
-        return graph.compile()
+        return graph.compile(), warnings
 
     def _create_node_function(
         self,

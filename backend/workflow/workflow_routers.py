@@ -150,14 +150,22 @@ def _resolve_max_draft_versions(state: WorkflowState) -> int:
     return 5
 
 
-def route_decision(max_rounds: int = 5) -> Any:
+def route_decision(
+    max_rounds: int = 5,
+    verdict_map: dict[str, str] | None = None,
+) -> Any:
     """Factory that returns a router for the Moderator's decision in Transactional Drafting.
 
     If the current round exceeds ``max_rounds``, returns ``"construction_deadlock"``
-    to terminate.  Otherwise inspects ``state["consensus_result"]["verdict"]``:
+    to terminate.  Otherwise inspects ``state["consensus_result"]["verdict"]``
+    and translates it to a mapping key via ``verdict_map``.
 
-    - ``"approved"`` → ``"approved"`` (→ END)
-    - ``"revision_required"`` → ``"return_to_builder"`` (→ BuilderNode)
+    The :class:`WorkflowCompiler` builds ``verdict_map`` from the actual
+    decision edges in the workflow template, so the router return value
+    always matches a real edge target.  This fixes the silent-breakage
+    bug where a template designer renaming a condition (e.g. from
+    ``"approved"`` to ``"accept"``) would route the workflow to the
+    wrong node.
 
     Deadlock fallback: if ``draft_version >= max_draft_versions`` (read from
     ``termination_conditions`` or 5 by default), returns
@@ -166,7 +174,27 @@ def route_decision(max_rounds: int = 5) -> Any:
 
     Args:
         max_rounds: Maximum number of drafting rounds before forced termination.
+        verdict_map: Mapping from ``consensus_result["verdict"]`` values
+            to mapping keys understood by ``graph.add_conditional_edges``.
+            Defaults to the historical mapping
+            ``{"approved": "approved", "revision_required": "return_to_builder"}``
+            which preserves the behaviour of pre-Sprint-32 templates.
     """
+    if verdict_map is None:
+        verdict_map = {
+            "approved": "approved",
+            "revision_required": "return_to_builder",
+        }
+    # Default key returned when ``verdict_map`` has no entry for the
+    # actual verdict value.  Falling back to "return_to_builder" keeps
+    # the legacy "approve-or-revise" semantics for unrecognised verdicts.
+    fallback_key = "return_to_builder"
+    # Prefer the explicit "revision_required" entry, else any
+    # non-"approved" entry, else the fallback.
+    for verdict_value, key in verdict_map.items():
+        if verdict_value != "approved":
+            fallback_key = key
+            break
 
     def _router(state: WorkflowState) -> str:
         current_round = state.get("current_round", 1)
@@ -192,15 +220,23 @@ def route_decision(max_rounds: int = 5) -> Any:
 
         result = state.get("consensus_result", {})
         verdict = result.get("verdict", "revision_required")
-        if verdict == "approved":
-            logger.info("Decision router: approved (round=%d, draft_version=%d)", current_round, draft_version)
-            return "approved"
-        logger.info(
-            "Decision router: return_to_builder (round=%d, draft_version=%d, concerns=%s)",
-            current_round,
-            draft_version,
-            result.get("concerns", []),
-        )
-        return "return_to_builder"
+        mapping_key = verdict_map.get(verdict, fallback_key)
+        if mapping_key == "approved":
+            logger.info(
+                "Decision router: approved (round=%d, draft_version=%d, key=%s)",
+                current_round,
+                draft_version,
+                mapping_key,
+            )
+        else:
+            logger.info(
+                "Decision router: %s (round=%d, draft_version=%d, verdict=%s, concerns=%s)",
+                mapping_key,
+                current_round,
+                draft_version,
+                verdict,
+                result.get("concerns", []),
+            )
+        return mapping_key
 
     return _router
