@@ -68,13 +68,15 @@ class LLMService:
         return self._profile
 
     # Known placeholder values that should be treated as unset
-    _API_KEY_PLACEHOLDERS = frozenset({
-        "YOUR_API_KEY_ENV_VAR",
-        "YOUR_API_KEY",
-        "REPLACE_ME",
-        "CHANGEME",
-        "",
-    })
+    _API_KEY_PLACEHOLDERS = frozenset(
+        {
+            "YOUR_API_KEY_ENV_VAR",
+            "YOUR_API_KEY",
+            "REPLACE_ME",
+            "CHANGEME",
+            "",
+        }
+    )
 
     # Provider → list of well-known env var names to try as fallback
     _PROVIDER_DEFAULT_ENV_VARS: dict[str, list[str]] = {
@@ -136,7 +138,8 @@ class LLMService:
             if env_key:
                 logger.info(
                     "API key for profile '%s' resolved via provider fallback '%s'",
-                    self._profile.id, env_name,
+                    self._profile.id,
+                    env_name,
                 )
                 return env_key
 
@@ -146,7 +149,8 @@ class LLMService:
             if env_key:
                 logger.info(
                     "API key for profile '%s' resolved via universal fallback '%s'",
-                    self._profile.id, env_name,
+                    self._profile.id,
+                    env_name,
                 )
                 return env_key
 

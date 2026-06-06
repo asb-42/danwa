@@ -2,16 +2,16 @@
   /**
    * WorkflowNodeForm — Generic form for all workflow node types.
    *
-   * Shows: label (editable), node type (read-only), linked AgentBlueprint.
-   * For agent nodes: AgentBlueprint selector dropdown (fetched from API).
+   * Shows: label (editable), node type (read-only), and module-entity selectors.
+   * For agent nodes: Agent Core, LLM Profile, Tone Profile, Prompt Modifier,
+   *   and Argumentation Pattern dropdowns (all sourced from listComposerComponents).
    * For gate nodes: condition text input.
    * For user-injection nodes: input_type selector.
-   * For agent nodes: argumentation_pattern and mode dropdowns.
    * Save updates node data via canvasStore.updateNodeData().
    */
   import { onMount } from 'svelte';
   import { canvasStore } from '../../../lib/blueprint/store.svelte.js';
-  import { listAgentBlueprints, listArgumentationPatterns } from '../../../lib/blueprint/api.js';
+  import { listComposerComponents } from '../../../lib/blueprint/api.js';
 
   /** @type {{ node: any, onsave?: Function, ondelete?: Function }} */
   let { node, onsave, ondelete } = $props();
@@ -55,60 +55,75 @@
     { value: 'external_event', label: 'External Event' },
   ];
 
-  const MODE_OPTIONS = [
-    { value: '', label: '— None —' },
-    { value: 'interviewer', label: 'Interviewer' },
-    { value: 'advocate', label: 'Advocate' },
-    { value: 'adversary', label: 'Adversary' },
-    { value: 'mediator', label: 'Mediator' },
-    { value: 'referee', label: 'Referee' },
-    { value: 'facilitator', label: 'Facilitator' },
-    { value: 'devils_advocate', label: "Devil's Advocate" },
-  ];
-
+  // ─── State ────────────────────────────────────────────────────────
   let label = $state('');
   let agentBlueprintId = $state('');
   let condition = $state('');
   let inputType = $state('user_query');
   let argumentationPattern = $state('');
-  let mode = $state('');
-  let blueprints = $state([]);
-  let availablePatterns = $state([]);
+  let llmProfileId = $state('');
+  let toneProfileId = $state('');
+  let promptModifierId = $state('');
+
+  // Component lists from the API
+  let agentCores = $state([]);
+  let llmProfiles = $state([]);
+  let toneProfiles = $state([]);
+  let promptModifiers = $state([]);
+  let argumentationPatterns = $state([]);
   let loading = $state(false);
 
+  // ─── Reactive sync from node data ─────────────────────────────────
   $effect(() => {
     label = node?.data?.label || '';
     agentBlueprintId = node?.data?.agent_blueprint_id || '';
     condition = node?.data?.config?.condition || node?.data?.condition || '';
     inputType = node?.data?.config?.input_type || node?.data?.input_type || 'user_query';
-    argumentationPattern = node?.data?.argumentation_pattern || '';
-    mode = node?.data?.mode || '';
+    argumentationPattern = node?.data?.config?.argumentation_pattern || node?.data?.argumentation_pattern || '';
+    llmProfileId = node?.data?.config?.llm_profile_id || '';
+    toneProfileId = node?.data?.config?.tone_profile_id || '';
+    promptModifierId = node?.data?.config?.prompt_modifier_id || '';
   });
 
   let isAgentNode = $derived(AGENT_NODE_TYPES.includes(node?.type));
   let isGateNode = $derived(node?.type === 'wf-gate');
   let isUserInjectionNode = $derived(node?.type === 'wf-user-injection');
 
+  // ─── Load components on mount ─────────────────────────────────────
   onMount(async () => {
     if (isAgentNode) {
       loading = true;
       try {
-        blueprints = await listAgentBlueprints({ active_only: true });
-        availablePatterns = await listArgumentationPatterns();
+        const components = await listComposerComponents();
+        agentCores = components.agent_cores || [];
+        llmProfiles = components.llm_profiles || [];
+        toneProfiles = components.tone_profiles || [];
+        promptModifiers = components.prompt_modifiers || [];
+        argumentationPatterns = components.argumentation_patterns || [];
       } catch (err) {
-        if (import.meta.env.DEV) console.warn('[WorkflowNodeForm] Failed to load blueprints/patterns:', err);
+        if (import.meta.env.DEV) console.warn('[WorkflowNodeForm] Failed to load composer components:', err);
       } finally {
         loading = false;
       }
     }
   });
 
+  // ─── Save ─────────────────────────────────────────────────────────
   function handleSave() {
     const data = { label };
     if (isAgentNode) {
+      // agent_blueprint_id stores the agent-core module UUID
       data.agent_blueprint_id = agentBlueprintId || null;
-      data.argumentation_pattern = argumentationPattern || null;
-      data.mode = mode || null;
+      // Composition component IDs go into config
+      data.config = {
+        ...(node?.data?.config || {}),
+        argumentation_pattern: argumentationPattern || null,
+        llm_profile_id: llmProfileId || null,
+        tone_profile_id: toneProfileId || null,
+        prompt_modifier_id: promptModifierId || null,
+      };
+      // Remove legacy mode if present
+      delete data.mode;
     }
     if (isGateNode) {
       data.config = { ...(node?.data?.config || {}), condition };
@@ -141,31 +156,51 @@
     />
   </div>
 
-  <!-- Agent Blueprint selector (for agent nodes) -->
+  <!-- Agent Core selector (for agent nodes) -->
   {#if isAgentNode}
     <div class="form-group">
-      <label class="form-label" for="wf-blueprint">Agent Blueprint</label>
+      <label class="form-label" for="wf-agent-core">Agent Core</label>
       {#if loading}
-        <div class="form-loading">Loading blueprints...</div>
+        <div class="form-loading">Loading components...</div>
       {:else}
         <select
-          id="wf-blueprint"
+          id="wf-agent-core"
           class="form-select"
           bind:value={agentBlueprintId}
           onchange={handleSave}
         >
           <option value="">— None —</option>
-          {#each blueprints as bp}
-            <option value={bp.id}>{bp.name} ({bp.id})</option>
+          {#each agentCores as ac}
+            <option value={ac.id}>{ac.name} ({ac.role || ac.id})</option>
           {/each}
         </select>
       {/if}
     </div>
 
-    <!-- Argumentation Pattern selector (for agent nodes) -->
+    <!-- LLM Profile selector -->
+    <div class="form-group">
+      <label class="form-label" for="wf-llm-profile">LLM Profile</label>
+      {#if loading}
+        <div class="form-loading">Loading profiles...</div>
+      {:else}
+        <select
+          id="wf-llm-profile"
+          class="form-select"
+          bind:value={llmProfileId}
+          onchange={handleSave}
+        >
+          <option value="">— Default —</option>
+          {#each llmProfiles as lp}
+            <option value={lp.id}>{lp.name} ({lp.model || lp.provider})</option>
+          {/each}
+        </select>
+      {/if}
+    </div>
+
+    <!-- Argumentation Pattern selector -->
     <div class="form-group">
       <label class="form-label" for="wf-arg-pattern">Argumentation Pattern</label>
-      {#if loading && availablePatterns.length === 0}
+      {#if loading && argumentationPatterns.length === 0}
         <div class="form-loading">Loading patterns...</div>
       {:else}
         <select
@@ -175,26 +210,51 @@
           onchange={handleSave}
         >
           <option value="">— Default —</option>
-          {#each availablePatterns as pattern}
-            <option value={pattern}>{pattern}</option>
+          {#each argumentationPatterns as pattern}
+            <option value={pattern.id}>{pattern.name}</option>
           {/each}
         </select>
       {/if}
     </div>
 
-    <!-- Mode selector (for agent nodes) -->
+    <!-- Tone Profile selector -->
     <div class="form-group">
-      <label class="form-label" for="wf-mode">Mode</label>
-      <select
-        id="wf-mode"
-        class="form-select"
-        bind:value={mode}
-        onchange={handleSave}
-      >
-        {#each MODE_OPTIONS as opt}
-          <option value={opt.value}>{opt.label}</option>
-        {/each}
-      </select>
+      <label class="form-label" for="wf-tone-profile">Tone Profile</label>
+      {#if loading}
+        <div class="form-loading">Loading profiles...</div>
+      {:else}
+        <select
+          id="wf-tone-profile"
+          class="form-select"
+          bind:value={toneProfileId}
+          onchange={handleSave}
+        >
+          <option value="">— None —</option>
+          {#each toneProfiles as tp}
+            <option value={tp.id}>{tp.name} ({tp.style || tp.id})</option>
+          {/each}
+        </select>
+      {/if}
+    </div>
+
+    <!-- Prompt Modifier selector -->
+    <div class="form-group">
+      <label class="form-label" for="wf-prompt-modifier">Prompt Modifier</label>
+      {#if loading}
+        <div class="form-loading">Loading modifiers...</div>
+      {:else}
+        <select
+          id="wf-prompt-modifier"
+          class="form-select"
+          bind:value={promptModifierId}
+          onchange={handleSave}
+        >
+          <option value="">— None —</option>
+          {#each promptModifiers as pm}
+            <option value={pm.id}>{pm.name}</option>
+          {/each}
+        </select>
+      {/if}
     </div>
   {/if}
 

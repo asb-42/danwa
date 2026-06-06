@@ -55,9 +55,15 @@ def list_llm_profiles(
     return combined
 
 
-_PLACEHOLDER_API_KEY_ENVS = frozenset({
-    "YOUR_API_KEY_ENV_VAR", "YOUR_API_KEY", "REPLACE_ME", "CHANGEME", "",
-})
+_PLACEHOLDER_API_KEY_ENVS = frozenset(
+    {
+        "YOUR_API_KEY_ENV_VAR",
+        "YOUR_API_KEY",
+        "REPLACE_ME",
+        "CHANGEME",
+        "",
+    }
+)
 
 
 @router.get("/{profile_id}", response_model=BlueprintLLMProfile)

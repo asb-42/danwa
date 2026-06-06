@@ -72,10 +72,7 @@ def is_uuid_module_id(module_id: str) -> bool:
 
 def compute_profile_checksum(module_dir: Path, manifest: dict) -> str:
     """Compute SHA-256 checksum of the profile file (non-manifest files)."""
-    all_files = sorted(
-        f for f in module_dir.rglob("*")
-        if f.is_file() and f.name != "manifest.json"
-    )
+    all_files = sorted(f for f in module_dir.rglob("*") if f.is_file() and f.name != "manifest.json")
     if not all_files:
         return ""
     h = hashlib.sha256()
@@ -86,10 +83,7 @@ def compute_profile_checksum(module_dir: Path, manifest: dict) -> str:
 
 def compute_manifest_checksum(module_dir: Path) -> str:
     """Compute SHA-256 of all non-manifest files (manifest.checksum value)."""
-    all_files = sorted(
-        f for f in module_dir.rglob("*")
-        if f.is_file() and f.name != "manifest.json"
-    )
+    all_files = sorted(f for f in module_dir.rglob("*") if f.is_file() and f.name != "manifest.json")
     if not all_files:
         return ""
     h = hashlib.sha256()

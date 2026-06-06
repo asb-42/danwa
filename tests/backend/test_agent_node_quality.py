@@ -247,9 +247,7 @@ class TestTokenFallbackPath:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.agent_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.agent_nodes.LLMService")
-    async def test_llm_failure_uses_estimate_tokens(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_llm_failure_uses_estimate_tokens(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """When the LLM call raises, the fallback ``tokens_used``
         must come from ``_estimate_tokens`` (not word count) so the
         audit/cost-tracking is consistent.
@@ -295,9 +293,7 @@ class TestTokenFallbackPath:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.agent_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.agent_nodes.LLMService")
-    async def test_tokens_out_zero_falls_back_to_estimate(
-        self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_tokens_out_zero_falls_back_to_estimate(self, mock_llm_cls: AsyncMock, mock_publish: AsyncMock) -> None:
         """When the LLM returns ``tokens_out=0``, the fallback path
         must use ``_estimate_tokens`` — not word count.
         """

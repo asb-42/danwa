@@ -30,9 +30,7 @@ class TestL1DeadCodeRemoved:
         import re
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "nodes" / "agent_nodes.py").read_text(
-            encoding="utf-8"
-        )
+        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "nodes" / "agent_nodes.py").read_text(encoding="utf-8")
         # The expression had no useful effect — discard it
         assert not re.search(
             r"resolved_config\.get\(\s*[\"\']blueprint_name[\"\']\s*,\s*role\s*\)",

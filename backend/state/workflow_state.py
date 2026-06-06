@@ -148,9 +148,7 @@ class InMemoryWorkflowState:
             self._pause_events[session_id].set()
         return self._pause_events[session_id]
 
-    async def wait_for_pause(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool:
+    async def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool:
         """Block until the session is paused (or timeout expires).
 
         Returns ``True`` if the pause channel was set (locally
@@ -170,9 +168,7 @@ class InMemoryWorkflowState:
         ev = self._get_pause_wait_event(session_id)
         return await ev.wait(timeout=timeout)
 
-    async def wait_for_resume(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool:
+    async def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool:
         """Block until the session is resumed (or timeout expires).
 
         Returns ``True`` if the resume channel was set (locally
@@ -288,17 +284,13 @@ class RedisWorkflowState:
         # ``wait_for_resume`` returns.
         self._get_resume_wait_event(session_id).set()
 
-    async def wait_for_pause(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool:
+    async def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool:
         if self.is_paused(session_id):
             return True
         ev = self._get_pause_wait_event(session_id)
         return await ev.wait(timeout=timeout)
 
-    async def wait_for_resume(
-        self, session_id: str, timeout: float | None = None
-    ) -> bool:
+    async def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool:
         if not self.is_paused(session_id):
             return True
         ev = self._get_resume_wait_event(session_id)

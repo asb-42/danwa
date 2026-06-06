@@ -71,6 +71,7 @@ def _patch_module_lookups():
     ):
         yield
 
+
 # ---------------------------------------------------------------------------
 # route_decision — verdict_map parameter
 # ---------------------------------------------------------------------------
@@ -241,9 +242,7 @@ class TestCompilerDecisionMapping:
         repo.save_blueprint(blueprint)
         return blueprint.id
 
-    def test_standard_conditions_compile(
-        self, repo: BlueprintRepository, sample_blueprint_id: str
-    ) -> None:
+    def test_standard_conditions_compile(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """Templates with the standard ``"approved"`` /
         ``"revision_required"`` conditions compile to a graph with
         the legacy mapping (``"approved"``, ``"return_to_builder"``,
@@ -271,9 +270,7 @@ class TestCompilerDecisionMapping:
 
         assert result.is_valid, f"compile failed: {result.errors}"
 
-    def test_custom_condition_compiles(
-        self, repo: BlueprintRepository, sample_blueprint_id: str
-    ) -> None:
+    def test_custom_condition_compiles(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """Templates with custom condition names (``"accept"``,
         ``"revise"``) compile successfully — no silent fallback to
         ``__complete__``.
@@ -300,9 +297,7 @@ class TestCompilerDecisionMapping:
 
         assert result.is_valid, f"compile failed: {result.errors}"
 
-    def test_mixed_standard_and_custom_conditions(
-        self, repo: BlueprintRepository, sample_blueprint_id: str
-    ) -> None:
+    def test_mixed_standard_and_custom_conditions(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """A template can mix standard and custom conditions — e.g.
         ``"approved"`` for the happy path and a custom ``"abort"``
         for a domain-specific exit.
@@ -346,9 +341,7 @@ class TestCompilerSourceGuards:
         """
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "workflow_compiler.py").read_text(
-            encoding="utf-8"
-        )
+        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "workflow_compiler.py").read_text(encoding="utf-8")
         assert "verdict_map=" in src
         assert "route_decision(decision_max_rounds, verdict_map=verdict_map)" in src
 
@@ -359,9 +352,7 @@ class TestCompilerSourceGuards:
         """
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "workflow_compiler.py").read_text(
-            encoding="utf-8"
-        )
+        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "workflow_compiler.py").read_text(encoding="utf-8")
         # The bug was an inline fallback literal — the new code uses
         # END as the explicit fallback and warns loudly when no
         # matching edge is found.  Search for the exact pattern

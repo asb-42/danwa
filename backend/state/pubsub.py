@@ -390,9 +390,7 @@ def get_pubsub() -> PubSubBackend:
             _pubsub = RedisPubSub(settings.redis_url)
             return _pubsub
         except Exception as exc:
-            logger.warning(
-                "Redis pub/sub unavailable (%s), falling back to in-memory", exc
-            )
+            logger.warning("Redis pub/sub unavailable (%s), falling back to in-memory", exc)
     _pubsub = InMemoryPubSub()
     return _pubsub
 

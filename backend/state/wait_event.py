@@ -53,6 +53,7 @@ class WaitEvent(Protocol):
         Mirrors the Python 3.11+ ``asyncio.Event.wait(timeout)`` API.
         """
         ...
+
     async def aclose(self) -> None:
         """Release the underlying subscription.  Idempotent."""
         ...
@@ -126,9 +127,7 @@ class InMemoryWaitEvent:
             # which case the message is stale and we must keep
             # waiting.
             try:
-                await asyncio.wait_for(
-                    self._drain_until_set(sub), timeout=timeout
-                )
+                await asyncio.wait_for(self._drain_until_set(sub), timeout=timeout)
                 return True
             except TimeoutError:
                 return self.is_set()
@@ -215,9 +214,7 @@ class RedisWaitEvent:
                         return True
                 return self.is_set()
             try:
-                await asyncio.wait_for(
-                    self._drain_until_set(sub), timeout=timeout
-                )
+                await asyncio.wait_for(self._drain_until_set(sub), timeout=timeout)
                 return True
             except TimeoutError:
                 return self.is_set()

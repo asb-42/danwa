@@ -89,10 +89,7 @@ class TestSaveProvenanceBatch:
 
         assert inserted == 2
         with repo._connect() as conn:  # noqa: SLF001
-            rows = conn.execute(
-                "SELECT response_to, draft_version, critic_item_id "
-                "FROM build_response_provenance ORDER BY response_to"
-            ).fetchall()
+            rows = conn.execute("SELECT response_to, draft_version, critic_item_id FROM build_response_provenance ORDER BY response_to").fetchall()
         assert len(rows) == 2
         # critic-1: defaults
         assert rows[0]["response_to"] == "critic-1"
@@ -133,9 +130,7 @@ class TestSaveProvenanceBatch:
         inserted = repo.save_provenance_batch("sess-1", "wf-1", [])
         assert inserted == 0
         with repo._connect() as conn:  # noqa: SLF001
-            count = conn.execute(
-                "SELECT COUNT(*) AS c FROM build_response_provenance"
-            ).fetchone()
+            count = conn.execute("SELECT COUNT(*) AS c FROM build_response_provenance").fetchone()
         assert count["c"] == 0
 
     def test_session_id_persisted(self, repo: BlueprintRepository) -> None:
@@ -146,9 +141,7 @@ class TestSaveProvenanceBatch:
             [{"response_to": "r-1", "provenance": {"draft_version": 1}}],
         )
         with repo._connect() as conn:  # noqa: SLF001
-            row = conn.execute(
-                "SELECT session_id, workflow_id FROM build_response_provenance LIMIT 1"
-            ).fetchone()
+            row = conn.execute("SELECT session_id, workflow_id FROM build_response_provenance LIMIT 1").fetchone()
         assert row["session_id"] == "session-xyz"
         assert row["workflow_id"] == "wf-1"
 
@@ -162,18 +155,14 @@ class TestPragmatistNodeUsesRepository:
         """
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "nodes" / "pragmatist_nodes.py").read_text(
-            encoding="utf-8"
-        )
-        assert "Path(\"data/blueprints.db\")" not in src
+        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "nodes" / "pragmatist_nodes.py").read_text(encoding="utf-8")
+        assert 'Path("data/blueprints.db")' not in src
         assert 'Path("data/blueprints.db")' not in src
 
     def test_pragmatist_module_uses_repository(self) -> None:
         """The refactored function must instantiate BlueprintRepository."""
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "nodes" / "pragmatist_nodes.py").read_text(
-            encoding="utf-8"
-        )
+        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "nodes" / "pragmatist_nodes.py").read_text(encoding="utf-8")
         assert "BlueprintRepository" in src
         assert "save_provenance_batch" in src

@@ -113,9 +113,7 @@ class TestM1MultiTargetWarning:
     a ``logger.warning`` call that callers can easily miss.
     """
 
-    def test_multi_target_emits_warning(
-        self, repo: BlueprintRepository, sample_blueprint_id: str
-    ) -> None:
+    def test_multi_target_emits_warning(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """Two sequential edges from a non-gate node must produce a warning."""
         workflow = WorkflowDefinition(
             id="wf-multi",
@@ -149,9 +147,7 @@ class TestM1MultiTargetWarning:
         # The hint must mention how to fix
         assert "wf-gate" in result.warnings[0]
 
-    def test_single_target_emits_no_warning(
-        self, repo: BlueprintRepository, sample_blueprint_id: str
-    ) -> None:
+    def test_single_target_emits_no_warning(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """A well-formed workflow (single target per node) must NOT
         emit a multi-target warning.
         """
@@ -177,9 +173,7 @@ class TestM1MultiTargetWarning:
         assert result.is_valid
         assert result.warnings == []
 
-    def test_warning_includes_node_id_and_target(
-        self, repo: BlueprintRepository, sample_blueprint_id: str
-    ) -> None:
+    def test_warning_includes_node_id_and_target(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """The warning text must mention both the offending node and
         the target that was actually used (the first one) so the
         workflow author can find the source of the issue.
@@ -199,12 +193,8 @@ class TestM1MultiTargetWarning:
             ],
             edges=[
                 WorkflowEdge(source="wf-input", target="my-strategist", type="sequential"),
-                WorkflowEdge(
-                    source="my-strategist", target="first-actual-target", type="sequential"
-                ),
-                WorkflowEdge(
-                    source="my-strategist", target="second-ignored-target", type="sequential"
-                ),
+                WorkflowEdge(source="my-strategist", target="first-actual-target", type="sequential"),
+                WorkflowEdge(source="my-strategist", target="second-ignored-target", type="sequential"),
             ],
             entry_point="wf-input",
         )
@@ -232,9 +222,7 @@ class TestM2TopologicalSortPerformance:
         """
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "workflow_compiler.py").read_text(
-            encoding="utf-8"
-        )
+        src = (Path(__file__).resolve().parents[2] / "backend" / "workflow" / "workflow_compiler.py").read_text(encoding="utf-8")
         assert "from collections import defaultdict, deque" in src
         # No more raw list.pop(0) for the topological sort
         assert "queue.pop(0)" not in src
@@ -245,10 +233,7 @@ class TestM2TopologicalSortPerformance:
         at n=200, but the test serves as a regression guard.
         """
         # 200-node linear chain
-        nodes = [
-            WorkflowNode(id=f"n{i}", type="wf-input")
-            for i in range(200)
-        ]
+        nodes = [WorkflowNode(id=f"n{i}", type="wf-input") for i in range(200)]
         nodes.insert(0, WorkflowNode(id="wf-input", type="wf-input"))
         edges = [
             WorkflowEdge(
@@ -258,9 +243,7 @@ class TestM2TopologicalSortPerformance:
             )
             for i in range(199)
         ]
-        edges.insert(
-            0, WorkflowEdge(source="wf-input", target="n0", type="sequential")
-        )
+        edges.insert(0, WorkflowEdge(source="wf-input", target="n0", type="sequential"))
 
         workflow = WorkflowDefinition(
             id="wf-linear",

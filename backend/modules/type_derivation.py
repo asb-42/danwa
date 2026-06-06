@@ -87,9 +87,7 @@ _LEGACY_PREFIX_TO_TYPE: dict[str, ModuleType] = {
 }
 
 # Regex for UUID-based module_id pattern: {prefix}-{uuid}
-_UUID_MODULE_ID_RE = re.compile(
-    r"^(ac|wt|llm|tp|ap|pm|pv|rt|bd|lp|ka)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+_UUID_MODULE_ID_RE = re.compile(r"^(ac|wt|llm|tp|ap|pm|pv|rt|bd|lp|ka)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 def derive_module_type(parent_dir_name: str, module_id: str) -> ModuleType:

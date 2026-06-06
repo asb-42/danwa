@@ -227,6 +227,7 @@ class ModuleManifest(BaseModel):
         if len(parts) == 2:
             try:
                 import uuid as _uuid
+
                 _uuid.UUID(parts[1])
                 return parts[1]
             except ValueError:

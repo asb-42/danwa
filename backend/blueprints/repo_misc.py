@@ -237,9 +237,7 @@ class MiscRepository:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 rows,
             )
-        logger.debug(
-            "Saved %d provenance records for session %s", len(rows), session_id
-        )
+        logger.debug("Saved %d provenance records for session %s", len(rows), session_id)
         return len(rows)
 
     @staticmethod

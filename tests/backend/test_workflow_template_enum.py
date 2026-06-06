@@ -75,9 +75,9 @@ class TestProductionCodeUsesEnum:
             [
                 "grep",
                 "-rn",
-                '--include=*.py',
-                '-E',
-                r'== ['"'"'"]transactional_drafting['"'"'"]|is ['"'"'"]transactional_drafting['"'"'"]',
+                "--include=*.py",
+                "-E",
+                r"== [" "'" '"]transactional_drafting[' "'" '"]|is [' "'" '"]transactional_drafting[' "'" '"]',
                 str(backend_dir),
             ],
             capture_output=True,

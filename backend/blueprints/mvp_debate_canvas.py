@@ -37,9 +37,15 @@ MVP_DEBATE_ROLES: list[str] = ["strategist", "critic", "optimizer", "moderator"]
 DEFAULT_LLM_ASSIGNMENTS: dict[str, str] = {}
 
 
-_PLACEHOLDER_API_KEY_ENVS = frozenset({
-    "YOUR_API_KEY_ENV_VAR", "YOUR_API_KEY", "REPLACE_ME", "CHANGEME", "",
-})
+_PLACEHOLDER_API_KEY_ENVS = frozenset(
+    {
+        "YOUR_API_KEY_ENV_VAR",
+        "YOUR_API_KEY",
+        "REPLACE_ME",
+        "CHANGEME",
+        "",
+    }
+)
 
 
 def _ensure_llm_profile_in_db(repo: BlueprintRepository, profile_id: str) -> None:

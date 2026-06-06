@@ -292,6 +292,45 @@ class WorkflowCompiler:
             default_max_rounds = role_type.default_max_rounds
             default_consensus_threshold = role_type.default_consensus_threshold
 
+        # Read composition component overrides from node.config
+        node_cfg = node.config or {}
+        argumentation_pattern = node_cfg.get("argumentation_pattern", "")
+        tone_profile_id = node_cfg.get("tone_profile_id", "")
+        prompt_modifier_id = node_cfg.get("prompt_modifier_id", "")
+
+        # Use ComposerService to compose system_prompt from component IDs
+        system_prompt = mod_agent.system_prompt
+        composition_ids = [module_id, argumentation_pattern, tone_profile_id, prompt_modifier_id]
+        if any(composition_ids):
+            try:
+                from backend.services.composer_service import ComposerService, Composition
+
+                composer = ComposerService()
+                composition = Composition(
+                    agent_core_id=module_id,
+                    argumentation_pattern_id=argumentation_pattern,
+                    tone_profile_id=tone_profile_id,
+                    prompt_modifier_id=prompt_modifier_id,
+                )
+                composed = composer.compose(composition)
+                if composed and composed.strip():
+                    system_prompt = composed
+                    logger.info(
+                        "Composed system_prompt for node '%s' from agent_core=%s pattern=%s tone=%s modifier=%s (%d chars)",
+                        node.id,
+                        module_id or "(none)",
+                        argumentation_pattern or "(none)",
+                        tone_profile_id or "(none)",
+                        prompt_modifier_id or "(none)",
+                        len(composed),
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "ComposerService failed for node '%s', using module default: %s",
+                    node.id,
+                    exc,
+                )
+
         return ResolvedAgentConfig(
             node_id=node.id,
             blueprint_id=module_id,
@@ -305,10 +344,10 @@ class WorkflowCompiler:
             role_type_color=role_type_color,
             default_max_rounds=default_max_rounds,
             default_consensus_threshold=default_consensus_threshold,
-            argumentation_pattern="",
+            argumentation_pattern=argumentation_pattern,
             mode="",
-            system_prompt=mod_agent.system_prompt,
-            node_config=node.config or {},
+            system_prompt=system_prompt,
+            node_config=node_cfg,
             agent_tags=list(mod_agent.tags),
         )
 

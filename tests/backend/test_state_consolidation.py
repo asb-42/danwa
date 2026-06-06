@@ -118,9 +118,7 @@ class TestWorkflowRunnerDelegation:
         Sprint 37 (3/3) consolidation.
         """
         sid = _id()
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as mock_audit_factory:
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as mock_audit_factory:
             mock_logger = mock_audit_factory.return_value
             workflow_runner.pause_session(sid)
         # Backend reflects the pause
@@ -136,9 +134,7 @@ class TestWorkflowRunnerDelegation:
     def test_resume_session_delegates_and_audits(self) -> None:
         sid = _id()
         workflow_runner.pause_session(sid)
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as mock_audit_factory:
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as mock_audit_factory:
             mock_logger = mock_audit_factory.return_value
             workflow_runner.resume_session(sid)
         assert get_workflow_state().is_paused(sid) is False
@@ -153,9 +149,7 @@ class TestWorkflowRunnerDelegation:
         log; the consolidated version preserves that.
         """
         sid = _id()
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as mock_audit_factory:
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as mock_audit_factory:
             mock_audit_factory.return_value.log_workflow_event.side_effect = RuntimeError("audit down")
             workflow_runner.pause_session(sid)  # must not raise
         assert get_workflow_state().is_paused(sid) is True
@@ -167,9 +161,7 @@ class TestWorkflowRunnerDelegation:
         backend now.
         """
         for attr in ("_pause_events", "_cancelled_sessions", "_session_status"):
-            assert not hasattr(workflow_runner, attr), (
-                f"workflow_runner.{attr} should be gone after consolidation"
-            )
+            assert not hasattr(workflow_runner, attr), f"workflow_runner.{attr} should be gone after consolidation"
 
 
 # ---------------------------------------------------------------------------
@@ -229,9 +221,7 @@ class TestDebateOobCancellationDelegation:
         backend now.  The OOB queue dict is kept (different
         concern).
         """
-        assert not hasattr(debate_oob, "_cancelled_debates"), (
-            "debate_oob._cancelled_debates should be gone after consolidation"
-        )
+        assert not hasattr(debate_oob, "_cancelled_debates"), "debate_oob._cancelled_debates should be gone after consolidation"
         # The OOB queue dict is intentional
         assert hasattr(debate_oob, "_oob_queues")
 
