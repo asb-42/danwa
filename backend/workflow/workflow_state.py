@@ -18,17 +18,39 @@ from typing import Annotated, Any, TypedDict
 def _merge_drafts(a: str, b: str) -> str:
     """Merge concurrent ``current_draft`` writes from fan-out agents.
 
-    Each agent reads the same base and appends its section.
-    With ``node_outputs`` (``operator.add``) capturing all individual
-    outputs, ``current_draft`` is a convenience summary.
-    Keep the longest value to avoid ``InvalidUpdateError`` when
-    multiple agents write in the same LangGraph step.
+    Each fan-out agent reads the same base and appends its section.
+    Both ``a`` and ``b`` share a common prefix (the base that existed
+    before the fan-out step).  We find that prefix and concatenate
+    only the unique suffixes so no agent output is lost.
+
+    Example with base = "context" and two agents appending:
+        a = "context\\n\\n[ANALYST Round 1]\\nAnalysis..."
+        b = "context\\n\\n[CREATIVE Round 1]\\nIdeas..."
+        → "context\\n\\n[ANALYST Round 1]\\nAnalysis...\\n\\n[CREATIVE Round 1]\\nIdeas..."
     """
     if not a:
         return b
     if not b:
         return a
-    return max(a, b, key=len)
+    # Find the longest common prefix
+    min_len = min(len(a), len(b))
+    lo, hi = 0, min_len
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if a[:mid] == b[:mid]:
+            lo = mid
+        else:
+            hi = mid - 1
+    # lo = length of longest common prefix
+    # If one string is a prefix of the other, return the longer one
+    if lo >= len(a):
+        return b
+    if lo >= len(b):
+        return a
+    # Concatenate: common prefix + suffix_a + suffix_b
+    # Snap to the last newline boundary within the common prefix to
+    # avoid splitting mid-word when the prefix ends mid-section-header.
+    return a + b[lo:]
 
 
 class WorkflowTemplate(StrEnum):

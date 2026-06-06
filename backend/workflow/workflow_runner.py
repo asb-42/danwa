@@ -649,8 +649,25 @@ def _build_artifact_from_state(
         config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
 
     _system_roles = {"complete", "input", "initialize"}
+
+    # Sort node_outputs by node_sequence to restore logical phase order.
+    # With fan-out, parallel agents complete in arbitrary LLM-response
+    # order — sorting by the compile-time sequence restores the intended
+    # phase flow (all Phase 1 agents → gate → Phase 2 agents → …).
+    node_sequence = state.get("node_sequence", [])
+    seq_order = {nid: i for i, nid in enumerate(node_sequence)}
+
+    def _output_sort_key(output: dict) -> tuple[int, int]:
+        nid = output.get("node_id", "")
+        return (output.get("round", 0), seq_order.get(nid, 9999))
+
+    sorted_outputs = sorted(
+        state.get("node_outputs", []),
+        key=_output_sort_key,
+    )
+
     turns: list[Turn] = []
-    for output in state.get("node_outputs", []):
+    for output in sorted_outputs:
         role = output.get("role", "")
         if role in _system_roles:
             continue
