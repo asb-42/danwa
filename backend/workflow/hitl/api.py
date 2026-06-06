@@ -648,7 +648,13 @@ async def extension_decision(
 
     store.put(debate_id, debate)
 
-    # Emit SSE event
+    # Emit SSE event and wake the moderator's WaitEvent so it
+    # reads the fresh decision immediately.  Sprint 38 (1/3) —
+    # ``set_extension_signal`` replaces the 2-second polling
+    # latency the moderator had to wait before seeing the
+    # decision.  The signal is cross-process via the configured
+    # pub/sub backend, so a moderator running on a different
+    # worker also unblocks promptly.
     session_id = debate.get("session_id", debate_id)
     await publish_async(
         session_id,
@@ -660,6 +666,20 @@ async def extension_decision(
             "new_max_rounds": new_max,
         },
     )
+    try:
+        from backend.state.workflow_state import get_workflow_state
+
+        get_workflow_state().set_extension_signal(session_id)
+    except Exception:
+        # The signal is best-effort: if it fails, the moderator
+        # still wakes up via the bounded 2 s wait timeout in its
+        # loop.  Logged but not raised so the API response
+        # remains unaffected.
+        logger.warning(
+            "Failed to fire extension signal for session %s",
+            session_id,
+            exc_info=True,
+        )
 
     logger.info(
         "Extension decision for debate %s: %s (new_max=%d)",

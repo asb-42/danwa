@@ -9,6 +9,13 @@ instead of a process-local ``asyncio.Event``.  The wake-up is delivered
 across processes via the configured pub/sub backend, so a worker that
 issues ``pause(session_id)`` can wake a workflow loop running on a
 different worker.
+
+Sprint 38 (part 1/3) — adds ``set_extension_signal`` /
+``wait_for_extension_signal`` to replace the 2-second polling loop in
+``moderator_nodes.py`` for the extra-rounds extension decision.  The
+HITL API endpoint fires the signal after saving the decision to the
+debate store, and the moderator's wait unblocks immediately.  Falls
+back to ``timeout`` (5 min) on no decision.
 """
 
 from __future__ import annotations
@@ -35,6 +42,10 @@ class WorkflowStateBackend(Protocol):
     def resume(self, session_id: str) -> None: ...
     def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool: ...
     def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool: ...
+    def set_extension_signal(self, session_id: str) -> None: ...
+    def wait_for_extension_signal(
+        self, session_id: str, timeout: float | None = None
+    ) -> bool: ...
     def cleanup(self, session_id: str) -> None: ...
 
 
@@ -47,6 +58,10 @@ def _pause_channel(session_id: str) -> str:
 
 def _resume_channel(session_id: str) -> str:
     return f"danwa:wf:resume:{session_id}"
+
+
+def _extension_channel(session_id: str) -> str:
+    return f"danwa:wf:extension:{session_id}"
 
 
 class InMemoryWorkflowState:
@@ -82,6 +97,14 @@ class InMemoryWorkflowState:
 
     def _get_resume_wait_event(self, session_id: str) -> WaitEvent:
         ch = _resume_channel(session_id)
+        ev = self._wait_events.get(ch)
+        if ev is None:
+            ev = get_wait_event(ch, pubsub=self._pubsub)
+            self._wait_events[ch] = ev
+        return ev
+
+    def _get_extension_wait_event(self, session_id: str) -> WaitEvent:
+        ch = _extension_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
             ev = get_wait_event(ch, pubsub=self._pubsub)
@@ -191,6 +214,41 @@ class InMemoryWorkflowState:
         ev = self._get_resume_wait_event(session_id)
         return await ev.wait(timeout=timeout)
 
+    def set_extension_signal(self, session_id: str) -> None:
+        """Fire the per-session extension-decision signal.
+
+        Called by the HITL API endpoint after saving the user's
+        extension decision (``granted`` / ``denied``) to the
+        debate store.  Wakes any ``wait_for_extension_signal``
+        waiter on the same session across processes.
+
+        Note: the signal carries no payload.  Callers must read
+        the decision (granted vs denied) from the debate store
+        after wake-up.  This keeps the state backend
+        payload-agnostic — the debate store is the single source
+        of truth for the decision value.
+        """
+        self._get_extension_wait_event(session_id).set()
+
+    async def wait_for_extension_signal(
+        self, session_id: str, timeout: float | None = None
+    ) -> bool:
+        """Block until the extension-decision signal fires (or timeout).
+
+        Returns ``True`` if the extension channel was set (locally
+        or via cross-process signal), ``False`` on timeout.  If
+        the channel was already set when called, returns ``True``
+        immediately via the channel-state fast path.
+
+        Replaces the 2-second ``asyncio.sleep`` polling loop that
+        ``moderator_nodes.py`` used to do for the extra-rounds
+        extension request.  Typical wake-up latency: a few
+        milliseconds after the HITL API call, instead of up to 2
+        seconds.
+        """
+        ev = self._get_extension_wait_event(session_id)
+        return await ev.wait(timeout=timeout)
+
     def cleanup(self, session_id: str) -> None:
         self._status.pop(session_id, None)
         self._cancelled.discard(session_id)
@@ -198,7 +256,11 @@ class InMemoryWorkflowState:
         # Close the wait events so any pending subscriptions are
         # released.  Idempotent — safe to call even if the events
         # were never created.
-        for ch in (_pause_channel(session_id), _resume_channel(session_id)):
+        for ch in (
+            _pause_channel(session_id),
+            _resume_channel(session_id),
+            _extension_channel(session_id),
+        ):
             ev = self._wait_events.pop(ch, None)
             if ev is not None:
                 # ``aclose`` is async but cleanup is sync; we use
@@ -238,6 +300,14 @@ class RedisWorkflowState:
 
     def _get_resume_wait_event(self, session_id: str) -> WaitEvent:
         ch = _resume_channel(session_id)
+        ev = self._wait_events.get(ch)
+        if ev is None:
+            ev = get_wait_event(ch, pubsub=self._pubsub)
+            self._wait_events[ch] = ev
+        return ev
+
+    def _get_extension_wait_event(self, session_id: str) -> WaitEvent:
+        ch = _extension_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
             ev = get_wait_event(ch, pubsub=self._pubsub)
@@ -296,6 +366,28 @@ class RedisWorkflowState:
         ev = self._get_resume_wait_event(session_id)
         return await ev.wait(timeout=timeout)
 
+    def set_extension_signal(self, session_id: str) -> None:
+        """Fire the per-session extension-decision signal.
+
+        See :meth:`InMemoryWorkflowState.set_extension_signal`
+        for the protocol contract.  In the Redis backend, the
+        signal is delivered through the per-channel WaitEvent,
+        which uses Redis pub/sub + a per-channel flag counter
+        for cross-process visibility.
+        """
+        self._get_extension_wait_event(session_id).set()
+
+    async def wait_for_extension_signal(
+        self, session_id: str, timeout: float | None = None
+    ) -> bool:
+        """Block until the extension-decision signal fires.
+
+        See :meth:`InMemoryWorkflowState.wait_for_extension_signal`
+        for the protocol contract.
+        """
+        ev = self._get_extension_wait_event(session_id)
+        return await ev.wait(timeout=timeout)
+
     def cleanup(self, session_id: str) -> None:
         self.redis.delete(
             self._key(session_id, "status"),
@@ -306,6 +398,7 @@ class RedisWorkflowState:
         # wait events have no persistent state to release.
         self._wait_events.pop(_pause_channel(session_id), None)
         self._wait_events.pop(_resume_channel(session_id), None)
+        self._wait_events.pop(_extension_channel(session_id), None)
 
 
 # Module-level singleton.  Same rationale as ``get_pubsub``: the
