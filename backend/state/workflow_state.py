@@ -16,10 +16,18 @@ Sprint 38 (part 1/3) — adds ``set_extension_signal`` /
 HITL API endpoint fires the signal after saving the decision to the
 debate store, and the moderator's wait unblocks immediately.  Falls
 back to ``timeout`` (5 min) on no decision.
+
+Sprint 38 (part 3/3) — adds ``get_hitl_pause`` / ``set_hitl_pause`` /
+``clear_hitl_pause`` to consolidate the last process-local singleton
+(``hitl/api.py:_paused_debates``) into the workflow state backend.
+The HITL pause stores ``{paused_at, reason}`` per debate; the
+existing ``is_paused()`` is session-level workflow pause (a
+different concern) and is not changed.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Protocol
 
@@ -46,6 +54,11 @@ class WorkflowStateBackend(Protocol):
     def wait_for_extension_signal(
         self, session_id: str, timeout: float | None = None
     ) -> bool: ...
+    def get_hitl_pause(self, debate_id: str) -> dict | None: ...
+    def set_hitl_pause(
+        self, debate_id: str, paused_at: str, reason: str | None
+    ) -> None: ...
+    def clear_hitl_pause(self, debate_id: str) -> None: ...
     def cleanup(self, session_id: str) -> None: ...
 
 
@@ -86,6 +99,11 @@ class InMemoryWorkflowState:
         # waiter is iterating.
         self._pubsub = pubsub if pubsub is not None else get_pubsub()
         self._wait_events: dict[str, WaitEvent] = {}
+        # HITL debate pause state (Sprint 38 3/3).  Per-debate
+        # ``{paused_at, reason}`` record; ``None`` = not paused.
+        # Separate from session-level ``_pause_events`` (workflow
+        # runner semantics).
+        self._hitl_pauses: dict[str, dict] = {}
 
     def _get_pause_wait_event(self, session_id: str) -> WaitEvent:
         ch = _pause_channel(session_id)
@@ -249,6 +267,48 @@ class InMemoryWorkflowState:
         ev = self._get_extension_wait_event(session_id)
         return await ev.wait(timeout=timeout)
 
+    def get_hitl_pause(self, debate_id: str) -> dict | None:
+        """Return the HITL pause record for a debate, or ``None``.
+
+        The record contains ``paused_at`` (ISO timestamp string)
+        and ``reason`` (free-form text from the user, may be
+        ``None``).  A ``None`` return means the debate is not
+        currently HITL-paused.
+
+        Distinct from session-level ``is_paused()``: this is
+        user-driven pause (the user clicked the pause button),
+        while ``is_paused()`` tracks workflow-runner pause
+        (used by ``task_dispatch`` to suspend a running
+        workflow).  Both can coexist on the same debate.
+        """
+        record = self._hitl_pauses.get(debate_id)
+        if record is None:
+            return None
+        # Return a copy so callers cannot mutate our internal
+        # state by holding a reference.
+        return dict(record)
+
+    def set_hitl_pause(
+        self, debate_id: str, paused_at: str, reason: str | None
+    ) -> None:
+        """Mark a debate as HITL-paused.
+
+        Stores ``{paused_at, reason}`` keyed by ``debate_id``.
+        Idempotent — calling twice overwrites the prior record
+        (and updates ``paused_at`` to the latest timestamp).
+        """
+        self._hitl_pauses[debate_id] = {
+            "paused_at": paused_at,
+            "reason": reason,
+        }
+
+    def clear_hitl_pause(self, debate_id: str) -> None:
+        """Clear the HITL pause record for a debate.
+
+        Idempotent — safe to call when no pause record exists.
+        """
+        self._hitl_pauses.pop(debate_id, None)
+
     def cleanup(self, session_id: str) -> None:
         self._status.pop(session_id, None)
         self._cancelled.discard(session_id)
@@ -399,6 +459,50 @@ class RedisWorkflowState:
         self._wait_events.pop(_pause_channel(session_id), None)
         self._wait_events.pop(_resume_channel(session_id), None)
         self._wait_events.pop(_extension_channel(session_id), None)
+
+    def get_hitl_pause(self, debate_id: str) -> dict | None:
+        """Return the HITL pause record for a debate, or ``None``.
+
+        See :meth:`InMemoryWorkflowState.get_hitl_pause` for the
+        contract.  Backed by a JSON-encoded string at
+        ``danwa:wf:hitl_pause:<debate_id>`` with a 12 h TTL
+        (matches the existing session-status TTL).  The TTL
+        bounds growth from abandoned debates that never call
+        ``clear_hitl_pause``.
+        """
+        raw = self.redis.get(self._key(debate_id, "hitl_pause"))
+        if raw is None:
+            return None
+        try:
+            data = json.loads(raw)
+        except (TypeError, ValueError) as e:
+            logger.warning(
+                "Corrupt hitl_pause record for %s: %s — treating as None",
+                debate_id,
+                e,
+            )
+            return None
+        return data
+
+    def set_hitl_pause(
+        self, debate_id: str, paused_at: str, reason: str | None
+    ) -> None:
+        """Mark a debate as HITL-paused.
+
+        Stores a JSON-encoded record at
+        ``danwa:wf:hitl_pause:<debate_id>`` with a 12 h TTL.
+        See :meth:`InMemoryWorkflowState.set_hitl_pause` for
+        the contract.
+        """
+        record = json.dumps({"paused_at": paused_at, "reason": reason})
+        self.redis.setex(self._key(debate_id, "hitl_pause"), 43200, record)
+
+    def clear_hitl_pause(self, debate_id: str) -> None:
+        """Clear the HITL pause record for a debate.
+
+        Idempotent — see :meth:`InMemoryWorkflowState.clear_hitl_pause`.
+        """
+        self.redis.delete(self._key(debate_id, "hitl_pause"))
 
 
 # Module-level singleton.  Same rationale as ``get_pubsub``: the

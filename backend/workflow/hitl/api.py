@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async
 from backend.persistence.project_store import ProjectStore
+from backend.state.workflow_state import get_workflow_state
 from backend.workflow.hitl.contracts import (
     ExtensionDecision,
     ExtensionDecisionModel,
@@ -57,9 +58,6 @@ _interaction_log: dict[str, list[dict]] = {}
 # debate_id → interrupt context (if active)
 _active_interrupts: dict[str, dict] = {}
 
-# debate_id → pause state
-_paused_debates: dict[str, dict] = {}
-
 # debate_id → HITL configuration
 _hitl_config: dict[str, dict] = {}
 
@@ -89,8 +87,16 @@ def set_hitl_config(debate_id: str, config: dict) -> None:
 
 
 def is_paused(debate_id: str) -> bool:
-    """Check if a debate is currently paused."""
-    return debate_id in _paused_debates
+    """Check if a debate is currently paused.
+
+    Sprint 38 part 3/3: delegates to the workflow state backend
+    so the HITL pause survives process restarts when Redis is
+    configured, and so ``workflow_state`` is the single source
+    of truth for all pause-related state.  The HITL pause is
+    distinct from the session-level ``workflow_runner`` pause
+    (different concern, different storage key).
+    """
+    return get_workflow_state().get_hitl_pause(debate_id) is not None
 
 
 def get_active_interrupt(debate_id: str) -> dict | None:
@@ -261,7 +267,7 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
 def cleanup_hitl_state(debate_id: str) -> None:
     """Clean up all HITL state for a completed debate."""
     _active_interrupts.pop(debate_id, None)
-    _paused_debates.pop(debate_id, None)
+    get_workflow_state().clear_hitl_pause(debate_id)
     _hitl_config.pop(debate_id, None)
     # Keep interaction log for history (cleared on debate deletion)
 
@@ -506,10 +512,9 @@ async def pause_debate(
     now = datetime.now(UTC).isoformat()
 
     if body.action == "pause":
-        _paused_debates[debate_id] = {
-            "paused_at": now,
-            "reason": body.reason,
-        }
+        get_workflow_state().set_hitl_pause(
+            debate_id, paused_at=now, reason=body.reason
+        )
         message = body.reason or "Debate paused by user"
 
         # Emit SSE event
@@ -524,7 +529,7 @@ async def pause_debate(
         return PauseResponse(debate_id=debate_id, paused=True, action=body.action, message=message)
 
     else:  # resume
-        _paused_debates.pop(debate_id, None)
+        get_workflow_state().clear_hitl_pause(debate_id)
         message = "Debate resumed"
 
         # Emit SSE event
