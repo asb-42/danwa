@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
 from backend.api.events import publish_async
 from backend.persistence.project_store import ProjectStore
+from backend.state.workflow_state import get_workflow_state
 from backend.workflow.hitl.contracts import (
     ExtensionDecision,
     ExtensionDecisionModel,
@@ -57,9 +58,6 @@ _interaction_log: dict[str, list[dict]] = {}
 # debate_id → interrupt context (if active)
 _active_interrupts: dict[str, dict] = {}
 
-# debate_id → pause state
-_paused_debates: dict[str, dict] = {}
-
 # debate_id → HITL configuration
 _hitl_config: dict[str, dict] = {}
 
@@ -89,8 +87,16 @@ def set_hitl_config(debate_id: str, config: dict) -> None:
 
 
 def is_paused(debate_id: str) -> bool:
-    """Check if a debate is currently paused."""
-    return debate_id in _paused_debates
+    """Check if a debate is currently paused.
+
+    Sprint 38 part 3/3: delegates to the workflow state backend
+    so the HITL pause survives process restarts when Redis is
+    configured, and so ``workflow_state`` is the single source
+    of truth for all pause-related state.  The HITL pause is
+    distinct from the session-level ``workflow_runner`` pause
+    (different concern, different storage key).
+    """
+    return get_workflow_state().get_hitl_pause(debate_id) is not None
 
 
 def get_active_interrupt(debate_id: str) -> dict | None:
@@ -191,6 +197,16 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
 
     Returns:
         The resolved interrupt context, or None if no active interrupt.
+
+    Sprint 38 (2/3) — also fires the per-session
+    ``set_extension_signal`` so any node waiting on the
+    extension decision (e.g.  ``extension_request_node``)
+    wakes up immediately when the user responds to an
+    extension interrupt via ``respond_to_interrupt``.  This
+    is the second code path for extension decisions
+    alongside ``extension_decision``; both fire the same
+    signal.  Best-effort: failure is logged but does not
+    affect the response.
     """
     interrupt = _active_interrupts.get(debate_id)
     if not interrupt:
@@ -222,6 +238,23 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
     # Remove from active interrupts
     resolved = _active_interrupts.pop(debate_id)
 
+    # Sprint 38 (2/3) — fire the per-session extension signal
+    # so any waiter (``extension_request_node``) on this
+    # session unblocks immediately.  ``session_id ==
+    # debate_id`` in this codebase, so we use debate_id as
+    # the signal key.  Best-effort — the waiter has a 2 s
+    # fallback timeout in case this fails.
+    try:
+        from backend.state.workflow_state import get_workflow_state
+
+        get_workflow_state().set_extension_signal(debate_id)
+    except Exception:
+        logger.debug(
+            "Failed to fire extension signal on resolve_interrupt for %s",
+            debate_id,
+            exc_info=True,
+        )
+
     logger.info(
         "Interrupt resolved: interrupt=%s, response_length=%d",
         resolved["interrupt_id"],
@@ -234,7 +267,7 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
 def cleanup_hitl_state(debate_id: str) -> None:
     """Clean up all HITL state for a completed debate."""
     _active_interrupts.pop(debate_id, None)
-    _paused_debates.pop(debate_id, None)
+    get_workflow_state().clear_hitl_pause(debate_id)
     _hitl_config.pop(debate_id, None)
     # Keep interaction log for history (cleared on debate deletion)
 
@@ -479,10 +512,9 @@ async def pause_debate(
     now = datetime.now(UTC).isoformat()
 
     if body.action == "pause":
-        _paused_debates[debate_id] = {
-            "paused_at": now,
-            "reason": body.reason,
-        }
+        get_workflow_state().set_hitl_pause(
+            debate_id, paused_at=now, reason=body.reason
+        )
         message = body.reason or "Debate paused by user"
 
         # Emit SSE event
@@ -497,7 +529,7 @@ async def pause_debate(
         return PauseResponse(debate_id=debate_id, paused=True, action=body.action, message=message)
 
     else:  # resume
-        _paused_debates.pop(debate_id, None)
+        get_workflow_state().clear_hitl_pause(debate_id)
         message = "Debate resumed"
 
         # Emit SSE event
@@ -648,7 +680,13 @@ async def extension_decision(
 
     store.put(debate_id, debate)
 
-    # Emit SSE event
+    # Emit SSE event and wake the moderator's WaitEvent so it
+    # reads the fresh decision immediately.  Sprint 38 (1/3) —
+    # ``set_extension_signal`` replaces the 2-second polling
+    # latency the moderator had to wait before seeing the
+    # decision.  The signal is cross-process via the configured
+    # pub/sub backend, so a moderator running on a different
+    # worker also unblocks promptly.
     session_id = debate.get("session_id", debate_id)
     await publish_async(
         session_id,
@@ -660,6 +698,20 @@ async def extension_decision(
             "new_max_rounds": new_max,
         },
     )
+    try:
+        from backend.state.workflow_state import get_workflow_state
+
+        get_workflow_state().set_extension_signal(session_id)
+    except Exception:
+        # The signal is best-effort: if it fails, the moderator
+        # still wakes up via the bounded 2 s wait timeout in its
+        # loop.  Logged but not raised so the API response
+        # remains unaffected.
+        logger.warning(
+            "Failed to fire extension signal for session %s",
+            session_id,
+            exc_info=True,
+        )
 
     logger.info(
         "Extension decision for debate %s: %s (new_max=%d)",

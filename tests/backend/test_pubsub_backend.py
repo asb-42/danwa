@@ -332,5 +332,9 @@ class TestFactory:
         """
         ev = get_wait_event(f"factory-{uuid.uuid4()}")
         assert isinstance(ev, InMemoryWaitEvent)
-        # async close is a no-op on in-memory but the API is there
-        asyncio.get_event_loop()  # ensure a loop exists
+        # ``aclose`` is a no-op on in-memory but the async API
+        # is part of the WaitEvent protocol.  We don't actually
+        # need to call it here; just verify the method exists
+        # so type checkers and runtime contract are happy.
+        assert hasattr(ev, "aclose")
+        assert asyncio.iscoroutinefunction(ev.aclose)

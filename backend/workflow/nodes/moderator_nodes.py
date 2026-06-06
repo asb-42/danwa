@@ -6,7 +6,6 @@ These nodes orchestrate debate rounds (moderator), evaluate conditions
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from collections.abc import Callable
@@ -248,19 +247,39 @@ def moderator_node_factory(
                     },
                 )
 
-                # Poll debate store for user decision (up to 5 minutes)
+                # Wait for the user-driven extension decision.
+                #
+                # Sprint 38 (1/3) — replaced the 2-second
+                # ``asyncio.sleep`` polling loop with a
+                # ``wait_for_extension_signal`` WaitEvent.  The HITL
+                # API endpoint fires the signal after saving the
+                # decision to the debate store; the moderator
+                # unblocks within a few milliseconds instead of up
+                # to 2 seconds per poll.  Falls back to ``asyncio.sleep``
+                # for the absolute 5-minute hard timeout, and checks
+                # ``is_cancelled`` on every iteration so a cancel
+                # during the wait exits the loop promptly.
                 if debate_id:
                     from backend.api.deps import get_debate_store_for_project
                     from backend.persistence.project_store import ProjectStore
+                    from backend.state.workflow_state import get_workflow_state
                     from backend.workflow.workflow_runner import is_cancelled
 
                     project_store = ProjectStore()
                     try:
                         debate_store = get_debate_store_for_project(project_id, project_store)
+                        state = get_workflow_state()
                         poll_deadline = time.monotonic() + 300  # 5 min timeout
+                        # The WaitEvent fires as soon as the HITL
+                        # API saves the decision.  We use a
+                        # capped timeout (2 s) on each wait so the
+                        # cancel check is re-evaluated regularly
+                        # even on a quiet event channel — the
+                        # cancel API does not currently fire a
+                        # cross-process signal of its own.
                         while time.monotonic() < poll_deadline:
                             if is_cancelled(session_id):
-                                logger.info("Extension poll cancelled for session %s", session_id)
+                                logger.info("Extension wait cancelled for session %s", session_id)
                                 result["extension_granted"] = False
                                 break
                             debate = debate_store.get(debate_id)
@@ -271,13 +290,17 @@ def moderator_node_factory(
                                     "granted" if result["extension_granted"] else "denied",
                                 )
                                 break
-                            await asyncio.sleep(2)
+                            remaining = poll_deadline - time.monotonic()
+                            await state.wait_for_extension_signal(
+                                session_id,
+                                timeout=min(2.0, max(0.1, remaining)),
+                            )
                         else:
                             # Timeout — treat as denied
-                            logger.info("Extension poll timed out for debate %s — denying", debate_id)
+                            logger.info("Extension wait timed out for debate %s — denying", debate_id)
                             result["extension_granted"] = False
                     except Exception:
-                        logger.warning("Extension poll failed for debate %s", debate_id, exc_info=True)
+                        logger.warning("Extension wait failed for debate %s", debate_id, exc_info=True)
                         result["extension_granted"] = False
 
         logger.info(

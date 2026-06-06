@@ -4,6 +4,11 @@ Verifies that ``workflow_runner`` and ``debate_oob`` cancel/pause
 helpers delegate to the unified ``get_workflow_state()`` backend.
 The state set via one module is visible to the other, and the
 state backend owns the canonical truth.
+
+Sprint 38 (part 3/3) — adds the HITL pause storage
+(``get_hitl_pause`` / ``set_hitl_pause`` / ``clear_hitl_pause``)
+on the same backend.  The previous process-local
+``hitl/api.py:_paused_debates`` dict is gone.
 """
 
 from __future__ import annotations
@@ -332,3 +337,148 @@ class TestPauseResumeWaitStillWorks:
         asyncio.create_task(resumer())
         result = await backend.wait_for_resume(sid, timeout=2.0)
         assert result is True
+
+
+# ---------------------------------------------------------------------------
+# Sprint 38 (3/3) — HITL pause storage on the workflow state backend
+# ---------------------------------------------------------------------------
+
+
+class TestHitlPauseStorage:
+    """The HITL ``is_paused(debate_id)`` state (formerly
+    ``hitl/api.py:_paused_debates``) is stored on the workflow
+    state backend.  ``get_hitl_pause`` returns ``None`` when the
+    debate is not paused and a ``{paused_at, reason}`` dict
+    when it is; ``set_hitl_pause`` stores the record;
+    ``clear_hitl_pause`` removes it (idempotently).
+    """
+
+    def setup_method(self) -> None:
+        reset_workflow_state_cache()
+
+    def teardown_method(self) -> None:
+        reset_workflow_state_cache()
+
+    def test_get_hitl_pause_default_none(self) -> None:
+        backend = get_workflow_state()
+        assert backend.get_hitl_pause(_id()) is None
+
+    def test_set_hitl_pause_then_get(self) -> None:
+        backend = get_workflow_state()
+        did = _id()
+        backend.set_hitl_pause(
+            did, paused_at="2024-01-01T00:00:00Z", reason="user request"
+        )
+        record = backend.get_hitl_pause(did)
+        assert record == {
+            "paused_at": "2024-01-01T00:00:00Z",
+            "reason": "user request",
+        }
+
+    def test_set_hitl_pause_reason_may_be_none(self) -> None:
+        backend = get_workflow_state()
+        did = _id()
+        backend.set_hitl_pause(did, paused_at="now", reason=None)
+        record = backend.get_hitl_pause(did)
+        assert record is not None
+        assert record["reason"] is None
+        assert record["paused_at"] == "now"
+
+    def test_set_hitl_pause_is_idempotent(self) -> None:
+        """A second ``set`` overwrites the prior record (the
+        newer timestamp wins, which is the correct semantic for
+        repeated pause actions).
+        """
+        backend = get_workflow_state()
+        did = _id()
+        backend.set_hitl_pause(
+            did, paused_at="2024-01-01T00:00:00Z", reason="first"
+        )
+        backend.set_hitl_pause(
+            did, paused_at="2024-01-01T00:01:00Z", reason="second"
+        )
+        record = backend.get_hitl_pause(did)
+        assert record == {
+            "paused_at": "2024-01-01T00:01:00Z",
+            "reason": "second",
+        }
+
+    def test_clear_hitl_pause_removes_record(self) -> None:
+        backend = get_workflow_state()
+        did = _id()
+        backend.set_hitl_pause(did, paused_at="now", reason="x")
+        assert backend.get_hitl_pause(did) is not None
+        backend.clear_hitl_pause(did)
+        assert backend.get_hitl_pause(did) is None
+
+    def test_clear_hitl_pause_is_idempotent(self) -> None:
+        """Clearing a non-existent record is a no-op (must not
+        raise).  This matches the prior ``_paused_debates.pop(…, None)``
+        behavior.
+        """
+        backend = get_workflow_state()
+        backend.clear_hitl_pause(_id())  # should not raise
+
+    def test_get_returns_copy(self) -> None:
+        """The dict returned by ``get_hitl_pause`` is a copy,
+        so mutating it does not affect the stored record.
+        """
+        backend = get_workflow_state()
+        did = _id()
+        backend.set_hitl_pause(did, paused_at="now", reason="orig")
+        record = backend.get_hitl_pause(did)
+        assert record is not None
+        record["reason"] = "mutated"
+        # Re-fetch: the stored record is untouched.
+        record2 = backend.get_hitl_pause(did)
+        assert record2 is not None
+        assert record2["reason"] == "orig"
+
+    def test_cross_instance_visibility(self) -> None:
+        """Two ``InMemoryWorkflowState`` instances created from
+        the same factory share the singleton (verified
+        elsewhere), so state set on one is visible on the
+        other — no test-only shim needed.
+        """
+        backend1 = get_workflow_state()
+        backend2 = get_workflow_state()
+        assert backend1 is backend2
+        did = _id()
+        backend1.set_hitl_pause(did, paused_at="now", reason="x")
+        assert backend2.get_hitl_pause(did) is not None
+
+
+class TestHitlPauseFromHitlApi:
+    """End-to-end: the ``hitl.api.is_paused`` helper delegates
+    to the workflow state backend (Sprint 38 3/3 contract).
+    """
+
+    def setup_method(self) -> None:
+        reset_workflow_state_cache()
+
+    def teardown_method(self) -> None:
+        reset_workflow_state_cache()
+
+    def test_is_paused_via_state_backend(self) -> None:
+        from backend.workflow.hitl.api import is_paused
+
+        did = _id()
+        assert is_paused(did) is False
+        get_workflow_state().set_hitl_pause(
+            did, paused_at="now", reason="user"
+        )
+        assert is_paused(did) is True
+        get_workflow_state().clear_hitl_pause(did)
+        assert is_paused(did) is False
+
+    def test_no_local_dict_attribute(self) -> None:
+        """The ``_paused_debates`` module attribute must be gone
+        — the only path for HITL pause state is now through the
+        workflow state backend.
+        """
+        import backend.workflow.hitl.api as hitl_api
+
+        assert not hasattr(hitl_api, "_paused_debates"), (
+            "_paused_debates must be removed from hitl/api.py — "
+            "use get_workflow_state().get_hitl_pause(...) instead"
+        )

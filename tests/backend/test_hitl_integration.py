@@ -13,13 +13,13 @@ from __future__ import annotations
 import pytest
 
 from backend.persistence.debate_store import DebateStore
+from backend.state.workflow_state import get_workflow_state, reset_workflow_state_cache
 from backend.workflow.hitl.agent_query import analyze_for_query
 from backend.workflow.hitl.api import (
     _active_interrupts,
     _hitl_config,
     _interaction_log,
     _log_interaction,
-    _paused_debates,
     cleanup_hitl_state,
     consume_all_pending_injects,
     consume_inject,
@@ -43,13 +43,17 @@ def _clean_hitl_state():
     """Reset all in-memory HITL state between tests."""
     _interaction_log.clear()
     _active_interrupts.clear()
-    _paused_debates.clear()
     _hitl_config.clear()
+    # The HITL pause is now in the workflow state backend
+    # singleton.  ``cleanup_hitl_state`` only knows one debate
+    # at a time, so reset the entire cache between tests to
+    # wipe any pauses seeded by individual tests.
+    reset_workflow_state_cache()
     yield
     _interaction_log.clear()
     _active_interrupts.clear()
-    _paused_debates.clear()
     _hitl_config.clear()
+    reset_workflow_state_cache()
 
 
 def _create_running_debate(client, text="HITL test"):
@@ -367,7 +371,9 @@ class TestHITLStateManagement:
         assert is_paused("debate-1") is False
 
     def test_is_paused_after_set(self):
-        _paused_debates["debate-1"] = {"paused_at": "2024-01-01T00:00:00Z"}
+        get_workflow_state().set_hitl_pause(
+            "debate-1", paused_at="2024-01-01T00:00:00Z", reason=None
+        )
         assert is_paused("debate-1") is True
 
     def test_get_active_interrupt_default_none(self):
@@ -558,14 +564,16 @@ class TestHITLStateManagement:
 
     def test_cleanup_hitl_state(self):
         _active_interrupts["debate-1"] = {"interrupt_id": "x"}
-        _paused_debates["debate-1"] = {"paused_at": "now"}
+        get_workflow_state().set_hitl_pause(
+            "debate-1", paused_at="now", reason=None
+        )
         _hitl_config["debate-1"] = {"hitl_enabled": True}
         _interaction_log["debate-1"] = [{"type": "inject"}]
 
         cleanup_hitl_state("debate-1")
 
         assert "debate-1" not in _active_interrupts
-        assert "debate-1" not in _paused_debates
+        assert is_paused("debate-1") is False
         assert "debate-1" not in _hitl_config
         # Interaction log is preserved for history
         assert "debate-1" in _interaction_log
