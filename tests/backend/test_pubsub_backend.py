@@ -287,12 +287,44 @@ class TestRedisPubSub:
 class TestFactory:
     """``get_pubsub()`` / ``get_wait_event()`` pick the right impl."""
 
+    def setup_method(self) -> None:
+        """Reset the singleton cache so each test sees a fresh factory call."""
+        from backend.state.pubsub import reset_pubsub_cache
+
+        reset_pubsub_cache()
+
+    def teardown_method(self) -> None:
+        """Clean up the singleton cache after each test to avoid cross-test leaks."""
+        from backend.state.pubsub import reset_pubsub_cache
+
+        reset_pubsub_cache()
+
     def test_get_pubsub_default_is_inmemory(self) -> None:
         """Without a configured ``redis_url``, the factory returns
         the in-memory implementation.
         """
         pubsub = get_pubsub()
         assert isinstance(pubsub, InMemoryPubSub)
+
+    def test_get_pubsub_returns_same_singleton(self) -> None:
+        """``get_pubsub()`` returns the same instance on repeated
+        calls — channels registered via the first call must be
+        reachable from the second.
+        """
+        a = get_pubsub()
+        b = get_pubsub()
+        assert a is b
+
+    def test_reset_pubsub_cache_returns_new_instance(self) -> None:
+        """``reset_pubsub_cache()`` clears the singleton so the
+        next ``get_pubsub()`` call returns a fresh instance.
+        """
+        from backend.state.pubsub import reset_pubsub_cache
+
+        a = get_pubsub()
+        reset_pubsub_cache()
+        b = get_pubsub()
+        assert a is not b
 
     def test_get_wait_event_default_is_inmemory(self) -> None:
         """The ``get_wait_event`` factory returns an in-memory event

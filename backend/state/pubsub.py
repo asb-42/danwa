@@ -358,19 +358,51 @@ class RedisPubSub:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Factory
+# ---------------------------------------------------------------------------
+
+# Module-level singleton.  Caching matters because the InMemory
+# backend keeps its channel state in instance attributes — a fresh
+# instance per call would lose all subscribers between requests.
+# Redis is naturally a singleton (single connection), so caching
+# doesn't change its behavior, only avoids reconnecting.
+_pubsub: PubSubBackend | None = None
+
+
 def get_pubsub() -> PubSubBackend:
     """Return the configured pub/sub backend.
 
     If ``settings.redis_url`` is set, attempt to connect to Redis.
     On any failure, log a warning and fall back to in-memory.
+
+    The result is cached module-globally.  Tests that need a
+    fresh instance should call :func:`reset_pubsub_cache` first.
     """
+    global _pubsub
+    if _pubsub is not None:
+        return _pubsub
+
     from backend.core.config import settings
 
     if settings.redis_url:
         try:
-            return RedisPubSub(settings.redis_url)
+            _pubsub = RedisPubSub(settings.redis_url)
+            return _pubsub
         except Exception as exc:
             logger.warning(
                 "Redis pub/sub unavailable (%s), falling back to in-memory", exc
             )
-    return InMemoryPubSub()
+    _pubsub = InMemoryPubSub()
+    return _pubsub
+
+
+def reset_pubsub_cache() -> None:
+    """Clear the module-level pub/sub singleton.
+
+    Intended for tests that swap the ``settings.redis_url`` and
+    want the factory to re-evaluate.  In production the cache
+    lives for the lifetime of the process.
+    """
+    global _pubsub
+    _pubsub = None

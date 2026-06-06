@@ -316,18 +316,51 @@ class RedisWorkflowState:
         self._wait_events.pop(_resume_channel(session_id), None)
 
 
-def get_workflow_state() -> InMemoryWorkflowState | RedisWorkflowState:
+# Module-level singleton.  Same rationale as ``get_pubsub``: the
+# InMemory backend keeps its state in instance attributes, so a
+# fresh instance per call would lose cross-request coordination
+# (e.g. cancel flag set by API request never visible to the
+# background workflow loop).  Caching ensures ``get_workflow_state()``
+# returns the same object within a process.
+_workflow_state: WorkflowStateBackend | None = None
+
+
+def get_workflow_state() -> WorkflowStateBackend:
     """Get the appropriate workflow state backend based on configuration.
 
-    Returns RedisWorkflowState if redis_url is configured, otherwise
-    InMemoryWorkflowState.
+    Returns ``RedisWorkflowState`` if ``settings.redis_url`` is
+    configured and reachable, otherwise ``InMemoryWorkflowState``.
+    The result is cached module-globally — see
+    :func:`reset_workflow_state_cache` for the test-only escape
+    hatch.
+
+    Multi-process safety: with Redis configured, all processes
+    see the same state.  Without Redis, the InMemory backend only
+    works within a single process; multi-worker deployments must
+    configure ``redis_url``.
     """
+    global _workflow_state
+    if _workflow_state is not None:
+        return _workflow_state
+
     from backend.core.config import settings
 
     if settings.redis_url:
         try:
-            return RedisWorkflowState(settings.redis_url)
+            _workflow_state = RedisWorkflowState(settings.redis_url)
+            return _workflow_state
         except Exception as e:
             logger.warning("Redis unavailable (%s), falling back to in-memory state", e)
+    _workflow_state = InMemoryWorkflowState()
+    return _workflow_state
 
-    return InMemoryWorkflowState()
+
+def reset_workflow_state_cache() -> None:
+    """Clear the module-level workflow state singleton.
+
+    Intended for tests that swap the ``settings.redis_url`` and
+    want the factory to re-evaluate the configuration.  In
+    production the cache lives for the lifetime of the process.
+    """
+    global _workflow_state
+    _workflow_state = None

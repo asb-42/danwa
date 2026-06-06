@@ -2,11 +2,17 @@
 
 Handles the lifecycle of a workflow execution: invoke the LangGraph graph,
 manage pause/resume/cancel, save state snapshots, and publish SSE events.
+
+Sprint 37 (part 3/3) — pause/resume/cancel/status now delegate to the
+unified :func:`backend.state.workflow_state.get_workflow_state` backend.
+The module-level ``_pause_events`` / ``_cancelled_sessions`` /
+``_session_status`` dicts that used to live here are gone; the state
+backend owns them.  Audit logging for pause/resume is the only
+workflow-specific side effect kept in this module.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from typing import Any
@@ -18,6 +24,7 @@ from backend.models.artifact import (
     Turn,
 )
 from backend.services.artifact_store import ArtifactStore
+from backend.state.workflow_state import get_workflow_state
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.immutability import lock_session
 from backend.workflow.interjection import interjection_service
@@ -27,47 +34,47 @@ from backend.workflow.workflow_state import WorkflowTemplate
 
 logger = logging.getLogger(__name__)
 
-# Module-level shared state for pause/resume/cancel
-_pause_events: dict[str, asyncio.Event] = {}
-_cancelled_sessions: set[str] = set()
-_session_status: dict[str, str] = {}  # session_id → status string
-
 
 def is_cancelled(session_id: str) -> bool:
     """Check if a session has been cancelled."""
-    return session_id in _cancelled_sessions
+    return get_workflow_state().is_cancelled(session_id)
 
 
 def cancel_session(session_id: str) -> None:
     """Mark a session as cancelled."""
-    _cancelled_sessions.add(session_id)
-    _session_status[session_id] = "cancelled"
+    get_workflow_state().cancel(session_id)
 
 
 def get_session_status(session_id: str) -> str:
     """Get the current status of a session."""
-    return _session_status.get(session_id, "unknown")
+    return get_workflow_state().get_status(session_id)
 
 
 def set_session_status(session_id: str, status: str) -> None:
     """Set the status of a session."""
-    _session_status[session_id] = status
+    get_workflow_state().set_status(session_id, status)
 
 
-def get_pause_event(session_id: str) -> asyncio.Event:
-    """Get or create the pause event for a session."""
-    if session_id not in _pause_events:
-        _pause_events[session_id] = asyncio.Event()
-        _pause_events[session_id].set()  # Not paused by default
-    return _pause_events[session_id]
+def get_pause_event(session_id: str):
+    """Get or create the legacy ``asyncio.Event`` for a session.
+
+    Kept for backward compat with code that calls ``event.wait()``
+    directly (e.g.  ``run_workflow_background`` historically used
+    it).  New code should use ``wait_for_pause`` /
+    ``wait_for_resume`` on the state backend instead.
+    """
+    return get_workflow_state().get_pause_event(session_id)
 
 
 def pause_session(session_id: str) -> None:
-    """Pause a running session."""
-    event = get_pause_event(session_id)
-    event.clear()  # Block until resumed
-    _session_status[session_id] = "paused"
-    # --- Audit log ---
+    """Pause a running session.
+
+    Delegates to :meth:`WorkflowStateBackend.pause` and writes an
+    audit-log entry.  The wake-up signal is published on the
+    per-session pause channel so any ``wait_for_pause`` coroutine
+    on this or another process unblocks immediately.
+    """
+    get_workflow_state().pause(session_id)
     try:
         get_audit_logger().log_workflow_event(
             session_id=session_id,
@@ -81,11 +88,13 @@ def pause_session(session_id: str) -> None:
 
 
 def resume_session(session_id: str) -> None:
-    """Resume a paused session."""
-    event = get_pause_event(session_id)
-    event.set()  # Unblock
-    _session_status[session_id] = "running"
-    # --- Audit log ---
+    """Resume a paused session.
+
+    Delegates to :meth:`WorkflowStateBackend.resume` and writes
+    an audit-log entry.  The wake-up signal is published on the
+    per-session resume channel.
+    """
+    get_workflow_state().resume(session_id)
     try:
         get_audit_logger().log_workflow_event(
             session_id=session_id,
@@ -311,9 +320,12 @@ async def run_workflow_background(
             logger.debug("Audit logging failed for workflow_failed", exc_info=True)
 
     finally:
-        # Cleanup shared state
-        _pause_events.pop(session_id, None)
-        _cancelled_sessions.discard(session_id)
+        # Cleanup shared state.  The state backend drops cancel /
+        # status / pause / wait-event entries for the session so
+        # the next run starts clean.  ``interjection_service`` is
+        # separate and is not part of the workflow_state
+        # consolidation.
+        get_workflow_state().cleanup(session_id)
         await interjection_service.clear(session_id)
 
 

@@ -4,7 +4,6 @@ Re-exports all public functions from sub-modules for backward compatibility.
 """
 
 from backend.services.debate.debate_oob import (
-    _cancelled_debates,
     _oob_queues,
     clear_cancel,
     clear_oob_queue,
@@ -31,7 +30,10 @@ from backend.services.debate.debate_title import (
 
 __all__ = [
     # OOB / cancellation
-    "_cancelled_debates",
+    # Note: ``_cancelled_debates`` was removed in Sprint 37 (3/3)
+    # when cancellation moved to ``backend.state.workflow_state``.
+    # The state lives on the backend now; use ``get_workflow_state()``
+    # for any code that needs to inspect or clear it.
     "_oob_queues",
     "clear_cancel",
     "clear_oob_queue",
