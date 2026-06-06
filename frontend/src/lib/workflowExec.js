@@ -25,7 +25,6 @@ export function startWorkflow(workflowId, context, options = {}) {
       threshold: options.threshold || 0.7,
       document_ids: options.documentIds || [],
       rag_auto_retrieve: options.ragAutoRetrieve || false,
-      include_debate_results: options.includeDebateResults || false,
       include_document_analysis: options.includeDocumentAnalysis ?? false,
     }),
   });
