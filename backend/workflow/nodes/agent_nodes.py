@@ -18,6 +18,7 @@ from backend.services.llm_service import LLMService
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.domains import get_decision_matrix
 from backend.workflow.interjection import interjection_service
+from backend.workflow.nodes._draft_helpers import truncate_running_draft
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState, WorkflowTemplate
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,12 @@ logger = logging.getLogger(__name__)
 # (formerly a function-local 50000 in the non-transactional concat
 # branch) to a module-level constant so its purpose is discoverable
 # from the module top and so future tuning lives in one place.
-_MAX_DRAFT_LEN = 50000
-_DRAFT_TRUNCATION_MARKER = "\n\n[… content truncated …]\n\n"
+#
+# Sprint 39 (H2 fix): the constants and the head+tail truncation
+# logic are now in ``backend.workflow.nodes._draft_helpers`` so the
+# interjection node and the legacy ``run_agent_node`` use the same
+# bounds.  The single-source-of-truth constants live there; this
+# file imports the helper directly and no longer holds local copies.
 
 
 def _estimate_tokens(content: str) -> int:
@@ -450,12 +455,14 @@ def agent_node_factory(
         if not is_transactional:
             existing_draft = state.get("current_draft", "")
             new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
-            if len(new_draft) > _MAX_DRAFT_LEN:
-                tail_target = _MAX_DRAFT_LEN - len(_DRAFT_TRUNCATION_MARKER)
-                head = new_draft[: tail_target // 2]
-                tail = new_draft[-(tail_target // 2) :]
-                new_draft = head + _DRAFT_TRUNCATION_MARKER + tail
-            state_update["current_draft"] = new_draft
+            # Sprint 39 (H2 fix): tail-only truncation via the
+            # shared helper.  Previous head+tail logic dropped
+            # the early debate history that subsequent agents
+            # need for context continuity.  The shared helper is
+            # also used by ``system_nodes.interjection_node`` and
+            # ``legacy_nodes.run_agent_node`` so the bound is
+            # applied consistently across all three accumulators.
+            state_update["current_draft"] = truncate_running_draft(new_draft)
 
         # --- Transactional Drafting: populate domain-specific state keys ---
         if node_type == "wf-critic":

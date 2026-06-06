@@ -22,6 +22,7 @@ from backend.services.web_search import (
     extract_search_queries,
     format_search_results,
 )
+from backend.workflow.nodes._draft_helpers import truncate_running_draft
 from backend.workflow.state import (
     AgentOutputState,
     DebateState,
@@ -410,7 +411,16 @@ async def run_agent_node(state: DebateState) -> dict:
     result: dict = {
         "agent_outputs": [output],
         "current_agent_index": idx + 1,
-        "current_draft": state.get("current_draft", "") + "\n" + content,
+        # Sprint 39 (H2 fix): bound the running ``current_draft``
+        # log via the shared helper.  Previously the legacy
+        # ``run_agent_node`` accumulated without any cap, so a
+        # long debate would grow the draft without bound and bloat
+        # every subsequent agent's user prompt.  See
+        # ``_draft_helpers.py`` for the tail-only truncation
+        # semantics shared with the wf-compiler flow.
+        "current_draft": truncate_running_draft(
+            state.get("current_draft", "") + "\n" + content
+        ),
     }
 
     # Track anomaly if LLM call failed

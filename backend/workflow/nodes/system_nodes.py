@@ -11,6 +11,7 @@ import logging
 from backend.api.events import publish_async
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.interjection import interjection_service
+from backend.workflow.nodes._draft_helpers import truncate_running_draft
 from backend.workflow.workflow_state import WorkflowNodeOutput, WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -341,7 +342,16 @@ async def interjection_node(state: WorkflowState) -> dict:
             "interjection_queue": [],  # Clear the queue
             "consumed_interjections": consumed_ids,
             "node_outputs": [output],
-            "current_draft": state.get("current_draft", "") + "\n" + combined_content,
+            # Sprint 39 (H2 fix): bound the running ``current_draft``
+            # log via the shared helper.  Previously the
+            # interjection node accumulated without any cap, so a
+            # long debate with many interjections would grow the
+            # draft without bound and bloat every subsequent
+            # agent's user prompt.  See ``_draft_helpers.py`` for
+            # the tail-only truncation semantics.
+            "current_draft": truncate_running_draft(
+                state.get("current_draft", "") + "\n" + combined_content
+            ),
         }
     else:
         # No interjections pending — pause execution
