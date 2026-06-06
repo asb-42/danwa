@@ -649,6 +649,8 @@ export default {
   'workflow.execution.toast.failed': 'Workflow execution failed',
   'workflow.execution.toast.paused': 'Workflow paused',
   'workflow.execution.toast.resumed': 'Workflow resumed',
+  'workflow.reflect.title': 'Reflect & Optimize',
+  'workflow.reflect.proposals': 'Optimization Proposals',
   'replay.title': 'Replay',
   'replay.selectSession': 'Select Session',
   'replay.play': 'Play',
