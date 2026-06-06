@@ -83,9 +83,7 @@ class TestTruncateRunningDraft:
         assert result == text
         # max_len < len(text) → truncated; tail preserved, head
         # dropped.  Use a short marker so max_len=20 is workable.
-        result = truncate_running_draft(
-            "HEAD" + text + "TAIL", max_len=20, marker="[..]"
-        )
+        result = truncate_running_draft("HEAD" + text + "TAIL", max_len=20, marker="[..]")
         assert "HEAD" not in result
         assert result.endswith("TAIL")
         assert len(result) <= 20
@@ -176,9 +174,7 @@ class TestAccumulatorSitesUseSharedHelper:
         node_fn = agent_node_factory("node-s1", "wf-strategist", config)
 
         with (
-            patch(
-                "backend.workflow.node_functions._get_profile_service"
-            ) as mock_ps,
+            patch("backend.workflow.node_functions._get_profile_service") as mock_ps,
             patch(
                 "backend.workflow.nodes.agent_nodes.publish_async",
                 new_callable=AsyncMock,
@@ -211,9 +207,7 @@ class TestAccumulatorSitesUseSharedHelper:
         }
 
         with (
-            patch(
-                "backend.workflow.audit_logger.get_audit_logger"
-            ) as mock_al,
+            patch("backend.workflow.audit_logger.get_audit_logger") as mock_al,
             patch(
                 "backend.workflow.nodes.system_nodes.publish_async",
                 new_callable=AsyncMock,
@@ -254,9 +248,7 @@ class TestAccumulatorSitesUseSharedHelper:
         }
 
         with (
-            patch(
-                "backend.workflow.legacy_nodes.LLMService"
-            ) as mock_llm,
+            patch("backend.workflow.legacy_nodes.LLMService") as mock_llm,
             patch(
                 "backend.workflow.legacy_nodes.publish_async",
                 new_callable=AsyncMock,

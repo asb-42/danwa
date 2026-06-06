@@ -418,9 +418,7 @@ async def run_agent_node(state: DebateState) -> dict:
         # every subsequent agent's user prompt.  See
         # ``_draft_helpers.py`` for the tail-only truncation
         # semantics shared with the wf-compiler flow.
-        "current_draft": truncate_running_draft(
-            state.get("current_draft", "") + "\n" + content
-        ),
+        "current_draft": truncate_running_draft(state.get("current_draft", "") + "\n" + content),
     }
 
     # Track anomaly if LLM call failed

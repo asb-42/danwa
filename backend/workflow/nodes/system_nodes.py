@@ -349,9 +349,7 @@ async def interjection_node(state: WorkflowState) -> dict:
             # draft without bound and bloat every subsequent
             # agent's user prompt.  See ``_draft_helpers.py`` for
             # the tail-only truncation semantics.
-            "current_draft": truncate_running_draft(
-                state.get("current_draft", "") + "\n" + combined_content
-            ),
+            "current_draft": truncate_running_draft(state.get("current_draft", "") + "\n" + combined_content),
         }
     else:
         # No interjections pending — pause execution

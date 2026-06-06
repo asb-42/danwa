@@ -88,10 +88,7 @@ def truncate_running_draft(
         produce a meaningful output.
     """
     if max_len < len(marker) + 1:
-        raise ValueError(
-            f"max_len={max_len} too small for marker of length "
-            f"{len(marker)}; need at least {len(marker) + 1}"
-        )
+        raise ValueError(f"max_len={max_len} too small for marker of length {len(marker)}; need at least {len(marker) + 1}")
     if len(text) <= max_len:
         return text
     keep = max_len - len(marker)
