@@ -534,9 +534,14 @@ class WorkflowCompiler:
                 resolved_configs[agent_node_id]["tone_profile_source_node_id"] = tone_node_id
 
         # --- Add nodes ---
+        # Skip wf-phase nodes — they are visual-only containers
+        # used for canvas grouping, not executable workflow nodes.
+        phase_only_types = {"wf-phase"}
         entry_point = workflow.entry_point
 
         for node in workflow.nodes:
+            if node.type in phase_only_types:
+                continue
             node_fn = self._create_node_function(node, resolved_configs)
             graph.add_node(node.id, node_fn)
 
@@ -554,6 +559,8 @@ class WorkflowCompiler:
 
         # --- Add edges ---
         for node in workflow.nodes:
+            if node.type in phase_only_types:
+                continue
             outgoing = edges_by_source.get(node.id, [])
 
             if not outgoing:

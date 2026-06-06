@@ -259,7 +259,10 @@ class CompilerService:
                 errors.append(f"Gate node '{node.id}' must have at least 2 outgoing edges (found {len(outgoing[node.id])})")
 
         # 10. No isolated nodes (every node must have at least one edge)
+        # wf-phase nodes are visual-only containers — they have no edges by design.
         for node in workflow.nodes:
+            if node.type == "wf-phase":
+                continue
             if not outgoing[node.id] and not incoming[node.id]:
                 errors.append(f"Node '{node.id}' is isolated — it has no incoming or outgoing edges")
 
