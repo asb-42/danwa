@@ -42,6 +42,50 @@ def _display_agent_role(role: str) -> str:
     return role if role[0].isupper() else role.capitalize()
 
 
+def _build_node_phase_map(state: dict[str, Any], workflow_id: str = "") -> dict[str, dict[str, str]]:
+    """Build node_id → {phase_name, phase_index} from workflow definition + node_sequence.
+
+    Walks the ``node_sequence`` from the state snapshot.  When a ``wf-phase``
+    node is encountered, the current phase context is updated.  All subsequent
+    agent/gate nodes are assigned to that phase until the next phase node.
+
+    Returns a dict keyed by node_id with ``phase_name`` (str) and
+    ``phase_index`` (int, 1-based).
+    """
+    node_sequence: list[str] = state.get("node_sequence", [])
+    if not node_sequence:
+        return {}
+
+    # Resolve phase_configs from the workflow definition
+    phase_names: dict[str, str] = {}
+    phase_set: set[str] = set()
+    try:
+        from backend.blueprints.repo import BlueprintRepository
+
+        repo = BlueprintRepository()
+        wf_def = repo.get_workflow_definition(workflow_id) if workflow_id else None
+        if wf_def and wf_def.phase_configs:
+            for pc in wf_def.phase_configs.values():
+                phase_names[pc.phase_node_id] = pc.name
+                phase_set.add(pc.phase_node_id)
+    except Exception:
+        pass
+
+    if not phase_set:
+        return {}
+
+    result: dict[str, dict[str, str]] = {}
+    current_phase = ""
+    phase_counter = 0
+    for nid in node_sequence:
+        if nid in phase_set:
+            current_phase = phase_names.get(nid, f"Phase {phase_counter + 1}")
+            phase_counter += 1
+        elif current_phase:
+            result[nid] = {"phase_name": current_phase, "phase_index": phase_counter}
+    return result
+
+
 def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Build round data from state snapshot for MVP debates.
 
@@ -51,9 +95,13 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
     profiles from ``node_configs``, and returns a list of round dicts
     compatible with the existing renderer expectations.
 
+    When the workflow has ``phase_configs``, the round dicts include a
+    ``phases`` key with agent outputs grouped by debate phase, enabling
+    hierarchical rendering in exports.
+
     Returns:
         A list of round dicts with keys ``round``, ``consensus``,
-        ``agent_outputs``.
+        ``agent_outputs``, and optionally ``phases``.
     """
     session_id = debate_data.get("session_id", "")
     if not session_id:
@@ -73,6 +121,7 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
     node_outputs: list[dict] = state.get("node_outputs", [])
     node_configs_raw: dict[str, Any] = state.get("node_configs", {})
     llm_assignments: dict[str, str] = debate_data.get("llm_assignments", {})
+    workflow_id = state.get("workflow_id", "")
 
     if not node_outputs:
         return []
@@ -86,6 +135,9 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
             except (ValueError, SyntaxError):
                 cfg = {}
         config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
+
+    # Build node_id → phase mapping for phase-aware workflows
+    node_phase_map = _build_node_phase_map(state, workflow_id)
 
     # Build agent outputs with proper names and metadata
     agent_outputs: list[dict[str, Any]] = []
@@ -106,6 +158,7 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
         elif llm_profile_name:
             agent_name = f"{agent_name} ({llm_profile_name})"
 
+        phase_info = node_phase_map.get(node_id, {})
         agent_outputs.append(
             {
                 "role": agent_name,
@@ -115,18 +168,65 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
                 "llm_profile_id": llm_profile_id,
                 "llm_profile_name": llm_profile_name,
                 "round": no.get("round"),
+                "phase_name": phase_info.get("phase_name", ""),
+                "phase_index": phase_info.get("phase_index", 0),
             }
         )
 
+    # Group by round number
+    from collections import OrderedDict
+
+    rounds_map: OrderedDict[int, list[dict[str, Any]]] = OrderedDict()
+    for ao in agent_outputs:
+        rnd = ao.get("round") or 0
+        rounds_map.setdefault(rnd, []).append(ao)
+
+    final_consensus = state.get(
+        "final_consensus", debate_data.get("result", {}).get("consensus", 0.0)
+    )
     current_round = state.get("current_round", debate_data.get("current_round", 1))
 
-    return [
-        {
-            "round": current_round,
-            "consensus": state.get("final_consensus", debate_data.get("result", {}).get("consensus", 0.0)),
-            "agent_outputs": agent_outputs,
+    # If no round info was available, fall back to single round
+    if not rounds_map:
+        return [
+            {
+                "round": current_round,
+                "consensus": final_consensus,
+                "agent_outputs": agent_outputs,
+            }
+        ]
+
+    result: list[dict[str, Any]] = []
+    has_phases = bool(node_phase_map)
+
+    for rnd_num, rnd_outputs in rounds_map.items():
+        round_dict: dict[str, Any] = {
+            "round": rnd_num if rnd_num else current_round,
+            "consensus": final_consensus,
+            "agent_outputs": rnd_outputs,
         }
-    ]
+
+        # Group by phase within this round
+        if has_phases:
+            phase_groups: OrderedDict[str, dict[str, Any]] = OrderedDict()
+            for ao in rnd_outputs:
+                pname = ao.get("phase_name", "")
+                if not pname:
+                    continue
+                if pname not in phase_groups:
+                    phase_groups[pname] = {
+                        "phase_name": pname,
+                        "phase_index": ao.get("phase_index", 0),
+                        "agent_outputs": [],
+                    }
+                phase_groups[pname]["agent_outputs"].append(ao)
+
+            if phase_groups:
+                round_dict["phases"] = list(phase_groups.values())
+
+        result.append(round_dict)
+
+    return result
 
 
 def _build_node_llm_name_map(session_id: str) -> dict[str, str]:
@@ -529,6 +629,33 @@ class WorkflowReportGenerator:
     # DOCX
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _docx_add_agent_output(doc: Document, ao: dict[str, Any], level: int) -> None:
+        """Render a single agent output block into a DOCX document."""
+        role = ao.get("role", "unbekannt")
+        content = ao.get("content", "")
+        tokens = ao.get("tokens_used", 0)
+        duration_ms = ao.get("duration_ms", 0)
+        llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
+        heading = _display_agent_role(role)
+        if llm_pid:
+            heading += f" — {llm_pid}"
+        doc.add_heading(heading, level=level)
+        if content:
+            for paragraph in content.split("\n\n"):
+                paragraph = paragraph.strip()
+                if paragraph:
+                    doc.add_paragraph(paragraph)
+        meta_parts = []
+        if tokens:
+            meta_parts.append(f"Tokens: {tokens}")
+        if duration_ms:
+            meta_parts.append(f"Latenz: {duration_ms}ms")
+        if llm_pid:
+            meta_parts.append(f"LLM-Profil: {llm_pid}")
+        if meta_parts:
+            doc.add_paragraph(" | ".join(meta_parts)).italic = True
+
     def _build_docx(
         self,
         session_id: str,
@@ -578,31 +705,16 @@ class WorkflowReportGenerator:
                 consensus = rd.get("consensus", 0.0)
                 doc.add_heading(f"Runde {round_num} — Konsens: {consensus:.1%}", level=2)
 
-                agent_outputs = rd.get("agent_outputs", [])
-                for ao in agent_outputs:
-                    role = ao.get("role", "unbekannt")
-                    content = ao.get("content", "")
-                    tokens = ao.get("tokens_used", 0)
-                    duration_ms = ao.get("duration_ms", 0)
-                    llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
-                    heading = _display_agent_role(role)
-                    if llm_pid:
-                        heading += f" — {llm_pid}"
-                    doc.add_heading(heading, level=3)
-                    if content:
-                        for paragraph in content.split("\n\n"):
-                            paragraph = paragraph.strip()
-                            if paragraph:
-                                doc.add_paragraph(paragraph)
-                    meta_parts = []
-                    if tokens:
-                        meta_parts.append(f"Tokens: {tokens}")
-                    if duration_ms:
-                        meta_parts.append(f"Latenz: {duration_ms}ms")
-                    if llm_pid:
-                        meta_parts.append(f"LLM-Profil: {llm_pid}")
-                    if meta_parts:
-                        doc.add_paragraph(" | ".join(meta_parts)).italic = True
+                phases = rd.get("phases", [])
+                if phases:
+                    for phase in phases:
+                        phase_name = phase.get("phase_name", "")
+                        doc.add_heading(phase_name, level=3)
+                        for ao in phase.get("agent_outputs", []):
+                            self._docx_add_agent_output(doc, ao, level=4)
+                else:
+                    for ao in rd.get("agent_outputs", []):
+                        self._docx_add_agent_output(doc, ao, level=3)
 
         # --- Final output ---
         output = transcript["output"]
@@ -722,19 +834,38 @@ class WorkflowReportGenerator:
                     round_num = rd.get("round", "?")
                     consensus = rd.get("consensus", 0.0)
                     doc.text.addElement(H(text=f"Runde {round_num} — Konsens: {consensus:.1%}", outlinelevel=3))
-                    for ao in rd.get("agent_outputs", []):
-                        role = ao.get("role", "unbekannt")
-                        content = ao.get("content", "")
-                        llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
-                        role_label = _display_agent_role(role)
-                        if llm_pid:
-                            role_label += f" — {llm_pid}"
-                        doc.text.addElement(P(text=f"[{role_label}]"))
-                        if content:
-                            for para in content.split("\n\n"):
-                                para = para.strip()
-                                if para:
-                                    doc.text.addElement(P(text=para))
+                    phases = rd.get("phases", [])
+                    if phases:
+                        for phase in phases:
+                            phase_name = phase.get("phase_name", "")
+                            doc.text.addElement(H(text=phase_name, outlinelevel=4))
+                            for ao in phase.get("agent_outputs", []):
+                                role = ao.get("role", "unbekannt")
+                                content = ao.get("content", "")
+                                llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
+                                role_label = _display_agent_role(role)
+                                if llm_pid:
+                                    role_label += f" — {llm_pid}"
+                                doc.text.addElement(P(text=f"[{role_label}]"))
+                                if content:
+                                    for para in content.split("\n\n"):
+                                        para = para.strip()
+                                        if para:
+                                            doc.text.addElement(P(text=para))
+                    else:
+                        for ao in rd.get("agent_outputs", []):
+                            role = ao.get("role", "unbekannt")
+                            content = ao.get("content", "")
+                            llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
+                            role_label = _display_agent_role(role)
+                            if llm_pid:
+                                role_label += f" — {llm_pid}"
+                            doc.text.addElement(P(text=f"[{role_label}]"))
+                            if content:
+                                for para in content.split("\n\n"):
+                                    para = para.strip()
+                                    if para:
+                                        doc.text.addElement(P(text=para))
 
             # Final output
             output = transcript["output"]
@@ -805,26 +936,40 @@ class WorkflowReportGenerator:
                 round_num = rd.get("round", "?")
                 consensus = rd.get("consensus", 0.0)
                 rounds_html += f"<h3>Runde {round_num} — Konsens: {consensus:.1%}</h3>"
-                for ao in rd.get("agent_outputs", []):
-                    role = ao.get("role", "unbekannt")
-                    content = esc(ao.get("content", ""))
-                    tokens = ao.get("tokens_used", 0)
-                    duration_ms = ao.get("duration_ms", 0)
-                    llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
-                    display_role = esc(_display_agent_role(role))
-                    if llm_pid:
-                        display_role += f' <span style="font-weight:normal;color:#666;">— {esc(llm_pid)}</span>'
-                    rounds_html += f'<div class="agent-block"><div class="agent-role">{display_role}</div><div class="agent-content">{content}</div>'
-                    meta_parts = []
-                    if tokens:
-                        meta_parts.append(f"Tokens: {tokens}")
-                    if duration_ms:
-                        meta_parts.append(f"Latenz: {duration_ms}ms")
-                    if llm_pid:
-                        meta_parts.append(f"LLM-Profil: {esc(llm_pid)}")
-                    if meta_parts:
-                        rounds_html += f'<div class="agent-meta">{" | ".join(meta_parts)}</div>'
-                    rounds_html += "</div>"
+
+                def _render_agent_block(ao: dict) -> str:
+                    """Render a single agent output as an HTML block."""
+                    _role = ao.get("role", "unbekannt")
+                    _content = esc(ao.get("content", ""))
+                    _tokens = ao.get("tokens_used", 0)
+                    _duration = ao.get("duration_ms", 0)
+                    _llm = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
+                    _display = esc(_display_agent_role(_role))
+                    if _llm:
+                        _display += f' <span style="font-weight:normal;color:#666;">— {esc(_llm)}</span>'
+                    _html = f'<div class="agent-block"><div class="agent-role">{_display}</div><div class="agent-content">{_content}</div>'
+                    _meta = []
+                    if _tokens:
+                        _meta.append(f"Tokens: {_tokens}")
+                    if _duration:
+                        _meta.append(f"Latenz: {_duration}ms")
+                    if _llm:
+                        _meta.append(f"LLM-Profil: {esc(_llm)}")
+                    if _meta:
+                        _html += f'<div class="agent-meta">{" | ".join(_meta)}</div>'
+                    _html += "</div>"
+                    return _html
+
+                phases = rd.get("phases", [])
+                if phases:
+                    for phase in phases:
+                        phase_name = phase.get("phase_name", "")
+                        rounds_html += f'<h4 class="phase-heading">{esc(phase_name)}</h4>'
+                        for ao in phase.get("agent_outputs", []):
+                            rounds_html += _render_agent_block(ao)
+                else:
+                    for ao in rd.get("agent_outputs", []):
+                        rounds_html += _render_agent_block(ao)
 
         # --- Final output ---
         output = transcript["output"]
@@ -886,6 +1031,8 @@ class WorkflowReportGenerator:
   h1 {{ color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 0.3em; }}
   h2 {{ color: #16213e; margin-top: 1.5em; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }}
   h3 {{ color: #0f3460; margin-top: 1.2em; }}
+  h4 {{ color: #1a1a2e; margin-top: 1em; margin-bottom: 0.3em; font-size: 1.05em; }}
+  .phase-heading {{ background: #f0f0f8; padding: 0.4em 0.8em; border-left: 4px solid #6366f1; border-radius: 4px; }}
   table {{ border-collapse: collapse; width: 100%; margin: 0.5em 0; }}
   th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
   th {{ background: #f0f0f0; }}
