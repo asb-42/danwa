@@ -693,4 +693,36 @@
   :global(.dark) :global(.port-tone) {
     background: #1f2937 !important;
   }
+
+  /* ── Edge execution status highlighting ────────────────────────── */
+  :global(.edge-active) {
+    stroke: #3b82f6 !important;
+    stroke-width: 3.5 !important;
+    stroke-dasharray: 8 4 !important;
+    animation: edge-flow-animation 1.5s linear infinite !important;
+  }
+  :global(.edge-completed) {
+    stroke: #22c55e !important;
+    stroke-width: 3 !important;
+  }
+  :global(.edge-taken) {
+    stroke: #10b981 !important;
+    stroke-width: 3.5 !important;
+    animation: edge-glow 1.5s ease-in-out infinite !important;
+  }
+  :global(.edge-skipped) {
+    stroke: #d1d5db !important;
+    stroke-width: 1.5 !important;
+    opacity: 0.4;
+  }
+  :global(.dark) :global(.edge-skipped) {
+    stroke: #4b5563 !important;
+  }
+  @keyframes edge-flow-animation {
+    to { stroke-dashoffset: -24; }
+  }
+  @keyframes edge-glow {
+    0%, 100% { filter: drop-shadow(0 0 2px #10b981); }
+    50% { filter: drop-shadow(0 0 6px #10b981); }
+  }
 </style>

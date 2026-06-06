@@ -41,6 +41,8 @@
     inline = false,
     onclose = () => {},
     onNodeStatusUpdate = () => {},
+    onGateDecisionUpdate = () => {},
+    onExecutionReset = () => {},
   } = $props();
 
   let t = $derived($tStore);
@@ -111,6 +113,7 @@
           allEvaluations: data.all_evaluations || [],
           round: data.round,
         }];
+        onGateDecisionUpdate(data.gate_node_id || '', data.chosen_target || '');
       },
       onNodeComplete: (data) => {
         const normalized = normalizeTranscriptContent(data.content || '', data.role || data.node_type || '');
@@ -167,6 +170,7 @@
       currentRound = 0;
       consensus = 0;
       elapsedMs = 0;
+      onExecutionReset();
       startTimer();
       connectSSE(initialSessionId);
     }
@@ -182,6 +186,7 @@
     currentRound = 0;
     consensus = 0;
     elapsedMs = 0;
+    onExecutionReset();
 
     try {
       const result = await startWorkflow(

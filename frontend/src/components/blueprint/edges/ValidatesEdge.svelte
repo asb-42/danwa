@@ -1,14 +1,16 @@
 <script>
   import { BaseEdge, getBezierPath } from '@xyflow/svelte';
+  import { edgeStatusClass } from '../../../lib/blueprint/edgeStatus.js';
 
   let { id, sourceX, sourceY, targetX, targetY, data = {} } = $props();
 
   let path = $derived(
     getBezierPath({ sourceX, sourceY, targetX, targetY })[0],
   );
+  let statusClass = $derived(edgeStatusClass(data));
 </script>
 
-<BaseEdge {id} {path} class="blueprint-edge validates-edge" marker-end="url(#arrow-slate)" />
+<BaseEdge {id} {path} class="blueprint-edge validates-edge {statusClass}" marker-end="url(#arrow-slate)" />
 
 <svelte:head>
   <svg style="position:absolute;width:0;height:0;">

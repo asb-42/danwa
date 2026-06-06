@@ -1,5 +1,6 @@
 <script>
   import { BaseEdge, getBezierPath } from '@xyflow/svelte';
+  import { edgeStatusClass } from '../../../lib/blueprint/edgeStatus.js';
 
   let { id, sourceX, sourceY, targetX, targetY, data = {} } = $props();
 
@@ -10,9 +11,10 @@
   let condition = $derived(data?.condition || 'revision_required');
   let color = $derived(condition === 'approved' ? '#22c55e' : '#f59e0b');
   let markerId = $derived(condition === 'approved' ? 'arrow-decision-approved' : 'arrow-decision-rejected');
+  let statusClass = $derived(edgeStatusClass(data));
 </script>
 
-<BaseEdge {id} {path} class="blueprint-edge decision-edge" style="stroke: {color};" marker-end="url(#{markerId})" />
+<BaseEdge {id} {path} class="blueprint-edge decision-edge {statusClass}" style="stroke: {color};" marker-end="url(#{markerId})" />
 
 <svelte:head>
   <svg style="position:absolute;width:0;height:0;">

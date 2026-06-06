@@ -7,6 +7,7 @@
    * Shows "feedback" label via foreignObject.
    */
   import { BaseEdge, getBezierPath } from '@xyflow/svelte';
+  import { edgeStatusClass } from '../../../lib/blueprint/edgeStatus.js';
 
   /** @type {{ id: string, sourceX: number, sourceY: number, targetX: number, targetY: number, data?: any }} */
   let { id, sourceX, sourceY, targetX, targetY, data = {} } = $props();
@@ -14,9 +15,10 @@
   let [path, labelX, labelY] = $derived(
     getBezierPath({ sourceX, sourceY, targetX, targetY }),
   );
+  let statusClass = $derived(edgeStatusClass(data));
 </script>
 
-<BaseEdge {id} {path} class="blueprint-edge feedback-edge" />
+<BaseEdge {id} {path} class="blueprint-edge feedback-edge {statusClass}" />
 
 <foreignObject x={labelX - 35} y={labelY - 10} width="70" height="20"
   style="overflow: visible; pointer-events: none;"

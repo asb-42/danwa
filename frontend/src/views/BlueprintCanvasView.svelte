@@ -746,9 +746,37 @@
   startOptions={executionOptions}
   visible={showExecutionPanel}
   onclose={handleCloseExecutionPanel}
-  onNodeStatusUpdate={(nodeId) => {
+  onNodeStatusUpdate={(nodeId, status) => {
+    // Update node visual state on canvas
+    canvasStore.updateNodeData(nodeId, { executionStatus: status });
+    // Highlight incoming edge
+    const incomingEdge = canvasStore.edges.find((e) => e.target === nodeId);
+    if (incomingEdge) {
+      const edgeStatus = status === 'running' ? 'active' :
+                         status === 'completed' ? 'completed' :
+                         status === 'failed' ? 'completed' : undefined;
+      if (edgeStatus) {
+        canvasStore.updateEdgeData(incomingEdge.id, { executionStatus: edgeStatus });
+      }
+    }
     patchActiveWorkflowSession('status', 'running');
   }}
+  onGateDecisionUpdate={(gateNodeId, chosenTarget) => {
+    // Mark chosen edge as 'taken'
+    const chosenEdge = canvasStore.edges.find(
+      (e) => e.source === gateNodeId && e.target === chosenTarget,
+    );
+    if (chosenEdge) {
+      canvasStore.updateEdgeData(chosenEdge.id, { executionStatus: 'taken' });
+    }
+    // Mark other outgoing gate edges as 'skipped'
+    for (const edge of canvasStore.edges) {
+      if (edge.source === gateNodeId && edge.target !== chosenTarget) {
+        canvasStore.updateEdgeData(edge.id, { executionStatus: 'skipped' });
+      }
+    }
+  }}
+  onExecutionReset={() => canvasStore.resetExecutionState()}
 />
 
 <style>

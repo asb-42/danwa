@@ -132,6 +132,18 @@ class BlueprintCanvasStore {
     this.isDirty = true;
   }
 
+  /**
+   * Update data properties of a specific edge.
+   * Used for execution state highlighting (active/completed/taken/skipped).
+   * @param {string} edgeId
+   * @param {Record<string, any>} data
+   */
+  updateEdgeData(edgeId, data) {
+    this.edges = this.edges.map((e) =>
+      e.id === edgeId ? { ...e, data: { ...e.data, ...data } } : e,
+    );
+  }
+
   // ─── Selection ────────────────────────────────────────────────────
 
   /**
@@ -288,6 +300,21 @@ class BlueprintCanvasStore {
         return reg?.category === 'semantic';
       });
     }
+  }
+
+  /**
+   * Clear execution status from all nodes and edges.
+   * Called when starting a new workflow session.
+   */
+  resetExecutionState() {
+    this.nodes = this.nodes.map((n) => ({
+      ...n,
+      data: { ...n.data, executionStatus: undefined },
+    }));
+    this.edges = this.edges.map((e) => ({
+      ...e,
+      data: { ...e.data, executionStatus: undefined },
+    }));
   }
 
   /** Reset the entire canvas state. */
