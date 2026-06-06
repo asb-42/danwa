@@ -75,6 +75,18 @@ class TestInMemoryWorkflowState:
 
 
 class TestGetWorkflowState:
+    def setup_method(self) -> None:
+        """Reset the singleton cache so each test sees a fresh factory call."""
+        from backend.state.workflow_state import reset_workflow_state_cache
+
+        reset_workflow_state_cache()
+
+    def teardown_method(self) -> None:
+        """Clean up the singleton cache after each test to avoid cross-test leaks."""
+        from backend.state.workflow_state import reset_workflow_state_cache
+
+        reset_workflow_state_cache()
+
     def test_returns_in_memory_when_no_redis(self, monkeypatch):
         monkeypatch.setattr("backend.core.config.settings.redis_url", "")
         state = get_workflow_state()
@@ -88,6 +100,35 @@ class TestGetWorkflowState:
         # Redis is not running. The fallback only happens if the constructor fails.
         # Just verify it returns a valid state backend.
         assert hasattr(state, "get_status")
+
+    def test_returns_same_instance_on_repeated_calls(self):
+        """``get_workflow_state()`` returns the same module-level
+        singleton, so state set via one call is visible to the
+        next.  This is the cross-request coordination property
+        that the in-memory backend needs to be useful.
+        """
+        from backend.state.workflow_state import reset_workflow_state_cache
+
+        reset_workflow_state_cache()
+        a = get_workflow_state()
+        b = get_workflow_state()
+        assert a is b
+        a.set_status("s1", "running")
+        assert b.get_status("s1") == "running"
+
+    def test_reset_workflow_state_cache_returns_new_instance(self):
+        """After ``reset_workflow_state_cache()``, the factory
+        creates a fresh instance.  Useful for tests that want
+        clean state.
+        """
+        from backend.state.workflow_state import reset_workflow_state_cache
+
+        a = get_workflow_state()
+        a.set_status("s1", "running")
+        reset_workflow_state_cache()
+        b = get_workflow_state()
+        assert a is not b
+        assert b.get_status("s1") == "unknown"
 
 
 # ---------------------------------------------------------------------------

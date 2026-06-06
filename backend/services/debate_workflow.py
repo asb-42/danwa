@@ -18,7 +18,6 @@ from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
 from backend.services.debate import (  # noqa: F401  # re-exports for backward compat
     SYSTEM_PROMPT_TITLES,
-    _cancelled_debates,
     _fallback_title,
     _format_analysis_for_rag,
     _load_analysis_text,
