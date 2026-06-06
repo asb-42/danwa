@@ -126,6 +126,117 @@ class TestRouteDecisionVerdictMap:
         state = {"consensus_result": {"verdict": "foo"}, "current_round": 1, "draft_version": 1}
         assert router(state) == "accept"
 
+class TestRouteDecisionExtension:
+    """Test the route_decision factory's respect for ``extension_granted``.
+
+    The ``Moderator`` node sets ``state["extension_granted"] = True`` when the
+    user grants an extension during the wait loop in
+    ``backend/workflow/nodes/moderator_nodes.py``.  The ``route_feedback``
+    router (used for the feedback-loop edge) already honours this flag and
+    allows up to ``max_rounds + 2`` rounds.  ``route_decision`` (used for the
+    decision edge in Transactional Drafting) must do the same, otherwise the
+    extension grant is silently discarded and the workflow terminates with
+    ``"construction_deadlock"`` even though the user explicitly asked for more
+    rounds.
+
+    See audit M11 in ``docs/blueprint_workflow_audit.md``.
+    """
+
+    def test_extension_granted_allows_extra_rounds(self) -> None:
+        """``extension_granted=True`` in the extension zone (max_rounds+1)
+        routes to the verdict-driven target, NOT construction_deadlock.
+        """
+        router = route_decision(max_rounds=5)
+
+        state = {
+            "consensus_result": {"verdict": "revision_required"},
+            "current_round": 6,  # max_rounds + 1
+            "draft_version": 1,
+            "enable_extra_rounds": True,
+            "extension_granted": True,
+        }
+        assert router(state) == "return_to_builder"
+
+    def test_extension_granted_allows_second_extra_round(self) -> None:
+        """``extension_granted=True`` in the extension zone (max_rounds+2)
+        also routes to the verdict-driven target.
+        """
+        router = route_decision(max_rounds=5)
+
+        state = {
+            "consensus_result": {"verdict": "revision_required"},
+            "current_round": 7,  # max_rounds + 2
+            "draft_version": 1,
+            "enable_extra_rounds": True,
+            "extension_granted": True,
+        }
+        assert router(state) == "return_to_builder"
+
+    def test_extension_granted_approved_verdict(self) -> None:
+        """When extension is granted AND consensus reaches threshold
+        (verdict="approved"), the router returns "approved" — the
+        extension does not override a legitimate consensus.
+        """
+        router = route_decision(max_rounds=5)
+
+        state = {
+            "consensus_result": {"verdict": "approved"},
+            "current_round": 6,
+            "draft_version": 1,
+            "enable_extra_rounds": True,
+            "extension_granted": True,
+        }
+        assert router(state) == "approved"
+
+    def test_no_extension_granted_still_deadlocks(self) -> None:
+        """Without ``extension_granted=True`` (or with it set to False),
+        the router still returns construction_deadlock past max_rounds.
+        """
+        router = route_decision(max_rounds=5)
+
+        # extension_granted not set
+        state = {
+            "consensus_result": {"verdict": "revision_required"},
+            "current_round": 6,
+            "draft_version": 1,
+            "enable_extra_rounds": True,
+        }
+        assert router(state) == "construction_deadlock"
+
+        # extension_granted explicitly False
+        state["extension_granted"] = False
+        assert router(state) == "construction_deadlock"
+
+    def test_extension_granted_beyond_zone_still_deadlocks(self) -> None:
+        """Even with ``extension_granted=True``, rounds beyond max_rounds+2
+        deadlock — the user only allowed 2 extra rounds.
+        """
+        router = route_decision(max_rounds=5)
+
+        state = {
+            "consensus_result": {"verdict": "revision_required"},
+            "current_round": 8,  # max_rounds + 3 — beyond extension zone
+            "draft_version": 1,
+            "enable_extra_rounds": True,
+            "extension_granted": True,
+        }
+        assert router(state) == "construction_deadlock"
+
+    def test_enable_extra_rounds_false_ignores_extension(self) -> None:
+        """If ``enable_extra_rounds`` is False, the extension_granted flag
+        is irrelevant — the workflow terminates at max_rounds.
+        """
+        router = route_decision(max_rounds=5)
+
+        state = {
+            "consensus_result": {"verdict": "revision_required"},
+            "current_round": 6,
+            "draft_version": 1,
+            "enable_extra_rounds": False,
+            "extension_granted": True,
+        }
+        assert router(state) == "construction_deadlock"
+
     def test_construction_deadlock_takes_precedence(self) -> None:
         """Max-rounds / max-draft-versions check returns
         ``"construction_deadlock"`` regardless of verdict_map — the

@@ -286,12 +286,30 @@ def route_decision(
         max_draft_versions = _resolve_max_draft_versions(state)
 
         if current_round > effective_max:
-            logger.warning(
-                "Decision router: round %d exceeds max %d, terminating",
-                current_round,
-                effective_max,
-            )
-            return "construction_deadlock"
+            # Extension zone: ``route_feedback`` allows up to
+            # ``max_rounds + 2`` when ``enable_extra_rounds`` is set
+            # and the user has granted an extension via the
+            # moderator's HITL wait loop.  ``route_decision`` must
+            # honour the same grant — otherwise the extension is
+            # silently discarded and the workflow terminates with
+            # ``"construction_deadlock"`` even though the user
+            # explicitly asked for more rounds.  See audit M11.
+            enable_extra = state.get("enable_extra_rounds", False)
+            extension_granted = state.get("extension_granted") is True
+            in_extension_zone = current_round <= effective_max + 2
+            if enable_extra and extension_granted and in_extension_zone:
+                logger.info(
+                    "Decision router: round %d within extension zone (max=%d+2) — extension granted, continuing",
+                    current_round,
+                    effective_max,
+                )
+            else:
+                logger.warning(
+                    "Decision router: round %d exceeds max %d, terminating",
+                    current_round,
+                    effective_max,
+                )
+                return "construction_deadlock"
 
         if draft_version >= max_draft_versions:
             logger.warning(
