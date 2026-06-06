@@ -28,6 +28,7 @@ class Turn(BaseModel):
     role_type: str
     role_definition_id: str = ""
     llm_profile_id: str = ""
+    llm_profile_name: str = ""
     content: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     latency_ms: int = 0

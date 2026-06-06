@@ -60,6 +60,7 @@ class ResolvedAgentConfig:
     blueprint_name: str
     llm_profile_id: str
     llm_model: str
+    llm_profile_name: str = ""  # Human-readable LLM profile name (never a raw UUID)
     role_definition_id: str
     role: str
     # RoleType metadata (resolved from RoleDefinition.role_type_id or Bundle)
@@ -147,6 +148,7 @@ class WorkflowCompiler:
                         "blueprint_name": config.blueprint_name,
                         "llm_profile_id": config.llm_profile_id,
                         "llm_model": config.llm_model,
+                        "llm_profile_name": config.llm_profile_name,
                         "role_definition_id": config.role_definition_id,
                         "role": config.role,
                         "role_type_name": config.role_type_name,
@@ -239,6 +241,7 @@ class WorkflowCompiler:
             blueprint_name=blueprint.name,
             llm_profile_id=llm_profile.id,
             llm_model=llm_profile.model,
+            llm_profile_name=llm_profile.name,
             role_definition_id=role_def.id,
             role=role_def.role_type_id,
             role_type_name=role_type_name,
@@ -277,6 +280,7 @@ class WorkflowCompiler:
 
         llm_profile = self._repo.get_llm_profile(llm_profile_id)
         llm_model = llm_profile.model if llm_profile else ""
+        llm_profile_name = llm_profile.name if llm_profile else ""
 
         # Resolve RoleType from the module agent's role
         role_type = resolve_role_type(mod_agent.role)
@@ -337,6 +341,7 @@ class WorkflowCompiler:
             blueprint_name=mod_agent.name,
             llm_profile_id=llm_profile_id,
             llm_model=llm_model,
+            llm_profile_name=llm_profile_name,
             role_definition_id=module_id,
             role=mod_agent.role,
             role_type_name=role_type_name,
@@ -439,6 +444,7 @@ class WorkflowCompiler:
             blueprint_name=resolved.bundle_name,
             llm_profile_id=resolved.llm_profile.id,
             llm_model=resolved.llm_profile.model,
+            llm_profile_name=resolved.llm_profile.name,
             role_definition_id="",
             role=resolved.role_type.id,
             role_type_name=resolved.role_type.name,

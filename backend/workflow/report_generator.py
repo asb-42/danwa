@@ -95,12 +95,15 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
 
         llm_model = config.get("llm_model", "")
         llm_profile_id = config.get("llm_profile_id", "") or llm_assignments.get(role, "")
+        llm_profile_name = config.get("llm_profile_name", "")
         role_type_name = config.get("role_type_name", "")
 
         # Build a human-readable agent name: "Strategist (deepseek-v4-flash)"
         agent_name = role_type_name or role.replace("_", " ").title()
         if llm_model:
             agent_name = f"{agent_name} ({llm_model})"
+        elif llm_profile_name:
+            agent_name = f"{agent_name} ({llm_profile_name})"
 
         agent_outputs.append(
             {
@@ -109,6 +112,7 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
                 "tokens_used": no.get("tokens_used", 0),
                 "duration_ms": no.get("duration_ms", 0),
                 "llm_profile_id": llm_profile_id,
+                "llm_profile_name": llm_profile_name,
                 "round": no.get("round"),
             }
         )
@@ -122,6 +126,49 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
             "agent_outputs": agent_outputs,
         }
     ]
+
+
+def _build_node_llm_name_map(session_id: str) -> dict[str, str]:
+    """Build a node_id → llm_profile_name mapping from the state snapshot.
+
+    Used to resolve UUIDs in audit log entries to human-readable names.
+    """
+    try:
+        snap_store = StateSnapshotStore()
+        snapshot = snap_store.get_latest(session_id)
+    except Exception:
+        return {}
+
+    if not snapshot:
+        return {}
+
+    state = snapshot.get("state", {})
+    node_configs_raw = state.get("node_configs", {})
+    result: dict[str, str] = {}
+    for nid, cfg in node_configs_raw.items():
+        if isinstance(cfg, str):
+            try:
+                cfg = ast.literal_eval(cfg)
+            except (ValueError, SyntaxError):
+                cfg = {}
+        if isinstance(cfg, dict):
+            name = cfg.get("llm_profile_name", "")
+            if name:
+                result[nid] = name
+    return result
+
+
+def _enrich_audit_entries(
+    audit_entries: list[dict[str, Any]],
+    node_llm_names: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Enrich audit entries with resolved LLM profile names."""
+    for entry in audit_entries:
+        node_id = entry.get("node_id", "")
+        resolved = node_llm_names.get(node_id, "")
+        if resolved:
+            entry["llm_profile_name"] = resolved
+    return audit_entries
 
 
 class WorkflowReportGenerator:
@@ -161,6 +208,10 @@ class WorkflowReportGenerator:
 
         # Build transcript data from debate store
         transcript = self._build_transcript(debate_data)
+
+        # Resolve UUID → human-readable name for audit entries
+        node_llm_names = _build_node_llm_name_map(session_id)
+        _enrich_audit_entries(audit_entries, node_llm_names)
 
         if fmt == "docx":
             await asyncio.to_thread(self._build_docx, session_id, transcript, audit_entries, path)
@@ -378,7 +429,7 @@ class WorkflowReportGenerator:
                     content = ao.get("content", "")
                     tokens = ao.get("tokens_used", 0)
                     duration_ms = ao.get("duration_ms", 0)
-                    llm_pid = ao.get("llm_profile_id", "")
+                    llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
                     heading = _display_agent_role(role)
                     if llm_pid:
                         heading += f" — {llm_pid}"
@@ -442,7 +493,7 @@ class WorkflowReportGenerator:
                 row.cells[1].text = str(entry.get("event_type", ""))
                 row.cells[2].text = str(entry.get("node_id", ""))
                 row.cells[3].text = str(entry.get("actor", ""))
-                row.cells[4].text = str(entry.get("llm_profile_id", ""))
+                row.cells[4].text = str(entry.get("llm_profile_name", "") or entry.get("llm_profile_id", ""))
                 row.cells[5].text = str(entry.get("latency_ms", 0))
                 row.cells[6].text = str(entry.get("prompt_tokens", 0) + entry.get("completion_tokens", 0))
 
@@ -519,7 +570,7 @@ class WorkflowReportGenerator:
                     for ao in rd.get("agent_outputs", []):
                         role = ao.get("role", "unbekannt")
                         content = ao.get("content", "")
-                        llm_pid = ao.get("llm_profile_id", "")
+                        llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
                         role_label = _display_agent_role(role)
                         if llm_pid:
                             role_label += f" — {llm_pid}"
@@ -543,7 +594,7 @@ class WorkflowReportGenerator:
             if audit_entries:
                 doc.text.addElement(H(text="Audit-Trail", outlinelevel=2))
                 for entry in audit_entries:
-                    llm_pid = entry.get("llm_profile_id", "")
+                    llm_pid = entry.get("llm_profile_name", "") or entry.get("llm_profile_id", "")
                     line = f"{entry.get('timestamp', '')} | {entry.get('event_type', '')} | {entry.get('node_id', '')} | {entry.get('actor', '')}"
                     if llm_pid:
                         line += f" | LLM: {llm_pid}"
@@ -604,7 +655,7 @@ class WorkflowReportGenerator:
                     content = esc(ao.get("content", ""))
                     tokens = ao.get("tokens_used", 0)
                     duration_ms = ao.get("duration_ms", 0)
-                    llm_pid = ao.get("llm_profile_id", "")
+                    llm_pid = ao.get("llm_profile_name", "") or ao.get("llm_profile_id", "")
                     display_role = esc(_display_agent_role(role))
                     if llm_pid:
                         display_role += f' <span style="font-weight:normal;color:#666;">— {esc(llm_pid)}</span>'
@@ -659,7 +710,7 @@ class WorkflowReportGenerator:
                 f"<td>{esc(str(e.get('event_type', '')))}</td>"
                 f"<td>{esc(str(e.get('node_id', '')))}</td>"
                 f"<td>{esc(str(e.get('actor', '')))}</td>"
-                f"<td>{esc(str(e.get('llm_profile_id', '')))}</td>"
+                f"<td>{esc(str(e.get('llm_profile_name', '') or e.get('llm_profile_id', '')))}</td>"
                 f"<td>{e.get('latency_ms', 0)}</td>"
                 f"<td>{e.get('prompt_tokens', 0) + e.get('completion_tokens', 0)}</td>"
                 f"</tr>"

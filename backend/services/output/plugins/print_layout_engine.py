@@ -526,7 +526,8 @@ class PrintLayoutEngine:
         rows: list[str] = []
         for turn in artifact.transcript:
             tokens = turn.token_usage.get("total", 0)
-            rows.append(f"{turn.agent_name} | {turn.role_type} | {turn.llm_profile_id} | {turn.latency_ms}ms | {tokens} tokens")
+            llm_display = turn.llm_profile_name or turn.llm_profile_id or "—"
+            rows.append(f"{turn.agent_name} | {turn.role_type} | {llm_display} | {turn.latency_ms}ms | {tokens} tokens")
         content = "\n".join(rows) if rows else "Keine Audit-Daten verfügbar."
         return PrintSection(
             type=SectionType.AUDIT_APPENDIX,

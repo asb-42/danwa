@@ -116,29 +116,42 @@ async def get_audit_events(
     if debate_data and debate_data.get("session_id"):
         from backend.workflow.audit_logger import get_audit_logger
 
+        session_id = debate_data["session_id"]
         al = get_audit_logger()
-        wf_events = al.get_audit_log(debate_data["session_id"])
+        wf_events = al.get_audit_log(session_id)
         if wf_events:
-            return _transform_workflow_audit_events(wf_events)
+            return _transform_workflow_audit_events(wf_events, session_id)
 
     # Return empty list — not a 404, since "no events yet" is valid
     return []
 
 
-def _transform_workflow_audit_events(wf_events: list[dict]) -> list[dict]:
+def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = "") -> list[dict]:
     """Transform workflow audit_log entries to the format expected by AuditView."""
+    # Build node_id → llm_profile_name map to resolve UUIDs
+    llm_name_map: dict[str, str] = {}
+    if session_id:
+        try:
+            from backend.workflow.report_generator import _build_node_llm_name_map
+
+            llm_name_map = _build_node_llm_name_map(session_id)
+        except Exception:
+            pass
+
     result = []
     for entry in wf_events:
         event_type = entry.get("event_type", "")
+        node_id = entry.get("node_id", "")
+        llm_display = llm_name_map.get(node_id, "") or entry.get("llm_profile_id", "")
         if event_type == "node_completed":
             result.append(
                 {
                     "round": None,
                     "agent": entry.get("actor", ""),
-                    "action": f"node_completed ({entry.get('node_id', '')})",
+                    "action": f"node_completed ({node_id})",
                     "content": entry.get("output_content", ""),
                     "timestamp": entry.get("timestamp"),
-                    "llm_model": entry.get("llm_profile_id", ""),
+                    "llm_model": llm_display,
                     "tokens_used": entry.get("completion_tokens", 0),
                 }
             )

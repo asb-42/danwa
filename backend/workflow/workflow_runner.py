@@ -675,12 +675,15 @@ def _build_artifact_from_state(
         config = config_by_node.get(node_id, {})
         llm_model = config.get("llm_model", "")
         llm_profile_id = config.get("llm_profile_id", "")
+        llm_profile_name = config.get("llm_profile_name", "")
         role_type_name = config.get("role_type_name", role.title() if role else "")
 
         # Build descriptive agent name: "Critic (owl-alpha)"
         agent_name = role_type_name or role.title() if role else ""
         if llm_model:
             agent_name = f"{agent_name} ({llm_model})"
+        elif llm_profile_name:
+            agent_name = f"{agent_name} ({llm_profile_name})"
         elif llm_profile_id:
             agent_name = f"{agent_name} ({llm_profile_id})"
 
@@ -692,6 +695,7 @@ def _build_artifact_from_state(
                 agent_name=agent_name,
                 role_type=role,
                 llm_profile_id=llm_profile_id,
+                llm_profile_name=llm_profile_name,
                 content=normalize_transcript_content(raw_content, role),
                 latency_ms=output.get("duration_ms", 0),
                 token_usage={"total": output.get("tokens_used", 0)},
