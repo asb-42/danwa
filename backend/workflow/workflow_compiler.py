@@ -396,11 +396,7 @@ class WorkflowCompiler:
                     return p.id
             # --- 3. Env var is actually set in the environment ---
             for p in profiles:
-                if (
-                    p.api_key_env
-                    and p.api_key_env not in self._API_KEY_PLACEHOLDERS
-                    and os.environ.get(p.api_key_env)
-                ):
+                if p.api_key_env and p.api_key_env not in self._API_KEY_PLACEHOLDERS and os.environ.get(p.api_key_env):
                     logger.info(
                         "Fallback LLM: env '%s' is set → profile '%s'",
                         p.api_key_env,
