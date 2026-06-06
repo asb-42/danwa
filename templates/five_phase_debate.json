@@ -30,10 +30,18 @@
       },
 
       {
+        "id": "phase-1",
+        "type": "wf-phase",
+        "label": "Problem Framing",
+        "config": { "color": "#6366f1", "description": "Analyst, Creative Thinker, Socratic Questioner" },
+        "position": { "x": 450, "y": 80 }
+      },
+      {
         "id": "analyst-1",
         "type": "wf-analyst",
         "label": "Analyst (Problem Framing)",
         "agent_blueprint_id": "{{analyst_blueprint_id}}",
+        "parent_id": "phase-1",
         "position": { "x": 550, "y": 150 }
       },
       {
@@ -41,6 +49,7 @@
         "type": "wf-creative",
         "label": "Creative Thinker (Problem Framing)",
         "agent_blueprint_id": "{{creative_blueprint_id}}",
+        "parent_id": "phase-1",
         "position": { "x": 550, "y": 300 }
       },
       {
@@ -48,6 +57,7 @@
         "type": "wf-socratic-questioner",
         "label": "Socratic Questioner (Problem Framing)",
         "agent_blueprint_id": "{{socratic_blueprint_id}}",
+        "parent_id": "phase-1",
         "position": { "x": 550, "y": 450 }
       },
       {
@@ -59,10 +69,18 @@
       },
 
       {
+        "id": "phase-2",
+        "type": "wf-phase",
+        "label": "Position Building",
+        "config": { "color": "#8b5cf6", "description": "Strategist, Expert Reviewer, Steel-manner" },
+        "position": { "x": 930, "y": 80 }
+      },
+      {
         "id": "strategist-1",
         "type": "wf-strategist",
         "label": "Strategist (Position Building)",
         "agent_blueprint_id": "{{strategist_blueprint_id}}",
+        "parent_id": "phase-2",
         "position": { "x": 1030, "y": 150 }
       },
       {
@@ -70,6 +88,7 @@
         "type": "wf-expert-reviewer",
         "label": "Expert Reviewer (Position Building)",
         "agent_blueprint_id": "{{expert_blueprint_id}}",
+        "parent_id": "phase-2",
         "position": { "x": 1030, "y": 300 }
       },
       {
@@ -77,6 +96,7 @@
         "type": "wf-steel-manner",
         "label": "Steel-manner (Position Building)",
         "agent_blueprint_id": "{{steel_manner_blueprint_id}}",
+        "parent_id": "phase-2",
         "position": { "x": 1030, "y": 450 }
       },
       {
@@ -88,10 +108,18 @@
       },
 
       {
+        "id": "phase-3",
+        "type": "wf-phase",
+        "label": "Stress Testing",
+        "config": { "color": "#ef4444", "description": "Devil's Advocate, Fact Checker, Troll" },
+        "position": { "x": 1410, "y": 80 }
+      },
+      {
         "id": "devils-1",
         "type": "wf-devils-advocate",
         "label": "Devil's Advocate (Stress Testing — good faith)",
         "agent_blueprint_id": "{{devils_advocate_blueprint_id}}",
+        "parent_id": "phase-3",
         "position": { "x": 1510, "y": 150 }
       },
       {
@@ -99,6 +127,7 @@
         "type": "wf-fact-checker",
         "label": "Fact Checker (Stress Testing)",
         "agent_blueprint_id": "{{fact_checker_blueprint_id}}",
+        "parent_id": "phase-3",
         "position": { "x": 1510, "y": 300 }
       },
       {
@@ -106,6 +135,7 @@
         "type": "wf-troll",
         "label": "Troll (Stress Testing — bad faith, labeled)",
         "agent_blueprint_id": "{{troll_blueprint_id}}",
+        "parent_id": "phase-3",
         "position": { "x": 1510, "y": 450 }
       },
       {
@@ -117,10 +147,18 @@
       },
 
       {
+        "id": "phase-4",
+        "type": "wf-phase",
+        "label": "Integration",
+        "config": { "color": "#f59e0b", "description": "Mediator, Ethicist, Synthesizer" },
+        "position": { "x": 1890, "y": 80 }
+      },
+      {
         "id": "mediator-1",
         "type": "wf-mediator",
         "label": "Mediator (Integration)",
         "agent_blueprint_id": "{{mediator_blueprint_id}}",
+        "parent_id": "phase-4",
         "position": { "x": 1990, "y": 150 }
       },
       {
@@ -128,6 +166,7 @@
         "type": "wf-ethicist",
         "label": "Ethicist (Integration)",
         "agent_blueprint_id": "{{ethicist_blueprint_id}}",
+        "parent_id": "phase-4",
         "position": { "x": 1990, "y": 300 }
       },
       {
@@ -135,6 +174,7 @@
         "type": "wf-synthesizer",
         "label": "Synthesizer (Integration)",
         "agent_blueprint_id": "{{synthesizer_blueprint_id}}",
+        "parent_id": "phase-4",
         "position": { "x": 1990, "y": 450 }
       },
       {
@@ -146,10 +186,18 @@
       },
 
       {
+        "id": "phase-5",
+        "type": "wf-phase",
+        "label": "Closure",
+        "config": { "color": "#10b981", "description": "Moderator, Critic, Optimizer" },
+        "position": { "x": 2370, "y": 80 }
+      },
+      {
         "id": "moderator-1",
         "type": "wf-moderator",
         "label": "Moderator (Closure)",
         "agent_blueprint_id": "{{moderator_blueprint_id}}",
+        "parent_id": "phase-5",
         "position": { "x": 2470, "y": 150 }
       },
       {
@@ -157,6 +205,7 @@
         "type": "wf-critic",
         "label": "Critic (Closure)",
         "agent_blueprint_id": "{{critic_blueprint_id}}",
+        "parent_id": "phase-5",
         "position": { "x": 2470, "y": 300 }
       },
       {
@@ -164,6 +213,7 @@
         "type": "wf-optimizer",
         "label": "Optimizer (Closure)",
         "agent_blueprint_id": "{{optimizer_blueprint_id}}",
+        "parent_id": "phase-5",
         "position": { "x": 2470, "y": 450 }
       },
 
@@ -230,7 +280,14 @@
     "termination_conditions": [
       { "type": "max_rounds", "value": "{{max_rounds}}", "description": "Maximum full debate cycles across all phases" },
       { "type": "consensus_reached", "value": "{{consensus_threshold}}", "description": "Global consensus threshold for early termination" }
-    ]
+    ],
+    "phase_configs": {
+      "phase-1": { "name": "Problem Framing", "color": "#6366f1", "description": "Analyst, Creative Thinker, Socratic Questioner", "roles": ["analyst", "creative", "socratic-questioner"], "max_rounds": 3 },
+      "phase-2": { "name": "Position Building", "color": "#8b5cf6", "description": "Strategist, Expert Reviewer, Steel-manner", "roles": ["strategist", "expert-reviewer", "steel-manner"], "max_rounds": 3 },
+      "phase-3": { "name": "Stress Testing", "color": "#ef4444", "description": "Devil's Advocate, Fact Checker, Troll", "roles": ["devils-advocate", "fact-checker", "troll"], "max_rounds": 3 },
+      "phase-4": { "name": "Integration", "color": "#f59e0b", "description": "Mediator, Ethicist, Synthesizer", "roles": ["mediator", "ethicist", "synthesizer"], "max_rounds": 3 },
+      "phase-5": { "name": "Closure", "color": "#10b981", "description": "Moderator, Critic, Optimizer", "roles": ["moderator", "critic", "optimizer"], "max_rounds": 3 }
+    }
   },
   "placeholders": [
     {

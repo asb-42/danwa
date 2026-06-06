@@ -23,6 +23,7 @@
   import UserActionNode from './nodes/UserActionNode.svelte';
   import HistoryNode from './nodes/HistoryNode.svelte';
   import A2ANode from './nodes/A2ANode.svelte';
+  import PhaseNode from './nodes/PhaseNode.svelte';
 
   // Custom edges
   import FlowEdge from './edges/FlowEdge.svelte';
@@ -50,6 +51,7 @@
     history: HistoryNode,
     placeholder: AgentNode, // Reuse agent node for placeholders
     a2a_agent: A2ANode,
+    phase: PhaseNode,
   };
 
   const edgeTypes = {
@@ -118,6 +120,7 @@
               case 'user_action': return '#f59e0b';
               case 'decision': return '#10b981';
               case 'a2a_agent': return '#8b5cf6';
+              case 'phase': return node.data?.color || '#6366f1';
               default: return '#6b7280';
             }
           }}

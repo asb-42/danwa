@@ -33,6 +33,9 @@ const elkOptions = {
   'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
 };
 
+/** Padding inside phase containers (px). */
+const PHASE_CONTAINER_PADDING = 60;
+
 // ─── Debounce + Generation Counter ────────────────────────────────
 // Prevents race conditions when multiple SSE events fire in quick succession.
 // The timer always reads fresh data from the store when it fires,
@@ -101,67 +104,119 @@ async function calculateLayout(nodes, edges) {
 
   // Build ELK graph structure
   //
-  // Layout hierarchy:
+  // Supports two grouping strategies (mutually exclusive based on node data):
+  //
+  // A) Phase grouping (from workflow definitions with wf-phase nodes):
+  //   root
+  //   ├── phase-1 (container)
+  //   │   ├── analyst-1
+  //   │   ├── creative-1
+  //   │   └── socratic-1
+  //   ├── phase-2 (container)
+  //   │   └── ...
+  //   ├── gate-1 (top-level, between phases)
+  //   └── input-1 (top-level, before phases)
+  //
+  // B) Round grouping (from live debate SSE events):
   //   root
   //   ├── round_container_1
   //   │   ├── strategist_r1 (agent)
   //   │   ├── strategy_r1   (artifact)
   //   │   └── ...
-  //   ├── round_container_2
-  //   │   └── ...
   //   ├── input             (top-level, round 0)
-  //   ├── decision_r1       (top-level, between rounds)
-  //   ├── user_action_x     (top-level, HITL)
-  //   └── placeholder_x     (top-level, pending agents)
+  //   └── decision_r1       (top-level, between rounds)
 
-  const roundContainers = new Map(); // Map<round, Node[]>
+  // Detect phase containers (type === 'phase' or parent_id-based grouping)
+  const phaseNodes = nodes.filter(n => n.type === 'phase');
+  const phaseIds = new Set(phaseNodes.map(n => n.id));
+
+  const phaseChildren = new Map(); // phaseId -> Node[]
   const topLevelNodes = [];
 
-  for (const node of nodes) {
-    const round = node.data?.round;
-
-    // Only agent and artifact nodes with round > 0 go into round containers.
-    // Everything else stays at the top level:
-    //   - input (round 0) — entry point before all rounds
-    //   - decision — sits between rounds
-    //   - user_action — HITL nodes, positioned by ELK based on edges
-    //   - placeholder — pending agents waiting to appear
-    //   - a2a_agent — external agents, not part of the round pipeline
-    const isRoundScoped = round != null && round > 0
-      && (node.type === 'agent' || node.type === 'artifact');
-
-    if (isRoundScoped) {
-      if (!roundContainers.has(round)) {
-        roundContainers.set(round, []);
+  if (phaseIds.size > 0) {
+    // Phase grouping mode
+    for (const node of nodes) {
+      if (node.type === 'phase') continue; // Phase containers handled separately
+      const parentId = node.parentId;
+      if (parentId && phaseIds.has(parentId)) {
+        if (!phaseChildren.has(parentId)) {
+          phaseChildren.set(parentId, []);
+        }
+        phaseChildren.get(parentId).push(node);
+      } else {
+        topLevelNodes.push(node);
       }
-      roundContainers.get(round).push(node);
-    } else {
-      topLevelNodes.push(node);
+    }
+  } else {
+    // Round grouping mode (existing behavior)
+    const roundContainers = new Map(); // Map<round, Node[]>
+
+    for (const node of nodes) {
+      const round = node.data?.round;
+      const isRoundScoped = round != null && round > 0
+        && (node.type === 'agent' || node.type === 'artifact');
+
+      if (isRoundScoped) {
+        if (!roundContainers.has(round)) {
+          roundContainers.set(round, []);
+        }
+        roundContainers.get(round).push(node);
+      } else {
+        topLevelNodes.push(node);
+      }
+    }
+
+    // Convert round containers into pseudo-phase entries for unified ELK building
+    for (const [round, roundNodes] of roundContainers) {
+      const containerId = `round_container_${round}`;
+      phaseIds.add(containerId);
+      phaseChildren.set(containerId, roundNodes);
+      phaseNodes.push({ id: containerId, type: 'round_container', data: { round } });
     }
   }
 
   // Build ELK children
   const elkChildren = [];
 
-  // Add round containers as hierarchical parent nodes
-  for (const [round, roundNodes] of roundContainers) {
-    elkChildren.push({
-      id: `round_container_${round}`,
-      layoutOptions: {
-        'elk.partitioning.partition': String(round),
-        'elk.algorithm': 'layered',
-        'elk.direction': 'RIGHT',
-        'elk.spacing.nodeNode': '30',
-      },
-      children: roundNodes.map(n => ({
-        id: n.id,
-        width: getNodeWidth(n),
-        height: getNodeHeight(n),
-      })),
-    });
+  // Add phase/round containers as hierarchical parent nodes
+  for (const phase of phaseNodes) {
+    const children = phaseChildren.get(phase.id) || [];
+    const childDims = children.map(n => ({
+      id: n.id,
+      width: getNodeWidth(n),
+      height: getNodeHeight(n),
+    }));
+
+    // Compute container size from children bounds + padding
+    if (phase.type === 'phase') {
+      elkChildren.push({
+        id: phase.id,
+        layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': 'RIGHT',
+          'elk.spacing.nodeNode': '30',
+          'elk.padding': `[top=${PHASE_CONTAINER_PADDING},left=${PHASE_CONTAINER_PADDING / 2},bottom=${PHASE_CONTAINER_PADDING / 2},right=${PHASE_CONTAINER_PADDING / 2}]`,
+        },
+        width: 300 + PHASE_CONTAINER_PADDING,
+        height: 200 + PHASE_CONTAINER_PADDING,
+        children: childDims,
+      });
+    } else {
+      // Round container (existing behavior)
+      elkChildren.push({
+        id: phase.id,
+        layoutOptions: {
+          'elk.partitioning.partition': String(phase.data?.round || 0),
+          'elk.algorithm': 'layered',
+          'elk.direction': 'RIGHT',
+          'elk.spacing.nodeNode': '30',
+        },
+        children: childDims,
+      });
+    }
   }
 
-  // Add top-level nodes (input, decision, user_action, placeholder, a2a_agent)
+  // Add top-level nodes
   for (const node of topLevelNodes) {
     elkChildren.push({
       id: node.id,
@@ -236,6 +291,7 @@ function getNodeWidth(node) {
     case 'user_action': return 160;
     case 'placeholder': return 140;
     case 'decision': return 180;
+    case 'phase': return 300;
     default: return 160;
   }
 }
@@ -253,6 +309,7 @@ function getNodeHeight(node) {
     case 'user_action': return 70;
     case 'placeholder': return 50;
     case 'decision': return 80;
+    case 'phase': return 200;
     default: return 60;
   }
 }

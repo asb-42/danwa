@@ -44,6 +44,12 @@ class WorkflowStore {
   // ─── View Mode ───
   viewMode = $state('current'); // 'current' | 'timeline'
 
+  // ─── Phase Groups (for phase visual grouping) ───
+  // Maps child node ID → phase node ID for runtime phase tracking.
+  // Populated by loadPhaseGroups().
+  #phaseChildMap = new Map(); // Map<childNodeId, phaseNodeId>
+  #phaseNodeIds = new Set();  // Set<phaseNodeId>
+
   // ─── Derived: Svelte Flow compatible nodes with runtime overlay ───
   // $derived.by memoizes the result — only recalculates when dependencies change.
   // This avoids creating a new array on every access (which a getter would do).
@@ -51,18 +57,68 @@ class WorkflowStore {
     // Reading graphNodes and runtimeActiveNodeId establishes reactive dependencies
     const nodes = this.graphNodes;
     const activeId = this.runtimeActiveNodeId;
-    return Array.from(nodes.values()).map(node => ({
-      id: node.id,
-      type: node.type,
-      data: {
-        ...node.data,
-        isActive: activeId === node.id,
-      },
-      position: node.position || { x: 0, y: 0 },
-      className: this.#getNodeClassName(
-        activeId === node.id ? 'active' : node.data?.status
-      ),
-    }));
+    const executionPath = this.runtimeExecutionPath;
+    const status = this.runtimeStatus;
+
+    // Compute which phase is currently active (contains the active node)
+    let activePhaseId = null;
+    if (activeId && this.#phaseChildMap.has(activeId)) {
+      activePhaseId = this.#phaseChildMap.get(activeId);
+    }
+
+    // Compute which phases are completed (all children completed)
+    const completedPhases = new Set();
+    if (this.#phaseNodeIds.size > 0) {
+      for (const phaseId of this.#phaseNodeIds) {
+        const children = [...this.#phaseChildMap.entries()]
+          .filter(([, pid]) => pid === phaseId)
+          .map(([cid]) => cid);
+        if (children.length > 0) {
+          const allCompleted = children.every(cid => {
+            const childNode = nodes.get(cid);
+            return childNode?.data?.status === 'completed';
+          });
+          if (allCompleted) completedPhases.add(phaseId);
+        }
+      }
+    }
+
+    return Array.from(nodes.values()).map(node => {
+      const isNodeActive = activeId === node.id;
+      const isPhase = this.#phaseNodeIds.has(node.id);
+      const parentId = node.parentId || this.#phaseChildMap.get(node.id) || null;
+
+      // Svelte Flow requires child positions relative to the parent.
+      // Convert absolute positions to relative when a node has a parentId.
+      let position = node.position || { x: 0, y: 0 };
+      if (parentId) {
+        const parentNode = nodes.get(parentId);
+        if (parentNode?.position) {
+          position = {
+            x: position.x - parentNode.position.x,
+            y: position.y - parentNode.position.y,
+          };
+        }
+      }
+
+      return {
+        id: node.id,
+        type: node.type,
+        parentId,
+        data: {
+          ...node.data,
+          isActive: isNodeActive,
+          ...(isPhase ? {
+            isActive: activePhaseId === node.id,
+            isCompleted: completedPhases.has(node.id),
+          } : {}),
+        },
+        position,
+        className: this.#getNodeClassName(
+          isNodeActive ? 'active' : node.data?.status
+        ),
+      };
+    });
   });
 
   // ─── Derived: Svelte Flow compatible edges with runtime overlay ───
@@ -125,6 +181,77 @@ class WorkflowStore {
     this.oobQueueItems = [];
     this.oobQueueIndexByTarget = new Map();
     this.viewMode = 'current';
+    this.#phaseChildMap = new Map();
+    this.#phaseNodeIds = new Set();
+  }
+
+  /**
+   * Load phase group nodes from a workflow definition.
+   *
+   * Creates `wf-phase` group nodes in graphNodes and records parent
+   * relationships so that the flowNodes derived can compute parentId,
+   * active phase, and phase completion at runtime.
+   *
+   * Call this BEFORE debate execution starts — typically when the
+   * workflow definition is fetched (e.g. via mapper or SSE init).
+   *
+   * @param {Object} definition - Workflow definition with nodes and phase_configs
+   * @param {Object} [definition.phase_configs] - Map of phaseId → { name, color, description, roles, max_rounds }
+   * @param {Array}  [definition.nodes] - Workflow nodes (may include wf-phase entries and parent_id refs)
+   */
+  loadPhaseGroups(definition) {
+    if (!definition) return;
+
+    const phaseNodes = (definition.nodes || []).filter(n => n.type === 'wf-phase');
+    const phaseConfigs = definition.phase_configs || {};
+
+    // Add phase group nodes to graphNodes
+    for (const pn of phaseNodes) {
+      const config = phaseConfigs[pn.id] || pn.config || {};
+      const phaseId = pn.id;
+
+      this.#phaseNodeIds.add(phaseId);
+
+      this.graphNodes.set(phaseId, {
+        id: phaseId,
+        type: 'phase', // Canvas-side type (mapped from wf-phase)
+        parentId: null,
+        data: {
+          name: config.name || pn.label || 'Phase',
+          label: config.name || pn.label || 'Phase',
+          color: config.color || pn.config?.color || '#6366f1',
+          description: config.description || pn.config?.description || '',
+          roles: config.roles || [],
+          max_rounds: config.max_rounds || 3,
+          isActive: false,
+          isCompleted: false,
+        },
+        position: pn.position || { x: 0, y: 0 },
+      });
+    }
+
+    // Build parent_id → parentId mapping for agent nodes
+    for (const node of (definition.nodes || [])) {
+      const parentId = node.parent_id;
+      if (parentId && this.#phaseNodeIds.has(parentId)) {
+        this.#phaseChildMap.set(node.id, parentId);
+        // If the node already exists in graphNodes (from an earlier SSE event),
+        // set its parentId so Svelte Flow nests it inside the phase group.
+        const existing = this.graphNodes.get(node.id);
+        if (existing) {
+          existing.parentId = parentId;
+        }
+      }
+    }
+  }
+
+  /**
+   * Get the phase node ID that contains a given child node.
+   * @param {string} nodeId
+   * @returns {string|null}
+   */
+  getPhaseForNode(nodeId) {
+    return this.#phaseChildMap.get(nodeId) || null;
   }
 
   // ─── Helpers ───

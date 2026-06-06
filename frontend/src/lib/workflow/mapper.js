@@ -10,6 +10,36 @@ import { workflowStore } from './store.svelte.js';
 import { PIPELINE_ROLES, ROLE_ARTIFACT_MAP } from './constants.js';
 
 /**
+ * Fetch the workflow definition for a given debate and load phase groups.
+ *
+ * Called once when `workflow_started` fires.  If the debate was created from
+ * a template with `wf-phase` nodes and `phase_configs`, this populates the
+ * store's phase group nodes so the canvas can render phase containers.
+ *
+ * @param {string} debateId
+ */
+async function fetchAndLoadPhaseGroups(debateId) {
+  try {
+    // 1. Get debate to find workflow_id
+    const debateRes = await fetch(`/api/v1/debate/${encodeURIComponent(debateId)}`);
+    if (!debateRes.ok) return;
+    const debate = await debateRes.json();
+    const workflowId = debate?.workflow_id;
+    if (!workflowId) return;
+
+    // 2. Fetch the workflow definition (includes nodes + phase_configs)
+    const defRes = await fetch(`/api/v1/blueprints/workflows/${encodeURIComponent(workflowId)}`);
+    if (!defRes.ok) return;
+    const definition = await defRes.json();
+
+    // 3. Load phase groups into the store
+    workflowStore.loadPhaseGroups(definition);
+  } catch {
+    // Non-critical — debate works fine without phase grouping
+  }
+}
+
+/**
  * Map incoming SSE events to workflow events and dispatch them.
  * @param {Object} sseEvent - Raw SSE event from backend
  */
@@ -28,6 +58,10 @@ export function handleWorkflowSSE(sseEvent) {
           timestamp: Date.now(),
         },
       });
+      // Fire-and-forget: fetch workflow definition and load phase groups
+      if (sseEvent.debate_id) {
+        fetchAndLoadPhaseGroups(sseEvent.debate_id);
+      }
       break;
 
     case 'agent_preparing':
