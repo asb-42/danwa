@@ -125,7 +125,7 @@ def import_module_to_db(
             (
                 module_id,
                 json.dumps(manifest.get("name", {})),
-                manifest.get("description", ""),
+                json.dumps(manifest["description"]) if isinstance(manifest.get("description"), dict) else manifest.get("description", ""),
                 manifest.get("type", "custom"),
                 manifest.get("category", "custom"),
                 manifest.get("version", "0.0.0"),
