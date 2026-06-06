@@ -1,12 +1,14 @@
 """Module-based entity lookups for blueprint models.
 
-Replaces removed repository CRUD reads for RoleType, RoleDefinition, and
-PromptTemplate with module-sourced data.
+Replaces removed repository CRUD reads for RoleType, RoleDefinition,
+PromptTemplate, and (with UUID-based module IDs) AgentBlueprint lookups
+with module-sourced data.
 """
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 
 from backend.blueprints.models import (
     PromptTemplate,
@@ -15,6 +17,30 @@ from backend.blueprints.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Lightweight dataclass returned when a module agent-core is resolved.
+# Mirrors the fields the WorkflowCompiler needs from an AgentBlueprint.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ModuleAgentConfig:
+    """Resolved configuration for an agent-core module.
+
+    Used as a lightweight stand-in for AgentBlueprint when the compiler
+    encounters a module UUID (``ac-*``) instead of a DB blueprint.
+    """
+
+    module_id: str  # The ac-* UUID
+    name: str
+    role: str  # e.g. "strategist", "critic"
+    system_prompt: str = ""
+    tags: list[str] = field(default_factory=list)
+    max_rounds: int = 5
+    consensus_threshold: float = 0.9
+    llm_profile_id: str = ""  # May be empty — caller must provide fallback
 
 
 def resolve_role_type(role_type_id: str) -> RoleType | None:
@@ -109,4 +135,53 @@ def resolve_prompt_template(template_id: str) -> PromptTemplate | None:
                 )
     except Exception:
         logger.debug("Module lookup for PromptTemplate '%s' failed", template_id, exc_info=True)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Module agent-core → compiler bridge
+# ---------------------------------------------------------------------------
+
+_UUID_AGENT_PREFIX = "ac-"
+
+
+def is_module_agent_id(agent_id: str) -> bool:
+    """Check if an agent_blueprint_id refers to a module agent-core (ac-* UUID).
+
+    This is the bridge that lets the compiler accept module UUIDs in
+    ``agent_blueprint_id`` fields — resolving them from the module system
+    instead of the AgentBlueprint DB table.
+    """
+    return agent_id.startswith(_UUID_AGENT_PREFIX)
+
+
+def resolve_agent_from_module(agent_id: str) -> ModuleAgentConfig | None:
+    """Resolve an agent-core module UUID to a ModuleAgentConfig.
+
+    Called by the WorkflowCompiler when ``get_blueprint()`` fails and the
+    ID matches the ``ac-*`` UUID pattern.
+
+    Args:
+        agent_id: The module agent-core UUID (e.g. ``ac-82a54c1a-...``).
+
+    Returns:
+        ModuleAgentConfig or ``None`` if not found in modules.
+    """
+    try:
+        from backend.services.module_profile_sync import get_agent_personas_from_modules
+
+        for persona in get_agent_personas_from_modules():
+            if persona.get("id") == agent_id:
+                return ModuleAgentConfig(
+                    module_id=agent_id,
+                    name=persona.get("name", agent_id),
+                    role=persona.get("role", ""),
+                    system_prompt=persona.get("system_prompt", ""),
+                    tags=persona.get("tags", []),
+                    max_rounds=persona.get("max_rounds", 5),
+                    consensus_threshold=persona.get("consensus_threshold", 0.9),
+                    llm_profile_id=persona.get("llm_profile_id", ""),
+                )
+    except Exception:
+        logger.debug("Module lookup for agent '%s' failed", agent_id, exc_info=True)
     return None

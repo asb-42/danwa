@@ -14,6 +14,8 @@ from langgraph.graph import END, StateGraph
 
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.module_lookups import (
+    is_module_agent_id,
+    resolve_agent_from_module,
     resolve_role_definition,
     resolve_role_type,
 )
@@ -178,18 +180,23 @@ class WorkflowCompiler:
         return result
 
     def _resolve_agent_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:
-        """Resolve an agent node's configuration from either a Bundle or an AgentBlueprint."""
+        """Resolve an agent node's configuration from Bundle, AgentBlueprint, or module agent-core."""
         # --- wf-agent: resolve via Bundle ---
         if node.type == "wf-agent":
             return self._resolve_bundle_config(node, errors)
 
-        # --- Legacy agent types: resolve via AgentBlueprint ---
+        # --- Legacy agent types: resolve via AgentBlueprint or module agent-core ---
         blueprint_id = node.agent_blueprint_id
         if not blueprint_id:
             errors.append(f"Agent node '{node.id}' has no agent_blueprint_id")
             return None
 
         blueprint = self._repo.get_blueprint(blueprint_id)
+
+        # --- Module agent-core fallback (ac-* UUID pattern) ---
+        if blueprint is None and is_module_agent_id(blueprint_id):
+            return self._resolve_module_agent_config(node, blueprint_id, errors)
+
         if blueprint is None:
             errors.append(f"AgentBlueprint '{blueprint_id}' not found for node '{node.id}'")
             return None
@@ -242,6 +249,89 @@ class WorkflowCompiler:
             node_config=node.config or {},
             agent_tags=list(blueprint.tags or []),
         )
+
+    def _resolve_module_agent_config(
+        self, node: WorkflowNode, module_id: str, errors: list[str]
+    ) -> ResolvedAgentConfig | None:
+        """Resolve an agent node from a module agent-core (ac-* UUID).
+
+        Called when ``agent_blueprint_id`` is a module UUID and no
+        matching AgentBlueprint exists in the DB.
+        """
+        mod_agent = resolve_agent_from_module(module_id)
+        if mod_agent is None:
+            errors.append(
+                f"Module agent-core '{module_id}' not found for node '{node.id}'. "
+                "Ensure the module is installed and enabled."
+            )
+            return None
+
+        # Resolve LLM profile: module → node config → service default → first available
+        llm_profile_id = mod_agent.llm_profile_id
+        if not llm_profile_id:
+            llm_profile_id = node.config.get("llm_profile_id", "")
+        if not llm_profile_id:
+            llm_profile_id = self._get_fallback_llm_profile_id(errors)
+        if not llm_profile_id:
+            errors.append(
+                f"No LLM profile available for module agent '{module_id}' "
+                f"on node '{node.id}'. Assign one via node config or set a service default."
+            )
+            return None
+
+        llm_profile = self._repo.get_llm_profile(llm_profile_id)
+        llm_model = llm_profile.model if llm_profile else ""
+
+        # Resolve RoleType from the module agent's role
+        role_type = resolve_role_type(mod_agent.role)
+        role_type_name = ""
+        role_type_icon = "👤"
+        role_type_color = "#8b5cf6"
+        default_max_rounds = mod_agent.max_rounds
+        default_consensus_threshold = mod_agent.consensus_threshold
+        if role_type:
+            role_type_name = role_type.name
+            role_type_icon = role_type.icon
+            role_type_color = role_type.color
+            default_max_rounds = role_type.default_max_rounds
+            default_consensus_threshold = role_type.default_consensus_threshold
+
+        return ResolvedAgentConfig(
+            node_id=node.id,
+            blueprint_id=module_id,
+            blueprint_name=mod_agent.name,
+            llm_profile_id=llm_profile_id,
+            llm_model=llm_model,
+            role_definition_id=module_id,
+            role=mod_agent.role,
+            role_type_name=role_type_name,
+            role_type_icon=role_type_icon,
+            role_type_color=role_type_color,
+            default_max_rounds=default_max_rounds,
+            default_consensus_threshold=default_consensus_threshold,
+            argumentation_pattern="",
+            mode="",
+            system_prompt=mod_agent.system_prompt,
+            node_config=node.config or {},
+            agent_tags=list(mod_agent.tags),
+        )
+
+    def _get_fallback_llm_profile_id(self, errors: list[str]) -> str:
+        """Find a usable LLM profile from the service default or first available."""
+        try:
+            from backend.core.config import get_settings
+            settings = get_settings()
+            if settings.service_llm_profile_id:
+                return settings.service_llm_profile_id
+        except Exception:
+            pass
+        try:
+            profiles = self._repo.list_llm_profiles()
+            if profiles:
+                return profiles[0].id
+        except Exception:
+            pass
+        return ""
 
     def _resolve_bundle_config(self, node: WorkflowNode, errors: list[str]) -> ResolvedAgentConfig | None:
         """Resolve a wf-agent node via AgentBundle."""
