@@ -461,6 +461,17 @@ async def extension_request_node(state: DebateState) -> dict:
     )
 
     # --- Wait for user response ---
+    #
+    # Sprint 38 (2/3) — replaced the 2-second ``asyncio.sleep``
+    # polling with ``wait_for_extension_signal``.  The
+    # ``post_extension_decision`` HITL endpoint (which resolves
+    # the interrupt and writes ``extension_granted`` to the
+    # debate) fires this signal — so the node unblocks within
+    # milliseconds of the user responding.  The 2-second timeout
+    # remains as a safety net so the loop can re-check the
+    # interrupt status even if the signal mechanism is bypassed
+    # (e.g. the response arrived through a code path that
+    # doesn't fire the signal).
     timeout = state.get("interrupt_timeout_seconds", 300)
     waited = 0
     poll_interval = 2  # seconds
@@ -471,8 +482,21 @@ async def extension_request_node(state: DebateState) -> dict:
         timeout,
     )
 
+    from backend.state.workflow_state import get_workflow_state
+
+    state_backend = get_workflow_state()
+
     while waited < timeout:
-        await asyncio.sleep(poll_interval)
+        # Wait for the extension signal (or 2 s cap).  The signal
+        # is fired by ``post_extension_decision`` after the
+        # interrupt is resolved, so a real user response wakes
+        # us immediately.  If the signal mechanism is bypassed,
+        # the 2 s cap still lets us re-check the interrupt
+        # status periodically.
+        await state_backend.wait_for_extension_signal(
+            session_id,
+            timeout=min(poll_interval, max(0.1, timeout - waited)),
+        )
         waited += poll_interval
 
         # Check if interrupt was resolved

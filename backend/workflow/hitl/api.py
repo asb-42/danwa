@@ -191,6 +191,16 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
 
     Returns:
         The resolved interrupt context, or None if no active interrupt.
+
+    Sprint 38 (2/3) — also fires the per-session
+    ``set_extension_signal`` so any node waiting on the
+    extension decision (e.g.  ``extension_request_node``)
+    wakes up immediately when the user responds to an
+    extension interrupt via ``respond_to_interrupt``.  This
+    is the second code path for extension decisions
+    alongside ``extension_decision``; both fire the same
+    signal.  Best-effort: failure is logged but does not
+    affect the response.
     """
     interrupt = _active_interrupts.get(debate_id)
     if not interrupt:
@@ -221,6 +231,23 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
 
     # Remove from active interrupts
     resolved = _active_interrupts.pop(debate_id)
+
+    # Sprint 38 (2/3) — fire the per-session extension signal
+    # so any waiter (``extension_request_node``) on this
+    # session unblocks immediately.  ``session_id ==
+    # debate_id`` in this codebase, so we use debate_id as
+    # the signal key.  Best-effort — the waiter has a 2 s
+    # fallback timeout in case this fails.
+    try:
+        from backend.state.workflow_state import get_workflow_state
+
+        get_workflow_state().set_extension_signal(debate_id)
+    except Exception:
+        logger.debug(
+            "Failed to fire extension signal on resolve_interrupt for %s",
+            debate_id,
+            exc_info=True,
+        )
 
     logger.info(
         "Interrupt resolved: interrupt=%s, response_length=%d",
