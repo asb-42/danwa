@@ -881,6 +881,45 @@ async def get_workflow_audit_log(
     return result
 
 
+@router.get("/{session_id}/phase-snapshots")
+async def get_phase_snapshots(session_id: str) -> list[dict]:
+    """Return phase-level state snapshots for a workflow session.
+
+    Phase snapshots are saved at gate nodes and provide a state
+    checkpoint for each phase boundary, useful for debugging and
+    comparing state before/after phase transitions.
+    """
+    snapshot_store = _get_snapshot_store()
+    snapshots = snapshot_store.get_by_type(session_id, "phase_checkpoint")
+    # Strip the heavy state dict from the list view — include only metadata
+    result = []
+    for snap in snapshots:
+        result.append(
+            {
+                "id": snap.get("id"),
+                "session_id": snap.get("session_id"),
+                "node_id": snap.get("node_id"),
+                "node_type": snap.get("node_type"),
+                "round_number": snap.get("round_number"),
+                "created_at": snap.get("created_at"),
+                "state_keys": list(snap.get("state", {}).keys()),
+            }
+        )
+    return result
+
+
+@router.get("/{session_id}/phase-snapshots/{node_id:path}")
+async def get_phase_snapshot_detail(session_id: str, node_id: str) -> dict | None:
+    """Return the full state for a specific phase checkpoint."""
+    snapshot_store = _get_snapshot_store()
+    snap = snapshot_store.get_by_node(session_id, node_id)
+    if snap is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"Phase snapshot '{node_id}' not found")
+    return snap
+
+
 # ---------------------------------------------------------------------------
 # Session soft-delete / restore
 # ---------------------------------------------------------------------------

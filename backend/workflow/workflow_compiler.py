@@ -618,7 +618,7 @@ class WorkflowCompiler:
                     condition = edge.condition or "True"
                     conditions[target] = condition
 
-                router = route_conditional(conditions)
+                router = route_conditional(conditions, gate_node_id=node.id)
                 mapping = {tid: tid for tid in conditions}
                 mapping["end"] = END
 
@@ -631,21 +631,49 @@ class WorkflowCompiler:
                     # instead of the last conditional target.
                     _orig_conditions = dict(conditions)
 
-                    def _make_router(conds, fallback_target):
-                        def _router(state):
+                    def _make_router(conds, fallback_target, gid):
+                        async def _router(state):
+                            from backend.workflow.workflow_routers import _publish_gate_decision
+
+                            session_id = state.get("session_id", "")
+                            current_round = state.get("current_round", 1)
+                            state_dict = dict(state)
+                            evaluations = []
                             for target_node_id, expr in conds.items():
                                 try:
-                                    if evaluate_condition(expr, dict(state)):
+                                    result = evaluate_condition(expr, state_dict)
+                                    evaluations.append({"condition": expr, "target": target_node_id, "result": result})
+                                    if result:
+                                        await _publish_gate_decision(
+                                            session_id,
+                                            gid,
+                                            expr,
+                                            True,
+                                            target_node_id,
+                                            False,
+                                            evaluations,
+                                            current_round,
+                                        )
                                         return target_node_id
                                 except SafeEvalError:
-                                    pass
+                                    evaluations.append({"condition": expr, "target": target_node_id, "result": False})
                                 except Exception:
-                                    pass
+                                    evaluations.append({"condition": expr, "target": target_node_id, "result": False})
+                            await _publish_gate_decision(
+                                session_id,
+                                gid,
+                                "(none matched)",
+                                False,
+                                fallback_target,
+                                True,
+                                evaluations,
+                                current_round,
+                            )
                             return fallback_target
 
                         return _router
 
-                    router = _make_router(_orig_conditions, fb_target)
+                    router = _make_router(_orig_conditions, fb_target, node.id)
                     mapping[fb_target] = fb_target
 
                 graph.add_conditional_edges(node.id, router, mapping)

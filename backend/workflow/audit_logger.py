@@ -265,6 +265,48 @@ class AuditLogger:
             actor,
         )
 
+    def log_gate_decision(
+        self,
+        *,
+        session_id: str,
+        workflow_id: str,
+        workflow_version: int,
+        gate_node_id: str,
+        condition: str,
+        result: bool,
+        chosen_target: str,
+        fallback_used: bool,
+        all_evaluations: list[dict[str, Any]] | None = None,
+    ) -> None:
+        """Record a gate routing decision with full evaluation details."""
+        output_data = {
+            "condition": condition,
+            "result": result,
+            "chosen_target": chosen_target,
+            "fallback_used": fallback_used,
+            "all_evaluations": all_evaluations or [],
+        }
+        self._insert(
+            session_id=session_id,
+            workflow_id=workflow_id,
+            workflow_version=workflow_version,
+            event_type="gate_decision",
+            node_id=gate_node_id,
+            actor="gate",
+            input_hash=self._compute_hash({"condition": condition}),
+            output_hash=self._compute_hash(output_data),
+            input_content=condition,
+            output_content=self._sanitize_content(output_data),
+        )
+        logger.debug(
+            "Audit: gate_decision session=%s gate=%s condition=%s result=%s target=%s",
+            session_id,
+            gate_node_id,
+            condition,
+            result,
+            chosen_target,
+        )
+
     def log_workflow_event(
         self,
         *,

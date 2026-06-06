@@ -14,6 +14,18 @@ from backend.workflow.workflow_state import WorkflowState
 
 logger = logging.getLogger(__name__)
 
+# Lazy import to avoid circular dependency at module level
+_publish_async = None
+
+
+def _get_publish():
+    global _publish_async
+    if _publish_async is None:
+        from backend.api.events import publish_async
+
+        _publish_async = publish_async
+    return _publish_async
+
 
 def route_sequential(state: WorkflowState) -> str:
     """Always returns the single target for a sequential edge.
@@ -25,35 +37,46 @@ def route_sequential(state: WorkflowState) -> str:
 
 def route_conditional(
     conditions: dict[str, str],
+    gate_node_id: str = "",
 ) -> Any:
     """Factory that returns a router for conditional (gate) edges.
 
+    Publishes a ``gate.decision`` SSE event with the evaluation details
+    so the frontend can show which path was taken and why.
+
     Args:
         conditions: Mapping of ``{target_node_id: condition_expression}``.
-            Condition expressions are either:
-
-            * a named condition (e.g. ``"consensus_reached"``,
-              ``"max_rounds_reached"``, ``"extension_granted"``) — see
-              :data:`backend.workflow.safe_eval.NAMED_CONDITIONS` for
-              the full registry; or
-            * a safe Python expression over the ``state`` mapping (e.g.
-              ``"state['current_round'] >= 3"``).
-
-            Expressions are evaluated with :func:`safe_eval.evaluate_condition`
-            which uses an AST whitelist — there is no Python ``eval()``
-            involved, so the sandbox cannot be escaped via dunder
-            traversal or ``__import__``.
+        gate_node_id: The ID of the gate node (for logging and SSE events).
 
     Returns:
         A router function suitable for ``graph.add_conditional_edges()``.
     """
 
-    def _router(state: WorkflowState) -> str:
+    async def _router(state: WorkflowState) -> str:
+        session_id = state.get("session_id", "")
+        current_round = state.get("current_round", 1)
+        state_dict = dict(state)
+        evaluations: list[dict[str, Any]] = []
+
         for target_node_id, expr in conditions.items():
             try:
-                if evaluate_condition(expr, dict(state)):
+                result = evaluate_condition(expr, state_dict)
+                evaluations.append({"condition": expr, "target": target_node_id, "result": result})
+                if result:
+                    # Publish gate.decision SSE event
+                    await _publish_gate_decision(
+                        session_id,
+                        gate_node_id,
+                        expr,
+                        True,
+                        target_node_id,
+                        False,
+                        evaluations,
+                        current_round,
+                    )
                     return target_node_id
             except SafeEvalError as exc:
+                evaluations.append({"condition": expr, "target": target_node_id, "result": False, "error": str(exc)})
                 logger.warning(
                     "Gate condition '%s' for target '%s' is not safe (%s), skipping",
                     expr,
@@ -61,18 +84,78 @@ def route_conditional(
                     exc,
                 )
             except Exception as exc:
+                evaluations.append({"condition": expr, "target": target_node_id, "result": False, "error": str(exc)})
                 logger.warning(
                     "Gate condition '%s' for target '%s' raised %s, skipping",
                     expr,
                     target_node_id,
                     type(exc).__name__,
                 )
+
         # Fallback: return last target if no condition matched
         fallback = list(conditions.keys())[-1] if conditions else "end"
         logger.info("No gate condition matched, falling back to '%s'", fallback)
+        await _publish_gate_decision(
+            session_id,
+            gate_node_id,
+            "(none matched)",
+            False,
+            fallback,
+            True,
+            evaluations,
+            current_round,
+        )
         return fallback
 
     return _router
+
+
+async def _publish_gate_decision(
+    session_id: str,
+    gate_node_id: str,
+    condition: str,
+    result: bool,
+    chosen_target: str,
+    fallback_used: bool,
+    evaluations: list[dict[str, Any]],
+    current_round: int,
+) -> None:
+    """Publish a gate.decision SSE event and write an audit log entry."""
+    publish = _get_publish()
+    try:
+        await publish(
+            session_id,
+            "gate.decision",
+            {
+                "gate_node_id": gate_node_id,
+                "condition": condition,
+                "result": result,
+                "chosen_target": chosen_target,
+                "fallback_used": fallback_used,
+                "all_evaluations": evaluations,
+                "round": current_round,
+            },
+        )
+    except Exception:
+        logger.debug("Failed to publish gate.decision SSE event", exc_info=True)
+
+    # Audit log
+    try:
+        from backend.workflow.audit_logger import get_audit_logger
+
+        get_audit_logger().log_gate_decision(
+            session_id=session_id,
+            workflow_id="",
+            workflow_version=1,
+            gate_node_id=gate_node_id,
+            condition=condition,
+            result=result,
+            chosen_target=chosen_target,
+            fallback_used=fallback_used,
+            all_evaluations=evaluations,
+        )
+    except Exception:
+        logger.debug("Failed to log gate decision to audit", exc_info=True)
 
 
 def route_feedback(

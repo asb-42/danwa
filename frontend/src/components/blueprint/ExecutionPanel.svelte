@@ -54,6 +54,7 @@
   let consensus = $state(0);
   let elapsedMs = $state(0);
   let nodeOutputs = $state([]);
+  let gateDecisions = $state([]);
   let interjectionText = $state('');
   let error = $state('');
   let cleanupSSE = $state(null);
@@ -99,6 +100,17 @@
       onNodeStart: (data) => {
         currentNodeId = data.node_id || '';
         onNodeStatusUpdate(data.node_id, 'running');
+      },
+      onGateDecision: (data) => {
+        gateDecisions = [...gateDecisions, {
+          gateNodeId: data.gate_node_id || '',
+          condition: data.condition || '',
+          result: data.result,
+          chosenTarget: data.chosen_target || '',
+          fallbackUsed: data.fallback_used || false,
+          allEvaluations: data.all_evaluations || [],
+          round: data.round,
+        }];
       },
       onNodeComplete: (data) => {
         const normalized = normalizeTranscriptContent(data.content || '', data.role || data.node_type || '');
@@ -151,6 +163,7 @@
       sessionId = initialSessionId;
       status = 'running';
       nodeOutputs = [];
+      gateDecisions = [];
       currentRound = 0;
       consensus = 0;
       elapsedMs = 0;
@@ -165,6 +178,7 @@
     error = '';
     status = 'running';
     nodeOutputs = [];
+    gateDecisions = [];
     currentRound = 0;
     consensus = 0;
     elapsedMs = 0;
@@ -351,6 +365,39 @@
                 <span class="output-duration">{output.durationMs}ms</span>
               </div>
               <div class="output-content">{output.content}</div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Gate decision log -->
+    {#if gateDecisions.length > 0}
+      <div class="output-section">
+        <h4 class="output-title">🔀 Gate Decisions</h4>
+        <div class="output-list">
+          {#each gateDecisions as gd}
+            <div class="gate-decision-item" class:gate-passed={gd.result} class:gate-failed={!gd.result}>
+              <div class="gate-decision-header">
+                <span class="gate-icon">{gd.result ? '✅' : '❌'}</span>
+                <span class="gate-condition">{gd.condition}</span>
+                <span class="gate-arrow">→ {gd.chosenTarget}</span>
+              </div>
+              {#if gd.fallbackUsed}
+                <div class="gate-fallback">⚠️ No condition matched — fallback used</div>
+              {/if}
+              {#if gd.allEvaluations.length > 1}
+                <details class="gate-evaluations">
+                  <summary>{gd.allEvaluations.length} conditions evaluated</summary>
+                  <ul>
+                    {#each gd.allEvaluations as ev}
+                      <li class:ev-true={ev.result} class:ev-false={!ev.result}>
+                        {ev.result ? '✓' : '✗'} {ev.condition} → {ev.target}
+                      </li>
+                    {/each}
+                  </ul>
+                </details>
+              {/if}
             </div>
           {/each}
         </div>
@@ -671,6 +718,36 @@
     overflow-y: auto;
   }
   :global(.dark) .output-content { color: #d1d5db; }
+
+  .gate-decision-item {
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border-left: 3px solid #d1d5db;
+    background: #f9fafb;
+  }
+  .gate-decision-item.gate-passed { border-left-color: #10b981; background: #f0fdf4; }
+  .gate-decision-item.gate-failed { border-left-color: #f59e0b; background: #fffbeb; }
+  :global(.dark) .gate-decision-item { background: #1f2937; }
+  :global(.dark) .gate-decision-item.gate-passed { background: #064e3b; }
+  :global(.dark) .gate-decision-item.gate-failed { background: #451a03; }
+  .gate-decision-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .gate-icon { font-size: 14px; }
+  .gate-condition { font-weight: 600; color: #374151; }
+  :global(.dark) .gate-condition { color: #e5e7eb; }
+  .gate-arrow { color: #6b7280; font-size: 11px; }
+  .gate-fallback { font-size: 11px; color: #f59e0b; margin-top: 4px; }
+  .gate-evaluations { font-size: 11px; margin-top: 4px; }
+  .gate-evaluations summary { color: #6b7280; cursor: pointer; }
+  .gate-evaluations ul { margin: 4px 0 0 0; padding-left: 16px; list-style: none; }
+  .gate-evaluations li { margin: 2px 0; }
+  .ev-true { color: #10b981; }
+  .ev-false { color: #9ca3af; }
 
   .state-section {
     padding: 8px 16px;

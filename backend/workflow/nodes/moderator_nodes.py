@@ -378,6 +378,24 @@ def gate_node_factory(
         except Exception:
             logger.debug("Audit logging failed for gate_node %s", node_id, exc_info=True)
 
+        # --- Phase snapshot: save state at this gate for post-hoc analysis ---
+        try:
+            from backend.workflow.state_snapshot import StateSnapshotStore
+            from backend.workflow.workflow_runner import _serialize_state as _ss
+
+            phase_label = node_id
+            StateSnapshotStore().save(
+                session_id=session_id,
+                workflow_id=state.get("workflow_id", ""),
+                node_id=f"phase:{node_id}",
+                node_type="phase_checkpoint",
+                round_number=current_round,
+                state_dict=_ss(dict(state)),
+            )
+            logger.debug("Phase checkpoint saved: %s (round %d)", phase_label, current_round)
+        except Exception:
+            logger.debug("Phase checkpoint save failed for gate %s", node_id, exc_info=True)
+
         return {"node_outputs": [output]}
 
     return _gate_node
