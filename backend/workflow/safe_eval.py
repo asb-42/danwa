@@ -59,12 +59,19 @@ class SafeEvalError(Exception):
 NAMED_CONDITIONS: dict[str, Callable[[Mapping[str, Any]], bool]] = {
     "consensus_reached": lambda s: s.get("consensus_result", {}).get("verdict") == "approved",
     "max_rounds_reached": lambda s: s.get("current_round", 0) > s.get("max_rounds", 5),
+    "rounds_exhausted": lambda s: s.get("current_round", 0) > s.get("max_rounds", 5),
     "extension_granted": lambda s: s.get("extension_granted") is True,
     "draft_deadlock": lambda s: s.get("draft_version", 0) >= _max_draft_versions(s),
     "is_paused": lambda s: bool(s.get("is_paused", False)),
     "approved": lambda s: s.get("consensus_result", {}).get("verdict") == "approved",
     "revision_required": lambda s: s.get("consensus_result", {}).get("verdict") == "revision_required",
     "construction_deadlock": lambda s: s.get("consensus_result", {}).get("verdict") == "construction_deadlock",
+    # Phase-transition gates: always pass — the gate is only reached after
+    # agents in the current phase have completed their work.
+    "framing_complete": lambda s: True,
+    "positions_ready": lambda s: True,
+    "stress_test_complete": lambda s: True,
+    "integration_complete": lambda s: True,
     "True": lambda s: True,
     "False": lambda s: False,
 }

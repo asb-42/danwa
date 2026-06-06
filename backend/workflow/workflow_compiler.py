@@ -40,6 +40,7 @@ from backend.workflow.node_functions import (
     pragmatist_node_factory,
     tone_profile_node_factory,
 )
+from backend.workflow.safe_eval import SafeEvalError, evaluate_condition
 from backend.workflow.workflow_routers import (
     route_conditional,
     route_decision,
@@ -568,7 +569,10 @@ class WorkflowCompiler:
                 )
 
             # Handle gate nodes (conditional routing)
-            elif node.type == "wf-gate" and len(non_feedback) >= 2:
+            # Gate nodes with conditional edges use route_conditional.
+            # Feedback edges from the same gate are added as the fallback
+            # target when no condition matches.
+            elif node.type == "wf-gate" and non_feedback:
                 conditions = {}
                 for edge in non_feedback:
                     target = edge.target
@@ -578,9 +582,36 @@ class WorkflowCompiler:
                 router = route_conditional(conditions)
                 mapping = {tid: tid for tid in conditions}
                 mapping["end"] = END
+
+                # If there's also a feedback edge, use it as the
+                # fallback target (no condition matched → loop back)
+                if feedback_edges:
+                    fb_target = feedback_edges[0].target
+                    # Override the route_conditional fallback so that
+                    # unmatched conditions go to the feedback target
+                    # instead of the last conditional target.
+                    _orig_conditions = dict(conditions)
+
+                    def _make_router(conds, fallback_target):
+                        def _router(state):
+                            for target_node_id, expr in conds.items():
+                                try:
+                                    if evaluate_condition(expr, dict(state)):
+                                        return target_node_id
+                                except SafeEvalError:
+                                    pass
+                                except Exception:
+                                    pass
+                            return fallback_target
+
+                        return _router
+
+                    router = _make_router(_orig_conditions, fb_target)
+                    mapping[fb_target] = fb_target
+
                 graph.add_conditional_edges(node.id, router, mapping)
 
-            # Handle feedback edges
+            # Handle feedback edges (non-gate nodes)
             elif feedback_edges:
                 # Has feedback + possibly sequential edges
                 feedback_target = feedback_edges[0].target
