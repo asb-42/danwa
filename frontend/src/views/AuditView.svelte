@@ -123,6 +123,7 @@
             <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.round')}</th>
+              <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Phase</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.agent')}</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{t('audit.action')}</th>
               <th scope="col" class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Content</th>
@@ -136,6 +137,7 @@
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{i + 1}</td>
                 <td class="px-4 py-3 text-gray-800 dark:text-gray-200">{event.round ?? '—'}</td>
+                <td class="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs">{event.phase || '—'}</td>
                 <td class="px-4 py-3">
                   <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                     {event.agent || '—'}
@@ -146,7 +148,7 @@
                   {#if event.content}
                     <details>
                       <summary class="cursor-pointer text-blue-600 dark:text-blue-400 hover:underline">
-                        {event.content.substring(0, 80)}{event.content.length > 80 ? '…' : ''}
+                        {event.content.substring(0, 120)}{event.content.length > 120 ? '…' : ''}
                       </summary>
                       <div class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded text-xs whitespace-pre-wrap max-h-64 overflow-y-auto">
                         {event.content}

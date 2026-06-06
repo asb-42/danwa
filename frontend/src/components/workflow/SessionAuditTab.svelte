@@ -22,17 +22,23 @@
   $: totalEvents = auditEntries.length;
   $: totalTokens = auditEntries.reduce((sum, e) => sum + (e.prompt_tokens || 0) + (e.completion_tokens || 0), 0);
   $: totalLatency = auditEntries.reduce((sum, e) => sum + (e.latency_ms || 0), 0);
+  let phaseFilter = $state('');
+
   $: eventTypeCounts = auditEntries.reduce((acc, e) => {
     const t = e.event_type || 'unknown';
     acc[t] = (acc[t] || 0) + 1;
     return acc;
   }, {});
 
+  $: phases = [...new Set(auditEntries.map(e => e.phase).filter(Boolean))];
+
   $: filteredEntries = auditEntries
     .filter(e => !eventTypeFilter || e.event_type === eventTypeFilter)
+    .filter(e => !phaseFilter || e.phase === phaseFilter)
     .filter(e => !searchQuery ||
       (e.actor || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (e.node_id || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (e.node_id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.content_formatted || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
   $: sortedEntries = [...filteredEntries].sort((a, b) => {
@@ -80,17 +86,19 @@
   }
 
   function exportCSV() {
-    const headers = ['Timestamp', 'Event Type', 'Node ID', 'Actor', 'Latency (ms)', 'Prompt Tokens', 'Completion Tokens', 'Input Hash', 'Output Hash'];
+    const headers = ['Timestamp', 'Round', 'Phase', 'Event Type', 'Node ID', 'Actor', 'Content', 'LLM Profile', 'Latency (ms)', 'Prompt Tokens', 'Completion Tokens'];
     const rows = sortedEntries.map(e => [
       e.timestamp || '',
+      e.round ?? '',
+      e.phase || '',
       e.event_type || '',
       e.node_id || '',
       e.actor || '',
+      e.content_formatted || '',
+      e.llm_profile_name || e.llm_profile_id || '',
       e.latency_ms || 0,
       e.prompt_tokens || 0,
       e.completion_tokens || 0,
-      e.input_hash || '',
-      e.output_hash || '',
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -141,6 +149,14 @@
       placeholder={t('audit.filter.search')}
       bind:value={searchQuery}
     />
+    {#if phases.length > 0}
+      <select bind:value={phaseFilter}>
+        <option value="">Alle Phasen</option>
+        {#each phases as phase}
+          <option value={phase}>{phase}</option>
+        {/each}
+      </select>
+    {/if}
     <select bind:value={pageSize}>
       <option value="25">25 / page</option>
       <option value="50">50 / page</option>

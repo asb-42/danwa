@@ -128,28 +128,38 @@ async def get_audit_events(
 
 def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = "") -> list[dict]:
     """Transform workflow audit_log entries to the format expected by AuditView."""
-    # Build node_id → llm_profile_name map to resolve UUIDs
+    # Build enrichment maps from state snapshot
     llm_name_map: dict[str, str] = {}
+    ctx_map: dict[str, dict] = {}
     if session_id:
         try:
-            from backend.workflow.report_generator import _build_node_llm_name_map
+            from backend.workflow.report_generator import (
+                _build_audit_context_map,
+                _build_node_llm_name_map,
+                _format_audit_content,
+            )
 
             llm_name_map = _build_node_llm_name_map(session_id)
+            ctx_map = _build_audit_context_map(session_id)
         except Exception:
-            pass
+            _format_audit_content = None  # type: ignore[assignment]
 
     result = []
     for entry in wf_events:
         event_type = entry.get("event_type", "")
         node_id = entry.get("node_id", "")
         llm_display = llm_name_map.get(node_id, "") or entry.get("llm_profile_id", "")
+        ctx = ctx_map.get(node_id, {})
+        raw_content = entry.get("output_content", "")
+        formatted = _format_audit_content(raw_content, event_type) if _format_audit_content else raw_content
         if event_type == "node_completed":
             result.append(
                 {
-                    "round": None,
+                    "round": ctx.get("round"),
+                    "phase": ctx.get("phase", ""),
                     "agent": entry.get("actor", ""),
                     "action": f"node_completed ({node_id})",
-                    "content": entry.get("output_content", ""),
+                    "content": formatted,
                     "timestamp": entry.get("timestamp"),
                     "llm_model": llm_display,
                     "tokens_used": entry.get("completion_tokens", 0),
@@ -158,9 +168,10 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
         elif event_type == "node_started":
             result.append(
                 {
-                    "round": None,
+                    "round": ctx.get("round"),
+                    "phase": ctx.get("phase", ""),
                     "agent": entry.get("actor", ""),
-                    "action": f"node_started ({entry.get('node_id', '')})",
+                    "action": f"node_started ({node_id})",
                     "content": "",
                     "timestamp": entry.get("timestamp"),
                     "llm_model": "",
@@ -170,10 +181,11 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
         elif event_type == "node_failed":
             result.append(
                 {
-                    "round": None,
+                    "round": ctx.get("round"),
+                    "phase": ctx.get("phase", ""),
                     "agent": entry.get("actor", ""),
-                    "action": f"node_failed ({entry.get('node_id', '')})",
-                    "content": entry.get("output_content", ""),
+                    "action": f"node_failed ({node_id})",
+                    "content": formatted,
                     "timestamp": entry.get("timestamp"),
                     "llm_model": "",
                     "tokens_used": 0,
@@ -182,10 +194,11 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
         else:
             result.append(
                 {
-                    "round": None,
+                    "round": ctx.get("round"),
+                    "phase": ctx.get("phase", ""),
                     "agent": entry.get("actor", ""),
                     "action": event_type,
-                    "content": entry.get("output_content", ""),
+                    "content": formatted,
                     "timestamp": entry.get("timestamp"),
                     "llm_model": "",
                     "tokens_used": 0,

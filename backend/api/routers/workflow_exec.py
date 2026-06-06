@@ -858,10 +858,15 @@ async def get_workflow_audit_log(
     )
     events = al.get_audit_log(session_id, filters)
 
-    # Resolve UUID → human-readable LLM profile names from state snapshot
-    from backend.workflow.report_generator import _build_node_llm_name_map
+    # Build enrichment maps from state snapshot
+    from backend.workflow.report_generator import (
+        _build_audit_context_map,
+        _build_node_llm_name_map,
+        _format_audit_content,
+    )
 
     llm_name_map = _build_node_llm_name_map(session_id)
+    ctx_map = _build_audit_context_map(session_id)
 
     # Transform to a format compatible with the AuditView
     result = []
@@ -869,16 +874,22 @@ async def get_workflow_audit_log(
         node_id = entry.get("node_id", "")
         llm_pid = entry.get("llm_profile_id", "")
         llm_display = llm_name_map.get(node_id, "") or llm_pid
+        ctx = ctx_map.get(node_id, {})
+        output_content = entry.get("output_content", "")
+        event_type = entry.get("event_type", "")
         result.append(
             {
                 "session_id": entry.get("session_id"),
                 "workflow_id": entry.get("workflow_id"),
-                "event_type": entry.get("event_type"),
+                "event_type": event_type,
                 "node_id": node_id,
                 "actor": entry.get("actor"),
                 "timestamp": entry.get("timestamp"),
                 "input_content": entry.get("input_content", ""),
-                "output_content": entry.get("output_content", ""),
+                "output_content": output_content,
+                "content_formatted": _format_audit_content(output_content, event_type),
+                "round": ctx.get("round"),
+                "phase": ctx.get("phase", ""),
                 "llm_profile_id": llm_pid,
                 "llm_profile_name": llm_display,
                 "latency_ms": entry.get("latency_ms"),

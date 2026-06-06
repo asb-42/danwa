@@ -13,6 +13,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import html as html_mod
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -169,6 +170,160 @@ def _enrich_audit_entries(
         if resolved:
             entry["llm_profile_name"] = resolved
     return audit_entries
+
+
+def _build_audit_context_map(session_id: str) -> dict[str, dict[str, Any]]:
+    """Build node_id → {round, phase, role_type_name} from state snapshot + workflow def.
+
+    Returns a dict keyed by node_id.  Each value contains:
+      - ``round`` (int | None): the round number the node ran in
+      - ``phase`` (str): human-readable phase name (e.g. "Phase 1 — Strategists")
+      - ``role_type_name`` (str): agent role display name
+    """
+    try:
+        snap_store = StateSnapshotStore()
+        snapshot = snap_store.get_latest(session_id)
+    except Exception:
+        return {}
+
+    if not snapshot:
+        return {}
+
+    state = snapshot.get("state", {})
+    node_outputs: list[dict] = state.get("node_outputs", [])
+    node_configs_raw: dict[str, Any] = state.get("node_configs", {})
+    node_sequence: list[str] = state.get("node_sequence", [])
+    workflow_id = state.get("workflow_id", "")
+
+    # --- Round: from node_outputs ---
+    node_round_map: dict[str, int] = {}
+    for no in node_outputs:
+        nid = no.get("node_id", "")
+        rnd = no.get("round", 0)
+        if nid and rnd:
+            node_round_map[nid] = rnd
+
+    # --- Role type name: from node_configs ---
+    node_role_map: dict[str, str] = {}
+    for nid, cfg in node_configs_raw.items():
+        if isinstance(cfg, str):
+            try:
+                cfg = ast.literal_eval(cfg)
+            except (ValueError, SyntaxError):
+                cfg = {}
+        if isinstance(cfg, dict):
+            role_name = cfg.get("role_type_name", "")
+            if role_name:
+                node_role_map[nid] = role_name
+
+    # --- Phase: from workflow definition phase_configs + node_sequence ---
+    node_phase_map: dict[str, str] = {}
+    try:
+        from backend.blueprints.repo import BlueprintRepository
+
+        repo = BlueprintRepository()
+        wf_def = repo.get_workflow_definition(workflow_id) if workflow_id else None
+    except Exception:
+        wf_def = None
+
+    phase_names: dict[str, str] = {}  # phase_node_id → display name
+    phase_set: set[str] = set()
+    if wf_def and wf_def.phase_configs:
+        for pc in wf_def.phase_configs.values():
+            phase_names[pc.phase_node_id] = pc.name
+            phase_set.add(pc.phase_node_id)
+
+    # Walk the node_sequence to assign phases.
+    # When we encounter a wf-phase node, update the current phase name.
+    # All subsequent nodes belong to that phase until the next phase node.
+    current_phase = ""
+    phase_counter = 0
+    for nid in node_sequence:
+        if nid in phase_set:
+            current_phase = phase_names.get(nid, f"Phase {phase_counter + 1}")
+            phase_counter += 1
+        elif current_phase:
+            node_phase_map[nid] = current_phase
+
+    # --- Merge into context map ---
+    result: dict[str, dict[str, Any]] = {}
+    all_node_ids = set(node_round_map) | set(node_role_map) | set(node_phase_map) | set(node_sequence)
+    for nid in all_node_ids:
+        result[nid] = {
+            "round": node_round_map.get(nid),
+            "phase": node_phase_map.get(nid, ""),
+            "role_type_name": node_role_map.get(nid, ""),
+        }
+    return result
+
+
+def _format_audit_content(output_content: str, event_type: str = "") -> str:
+    """Parse raw audit output_content JSON and extract human-readable text.
+
+    The ``output_content`` from the audit log stores the full state-update
+    dict returned by the node function.  This helper extracts only the
+    meaningful text for display.
+    """
+    if not output_content:
+        return ""
+
+    # Try to parse as JSON
+    data: Any = None
+    try:
+        data = json.loads(output_content)
+    except (json.JSONDecodeError, TypeError):
+        # Not JSON — return as-is (could be plain text from a failed node)
+        return output_content.strip()
+
+    if not isinstance(data, dict):
+        return str(data).strip()
+
+    # --- node_completed: extract agent output content ---
+    # Agent nodes return {"current_draft": ..., "node_outputs": [...], ...}
+    node_outputs = data.get("node_outputs")
+    if isinstance(node_outputs, list) and node_outputs:
+        first = node_outputs[0]
+        if isinstance(first, dict):
+            content = first.get("content", "")
+            if content:
+                return content.strip()
+
+    # --- Gate nodes: extract decision ---
+    gate_decision = data.get("gate_decision")
+    if isinstance(gate_decision, dict):
+        decision = gate_decision.get("decision", "")
+        reason = gate_decision.get("reason", "")
+        parts = []
+        if decision:
+            parts.append(f"Entscheidung: {decision}")
+        if reason:
+            parts.append(f"Begründung: {reason}")
+        if parts:
+            return " | ".join(parts)
+
+    # --- Input node: extract context ---
+    context = data.get("context")
+    if isinstance(context, str) and context:
+        return context.strip()
+
+    # --- Complete node: extract output ---
+    output = data.get("output")
+    if isinstance(output, str) and output:
+        return output.strip()
+
+    # --- Fallback: try any "content" key ---
+    content = data.get("content")
+    if isinstance(content, str) and content:
+        return content.strip()
+
+    # --- Last resort: compact JSON (truncated) ---
+    try:
+        compact = json.dumps(data, ensure_ascii=False, default=str)
+        if len(compact) > 500:
+            return compact[:500] + "…"
+        return compact
+    except Exception:
+        return str(data)[:500]
 
 
 class WorkflowReportGenerator:
