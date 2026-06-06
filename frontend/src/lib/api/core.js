@@ -140,6 +140,11 @@ export async function request(endpoint, options = {}) {
           return String(e);
         })
         .join('; ');
+    } else if (detail && typeof detail === 'object') {
+      // Backend may return detail as a dict (e.g. compilation errors)
+      const msg = detail.message || detail.msg || '';
+      const errors = Array.isArray(detail.errors) ? detail.errors.join('; ') : '';
+      detail = msg && errors ? `${msg}: ${errors}` : msg || errors || JSON.stringify(detail);
     }
     throw new Error(translateBackendError(detail));
   }
