@@ -251,9 +251,7 @@ class WorkflowCompiler:
             agent_tags=list(blueprint.tags or []),
         )
 
-    def _resolve_module_agent_config(
-        self, node: WorkflowNode, module_id: str, errors: list[str]
-    ) -> ResolvedAgentConfig | None:
+    def _resolve_module_agent_config(self, node: WorkflowNode, module_id: str, errors: list[str]) -> ResolvedAgentConfig | None:
         """Resolve an agent node from a module agent-core (ac-* UUID).
 
         Called when ``agent_blueprint_id`` is a module UUID and no
@@ -261,10 +259,7 @@ class WorkflowCompiler:
         """
         mod_agent = resolve_agent_from_module(module_id)
         if mod_agent is None:
-            errors.append(
-                f"Module agent-core '{module_id}' not found for node '{node.id}'. "
-                "Ensure the module is installed and enabled."
-            )
+            errors.append(f"Module agent-core '{module_id}' not found for node '{node.id}'. Ensure the module is installed and enabled.")
             return None
 
         # Resolve LLM profile: module → node config → service default → first available
@@ -275,8 +270,7 @@ class WorkflowCompiler:
             llm_profile_id = self._get_fallback_llm_profile_id(errors)
         if not llm_profile_id:
             errors.append(
-                f"No LLM profile available for module agent '{module_id}' "
-                f"on node '{node.id}'. Assign one via node config or set a service default."
+                f"No LLM profile available for module agent '{module_id}' on node '{node.id}'. Assign one via node config or set a service default."
             )
             return None
 
@@ -317,9 +311,15 @@ class WorkflowCompiler:
             agent_tags=list(mod_agent.tags),
         )
 
-    _API_KEY_PLACEHOLDERS = frozenset({
-        "YOUR_API_KEY_ENV_VAR", "YOUR_API_KEY", "REPLACE_ME", "CHANGEME", "",
-    })
+    _API_KEY_PLACEHOLDERS = frozenset(
+        {
+            "YOUR_API_KEY_ENV_VAR",
+            "YOUR_API_KEY",
+            "REPLACE_ME",
+            "CHANGEME",
+            "",
+        }
+    )
 
     def _get_fallback_llm_profile_id(self, errors: list[str]) -> str:
         """Find a usable LLM profile from the service default or first available.
@@ -329,6 +329,7 @@ class WorkflowCompiler:
         """
         try:
             from backend.core.config import get_settings
+
             settings = get_settings()
             if settings.service_llm_profile_id:
                 return settings.service_llm_profile_id
@@ -400,9 +401,7 @@ class WorkflowCompiler:
 
         # Kahn's algorithm — use deque for O(1) popleft instead of O(n) list.pop(0).
         # M2 fix (Sprint 33): scales linearly for large workflows.
-        queue: deque[str] = deque(
-            nid for nid in node_ids if in_degree.get(nid, 0) == 0
-        )
+        queue: deque[str] = deque(nid for nid in node_ids if in_degree.get(nid, 0) == 0)
         result: list[str] = []
 
         while queue:
@@ -552,8 +551,7 @@ class WorkflowCompiler:
                         target = targets.get(verdict_value, END)
                         if target == END and verdict_value not in targets:
                             logger.warning(
-                                "Decision node '%s': verdict '%s' has no "
-                                "matching decision edge — falling back to END",
+                                "Decision node '%s': verdict '%s' has no matching decision edge — falling back to END",
                                 node.id,
                                 verdict_value,
                             )

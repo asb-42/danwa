@@ -93,6 +93,7 @@ def agent_node_factory(
 
         # Check for cancellation before starting work
         from backend.workflow.workflow_runner import is_cancelled
+
         if is_cancelled(session_id):
             raise asyncio.CancelledError(f"Workflow session {session_id} was cancelled")
 
@@ -201,10 +202,7 @@ def agent_node_factory(
                 # the upstream tone-profile node may have failed or not
                 # run yet.  Surface this so callers can see that the
                 # profile was *expected* but *missing*.
-                tone_profile_error = (
-                    f"tone_profile_source_node_id '{tone_profile_source_node_id}' "
-                    "produced no profile_data in state['tone_profiles']"
-                )
+                tone_profile_error = f"tone_profile_source_node_id '{tone_profile_source_node_id}' produced no profile_data in state['tone_profiles']"
                 logger.warning(
                     "Tone profile source '%s' produced no data for agent %s (node %s)",
                     tone_profile_source_node_id,
@@ -339,11 +337,7 @@ def agent_node_factory(
                 content = await _perform_optional_search(content, role, language, session_id, state)
                 tokens_used = _estimate_tokens(content)
 
-            tokens_used = (
-                gen_result.tokens_out
-                if gen_result.tokens_out > 0
-                else _estimate_tokens(content)
-            )
+            tokens_used = gen_result.tokens_out if gen_result.tokens_out > 0 else _estimate_tokens(content)
             duration_ms = gen_result.duration_ms
 
             logger.info(
