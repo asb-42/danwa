@@ -194,6 +194,16 @@ class InterjectionService:
         for this session, the count advances and we re-hydrate — the
         previous per-process ``_loaded_sessions`` set would have left
         a freshly-arrived DB row invisible to the second process.
+
+        F-02 note: this method is still synchronous and runs the
+        ``SELECT`` while holding the ``threading.RLock`` (not the
+        ``asyncio.Lock``).  It is fast in the common case — the
+        version short-circuit is a dict lookup, the slow path only
+        fires on first access per session or after a cross-process
+        set.  The every-operation disk I/O in the original code was
+        the per-row ``INSERT`` / ``UPDATE`` / ``DELETE`` calls
+        (``_persist_*``); those have been moved to ``asyncio.to_thread``
+        by the submit / ``_drain_pending`` / ``clear`` callers.
         """
         if self._db_path is None or self._db_lock is None:
             return
@@ -404,15 +414,24 @@ class InterjectionService:
             self._queued_ids.add(interjection.interjection_id)
             self._queues.setdefault(session_id, []).append(interjection)
             queue_size = len(self._queues[session_id])
-            # Wake any consumer waiting in consume_blocking().  The
-            # event stays "set" until the queue is fully drained by
-            # the next consume(); see consume_blocking() for the
-            # reset logic.
-            self._get_wake_event(session_id).set()
-            # Mirror to SQLite so a server restart does not lose the
-            # submission.  Done inside the lock so the in-memory queue
-            # size we log matches the rows we just inserted.
-            self._persist_insert(interjection)
+
+        # Mirror to SQLite *outside* the asyncio.Lock so a slow
+        # ``conn.commit()`` (EBS throttle, NFS hiccup, fsync spike)
+        # cannot block the event loop and wedge every other coroutine
+        # in this worker — see reports/2026-06-07_code-review.md F-02.
+        # We ``await`` the thread rather than fire-and-forget so
+        # callers keep the existing "sofort persistiert" semantics;
+        # the only thing that changes is *where* the I/O runs.
+        if self._db_path is not None:
+            await asyncio.to_thread(self._persist_insert, interjection)
+
+        # Wake any consumer waiting in consume_blocking() *after* the
+        # DB write completes so a cross-process consumer that wakes
+        # up and runs ``_ensure_loaded`` is guaranteed to find the
+        # row it just got woken for.  Wake timing is in-memory (no
+        # I/O on this path), so moving it here does not regress the
+        # event-loop responsiveness the F-02 fix is supposed to buy.
+        self._get_wake_event(session_id).set()
 
         # DIAGNOSTIC: Log submission with queue size so we can trace if consume() ever picks it up
         logger.info(
@@ -541,8 +560,17 @@ class InterjectionService:
         Returns ``(results, queue_size)``.  When ``queue_size`` is zero
         after the call, the wake-up event is reset so that the next
         :meth:`consume_blocking` call will block.
+
+        F-02 fix: the in-memory drain runs under the asyncio.Lock as
+        before, but the SQLite ``UPDATE`` that mirrors the consumed
+        rows runs on a worker thread via ``asyncio.to_thread`` after
+        the lock is released.  A slow ``conn.commit()`` can no longer
+        block every other coroutine in the worker process.
         """
         consumed_ids: list[str] = []
+        results: list[dict[str, Any]] = []
+        queue_size_after: int
+        pending: list[Interjection]
         async with self._lock:
             # Re-hydrate the in-memory cache from SQLite in case this
             # is the first operation after a server restart and a
@@ -552,7 +580,6 @@ class InterjectionService:
             queue_size = len(queue)
             pending = [ij for ij in queue if ij.status == "pending"]
 
-            results: list[dict[str, Any]] = []
             for ij in pending:
                 ij.status = "consumed"
                 consumed_ids.append(ij.interjection_id)
@@ -575,10 +602,13 @@ class InterjectionService:
             else:
                 queue_size_after = len(self._queues.get(session_id, []))
 
-            # Mirror the consumed rows to SQLite so the next process
-            # restart does not redeliver them.
-            if consumed_ids:
-                self._persist_mark_consumed(consumed_ids)
+        # Mirror the consumed rows to SQLite *outside* the lock so
+        # the ``UPDATE … consumed_at = ?`` plus the ``commit()`` run
+        # on a worker thread (F-02).  We snapshot ``consumed_ids``
+        # above so this section has no in-memory dependencies on the
+        # queue state.
+        if consumed_ids and self._db_path is not None:
+            await asyncio.to_thread(self._persist_mark_consumed, list(consumed_ids))
 
         # Reset the wake-up event when the queue is empty so the next
         # consume_blocking() call will block.  Done outside the lock to
@@ -641,9 +671,13 @@ class InterjectionService:
             # re-uses the id.
             self._hydration_version.pop(session_id, None)
             self._queued_ids.difference_update(session_ids)
-            # Mirror to SQLite so a restart does not resurrect the
-            # cleared rows.
-            self._persist_delete_session(session_id)
+        # Mirror to SQLite *outside* the lock so the ``DELETE`` plus
+        # ``commit()`` runs on a worker thread (F-02).  In-memory state
+        # is the source of truth for the running session; the DB is a
+        # restart-resilience backup, so a slow DELETE just delays
+        # cleanup — it does not block the event loop.
+        if self._db_path is not None:
+            await asyncio.to_thread(self._persist_delete_session, session_id)
         # Reset the wake-up event so future consumers block.
         event = self._wake_events.get(session_id)
         if event is not None:
