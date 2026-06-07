@@ -42,6 +42,53 @@ def _display_agent_role(role: str) -> str:
     return role if role[0].isupper() else role.capitalize()
 
 
+def _format_content_for_display(content: str, role: str = "") -> str:
+    """Format agent content for human-readable display in exports.
+
+    Orchestrator/meta-agent nodes often output structured JSON with fields
+    like ``reasoning``, ``debate_status``, ``next_agent``, etc.  This helper
+    detects such JSON and renders it as readable text.  Non-JSON content is
+    returned as-is.
+    """
+    if not content:
+        return ""
+
+    stripped = content.strip()
+    if not stripped.startswith("{"):
+        return content
+
+    try:
+        data = json.loads(stripped)
+    except (json.JSONDecodeError, TypeError):
+        return content
+
+    if not isinstance(data, dict):
+        return content
+
+    # Detect orchestrator-style JSON (has reasoning + some workflow fields)
+    _orchestrator_keys = {"reasoning", "debate_status", "phase_transition", "next_agent", "contextual_directive", "injection_context"}
+    if not _orchestrator_keys & set(data.keys()):
+        return content
+
+    # Render as readable text
+    parts: list[str] = []
+    label_map = {
+        "reasoning": "Reasoning",
+        "debate_status": "Status",
+        "phase_transition": "Phase Transition",
+        "next_agent": "Next Agent",
+        "contextual_directive": "Directive",
+        "injection_context": "Context",
+    }
+    for key in ("reasoning", "contextual_directive", "injection_context", "debate_status", "phase_transition", "next_agent"):
+        value = data.get(key)
+        if value is not None and str(value).strip():
+            label = label_map.get(key, key.replace("_", " ").title())
+            parts.append(f"**{label}:** {value}")
+
+    return "\n\n".join(parts) if parts else content
+
+
 def _build_node_phase_map(state: dict[str, Any], workflow_id: str = "") -> dict[str, dict[str, str]]:
     """Build node_id → {phase_name, phase_index} from workflow definition + node_sequence.
 
@@ -136,6 +183,28 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
                 cfg = {}
         config_by_node[nid] = cfg if isinstance(cfg, dict) else {}
 
+    # Build a UUID → profile name cache for fallback resolution
+    _profile_name_cache: dict[str, str] = {}
+
+    def _resolve_profile_name(profile_id: str) -> str:
+        """Resolve an LLM profile UUID to a human-readable name."""
+        if not profile_id:
+            return ""
+        if profile_id in _profile_name_cache:
+            return _profile_name_cache[profile_id]
+        try:
+            from backend.services.profile_service import ProfileService
+
+            ps = ProfileService()
+            profile = ps.get_llm_profile(profile_id)
+            if profile and profile.name:
+                _profile_name_cache[profile_id] = profile.name
+                return profile.name
+        except Exception:
+            pass
+        _profile_name_cache[profile_id] = ""
+        return ""
+
     # Build node_id → phase mapping for phase-aware workflows
     node_phase_map = _build_node_phase_map(state, workflow_id)
 
@@ -149,6 +218,9 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
         llm_model = config.get("llm_model", "")
         llm_profile_id = config.get("llm_profile_id", "") or llm_assignments.get(role, "")
         llm_profile_name = config.get("llm_profile_name", "")
+        # Fallback: resolve UUID → name if llm_profile_name is missing
+        if not llm_profile_name and llm_profile_id:
+            llm_profile_name = _resolve_profile_name(llm_profile_id)
         role_type_name = config.get("role_type_name", "")
 
         # Build a human-readable agent name: "Strategist (deepseek-v4-flash)"
@@ -162,7 +234,7 @@ def _build_mvp_rounds_from_snapshot(debate_data: dict[str, Any]) -> list[dict[st
         agent_outputs.append(
             {
                 "role": agent_name,
-                "content": no.get("content", ""),
+                "content": _format_content_for_display(no.get("content", ""), role),
                 "tokens_used": no.get("tokens_used", 0),
                 "duration_ms": no.get("duration_ms", 0),
                 "llm_profile_id": llm_profile_id,
@@ -231,6 +303,8 @@ def _build_node_llm_name_map(session_id: str) -> dict[str, str]:
     """Build a node_id → llm_profile_name mapping from the state snapshot.
 
     Used to resolve UUIDs in audit log entries to human-readable names.
+    Falls back to resolving ``llm_profile_id`` UUIDs via the ProfileService
+    when ``llm_profile_name`` is not stored in node_configs (legacy snapshots).
     """
     try:
         snap_store = StateSnapshotStore()
@@ -244,6 +318,8 @@ def _build_node_llm_name_map(session_id: str) -> dict[str, str]:
     state = snapshot.get("state", {})
     node_configs_raw = state.get("node_configs", {})
     result: dict[str, str] = {}
+    # Collect UUIDs that need fallback resolution
+    unresolved: dict[str, str] = {}  # node_id → llm_profile_id UUID
     for nid, cfg in node_configs_raw.items():
         if isinstance(cfg, str):
             try:
@@ -254,6 +330,24 @@ def _build_node_llm_name_map(session_id: str) -> dict[str, str]:
             name = cfg.get("llm_profile_name", "")
             if name:
                 result[nid] = name
+            else:
+                profile_id = cfg.get("llm_profile_id", "")
+                if profile_id:
+                    unresolved[nid] = profile_id
+
+    # Fallback: resolve UUIDs via ProfileService
+    if unresolved:
+        try:
+            from backend.services.profile_service import ProfileService
+
+            ps = ProfileService()
+            for nid, profile_id in unresolved.items():
+                profile = ps.get_llm_profile(profile_id)
+                if profile and profile.name:
+                    result[nid] = profile.name
+        except Exception:
+            logger.debug("Failed to resolve LLM profile UUIDs via ProfileService", exc_info=True)
+
     return result
 
 
@@ -384,7 +478,7 @@ def _format_audit_content(output_content: str, event_type: str = "") -> str:
         if isinstance(first, dict):
             content = first.get("content", "")
             if content:
-                return content.strip()
+                return _format_content_for_display(content.strip())
 
     # --- Gate nodes: extract decision ---
     gate_decision = data.get("gate_decision")

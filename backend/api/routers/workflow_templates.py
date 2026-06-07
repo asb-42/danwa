@@ -11,9 +11,12 @@ Endpoints:
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -253,6 +256,28 @@ def instantiate_workflow_template(
     now = datetime.now(UTC)
     wf_name = body.name or f"{template.name} – {now.strftime('%Y-%m-%d %H:%M')}"
 
+    # Extract phase_configs from resolved template data.
+    # Template format: {"phase-1": {"name": "...", "color": "...", ...}, ...}
+    # PhaseConfig expects: phase_node_id (from key), name, color, description, roles, max_rounds
+    phase_configs: dict[str, Any] = {}
+    raw_phase_configs = resolved_data.get("phase_configs", {})
+    if raw_phase_configs:
+        from backend.blueprints.workflow_models import PhaseConfig
+
+        for phase_node_id, pc_data in raw_phase_configs.items():
+            if isinstance(pc_data, dict):
+                try:
+                    phase_configs[phase_node_id] = PhaseConfig(
+                        phase_node_id=phase_node_id,
+                        name=pc_data.get("name", "Phase"),
+                        description=pc_data.get("description", ""),
+                        roles=pc_data.get("roles", []),
+                        max_rounds=pc_data.get("max_rounds", 3),
+                        color=pc_data.get("color", "#6366f1"),
+                    )
+                except Exception:
+                    logger.warning("Failed to parse PhaseConfig for '%s'", phase_node_id, exc_info=True)
+
     try:
         wf = WorkflowDefinition(
             id=str(uuid.uuid4())[:8],
@@ -262,6 +287,7 @@ def instantiate_workflow_template(
             edges=resolved_data.get("edges", []),
             entry_point=resolved_data.get("entry_point"),
             termination_conditions=resolved_data.get("termination_conditions", []),
+            phase_configs=phase_configs,
             template_id=template_id,
             created_at=now,
             updated_at=now,

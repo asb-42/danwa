@@ -315,6 +315,7 @@ async def start_mvp_debate(
             "blueprint_name": agent.blueprint_name,
             "llm_profile_id": agent.llm_profile_id,
             "llm_model": agent.llm_model,
+            "llm_profile_name": agent.llm_profile_name,
             "role_definition_id": agent.role_definition_id,
             "role": agent.role,
             "role_type_name": agent.role_type_name,
@@ -551,8 +552,10 @@ async def start_workflow(
                 "blueprint_name": agent.blueprint_name,
                 "llm_profile_id": agent.llm_profile_id,
                 "llm_model": agent.llm_model,
+                "llm_profile_name": agent.llm_profile_name,
                 "role_definition_id": agent.role_definition_id,
                 "role": agent.role,
+                "role_type_name": agent.role_type_name,
             }
             for agent in compiled.resolved_agents
         },

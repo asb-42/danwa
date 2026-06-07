@@ -452,7 +452,13 @@ def agent_node_factory(
             "node_outputs": [output],
             "messages": [{"role": role, "content": content, "round": current_round}],
         }
-        if not is_transactional:
+        # Meta-agent roles (orchestrator) produce flow-control JSON, not
+        # debate content.  Appending their output to current_draft pollutes
+        # the context for subsequent debate agents, causing them to discuss
+        # meta-evaluation (e.g. "the moderator score rose from 0.72 to 0.79")
+        # instead of the actual debate topic.
+        _meta_agent_roles = {"orchestrator"}
+        if not is_transactional and role not in _meta_agent_roles:
             existing_draft = state.get("current_draft", "")
             new_draft = existing_draft + f"\n\n[{role.upper()} Round {current_round}]\n{content}"
             # Sprint 39 (H2 fix): tail-only truncation via the

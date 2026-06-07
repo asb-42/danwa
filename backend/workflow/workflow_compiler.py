@@ -576,8 +576,11 @@ class WorkflowCompiler:
             node_fn = self._create_node_function(node, resolved_configs)
             graph.add_node(node.id, node_fn)
 
-        # Add a complete node for final output
+        # Add a complete node for final output and connect it to END.
+        # This node assembles the final output from all node_outputs
+        # before the workflow terminates.
         graph.add_node("__complete__", complete_wf_node)
+        graph.add_edge("__complete__", END)
 
         # --- Set entry point ---
         graph.set_entry_point(entry_point)
@@ -595,8 +598,9 @@ class WorkflowCompiler:
             outgoing = edges_by_source.get(node.id, [])
 
             if not outgoing:
-                # Terminal node → END
-                graph.add_edge(node.id, END)
+                # Terminal node → __complete__ → END
+                # Ensures final output is assembled before termination.
+                graph.add_edge(node.id, "__complete__")
                 continue
 
             # Separate edges by type
@@ -617,7 +621,8 @@ class WorkflowCompiler:
                 targets: dict[str, object] = {}
                 for edge in decision_edges:
                     cond = edge.condition or "approved"
-                    tgt: object = END if edge.target in ("__end__", "") else edge.target
+                    # Redirect __end__ through __complete__ so final output is assembled
+                    tgt: object = "__complete__" if edge.target in ("__end__", "") else edge.target
                     targets[cond] = tgt
 
                 # Build verdict_map: maps consensus_result['verdict'] values
@@ -654,17 +659,17 @@ class WorkflowCompiler:
 
                 # Build the LangGraph mapping from the verdict_map keys
                 # to their actual target nodes.  End-of-debate verdicts
-                # (approved, construction_deadlock) terminate; others
-                # route to the next builder.
+                # (approved, construction_deadlock) terminate via
+                # __complete__ so the final output is assembled.
                 mapping: dict[str, object] = {}
                 for verdict_value, key in verdict_map.items():
                     if verdict_value == "construction_deadlock":
-                        mapping[key] = END
+                        mapping[key] = "__complete__"
                     else:
-                        target = targets.get(verdict_value, END)
-                        if target == END and verdict_value not in targets:
+                        target = targets.get(verdict_value, "__complete__")
+                        if target == "__complete__" and verdict_value not in targets:
                             logger.warning(
-                                "Decision node '%s': verdict '%s' has no matching decision edge — falling back to END",
+                                "Decision node '%s': verdict '%s' has no matching decision edge — falling back to __complete__",
                                 node.id,
                                 verdict_value,
                             )
@@ -672,7 +677,7 @@ class WorkflowCompiler:
                 # construction_deadlock is always present (from the
                 # verdict_map we built above) but make it explicit.
                 if "construction_deadlock" not in mapping:
-                    mapping["construction_deadlock"] = END
+                    mapping["construction_deadlock"] = "__complete__"
 
                 graph.add_conditional_edges(
                     node.id,
@@ -688,6 +693,10 @@ class WorkflowCompiler:
                 conditions = {}
                 for edge in non_feedback:
                     target = edge.target
+                    # Redirect __end__ through __complete__ so the final
+                    # output is assembled before the workflow terminates.
+                    if target in ("__end__", ""):
+                        target = "__complete__"
                     condition = edge.condition or "True"
                     conditions[target] = condition
 
@@ -765,13 +774,16 @@ class WorkflowCompiler:
                 if non_feedback:
                     # Has both sequential exit edge and feedback edge
                     exit_target = non_feedback[0].target
+                    # Redirect __end__ through __complete__ so final output is assembled
+                    if exit_target in ("__end__", ""):
+                        exit_target = "__complete__"
                     router = route_feedback(max_rounds)
                     graph.add_conditional_edges(
                         node.id,
                         router,
                         {
                             "continue": feedback_target,
-                            "exit": exit_target if exit_target != node.id else END,
+                            "exit": exit_target if exit_target != node.id else "__complete__",
                         },
                     )
                 else:
