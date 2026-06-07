@@ -214,3 +214,58 @@ describe('BluePrint Canvas Store — parentId serialization', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// reset() — view-unmount cleanup (audit M6)
+// ---------------------------------------------------------------------------
+
+describe('BluePrint Canvas Store — reset() (audit M6)', () => {
+  beforeEach(() => {
+    canvasStore.reset();
+  });
+
+  it('clears all state for view-unmount cleanup', () => {
+    // Seed every field that reset() is supposed to clear.
+    canvasStore.addNode({
+      id: 'n1', type: 'wf-strategist', position: { x: 0, y: 0 },
+      data: { label: 'S', blueprint_id: 'bp-1' },
+    });
+    canvasStore.selectNode('n1');
+    canvasStore.currentLayoutId = 'layout-1';
+    canvasStore.currentLayoutName = 'My Layout';
+    canvasStore.currentWorkflowId = 'wf-1';
+    canvasStore.isDirty = true;
+    canvasStore.error = 'some error';
+    canvasStore.mode = 'workflow';
+    canvasStore.isLoading = true; // Race condition if reset() doesn't clear it
+
+    canvasStore.reset();
+
+    expect(canvasStore.nodes).toEqual([]);
+    expect(canvasStore.edges).toEqual([]);
+    expect(canvasStore.selectedNodeId).toBeNull();
+    expect(canvasStore.currentLayoutId).toBeNull();
+    expect(canvasStore.currentLayoutName).toBeNull();
+    expect(canvasStore.currentWorkflowId).toBeNull();
+    expect(canvasStore.isDirty).toBe(false);
+    expect(canvasStore.error).toBeNull();
+    expect(canvasStore.mode).toBe('blueprint');
+    expect(canvasStore.isLoading).toBe(false);
+  });
+
+  it('is idempotent (safe to call twice in a row)', () => {
+    canvasStore.addNode({
+      id: 'n1', type: 'wf-strategist', position: { x: 0, y: 0 },
+      data: { label: 'S', blueprint_id: 'bp-1' },
+    });
+    canvasStore.reset();
+    expect(() => canvasStore.reset()).not.toThrow();
+    expect(canvasStore.nodes).toEqual([]);
+  });
+
+  it('resets isLoading even when not previously set', () => {
+    canvasStore.isLoading = true;
+    canvasStore.reset();
+    expect(canvasStore.isLoading).toBe(false);
+  });
+});

@@ -301,6 +301,7 @@ class BlueprintCanvasStore {
     this.isDirty = false;
     this.error = null;
     this.mode = 'blueprint';
+    this.isLoading = false;
   }
 }
 

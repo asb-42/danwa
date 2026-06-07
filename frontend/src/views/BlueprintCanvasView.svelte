@@ -84,6 +84,14 @@
     }
   });
 
+  // Reset canvas store on view unmount so navigation back starts from a
+  // clean slate.  Without this, state from a previous BlueprintCanvas
+  // session would leak into the next session and ``isLoading`` could be
+  // stuck at ``true`` if the user navigated away mid-load.  See audit M6.
+  $effect(() => {
+    return () => canvasStore.reset();
+  });
+
   // Restore active workflow session on mount (after layout loads or standalone)
   $effect(() => {
     if (!canvasStore.isLoading && !executionSessionId) {
