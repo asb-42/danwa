@@ -43,10 +43,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from backend.state.pubsub import get_pubsub
+from backend.state.wait_event import WaitEvent, get_wait_event
+
 logger = logging.getLogger(__name__)
 
 
 _DEFAULT_DB_PATH = Path("data/blueprints.db")
+
+
+# Channel-name prefix for cross-process wake-up.  Same session_id →
+# same channel → submit() in worker A wakes consume_blocking() in
+# worker B (via the pub/sub backend in ``backend.state.pubsub``).
+# The full channel name is ``f"danwa:interjection:wake:{session_id}"``.
+_WAKE_CHANNEL_PREFIX = "danwa:interjection:wake:"
 
 
 @dataclass
@@ -74,18 +84,33 @@ class InterjectionService:
     def __init__(self, db_path: Path | str | None = None) -> None:
         # session_id → list of Interjection objects
         self._queues: dict[str, list[Interjection]] = {}
-        # session_id → asyncio.Event that is set when new items are queued
+        # session_id → WaitEvent that is set when new items are queued
         # and cleared again after they are consumed.  Used by
         # consume_blocking() to suspend callers without polling.
-        self._wake_events: dict[str, asyncio.Event] = {}
+        # F-01 fix: WaitEvent (from backend.state.wait_event) is
+        # backed by the shared pub/sub backend — Redis in production,
+        # in-memory for single-process tests — so a submit() in worker A
+        # wakes a consume_blocking() in worker B.  The previous
+        # asyncio.Event was bound to a single event loop and never
+        # crossed process boundaries.
+        self._wake_events: dict[str, WaitEvent] = {}
         self._lock = asyncio.Lock()
 
         self._db_path: Path | None = Path(db_path) if db_path else None
         self._db_lock: threading.RLock | None = threading.RLock() if self._db_path else None
         self._conn: sqlite3.Connection | None = None
-        # Track which sessions have been hydrated from the DB so the
-        # per-session SELECT only runs once after a process restart.
-        self._loaded_sessions: set[str] = set()
+        # Track the channel ``_set_count`` at the time we last hydrated
+        # each session from SQLite.  Re-hydrate when the count has
+        # advanced — this catches cross-process submissions that arrive
+        # via the wake-up signal (F-01) without forcing a redundant
+        # SELECT on every operation in the common case.
+        self._hydration_version: dict[str, int] = {}
+        # Set of interjection_ids currently in some in-memory queue.
+        # Used by ``_ensure_loaded`` to skip DB rows that are already
+        # represented in memory — a row the same process just submitted
+        # would otherwise show up twice after a re-hydration triggered
+        # by the wake event.
+        self._queued_ids: set[str] = set()
 
     # ------------------------------------------------------------------
     # Connection / persistence helpers
@@ -158,14 +183,23 @@ class InterjectionService:
         """Hydrate the in-memory queue for ``session_id`` from SQLite.
 
         No-op when the service runs in in-memory mode, when the session
-        has already been hydrated, or when the DB has no pending rows
-        for the session.  Pending rows are appended in ``created_at``
-        order so the wake-up semantics match the previous in-memory
-        behaviour (FIFO).
+        has already been hydrated at the current channel ``_set_count``,
+        or when the DB has no pending rows for the session.  Pending
+        rows are appended in ``created_at`` order so the wake-up
+        semantics match the previous in-memory behaviour (FIFO).
+
+        F-01 cross-process fix: the version is the channel's
+        ``_set_count`` at hydration time, not just a "have I seen this
+        session" flag.  When a different process sets the wake event
+        for this session, the count advances and we re-hydrate — the
+        previous per-process ``_loaded_sessions`` set would have left
+        a freshly-arrived DB row invisible to the second process.
         """
         if self._db_path is None or self._db_lock is None:
             return
-        if session_id in self._loaded_sessions:
+        channel = get_pubsub().channel(f"{_WAKE_CHANNEL_PREFIX}{session_id}")
+        current_version = channel._set_count
+        if self._hydration_version.get(session_id) == current_version:
             return
         conn = self._get_conn()
         if conn is None:
@@ -187,16 +221,23 @@ class InterjectionService:
                     self._db_path,
                     exc_info=True,
                 )
-                # Mark as loaded so we don't keep hammering a broken DB.
-                self._loaded_sessions.add(session_id)
+                # Record the version we attempted so we don't keep
+                # hammering a broken DB on every wake-up.
+                self._hydration_version[session_id] = current_version
                 return
             for row in rows:
+                if row["interjection_id"] in self._queued_ids:
+                    # Same process already has this row in memory —
+                    # the re-hydration triggered by a wake event
+                    # must not duplicate it.
+                    continue
                 try:
                     metadata = json.loads(row["metadata"]) if row["metadata"] else {}
                 except json.JSONDecodeError:
                     metadata = {}
                 if not isinstance(metadata, dict):
                     metadata = {}
+                self._queued_ids.add(row["interjection_id"])
                 self._queues.setdefault(session_id, []).append(
                     Interjection(
                         interjection_id=row["interjection_id"],
@@ -207,7 +248,7 @@ class InterjectionService:
                         status=row["status"],
                     )
                 )
-            self._loaded_sessions.add(session_id)
+            self._hydration_version[session_id] = current_version
 
     def _persist_insert(self, interjection: Interjection) -> None:
         """Write a new pending row to the SQLite mirror.
@@ -294,11 +335,27 @@ class InterjectionService:
     # Wake-event helper
     # ------------------------------------------------------------------
 
-    def _get_wake_event(self, session_id: str) -> asyncio.Event:
-        """Return the wake-up event for ``session_id``, creating it on demand."""
+    def _get_wake_event(self, session_id: str) -> WaitEvent:
+        """Return the wake-up event for ``session_id``, creating it on demand.
+
+        The event is a ``WaitEvent`` from :mod:`backend.state.wait_event`,
+        which is backed by the module-level pub/sub backend
+        (``get_pubsub()``).  In production with ``settings.redis_url``
+        set, the wake-up signal crosses worker boundaries; in single-
+        process mode (tests, dev) it falls back to in-memory pub/sub
+        with identical single-loop semantics.
+
+        The channel name is deterministic per session_id, so two
+        InterjectionService instances in different processes share the
+        same channel and the same set/clear state.  New sessions are
+        primed with ``set()`` so the first ``consume_blocking()`` call
+        falls through the fast-path and consults the in-memory queue
+        before waiting — this preserves the previous
+        "check queue first, then wait" semantics.
+        """
         event = self._wake_events.get(session_id)
         if event is None:
-            event = asyncio.Event()
+            event = get_wait_event(f"{_WAKE_CHANNEL_PREFIX}{session_id}")
             # New sessions start in the "set" state — there is no
             # consumer blocked on this session yet, so the first
             # consume_blocking() call must check the queue first and
@@ -344,6 +401,7 @@ class InterjectionService:
             # would be ordered incorrectly relative to rows a previous
             # process left behind.
             self._ensure_loaded(session_id)
+            self._queued_ids.add(interjection.interjection_id)
             self._queues.setdefault(session_id, []).append(interjection)
             queue_size = len(self._queues[session_id])
             # Wake any consumer waiting in consume_blocking().  The
@@ -392,9 +450,17 @@ class InterjectionService:
     ) -> list[dict[str, Any]]:
         """Block until at least one interjection is available, then drain the queue.
 
-        Polling-free: waits on a per-session :class:`asyncio.Event` that
+        Polling-free: waits on a per-session :class:`WaitEvent` that
         :meth:`submit` sets when it enqueues an item.  Cancels early
         if ``timeout`` elapses with no activity.
+
+        F-01 fix: the wake event is backed by the module-level
+        pub/sub backend (``backend.state.pubsub.get_pubsub()``), so
+        a ``submit()`` in worker A wakes a ``consume_blocking()`` in
+        worker B in a multi-worker deployment.  The previous
+        ``asyncio.Event`` was bound to a single event loop and
+        silently never crossed process boundaries — the consumer
+        would only see its own worker's submits.
 
         Args:
             session_id: The workflow session ID.
@@ -432,11 +498,23 @@ class InterjectionService:
         # Wait for the next submit().  We loop because multiple
         # consumers might race for the same event — the first one to
         # wake up drains the queue, the others find an empty queue
-        # and have to wait for the next submit.
+        # and have to wait for the next submit.  ``WaitEvent.wait``
+        # handles its own ``asyncio.wait_for`` so a single timeout
+        # call covers the whole blocking call.
+        deadline = asyncio.get_event_loop().time() + timeout
         while True:
-            try:
-                await asyncio.wait_for(event.wait(), timeout=timeout)
-            except TimeoutError:
+            remaining = deadline - asyncio.get_event_loop().time()
+            if remaining <= 0:
+                logger.info(
+                    "consume_blocking: timeout session=%s node=%s after %.1fs",
+                    session_id,
+                    node_id,
+                    timeout,
+                )
+                return []
+            woken = await event.wait(timeout=remaining)
+            if not woken:
+                # Timed out before any wake-up — same exit as above.
                 logger.info(
                     "consume_blocking: timeout session=%s node=%s after %.1fs",
                     session_id,
@@ -452,9 +530,6 @@ class InterjectionService:
             # Queue was drained by a concurrent consumer; reset the
             # event so we wait for the *next* submit() and try again.
             event.clear()
-            # If timeout was reached during the loop, bail out.
-            # (We don't track elapsed time precisely here — the outer
-            # wait_for is the real timeout enforcement.)
 
         # Unreachable: the loop above always returns.
         _ = queue_size  # keep linter happy
@@ -489,6 +564,8 @@ class InterjectionService:
                         "metadata": ij.metadata,
                     }
                 )
+            if consumed_ids:
+                self._queued_ids.difference_update(consumed_ids)
 
             # Garbage-collect fully consumed queues so they don't
             # accumulate across many short-lived sessions.
@@ -554,11 +631,16 @@ class InterjectionService:
             session_id: The workflow session ID.
         """
         async with self._lock:
+            # Capture the IDs that belong to this session *before*
+            # removing the queue so we can drop them from the dedup
+            # set without re-iterating the now-empty queue.
+            session_ids = {ij.interjection_id for ij in self._queues.get(session_id, [])}
             self._queues.pop(session_id, None)
             # Forget the hydration marker so a later submit on the
             # same session id starts with a clean slate if the user
             # re-uses the id.
-            self._loaded_sessions.discard(session_id)
+            self._hydration_version.pop(session_id, None)
+            self._queued_ids.difference_update(session_ids)
             # Mirror to SQLite so a restart does not resurrect the
             # cleared rows.
             self._persist_delete_session(session_id)
