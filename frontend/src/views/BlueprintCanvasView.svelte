@@ -33,6 +33,7 @@
   import SaveAsTemplateDialog from '../components/blueprint/SaveAsTemplateDialog.svelte';
   import RunWorkflowDialog from '../components/blueprint/RunWorkflowDialog.svelte';
   import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   /** @type {{ layoutId?: string|null, routeParams?: string[], navigate?: function }} */
   let { layoutId = null, routeParams = [], navigate = () => {} } = $props();
@@ -73,13 +74,20 @@
   let executionContext = $state('');
   let executionOptions = $state({});
 
-  // Load layout or workflow if layoutId provided
+  // Pending load: { action: () => Promise<void> } or null.  Set when a
+  // load/instantiate action is requested while the canvas has unsaved
+  // edits; cleared after the user confirms or cancels.  See audit M7.
+  let pendingLoad = $state(null);
+
+  // Load layout or workflow if layoutId provided.  Route-driven
+  // loads go through the dirty-check guards so the user is warned
+  // before unsaved edits are discarded.  See audit M7.
   $effect(() => {
     if (layoutId) {
       if (layoutId === 'wf' && routeParams[1]) {
-        loadWorkflow(routeParams[1]);
+        loadWorkflowWithGuard(routeParams[1]);
       } else if (layoutId !== 'wf') {
-        loadLayout(layoutId);
+        loadLayoutWithGuard(layoutId);
       }
     }
   });
@@ -241,10 +249,14 @@
   }
 
   async function handleLoadLayout(layout) {
-    // Load layout directly instead of relying on hash navigation
+    // Load layout directly instead of relying on hash navigation.
+    // Guarded by dirty-check so unsaved edits are not silently lost
+    // (audit M7).
     if (layout && layout.id) {
-      await loadLayout(layout.id);
-      window.location.hash = `#/blueprint/${layout.id}`;
+      const proceed = await loadLayoutWithGuard(layout.id);
+      if (proceed !== false) {
+        window.location.hash = `#/blueprint/${layout.id}`;
+      }
     }
   }
 
@@ -261,6 +273,45 @@
     }
     selectedTemplateId = template.id;
     showInstantiateModal = true;
+  }
+
+  // Dirty-check guard wrappers.  Each returns the underlying call's
+  // return value when the canvas is clean, or ``false`` when the user
+  // is being prompted to confirm discarding unsaved edits (audit M7).
+  // The pending action lives on ``pendingLoad`` and is run by
+  // ``confirmPendingLoad`` once the user accepts the dialog.
+  function loadLayoutWithGuard(id) {
+    if (canvasStore.isDirty) {
+      pendingLoad = { kind: 'layout', action: () => loadLayout(id) };
+      return false;
+    }
+    return loadLayout(id);
+  }
+
+  function loadWorkflowWithGuard(wfId) {
+    if (canvasStore.isDirty) {
+      pendingLoad = { kind: 'workflow', action: () => loadWorkflow(wfId) };
+      return false;
+    }
+    return loadWorkflow(wfId);
+  }
+
+  function handleInstantiatedWithGuard(wf) {
+    if (canvasStore.isDirty) {
+      pendingLoad = { kind: 'template', action: () => handleInstantiated(wf) };
+      return false;
+    }
+    return handleInstantiated(wf);
+  }
+
+  async function confirmPendingLoad() {
+    const action = pendingLoad?.action;
+    pendingLoad = null;
+    if (action) await action();
+  }
+
+  function cancelPendingLoad() {
+    pendingLoad = null;
   }
 
   function handleInstantiated(wf) {
@@ -609,7 +660,7 @@
 <TemplateInstantiateModal
   templateId={selectedTemplateId}
   visible={showInstantiateModal}
-  onSuccess={handleInstantiated}
+  onSuccess={handleInstantiatedWithGuard}
   onClose={() => { showInstantiateModal = false; selectedTemplateId = null; }}
 />
 
@@ -757,6 +808,20 @@
   onNodeStatusUpdate={(nodeId) => {
     patchActiveWorkflowSession('status', 'running');
   }}
+/>
+
+<!-- Unsaved-changes guard (audit M7): shown when a load action is
+     requested while the canvas has dirty edits.  On confirm the
+     queued action runs; on cancel the canvas state is preserved. -->
+<ConfirmDialog
+  open={pendingLoad !== null}
+  title={t('common.confirm')}
+  message={t('common.unsavedChanges')}
+  confirmLabel={t('common.confirm')}
+  cancelLabel={t('common.cancel')}
+  variant="warning"
+  onConfirm={confirmPendingLoad}
+  onCancel={cancelPendingLoad}
 />
 
 <style>

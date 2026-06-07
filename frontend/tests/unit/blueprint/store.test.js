@@ -269,3 +269,44 @@ describe('BluePrint Canvas Store — reset() (audit M6)', () => {
     expect(canvasStore.isLoading).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// hasUnsavedChanges() — dirty-check guard (audit M7)
+// ---------------------------------------------------------------------------
+
+describe('BluePrint Canvas Store — hasUnsavedChanges (audit M7)', () => {
+  beforeEach(() => {
+    canvasStore.reset();
+  });
+
+  it('is false on a fresh canvas', () => {
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+
+  it('becomes true after addNode', () => {
+    canvasStore.addNode({
+      id: 'n1', type: 'wf-strategist', position: { x: 0, y: 0 },
+      data: { label: 'S', blueprint_id: 'bp-1' },
+    });
+    expect(canvasStore.hasUnsavedChanges).toBe(true);
+  });
+
+  it('mirrors isDirty (the source of truth)', () => {
+    canvasStore.isDirty = true;
+    expect(canvasStore.hasUnsavedChanges).toBe(true);
+    canvasStore.isDirty = false;
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+
+  it('becomes false after reset()', () => {
+    canvasStore.isDirty = true;
+    canvasStore.reset();
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+
+  it('becomes false after loadFromLayout() (which clears isDirty)', () => {
+    canvasStore.isDirty = true;
+    canvasStore.loadFromLayout({ nodes: [], edges: [] });
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+});

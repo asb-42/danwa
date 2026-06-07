@@ -44,6 +44,17 @@ class BlueprintCanvasStore {
     return this.nodes.find((n) => n.id === this.selectedNodeId) || null;
   }
 
+  /**
+   * True if the canvas has unsaved user edits.
+   *
+   * Read-only accessor so callers (e.g. route guards, the
+   * ``loadFromLayout`` dirty-check guard — see audit M7) can prompt
+   * the user before discarding work.
+   */
+  get hasUnsavedChanges() {
+    return this.isDirty;
+  }
+
   // ─── Node mutations ───────────────────────────────────────────────
 
   /**
