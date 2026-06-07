@@ -126,6 +126,7 @@ class TestRouteDecisionVerdictMap:
         state = {"consensus_result": {"verdict": "foo"}, "current_round": 1, "draft_version": 1}
         assert router(state) == "accept"
 
+
 class TestRouteDecisionExtension:
     """Test the route_decision factory's respect for ``extension_granted``.
 

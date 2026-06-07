@@ -180,9 +180,7 @@ class TestDecisionEdgeOrdering:
     sequential edges.
     """
 
-    def test_decision_edge_orders_target_after_source(
-        self, repo: BlueprintRepository
-    ) -> None:
+    def test_decision_edge_orders_target_after_source(self, repo: BlueprintRepository) -> None:
         """Moderator → (decision "approved") → Builder.
 
         The Builder must come after the Moderator in
@@ -214,13 +212,10 @@ class TestDecisionEdgeOrdering:
         assert result.is_valid, f"compile failed: {result.errors}"
         seq = result.node_sequence
         assert seq.index("node-moderator") < seq.index("node-builder"), (
-            f"node_builder must come after node_moderator because the "
-            f"decision edge is an ordering constraint; got {seq}"
+            f"node_builder must come after node_moderator because the decision edge is an ordering constraint; got {seq}"
         )
 
-    def test_decision_self_loop_does_not_break_sort(
-        self, repo: BlueprintRepository
-    ) -> None:
+    def test_decision_self_loop_does_not_break_sort(self, repo: BlueprintRepository) -> None:
         """A self-loop decision edge (Moderator → Moderator on
         ``revision_required``) must NOT cause Kahn's algorithm
         to deadlock.  The fix skips self-loops in the sort
@@ -261,9 +256,7 @@ class TestDecisionEdgeOrdering:
         assert seq.index("wf-input") < seq.index("node-moderator")
         assert seq.index("node-moderator") < seq.index("node-builder")
 
-    def test_decision_with_no_targets_still_orders(
-        self, repo: BlueprintRepository
-    ) -> None:
+    def test_decision_with_no_targets_still_orders(self, repo: BlueprintRepository) -> None:
         """A decision edge whose target is ``__end__`` (workflow
         terminates on this branch) must still establish an
         ordering between the source and the implicit end.  We
@@ -300,9 +293,7 @@ class TestFeedbackAndInjectsConfigStillExcluded:
     excluded from the sort (they are not sequencing edges).
     """
 
-    def test_feedback_edge_does_not_block_target(
-        self, repo: BlueprintRepository
-    ) -> None:
+    def test_feedback_edge_does_not_block_target(self, repo: BlueprintRepository) -> None:
         """A → B (sequential) and A → B (feedback).  The
         feedback edge must not create a cycle that Kahn's
         algorithm cannot resolve — the target is still
@@ -363,8 +354,7 @@ class TestTopologicalSortCodeContract:
         # with one that excludes only feedback + injects_config
         # (plus self-loops handled separately).
         assert '"decision"' not in _extract_excluded_types(src), (
-            "WorkflowCompiler._topological_sort must not unconditionally "
-            "exclude decision edges from the sort — see M3."
+            "WorkflowCompiler._topological_sort must not unconditionally exclude decision edges from the sort — see M3."
         )
 
     def test_feedback_edge_still_excluded(self) -> None:
@@ -375,8 +365,7 @@ class TestTopologicalSortCodeContract:
         src = inspect.getsource(WorkflowCompiler._topological_sort)
         excluded = _extract_excluded_types(src)
         assert "feedback" in excluded, (
-            "WorkflowCompiler._topological_sort must continue to exclude "
-            "feedback edges — they are back-edges, not sequencing edges."
+            "WorkflowCompiler._topological_sort must continue to exclude feedback edges — they are back-edges, not sequencing edges."
         )
 
 

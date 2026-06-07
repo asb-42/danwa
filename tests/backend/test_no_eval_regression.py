@@ -41,9 +41,7 @@ def _iter_python_files() -> list[Path]:
     return sorted(BACKEND.rglob("*.py"))
 
 
-def _find_builtin_calls(
-    path: Path, builtin: str
-) -> list[tuple[int, str]]:
+def _find_builtin_calls(path: Path, builtin: str) -> list[tuple[int, str]]:
     """Return ``(line_no, source)`` for every actual call to
     the given Python builtin in the file's executable code.
 
@@ -102,10 +100,7 @@ class TestNoEvalExecInBackend:
     @pytest.mark.parametrize("path", _iter_python_files(), ids=str)
     def test_no_exec_builtin(self, path: Path) -> None:
         hits = _find_builtin_calls(path, "exec")
-        assert not hits, (
-            f"{path}: Python builtin exec() is forbidden.  "
-            f"Found at lines: {[h[0] for h in hits]}"
-        )
+        assert not hits, f"{path}: Python builtin exec() is forbidden.  Found at lines: {[h[0] for h in hits]}"
 
 
 class TestNoBanditS307Suppression:

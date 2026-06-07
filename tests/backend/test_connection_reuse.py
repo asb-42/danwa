@@ -157,9 +157,7 @@ class TestAuditLoggerConnectionReuse:
             t.join()
 
         # Every row must have landed — no lost writes due to race.
-        total = al.count_events("thread-0") + sum(
-            al.count_events(f"thread-{t}") for t in range(1, n_threads)
-        )
+        total = al.count_events("thread-0") + sum(al.count_events(f"thread-{t}") for t in range(1, n_threads))
         assert total == n_threads * per_thread, f"expected {n_threads * per_thread} rows, got {total}"
         al.close()
 
@@ -188,9 +186,7 @@ class TestStateSnapshotConnectionReuse:
                 )
             final_calls = spy.call_count
         # Exactly one connect — the lazy init from __init__.
-        assert final_calls == initial_calls == 1, (
-            f"expected 1 connect, got {final_calls} (init had {initial_calls})"
-        )
+        assert final_calls == initial_calls == 1, f"expected 1 connect, got {final_calls} (init had {initial_calls})"
         store.close()
 
     def test_single_connection_across_mixed_operations(self, tmp_path: Path) -> None:
@@ -211,9 +207,7 @@ class TestStateSnapshotConnectionReuse:
             store.get_history("s1")
             store.get_by_node("s1", "n3")
             store.get_by_type("s1", "agent")
-            assert spy.call_count == baseline, (
-                f"expected no new connects, got {spy.call_count - baseline} extra"
-            )
+            assert spy.call_count == baseline, f"expected no new connects, got {spy.call_count - baseline} extra"
         store.close()
 
     def test_close_releases_connection(self, tmp_path: Path) -> None:
