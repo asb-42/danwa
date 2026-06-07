@@ -482,9 +482,11 @@ class DMS:
                 formatted_results.append(
                     {
                         "text": chunk.get("text", ""),
-                        "source": meta.get("file_name", "unknown"),
-                        "chunk_index": meta.get("chunk_index", -1),
-                        "project_id": meta.get("project_id", project_id or "unknown"),
+                        "metadata": {
+                            "file_name": meta.get("file_name", "Unknown"),
+                            "chunk_index": meta.get("chunk_index", -1),
+                            "project_id": meta.get("project_id", project_id or "unknown"),
+                        },
                     }
                 )
             logger.info("Auto-retrieved %d chunks for topic '%s'", len(formatted_results), topic)
