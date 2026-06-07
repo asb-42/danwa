@@ -397,13 +397,19 @@
     </span>
   </div>
 
-  <!-- SvelteFlow always rendered to accept drops -->
+  <!-- SvelteFlow always rendered to accept drops.
+       ``fitView`` + ``fitViewOptions`` delegate the initial fit to
+       SvelteFlow's built-in handler, which waits for ``nodesInitialized``
+       (every node measured) rather than guessing a 100 ms timeout.  See
+       audit M8. -->
   <SvelteFlow
     {nodes}
     {edges}
     {nodeTypes}
     {edgeTypes}
     {isValidConnection}
+    fitView
+    fitViewOptions={{ padding: 0.3 }}
     onnodeclick={handleNodeClick}
     onpaneclick={handlePaneClick}
     onconnect={handleConnect}
@@ -413,11 +419,12 @@
     maxZoom={2}
     class="blueprint-flow"
   >
-    <!-- Bridge to expose SvelteFlow instance to parent -->
+    <!-- Bridge to expose SvelteFlow instance to parent for
+         ``screenToFlowPosition`` on drops.  No manual fitView call —
+         SvelteFlow's ``fitView`` prop handles initial viewport
+         (audit M8). -->
     <SvelteFlowInstanceBridge onready={(flow) => {
       svelteFlow = flow;
-      // Only fit view on initial mount, not on every node change
-      setTimeout(() => flow.fitView({ padding: 0.3 }), 100);
     }} />
     <Background />
     <Controls />
