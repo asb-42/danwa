@@ -629,8 +629,12 @@ async def cancel_debate(
         )
         return {"status": status_val, "message": f"Debate already {status_val}"}
 
-    mark_cancelled(debate_id)
-    logger.info("Debate %s cancellation requested", debate_id)
+    # The workflow runner checks is_cancelled(session_id), NOT debate_id.
+    # MVP debates use different IDs: debate_id (UUID) vs session_id (wf-xxx).
+    # We must cancel the session_id so the running workflow sees the flag.
+    session_id = debate.get("session_id", debate_id)
+    mark_cancelled(session_id)
+    logger.info("Debate %s cancellation requested (session_id=%s)", debate_id, session_id)
     return {"status": "ok", "message": "Cancellation requested"}
 
 
@@ -678,7 +682,24 @@ async def submit_oob_input(
 
     enqueue_oob(debate_id, oob_entry)
 
+    # Bridge to workflow interjection_service so agent nodes can
+    # consume this input.  MVP debates use a different session_id
+    # than debate_id, so both the OOB queue and the interjection
+    # service must receive the item.
     session_id = debate.get("session_id", debate_id)
+    try:
+        from backend.workflow.interjection import interjection_service
+
+        await interjection_service.submit(
+            session_id=session_id,
+            content=body.content,
+            source="user",
+            metadata={"oob_id": oob_id, "target": body.target.model_dump()},
+        )
+        logger.info("OOB input %s bridged to interjection_service for session %s", oob_id, session_id)
+    except Exception:
+        logger.warning("Failed to bridge OOB input %s to interjection_service for session %s", oob_id, session_id, exc_info=True)
+
     await publish_async(
         session_id,
         "oob_input",
