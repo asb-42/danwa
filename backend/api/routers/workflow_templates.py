@@ -16,8 +16,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -29,6 +27,8 @@ from backend.blueprints.workflow_models import (
     WorkflowTemplate,
 )
 from backend.services.module_profile_sync import get_workflow_templates_from_modules
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

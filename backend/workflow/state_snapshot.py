@@ -238,52 +238,6 @@ class StateSnapshotStore:
 
         return [self._row_to_dict(row) for row in rows]
 
-    def get_by_node(self, session_id: str, node_id: str) -> dict[str, Any] | None:
-        """Get the state snapshot for a specific node in a session.
-
-        Args:
-            session_id: The workflow session ID.
-            node_id: The node ID to look up.
-
-        Returns:
-            The snapshot dict for the node, or None.
-        """
-        with self._connect() as conn:
-            row = conn.execute(
-                """
-                SELECT * FROM state_snapshots
-                WHERE session_id = ? AND node_id = ?
-                ORDER BY id DESC LIMIT 1
-                """,
-                (session_id, node_id),
-            ).fetchone()
-
-        if row is None:
-            return None
-        return self._row_to_dict(row)
-
-    def get_by_type(self, session_id: str, node_type: str) -> list[dict[str, Any]]:
-        """Get all state snapshots for a session filtered by node_type.
-
-        Args:
-            session_id: The workflow session ID.
-            node_type: The node_type to filter by (e.g. ``"phase_checkpoint"``).
-
-        Returns:
-            List of snapshot dicts in chronological order.
-        """
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT * FROM state_snapshots
-                WHERE session_id = ? AND node_type = ?
-                ORDER BY id ASC
-                """,
-                (session_id, node_type),
-            ).fetchall()
-
-        return [self._row_to_dict(row) for row in rows]
-
     @staticmethod
     def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         """Convert a SQLite Row to a dict, parsing the state_json."""

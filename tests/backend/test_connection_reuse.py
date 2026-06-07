@@ -138,11 +138,11 @@ class TestAuditLoggerConnectionReuse:
     def test_concurrent_writes_serialize_via_lock(self, tmp_db: Path) -> None:
         """Many threads writing in parallel must not corrupt the row count."""
         al = AuditLogger(tmp_db)
-        N_THREADS = 8
-        PER_THREAD = 25
+        n_threads = 8
+        per_thread = 25
 
         def writer(thread_id: int) -> None:
-            for i in range(PER_THREAD):
+            for i in range(per_thread):
                 al.log_node_execution(
                     session_id=f"thread-{thread_id}",
                     workflow_id="w1",
@@ -150,7 +150,7 @@ class TestAuditLoggerConnectionReuse:
                     node_id=f"n{i}",
                 )
 
-        threads = [threading.Thread(target=writer, args=(t,)) for t in range(N_THREADS)]
+        threads = [threading.Thread(target=writer, args=(t,)) for t in range(n_threads)]
         for t in threads:
             t.start()
         for t in threads:
@@ -158,9 +158,9 @@ class TestAuditLoggerConnectionReuse:
 
         # Every row must have landed — no lost writes due to race.
         total = al.count_events("thread-0") + sum(
-            al.count_events(f"thread-{t}") for t in range(1, N_THREADS)
+            al.count_events(f"thread-{t}") for t in range(1, n_threads)
         )
-        assert total == N_THREADS * PER_THREAD, f"expected {N_THREADS * PER_THREAD} rows, got {total}"
+        assert total == n_threads * per_thread, f"expected {n_threads * per_thread} rows, got {total}"
         al.close()
 
 
@@ -238,11 +238,11 @@ class TestStateSnapshotConnectionReuse:
     def test_concurrent_saves_serialize_via_lock(self, tmp_path: Path) -> None:
         """Many threads saving in parallel must not lose rows."""
         store = StateSnapshotStore(db_path=tmp_path / "snap.db")
-        N_THREADS = 8
-        PER_THREAD = 25
+        n_threads = 8
+        per_thread = 25
 
         def writer(thread_id: int) -> None:
-            for i in range(PER_THREAD):
+            for i in range(per_thread):
                 store.save(
                     session_id=f"thread-{thread_id}",
                     workflow_id="w1",
@@ -252,12 +252,12 @@ class TestStateSnapshotConnectionReuse:
                     state_dict={"t": thread_id, "i": i},
                 )
 
-        threads = [threading.Thread(target=writer, args=(t,)) for t in range(N_THREADS)]
+        threads = [threading.Thread(target=writer, args=(t,)) for t in range(n_threads)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
 
-        total = sum(len(store.get_history(f"thread-{t}")) for t in range(N_THREADS))
-        assert total == N_THREADS * PER_THREAD, f"expected {N_THREADS * PER_THREAD}, got {total}"
+        total = sum(len(store.get_history(f"thread-{t}")) for t in range(n_threads))
+        assert total == n_threads * per_thread, f"expected {n_threads * per_thread}, got {total}"
         store.close()
