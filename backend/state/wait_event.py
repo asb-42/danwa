@@ -43,9 +43,18 @@ logger = logging.getLogger(__name__)
 class WaitEvent(Protocol):
     """asyncio.Event-equivalent that survives process boundaries."""
 
-    def is_set(self) -> bool: ...
-    def set(self) -> None: ...
-    def clear(self) -> None: ...
+    def is_set(self) -> bool:
+        """Return ``True`` if the event is currently set."""
+        ...
+
+    def set(self) -> None:
+        """Set the event and wake all waiters."""
+        ...
+
+    def clear(self) -> None:
+        """Clear the event so future wait calls block."""
+        ...
+
     async def wait(self, timeout: float | None = None) -> bool:
         """Block until the event is set or ``timeout`` expires.
 
@@ -114,6 +123,7 @@ class InMemoryWaitEvent:
         self._channel().clear()
 
     async def wait(self, timeout: float | None = None) -> bool:
+        """Block until the event is set or timeout expires."""
         # Fast path — the channel has been set since the last clear.
         if self.is_set():
             return True
@@ -158,6 +168,7 @@ class InMemoryWaitEvent:
             # Stale message — keep waiting for a fresh set signal.
 
     async def aclose(self) -> None:
+        """Release the underlying subscription. Idempotent."""
         # No persistent resources in in-memory.
         return None
 
@@ -213,6 +224,7 @@ class RedisWaitEvent:
         self._channel().clear()
 
     async def wait(self, timeout: float | None = None) -> bool:
+        """Block until the event is set or timeout expires."""
         if self.is_set():
             return True
         sub = self._channel().subscribe()
@@ -248,6 +260,7 @@ class RedisWaitEvent:
                 return
 
     async def aclose(self) -> None:
+        """Close any lingering subscriptions. Idempotent."""
         # Close any lingering subscriptions
         for sub in list(self._active_subscriptions):
             try:

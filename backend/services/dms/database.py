@@ -16,6 +16,7 @@ class DMSDB:
     """SQLite-backed storage for DMS documents and chunks."""
 
     def __init__(self, db_path: str | Path | None = None):
+        """Initialise DMSDB."""
         if db_path is None:
             db_path = Path("memory/dms.db")
         self.db_path = Path(db_path)
@@ -27,6 +28,7 @@ class DMSDB:
         self._init_db()
 
     def _init_db(self) -> None:
+        """Init db the instance."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
@@ -93,6 +95,7 @@ class DMSDB:
     # -- projects --
 
     def create_project(self, name: str, description: str = "", metadata_json: str = "") -> dict:
+        """Create and return a new project."""
         project_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
         self.conn.execute(
@@ -103,15 +106,18 @@ class DMSDB:
         return self.get_project(project_id)  # type: ignore[return-value]
 
     def get_project(self, project_id: str) -> dict | None:
+        """Retrieve and return project."""
         cursor = self.conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
 
     def list_projects(self) -> list[dict]:
+        """Return a list of projects."""
         cursor = self.conn.execute("SELECT * FROM projects ORDER BY created_at DESC")
         return [dict(row) for row in cursor.fetchall()]
 
     def delete_project(self, project_id: str) -> bool:
+        """Delete project."""
         self.conn.execute(
             "DELETE FROM document_chunks WHERE document_id IN (SELECT id FROM documents WHERE project_id = ?)",
             (project_id,),
@@ -137,6 +143,7 @@ class DMSDB:
         ocr_used: bool = False,
         metadata_json: str = "",
     ) -> dict:
+        """Add document."""
         doc_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
         if not original_filename:
@@ -167,15 +174,18 @@ class DMSDB:
         return self.get_document(doc_id)  # type: ignore[return-value]
 
     def get_document(self, doc_id: str) -> dict | None:
+        """Retrieve and return document."""
         cursor = self.conn.execute("SELECT * FROM documents WHERE id = ?", (doc_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
 
     def list_documents(self, project_id: str) -> list[dict]:
+        """Return a list of documents."""
         cursor = self.conn.execute("SELECT * FROM documents WHERE project_id = ? ORDER BY uploaded_at DESC", (project_id,))
         return [dict(row) for row in cursor.fetchall()]
 
     def delete_document(self, doc_id: str) -> bool:
+        """Delete document."""
         try:
             self.conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (doc_id,))
             self.conn.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
@@ -216,6 +226,7 @@ class DMSDB:
         page: int = 0,
         metadata_json: str = "",
     ) -> dict:
+        """Add chunk."""
         chunk_id = str(uuid.uuid4())[:8]
         self.conn.execute(
             """INSERT INTO document_chunks
@@ -235,6 +246,7 @@ class DMSDB:
         }
 
     def list_chunks(self, document_id: str) -> list[dict]:
+        """Return a list of chunks."""
         cursor = self.conn.execute(
             "SELECT * FROM document_chunks WHERE document_id = ? ORDER BY chunk_index",
             (document_id,),
@@ -244,6 +256,7 @@ class DMSDB:
     # -- rag_context --
 
     def add_rag_context(self, session_id: str, document_id: str) -> dict:
+        """Add rag context."""
         now = datetime.now().isoformat()
         self.conn.execute(
             "INSERT OR REPLACE INTO rag_context (session_id, document_id, added_at) VALUES (?, ?, ?)",
@@ -253,10 +266,12 @@ class DMSDB:
         return {"session_id": session_id, "document_id": document_id, "added_at": now}
 
     def list_rag_context(self, session_id: str) -> list[dict]:
+        """Return a list of rag context."""
         cursor = self.conn.execute("SELECT * FROM rag_context WHERE session_id = ? ORDER BY added_at", (session_id,))
         return [dict(row) for row in cursor.fetchall()]
 
     def remove_rag_context(self, session_id: str, document_id: str) -> bool:
+        """Remove rag context."""
         self.conn.execute(
             "DELETE FROM rag_context WHERE session_id = ? AND document_id = ?",
             (session_id, document_id),
@@ -265,4 +280,5 @@ class DMSDB:
         return True
 
     def close(self) -> None:
+        """Close the resource and release any held connections."""
         self.conn.close()

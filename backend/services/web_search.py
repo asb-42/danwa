@@ -47,6 +47,7 @@ class WebSearchTool:
         region: str = "de-de",
         timeout: float = 8.0,
     ) -> None:
+        """Initialise WebSearchTool."""
         self.url = url.rstrip("/")
         self.max_results = max_results
         self.region = region
@@ -151,6 +152,7 @@ class WebSearchTool:
                 from duckduckgo_search import DDGS
 
             def _do_search() -> list[WebSearchResult]:
+                """Do search the instance."""
                 results: list[WebSearchResult] = []
                 with DDGS() as ddgs:
                     for r in ddgs.text(

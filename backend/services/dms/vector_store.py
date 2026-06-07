@@ -15,6 +15,7 @@ class DMSVectorStore:
     """Persistent vector store backed by ChromaDB."""
 
     def __init__(self, chroma_path: str | Path, collection_name: str = "document_chunks"):
+        """Initialise DMSVectorStore."""
         chroma_dir = Path(chroma_path)
         chroma_dir.mkdir(parents=True, exist_ok=True)
         self.client = chromadb.PersistentClient(path=str(chroma_dir))
@@ -22,6 +23,7 @@ class DMSVectorStore:
         logger.info("DMS VectorStore loaded: %d chunks in '%s'", self.collection.count(), collection_name)
 
     def add_chunks(self, document_id: str, chunks: list[dict], project_id: str = "") -> None:
+        """Add chunks."""
         if not chunks:
             return
         ids = []
@@ -45,6 +47,7 @@ class DMSVectorStore:
         logger.info("Added %d chunks for document %s", len(chunks), document_id)
 
     def search(self, query: str, project_id: str | None = None, k: int = 5) -> list[dict]:
+        """Search the instance."""
         if self.collection.count() == 0:
             return []
         where = None
@@ -76,8 +79,10 @@ class DMSVectorStore:
             return []
 
     def delete_document_chunks(self, document_id: str) -> None:
+        """Delete document chunks."""
         self.collection.delete(where={"document_id": {"$eq": document_id}})
         logger.info("Deleted chunks for document %s", document_id)
 
     def count(self) -> int:
+        """Count the instance."""
         return self.collection.count()

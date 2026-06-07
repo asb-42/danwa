@@ -90,6 +90,7 @@ class CompiledWorkflow:
 
     @property
     def is_valid(self) -> bool:
+        """Return ``True`` if the instance passes validation."""
         return len(self.errors) == 0
 
 
@@ -105,6 +106,7 @@ class WorkflowCompiler:
     """
 
     def __init__(self, repo: BlueprintRepository) -> None:
+        """Initialise WorkflowCompiler."""
         self._repo = repo
 
     def compile(self, workflow: WorkflowDefinition) -> CompiledWorkflow:
@@ -715,6 +717,7 @@ class WorkflowCompiler:
 
                     def _make_router(conds, fallback_target, gid):
                         async def _router(state):
+                            """Router the instance."""
                             from backend.workflow.workflow_routers import _publish_gate_decision
 
                             session_id = state.get("session_id", "")

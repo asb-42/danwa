@@ -32,10 +32,14 @@ router = APIRouter()
 
 
 class MoveDocumentRequest(BaseModel):
+    """MoveDocumentRequest class."""
+
     target_project_id: str
 
 
 class UpdateDocumentTextRequest(BaseModel):
+    """UpdateDocumentTextRequest class."""
+
     text: str
 
 
@@ -432,6 +436,8 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templat
 
 
 class AnalysisExportRequest(BaseModel):
+    """AnalysisExportRequest class."""
+
     format: str = "pdf"
 
 

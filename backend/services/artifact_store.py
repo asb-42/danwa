@@ -26,10 +26,12 @@ class ArtifactStore:
     """
 
     def __init__(self, db_path: Path | str | None = None) -> None:
+        """Initialise ArtifactStore."""
         self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _connect(self) -> sqlite3.Connection:
+        """Connect the instance."""
         conn = sqlite3.connect(str(self._db_path))
         conn.row_factory = sqlite3.Row
         return conn

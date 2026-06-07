@@ -37,6 +37,7 @@ class InputComposerService:
         job_store: InputJobStore | None = None,
         registry: InputPluginRegistry | None = None,
     ) -> None:
+        """Initialise InputComposerService."""
         self.job_store = job_store or InputJobStore()
         self.registry = registry or InputPluginRegistry.instance()
 

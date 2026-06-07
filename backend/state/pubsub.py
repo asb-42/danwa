@@ -67,8 +67,14 @@ class PubSubChannel(Protocol):
 class Subscription(Protocol):
     """An active subscription on a channel."""
 
-    def __aiter__(self) -> AsyncIterator[str]: ...
-    async def __anext__(self) -> str: ...
+    def __aiter__(self) -> AsyncIterator[str]:
+        """Return the async iterator."""
+        ...
+
+    async def __anext__(self) -> str:
+        """Return the next message or raise StopAsyncIteration."""
+        ...
+
     async def close(self) -> None:
         """Cancel the subscription.  Buffered messages are dropped."""
         ...
@@ -101,6 +107,7 @@ class InMemorySubscription:
         return self
 
     async def __anext__(self) -> str:
+        """Return the next message or raise StopAsyncIteration."""
         if self._close_event.is_set():
             raise StopAsyncIteration
         # Race the queue.get() against the close event.  Whichever
@@ -126,6 +133,7 @@ class InMemorySubscription:
         raise StopAsyncIteration
 
     async def close(self) -> None:
+        """Close the subscription and release resources."""
         if self._close_event.is_set():
             return
         self._close_event.set()
@@ -246,6 +254,7 @@ class _RedisSubscription:
         self._closed = False
 
     async def _ensure_subscribed(self) -> None:
+        """Ensure the Redis subscription is active."""
         # ``subscribe`` is non-blocking on redis.asyncio but returns a
         # coroutine; await it once.
         if not getattr(self._pubsub, "_danwa_subscribed", False):
@@ -257,6 +266,7 @@ class _RedisSubscription:
         return self
 
     async def __anext__(self) -> str:
+        """Return the next message or raise StopAsyncIteration."""
         if self._closed:
             raise StopAsyncIteration
         await self._ensure_subscribed()
@@ -273,6 +283,7 @@ class _RedisSubscription:
             await asyncio.sleep(0.01)
 
     async def close(self) -> None:
+        """Close the subscription and unsubscribe from Redis."""
         if self._closed:
             return
         self._closed = True

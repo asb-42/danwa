@@ -111,10 +111,12 @@ def derive_module_type(parent_dir_name: str, module_id: str) -> ModuleType:
 
 
 def derive_module_category(parent_dir_name: str) -> ModuleCategory:
+    """Derive module category the instance."""
     return _DIR_TO_CATEGORY.get(parent_dir_name, ModuleCategory.AGENTS)
 
 
 def parent_dir_name(module_dir: Path, modules_dir: Path) -> str:
+    """Parent dir name the instance."""
     try:
         rel = module_dir.relative_to(modules_dir)
         parts = rel.parts

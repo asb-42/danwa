@@ -112,6 +112,7 @@ def _is_module_enabled(module_id: str) -> bool:
 
 
 def _derive_profile_format(profile_file: str, manifest_format: str | None) -> str | None:
+    """Derive profile format the instance."""
     if manifest_format:
         return manifest_format
     ext = Path(profile_file).suffix.lower()

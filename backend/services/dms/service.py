@@ -42,6 +42,7 @@ class DMS:
         config: dict | None = None,
         project_id: str | None = None,
     ):
+        """Initialise DMS."""
         self.db_path = str(db_path)
         self.chroma_path = str(chroma_path)
         self.config = config or {}

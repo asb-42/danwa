@@ -23,12 +23,16 @@ logger = logging.getLogger(__name__)
 
 
 class TTSEngine(StrEnum):
+    """TTSEngine class."""
+
     EDGE_TTS = "edge_tts"
     MIMO_TTS = "mimo_tts"
     PYTTSX3 = "pyttsx3"
 
 
 class AudioFormat(StrEnum):
+    """AudioFormat class."""
+
     MP3 = "mp3"
     WAV = "wav"
 

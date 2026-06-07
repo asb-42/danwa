@@ -87,6 +87,7 @@ class BlueprintRepo:
     @staticmethod
     def _row_to_blueprint(row: sqlite3.Row) -> AgentBlueprint:
         # Graceful fallback for tts_voice_id (may not exist in older DBs)
+        """Row to blueprint the instance."""
         tts_voice_id = None
         if "tts_voice_id" in row.keys():
             tts_voice_id = row["tts_voice_id"]
@@ -168,6 +169,7 @@ class BlueprintRepo:
 
     @staticmethod
     def _row_to_layout(row: sqlite3.Row) -> CanvasLayout:
+        """Row to layout the instance."""
         layout_data = CanvasLayoutData.model_validate_json(row["layout_json"])
         return CanvasLayout(
             id=row["id"],

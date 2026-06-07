@@ -68,6 +68,7 @@ class CompilerService:
     """
 
     def __init__(self, repo: BlueprintRepository) -> None:
+        """Initialise CompilerService."""
         self._repo = repo
 
     def compile(self, workflow: WorkflowDefinition) -> CompilationResult:

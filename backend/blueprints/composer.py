@@ -52,6 +52,7 @@ class BundleComposer:
     """Creates, reads, previews, exports, and imports composition-based AgentBundles."""
 
     def __init__(self, repo: BlueprintRepository | None = None):
+        """Initialise BundleComposer."""
         self.repo = repo or BlueprintRepository()
         self._composer = ComposerService()
         self._modules_dir = MODULES_DIR
@@ -93,6 +94,7 @@ class BundleComposer:
 
     @staticmethod
     def _list_llm_profiles() -> list[dict[str, str]]:
+        """List llm profiles the instance."""
         repo = BlueprintRepository()
         profiles = repo.list_llm_profiles(limit=200)
         return [

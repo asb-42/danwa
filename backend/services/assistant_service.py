@@ -271,6 +271,7 @@ class AssistantService:
         max_sessions: int = 50,
         max_messages_per_session: int = 100,
     ):
+        """Initialise AssistantService."""
         self._profile_service = profile_service or ProfileService()
         self._sessions: dict[str, ChatSession] = {}
         self._max_sessions = max_sessions

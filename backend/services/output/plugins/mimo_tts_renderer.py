@@ -60,6 +60,7 @@ class MiMoTTSRenderer:
         api_key_env: str = "XIAOMI_API_KEY",
         model: str = _DEFAULT_MODEL,
     ) -> None:
+        """Initialise MiMoTTSRenderer."""
         self._api_base = (api_base or _DEFAULT_API_BASE).rstrip("/")
         if not self._api_base.endswith("/v1"):
             self._api_base = f"{self._api_base}/v1"

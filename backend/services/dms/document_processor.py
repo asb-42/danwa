@@ -22,6 +22,7 @@ class DocumentProcessor:
     """
 
     def __init__(self, config: dict | None = None):
+        """Initialise DocumentProcessor."""
         self.config = config or {}
         self._ocr = None
         self._ocr_engine = None  # "paddleocr", "easyocr", "tesseract", or None
@@ -52,6 +53,7 @@ class DocumentProcessor:
         return await self._process_with_existing(file_path)
 
     async def _process_with_existing(self, file_path: str) -> dict[str, Any]:
+        """Process with existing internally."""
         result = await self._parser.parse_file(file_path)
         text = result.get("text", "")
         metadata = self._build_metadata(
@@ -276,6 +278,7 @@ class DocumentProcessor:
         return self._ocr if self._ocr is not False and self._ocr is not None else None
 
     def _extract_paddle_text(self, results: Any) -> str:
+        """Extract paddle text the instance."""
         blocks = []
         for result in results or []:
             if isinstance(result, dict):
@@ -309,6 +312,7 @@ class DocumentProcessor:
         metadata: dict | None = None,
         ocr_used: bool = False,
     ) -> dict[str, Any]:
+        """Build metadata internally."""
         path = Path(file_path)
         merged = dict(metadata or {})
         merged["source"] = path.name

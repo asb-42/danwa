@@ -30,6 +30,7 @@ _server: A2AServer | None = None
 
 
 def _get_task_manager() -> TaskManager:
+    """Return (or lazily create) task manager."""
     global _task_manager
     if _task_manager is None:
         _task_manager = TaskManager()
@@ -37,6 +38,7 @@ def _get_task_manager() -> TaskManager:
 
 
 def _get_server(project_store: ProjectStore | None = None) -> A2AServer:
+    """Return (or lazily create) server."""
     global _server
     if _server is None:
         _server = A2AServer(task_manager=_get_task_manager(), project_store=project_store)

@@ -31,12 +31,16 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "
 
 
 class PrintTemplate(StrEnum):
+    """PrintTemplate class."""
+
     ACADEMIC_DEBATE = "academic_debate"
     MINIMAL = "minimal"
     TRANSACTIONAL_DRAFTING = "transactional_drafting"
 
 
 class PrintFormat(StrEnum):
+    """PrintFormat class."""
+
     PDF = "pdf"
     DOCX = "docx"
     ODT = "odt"
@@ -45,6 +49,8 @@ class PrintFormat(StrEnum):
 
 
 class PageSize(StrEnum):
+    """PageSize class."""
+
     A4 = "a4"
     LETTER = "letter"
 

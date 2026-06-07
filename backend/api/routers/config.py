@@ -420,6 +420,8 @@ def update_ocr_settings(body: OcrSettingsBody):
 
 
 class UtilityLLMRequest(BaseModel):
+    """UtilityLLMRequest class."""
+
     profile_id: str
 
 

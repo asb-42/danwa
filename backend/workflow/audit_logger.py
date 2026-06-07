@@ -40,6 +40,7 @@ class AuditLogger:
     """
 
     def __init__(self, db_path: Path | str | None = None) -> None:
+        """Initialise AuditLogger."""
         self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None
@@ -525,6 +526,7 @@ def audit_decorator(
     def decorator(fn):
         @functools.wraps(fn)
         async def wrapper(state: dict) -> dict:
+            """Wrapper the instance."""
             session_id = state.get("session_id", "")
             workflow_id = state.get("workflow_id", "")
             workflow_version = state.get("workflow_version", 1)

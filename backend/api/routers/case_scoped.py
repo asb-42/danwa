@@ -47,6 +47,7 @@ router = APIRouter()
 
 
 def _resolve_case_dir(tenant_id: str, case_id: str, case_store: CaseStore) -> Path:
+    """Resolve case dir internally."""
     case = case_store.get(tenant_id, case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -54,6 +55,7 @@ def _resolve_case_dir(tenant_id: str, case_id: str, case_store: CaseStore) -> Pa
 
 
 def _get_debate_store_for_case(tenant_id: str, case_id: str, case_store: CaseStore) -> DebateStore:
+    """Return (or lazily create) debate store for case."""
     case_dir = _resolve_case_dir(tenant_id, case_id, case_store)
     debates_dir = case_dir / "debates"
     debates_dir.mkdir(parents=True, exist_ok=True)
@@ -61,6 +63,7 @@ def _get_debate_store_for_case(tenant_id: str, case_id: str, case_store: CaseSto
 
 
 def _resolve_llm_model(llm_profile_id: str, project_id: str) -> str:
+    """Resolve llm model internally."""
     if not llm_profile_id:
         return ""
     try:

@@ -22,6 +22,7 @@ class HybridRetriever:
     """Combines BM25 keyword search with vector similarity search using RRF."""
 
     def __init__(self, vector_store: DMSVectorStore, metadata_index: MetadataIndex | None = None):
+        """Initialise HybridRetriever."""
         self.vector_store = vector_store
         self.metadata_index = metadata_index
         self.rrf_k = 60  # Standard RRF constant
@@ -41,6 +42,7 @@ class HybridRetriever:
             logger.warning("Failed to load CrossEncoder: %s, re-ranking disabled", e)
 
     def retrieve(self, query: str, project_id: str | None = None, k: int = 5) -> list[dict[str, Any]]:
+        """Retrieve the instance."""
         chunks = self._fetch_chunks(project_id)
         bm25_results = self._bm25_retrieve(query, chunks, top_n=20)
         vector_results = self.vector_store.search(query, project_id=project_id, k=20)
@@ -97,6 +99,7 @@ class HybridRetriever:
         return chunks
 
     def _fetch_chunks_uncached(self, project_id: str | None) -> list[dict[str, Any]]:
+        """Fetch chunks uncached the instance."""
         if project_id and self.metadata_index:
             return self.metadata_index.get_chunks_by_project(project_id)
         if not project_id:
@@ -129,6 +132,7 @@ class HybridRetriever:
             return []
 
     def _bm25_retrieve(self, query: str, chunks: list[dict], top_n: int = 20) -> list[dict[str, Any]]:
+        """Bm25 retrieve the instance."""
         if not chunks:
             return []
         try:
@@ -160,6 +164,7 @@ class HybridRetriever:
         return [t.lower() for t in text.split() if len(t) > 1]
 
     def _rrf_combine(self, bm25_results: list[dict], vector_results: list[dict]) -> dict[str, float]:
+        """Rrf combine the instance."""
         rrf_scores: dict[str, float] = {}
         for rank, result in enumerate(bm25_results, start=1):
             chunk_id = result["id"]

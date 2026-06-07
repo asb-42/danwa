@@ -35,6 +35,7 @@ _job_store: RenderJobStore | None = None
 
 
 def _get_engine() -> RenderEngineService:
+    """Return (or lazily create) engine."""
     global _engine
     if _engine is None:
         # Ensure plugins are imported (triggers @register_plugin)
@@ -45,6 +46,7 @@ def _get_engine() -> RenderEngineService:
 
 
 def _get_job_store() -> RenderJobStore:
+    """Return (or lazily create) job store."""
     global _job_store
     if _job_store is None:
         _job_store = RenderJobStore()

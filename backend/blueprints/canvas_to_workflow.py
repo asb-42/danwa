@@ -75,6 +75,7 @@ class ConversionError(Exception):
     """Raised when canvas-to-workflow conversion fails."""
 
     def __init__(self, message: str, errors: list[str] | None = None):
+        """Initialise ConversionError."""
         super().__init__(message)
         self.errors = errors or []
 
@@ -93,6 +94,7 @@ class CanvasToWorkflowConverter:
     """
 
     def __init__(self, repo: BlueprintRepository) -> None:
+        """Initialise CanvasToWorkflowConverter."""
         self._repo = repo
 
     def convert(

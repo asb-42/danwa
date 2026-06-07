@@ -33,6 +33,7 @@ class MetaWorkflowService:
         blueprint_repo: BlueprintRepository,
         proposal_repo: ProposalRepository,
     ) -> None:
+        """Initialise MetaWorkflowService."""
         self._blueprint_repo = blueprint_repo
         self._proposal_repo = proposal_repo
 

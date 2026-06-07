@@ -40,6 +40,7 @@ class LLMActivityTracker:
     """
 
     def __init__(self) -> None:
+        """Initialise LLMActivityTracker."""
         self._lock = asyncio.Lock()
         self._active: dict[str, LLMCall] = {}  # call_id → LLMCall
         self._recent: list[LLMCall] = []  # last N completed calls

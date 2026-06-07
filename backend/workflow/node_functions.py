@@ -41,6 +41,7 @@ _prompt_service: PromptService | None = None
 
 
 def _get_profile_service() -> ProfileService:
+    """Return (or lazily create) profile service."""
     global _profile_service
     if _profile_service is None:
         _profile_service = ProfileService()
@@ -48,6 +49,7 @@ def _get_profile_service() -> ProfileService:
 
 
 def _get_prompt_service() -> PromptService:
+    """Return (or lazily create) prompt service."""
     global _prompt_service
     if _prompt_service is None:
         _prompt_service = PromptService()
@@ -58,6 +60,7 @@ _search_tool: WebSearchTool | None = None
 
 
 def _get_search_tool() -> WebSearchTool:
+    """Return (or lazily create) search tool."""
     global _search_tool
     if _search_tool is None:
         from backend.core.config import settings
@@ -315,6 +318,7 @@ _LAZY_IMPORT_MAP: dict[str, tuple[str, str]] = {
 
 
 def __getattr__(name: str):
+    """Getattr   the instance."""
     if name in _LAZY_IMPORT_MAP:
         import importlib
 

@@ -64,6 +64,7 @@ class A2AInboundPlugin(InputPlugin):
         )
 
     def get_ui_hints(self) -> dict:
+        """Retrieve and return ui hints."""
         return {
             "requires_microphone": False,
             "supports_streaming": False,

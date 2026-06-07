@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 
 
 class DebateStatus(StrEnum):
+    """DebateStatus class."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"

@@ -55,6 +55,7 @@ _snapshot_store: StateSnapshotStore | None = None
 
 
 def _get_repo() -> BlueprintRepository:
+    """Return (or lazily create) repo."""
     global _repo
     if _repo is None:
         _repo = BlueprintRepository()
@@ -62,6 +63,7 @@ def _get_repo() -> BlueprintRepository:
 
 
 def _get_snapshot_store() -> StateSnapshotStore:
+    """Return (or lazily create) snapshot store."""
     global _snapshot_store
     if _snapshot_store is None:
         _snapshot_store = StateSnapshotStore()
@@ -745,6 +747,7 @@ async def stream_workflow_events(session_id: str) -> EventSourceResponse:
     status = get_session_status(session_id)
 
     async def event_generator():
+        """Event generator the instance."""
         # Send initial status
         yield {
             "event": "status",

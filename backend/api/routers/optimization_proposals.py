@@ -32,6 +32,7 @@ _META_SERVICE: MetaWorkflowService | None = None
 
 
 def _get_blueprint_repo() -> BlueprintRepository:
+    """Return (or lazily create) blueprint repo."""
     global _REPO
     if _REPO is None:
         _REPO = BlueprintRepository()
@@ -39,6 +40,7 @@ def _get_blueprint_repo() -> BlueprintRepository:
 
 
 def _get_proposal_repo() -> ProposalRepository:
+    """Return (or lazily create) proposal repo."""
     global _PROPOSAL_REPO
     if _PROPOSAL_REPO is None:
         _PROPOSAL_REPO = ProposalRepository()
@@ -46,6 +48,7 @@ def _get_proposal_repo() -> ProposalRepository:
 
 
 def _get_meta_service() -> MetaWorkflowService:
+    """Return (or lazily create) meta service."""
     global _META_SERVICE
     if _META_SERVICE is None:
         _META_SERVICE = MetaWorkflowService(
@@ -97,6 +100,7 @@ class ApproveResponse(BaseModel):
 
 
 def _proposal_to_response(p: OptimizationProposal) -> ProposalResponse:
+    """Proposal to response the instance."""
     return ProposalResponse(
         id=p.id,
         target_workflow_id=p.target_workflow_id,

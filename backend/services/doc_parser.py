@@ -17,9 +17,11 @@ class DocumentParser:
     """Parse documents and extract text content."""
 
     async def parse_file(self, file_path: str) -> dict[str, Any]:
+        """Parse file."""
         return await asyncio.to_thread(self._parse_sync, file_path)
 
     def _parse_sync(self, file_path: str) -> dict[str, Any]:
+        """Parse sync the instance."""
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")

@@ -24,6 +24,7 @@ class RAGPipeline:
         vector_store: DMSVectorStore,
         db: DMSDB,
     ):
+        """Initialise RAGPipeline."""
         self.document_processor = document_processor
         self.text_chunker = text_chunker
         self.vector_store = vector_store

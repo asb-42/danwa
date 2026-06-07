@@ -45,6 +45,7 @@ class ProfileService:
         project_config: ProjectConfig | None = None,
         db_path: Path | str | None = None,
     ):
+        """Initialise ProfileService."""
         self.profile_dir = Path(profile_dir)
         self._project_config = project_config
         self._db_path = Path(db_path) if db_path else Path("data/blueprints.db")
@@ -175,10 +176,12 @@ class ProfileService:
     # ------------------------------------------------------------------
 
     def list_llm_profiles(self) -> list[LLMProfile]:
+        """Return a list of llm profiles."""
         self.ensure_loaded()
         return list(self._merged_llm_profiles().values())
 
     def get_llm_profile(self, profile_id: str) -> LLMProfile | None:
+        """Retrieve and return llm profile."""
         self.ensure_loaded()
         return self._merged_llm_profiles().get(profile_id)
 

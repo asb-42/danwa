@@ -17,6 +17,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class ModuleType(StrEnum):
+    """ModuleType class."""
+
     ARGUMENTATION_PATTERN = "argumentation-pattern"
     AGENT_PERSONA = "agent-persona"
     LLM_PROFILE = "llm-profile"
@@ -33,6 +35,8 @@ class ModuleType(StrEnum):
 
 
 class ModuleCategory(StrEnum):
+    """ModuleCategory class."""
+
     PROMPTS = "prompts"
     PROMPT_MODIFIERS = "prompt-modifiers"
     AGENTS = "agents"
@@ -215,6 +219,7 @@ class ModuleManifest(BaseModel):
     @field_validator("module_id")
     @classmethod
     def validate_module_id(cls, v: str) -> str:
+        """Validate module id."""
         v = v.replace("_", "-")
         if not v.startswith("danwa-") and "-" not in v:
             raise ValueError(f"module_id must contain at least one hyphen (non-danwa module), got '{v}'")

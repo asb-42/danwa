@@ -89,6 +89,7 @@ class ProfileRepository:
 
     @staticmethod
     def _row_to_llm_profile(row: sqlite3.Row) -> BlueprintLLMProfile:
+        """Row to llm profile the instance."""
         return BlueprintLLMProfile(
             id=row["id"],
             name=row["name"],

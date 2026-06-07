@@ -86,6 +86,7 @@ class BlueprintLLMProfile(BaseModel):
     @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
+        """Validate temperature."""
         if not 0 <= v <= 2:
             raise ValueError("Temperature must be between 0 and 2")
         return v
@@ -93,6 +94,7 @@ class BlueprintLLMProfile(BaseModel):
     @field_validator("max_tokens")
     @classmethod
     def validate_max_tokens(cls, v: int) -> int:
+        """Validate max tokens."""
         if v < 1:
             raise ValueError("max_tokens must be at least 1")
         return v
@@ -200,6 +202,7 @@ class PromptTemplate(BaseModel):
     @field_validator("content")
     @classmethod
     def validate_content_not_empty(cls, v: str) -> str:
+        """Validate content not empty."""
         if not v.strip():
             raise ValueError("Prompt content must not be empty")
         return v
@@ -246,6 +249,7 @@ class RoleDefinition(BaseModel):
     @field_validator("consensus_threshold")
     @classmethod
     def validate_threshold(cls, v: float) -> float:
+        """Validate threshold."""
         if not 0 <= v <= 1:
             raise ValueError("consensus_threshold must be between 0 and 1")
         return v
@@ -285,6 +289,7 @@ class RoleType(BaseModel):
     @field_validator("default_consensus_threshold")
     @classmethod
     def validate_threshold(cls, v: float) -> float:
+        """Validate threshold."""
         if not 0 <= v <= 1:
             raise ValueError("default_consensus_threshold must be between 0 and 1")
         return v
@@ -292,6 +297,7 @@ class RoleType(BaseModel):
     @field_validator("default_max_rounds")
     @classmethod
     def validate_max_rounds(cls, v: int) -> int:
+        """Validate max rounds."""
         if v < 1:
             raise ValueError("default_max_rounds must be >= 1")
         return v

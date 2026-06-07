@@ -70,6 +70,7 @@ def moderator_node_factory(
     base_fn = agent_node_factory(node_id, "wf-moderator", resolved_config)
 
     async def _moderator_node(state: WorkflowState) -> dict:
+        """Moderator node the instance."""
         result = await base_fn(state)
 
         # Transactional Drafting: evaluate from pragmatist_output if present
@@ -333,6 +334,7 @@ def gate_node_factory(
     """
 
     async def _gate_node(state: WorkflowState) -> dict:
+        """Gate node factory for conditional workflow routing."""
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
 
@@ -445,6 +447,7 @@ def tone_profile_node_factory(
     inline_profile_data = node_config.get("inline_profile")
 
     async def _tone_profile_node(state: WorkflowState) -> dict:
+        """Tone profile node factory for config injection."""
         session_id = state.get("session_id", "")
 
         await publish_async(

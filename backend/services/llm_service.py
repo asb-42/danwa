@@ -51,6 +51,7 @@ class LLMService:
         profile_id: str | None = None,
         profile_service: ProfileService | None = None,
     ):
+        """Initialise LLMService."""
         self._profile_service = profile_service or ProfileService()
         self._profile: LLMProfile | None = None
 
@@ -65,6 +66,7 @@ class LLMService:
 
     @property
     def profile(self) -> LLMProfile | None:
+        """Profile the instance."""
         return self._profile
 
     # Known placeholder values that should be treated as unset

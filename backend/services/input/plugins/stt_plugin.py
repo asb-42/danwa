@@ -87,6 +87,7 @@ class STTInputPlugin(InputPlugin):
             return False
 
     def get_ui_hints(self) -> dict:
+        """Retrieve and return ui hints."""
         return {
             "requires_microphone": True,
             "supports_streaming": True,

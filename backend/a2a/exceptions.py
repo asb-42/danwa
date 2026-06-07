@@ -17,6 +17,7 @@ class A2AError(Exception):
         task_id: str | None = None,
         error_code: int | None = None,
     ) -> None:
+        """Initialise A2AError."""
         super().__init__(message)
         self.endpoint = endpoint
         self.task_id = task_id

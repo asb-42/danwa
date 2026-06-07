@@ -39,6 +39,7 @@ class A2AAdapter:
         timeout: int = 120,
         allow_private_ips: bool = False,
     ) -> None:
+        """Initialise A2AAdapter."""
         self._endpoint = validate_a2a_url(a2a_endpoint, allow_private_ips)
         self._timeout = timeout
         self._allow_private_ips = allow_private_ips

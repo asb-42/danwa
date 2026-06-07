@@ -19,6 +19,7 @@ class UserStore:
     """CRUD operations for users in a dedicated auth SQLite database."""
 
     def __init__(self, db_path: Path | str | None = None):
+        """Initialise UserStore."""
         self.db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=10)
@@ -27,6 +28,7 @@ class UserStore:
         self._init_db()
 
     def _init_db(self) -> None:
+        """Init db the instance."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -120,6 +122,7 @@ class UserStore:
         return True
 
     def _row_to_user(self, row: sqlite3.Row) -> User:
+        """Row to user the instance."""
         d = dict(row)
         return User(
             id=d["id"],

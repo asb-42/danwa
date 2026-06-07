@@ -24,6 +24,7 @@ router = APIRouter()
 
 
 def _get_composer(repo: BlueprintRepository = Depends(get_blueprint_repository)) -> BundleComposer:
+    """Return (or lazily create) composer."""
     return BundleComposer(repo=repo)
 
 

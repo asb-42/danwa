@@ -20,6 +20,7 @@ _report_gen: ReportGenerator | None = None
 
 
 def get_db() -> SessionDB:
+    """Retrieve and return db."""
     global _db
     if _db is None:
         _db = SessionDB()
@@ -27,6 +28,7 @@ def get_db() -> SessionDB:
 
 
 def get_report_gen() -> ReportGenerator:
+    """Retrieve and return report gen."""
     global _report_gen
     if _report_gen is None:
         _report_gen = ReportGenerator()

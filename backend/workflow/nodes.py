@@ -94,6 +94,7 @@ def _get_prompt_service(project_id: str | None = None) -> PromptService:
 
 
 def _get_search_tool() -> WebSearchTool:
+    """Return (or lazily create) search tool."""
     global _search_tool
     if _search_tool is None:
         _search_tool = WebSearchTool(
@@ -858,6 +859,7 @@ _CONSENSUS_SYSTEM_PROMPT = (
 
 
 def _build_consensus_prompt(agent_outputs, round_num, max_rounds):
+    """Build consensus prompt internally."""
     parts = [
         f"Round {round_num} of {max_rounds}. Agent responses in this round:",
         "",
@@ -882,6 +884,7 @@ async def _evaluate_consensus_with_llm(
     session_id,
     project_id=None,
 ):
+    """Evaluate consensus with llm the instance."""
     from backend.services.llm_service import LLMService
     from backend.services.profile_service import ProfileService
 
@@ -915,6 +918,7 @@ async def _evaluate_consensus_with_llm(
 
 
 def _select_consensus_llm(profile_service):
+    """Select consensus llm the instance."""
     try:
         pref = profile_service.get_llm_profile(settings.service_llm_profile_id)
         if pref and is_service_llm_eligible(pref)[0]:
@@ -932,6 +936,7 @@ def _select_consensus_llm(profile_service):
 
 
 def _parse_consensus_score(text):
+    """Parse consensus score the instance."""
     import json
     import re as _re
 
@@ -962,6 +967,7 @@ def _parse_consensus_score(text):
 
 
 def _apply_consensus_floor(score, agent_outputs, threshold):
+    """Apply consensus floor the instance."""
     avg_len = sum(len(o.get("content", "").strip()) for o in agent_outputs) / max(len(agent_outputs), 1)
     if avg_len < 50:
         score = min(score, 0.3)
@@ -971,6 +977,7 @@ def _apply_consensus_floor(score, agent_outputs, threshold):
 
 
 def _heuristic_consensus(agent_outputs, current_round, max_rounds, threshold):
+    """Heuristic consensus the instance."""
     import re as _re
 
     progression = min(current_round / max_rounds, 1.0)

@@ -63,6 +63,7 @@ class BackupResult:
         sha256: str,
         duration_seconds: float,
     ):
+        """Initialise BackupResult."""
         self.backup_id = backup_id
         self.path = path
         self.size_bytes = size_bytes
@@ -72,6 +73,7 @@ class BackupResult:
         self.duration_seconds = duration_seconds
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation."""
         return {
             "backup_id": self.backup_id,
             "path": self.path,
@@ -97,6 +99,7 @@ class BackupMetadata:
         trigger: str,
         sha256: str,
     ):
+        """Initialise BackupMetadata."""
         self.backup_id = backup_id
         self.created_at = created_at
         self.app_version = app_version
@@ -107,6 +110,7 @@ class BackupMetadata:
         self.sha256 = sha256
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation."""
         return {
             "backup_id": self.backup_id,
             "created_at": self.created_at.isoformat(),
@@ -123,11 +127,13 @@ class VerificationResult:
     """Ergebnis einer Integritätsprüfung."""
 
     def __init__(self, valid: bool, errors: list[str], file_count_verified: int):
+        """Initialise VerificationResult."""
         self.valid = valid
         self.errors = errors
         self.file_count_verified = file_count_verified
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation."""
         return {
             "valid": self.valid,
             "errors": self.errors,
@@ -139,6 +145,7 @@ class RestoreResult:
     """Ergebnis einer Wiederherstellung."""
 
     def __init__(self, success: bool, message: str, restored_files: int = 0):
+        """Initialise RestoreResult."""
         self.success = success
         self.message = message
         self.restored_files = restored_files
@@ -150,6 +157,7 @@ class BackupService:
     BACKUP_DIR = Path("backups")
 
     def __init__(self, *, include_paths: list[str] | None = None, settings: Settings | None = None, project_root: Path | None = None):
+        """Initialise BackupService."""
         self.include_paths = include_paths or INCLUDE_PATHS
         self.settings = settings or app_settings
         self._project_root = project_root

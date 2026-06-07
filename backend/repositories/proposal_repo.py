@@ -27,16 +27,19 @@ class ProposalRepository:
     """SQLite-backed storage for ``OptimizationProposal`` objects."""
 
     def __init__(self, db_path: Path | str | None = None) -> None:
+        """Initialise ProposalRepository."""
         self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _connect(self) -> sqlite3.Connection:
+        """Connect the instance."""
         conn = sqlite3.connect(str(self._db_path))
         conn.row_factory = sqlite3.Row
         return conn
 
     @staticmethod
     def _row_to_proposal(row: sqlite3.Row) -> OptimizationProposal:
+        """Row to proposal the instance."""
         return OptimizationProposal(
             id=row["id"],
             target_workflow_id=row["target_workflow_id"],

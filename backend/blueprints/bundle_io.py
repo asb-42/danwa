@@ -187,6 +187,7 @@ def import_bundle(
 
 
 def _serialize_bundle(b: AgentBundle) -> dict:
+    """Serialize bundle the instance."""
     d: dict = {
         "id": b.id,
         "name": b.name,
@@ -204,6 +205,7 @@ def _serialize_bundle(b: AgentBundle) -> dict:
 
 
 def _serialize_llm_profile(p: BlueprintLLMProfile) -> dict:
+    """Serialize llm profile the instance."""
     return {
         "id": p.id,
         "name": p.name,
@@ -230,6 +232,7 @@ def _serialize_llm_profile(p: BlueprintLLMProfile) -> dict:
 
 
 def _serialize_role_type(rt: RoleType) -> dict:
+    """Serialize role type the instance."""
     return {
         "id": rt.id,
         "name": rt.name,
@@ -245,6 +248,7 @@ def _serialize_role_type(rt: RoleType) -> dict:
 
 
 def _serialize_tone_profile(tp: ToneProfile | None) -> dict | None:
+    """Serialize tone profile the instance."""
     if tp is None:
         return None
     return {
@@ -292,6 +296,7 @@ def _import_llm_profile(
     strategy: str,
     id_map: dict[str, str],
 ) -> BlueprintLLMProfile:
+    """Import llm profile the instance."""
     existing = repo.get_llm_profile(raw["id"])
     resolved_id = _resolve_id(raw["id"], id_map, strategy, existing is not None)
 
@@ -333,6 +338,7 @@ def _import_tone_profile(
     strategy: str,
     id_map: dict[str, str],
 ) -> ToneProfile:
+    """Import tone profile the instance."""
     existing = repo.get_tone_profile(raw["id"])
     resolved_id = _resolve_id(raw["id"], id_map, strategy, existing is not None)
 
@@ -366,6 +372,7 @@ def _import_bundle_entity(
     resolved_role_type_id: str,
     resolved_tone_id: str | None,
 ) -> AgentBundle:
+    """Import bundle entity the instance."""
     existing = repo.get_bundle(raw["id"])
     resolved_id = _resolve_id(raw["id"], id_map, strategy, existing is not None)
 

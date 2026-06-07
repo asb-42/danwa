@@ -37,6 +37,7 @@ class CaseStore:
     """Persistent case store using JSON files."""
 
     def __init__(self, base_dir: Path | str = _DEFAULT_BASE_DIR):
+        """Initialise CaseStore."""
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
@@ -47,12 +48,15 @@ class CaseStore:
     # ------------------------------------------------------------------
 
     def _tenant_dir(self, tenant_id: str) -> Path:
+        """Tenant dir the instance."""
         return self._base_dir / tenant_id / "cases"
 
     def _case_dir(self, tenant_id: str, case_id: str) -> Path:
+        """Case dir the instance."""
         return self._tenant_dir(tenant_id) / case_id
 
     def _case_json_path(self, tenant_id: str, case_id: str) -> Path:
+        """Case json path the instance."""
         return self._case_dir(tenant_id, case_id) / "case.json"
 
     def _load_tenant(self, tenant_id: str) -> None:

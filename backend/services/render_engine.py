@@ -43,6 +43,7 @@ class RenderEngineService:
         registry: PluginRegistry | None = None,
         output_dir: Path | None = None,
     ) -> None:
+        """Initialise RenderEngineService."""
         self.artifact_store = artifact_store or ArtifactStore()
         self.job_store = job_store or RenderJobStore()
         self.registry = registry or PluginRegistry.instance()
@@ -149,6 +150,7 @@ class RenderEngineService:
 
             # Build progress callback that writes to the job store
             async def _update_progress(current: int, total: int) -> None:
+                """Update progress the instance."""
                 self.job_store.update_job(
                     job_id,
                     progress_current=current,

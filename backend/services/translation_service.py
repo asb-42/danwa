@@ -52,6 +52,7 @@ class TranslationEntry(BaseModel):
     error: str | None = None
 
     def to_db_tuple(self) -> tuple:
+        """Convert to db tuple format."""
         return (
             self.id,
             self.module_id,
@@ -71,6 +72,7 @@ class TranslationEntry(BaseModel):
 
     @classmethod
     def from_db_row(cls, row: dict[str, Any]) -> TranslationEntry:
+        """Construct an instance from db row."""
         return cls(
             id=row["id"],
             module_id=row["module_id"],
@@ -178,6 +180,7 @@ Respond with ONLY a valid JSON object:
         profile_service: ProfileService | None = None,
         llm_profile_id: str | None = None,
     ):
+        """Initialise TranslationService."""
         self.db_path = Path(db_path) if db_path else Path("data/blueprints.db")
         self.modules_dir = Path(modules_dir) if modules_dir else Path("modules")
         self._profile_service = profile_service or ProfileService()

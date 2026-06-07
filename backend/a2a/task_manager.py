@@ -37,6 +37,7 @@ class TaskManager:
     """
 
     def __init__(self, db_path: Path | None = None) -> None:
+        """Initialise TaskManager."""
         self._db_path = db_path or (settings.db_path.parent / "a2a_tasks.db")
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()

@@ -19,6 +19,7 @@ class A2AClient:
     """Invokes external A2A agents for debate participation."""
 
     def __init__(self, agent_url: str, timeout: float = 120.0) -> None:
+        """Initialise A2AClient."""
         self.agent_url = agent_url.rstrip("/")
         self.timeout = timeout
         self._agent_card: dict | None = None

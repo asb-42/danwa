@@ -483,12 +483,14 @@ class RedisWorkflowState:
         self._get_resume_wait_event(session_id).set()
 
     async def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool:
+        """Wait for for pause."""
         if self.is_paused(session_id):
             return True
         ev = self._get_pause_wait_event(session_id)
         return await ev.wait(timeout=timeout)
 
     async def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool:
+        """Wait for for resume."""
         if not self.is_paused(session_id):
             return True
         ev = self._get_resume_wait_event(session_id)

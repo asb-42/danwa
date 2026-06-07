@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 # Lazy import to avoid circular dependency
 def _get_translation_service():
+    """Return (or lazily create) translation service."""
     from backend.services.translation_service import TranslationService
 
     return TranslationService()
@@ -42,6 +43,7 @@ class PromptService:
         prompts_dir: Path | str = _DEFAULT_PROMPTS_DIR,
         argumentation_patterns_dir: Path | str | None = None,
     ):
+        """Initialise PromptService."""
         self.prompts_dir = Path(prompts_dir)
         self._argumentation_patterns_dir = Path(argumentation_patterns_dir) if argumentation_patterns_dir else Path("profiles/argumentation-patterns")
         self._legacy_prompts_dir = Path("profiles/prompts")

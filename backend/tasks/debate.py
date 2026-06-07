@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_celery_app():
+    """Return (or lazily create) celery app."""
     from backend.tasks.celery_app import get_celery_app
 
     app = get_celery_app()

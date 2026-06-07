@@ -28,10 +28,12 @@ class MetadataIndex:
     """Query chunks by project, document, or date range via ChromaDB metadata."""
 
     def __init__(self, chroma_store: DMSVectorStore, project_id: str | None = None):
+        """Initialise MetadataIndex."""
         self.chroma_store = chroma_store
         self._project_id = project_id
 
     def get_chunks_by_project(self, project_id: str) -> list[dict[str, Any]]:
+        """Retrieve and return chunks by project."""
         try:
             results = self.chroma_store.collection.get(
                 where={"project_id": {"$eq": project_id}},
@@ -86,6 +88,7 @@ class MetadataIndex:
             return []
 
     def get_chunks_by_date_range(self, start_date: str, end_date: str) -> list[dict[str, Any]]:
+        """Retrieve and return chunks by date range."""
         try:
             results = self.chroma_store.collection.get(
                 where={"upload_date": {"$gte": start_date, "$lte": end_date}},
@@ -97,6 +100,7 @@ class MetadataIndex:
             return []
 
     def _process_chunks(self, results: dict) -> list[dict[str, Any]]:
+        """Process chunks internally."""
         chunks = []
         for chunk_id, doc_text, meta in zip(
             results.get("ids", []),

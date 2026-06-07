@@ -141,6 +141,7 @@ def builder_node_factory(
     role = resolved_config.get("role", "builder")
 
     async def _builder_node(state: WorkflowState) -> dict:
+        """Builder node the instance."""
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
         start_time = time.monotonic()

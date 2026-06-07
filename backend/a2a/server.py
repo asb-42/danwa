@@ -79,6 +79,7 @@ class A2AServer:
         project_id: str = "_default",
         project_store: ProjectStore | None = None,
     ) -> None:
+        """Initialise A2AServer."""
         self.task_manager = task_manager or TaskManager()
         self.project_id = project_id
         self._project_store = project_store

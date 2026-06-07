@@ -14,11 +14,13 @@ class TextChunker:
     """Splits text into overlapping chunks based on token count."""
 
     def __init__(self, chunk_size: int = 512, overlap: int = 51):
+        """Initialise TextChunker."""
         self.encoder = tiktoken.get_encoding("cl100k_base")
         self.chunk_size = chunk_size
         self.overlap = overlap
 
     def chunk(self, text: str) -> list[str]:
+        """Chunk the instance."""
         if not text:
             return []
         tokens = self.encoder.encode(text)

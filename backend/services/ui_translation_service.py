@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TranslationJob:
+    """TranslationJob class."""
+
     job_id: str
     target_locales: list[str]
     namespace: str
@@ -40,11 +42,13 @@ class TranslationJob:
     finished_at: str | None = None
 
     def progress(self) -> float:
+        """Progress the instance."""
         if self.total_strings == 0:
             return 0.0
         return round(self.completed_strings / self.total_strings * 100, 1)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation."""
         return {
             "job_id": self.job_id,
             "status": self.status,
@@ -63,12 +67,15 @@ class TranslationJob:
 
 
 class TranslationJobRegistry:
+    """TranslationJobRegistry class."""
+
     _jobs: dict[str, TranslationJob] = {}
     _lock = threading.Lock()
     _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="i18n-translate")
 
     @classmethod
     def submit(cls, job: TranslationJob, fn) -> str:
+        """Submit an item for processing."""
         with cls._lock:
             cls._jobs[job.job_id] = job
         cls._executor.submit(fn)
@@ -76,11 +83,13 @@ class TranslationJobRegistry:
 
     @classmethod
     def get(cls, job_id: str) -> TranslationJob | None:
+        """Retrieve and return the requested item."""
         with cls._lock:
             return cls._jobs.get(job_id)
 
     @classmethod
     def list_all(cls) -> list[dict[str, Any]]:
+        """Return a list of all."""
         with cls._lock:
             return [j.to_dict() for j in cls._jobs.values()]
 
@@ -156,6 +165,7 @@ class UITranslationService:
     """SQLite-basierte Übersetzungsverwaltung für UI-Strings."""
 
     def __init__(self, db_path: Path | str | None = None, base_dir: Path | str | None = None):
+        """Initialise UITranslationService."""
         self.base_dir = Path(base_dir) if base_dir else Path(DEFAULT_BASE_DIR)
         self.db_path = Path(db_path) if db_path else self.base_dir / "ui_translations.db"
         self._locales_cache: dict[str, dict[str, str]] = {}
@@ -421,6 +431,7 @@ class UITranslationService:
         return result
 
     def get_stats(self, namespace: str = "global") -> dict[str, Any]:
+        """Retrieve and return stats."""
         conn = self._get_conn()
         rows = conn.execute(
             """
@@ -458,6 +469,7 @@ class UITranslationService:
         return db_stats
 
     def get_coverage(self, namespace: str = "global") -> dict[str, Any]:
+        """Retrieve and return coverage."""
         bundled = self._scan_bundled_loaders()
         en_keys = set(self.get_all_keys(namespace))
         if not en_keys:
@@ -539,6 +551,7 @@ class UITranslationService:
         llm=None,
         job: TranslationJob | None = None,
     ) -> str:
+        """Translate via llm the instance."""
         from backend.services.llm_service import LLMService
         from backend.services.profile_service import ProfileService
 
@@ -802,6 +815,7 @@ class UITranslationService:
         return job.job_id
 
     def get_locale_details(self, locale: str, namespace: str = "global") -> dict[str, Any]:
+        """Retrieve and return locale details."""
         conn = self._get_conn()
         en_rows = conn.execute(
             "SELECT key, value FROM ui_translations WHERE locale = 'en' AND namespace = ?",
@@ -964,6 +978,7 @@ class UITranslationService:
 
     @staticmethod
     def _locale_name(code: str) -> str:
+        """Locale name the instance."""
         return LOCALE_NAMES.get(code, code)
 
     # ------------------------------------------------------------------

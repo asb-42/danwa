@@ -93,6 +93,7 @@ def agent_node_factory(
     tone_profile_source_node_id = resolved_config.get("tone_profile_source_node_id")
 
     async def _agent_node(state: WorkflowState) -> dict:
+        """Agent node the instance."""
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
 
@@ -504,12 +505,14 @@ _SEVERITY_MAP = {
 
 
 def _normalize_severity(val: str | None) -> str:
+    """Normalize severity the instance."""
     if not val:
         return "warning"
     return _SEVERITY_MAP.get(val.lower().strip(), "warning")
 
 
 def _map_to_critic_item(item: dict, idx: int) -> dict:
+    """Map to critic item the instance."""
     severity = _normalize_severity(item.get("severity"))
 
     raw_id = item.get("critic_id") or item.get("id") or item.get("criticId") or str(idx + 1)

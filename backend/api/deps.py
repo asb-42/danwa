@@ -56,6 +56,7 @@ def get_user_language() -> str:
 
 @lru_cache
 def get_audit_service() -> AuditService:
+    """Retrieve and return audit service."""
     return AuditService()
 
 
@@ -67,6 +68,7 @@ def get_debate_store() -> DebateStore:
 
 @lru_cache
 def get_project_store() -> ProjectStore:
+    """Retrieve and return project store."""
     return ProjectStore()
 
 
@@ -106,12 +108,14 @@ def get_profile_service_for_project(project_id: str, project_store: ProjectStore
 
 
 def get_prompt_service():
+    """Retrieve and return prompt service."""
     from backend.services.prompt_service import PromptService
 
     return PromptService()
 
 
 def get_debate_graph():
+    """Retrieve and return debate graph."""
     return debate_graph
 
 

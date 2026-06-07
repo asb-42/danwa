@@ -33,6 +33,7 @@ class ModuleValidator:
     """Validates Danwa module manifests and content files."""
 
     def __init__(self, module_base_dir: Path | str = Path("modules")):
+        """Initialise ModuleValidator."""
         self.module_base_dir = Path(module_base_dir)
 
     def validate_manifest(self, manifest: dict[str, Any]) -> ValidationResult:

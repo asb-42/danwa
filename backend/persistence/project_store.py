@@ -41,6 +41,7 @@ class ProjectStore:
     """Persistent project store using JSON files."""
 
     def __init__(self, base_dir: Path | str = _DEFAULT_BASE_DIR):
+        """Initialise ProjectStore."""
         if isinstance(base_dir, str):
             base_dir = Path(base_dir)
         # When using the default base, scope under tenants/ for the new structure.
@@ -59,12 +60,15 @@ class ProjectStore:
     # ------------------------------------------------------------------
 
     def _tenant_dir(self, tenant_id: str) -> Path:
+        """Tenant dir the instance."""
         return self._base_dir / tenant_id / "cases"
 
     def _project_dir_for(self, tenant_id: str, project_id: str) -> Path:
+        """Project dir for the instance."""
         return self._tenant_dir(tenant_id) / project_id
 
     def _project_json_path(self, tenant_id: str, project_id: str) -> Path:
+        """Project json path the instance."""
         return self._project_dir_for(tenant_id, project_id) / "project.json"
 
     # ------------------------------------------------------------------

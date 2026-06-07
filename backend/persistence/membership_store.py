@@ -21,6 +21,7 @@ class MembershipStore:
     """CRUD operations for tenant memberships in the auth SQLite database."""
 
     def __init__(self, db_path: Path | str | None = None):
+        """Initialise MembershipStore."""
         self.db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=10)
@@ -29,6 +30,7 @@ class MembershipStore:
         self._init_db()
 
     def _init_db(self) -> None:
+        """Init db the instance."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS memberships (
                 tenant_id TEXT NOT NULL,
@@ -115,6 +117,7 @@ class MembershipStore:
         return cursor.fetchone()[0]
 
     def _row_to_membership(self, row: sqlite3.Row) -> TenantMembership:
+        """Row to membership the instance."""
         d = dict(row)
         return TenantMembership(
             tenant_id=d["tenant_id"],

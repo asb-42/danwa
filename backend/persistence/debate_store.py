@@ -50,6 +50,7 @@ class DebateStore:
     """Persistent debate store using JSON files."""
 
     def __init__(self, data_dir: Path | str = _DEFAULT_DATA_DIR):
+        """Initialise DebateStore."""
         self._data_dir = Path(data_dir)
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()

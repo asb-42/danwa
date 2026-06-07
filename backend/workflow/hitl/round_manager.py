@@ -69,6 +69,7 @@ class HITLRoundManager:
     """
 
     def __init__(self, debate_id: str) -> None:
+        """Initialise HITLRoundManager."""
         self.debate_id = debate_id
         self._rounds: dict[int, RoundHITLStats] = {}
         self._current_round: int = 0

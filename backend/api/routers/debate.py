@@ -46,6 +46,7 @@ _DEPRECATION_NOTICE = "Use /api/v1/tenants/{tid}/cases/{cid}/debates/ instead. S
 
 
 def _add_deprecation_header(response):
+    """Add deprecation header the instance."""
     response.headers["X-Deprecation"] = _DEPRECATION_NOTICE
     return response
 

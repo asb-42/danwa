@@ -27,6 +27,7 @@ class BundleResolver:
     """Resolves AgentBundle ID references into a fully populated ResolvedBundle."""
 
     def __init__(self, repo: BlueprintRepository | None = None):
+        """Initialise BundleResolver."""
         self.repo = repo or BlueprintRepository()
 
     def resolve(self, bundle: AgentBundle) -> ResolvedBundle:

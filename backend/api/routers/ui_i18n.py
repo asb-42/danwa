@@ -74,6 +74,8 @@ class WipeLocaleRequest(BaseModel):
 
 
 class RegisterLocaleRequest(BaseModel):
+    """RegisterLocaleRequest class."""
+
     locale: str
     name: str | None = None
     is_rtl: bool = False

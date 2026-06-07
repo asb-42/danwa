@@ -19,6 +19,7 @@ class TenantStore:
     """CRUD operations for tenants in the auth SQLite database."""
 
     def __init__(self, db_path: Path | str | None = None):
+        """Initialise TenantStore."""
         self.db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=10)
@@ -27,6 +28,7 @@ class TenantStore:
         self._init_db()
 
     def _init_db(self) -> None:
+        """Init db the instance."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS tenants (
                 id TEXT PRIMARY KEY,
@@ -108,6 +110,7 @@ class TenantStore:
         return cursor.fetchone()[0]
 
     def _row_to_tenant(self, row: sqlite3.Row) -> Tenant:
+        """Row to tenant the instance."""
         d = dict(row)
         return Tenant(
             id=d["id"],

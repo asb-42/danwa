@@ -58,6 +58,7 @@ class ModuleInstaller:
         modules_dir: Path | str = MODULES_DIR,
         db_path: Path | str = DEFAULT_DB,
     ):
+        """Initialise ModuleInstaller."""
         self.modules_dir = Path(modules_dir)
         self.modules_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = Path(db_path)

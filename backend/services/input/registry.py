@@ -28,6 +28,7 @@ class InputPluginRegistry:
     _plugins: dict[str, type[InputPlugin]]
 
     def __init__(self) -> None:
+        """Initialise InputPluginRegistry."""
         self._plugins = {}
 
     @classmethod

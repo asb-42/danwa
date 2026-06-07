@@ -61,6 +61,7 @@ class LLMProfile(BaseModel):
     @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
+        """Validate temperature."""
         if not 0 <= v <= 2:
             raise ValueError("Temperature must be between 0 and 2")
         return v
@@ -68,6 +69,7 @@ class LLMProfile(BaseModel):
     @field_validator("max_tokens")
     @classmethod
     def validate_max_tokens(cls, v: int) -> int:
+        """Validate max tokens."""
         if v < 1:
             raise ValueError("max_tokens must be at least 1")
         return v

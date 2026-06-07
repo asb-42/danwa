@@ -34,6 +34,7 @@ class TagStore:
     """Persistent tag store using a single JSON file per tenant."""
 
     def __init__(self, base_dir: Path | str = _DEFAULT_BASE_DIR):
+        """Initialise TagStore."""
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
@@ -44,6 +45,7 @@ class TagStore:
     # ------------------------------------------------------------------
 
     def _tags_json_path(self, tenant_id: str) -> Path:
+        """Tags json path the instance."""
         return self._base_dir / tenant_id / "tags.json"
 
     def _load_tenant(self, tenant_id: str) -> dict[str, Tag]:

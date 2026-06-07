@@ -19,11 +19,13 @@ class ProfileRepository:
     """SQLite-backed storage for active debate configurations."""
 
     def __init__(self, db_path: Path | str = _DEFAULT_DB_PATH):
+        """Initialise ProfileRepository."""
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     def _init_db(self) -> None:
+        """Init db the instance."""
         with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS active_configurations (
@@ -60,6 +62,7 @@ class ProfileRepository:
             """)
 
     def _connect(self) -> sqlite3.Connection:
+        """Connect the instance."""
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         return conn

@@ -83,6 +83,7 @@ class InterjectionService:
 
     def __init__(self, db_path: Path | str | None = None) -> None:
         # session_id → list of Interjection objects
+        """Initialise InterjectionService."""
         self._queues: dict[str, list[Interjection]] = {}
         # session_id → WaitEvent that is set when new items are queued
         # and cleared again after they are consumed.  Used by

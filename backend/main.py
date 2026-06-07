@@ -285,6 +285,7 @@ def create_app() -> FastAPI:
     # --- Request-ID Middleware ---
     @app.middleware("http")
     async def add_request_context(request, call_next):
+        """Add request context the instance."""
         import uuid as _uuid
 
         from backend.core.logging import bind_request_context

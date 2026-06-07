@@ -238,6 +238,8 @@ async def get_module_profile(module_id: str) -> dict[str, Any]:
 
 
 class ProfileUpdateRequest(BaseModel):
+    """ProfileUpdateRequest class."""
+
     data: dict[str, Any]
 
 
@@ -257,6 +259,8 @@ async def update_module_profile(module_id: str, body: ProfileUpdateRequest) -> d
 
 
 class DuplicateRequest(BaseModel):
+    """DuplicateRequest class."""
+
     new_id: str = Field(..., description="New module ID")
     new_name: str | None = Field(None, description="Optional new display name")
 

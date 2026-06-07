@@ -42,11 +42,14 @@ DANWA_MODULES_RELEASE_URL = "https://github.com/asb-42/danwa-modules/releases/do
 
 
 class ModuleService:
+    """ModuleService class."""
+
     def __init__(
         self,
         modules_dir: Path | str = MODULES_DIR,
         db_path: Path | str = DEFAULT_DB,
     ):
+        """Initialise ModuleService."""
         self.modules_dir = Path(modules_dir)
         self.db_path = Path(db_path)
         self.validator = ModuleValidator(self.modules_dir)
@@ -105,6 +108,7 @@ class ModuleService:
         return True
 
     def discover_local(self) -> list[ModuleInfo]:
+        """Discover local the instance."""
         modules: list[ModuleInfo] = []
         if not self.modules_dir.exists():
             return modules
@@ -134,6 +138,7 @@ class ModuleService:
         return modules
 
     def discover_local_with_status(self) -> list[dict[str, Any]]:
+        """Discover local with status the instance."""
         modules = self.discover_local()
         db_status = self._get_db_status_map()
 
@@ -199,12 +204,14 @@ class ModuleService:
         return result
 
     def get(self, module_id: str) -> ModuleInfo | None:
+        """Retrieve and return the requested item."""
         module_dir = self._resolve_module_dir(module_id)
         if module_dir:
             return self._dir_to_info(module_dir)
         return None
 
     def list_all(self, category: str | None = None) -> list[ModuleInfo]:
+        """Return a list of all."""
         modules = self.discover_local()
         if category:
             modules = [m for m in modules if m.category.value == category]
@@ -525,6 +532,7 @@ class ModuleService:
         source: str = "local",
         source_url: str | None = None,
     ) -> InstallationReport:
+        """Install the instance."""
         if source == "url" and source_url:
             return self.installer.install_from_url(source_url)
         else:
@@ -534,15 +542,18 @@ class ModuleService:
             return self.installer.install_from_directory(module_dir)
 
     def uninstall(self, module_id: str, force: bool = False) -> UninstallationReport:
+        """Uninstall the instance."""
         if not force:
             return self.installer.uninstall(module_id)
         else:
             return self._force_uninstall(module_id)
 
     def update(self, module_id: str) -> InstallationReport:
+        """Update the instance with new values."""
         return self.installer.update(module_id)
 
     def _force_uninstall(self, module_id: str) -> UninstallationReport:
+        """Force uninstall the instance."""
         target_dir = self._resolve_module_dir(module_id)
         if not target_dir:
             return UninstallationReport(
@@ -590,12 +601,14 @@ class ModuleService:
 
     @staticmethod
     def _derive_profile_format(profile_file: str, manifest_format: str | None) -> str | None:
+        """Derive profile format the instance."""
         if manifest_format:
             return manifest_format
         ext = Path(profile_file).suffix.lower()
         return {"yaml": "yaml", "yml": "yaml", "json": "json", "md": "markdown"}.get(ext)
 
     def get_profile(self, module_id: str) -> dict[str, Any] | None:
+        """Retrieve and return profile."""
         module_dir = self._resolve_module_dir(module_id)
         if not module_dir:
             return None
@@ -624,6 +637,7 @@ class ModuleService:
         return None
 
     def update_profile(self, module_id: str, profile_data: dict[str, Any]) -> bool:
+        """Update profile."""
         module_dir = self._resolve_module_dir(module_id)
         if not module_dir:
             return False
@@ -672,6 +686,7 @@ class ModuleService:
         return True
 
     def duplicate_module(self, module_id: str, new_id: str, new_name: str | None = None) -> dict[str, Any] | None:
+        """Duplicate module the instance."""
         src_dir = self._resolve_module_dir(module_id)
         dst_dir = self.modules_dir / new_id
 
@@ -726,6 +741,7 @@ class ModuleService:
         auto_approve: bool = False,
         quality_threshold: float = 0.7,
     ) -> TranslationResult:
+        """Translate the instance."""
         try:
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
@@ -811,6 +827,7 @@ class ModuleService:
             )
 
     def _dir_to_info(self, module_dir: Path) -> ModuleInfo | None:
+        """Dir to info the instance."""
         manifest_path = module_dir / "manifest.json"
         if not manifest_path.exists():
             return None
@@ -882,6 +899,7 @@ class ModuleService:
         )
 
     def _update_manifest_checksum(self, module_dir: Path, manifest: dict) -> None:
+        """Update manifest checksum the instance."""
         import hashlib
 
         manifest_path = module_dir / "manifest.json"
@@ -896,6 +914,7 @@ class ModuleService:
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
     def _get_db_module_info(self, module_id: str) -> dict[str, Any] | None:
+        """Return (or lazily create) db module info."""
         try:
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
@@ -913,6 +932,7 @@ class ModuleService:
         return None
 
     def _get_db_status_map(self) -> dict[str, dict[str, Any]]:
+        """Return (or lazily create) db status map."""
         result: dict[str, dict[str, Any]] = {}
         try:
             conn = sqlite3.connect(str(self.db_path))

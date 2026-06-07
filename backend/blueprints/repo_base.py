@@ -17,11 +17,13 @@ class BaseRepo:
     """Shared SQLite connection management for all repository mixins."""
 
     def __init__(self, db_path: Path | str = _DEFAULT_DB_PATH):
+        """Initialise BaseRepo."""
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         run_migrations(self.db_path)
 
     def _connect(self) -> sqlite3.Connection:
+        """Connect the instance."""
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")

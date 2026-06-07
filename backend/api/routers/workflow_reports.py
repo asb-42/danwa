@@ -33,6 +33,7 @@ _report_gen: WorkflowReportGenerator | None = None
 
 
 def _get_job_store() -> ReportJobStore:
+    """Return (or lazily create) job store."""
     global _job_store
     if _job_store is None:
         _job_store = ReportJobStore()
@@ -40,6 +41,7 @@ def _get_job_store() -> ReportJobStore:
 
 
 def _get_report_gen() -> WorkflowReportGenerator:
+    """Return (or lazily create) report gen."""
     global _report_gen
     if _report_gen is None:
         _report_gen = WorkflowReportGenerator()
@@ -248,6 +250,7 @@ async def stream_report_progress(session_id: str):
     from sse_starlette.sse import EventSourceResponse
 
     async def event_generator():
+        """Event generator the instance."""
         queue = subscribe(session_id)
         try:
             while True:

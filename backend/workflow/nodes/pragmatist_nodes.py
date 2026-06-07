@@ -43,6 +43,7 @@ def pragmatist_node_factory(
     role = resolved_config.get("role", "pragmatist")
 
     async def _pragmatist_node(state: WorkflowState) -> dict:
+        """Pragmatist node the instance."""
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
         start_time = time.monotonic()

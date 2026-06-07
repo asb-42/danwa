@@ -19,6 +19,7 @@ _publish_async = None
 
 
 def _get_publish():
+    """Return (or lazily create) publish."""
     global _publish_async
     if _publish_async is None:
         from backend.api.events import publish_async
@@ -53,6 +54,7 @@ def route_conditional(
     """
 
     async def _router(state: WorkflowState) -> str:
+        """Router the instance."""
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
         state_dict = dict(state)

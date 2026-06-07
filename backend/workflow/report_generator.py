@@ -522,6 +522,7 @@ class WorkflowReportGenerator:
     """Generates structured reports for completed debate sessions."""
 
     def __init__(self, db_path: Path | str | None = None) -> None:
+        """Initialise WorkflowReportGenerator."""
         self._db_path = Path(db_path) if db_path else None
         self._audit = AuditLogger(self._db_path)
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -755,6 +756,7 @@ class WorkflowReportGenerator:
         audit_entries: list[dict[str, Any]],
         path: Path,
     ) -> None:
+        """Build docx internally."""
         doc = Document()
         doc.styles["Normal"].font.name = "Calibri"
 
@@ -869,6 +871,7 @@ class WorkflowReportGenerator:
         audit_entries: list[dict[str, Any]],
         path: Path,
     ) -> None:
+        """Build pdf internally."""
         html_content = self._render_html(session_id, transcript, audit_entries)
         HTML(string=html_content).write_pdf(str(path))
 
@@ -883,6 +886,7 @@ class WorkflowReportGenerator:
         audit_entries: list[dict[str, Any]],
         path: Path,
     ) -> None:
+        """Build odf internally."""
         html_content = self._render_html(session_id, transcript, audit_entries)
         try:
             from odf.opendocument import OpenDocumentText
@@ -995,6 +999,7 @@ class WorkflowReportGenerator:
         transcript: dict[str, Any],
         audit_entries: list[dict[str, Any]],
     ) -> str:
+        """Render html the instance."""
         esc = html_mod.escape
         title = esc(transcript["title"] or f"Debatte {session_id[:8]}")
 

@@ -7,18 +7,24 @@ from typing import Annotated, Any, TypedDict
 
 
 class AgentConfigState(TypedDict):
+    """AgentConfigState class."""
+
     role: str
     llm_profile: str
     temperature: float
 
 
 class AgentOutputState(TypedDict):
+    """AgentOutputState class."""
+
     role: str
     content: str
     tokens_used: int
 
 
 class RoundDataState(TypedDict):
+    """RoundDataState class."""
+
     round: int
     consensus: float
     agent_outputs: list[AgentOutputState]

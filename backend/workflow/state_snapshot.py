@@ -30,6 +30,7 @@ class StateSnapshotStore:
     """
 
     def __init__(self, db_path: Path | str = _DEFAULT_DB_PATH) -> None:
+        """Initialise StateSnapshotStore."""
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None

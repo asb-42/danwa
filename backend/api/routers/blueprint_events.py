@@ -33,6 +33,7 @@ async def stream_blueprint_events(
     """
 
     async def event_generator():
+        """Event generator the instance."""
         if session_id:
             # Subscribe to workflow event bus
             queue = subscribe(session_id)
