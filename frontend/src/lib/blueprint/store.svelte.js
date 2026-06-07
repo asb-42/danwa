@@ -44,6 +44,17 @@ class BlueprintCanvasStore {
     return this.nodes.find((n) => n.id === this.selectedNodeId) || null;
   }
 
+  /**
+   * True if the canvas has unsaved user edits.
+   *
+   * Read-only accessor so callers (e.g. route guards, the
+   * ``loadFromLayout`` dirty-check guard — see audit M7) can prompt
+   * the user before discarding work.
+   */
+  get hasUnsavedChanges() {
+    return this.isDirty;
+  }
+
   // ─── Node mutations ───────────────────────────────────────────────
 
   /**
@@ -198,40 +209,14 @@ class BlueprintCanvasStore {
    * @param {Record<string, any>} entityDataMap - Map of entity ID → entity data
    */
   loadFromLayout(layoutJson, entityDataMap = {}) {
-    const nodeTypeMap = {
-      'llm-profile': 'llm-profile',
-      'wf-input': 'wf-input',
-      'wf-initialize': 'wf-initialize',
-      'wf-strategist': 'wf-strategist',
-      'wf-critic': 'wf-critic',
-      'wf-optimizer': 'wf-optimizer',
-      'wf-moderator': 'wf-moderator',
-      'wf-fact-checker': 'wf-fact-checker',
-      'wf-analyst': 'wf-analyst',
-      'wf-creative': 'wf-creative',
-      'wf-socratic-questioner': 'wf-socratic-questioner',
-      'wf-expert-reviewer': 'wf-expert-reviewer',
-      'wf-steel-manner': 'wf-steel-manner',
-      'wf-devils-advocate': 'wf-devils-advocate',
-      'wf-troll': 'wf-troll',
-      'wf-mediator': 'wf-mediator',
-      'wf-ethicist': 'wf-ethicist',
-      'wf-synthesizer': 'wf-synthesizer',
-      'wf-user-injection': 'wf-user-injection',
-      'wf-gate': 'wf-gate',
-      'wf-tone-profile': 'wf-tone-profile',
-      'wf-agent': 'wf-agent',
-      'wf-builder': 'wf-builder',
-      'wf-pragmatist': 'wf-pragmatist',
-      'wf-angels-advocate': 'wf-angels-advocate',
-      'wf-phase': 'wf-phase',
-      'tone-profile': 'tone-profile',
-      'agent-core': 'agent-core',
-    };
-
+    // Previously this function carried an identity-mapping ``nodeTypeMap``
+    // (``'wf-initialize' -> 'wf-initialize'`` and 27 other self-pairs).
+    // Every key was equal to its value, so the lookup
+    // ``nodeTypeMap[n.type] || n.type`` reduced to ``n.type``.  Removed
+    // in audit L4 — the layout JSON now flows through unchanged.
     this.nodes = (layoutJson.nodes || []).map((n) => ({
       id: n.id,
-      type: nodeTypeMap[n.type] || n.type,
+      type: n.type,
       position: { x: n.x ?? 0, y: n.y ?? 0 },
       parentId: n.parent_id || null,
       data: {
@@ -328,6 +313,7 @@ class BlueprintCanvasStore {
     this.isDirty = false;
     this.error = null;
     this.mode = 'blueprint';
+    this.isLoading = false;
   }
 }
 

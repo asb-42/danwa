@@ -214,3 +214,207 @@ describe('BluePrint Canvas Store — parentId serialization', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// reset() — view-unmount cleanup (audit M6)
+// ---------------------------------------------------------------------------
+
+describe('BluePrint Canvas Store — reset() (audit M6)', () => {
+  beforeEach(() => {
+    canvasStore.reset();
+  });
+
+  it('clears all state for view-unmount cleanup', () => {
+    // Seed every field that reset() is supposed to clear.
+    canvasStore.addNode({
+      id: 'n1', type: 'wf-strategist', position: { x: 0, y: 0 },
+      data: { label: 'S', blueprint_id: 'bp-1' },
+    });
+    canvasStore.selectNode('n1');
+    canvasStore.currentLayoutId = 'layout-1';
+    canvasStore.currentLayoutName = 'My Layout';
+    canvasStore.currentWorkflowId = 'wf-1';
+    canvasStore.isDirty = true;
+    canvasStore.error = 'some error';
+    canvasStore.mode = 'workflow';
+    canvasStore.isLoading = true; // Race condition if reset() doesn't clear it
+
+    canvasStore.reset();
+
+    expect(canvasStore.nodes).toEqual([]);
+    expect(canvasStore.edges).toEqual([]);
+    expect(canvasStore.selectedNodeId).toBeNull();
+    expect(canvasStore.currentLayoutId).toBeNull();
+    expect(canvasStore.currentLayoutName).toBeNull();
+    expect(canvasStore.currentWorkflowId).toBeNull();
+    expect(canvasStore.isDirty).toBe(false);
+    expect(canvasStore.error).toBeNull();
+    expect(canvasStore.mode).toBe('blueprint');
+    expect(canvasStore.isLoading).toBe(false);
+  });
+
+  it('is idempotent (safe to call twice in a row)', () => {
+    canvasStore.addNode({
+      id: 'n1', type: 'wf-strategist', position: { x: 0, y: 0 },
+      data: { label: 'S', blueprint_id: 'bp-1' },
+    });
+    canvasStore.reset();
+    expect(() => canvasStore.reset()).not.toThrow();
+    expect(canvasStore.nodes).toEqual([]);
+  });
+
+  it('resets isLoading even when not previously set', () => {
+    canvasStore.isLoading = true;
+    canvasStore.reset();
+    expect(canvasStore.isLoading).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hasUnsavedChanges() — dirty-check guard (audit M7)
+// ---------------------------------------------------------------------------
+
+describe('BluePrint Canvas Store — hasUnsavedChanges (audit M7)', () => {
+  beforeEach(() => {
+    canvasStore.reset();
+  });
+
+  it('is false on a fresh canvas', () => {
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+
+  it('becomes true after addNode', () => {
+    canvasStore.addNode({
+      id: 'n1', type: 'wf-strategist', position: { x: 0, y: 0 },
+      data: { label: 'S', blueprint_id: 'bp-1' },
+    });
+    expect(canvasStore.hasUnsavedChanges).toBe(true);
+  });
+
+  it('mirrors isDirty (the source of truth)', () => {
+    canvasStore.isDirty = true;
+    expect(canvasStore.hasUnsavedChanges).toBe(true);
+    canvasStore.isDirty = false;
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+
+  it('becomes false after reset()', () => {
+    canvasStore.isDirty = true;
+    canvasStore.reset();
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+
+  it('becomes false after loadFromLayout() (which clears isDirty)', () => {
+    canvasStore.isDirty = true;
+    canvasStore.loadFromLayout({ nodes: [], edges: [] });
+    expect(canvasStore.hasUnsavedChanges).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadFromLayout — all 28 node types pass through unchanged (audit L4)
+// ---------------------------------------------------------------------------
+
+describe('BluePrint Canvas Store — loadFromLayout node-type identity (audit L4)', () => {
+  // The legacy identity-mapping nodeTypeMap listed 28 entries where every
+  // key was equal to its value.  After removing the map, loadFromLayout
+  // must still preserve every supported node type.
+  const SUPPORTED_TYPES = [
+    'llm-profile',
+    'wf-input',
+    'wf-initialize',
+    'wf-strategist',
+    'wf-critic',
+    'wf-optimizer',
+    'wf-moderator',
+    'wf-fact-checker',
+    'wf-analyst',
+    'wf-creative',
+    'wf-socratic-questioner',
+    'wf-expert-reviewer',
+    'wf-steel-manner',
+    'wf-devils-advocate',
+    'wf-troll',
+    'wf-mediator',
+    'wf-ethicist',
+    'wf-synthesizer',
+    'wf-user-injection',
+    'wf-gate',
+    'wf-tone-profile',
+    'wf-agent',
+    'wf-builder',
+    'wf-pragmatist',
+    'wf-angels-advocate',
+    'wf-phase',
+    'tone-profile',
+    'agent-core',
+  ];
+
+  beforeEach(() => {
+    canvasStore.reset();
+  });
+
+  it.each(SUPPORTED_TYPES)(
+    'preserves the %s node type verbatim',
+    (type) => {
+      const layoutJson = {
+        nodes: [
+          {
+            id: `node-${type}`,
+            type,
+            x: 0,
+            y: 0,
+            blueprint_id: `bp-${type}`,
+            data: { label: type, blueprint_id: `bp-${type}` },
+          },
+        ],
+        edges: [],
+      };
+      canvasStore.loadFromLayout(layoutJson);
+      const node = canvasStore.nodes.find((n) => n.id === `node-${type}`);
+      expect(node).toBeDefined();
+      expect(node.type).toBe(type);
+    },
+  );
+
+  it('passes through unknown node types unchanged (fallback identity)', () => {
+    // The old ``nodeTypeMap[n.type] || n.type`` mapped unknowns to
+    // themselves via the ``||`` fallback.  Now ``n.type`` always
+    // wins — verify the same behaviour.
+    canvasStore.loadFromLayout({
+      nodes: [
+        {
+          id: 'custom-1',
+          type: 'totally-unknown-type',
+          x: 0,
+          y: 0,
+          data: { label: 'custom', blueprint_id: 'c1' },
+        },
+      ],
+      edges: [],
+    });
+    const node = canvasStore.nodes.find((n) => n.id === 'custom-1');
+    expect(node).toBeDefined();
+    expect(node.type).toBe('totally-unknown-type');
+  });
+
+  it('handles nodes with missing type gracefully', () => {
+    // Defensive: ``n.type`` may be undefined for malformed layout
+    // data.  Previously ``nodeTypeMap[undefined] || undefined``
+    // returned undefined; now ``n.type`` returns the same.
+    canvasStore.loadFromLayout({
+      nodes: [
+        {
+          id: 'no-type',
+          x: 0,
+          y: 0,
+          data: { label: 'no-type', blueprint_id: 'nt1' },
+        },
+      ],
+      edges: [],
+    });
+    const node = canvasStore.nodes.find((n) => n.id === 'no-type');
+    expect(node).toBeDefined();
+    expect(node.type).toBeUndefined();
+  });
+});

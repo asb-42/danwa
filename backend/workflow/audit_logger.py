@@ -13,6 +13,7 @@ import hashlib
 import json
 import logging
 import sqlite3
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -27,9 +28,12 @@ _DEFAULT_DB_PATH = Path("data/blueprints.db")
 class AuditLogger:
     """Append-only audit logger for workflow execution events.
 
-    Uses the ``audit_log`` table (migration v6+).  Thread-safe via a new
-    ``sqlite3.connect()`` per call, matching the pattern in
-    :class:`backend.persistence.audit.AuditService`.
+    Uses the ``audit_log`` table (migration v6+).  Thread-safe via a
+    shared ``sqlite3.Connection`` cached on the instance (one connection
+    per ``AuditLogger``) and serialised through an ``RLock`` — see
+    :meth:`_get_conn`.  Concurrent reads benefit from WAL journal mode
+    (enabled on first connect) and the lock is reentrant so callers that
+    already hold it (e.g. nested helpers) do not deadlock.
 
     Stores both SHA-256 hashes (for integrity verification) AND full
     content strings (for replay, debugging, and auditing).
@@ -38,15 +42,66 @@ class AuditLogger:
     def __init__(self, db_path: Path | str | None = None) -> None:
         self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._conn: sqlite3.Connection | None = None
+        self._lock = threading.RLock()
 
     # ------------------------------------------------------------------
     # Connection helper
     # ------------------------------------------------------------------
 
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return the cached connection, opening + WAL-initialising on first use.
+
+        The first call opens the connection with ``check_same_thread=False``
+        and a 30s busy timeout so other threads wait rather than raising.
+        WAL journal mode is enabled (best-effort — ignored on filesystems
+        that do not support it) so concurrent readers do not block writers.
+
+        Subsequent calls return the same connection — the connect overhead
+        is paid once per instance, not once per audit event.  This fixes
+        audit M10 (100 connect/open cycles per 100 audit events).
+        """
+        if self._conn is None:
+            with self._lock:
+                if self._conn is None:
+                    conn = sqlite3.connect(
+                        str(self._db_path),
+                        check_same_thread=False,
+                        timeout=30.0,
+                    )
+                    conn.row_factory = sqlite3.Row
+                    try:
+                        conn.execute("PRAGMA journal_mode=WAL")
+                        conn.execute("PRAGMA synchronous=NORMAL")
+                    except sqlite3.DatabaseError:
+                        logger.debug("WAL mode not available for %s", self._db_path, exc_info=True)
+                    self._conn = conn
+        return self._conn
+
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self._db_path))
-        conn.row_factory = sqlite3.Row
-        return conn
+        """Backwards-compatible alias — returns the cached connection.
+
+        Older call sites used ``with self._connect() as conn:``.  That
+        pattern still works (the connection has ``__enter__``/``__exit__``)
+        but the "with" block is now a no-op for close — the connection
+        is reused for the next call.  Callers must ``commit()`` explicitly
+        if they need durability before the next event.
+        """
+        return self._get_conn()
+
+    def close(self) -> None:
+        """Close the cached connection.  Safe to call multiple times.
+
+        Mostly useful for tests that swap the DB path or for graceful
+        shutdown.  Subsequent calls to ``_get_conn`` will lazily reopen.
+        """
+        with self._lock:
+            if self._conn is not None:
+                try:
+                    self._conn.close()
+                except Exception:
+                    logger.debug("Error closing audit logger connection", exc_info=True)
+                self._conn = None
 
     # ------------------------------------------------------------------
     # Hash helper
@@ -101,9 +156,16 @@ class AuditLogger:
         draft_version: int = 0,
         constructivity_score: float | None = None,
     ) -> None:
-        """Insert a single audit log row with full content."""
+        """Insert a single audit log row with full content.
+
+        Acquires the per-instance lock so concurrent writers serialise
+        against each other and the cached connection is never used
+        from two threads at once.  Commits after the insert so the
+        row is durable before the call returns.
+        """
         now = datetime.now(UTC).isoformat()
-        with self._connect() as conn:
+        with self._lock:
+            conn = self._get_conn()
             conn.execute(
                 """
                 INSERT INTO audit_log
@@ -138,6 +200,7 @@ class AuditLogger:
                     constructivity_score,
                 ),
             )
+            conn.commit()
 
     # ------------------------------------------------------------------
     # Public API — log events
@@ -373,7 +436,8 @@ class AuditLogger:
         limit = filters.limit if filters else 100
         offset = filters.offset if filters else 0
 
-        with self._connect() as conn:
+        with self._lock:
+            conn = self._get_conn()
             rows = conn.execute(
                 f"""
                 SELECT * FROM audit_log
@@ -390,7 +454,8 @@ class AuditLogger:
         session_id: str,
     ) -> list[dict[str, Any]]:
         """Return all audit log entries for *session_id* ordered by timestamp."""
-        with self._connect() as conn:
+        with self._lock:
+            conn = self._get_conn()
             rows = conn.execute(
                 """
                 SELECT * FROM audit_log
@@ -403,7 +468,8 @@ class AuditLogger:
 
     def count_events(self, session_id: str) -> int:
         """Count audit log entries for a session."""
-        with self._connect() as conn:
+        with self._lock:
+            conn = self._get_conn()
             row = conn.execute(
                 "SELECT COUNT(*) FROM audit_log WHERE session_id = ?",
                 (session_id,),

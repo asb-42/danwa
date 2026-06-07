@@ -459,20 +459,51 @@ class WorkflowCompiler:
         )
 
     def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:
-        """Topological sort of workflow nodes respecting non-feedback edges.
+        """Topological sort of workflow nodes respecting ordering edges.
 
-        Feedback and injects_config edges are excluded from the sort to
-        avoid cycles and to treat config injection as a non-sequential relationship.
+        Edge-type handling:
+
+        * ``sequential`` and ``conditional`` — full ordering
+          constraint, included in the sort.
+        * ``decision`` — included.  A Moderator's
+          ``(approved) → Builder`` edge is a real ordering
+          constraint: the Builder's state (e.g. ``draft_version``)
+          is read by the next agent, and the static
+          ``node_sequence`` (used by Inspector / observability /
+          debug tools) must reflect the logical data flow.
+          ``Sprint 41 (M3 fix)`` — previously excluded.
+        * ``feedback`` — excluded (back-edge; would create
+          a cycle that Kahn's algorithm cannot resolve).
+        * ``injects_config`` — excluded (config injection,
+          not a sequencing edge).
+        * ``interjection`` / ``builds_upon`` / ``validates`` —
+          excluded.  These are not strict ordering constraints
+          for the static ``node_sequence``; the runtime
+          ``add_node`` wiring handles them.
+
+        Self-loops on decision edges (Moderator → Moderator on
+        ``revision_required``) are skipped: they are part of the
+        conditional routing, not a sequence constraint, and
+        including them would prevent the source from ever
+        reaching ``in_degree == 0``.
         """
         node_ids = {n.id for n in workflow.nodes}
-        # Build adjacency (non-feedback, non-injects_config only)
+        # Build adjacency (sequential, conditional, decision;
+        # skip feedback, injects_config, interjection,
+        # builds_upon, validates, and self-loops).
         adj: dict[str, list[str]] = defaultdict(list)
         in_degree: dict[str, int] = {nid: 0 for nid in node_ids}
 
         for edge in workflow.edges:
-            if edge.type not in ("feedback", "injects_config", "decision"):
-                adj[edge.source].append(edge.target)
-                in_degree[edge.target] = in_degree.get(edge.target, 0) + 1
+            if edge.type in ("feedback", "injects_config", "interjection", "builds_upon", "validates"):
+                continue
+            if edge.source == edge.target:
+                # Self-loop (e.g. decision edge that loops back
+                # to the same node on a particular condition).
+                # Not a sequencing constraint.
+                continue
+            adj[edge.source].append(edge.target)
+            in_degree[edge.target] = in_degree.get(edge.target, 0) + 1
 
         # Kahn's algorithm — use deque for O(1) popleft instead of O(n) list.pop(0).
         # M2 fix (Sprint 33): scales linearly for large workflows.
