@@ -13,7 +13,6 @@ production singleton's ``data/blueprints.db`` is never touched here.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import sqlite3
 from pathlib import Path
@@ -192,36 +191,37 @@ class TestPersistenceRestartResilience:
 class TestPersistenceSchema:
     """Sanity checks on the SQLite schema and connection handling."""
 
-    def test_creates_table_on_first_use(self, tmp_path: Path) -> None:
+    @pytest.mark.asyncio
+    async def test_creates_table_on_first_use(self, tmp_path: Path) -> None:
         """The ``interjections`` table must exist after the first DB call."""
         db = tmp_path / "interjections.db"
         service = InterjectionService(db_path=db)
 
-        # Trigger lazy connection by submitting (run synchronously via
-        # the asyncio loop helper that the other tests use).
-        asyncio.get_event_loop().run_until_complete(service.submit("sess-1", "init"))
+        await service.submit("sess-1", "init")
 
         with sqlite3.connect(str(db)) as conn:
             tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "interjections" in tables
 
-    def test_creates_parent_directory(self, tmp_path: Path) -> None:
+    @pytest.mark.asyncio
+    async def test_creates_parent_directory(self, tmp_path: Path) -> None:
         """A non-existent parent dir must be created, not blow up."""
         db = tmp_path / "nested" / "deeper" / "interjections.db"
         service = InterjectionService(db_path=db)
 
-        asyncio.get_event_loop().run_until_complete(service.submit("sess-1", "Hello"))
+        await service.submit("sess-1", "Hello")
 
         assert db.exists()
 
-    def test_in_memory_mode_skips_db_entirely(self) -> None:
+    @pytest.mark.asyncio
+    async def test_in_memory_mode_skips_db_entirely(self) -> None:
         """``db_path=None`` must not create any connection or file."""
         service = InterjectionService()
 
         # Trigger every public method to confirm nothing leaks.
-        asyncio.get_event_loop().run_until_complete(service.submit("sess", "x"))
-        asyncio.get_event_loop().run_until_complete(service.consume("sess"))
-        asyncio.get_event_loop().run_until_complete(service.clear("sess"))
+        await service.submit("sess", "x")
+        await service.consume("sess")
+        await service.clear("sess")
 
         assert service._conn is None
         assert service._db_path is None

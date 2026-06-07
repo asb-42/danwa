@@ -828,11 +828,17 @@ class WorkflowCompiler:
                 # in parallel and waits at the fan-in node (the gate).
                 for edge in non_feedback:
                     graph.add_edge(node.id, edge.target)
+                target_ids = [e.target for e in non_feedback]
+                warnings.append(
+                    f"Node '{node.id}' has {len(non_feedback)} non-feedback "
+                    f"outgoing edges ({', '.join(target_ids)}).  Consider "
+                    f"using a wf-gate node for conditional branching."
+                )
                 logger.info(
                     "Fan-out from '%s' to %d targets: %s",
                     node.id,
                     len(non_feedback),
-                    [e.target for e in non_feedback],
+                    target_ids,
                 )
 
         # --- Ensure terminal nodes connect to END ---
