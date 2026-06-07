@@ -40,36 +40,86 @@ logger = logging.getLogger(__name__)
 class WorkflowStateBackend(Protocol):
     """Interface for workflow state operations."""
 
-    def get_status(self, session_id: str) -> str: ...
-    def set_status(self, session_id: str, status: str) -> None: ...
-    def is_cancelled(self, session_id: str) -> bool: ...
-    def cancel(self, session_id: str) -> None: ...
-    def clear_cancel(self, session_id: str) -> None: ...
-    def is_paused(self, session_id: str) -> bool: ...
-    def pause(self, session_id: str) -> None: ...
-    def resume(self, session_id: str) -> None: ...
-    def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool: ...
-    def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool: ...
-    def set_extension_signal(self, session_id: str) -> None: ...
-    def wait_for_extension_signal(self, session_id: str, timeout: float | None = None) -> bool: ...
-    def get_hitl_pause(self, debate_id: str) -> dict | None: ...
-    def set_hitl_pause(self, debate_id: str, paused_at: str, reason: str | None) -> None: ...
-    def clear_hitl_pause(self, debate_id: str) -> None: ...
-    def cleanup(self, session_id: str) -> None: ...
+    def get_status(self, session_id: str) -> str:
+        """Return the current workflow status for *session_id*."""
+        ...
+
+    def set_status(self, session_id: str, status: str) -> None:
+        """Persist a new workflow status for *session_id*."""
+        ...
+
+    def is_cancelled(self, session_id: str) -> bool:
+        """Return ``True`` if *session_id* has been cancelled."""
+        ...
+
+    def cancel(self, session_id: str) -> None:
+        """Cancel the workflow for *session_id*."""
+        ...
+
+    def clear_cancel(self, session_id: str) -> None:
+        """Remove the cancellation flag for *session_id*."""
+        ...
+
+    def is_paused(self, session_id: str) -> bool:
+        """Return ``True`` if *session_id* is currently paused."""
+        ...
+
+    def pause(self, session_id: str) -> None:
+        """Pause the workflow for *session_id*."""
+        ...
+
+    def resume(self, session_id: str) -> None:
+        """Resume a paused workflow for *session_id*."""
+        ...
+
+    def wait_for_pause(self, session_id: str, timeout: float | None = None) -> bool:
+        """Block until the session is paused or *timeout* expires."""
+        ...
+
+    def wait_for_resume(self, session_id: str, timeout: float | None = None) -> bool:
+        """Block until the session is resumed or *timeout* expires."""
+        ...
+
+    def set_extension_signal(self, session_id: str) -> None:
+        """Fire the per-session extension-decision signal."""
+        ...
+
+    def wait_for_extension_signal(self, session_id: str, timeout: float | None = None) -> bool:
+        """Block until the extension-decision signal fires or *timeout* expires."""
+        ...
+
+    def get_hitl_pause(self, debate_id: str) -> dict | None:
+        """Return the HITL pause record for *debate_id*, or ``None``."""
+        ...
+
+    def set_hitl_pause(self, debate_id: str, paused_at: str, reason: str | None) -> None:
+        """Mark *debate_id* as HITL-paused."""
+        ...
+
+    def clear_hitl_pause(self, debate_id: str) -> None:
+        """Clear the HITL pause record for *debate_id*."""
+        ...
+
+    def cleanup(self, session_id: str) -> None:
+        """Remove all state for *session_id* (status, cancel, pause, wait events)."""
+        ...
 
 
 # Channel name builders — kept as module-level so the InMemory and
 # Redis impls share the exact same string (consumers should never
 # see a divergence between backends).
 def _pause_channel(session_id: str) -> str:
+    """Return the pub/sub channel name for pause signals."""
     return f"danwa:wf:pause:{session_id}"
 
 
 def _resume_channel(session_id: str) -> str:
+    """Return the pub/sub channel name for resume signals."""
     return f"danwa:wf:resume:{session_id}"
 
 
 def _extension_channel(session_id: str) -> str:
+    """Return the pub/sub channel name for extension signals."""
     return f"danwa:wf:extension:{session_id}"
 
 
@@ -82,6 +132,7 @@ class InMemoryWorkflowState:
     """
 
     def __init__(self, pubsub: PubSubBackend | None = None) -> None:
+        """Initialise the backend."""
         self._status: dict[str, str] = {}
         self._cancelled: set[str] = set()
         # ``_pause_events`` is the legacy per-session asyncio.Event,
@@ -102,6 +153,7 @@ class InMemoryWorkflowState:
         self._hitl_pauses: dict[str, dict] = {}
 
     def _get_pause_wait_event(self, session_id: str) -> WaitEvent:
+        """Return (or lazily create) the pause WaitEvent for *session_id*."""
         ch = _pause_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
@@ -110,6 +162,7 @@ class InMemoryWorkflowState:
         return ev
 
     def _get_resume_wait_event(self, session_id: str) -> WaitEvent:
+        """Return (or lazily create) the resume WaitEvent for *session_id*."""
         ch = _resume_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
@@ -118,6 +171,7 @@ class InMemoryWorkflowState:
         return ev
 
     def _get_extension_wait_event(self, session_id: str) -> WaitEvent:
+        """Return (or lazily create) the extension WaitEvent for *session_id*."""
         ch = _extension_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
@@ -126,28 +180,35 @@ class InMemoryWorkflowState:
         return ev
 
     def get_status(self, session_id: str) -> str:
+        """Return the current workflow status for *session_id*."""
         return self._status.get(session_id, "unknown")
 
     def set_status(self, session_id: str, status: str) -> None:
+        """Persist a new workflow status for *session_id*."""
         self._status[session_id] = status
 
     def is_cancelled(self, session_id: str) -> bool:
+        """Return True if *session_id* has been cancelled."""
         return session_id in self._cancelled
 
     def cancel(self, session_id: str) -> None:
+        """Cancel the workflow for *session_id*."""
         self._cancelled.add(session_id)
         self._status[session_id] = "cancelled"
 
     def clear_cancel(self, session_id: str) -> None:
+        """Remove the cancellation flag for *session_id*."""
         self._cancelled.discard(session_id)
 
     def is_paused(self, session_id: str) -> bool:
+        """Return True if *session_id* is currently paused."""
         event = self._pause_events.get(session_id)
         if event is None:
             return False
         return not event.is_set()
 
     def pause(self, session_id: str) -> None:
+        """Pause the workflow for *session_id*."""
         if session_id not in self._pause_events:
             import asyncio
 
@@ -160,6 +221,7 @@ class InMemoryWorkflowState:
         self._get_pause_wait_event(session_id).set()
 
     def resume(self, session_id: str) -> None:
+        """Resume a paused workflow for *session_id*."""
         if session_id not in self._pause_events:
             import asyncio
 
@@ -302,6 +364,7 @@ class InMemoryWorkflowState:
         self._hitl_pauses.pop(debate_id, None)
 
     def cleanup(self, session_id: str) -> None:
+        """Remove all state for *session_id*."""
         self._status.pop(session_id, None)
         self._cancelled.discard(session_id)
         self._pause_events.pop(session_id, None)
@@ -331,6 +394,7 @@ class RedisWorkflowState:
     """
 
     def __init__(self, redis_url: str, pubsub: PubSubBackend | None = None) -> None:
+        """Initialise the backend."""
         import redis
 
         self.redis = redis.from_url(redis_url, decode_responses=True)
@@ -340,9 +404,11 @@ class RedisWorkflowState:
         logger.info("RedisWorkflowState connected to %s", redis_url)
 
     def _key(self, session_id: str, suffix: str) -> str:
+        """Build a namespaced Redis key for *session_id* and *suffix*."""
         return f"{self._prefix}{suffix}:{session_id}"
 
     def _get_pause_wait_event(self, session_id: str) -> WaitEvent:
+        """Return (or lazily create) the pause WaitEvent for *session_id*."""
         ch = _pause_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
@@ -351,6 +417,7 @@ class RedisWorkflowState:
         return ev
 
     def _get_resume_wait_event(self, session_id: str) -> WaitEvent:
+        """Return (or lazily create) the resume WaitEvent for *session_id*."""
         ch = _resume_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
@@ -359,6 +426,7 @@ class RedisWorkflowState:
         return ev
 
     def _get_extension_wait_event(self, session_id: str) -> WaitEvent:
+        """Return (or lazily create) the extension WaitEvent for *session_id*."""
         ch = _extension_channel(session_id)
         ev = self._wait_events.get(ch)
         if ev is None:
@@ -367,28 +435,35 @@ class RedisWorkflowState:
         return ev
 
     def get_status(self, session_id: str) -> str:
+        """Return the current workflow status for *session_id*."""
         val = self.redis.get(self._key(session_id, "status"))
         return val or "unknown"
 
     def set_status(self, session_id: str, status: str) -> None:
+        """Persist a new workflow status for *session_id*."""
         self.redis.setex(self._key(session_id, "status"), 3600, status)
 
     def is_cancelled(self, session_id: str) -> bool:
+        """Return True if *session_id* has been cancelled."""
         return self.redis.exists(self._key(session_id, "cancelled")) == 1
 
     def cancel(self, session_id: str) -> None:
+        """Cancel the workflow for *session_id*."""
         pipe = self.redis.pipeline()
         pipe.set(self._key(session_id, "cancelled"), "1")
         pipe.setex(self._key(session_id, "status"), 3600, "cancelled")
         pipe.execute()
 
     def clear_cancel(self, session_id: str) -> None:
+        """Remove the cancellation flag for *session_id*."""
         self.redis.delete(self._key(session_id, "cancelled"))
 
     def is_paused(self, session_id: str) -> bool:
+        """Return True if *session_id* is currently paused."""
         return self.redis.exists(self._key(session_id, "paused")) == 1
 
     def pause(self, session_id: str) -> None:
+        """Pause the workflow for *session_id*."""
         pipe = self.redis.pipeline()
         pipe.set(self._key(session_id, "paused"), "1")
         pipe.setex(self._key(session_id, "status"), 3600, "paused")
@@ -398,6 +473,7 @@ class RedisWorkflowState:
         self._get_pause_wait_event(session_id).set()
 
     def resume(self, session_id: str) -> None:
+        """Resume a paused workflow for *session_id*."""
         pipe = self.redis.pipeline()
         pipe.delete(self._key(session_id, "paused"))
         pipe.setex(self._key(session_id, "status"), 3600, "running")
@@ -439,6 +515,7 @@ class RedisWorkflowState:
         return await ev.wait(timeout=timeout)
 
     def cleanup(self, session_id: str) -> None:
+        """Remove all state for *session_id*."""
         self.redis.delete(
             self._key(session_id, "status"),
             self._key(session_id, "cancelled"),

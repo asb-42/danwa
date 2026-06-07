@@ -79,16 +79,20 @@ class InMemoryWaitEvent:
     """
 
     def __init__(self, channel: str, pubsub: PubSubBackend) -> None:
+        """Initialise the instance."""
         self._channel_name = channel
         self._pubsub = pubsub
 
     def _channel(self):
+        """Return the underlying pub/sub channel."""
         return self._pubsub.channel(self._channel_name)
 
     def is_set(self) -> bool:
+        """Return True if the event is currently set."""
         return self._channel().is_set()
 
     def set(self) -> None:
+        """Set the event and wake all waiters."""
         # Synchronously bump the channel's set counter so
         # ``is_set()`` reflects the new state immediately.  Then
         # fire the publish as a background task to deliver the
@@ -106,6 +110,7 @@ class InMemoryWaitEvent:
             pass
 
     def clear(self) -> None:
+        """Clear the event so future wait() calls block."""
         self._channel().clear()
 
     async def wait(self, timeout: float | None = None) -> bool:
@@ -173,17 +178,21 @@ class RedisWaitEvent:
     """
 
     def __init__(self, channel: str, pubsub: PubSubBackend) -> None:
+        """Initialise the instance."""
         self._channel_name = channel
         self._pubsub = pubsub
         self._active_subscriptions: list = []
 
     def _channel(self):
+        """Return the underlying pub/sub channel."""
         return self._pubsub.channel(self._channel_name)
 
     def is_set(self) -> bool:
+        """Return True if the event is currently set."""
         return self._channel().is_set()
 
     def set(self) -> None:
+        """Set the event and wake all waiters."""
         # In the Redis case, ``publish()`` increments the flag
         # atomically, but only after the await.  We can do a
         # synchronous INCR here to make ``is_set()`` consistent
@@ -200,6 +209,7 @@ class RedisWaitEvent:
             pass
 
     def clear(self) -> None:
+        """Clear the event so future wait() calls block."""
         self._channel().clear()
 
     async def wait(self, timeout: float | None = None) -> bool:

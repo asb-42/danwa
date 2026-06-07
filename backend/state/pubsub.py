@@ -90,12 +90,14 @@ class InMemorySubscription:
     """
 
     def __init__(self, channel: InMemoryChannel, maxsize: int = 1024) -> None:
+        """Initialise the instance."""
         self._channel = channel
         self._queue: asyncio.Queue[str] = asyncio.Queue(maxsize=maxsize)
         self._close_event = asyncio.Event()
         self._channel._register(self)
 
     def __aiter__(self) -> AsyncIterator[str]:
+        """Return the async iterator."""
         return self
 
     async def __anext__(self) -> str:
@@ -140,6 +142,7 @@ class InMemoryChannel:
     """
 
     def __init__(self, name: str) -> None:
+        """Initialise the instance."""
         self.name = name
         self._subscribers: list[InMemorySubscription] = []
         self._lock = asyncio.Lock()
@@ -150,9 +153,11 @@ class InMemoryChannel:
         self._set_count: int = 0
 
     def _register(self, sub: InMemorySubscription) -> None:
+        """Register a subscription for broadcast delivery."""
         self._subscribers.append(sub)
 
     def _unregister(self, sub: InMemorySubscription) -> None:
+        """Remove a subscription from the broadcast list."""
         try:
             self._subscribers.remove(sub)
         except ValueError:
@@ -203,6 +208,7 @@ class InMemoryChannel:
         return delivered
 
     def subscribe(self) -> InMemorySubscription:
+        """Create a new subscription on this channel."""
         return InMemorySubscription(self)
 
 
@@ -210,10 +216,12 @@ class InMemoryPubSub:
     """In-memory pub/sub — single-process, no Redis required."""
 
     def __init__(self) -> None:
+        """Initialise the instance."""
         self._channels: dict[str, InMemoryChannel] = {}
         self._lock = asyncio.Lock()
 
     def channel(self, name: str) -> InMemoryChannel:
+        """Return a channel handle for the given *name*."""
         # Lazy-create channels.  No lock needed for read-after-init in
         # asyncio single-threaded model.
         ch = self._channels.get(name)
@@ -232,6 +240,7 @@ class _RedisSubscription:
     """A Redis-backed subscription."""
 
     def __init__(self, channel_name: str, redis_client: Any) -> None:
+        """Initialise the instance."""
         self._channel_name = channel_name
         self._pubsub = redis_client.pubsub(ignore_subscribe_messages=True)
         self._closed = False
@@ -244,6 +253,7 @@ class _RedisSubscription:
             self._pubsub._danwa_subscribed = True
 
     def __aiter__(self) -> AsyncIterator[str]:
+        """Return the async iterator."""
         return self
 
     async def __anext__(self) -> str:
@@ -293,6 +303,7 @@ class RedisChannel:
     _SET_TTL_SECONDS = 3600  # 1 hour; refreshed on every publish
 
     def __init__(self, name: str, redis_client: Any) -> None:
+        """Initialise the instance."""
         self.name = name
         self._redis = redis_client
         self._flag_key = f"{name}:flag"
@@ -322,6 +333,7 @@ class RedisChannel:
         self._redis.delete(self._flag_key)
 
     def subscribe(self) -> _RedisSubscription:
+        """Create a new subscription on this channel."""
         return _RedisSubscription(self.name, self._redis)
 
 
@@ -337,6 +349,7 @@ class RedisPubSub:
     """
 
     def __init__(self, redis_url: str) -> None:
+        """Initialise the instance."""
         import redis
 
         self._redis = redis.from_url(redis_url, decode_responses=False)
@@ -346,6 +359,7 @@ class RedisPubSub:
         logger.info("RedisPubSub connected to %s", redis_url)
 
     def channel(self, name: str) -> RedisChannel:
+        """Return a channel handle for the given *name*."""
         ch = self._channels.get(name)
         if ch is None:
             ch = RedisChannel(name, self._redis)
