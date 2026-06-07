@@ -111,6 +111,15 @@ class InterjectionService:
         # would otherwise show up twice after a re-hydration triggered
         # by the wake event.
         self._queued_ids: set[str] = set()
+        # F-04 counter — number of times a ``_persist_*`` call failed.
+        # Operations can poll this attribute (or call
+        # :meth:`get_persist_failure_count`) to detect a chronically
+        # broken DB (disk full, permissions, corrupt file) that would
+        # otherwise be invisible because each failing call is
+        # best-effort and only logs a warning.  Reset to 0 only at
+        # process restart; the counter accumulates over the worker's
+        # lifetime so a deploy will not lose the signal.
+        self._persist_failure_count: int = 0
 
     # ------------------------------------------------------------------
     # Connection / persistence helpers
@@ -260,18 +269,27 @@ class InterjectionService:
                 )
             self._hydration_version[session_id] = current_version
 
-    def _persist_insert(self, interjection: Interjection) -> None:
+    def _persist_insert(self, interjection: Interjection) -> bool:
         """Write a new pending row to the SQLite mirror.
 
-        Best-effort: a write failure is logged but does not propagate so
-        a transient DB hiccup does not break the in-memory queue that
-        the running workflow is actively reading from.
+        F-04 fix: returns ``True`` on success and ``False`` if the
+        DB write failed.  The ``_persist_failure_count`` counter is
+        incremented on every failure so operations can detect a
+        chronically broken DB (disk full, permissions, corrupt file)
+        that would otherwise be invisible because each failing call
+        is best-effort and only logs a warning.
+
+        The in-memory queue is the source of truth for the running
+        session — even on ``False`` the caller keeps the
+        ``interjection_id`` and the workflow continues.  The data is
+        simply lost on the next process restart unless operations
+        notices the counter going up.
         """
         if self._db_path is None or self._db_lock is None:
-            return
+            return True
         conn = self._get_conn()
         if conn is None:
-            return
+            return True
         with self._db_lock:
             try:
                 conn.execute(
@@ -290,6 +308,7 @@ class InterjectionService:
                     ),
                 )
                 conn.commit()
+                return True
             except sqlite3.DatabaseError:
                 logger.warning(
                     "Failed to persist interjection %s to %s",
@@ -297,14 +316,24 @@ class InterjectionService:
                     self._db_path,
                     exc_info=True,
                 )
+                self._persist_failure_count += 1
+                return False
 
-    def _persist_mark_consumed(self, ids: list[str]) -> None:
-        """Mark the given interjection rows as ``consumed`` in SQLite."""
+    def _persist_mark_consumed(self, ids: list[str]) -> bool:
+        """Mark the given interjection rows as ``consumed`` in SQLite.
+
+        F-04 fix: returns ``True`` on success and ``False`` on DB
+        failure.  The caller (currently :meth:`_drain_pending`) uses
+        the ``False`` return to roll back the in-memory status of
+        the affected items back to ``pending`` so a process restart
+        does not silently re-deliver rows the running session
+        considered already consumed.
+        """
         if not ids or self._db_path is None or self._db_lock is None:
-            return
+            return True
         conn = self._get_conn()
         if conn is None:
-            return
+            return True
         with self._db_lock:
             try:
                 now = datetime.now(UTC).isoformat()
@@ -314,6 +343,7 @@ class InterjectionService:
                         (now, iid),
                     )
                 conn.commit()
+                return True
             except sqlite3.DatabaseError:
                 logger.warning(
                     "Failed to mark %d interjections as consumed in %s",
@@ -321,26 +351,39 @@ class InterjectionService:
                     self._db_path,
                     exc_info=True,
                 )
+                self._persist_failure_count += 1
+                return False
 
-    def _persist_delete_session(self, session_id: str) -> None:
-        """Delete every interjection row for ``session_id`` from SQLite."""
+    def _persist_delete_session(self, session_id: str) -> bool:
+        """Delete every interjection row for ``session_id`` from SQLite.
+
+        F-04 fix: returns ``True`` on success and ``False`` on DB
+        failure.  The caller continues even on failure (the in-memory
+        queue is the source of truth) but the counter is bumped so
+        operations sees the broken DB.
+        """
         if self._db_path is None or self._db_lock is None:
-            return
+            return True
         conn = self._get_conn()
         if conn is None:
-            return
+            return True
         with self._db_lock:
             try:
                 conn.execute("DELETE FROM interjections WHERE session_id = ?", (session_id,))
                 conn.commit()
+                return True
             except sqlite3.DatabaseError:
                 logger.warning(
-                    "Failed to delete interjections for session %s from %s",
+                    "Failed to delete interjections for session %s in %s",
                     session_id,
                     self._db_path,
                     exc_info=True,
                 )
+                self._persist_failure_count += 1
+                return False
 
+    # ------------------------------------------------------------------
+    # Wake-event helper
     # ------------------------------------------------------------------
     # Wake-event helper
     # ------------------------------------------------------------------
@@ -566,6 +609,14 @@ class InterjectionService:
         rows runs on a worker thread via ``asyncio.to_thread`` after
         the lock is released.  A slow ``conn.commit()`` can no longer
         block every other coroutine in the worker process.
+
+        F-04 fix: if the persist call returns ``False`` the in-memory
+        status of the affected items is rolled back to ``pending``
+        and the dedup set is restored, so a process restart that
+        re-reads the DB will not silently re-deliver rows the
+        running session considered already consumed.  The garbage
+        collection of fully consumed queues is also deferred to
+        after the persist so the rollback can find the items.
         """
         consumed_ids: list[str] = []
         results: list[dict[str, Any]] = []
@@ -593,22 +644,47 @@ class InterjectionService:
                 )
             if consumed_ids:
                 self._queued_ids.difference_update(consumed_ids)
-
-            # Garbage-collect fully consumed queues so they don't
-            # accumulate across many short-lived sessions.
-            if queue and all(ij.status == "consumed" for ij in queue):
-                self._queues.pop(session_id, None)
-                queue_size_after = 0
-            else:
-                queue_size_after = len(self._queues.get(session_id, []))
+            # Snapshot the post-drain queue length but defer the
+            # actual garbage collection until *after* the persist so
+            # the F-04 rollback path can still find the items to
+            # re-mark as pending.
+            queue_size_after = len(self._queues.get(session_id, []))
 
         # Mirror the consumed rows to SQLite *outside* the lock so
         # the ``UPDATE … consumed_at = ?`` plus the ``commit()`` run
         # on a worker thread (F-02).  We snapshot ``consumed_ids``
         # above so this section has no in-memory dependencies on the
         # queue state.
+        persisted_ok = True
         if consumed_ids and self._db_path is not None:
-            await asyncio.to_thread(self._persist_mark_consumed, list(consumed_ids))
+            persisted_ok = await asyncio.to_thread(self._persist_mark_consumed, list(consumed_ids))
+
+        # F-04 rollback / GC — both run under the lock because they
+        # touch ``_queues`` and ``_queued_ids``.
+        async with self._lock:
+            if not persisted_ok:
+                # Persist failed: re-mark the items as ``pending`` so
+                # the next drain (or a process restart that reads
+                # the DB) re-delivers them.  Without this rollback
+                # the in-memory queue would say ``consumed`` while
+                # the DB still has the rows as ``pending``, and a
+                # restart would re-deliver them *while* the running
+                # session had already considered them done — a
+                # silent divergence.
+                for iid in consumed_ids:
+                    self._queued_ids.add(iid)
+                    for ij in self._queues.get(session_id, []):
+                        if ij.interjection_id == iid:
+                            ij.status = "pending"
+                            break
+                queue_size_after = len(self._queues.get(session_id, []))
+            else:
+                # Persist succeeded: GC the queue if every item is
+                # now consumed.
+                queue = self._queues.get(session_id)
+                if queue and all(ij.status == "consumed" for ij in queue):
+                    self._queues.pop(session_id, None)
+                    queue_size_after = 0
 
         # Reset the wake-up event when the queue is empty so the next
         # consume_blocking() call will block.  Done outside the lock to
@@ -620,12 +696,13 @@ class InterjectionService:
 
         # DIAGNOSTIC: Always log consume calls so we can trace the flow
         logger.info(
-            "DIAG consume() called: session=%s node=%s | queue_size=%d pending=%d consumed=%d",
+            "DIAG consume() called: session=%s node=%s | queue_size=%d pending=%d consumed=%d persisted_ok=%s",
             session_id,
             node_id,
             queue_size,
             len(pending),
             len(results),
+            persisted_ok,
         )
         return results, queue_size_after
 
@@ -653,6 +730,26 @@ class InterjectionService:
                 for ij in queue
                 if ij.status == "pending"
             ]
+
+    def get_persist_failure_count(self) -> int:
+        """Return the cumulative number of failed ``_persist_*`` calls.
+
+        F-04 observability: increments on every ``_persist_insert``,
+        ``_persist_mark_consumed``, and ``_persist_delete_session``
+        failure.  Operations can poll this (e.g. expose it on a
+        ``/healthz``-style endpoint or wire it into Prometheus) to
+        detect a chronically broken DB (disk full, permissions,
+        corrupt file) that would otherwise be invisible because
+        each failing call is best-effort and only logs a warning.
+
+        The counter is per-instance (one per worker process); for
+        an aggregate view across the 4-worker Gunicorn deployment,
+        sum the values from every worker's
+        ``interjection_service`` instance — they share the same
+        underlying DB, so a chronically broken DB will show up on
+        every worker.
+        """
+        return self._persist_failure_count
 
     async def clear(self, session_id: str) -> None:
         """Remove all interjections for a session.
