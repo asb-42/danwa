@@ -310,3 +310,111 @@ describe('BluePrint Canvas Store — hasUnsavedChanges (audit M7)', () => {
     expect(canvasStore.hasUnsavedChanges).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// loadFromLayout — all 28 node types pass through unchanged (audit L4)
+// ---------------------------------------------------------------------------
+
+describe('BluePrint Canvas Store — loadFromLayout node-type identity (audit L4)', () => {
+  // The legacy identity-mapping nodeTypeMap listed 28 entries where every
+  // key was equal to its value.  After removing the map, loadFromLayout
+  // must still preserve every supported node type.
+  const SUPPORTED_TYPES = [
+    'llm-profile',
+    'wf-input',
+    'wf-initialize',
+    'wf-strategist',
+    'wf-critic',
+    'wf-optimizer',
+    'wf-moderator',
+    'wf-fact-checker',
+    'wf-analyst',
+    'wf-creative',
+    'wf-socratic-questioner',
+    'wf-expert-reviewer',
+    'wf-steel-manner',
+    'wf-devils-advocate',
+    'wf-troll',
+    'wf-mediator',
+    'wf-ethicist',
+    'wf-synthesizer',
+    'wf-user-injection',
+    'wf-gate',
+    'wf-tone-profile',
+    'wf-agent',
+    'wf-builder',
+    'wf-pragmatist',
+    'wf-angels-advocate',
+    'wf-phase',
+    'tone-profile',
+    'agent-core',
+  ];
+
+  beforeEach(() => {
+    canvasStore.reset();
+  });
+
+  it.each(SUPPORTED_TYPES)(
+    'preserves the %s node type verbatim',
+    (type) => {
+      const layoutJson = {
+        nodes: [
+          {
+            id: `node-${type}`,
+            type,
+            x: 0,
+            y: 0,
+            blueprint_id: `bp-${type}`,
+            data: { label: type, blueprint_id: `bp-${type}` },
+          },
+        ],
+        edges: [],
+      };
+      canvasStore.loadFromLayout(layoutJson);
+      const node = canvasStore.nodes.find((n) => n.id === `node-${type}`);
+      expect(node).toBeDefined();
+      expect(node.type).toBe(type);
+    },
+  );
+
+  it('passes through unknown node types unchanged (fallback identity)', () => {
+    // The old ``nodeTypeMap[n.type] || n.type`` mapped unknowns to
+    // themselves via the ``||`` fallback.  Now ``n.type`` always
+    // wins — verify the same behaviour.
+    canvasStore.loadFromLayout({
+      nodes: [
+        {
+          id: 'custom-1',
+          type: 'totally-unknown-type',
+          x: 0,
+          y: 0,
+          data: { label: 'custom', blueprint_id: 'c1' },
+        },
+      ],
+      edges: [],
+    });
+    const node = canvasStore.nodes.find((n) => n.id === 'custom-1');
+    expect(node).toBeDefined();
+    expect(node.type).toBe('totally-unknown-type');
+  });
+
+  it('handles nodes with missing type gracefully', () => {
+    // Defensive: ``n.type`` may be undefined for malformed layout
+    // data.  Previously ``nodeTypeMap[undefined] || undefined``
+    // returned undefined; now ``n.type`` returns the same.
+    canvasStore.loadFromLayout({
+      nodes: [
+        {
+          id: 'no-type',
+          x: 0,
+          y: 0,
+          data: { label: 'no-type', blueprint_id: 'nt1' },
+        },
+      ],
+      edges: [],
+    });
+    const node = canvasStore.nodes.find((n) => n.id === 'no-type');
+    expect(node).toBeDefined();
+    expect(node.type).toBeUndefined();
+  });
+});
