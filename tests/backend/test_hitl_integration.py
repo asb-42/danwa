@@ -571,8 +571,9 @@ class TestHITLStateManagement:
         assert "debate-1" not in _active_interrupts
         assert is_paused("debate-1") is False
         assert "debate-1" not in _hitl_config
-        # Interaction log is preserved for history
-        assert "debate-1" in _interaction_log
+        # C-02 fix: interaction log is also cleaned up to prevent
+        # unbounded memory growth in long-running deployments.
+        assert "debate-1" not in _interaction_log
 
     def test_multiple_debates_isolated(self):
         register_agent_query(

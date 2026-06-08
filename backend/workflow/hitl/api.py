@@ -52,6 +52,11 @@ router = APIRouter()
 # In production, this would be backed by Redis or a database.
 # ---------------------------------------------------------------------------
 
+# Maximum number of interaction log entries kept per debate before
+# the oldest entries are evicted.  Prevents unbounded memory growth
+# in long-running deployments.
+_MAX_LOG_PER_DEBATE: int = 1000
+
 # debate_id → list of interactions
 _interaction_log: dict[str, list[dict]] = {}
 
@@ -128,6 +133,9 @@ def register_agent_query(debate_id: str, query_context: dict) -> str:
     """Register an agent query (creates an interrupt).
 
     Called by workflow nodes when an agent needs clarification.
+    If an interrupt is already active for this debate, the previous
+    one is resolved automatically with a placeholder response so the
+    user's attention is not silently stolen.
 
     Args:
         debate_id: The debate ID.
@@ -136,6 +144,22 @@ def register_agent_query(debate_id: str, query_context: dict) -> str:
     Returns:
         The interrupt_id.
     """
+    # If an interrupt is already active, auto-resolve it so the agent
+    # is not left hanging indefinitely (S-02 fix).
+    existing = _active_interrupts.get(debate_id)
+    if existing and existing.get("status") == "waiting":
+        logger.warning(
+            "Auto-resolving previous interrupt %s for debate %s "
+            "before registering new query from %s",
+            existing["interrupt_id"],
+            debate_id,
+            query_context.get("agent_role", "unknown"),
+        )
+        resolve_interrupt(
+            debate_id,
+            "[Auto-resolved: a new agent query arrived before the user responded]",
+        )
+
     interrupt_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
     config = get_hitl_config(debate_id)
@@ -265,18 +289,32 @@ def resolve_interrupt(debate_id: str, response: str) -> dict | None:
 
 
 def cleanup_hitl_state(debate_id: str) -> None:
-    """Clean up all HITL state for a completed debate."""
+    """Clean up all HITL state for a completed debate.
+
+    Removes active interrupts, pause state, config, and the interaction
+    log for this debate.  Previously the interaction log was kept "for
+    history", but without a cap or TTL this caused unbounded memory
+    growth in long-running deployments (C-02).
+    """
     _active_interrupts.pop(debate_id, None)
     get_workflow_state().clear_hitl_pause(debate_id)
     _hitl_config.pop(debate_id, None)
-    # Keep interaction log for history (cleared on debate deletion)
+    _interaction_log.pop(debate_id, None)
 
 
 def _log_interaction(debate_id: str, interaction: dict) -> None:
-    """Append an interaction to the log."""
+    """Append an interaction to the log, capping at ``_MAX_LOG_PER_DEBATE``.
+
+    When the cap is reached the oldest entries are evicted so the
+    list never grows beyond the limit.
+    """
     if debate_id not in _interaction_log:
         _interaction_log[debate_id] = []
-    _interaction_log[debate_id].append(interaction)
+    log = _interaction_log[debate_id]
+    log.append(interaction)
+    # Evict oldest entries when the cap is exceeded.
+    if len(log) > _MAX_LOG_PER_DEBATE:
+        del log[: len(log) - _MAX_LOG_PER_DEBATE]
 
 
 # ---------------------------------------------------------------------------

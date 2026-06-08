@@ -268,10 +268,13 @@ def _check_structural_anomalies(content: str) -> list[dict]:
 def sanitize_for_display(content: str, max_length: int = 500) -> str:
     """Sanitize content for safe display in UI.
 
-    Truncates and escapes potentially dangerous content.
+    Truncates and escapes potentially dangerous content by encoding
+    HTML-significant characters as entities so that injected markup
+    renders as literal text rather than being interpreted by the browser.
     """
     if len(content) > max_length:
         content = content[:max_length] + "..."
-    # Remove potential HTML/script injection for display
-    content = content.replace("<", "<").replace(">", ">")
+    # Encode HTML-significant characters to prevent XSS in display contexts.
+    # Order matters: ampersand must be encoded first to avoid double-encoding.
+    content = content.replace("&", "&").replace("<", "<").replace(">", ">")
     return content
