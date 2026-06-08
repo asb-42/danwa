@@ -162,6 +162,47 @@ export async function selectTenant(tenantId) {
 }
 
 /**
+ * List all tenants (admin only).
+ * @returns {Promise<Array>}
+ */
+export async function listAllTenants() {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/tenants/`, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to load tenants' }));
+    throw new Error(error.detail || 'Failed to load tenants');
+  }
+  return response.json();
+}
+
+/**
+ * Create a new tenant (admin only).
+ * @param {{ name: string, plan?: string }} body
+ * @returns {Promise<object>}
+ */
+export async function createTenant(body) {
+  const token = get(accessToken);
+  const response = await fetch(`${API_BASE}/api/v1/tenants/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to create tenant' }));
+    throw new Error(error.detail || 'Failed to create tenant');
+  }
+  return response.json();
+}
+
+/**
  * Change the current user's password.
  */
 export async function changePassword(currentPassword, newPassword) {

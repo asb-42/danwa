@@ -8,12 +8,51 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.deps import get_current_user, get_tenant_store, get_user_store
 from backend.core.security import hash_password, user_to_response
-from backend.models.tenant import TenantResponse, TenantUpdate
+from backend.models.tenant import TenantCreate, TenantResponse, TenantUpdate
 from backend.models.user import UserCreate, UserResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/", response_model=list[TenantResponse])
+def list_all_tenants(
+    user=Depends(get_current_user),
+    tenant_store=Depends(get_tenant_store),
+) -> list[TenantResponse]:
+    """List all tenants. Admin only."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    tenants = tenant_store.list_all()
+    return [
+        TenantResponse(
+            id=t.id, name=t.name, plan=t.plan,
+            max_projects=t.max_projects, max_concurrent_debates=t.max_concurrent_debates,
+            max_documents=t.max_documents, max_storage_mb=t.max_storage_mb,
+            settings=t.settings, created_at=t.created_at, is_active=t.is_active,
+        )
+        for t in tenants
+    ]
+
+
+@router.post("/", response_model=TenantResponse, status_code=201)
+def create_tenant(
+    body: TenantCreate,
+    user=Depends(get_current_user),
+    tenant_store=Depends(get_tenant_store),
+) -> TenantResponse:
+    """Create a new tenant. Admin only."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    tenant = tenant_store.create(name=body.name, plan=body.plan)
+    logger.info("Tenant created: %s (%s) by user %s", tenant.name, tenant.id, user.email)
+    return TenantResponse(
+        id=tenant.id, name=tenant.name, plan=tenant.plan,
+        max_projects=tenant.max_projects, max_concurrent_debates=tenant.max_concurrent_debates,
+        max_documents=tenant.max_documents, max_storage_mb=tenant.max_storage_mb,
+        settings=tenant.settings, created_at=tenant.created_at, is_active=tenant.is_active,
+    )
 
 
 @router.get("/current", response_model=TenantResponse)

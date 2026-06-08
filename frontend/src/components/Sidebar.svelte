@@ -34,6 +34,7 @@
     proposals: ['proposals'],
     manage: ['manage'],
     'mvp-debate': ['mvp-debate'],
+    inhabit: ['tenant-settings', 'case-list', 'tags'],
   };
 
   function isActive(route) {
@@ -51,6 +52,15 @@
   }
 
   let navSections = $derived([
+    {
+      id: 'inhabit',
+      label: t('nav.section.inhabit'),
+      items: [
+        { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
+        { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
+        { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
+      ],
+    },
     {
       id: 'run',
       label: t('nav.section.run'),
@@ -98,20 +108,11 @@
         { id: 'configure', label: t('nav.section.configure') || 'Configure', icon: '⚙️', route: 'config' },
       ],
     },
-    {
-      id: 'cases',
-      label: t('nav.section.cases'),
-      items: [
-        { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
-        { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
-      ],
-    },
     ...($currentUser?.role === 'admin' ? [{
       id: 'administration',
       label: t('nav.section.administration'),
       items: [
         { id: 'users', label: t('users.title'), icon: '👥', route: 'users' },
-        { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
         { id: 'server-health', label: t('nav.serverHealth'), icon: '🖥️', route: 'server-health' },
       ],
     }] : []),

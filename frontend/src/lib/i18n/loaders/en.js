@@ -1349,5 +1349,18 @@ export default {
   'nav.cases': 'Cases',
   'nav.tags': 'Tags',
 
+  // Inhabit section
+  'nav.section.inhabit': 'Inhabit',
+
+  // Tenant creation
+  'tenant.create': 'Create New Tenant',
+  'tenant.createName': 'Tenant name',
+  'tenant.createPlan': 'Plan',
+  'tenant.createSubmit': 'Create Tenant',
+  'tenant.createSuccess': 'Tenant created successfully',
+  'tenant.createError': 'Failed to create tenant',
+  'tenant.allTenants': 'All Tenants',
+  'tenant.noTenants': 'No tenants found',
+
 };
 
