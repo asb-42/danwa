@@ -159,7 +159,7 @@ class ModuleService:
                     "language": mod.language,
                     "checksum": mod.checksum,
                     "installed": True,
-                    "enabled": db_info.get("enabled", True),
+                    "enabled": bool(db_info.get("enabled", False)),
                     "installed_at": db_info.get("installed_at"),
                     "created_at": str(mod.created_at) if mod.created_at else None,
                     "updated_at": str(mod.updated_at) if mod.updated_at else None,
@@ -220,7 +220,7 @@ class ModuleService:
         for m in modules:
             db_info = db_status.get(m.module_id, {})
             if db_info:
-                m.enabled = bool(db_info.get("enabled", True))
+                m.enabled = bool(db_info.get("enabled", False))
                 m.installed = True
                 m.installed_at = db_info.get("installed_at")
             else:
@@ -379,9 +379,30 @@ class ModuleService:
                 report.warnings.extend(warnings)
             return report
         except Exception as download_err:
-            # If download fails for a language-pack module, fall back to
-            # creating the module from existing DB translations.
+            # If download fails for a language-pack module, try an
+            # alternative URL using lang-{code}.zip naming (GitHub
+            # releases may use locale-based naming instead of UUID).
             if target.get("type") == "language-pack":
+                locale = target.get("language", "")
+                if locale and not download_url.endswith(f"lang-{locale}.zip"):
+                    alt_url = DANWA_MODULES_RELEASE_URL.format(
+                        module_id=f"lang-{locale}", version=module_version,
+                    )
+                    logger.info(
+                        "Primary download failed for %s, trying alternative URL: %s",
+                        module_id, alt_url,
+                    )
+                    try:
+                        report = self.installer.install_from_url(alt_url)
+                        if report.status == "ok" and checksum and not report.checksum:
+                            report.checksum = checksum
+                        if warnings:
+                            report.warnings.extend(warnings)
+                        return report
+                    except Exception:
+                        logger.debug("Alternative URL also failed for %s", module_id)
+
+                # Final fallback: create the module from existing DB translations.
                 logger.warning(
                     "Download failed for language-pack %s (%s), falling back to DB install",
                     module_id,
@@ -889,7 +910,7 @@ class ModuleService:
             checksum=manifest_data.get("checksum", ""),
             role=manifest_data.get("role"),
             installed=True,
-            enabled=bool(db_info.get("enabled", True)) if db_info else True,
+            enabled=bool(db_info.get("enabled", False)) if db_info else False,
             installed_at=db_info.get("installed_at") if db_info else None,
             created_at=manifest_created,
             updated_at=manifest_updated or (db_info.get("updated_at") if db_info else None),
@@ -961,7 +982,7 @@ class ModuleService:
                     "checksum": row["checksum"] or "",
                     "installed_at": row["installed_at"],
                     "updated_at": row["updated_at"],
-                    "enabled": bool(row["enabled"]) if "enabled" in row.keys() else True,
+                    "enabled": bool(row["enabled"]) if "enabled" in row.keys() else False,
                     "tags": json.loads(row["tags_json"] or "[]"),
                     "dependencies": json.loads(row["dependencies"] or "{}"),
                 }

@@ -986,24 +986,20 @@ class UITranslationService:
     # ------------------------------------------------------------------
 
     def bootstrap_core_locales(self) -> dict[str, int]:
-        """Migrate existing core translations to langpack namespace AND create module directories.
+        """Migrate existing core translations to langpack namespace in DB.
 
         For each non-English core locale that has translations under
-        namespace='global':
-        1. Copy translations to namespace='langpack:lang-{locale}' in DB
-        2. Create a module directory (manifest.json + ui_strings.json) in modules/translations/
+        namespace='global', copy translations to namespace='langpack:lang-{locale}'.
 
-        This makes them fully discoverable by discover_local() and equivalent
-        to a module installation from the danwa-modules repo.
+        NOTE: Does NOT create local module directories.  The danwa-modules
+        repository is the single source of truth for language-pack modules.
+        Local directories would only create duplicates of repo-installed packs.
 
         Skips locales that already have langpack entries (idempotent).
         Uses a metadata marker to skip on subsequent startups.
 
         Returns: {locale: count_of_migrated_keys}
         """
-        root = Path(__file__).resolve().parent.parent.parent
-        modules_dir = root / "modules"
-
         conn = self._get_conn()
         try:
             # Check if bootstrap already ran
@@ -1020,8 +1016,6 @@ class UITranslationService:
 
             for locale in CORE_LOCALES:
                 namespace = f"langpack:lang-{locale}"
-                module_id = f"lang-{locale}"
-                module_dir = modules_dir / "translations" / module_id
 
                 # Check if langpack namespace already has entries
                 existing = conn.execute(
@@ -1030,11 +1024,6 @@ class UITranslationService:
                 ).fetchone()
 
                 if existing and existing["cnt"] > 0:
-                    # DB entries exist — just ensure module directory exists
-                    if not (module_dir / "manifest.json").exists():
-                        ui_strings = self.get_translations_bulk(locale, namespace)
-                        self._create_langpack_module_dir(module_dir, locale, module_id, ui_strings, now)
-                        logger.info("i18n bootstrap: created module dir for '%s' (%d existing DB keys)", locale, len(ui_strings))
                     continue
 
                 # Fetch all global translations for this locale
@@ -1046,8 +1035,7 @@ class UITranslationService:
                 if not rows:
                     continue
 
-                # 1. Copy to langpack namespace in DB
-                ui_strings = {}
+                # Copy to langpack namespace in DB
                 for row in rows:
                     conn.execute(
                         """
@@ -1057,14 +1045,10 @@ class UITranslationService:
                         """,
                         (row["key"], locale, row["value"], namespace, "bulk_imported", row["confidence"], now, now),
                     )
-                    ui_strings[row["key"]] = row["value"]
-
-                # 2. Create module directory with manifest.json + ui_strings.json
-                self._create_langpack_module_dir(module_dir, locale, module_id, ui_strings, now)
 
                 migrated[locale] = len(rows)
                 logger.info(
-                    "i18n bootstrap: migrated %d keys for locale '%s' → %s + created module dir",
+                    "i18n bootstrap: migrated %d keys for locale '%s' → %s",
                     len(rows),
                     locale,
                     namespace,
@@ -1086,6 +1070,119 @@ class UITranslationService:
             raise
         finally:
             conn.close()
+
+    def cleanup_legacy_local_langpacks(self) -> int:
+        """Remove legacy local langpack module directories and their DB registry entries.
+
+        Before the danwa-modules repository became the single source of truth,
+        language-pack modules were created locally during i18n bootstrap
+        (directories like ``lp-*`` in the modules root).  These now duplicate
+        the repo-installed packs and must be cleaned up.
+
+        Only removes modules whose ``module_id`` starts with ``lp-``
+        (deterministic UUID prefix from the legacy migration).
+        Repo-installed modules are never touched.
+
+        Also removes orphan ``module_registry`` DB entries for ``lp-*``
+        modules whose directories no longer exist on disk.
+
+        Returns the number of entries removed (directories + orphan DB rows).
+        """
+        import shutil
+
+        root = Path(__file__).resolve().parent.parent.parent
+        modules_dir = root / "modules"
+        blueprints_db = root / "data" / "blueprints.db"
+        removed = 0
+
+        if not modules_dir.exists():
+            return 0
+
+        def _is_legacy_langpack(entry: Path) -> str | None:
+            """Return module_id if entry is a legacy lp-* langpack, else None."""
+            manifest_path = entry / "manifest.json"
+            if not manifest_path.exists():
+                return None
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                return None
+            if manifest.get("type") != "language-pack":
+                return None
+            mid = manifest.get("module_id", "")
+            if mid.startswith("lp-"):
+                return mid
+            return None
+
+        def _remove_entry(entry: Path, module_id: str) -> None:
+            """Remove directory and DB registry entry."""
+            nonlocal removed
+            shutil.rmtree(entry)
+            _remove_db_entry(module_id)
+            removed += 1
+            logger.info("Cleanup: removed legacy local langpack '%s' (%s)", module_id, entry.name)
+
+        def _remove_db_entry(module_id: str) -> None:
+            """Remove a module_registry DB entry (best effort)."""
+            if not blueprints_db.exists():
+                return
+            try:
+                db = sqlite3.connect(str(blueprints_db), timeout=5.0)
+                db.execute("DELETE FROM module_registry WHERE id = ?", (module_id,))
+                db.commit()
+                db.close()
+            except Exception:
+                logger.debug("Could not clean registry entry for %s", module_id, exc_info=True)
+
+        # Collect all module_ids removed from disk so we don't double-count
+        removed_ids: set[str] = set()
+
+        # Scan modules root (lp-* UUID dirs, lang-ru, etc.)
+        for entry in modules_dir.iterdir():
+            if not entry.is_dir():
+                continue
+            mid = _is_legacy_langpack(entry)
+            if mid:
+                removed_ids.add(mid)
+                _remove_entry(entry, mid)
+
+        # Scan modules/translations/ (lang-{locale} dirs from old bootstrap)
+        translations_dir = modules_dir / "translations"
+        if translations_dir.exists():
+            for entry in translations_dir.iterdir():
+                if not entry.is_dir():
+                    continue
+                mid = _is_legacy_langpack(entry)
+                if mid:
+                    removed_ids.add(mid)
+                    _remove_entry(entry, mid)
+
+        # Remove orphan DB entries for lp-* and lang-* modules whose dirs
+        # are already gone.  lp-* entries come from legacy bootstrap;
+        # lang-* entries were created during i18n migration and never
+        # cleaned up when the filesystem directories were removed.
+        if blueprints_db.exists():
+            try:
+                db = sqlite3.connect(str(blueprints_db), timeout=5.0)
+                db.row_factory = sqlite3.Row
+                orphans = db.execute(
+                    "SELECT id FROM module_registry WHERE id LIKE 'lp-%' OR id LIKE 'lang-%'"
+                ).fetchall()
+                for row in orphans:
+                    orphan_id = row["id"]
+                    if orphan_id not in removed_ids:
+                        db.execute("DELETE FROM module_registry WHERE id = ?", (orphan_id,))
+                        removed += 1
+                        removed_ids.add(orphan_id)
+                        logger.info("Cleanup: removed orphan DB entry '%s'", orphan_id)
+                db.commit()
+                db.close()
+            except Exception:
+                logger.debug("Orphan DB cleanup failed", exc_info=True)
+
+        if removed:
+            logger.info("Cleanup: removed %d legacy local langpack(s) and/or orphan DB entries", removed)
+        return removed
 
     @staticmethod
     def _create_langpack_module_dir(
