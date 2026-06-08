@@ -302,6 +302,7 @@ def select_tenant(
     tenant_id: str,
     user=Depends(get_current_user),
     membership_store=Depends(get_membership_store),
+    settings=Depends(get_settings),
 ):
     """Switch the current user's active tenant.
 
@@ -310,20 +311,26 @@ def select_tenant(
     subsequent API requests.
     """
     membership = membership_store.get(tenant_id, user.id)
-    if not membership:
-        raise HTTPException(status_code=403, detail="Not a member of this tenant")
 
-    # S-05 fix: use the tenant-specific role from the membership,
-    # not the user's global role, so a global admin is not
-    # automatically admin in every tenant.
+    # Dev mode (auth disabled): allow switching to any tenant as admin.
+    if not membership and not settings.auth_enabled:
+        role_override = "admin"
+    elif not membership:
+        raise HTTPException(status_code=403, detail="Not a member of this tenant")
+    else:
+        # S-05 fix: use the tenant-specific role from the membership,
+        # not the user's global role, so a global admin is not
+        # automatically admin in every tenant.
+        role_override = membership.role
+
     access_token = create_access_token(
         user,
         tenant_id=tenant_id,
-        role_override=membership.role,
+        role_override=role_override,
     )
     refresh_token = create_refresh_token(user)
 
-    logger.info("User %s switched to tenant %s (role=%s)", user.email, tenant_id, membership.role)
+    logger.info("User %s switched to tenant %s (role=%s)", user.email, tenant_id, role_override)
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
