@@ -9,6 +9,7 @@
 
   let open = $state(false);
   let persisting = $state(false);
+  let localeRevision = $state(0);
 
   // ISO 639-1 → Flag emoji mapping
   const FLAGS = {
@@ -24,6 +25,7 @@
     // The legacy /api/v1/i18n/custom-locales endpoint returned EVERY entry
     // from ui_translation_metadata, including disabled packs, which is why
     // the dropdown previously listed all installable languages.
+    let registered = false;
     try {
       const res = await getSupportedLocales();
       for (const info of res.locales || []) {
@@ -34,10 +36,16 @@
           name: info.name,
           is_rtl: !!info.is_rtl,
         });
+        registered = true;
       }
     } catch {
       // Backend unreachable — fall back to bundled + discoverLanguagePacks() result
     }
+    // Bump revision so $derived(getAllLocales()) re-evaluates.
+    // customLocales is a plain Map (not $state), so Svelte 5's $derived
+    // won't detect mutations to it.  Adding a reactive dependency on
+    // localeRevision forces the derived to re-compute.
+    if (registered) localeRevision += 1;
     document.addEventListener('click', handleDocClick);
     document.addEventListener('keydown', handleKeydown);
   });
@@ -69,7 +77,12 @@
   }
 
   let currentFlag = $derived(FLAGS[$locale] || '🌐');
-  let allLocales = $derived(getAllLocales());
+  let allLocales = $derived.by(() => {
+    // Depend on localeRevision so the list refreshes after registerCustomLocale()
+    // populates the non-reactive customLocales Map.
+    void localeRevision;
+    return getAllLocales();
+  });
 </script>
 
 <div data-language-switcher class="relative inline-block text-left">

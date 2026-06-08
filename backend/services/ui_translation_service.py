@@ -1171,6 +1171,11 @@ class UITranslationService:
                 for row in orphans:
                     orphan_id = row["id"]
                     if orphan_id not in removed_ids:
+                        # Only remove the DB entry if the module directory is
+                        # truly gone.  Repo-installed lang-* modules have a
+                        # corresponding directory on disk and must be preserved.
+                        if (modules_dir / orphan_id).exists():
+                            continue
                         db.execute("DELETE FROM module_registry WHERE id = ?", (orphan_id,))
                         removed += 1
                         removed_ids.add(orphan_id)
