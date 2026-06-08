@@ -27,8 +27,8 @@ class HybridRetriever:
         self.metadata_index = metadata_index
         self.rrf_k = 60  # Standard RRF constant
 
-        # BM25 corpus cache: (project_id, timestamp, chunks)
-        self._corpus_cache: tuple[str, float, list[dict]] | None = None
+        # BM25 corpus + index cache: (project_id, timestamp, chunks, bm25)
+        self._corpus_cache: tuple[str, float, list[dict], Any] | None = None
 
         self.cross_encoder = None
         try:
@@ -43,8 +43,8 @@ class HybridRetriever:
 
     def retrieve(self, query: str, project_id: str | None = None, k: int = 5) -> list[dict[str, Any]]:
         """Retrieve the instance."""
-        chunks = self._fetch_chunks(project_id)
-        bm25_results = self._bm25_retrieve(query, chunks, top_n=20)
+        chunks, bm25 = self._fetch_chunks(project_id)
+        bm25_results = self._bm25_retrieve(query, chunks, bm25, top_n=20)
         vector_results = self.vector_store.search(query, project_id=project_id, k=20)
 
         rrf_scores = self._rrf_combine(bm25_results, vector_results)
@@ -88,15 +88,24 @@ class HybridRetriever:
 
         return final_results[:k]
 
-    def _fetch_chunks(self, project_id: str | None) -> list[dict[str, Any]]:
-        """Fetch chunks with TTL-based caching to avoid reloading per query."""
+    def _fetch_chunks(self, project_id: str | None) -> tuple[list[dict[str, Any]], Any]:
+        """Fetch chunks and BM25 index with TTL-based caching.
+
+        Returns ``(chunks, bm25_or_none)``.  The BM25 index is built
+        once per cache window and reused for every query in that
+        window, avoiding redundant tokenisation and index construction.
+        """
         now = time.time()
         if self._corpus_cache is not None and self._corpus_cache[0] == project_id and (now - self._corpus_cache[1]) < _CORPUS_CACHE_TTL:
-            return self._corpus_cache[2]
+            return self._corpus_cache[2], self._corpus_cache[3]
 
         chunks = self._fetch_chunks_uncached(project_id)
-        self._corpus_cache = (project_id, now, chunks)
-        return chunks
+        bm25 = None
+        if chunks:
+            tokenized = [self._tokenize(c["text"]) for c in chunks]
+            bm25 = BM25Okapi(tokenized)
+        self._corpus_cache = (project_id, now, chunks, bm25)
+        return chunks, bm25
 
     def _fetch_chunks_uncached(self, project_id: str | None) -> list[dict[str, Any]]:
         """Fetch chunks uncached the instance."""
@@ -131,14 +140,11 @@ class HybridRetriever:
             logger.error("Failed to fetch chunks: %s", e)
             return []
 
-    def _bm25_retrieve(self, query: str, chunks: list[dict], top_n: int = 20) -> list[dict[str, Any]]:
-        """Bm25 retrieve the instance."""
-        if not chunks:
+    def _bm25_retrieve(self, query: str, chunks: list[dict], bm25: Any = None, top_n: int = 20) -> list[dict[str, Any]]:
+        """BM25 retrieve using a pre-built index when available."""
+        if not chunks or bm25 is None:
             return []
         try:
-            corpus = [chunk["text"] for chunk in chunks]
-            tokenized_corpus = [self._tokenize(text) for text in corpus]
-            bm25 = BM25Okapi(tokenized_corpus)
             tokenized_query = self._tokenize(query)
             scores = bm25.get_scores(tokenized_query)
             top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]

@@ -200,6 +200,15 @@ async def lifespan(app: FastAPI):
 
     ensure_admin_user()
 
+    # Security check: warn if auth is enabled but JWT secret is empty
+    if settings.auth_enabled and not settings.jwt_secret_key:
+        logger.critical(
+            "SECURITY: auth_enabled=True but jwt_secret_key is empty! "
+            "Set DANWA_JWT_SECRET_KEY in .env — tokens signed with an "
+            "empty key are trivially forgeable. Disabling auth as fallback."
+        )
+        settings.auth_enabled = False
+
     # Seed default tenant (idempotent)
     from backend.core.seed import ensure_default_tenant
 

@@ -596,9 +596,9 @@ class InterjectionService:
         # and have to wait for the next submit.  ``WaitEvent.wait``
         # handles its own ``asyncio.wait_for`` so a single timeout
         # call covers the whole blocking call.
-        deadline = asyncio.get_event_loop().time() + timeout
+        deadline = asyncio.get_running_loop().time() + timeout
         while True:
-            remaining = deadline - asyncio.get_event_loop().time()
+            remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
                 logger.info(
                     "consume_blocking: timeout session=%s node=%s after %.1fs",

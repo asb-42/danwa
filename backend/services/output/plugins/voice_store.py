@@ -49,13 +49,10 @@ class VoiceStore:
         try:
             import edge_tts
 
-            voices = asyncio.get_event_loop().run_until_complete(edge_tts.list_voices())
+            voices = asyncio.run(edge_tts.list_voices())
         except ImportError:
             logger.warning("edge-tts not installed — cannot populate voice cache")
             return
-        except RuntimeError:
-            # No event loop running
-            voices = asyncio.run(edge_tts.list_voices())
 
         with self._connect() as conn:
             for voice in voices:
