@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -19,19 +20,38 @@ _subscribers: dict[str, list[asyncio.Queue]] = {}
 # Counter for periodic stale-subscriber cleanup (2.3 fix)
 _publish_count: int = 0
 
+# Timestamp of the last cleanup — used for timer-based fallback (N-04)
+_last_cleanup_time: float = time.monotonic()
+
+# Cleanup interval in seconds — ensures cleanup runs even in
+# low-traffic deployments where 100 publishes may take hours.
+_CLEANUP_INTERVAL_SECONDS: float = 60.0
+
 
 def _cleanup_stale_subscribers() -> None:
     """Remove debate_ids whose subscriber list is empty.
 
     Clients that disconnect without calling ``unsubscribe()`` (browser
     tab close, network drop) leave behind empty lists.  This is called
-    every 100 publishes to prevent unbounded growth of the map.
+    every 100 publishes OR when ``_CLEANUP_INTERVAL_SECONDS`` have
+    elapsed since the last cleanup (N-04 timer fallback).
     """
+    global _last_cleanup_time
     stale = [did for did, subs in _subscribers.items() if not subs]
     for did in stale:
         _subscribers.pop(did, None)
     if stale:
         logger.debug("Cleaned up %d stale SSE subscriber entries", len(stale))
+    _last_cleanup_time = time.monotonic()
+
+
+def _maybe_cleanup() -> None:
+    """Run cleanup if publish count threshold or timer has elapsed."""
+    global _publish_count
+    _publish_count += 1
+    now = time.monotonic()
+    if _publish_count % 100 == 0 or (now - _last_cleanup_time) >= _CLEANUP_INTERVAL_SECONDS:
+        _cleanup_stale_subscribers()
 
 
 def subscribe(debate_id: str) -> asyncio.Queue:
@@ -58,10 +78,7 @@ def publish(debate_id: str, event_type: str, data: Any) -> None:
     This is called from sync workflow nodes, so it uses
     ``call_soon_threadsafe`` to enqueue on the event loop.
     """
-    global _publish_count
-    _publish_count += 1
-    if _publish_count % 100 == 0:
-        _cleanup_stale_subscribers()
+    _maybe_cleanup()
 
     subs = _subscribers.get(debate_id, [])
     if not subs:
@@ -81,10 +98,7 @@ def publish(debate_id: str, event_type: str, data: Any) -> None:
 
 async def publish_async(debate_id: str, event_type: str, data: Any) -> None:
     """Async version of publish — for use inside async nodes."""
-    global _publish_count
-    _publish_count += 1
-    if _publish_count % 100 == 0:
-        _cleanup_stale_subscribers()
+    _maybe_cleanup()
 
     subs = _subscribers.get(debate_id, [])
     if not subs:

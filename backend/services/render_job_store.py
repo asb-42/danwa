@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -28,12 +29,46 @@ class RenderJobStore:
         """Initialise RenderJobStore."""
         self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
+        self._conn: sqlite3.Connection | None = None
+
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return the cached connection, opening + WAL-initialising on first use.
+
+        Follows the same pattern as AuditLogger._get_conn() — a single
+        connection is reused across operations to avoid repeated
+        connect/open cycles (N-03 fix).
+        """
+        if self._conn is None:
+            with self._lock:
+                if self._conn is None:
+                    conn = sqlite3.connect(
+                        str(self._db_path),
+                        check_same_thread=False,
+                        timeout=30.0,
+                    )
+                    conn.row_factory = sqlite3.Row
+                    try:
+                        conn.execute("PRAGMA journal_mode=WAL")
+                        conn.execute("PRAGMA synchronous=NORMAL")
+                    except sqlite3.DatabaseError:
+                        logger.debug("WAL mode not available for %s", self._db_path, exc_info=True)
+                    self._conn = conn
+        return self._conn
+
+    def close(self) -> None:
+        """Close the cached connection.  Safe to call multiple times."""
+        with self._lock:
+            if self._conn is not None:
+                try:
+                    self._conn.close()
+                except Exception:
+                    logger.debug("Error closing RenderJobStore connection", exc_info=True)
+                self._conn = None
 
     def _connect(self) -> sqlite3.Connection:
-        """Connect the instance."""
-        conn = sqlite3.connect(str(self._db_path))
-        conn.row_factory = sqlite3.Row
-        return conn
+        """Connect the instance — returns the cached connection."""
+        return self._get_conn()
 
     @staticmethod
     def _row_to_job(row: sqlite3.Row) -> RenderJob:

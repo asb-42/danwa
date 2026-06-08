@@ -223,9 +223,8 @@ def agent_node_factory(
         try:
             service_injs = await interjection_service.consume(session_id, node_id)
             interjection_queue.extend(service_injs)
-            # DIAGNOSTIC: Log interjection consumption result
-            logger.info(
-                "DIAG agent %s (node %s): service_injs=%d, state_queue=%d, total=%d",
+            logger.debug(
+                "agent %s (node %s): service_injs=%d, state_queue=%d, total=%d",
                 role,
                 node_id,
                 len(service_injs),
@@ -233,14 +232,14 @@ def agent_node_factory(
                 len(interjection_queue),
             )
         except Exception:
-            logger.error("DIAG Failed to consume interjection service for session=%s node=%s", session_id, node_id, exc_info=True)
+            logger.warning("Failed to consume interjection service for session=%s node=%s", session_id, node_id, exc_info=True)
 
         if interjection_queue:
             inj_text = "\n\n--- ADDITIONAL CONTEXT (User) ---\n"
             inj_text += "\n".join(f"- {inj['content']}" for inj in interjection_queue)
             user_prompt += inj_text
-            logger.info(
-                "DIAG agent %s (node %s, round %d): injected %d interjections into prompt",
+            logger.debug(
+                "agent %s (node %s, round %d): injected %d interjections into prompt",
                 role,
                 node_id,
                 current_round,

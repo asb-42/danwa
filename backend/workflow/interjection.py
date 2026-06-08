@@ -509,9 +509,8 @@ class InterjectionService:
         # event-loop responsiveness the F-02 fix is supposed to buy.
         self._get_wake_event(session_id).set()
 
-        # DIAGNOSTIC: Log submission with queue size so we can trace if consume() ever picks it up
-        logger.info(
-            "DIAG submit(): interjection=%s session=%s source=%s queue_size=%d",
+        logger.debug(
+            "submit(): interjection=%s session=%s source=%s queue_size=%d",
             interjection_id,
             session_id,
             source,
@@ -727,9 +726,8 @@ class InterjectionService:
             if event is not None:
                 event.clear()
 
-        # DIAGNOSTIC: Always log consume calls so we can trace the flow
-        logger.info(
-            "DIAG consume() called: session=%s node=%s | queue_size=%d pending=%d consumed=%d persisted_ok=%s",
+        logger.debug(
+            "consume(): session=%s node=%s | queue_size=%d pending=%d consumed=%d persisted_ok=%s",
             session_id,
             node_id,
             queue_size,
