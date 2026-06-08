@@ -41,8 +41,10 @@ def register_user(
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    # First user becomes admin automatically
-    role = body.role
+    # Self-registration always creates a "user" role.  Admin promotion
+    # happens only for the very first account; subsequent users must be
+    # invited by an admin (POST /auth/users/invite).
+    role = "user"
     if user_store.count() == 0:
         role = "admin"
         logger.info("First user registered — promoting to admin: %s", body.email)

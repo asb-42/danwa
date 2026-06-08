@@ -16,6 +16,23 @@ logger = logging.getLogger(__name__)
 # debate_id → list of subscriber queues
 _subscribers: dict[str, list[asyncio.Queue]] = {}
 
+# Counter for periodic stale-subscriber cleanup (2.3 fix)
+_publish_count: int = 0
+
+
+def _cleanup_stale_subscribers() -> None:
+    """Remove debate_ids whose subscriber list is empty.
+
+    Clients that disconnect without calling ``unsubscribe()`` (browser
+    tab close, network drop) leave behind empty lists.  This is called
+    every 100 publishes to prevent unbounded growth of the map.
+    """
+    stale = [did for did, subs in _subscribers.items() if not subs]
+    for did in stale:
+        _subscribers.pop(did, None)
+    if stale:
+        logger.debug("Cleaned up %d stale SSE subscriber entries", len(stale))
+
 
 def subscribe(debate_id: str) -> asyncio.Queue:
     """Create a new subscriber queue for a debate. Returns the queue."""
@@ -41,6 +58,11 @@ def publish(debate_id: str, event_type: str, data: Any) -> None:
     This is called from sync workflow nodes, so it uses
     ``call_soon_threadsafe`` to enqueue on the event loop.
     """
+    global _publish_count
+    _publish_count += 1
+    if _publish_count % 100 == 0:
+        _cleanup_stale_subscribers()
+
     subs = _subscribers.get(debate_id, [])
     if not subs:
         return
@@ -48,13 +70,22 @@ def publish(debate_id: str, event_type: str, data: Any) -> None:
     payload = json.dumps(data, default=str)
     logger.debug("Publishing event '%s' to %d subscribers for debate %s", event_type, len(subs), debate_id)
 
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.debug("No running event loop — cannot dispatch SSE event for %s", debate_id)
+        return
     for q in subs:
         loop.call_soon_threadsafe(q.put_nowait, (event_type, payload))
 
 
 async def publish_async(debate_id: str, event_type: str, data: Any) -> None:
     """Async version of publish — for use inside async nodes."""
+    global _publish_count
+    _publish_count += 1
+    if _publish_count % 100 == 0:
+        _cleanup_stale_subscribers()
+
     subs = _subscribers.get(debate_id, [])
     if not subs:
         return
