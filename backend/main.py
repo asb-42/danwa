@@ -301,22 +301,36 @@ def _backfill_memberships() -> None:
     Users created before the membership system may have a ``tenant_id``
     on the user record but no corresponding row in the ``memberships``
     table.  This migration ensures every active user has at least one
-    membership for their ``tenant_id``.  Idempotent — uses INSERT OR REPLACE.
+    membership for their ``tenant_id``.  Admin users additionally get
+    memberships in ALL existing tenants so they can access every tenant
+    from the TenantSelector.  Idempotent — uses INSERT OR REPLACE.
     """
     from backend.persistence.membership_store import MembershipStore
+    from backend.persistence.tenant_store import TenantStore
     from backend.persistence.user_store import UserStore
 
     user_store = UserStore()
     membership_store = MembershipStore()
+    tenant_store = TenantStore()
 
     all_users = user_store.list_all()
+    all_tenants = tenant_store.list_all()
     backfilled = 0
     for u in all_users:
+        # Step 1: ensure membership for user's own tenant_id
         existing = membership_store.get(u.tenant_id, u.id)
         if not existing:
             role = "admin" if u.role == "admin" else "member"
             membership_store.add(u.tenant_id, u.id, role=role)
             backfilled += 1
+
+        # Step 2: admin users get memberships in ALL tenants
+        if u.role == "admin":
+            for tenant in all_tenants:
+                existing = membership_store.get(tenant.id, u.id)
+                if not existing:
+                    membership_store.add(tenant.id, u.id, role="admin")
+                    backfilled += 1
 
     if backfilled:
         logger.info("Membership backfill: created %d membership(s)", backfilled)
