@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 
-from backend.api.deps import get_current_user, get_membership_store, get_user_store, require_role
+from backend.api.deps import get_current_user, get_membership_store, get_tenant_store, get_user_store, require_role
 from backend.core.security import (
     create_access_token,
     create_refresh_token,
@@ -36,6 +36,7 @@ router = APIRouter()
 def register_user(
     body: UserCreate,
     user_store=Depends(get_user_store),
+    membership_store=Depends(get_membership_store),
 ):
     """Register a new user (self-signup). First user is auto-promoted to admin."""
     existing = user_store.get_by_email(body.email)
@@ -66,6 +67,10 @@ def register_user(
     except Exception as e:
         logger.error("Failed to create user %s: %s", body.email, e)
         raise HTTPException(status_code=500, detail="Failed to create user")
+
+    # Ensure the user has a membership in the _default tenant so they
+    # appear in the TenantSelector dropdown.
+    membership_store.add("_default", user.id, role="admin" if role == "admin" else "member")
 
     logger.info("User registered: %s (role=%s)", user.email, user.role)
     return user_to_response(user)
@@ -192,6 +197,7 @@ def list_users(
 def invite_user(
     body: UserCreate,
     user_store=Depends(get_user_store),
+    membership_store=Depends(get_membership_store),
     _=Depends(require_role("admin")),
 ):
     """Invite a new user by creating their account with a password (admin only)."""
@@ -211,6 +217,9 @@ def invite_user(
     except Exception as e:
         logger.error("Failed to create user %s: %s", body.email, e)
         raise HTTPException(status_code=500, detail="Failed to create user")
+
+    # Ensure the invited user has a membership in the _default tenant.
+    membership_store.add("_default", user.id, role=body.role if body.role in ("admin",) else "member")
 
     logger.info("User invited: %s (role=%s) by admin", user.email, user.role)
     return user_to_response(user)
@@ -243,9 +252,16 @@ def delete_user(
 def list_my_tenants(
     user=Depends(get_current_user),
     membership_store=Depends(get_membership_store),
+    tenant_store=Depends(get_tenant_store),
 ):
     """List all tenants the current user belongs to."""
     memberships = membership_store.list_by_user(user.id)
+    # Build a cache of tenant_id -> name for enrichment
+    tenant_names: dict[str, str] = {}
+    for m in memberships:
+        if m.tenant_id not in tenant_names:
+            tenant = tenant_store.get(m.tenant_id)
+            tenant_names[m.tenant_id] = tenant.name if tenant else m.tenant_id
     return [
         TenantMembershipResponse(
             tenant_id=m.tenant_id,
@@ -253,6 +269,7 @@ def list_my_tenants(
             role=m.role,
             invited_by=m.invited_by,
             joined_at=m.joined_at,
+            tenant_name=tenant_names.get(m.tenant_id),
         )
         for m in memberships
     ]

@@ -25,3 +25,4 @@ class TenantMembershipResponse(BaseModel):
     role: str
     invited_by: str | None
     joined_at: datetime
+    tenant_name: str | None = None

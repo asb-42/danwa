@@ -217,6 +217,14 @@ async def lifespan(app: FastAPI):
 
     ensure_default_tenant()
 
+    # Backfill missing tenant memberships for existing users (idempotent).
+    # Users created before the membership system have a tenant_id on the
+    # user row but no matching entry in the memberships table.
+    try:
+        _backfill_memberships()
+    except Exception:
+        logger.debug("Membership backfill skipped", exc_info=True)
+
     # Bootstrap i18n: migrate core locale translations to langpack namespace (idempotent)
     from backend.services.ui_translation_service import UITranslationService
 
@@ -285,6 +293,33 @@ def _migrate_seed_admin() -> None:
     # Delete the seed admin
     store.delete(seed.id)
     logger.info("Seed admin migration: removed admin@danwa.local")
+
+
+def _backfill_memberships() -> None:
+    """Backfill missing tenant memberships for existing users.
+
+    Users created before the membership system may have a ``tenant_id``
+    on the user record but no corresponding row in the ``memberships``
+    table.  This migration ensures every active user has at least one
+    membership for their ``tenant_id``.  Idempotent — uses INSERT OR REPLACE.
+    """
+    from backend.persistence.membership_store import MembershipStore
+    from backend.persistence.user_store import UserStore
+
+    user_store = UserStore()
+    membership_store = MembershipStore()
+
+    all_users = user_store.list_all()
+    backfilled = 0
+    for u in all_users:
+        existing = membership_store.get(u.tenant_id, u.id)
+        if not existing:
+            role = "admin" if u.role == "admin" else "member"
+            membership_store.add(u.tenant_id, u.id, role=role)
+            backfilled += 1
+
+    if backfilled:
+        logger.info("Membership backfill: created %d membership(s)", backfilled)
 
 
 def create_app() -> FastAPI:

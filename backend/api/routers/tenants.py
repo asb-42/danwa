@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.api.deps import get_current_user, get_tenant_store, get_user_store
+from backend.api.deps import get_current_user, get_membership_store, get_tenant_store, get_user_store
 from backend.core.security import hash_password, user_to_response
 from backend.models.tenant import TenantCreate, TenantResponse, TenantUpdate
 from backend.models.user import UserCreate, UserResponse
@@ -41,11 +41,14 @@ def create_tenant(
     body: TenantCreate,
     user=Depends(get_current_user),
     tenant_store=Depends(get_tenant_store),
+    membership_store=Depends(get_membership_store),
 ) -> TenantResponse:
-    """Create a new tenant. Admin only."""
+    """Create a new tenant. Admin only. Creator gets owner membership."""
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     tenant = tenant_store.create(name=body.name, plan=body.plan)
+    # Auto-add the creator as owner of the new tenant
+    membership_store.add(tenant.id, user.id, role="admin", invited_by=None)
     logger.info("Tenant created: %s (%s) by user %s", tenant.name, tenant.id, user.email)
     return TenantResponse(
         id=tenant.id, name=tenant.name, plan=tenant.plan,
@@ -129,6 +132,7 @@ def invite_user(
     body: UserCreate,
     user=Depends(get_current_user),
     user_store=Depends(get_user_store),
+    membership_store=Depends(get_membership_store),
 ):
     """Invite a new user to the current tenant. Admin only."""
     if user.role != "admin":
@@ -145,6 +149,9 @@ def invite_user(
         role=body.role,
         tenant_id=user.tenant_id,  # Force into the admin's tenant
     )
+
+    # Ensure the invited user has a membership in this tenant.
+    membership_store.add(user.tenant_id, new_user.id, role=body.role, invited_by=user.id)
 
     logger.info("User invited to tenant %s: %s", user.tenant_id, new_user.email)
     return user_to_response(new_user)
