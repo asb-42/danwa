@@ -376,6 +376,9 @@ async def run_workflow_background(
         await interjection_service.clear(session_id)
 
 
+_MAX_SERIALIZE_DEPTH: int = 20
+
+
 def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
     """Serialize WorkflowState for snapshot storage.
 
@@ -383,17 +386,23 @@ def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
     Nested dicts and lists are preserved (not stringified) so that
     snapshots stored in SQLite retain their structure and can be
     queried or reconstructed for replay/debugging.
+
+    A depth guard (H-02) prevents ``RecursionError`` on self-referential
+    or excessively nested structures — at the limit, values fall back
+    to ``str()``.
     """
 
-    def _serialize_value(v: Any) -> Any:
+    def _serialize_value(v: Any, depth: int = 0) -> Any:
         if isinstance(v, (str, int, float, bool, type(None))):
             return v
+        if depth >= _MAX_SERIALIZE_DEPTH:
+            return str(v)
         if isinstance(v, dict):
-            return {k: _serialize_value(val) for k, val in v.items()}
+            return {k: _serialize_value(val, depth + 1) for k, val in v.items()}
         if isinstance(v, list):
-            return [_serialize_value(item) for item in v]
+            return [_serialize_value(item, depth + 1) for item in v]
         if hasattr(v, "model_dump"):
-            return _serialize_value(v.model_dump(mode="json"))
+            return _serialize_value(v.model_dump(mode="json"), depth + 1)
         if hasattr(v, "value"):
             return v.value
         return str(v)

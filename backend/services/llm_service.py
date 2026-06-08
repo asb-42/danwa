@@ -710,17 +710,22 @@ class LLMService:
 
         Runs the async generation in a dedicated thread to avoid
         event-loop conflicts when called from FastAPI handlers.
+
+        H-03 fix: replaced ``asyncio.new_event_loop()`` +
+        ``asyncio.set_event_loop()`` with ``asyncio.run()`` which
+        manages the loop lifecycle internally.  The deprecated
+        ``set_event_loop`` was only needed when internal code called
+        ``get_event_loop()`` — all such call sites have been
+        migrated to ``get_running_loop()`` (Sprint 49), so
+        ``asyncio.run()`` is now safe and more efficient.
         """
         import asyncio
         import concurrent.futures
 
         def _run_in_thread():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(self.generate(prompt, system_prompt, temperature, max_tokens, context=context))
-            finally:
-                loop.close()
+            return asyncio.run(
+                self.generate(prompt, system_prompt, temperature, max_tokens, context=context)
+            )
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_run_in_thread)

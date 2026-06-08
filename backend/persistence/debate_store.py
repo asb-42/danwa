@@ -164,11 +164,16 @@ class DebateStore:
         return True
 
     def update(self, debate_id: str, **kwargs: Any) -> dict | None:
-        """Update fields of a debate and persist."""
+        """Update fields of a debate and persist.
+
+        The disk write runs inside the lock to prevent TOCTOU races
+        where a crash between the in-memory update and the persist
+        loses the mutation (H-01 fix).
+        """
         with self._lock:
             debate = self._cache.get(debate_id)
             if not debate:
                 return None
             debate.update(kwargs)
-        self._save_to_disk(debate_id)
+            self._save_to_disk(debate_id)
         return debate

@@ -40,12 +40,7 @@ def _create_task():
             """
             logger.info("Celery worker executing workflow %s for project %s", session_id, project_id)
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(_run_workflow_async(session_id, workflow_id, project_id))
-            finally:
-                loop.close()
+            asyncio.run(_run_workflow_async(session_id, workflow_id, project_id))
 
         return run_workflow_task
     except Exception as e:
