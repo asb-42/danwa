@@ -88,23 +88,54 @@ def get_tag_store():
     return TagStore()
 
 
-def get_debate_store_for_project(project_id: str, project_store: ProjectStore) -> DebateStore:
-    """Return a project-scoped DebateStore."""
-    project = project_store.get(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    project_dir = project_store.get_project_dir(project_id)
-    return DebateStore(data_dir=project_dir / "debates")
+def get_case_dir(case_id: str) -> Path:
+    """Resolve a case/project ID to its filesystem directory.
+
+    This is the central abstraction for directory resolution.  Currently
+    delegates to ``ProjectStore.get_project_dir()`` internally.  Once all
+    callers are migrated, this will switch to ``CaseStore`` without any
+    downstream changes.
+    """
+    ps = get_project_store()
+    project_dir = ps.get_project_dir(case_id)
+    if not project_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Case directory not found: {case_id}")
+    return project_dir
 
 
-def get_profile_service_for_project(project_id: str, project_store: ProjectStore):
-    """Return a ProfileService with project-specific overrides merged."""
+def get_debate_store_for_case(case_id: str) -> DebateStore:
+    """Return a case-scoped DebateStore.
+
+    .. deprecated:: Use this instead of passing ``ProjectStore`` manually.
+    """
+    case_dir = get_case_dir(case_id)
+    return DebateStore(data_dir=case_dir / "debates")
+
+
+def get_profile_service_for_case(case_id: str):
+    """Return a ProfileService with case/project-specific overrides merged.
+
+    .. deprecated:: Use this instead of passing ``ProjectStore`` manually.
+    """
     from backend.services.profile_service import ProfileService
 
-    project = project_store.get(project_id)
+    ps = get_project_store()
+    project = ps.get(case_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return ProfileService(project_config=project.config)
+
+
+# Legacy aliases — kept for backward compatibility during Phase 5c migration.
+# Callers should switch to get_debate_store_for_case / get_profile_service_for_case.
+def get_debate_store_for_project(project_id: str, project_store: ProjectStore) -> DebateStore:
+    """Return a project-scoped DebateStore. Use get_debate_store_for_case() instead."""
+    return get_debate_store_for_case(project_id)
+
+
+def get_profile_service_for_project(project_id: str, project_store: ProjectStore):
+    """Return a ProfileService. Use get_profile_service_for_case() instead."""
+    return get_profile_service_for_case(project_id)
 
 
 def get_prompt_service():
