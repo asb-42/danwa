@@ -262,3 +262,175 @@ class TestM2TopologicalSortPerformance:
         # Linear-time O(V+E) is ~1ms; O(V²) is ~40ms.  Allow generous
         # headroom for slow CI machines.
         assert duration < 1.0, f"Topo sort took {duration:.3f}s for n=200"
+
+
+# ---------------------------------------------------------------------------
+# F-08 — topo-sort warns on decision-edge cycles
+# ---------------------------------------------------------------------------
+
+
+class TestF08TopoSortCycleWarning:
+    """Verify that the compiler emits a ``CompiledWorkflow.warnings`` entry
+    when Kahn's algorithm cannot reach all nodes due to decision-edge
+    cycles (F-08 from the code-review report).
+    """
+
+    def test_decision_edge_cycle_emits_warning(
+        self,
+        repo: BlueprintRepository,
+        sample_blueprint_id: str,
+    ) -> None:
+        """Two nodes with mutual decision edges form a cycle.
+        Kahn's algorithm cannot place them; the fallback appends
+        them, but a warning must be emitted.
+        """
+        workflow = WorkflowDefinition(
+            id="wf-cycle",
+            name="Decision-Cycle",
+            nodes=[
+                WorkflowNode(id="wf-input", type="wf-input"),
+                WorkflowNode(
+                    id="node-moderator",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+                WorkflowNode(
+                    id="node-builder",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+            ],
+            edges=[
+                WorkflowEdge(source="wf-input", target="node-moderator", type="sequential"),
+                # Mutual decision edges — creates a cycle
+                WorkflowEdge(source="node-moderator", target="node-builder", type="decision"),
+                WorkflowEdge(source="node-builder", target="node-moderator", type="decision"),
+            ],
+            entry_point="wf-input",
+        )
+        compiler = WorkflowCompiler(repo)
+        result = compiler.compile(workflow)
+
+        assert result.is_valid  # warning, not error
+        cycle_warnings = [w for w in result.warnings if "decision-edge cycles" in w]
+        assert len(cycle_warnings) == 1
+        # Both cycle nodes must appear in the warning
+        assert "node-moderator" in cycle_warnings[0]
+        assert "node-builder" in cycle_warnings[0]
+
+    def test_no_cycle_no_warning(
+        self,
+        repo: BlueprintRepository,
+        sample_blueprint_id: str,
+    ) -> None:
+        """A workflow with only sequential and feedback edges must NOT
+        trigger the decision-edge cycle warning.
+        """
+        workflow = WorkflowDefinition(
+            id="wf-no-cycle",
+            name="No-Cycle",
+            nodes=[
+                WorkflowNode(id="wf-input", type="wf-input"),
+                WorkflowNode(
+                    id="node-s1",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+                WorkflowNode(
+                    id="node-s2",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+            ],
+            edges=[
+                WorkflowEdge(source="wf-input", target="node-s1", type="sequential"),
+                WorkflowEdge(source="node-s1", target="node-s2", type="sequential"),
+                # Feedback edge (back-edge) — excluded from topo sort
+                WorkflowEdge(source="node-s2", target="node-s1", type="feedback"),
+            ],
+            entry_point="wf-input",
+        )
+        compiler = WorkflowCompiler(repo)
+        result = compiler.compile(workflow)
+
+        assert result.is_valid
+        cycle_warnings = [w for w in result.warnings if "decision-edge cycles" in w]
+        assert cycle_warnings == []
+
+    def test_self_loop_decision_edge_no_warning(
+        self,
+        repo: BlueprintRepository,
+        sample_blueprint_id: str,
+    ) -> None:
+        """Self-loop decision edges (Moderator → Moderator on
+        ``revision_required``) are skipped in the topo sort, so they
+        must NOT cause a cycle warning.
+        """
+        workflow = WorkflowDefinition(
+            id="wf-self-loop",
+            name="Self-Loop",
+            nodes=[
+                WorkflowNode(id="wf-input", type="wf-input"),
+                WorkflowNode(
+                    id="node-mod",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+                WorkflowNode(
+                    id="node-build",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+            ],
+            edges=[
+                WorkflowEdge(source="wf-input", target="node-mod", type="sequential"),
+                WorkflowEdge(source="node-mod", target="node-build", type="decision"),
+                # Self-loop on decision edge — must be skipped
+                WorkflowEdge(source="node-mod", target="node-mod", type="decision"),
+            ],
+            entry_point="wf-input",
+        )
+        compiler = WorkflowCompiler(repo)
+        result = compiler.compile(workflow)
+
+        assert result.is_valid
+        cycle_warnings = [w for w in result.warnings if "decision-edge cycles" in w]
+        assert cycle_warnings == []
+
+    def test_all_nodes_present_in_sequence_despite_cycle(
+        self,
+        repo: BlueprintRepository,
+        sample_blueprint_id: str,
+    ) -> None:
+        """Even when a cycle is detected, all nodes must still appear
+        in ``node_sequence`` (via the fallback append).
+        """
+        workflow = WorkflowDefinition(
+            id="wf-cycle-2",
+            name="Decision-Cycle-2",
+            nodes=[
+                WorkflowNode(id="wf-input", type="wf-input"),
+                WorkflowNode(
+                    id="node-a",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+                WorkflowNode(
+                    id="node-b",
+                    type="wf-strategist",
+                    agent_blueprint_id=sample_blueprint_id,
+                ),
+            ],
+            edges=[
+                WorkflowEdge(source="wf-input", target="node-a", type="sequential"),
+                WorkflowEdge(source="node-a", target="node-b", type="decision"),
+                WorkflowEdge(source="node-b", target="node-a", type="decision"),
+            ],
+            entry_point="wf-input",
+        )
+        compiler = WorkflowCompiler(repo)
+        result = compiler.compile(workflow)
+
+        assert result.is_valid
+        assert len(result.node_sequence) == 3
+        assert set(result.node_sequence) == {"wf-input", "node-a", "node-b"}

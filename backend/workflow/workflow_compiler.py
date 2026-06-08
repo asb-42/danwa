@@ -172,8 +172,17 @@ class WorkflowCompiler:
             return result
 
         # --- Step 3: Topological sort ---
-        node_sequence = self._topological_sort(workflow)
+        node_sequence, unreached = self._topological_sort(workflow)
         result.node_sequence = node_sequence
+
+        # F-08: Warn if Kahn's algorithm couldn't reach all nodes
+        # (e.g. decision-edge cycles cause in_degree to never reach 0).
+        if unreached:
+            result.warnings.append(
+                f"Topological sort: {len(unreached)} node(s) not reached "
+                f"by Kahn's algorithm due to decision-edge cycles: "
+                f"{unreached}. Falling back to insertion order."
+            )
 
         # --- Step 4: Build StateGraph ---
         try:
@@ -460,7 +469,7 @@ class WorkflowCompiler:
             agent_tags=list(resolved.role_type.tags or []),
         )
 
-    def _topological_sort(self, workflow: WorkflowDefinition) -> list[str]:
+    def _topological_sort(self, workflow: WorkflowDefinition) -> tuple[list[str], list[str]]:
         """Topological sort of workflow nodes respecting ordering edges.
 
         Edge-type handling:
@@ -488,6 +497,13 @@ class WorkflowCompiler:
         conditional routing, not a sequence constraint, and
         including them would prevent the source from ever
         reaching ``in_degree == 0``.
+
+        Returns:
+            ``(node_sequence, unreached_nodes)`` — the sorted
+            sequence and any node IDs that Kahn's algorithm
+            could not place (e.g. due to decision-edge cycles).
+            Unreached nodes are appended at the end of
+            ``node_sequence`` in insertion order.
         """
         node_ids = {n.id for n in workflow.nodes}
         # Build adjacency (sequential, conditional, decision;
@@ -527,12 +543,16 @@ class WorkflowCompiler:
                 if in_degree[neighbor] == 0:
                     queue.append(neighbor)
 
-        # Add any nodes not reached (isolated or in feedback-only cycles)
+        # F-08: Detect nodes that Kahn's algorithm couldn't reach
+        # (e.g. decision-edge cycles keeping in_degree > 0).
+        unreached = sorted(nid for nid in node_ids if nid not in result)
+
+        # Fallback: append unreached nodes in insertion order
         for nid in node_ids:
             if nid not in result:
                 result.append(nid)
 
-        return result
+        return result, unreached
 
     def _build_graph(
         self,
