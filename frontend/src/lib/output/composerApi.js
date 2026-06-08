@@ -12,7 +12,7 @@ const BASE = '/api/v1';
 
 function projectHeaders() {
   const caseId = get(activeCase)?.id;
-  return caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {};
+  return caseId ? { 'X-Case-Id': caseId } : {};
 }
 
 /**

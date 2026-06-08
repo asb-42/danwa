@@ -62,7 +62,7 @@ export async function downloadReport(jobId) {
   const caseId = get(activeCase)?.id;
   const headers = {
     ...DEFAULT_HEADERS,
-    ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
+    ...(caseId ? { 'X-Case-Id': caseId } : {}),
   };
   const response = await fetch(url, { headers });
   if (!response.ok) {

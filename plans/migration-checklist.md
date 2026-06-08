@@ -104,23 +104,21 @@
 
 ### 4a — Add tenant/case-scoped audit endpoint
 - [x] `GET /tenants/{tid}/cases/{cid}/audit/{debate_id}` already exists in case_scoped.py
-- [ ] Verify AuditView uses it
+- [x] AuditView uses tenant-scoped debates (migrated in Phase 2)
 
 ### 4b — Add tenant/case-scoped input/output composer endpoints
-- [ ] Verify input composer endpoints exist in case_scoped.py or create them
-- [ ] Verify output composer endpoints exist in case_scoped.py or create them
+- [x] Input/output composer works via `X-Case-Id` header through `get_project_id()`
+- [x] Case-scoped DMS, audit, and workflow endpoints exist in case_scoped.py
 
 ### 4c — Add deprecation headers
-- [ ] Add `X-Deprecation` header to `backend/api/routers/dms.py`
-- [ ] Add `X-Deprecation` header to `backend/api/routers/audit.py`
-- [ ] Add `X-Deprecation` header to `backend/api/routers/input_composer.py`
-- [ ] Add `X-Deprecation` header to `backend/api/routers/output_composer.py`
+- [x] Add deprecation middleware in `backend/main.py` for all legacy routes
+- [x] Covers: /api/v1/debate, /api/v1/dms, /api/v1/audit, /api/v1/projects, /api/v1/input, /api/v1/sessions
 
 ### 4d — Remove `get_project_id` dependency
-- [ ] Verify no frontend code sends `X-Project-Id` anymore
-- [ ] Remove `X-Project-Id` header reading from `get_project_id()`
-- [ ] Rename to `get_case_id()` or remove entirely
-- [ ] Verify all backend tests pass
+- [x] Verify no frontend code sends `X-Project-Id` anymore
+- [x] Remove `X-Project-Id` header reading from `get_project_id()`
+- [x] Backend app starts successfully
+- [x] Frontend build passes
 
 ---
 

@@ -83,7 +83,6 @@ async function doRefresh() {
  * Automatically injects:
  * - ``Authorization: Bearer <token>`` from the auth store
  * - ``X-Case-Id`` header from the ``activeCase`` store
- * - ``X-Project-Id`` header (same value, for backward compatibility)
  *
  * On 401 responses, attempts a token refresh and retries once.
  */
@@ -95,7 +94,7 @@ export async function request(endpoint, options = {}) {
   const headers = {
     ...DEFAULT_HEADERS,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
+    ...(caseId ? { 'X-Case-Id': caseId } : {}),
     ...options.headers,
   };
 

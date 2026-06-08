@@ -396,6 +396,27 @@ def create_app() -> FastAPI:
         response.headers["X-Request-ID"] = request_id
         return response
 
+    # --- Deprecation Headers for Legacy Routes ---
+    _LEGACY_ROUTE_DEPRECATION = {
+        "/api/v1/debate": "Use /api/v1/tenants/{tid}/cases/{cid}/debates/ instead.",
+        "/api/v1/dms": "Use /api/v1/tenants/{tid}/cases/{cid}/dms/ instead.",
+        "/api/v1/audit": "Use /api/v1/tenants/{tid}/cases/{cid}/audit/ instead.",
+        "/api/v1/projects": "Projects are deprecated. Use tenants/cases instead.",
+        "/api/v1/input": "Use /api/v1/tenants/{tid}/cases/{cid}/input/ instead.",
+        "/api/v1/sessions": "Use /api/v1/tenants/{tid}/cases/{cid}/sessions/ instead.",
+    }
+
+    @app.middleware("http")
+    async def add_deprecation_headers(request, call_next):
+        """Add X-Deprecation header to responses from legacy (pre-tenant) routes."""
+        response = await call_next(request)
+        path = request.url.path.rstrip("/")
+        for prefix, notice in _LEGACY_ROUTE_DEPRECATION.items():
+            if path == prefix or path.startswith(prefix + "/"):
+                response.headers["X-Deprecation"] = notice
+                break
+        return response
+
     # --- Prometheus Metrics ---
     if settings.prometheus_enabled:
         from prometheus_fastapi_instrumentator import Instrumentator

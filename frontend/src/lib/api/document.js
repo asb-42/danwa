@@ -26,7 +26,7 @@ export function uploadDocument(file) {
     method: 'POST',
     headers: {
       'Accept-Language': 'en',
-      ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
+      ...(caseId ? { 'X-Case-Id': caseId } : {}),
     },
     body: formData,
   }).then(async (response) => {
@@ -92,7 +92,7 @@ export function exportAnalysis(format = 'pdf') {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
+      ...(caseId ? { 'X-Case-Id': caseId } : {}),
     },
     body: JSON.stringify({ format }),
   }).then(async (response) => {

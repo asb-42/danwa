@@ -93,7 +93,7 @@ export async function launchWorkflow(jobId, options = {}) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
+      ...(caseId ? { 'X-Case-Id': caseId } : {}),
     },
     body: JSON.stringify({ job_id: jobId, ...options }),
   });

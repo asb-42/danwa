@@ -126,23 +126,17 @@ def get_blueprint_repository() -> BlueprintRepository:
 
 
 async def get_project_id(
-    x_project_id: str = Header(
-        default="",
-        description="Active project UUID (legacy)",
-        alias="X-Project-Id",
-    ),
     x_case_id: str = Header(
         default="",
-        description="Active case UUID (new tenant-scoped)",
+        description="Active case UUID (tenant-scoped)",
         alias="X-Case-Id",
     ),
 ) -> str:
-    """Extract case/project ID from request header.
+    """Extract case ID from request header.
 
-    Accepts both ``X-Case-Id`` (new) and ``X-Project-Id`` (legacy).
-    ``X-Case-Id`` takes precedence. Falls back to ``"_default"`` if neither is set.
+    Reads ``X-Case-Id`` header. Falls back to ``"_default"`` if not set.
     """
-    return x_case_id or x_project_id or "_default"
+    return x_case_id or "_default"
 
 
 # ---------------------------------------------------------------------------
