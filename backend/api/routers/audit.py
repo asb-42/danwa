@@ -6,9 +6,8 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from backend.api.deps import get_audit_service, get_debate_store_for_project, get_project_id, get_project_store
+from backend.api.deps import get_audit_service, get_debate_store_for_case, get_project_id
 from backend.persistence.audit import AuditService
-from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +64,12 @@ def _enrich_events_with_debate_data(
     return enriched
 
 
-def _resolve_debate_id(debate_id_or_title: str, project_id: str, project_store) -> tuple[str, dict | None]:
+def _resolve_debate_id(debate_id_or_title: str, project_id: str) -> tuple[str, dict | None]:
     """Resolve a debate ID or title to the actual debate ID and data.
 
     Returns (debate_id, debate_data) or (debate_id_or_title, None) if not found.
     """
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
 
     # Try direct lookup by debate_id first
     debate_data = store.get(debate_id_or_title)
@@ -97,7 +96,6 @@ async def get_audit_events(
     debate_id_or_title: str,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> list[dict]:
     """Return all audit events for a debate, ordered by round.
 
@@ -107,7 +105,7 @@ async def get_audit_events(
     Events are enriched with actual agent output content from the debate store.
     Falls back to workflow audit_log table for MVP debates.
     """
-    debate_id, debate_data = _resolve_debate_id(debate_id_or_title, project_id, project_store)
+    debate_id, debate_data = _resolve_debate_id(debate_id_or_title, project_id)
     events = audit.get_events(debate_id)
     if events:
         return _enrich_events_with_debate_data(events, debate_data)

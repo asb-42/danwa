@@ -19,8 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from backend.api.deps import get_project_id, get_project_store
-from backend.persistence.project_store import ProjectStore
+from backend.api.deps import get_debate_store_for_case, get_project_id
 from backend.services.output.registry import PluginRegistry
 from backend.services.render_engine import RenderEngineService
 from backend.services.render_job_store import RenderJobStore
@@ -322,16 +321,13 @@ async def search_sessions(
     q: str = "",
     limit: int = 20,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> list[dict]:
     """Search completed sessions by ID or debate title for autocomplete.
 
     Returns sessions that have a saved DebateArtifact.
     """
-    from backend.api.deps import get_debate_store_for_project
-
     artifact_store = _get_engine().artifact_store
-    debate_store = get_debate_store_for_project(project_id, project_store)
+    debate_store = get_debate_store_for_case(project_id)
     results: list[dict] = []
 
     # Get all debates and filter by those with artifacts
