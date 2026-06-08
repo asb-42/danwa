@@ -1,16 +1,28 @@
 /**
  * Unified Feedback Store (Svelte 5 Runes)
  *
- * Single source of truth for all user-facing feedback signals:
- * - Activity log (append-only, timestamped)
- * - Current status message (LLM thinking, layout computing, etc.)
- * - Classified errors (rate_limit, timeout, content_filter, network)
- * - LLM state tracking
- * - Layout state tracking
+ * Single source of truth for all user-facing feedback signals in the
+ * Unified Feedback System. Exposes Svelte 5 `$state` runes so components
+ * react to changes automatically.
  *
- * Usage:
+ * Subsystems managed:
+ * - **Activity log** — append-only, timestamped, pruned at 500 entries.
+ * - **Status message** — current operation indicator (LLM thinking, layout
+ *   computing, etc.) with automatic type-based color coding.
+ * - **Classified errors** — user-friendly error cards grouped by class
+ *   (rate_limit, timeout, content_filter, network, unknown).
+ * - **LLM state** — tracks idle/calling/streaming/error plus the active
+ *   model and provider names.
+ * - **Layout state** — tracks idle/computing/error for the layout engine.
+ * - **Request correlation** — a `requestId` attached to every log entry
+ *   so entries from the same workflow run can be filtered or exported
+ *   together.
+ *
+ * @example
  *   import { feedbackStore } from './stores/feedback.svelte.js';
+ *   feedbackStore.setRequestId('abc-123');
  *   feedbackStore.logActivity('llm', 'strategist', 'Calling GPT-4o…');
+ *   feedbackStore.setLlmState('calling', 'gpt-4o', 'openrouter');
  */
 
 class FeedbackStore {
@@ -39,7 +51,12 @@ class FeedbackStore {
   layoutState = $state('idle');
 
   // ─── Request Correlation ─────────────────────────────────────────
-  /** @type {string|null} */
+  /**
+   * Current request ID for log/SSE correlation. Injected by the
+   * workflow runner and attached to every activity log entry so that
+   * entries from a single workflow execution can be grouped or exported.
+   * @type {string|null}
+   */
   requestId = $state(null);
 
   // ─── Max log entries before oldest are pruned ────────────────────
@@ -159,14 +176,25 @@ class FeedbackStore {
   }
 
   /**
-   * Set the current request ID for log correlation.
-   * @param {string|null} id
+   * Set the current request ID for log/SSE correlation.
+   *
+   * Called by the workflow runner at the start of each execution so
+   * all subsequent log entries carry the same `requestId`. Pass
+   * `null` to clear the correlation (e.g. on workflow complete).
+   *
+   * @param {string|null} id - The request UUID, or `null` to clear.
    */
   setRequestId(id) {
     this.requestId = id;
   }
 
-  /** Reset all feedback state (e.g. on workflow complete). */
+  /**
+   * Reset all feedback state to initial values.
+   *
+   * Clears the activity log, status message, active errors, LLM/layout
+   * state, and request ID. Typically called when a workflow completes
+   * or the user starts a new session.
+   */
   clearAll() {
     this.activityLog = [];
     this.statusMessage = null;
@@ -179,8 +207,14 @@ class FeedbackStore {
   }
 
   /**
-   * Export the activity log as a JSON string.
-   * @returns {string} JSON-formatted activity log
+   * Export the activity log and active errors as a JSON string.
+   *
+   * The exported object includes the current `requestId`, an
+   * `exportedAt` ISO timestamp, the full `entries` array, and any
+   * unresolved `errors`. Useful for debugging or sharing with support.
+   *
+   * @returns {string} Pretty-printed JSON containing request metadata,
+   *   activity entries, and active errors.
    */
   exportLog() {
     return JSON.stringify({

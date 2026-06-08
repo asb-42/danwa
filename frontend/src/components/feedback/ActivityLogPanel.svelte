@@ -2,8 +2,24 @@
   /**
    * ActivityLogPanel — Collapsible, timestamped activity log.
    *
-   * Shows step-by-step process details during workflow execution.
-   * Supports filtering by type, export to clipboard, and clear.
+   * Displays step-by-step workflow execution details sourced from
+   * {@link feedbackStore.activityLog}. Fixed to the bottom of the
+   * viewport so it never overlaps main content.
+   *
+   * **Keyboard shortcut:** `Ctrl+Shift+L` toggles the panel open/closed
+   * (handled by the parent App component).
+   *
+   * **Features:**
+   * - Filter entries by type (`llm`, `workflow`, `node`, `system`, `error`)
+   *   via toggle buttons in the toolbar.
+   * - Auto-scroll to newest entries (configurable via checkbox).
+   * - Export full log + errors as JSON to clipboard (falls back to
+   *   a new window if clipboard API is unavailable).
+   * - Clear all entries.
+   * - Shows entry count badge and active error count in the toggle bar.
+   * - Displays truncated `requestId` when available for correlation.
+   *
+   * **No props** — all state is read reactively from `feedbackStore`.
    */
   import { feedbackStore } from '../../lib/stores/feedback.svelte.js';
   import { tStore } from '../../lib/i18n/index.js';

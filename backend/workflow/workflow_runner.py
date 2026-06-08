@@ -3,6 +3,22 @@
 Handles the lifecycle of a workflow execution: invoke the LangGraph graph,
 manage pause/resume/cancel, save state snapshots, and publish SSE events.
 
+Key features for the Unified Feedback System:
+
+- **Request ID injection** — a unique ``request_id`` (UUID v4) is
+  generated at the start of every ``run_workflow_background`` call and
+  injected into ``initial_state`` so all downstream nodes can include it
+  in their published SSE events for end-to-end log correlation.
+- **WorkflowCancelledError** — a custom exception used instead of
+  ``asyncio.CancelledError`` so that LangGraph's internal cancellation
+  handling does not swallow the signal.  Caught alongside
+  ``CancelledError`` in the main execution loop to set the session
+  status to ``"cancelled"``.
+- **Extension signal on cancel** — ``cancel_session()`` fires the
+  extension signal via the state backend so any node blocked in
+  ``wait_for_extension_signal()`` (e.g. a moderator waiting for an
+  extension decision) unblocks immediately.
+
 Sprint 37 (part 3/3) — pause/resume/cancel/status now delegate to the
 unified :func:`backend.state.workflow_state.get_workflow_state` backend.
 The module-level ``_pause_events`` / ``_cancelled_sessions`` /
@@ -45,8 +61,15 @@ class WorkflowCancelledError(Exception):
     ``CancelledError`` for its own internal task-cancellation logic.
     Using a custom exception guarantees that the workflow runner's
     ``except WorkflowCancelledError`` block always fires, ensuring the
-    session status is set to "cancelled" even when LangGraph would
+    session status is set to ``"cancelled"`` even when LangGraph would
     otherwise swallow the error.
+
+    Agent nodes check ``is_cancelled(session_id)`` at the start of
+    execution and raise this exception to abort cleanly.
+
+    See Also:
+        :func:`cancel_session` — marks a session as cancelled and
+        fires the extension signal to unblock waiting nodes.
     """
 
 
@@ -63,10 +86,18 @@ def is_cancelled(session_id: str) -> bool:
 def cancel_session(session_id: str) -> None:
     """Mark a session as cancelled and cancel the running asyncio task.
 
-    4.3: Also fires the extension signal so any node blocked in
-    ``wait_for_extension_signal()`` (e.g. the moderator waiting for
-    an extension decision) unblocks immediately instead of polling
-    with a 2-second timeout.
+    Performs three actions:
+
+    1. Sets the session status to ``"cancelled"`` via the state backend.
+    2. Fires the extension signal so any node blocked in
+       ``wait_for_extension_signal()`` (e.g. the moderator waiting for
+       an extension decision) unblocks immediately instead of polling
+       with a 2-second timeout.
+    3. Cancels the ``asyncio.Task`` running the workflow graph, which
+       propagates ``CancelledError`` into the graph executor.
+
+    Args:
+        session_id: The workflow session ID to cancel.
     """
     get_workflow_state().cancel(session_id)
     # Fire extension signal to unblock any waiting moderator node

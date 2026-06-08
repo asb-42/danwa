@@ -1,7 +1,7 @@
 # Danwa (Debate-Agent) — Technical Documentation
 
-> **Version**: 2.2.0  
-> **Last Updated**: 2026-06-01  
+> **Version**: 2.3.0
+> **Last Updated**: 2026-06-08
 > **Authors**: Development Team  
 
 ---
@@ -38,6 +38,7 @@
 28. [Rate Limiting](#28-rate-limiting)
 29. [Docker Deployment](#29-docker-deployment)
 30. [CI/CD Pipeline](#30-cicd-pipeline)
+31. [Unified Feedback System](#31-unified-feedback-system)
 
 ---
 
@@ -3746,4 +3747,161 @@ The legacy code is still present in `src/` but is being phased out.
 
 ---
 
-*Documentation generated for Danwa (Debate-Agent) v2.2.0 | Last updated: 2026-06-01*
+## 31. Unified Feedback System
+
+### Overview
+
+The Unified Feedback System provides real-time, non-intrusive feedback to users about backend activity, LLM operations, workflow execution, and errors. It replaces scattered, inconsistent feedback with a centralized, event-driven architecture.
+
+### Architecture
+
+```text
+Backend (LangGraph nodes, LLMService, WorkflowRunner)
+    │ publish_async()
+    ▼
+SSE Event Bus (backend/api/events.py)
+    │ EventSource
+    ▼
+Frontend Feedback Store (feedback.svelte.js)
+    ├──► StatusBar (persistent thin bar)
+    ├──► ActivityLogPanel (collapsible bottom panel)
+    ├──► ErrorPanel (classified errors)
+    ├──► AgentNode (spinner, error badge)
+    └──► WorkflowCanvas (layout overlay)
+```
+
+### Backend Event Enrichment
+
+#### Enriched `llm.call_started` Event
+
+Published by agent nodes before each LLM call. Now includes `model`, `provider`, and `request_id` in addition to the existing `llm_profile_id`:
+
+```json
+{
+  "node_id": "node-strategist",
+  "node_type": "wf-strategist",
+  "role": "strategist",
+  "round": 1,
+  "llm_profile_id": "prof-1",
+  "model": "gpt-4o",
+  "provider": "openrouter",
+  "request_id": "a1b2c3d4-..."
+}
+```
+
+**Source**: `backend/workflow/nodes/agent_nodes.py`
+
+#### Classified `llm.error` Event
+
+Published when an LLM call fails. Errors are classified into categories:
+
+| `error_class` | Trigger | User Message |
+|---|---|---|
+| `rate_limit` | HTTP 429 | "Model is busy — switching to backup model…" |
+| `timeout` | `asyncio.TimeoutError`, httpx timeout | "LLM response took too long — retrying…" |
+| `content_filter` | "content_filter" / "content_policy" in error | "Response was filtered — adjusting and retrying…" |
+| `network` | httpx `ConnectError` | "Connection issue — retrying…" |
+| `unknown` | Default fallback | "Something went wrong — please try again" |
+
+**Source**: `backend/workflow/nodes/agent_nodes.py` — [`_classify_llm_error()`](backend/workflow/nodes/agent_nodes.py:38)
+
+#### `llm.fallback` Event Infrastructure
+
+`LLMService.generate_with_fallback()` accepts an optional `on_fallback` callback. When a fallback model is used, the callback fires with `from_profile`, `to_profile_id`, `fallback_model`, and `fallback_provider`. Agent nodes can pass a lambda that publishes the SSE event.
+
+**Source**: `backend/services/llm_service.py` — [`generate_with_fallback()`](backend/services/llm_service.py:270)
+
+#### Request ID Correlation
+
+A UUID `request_id` is generated at workflow start and injected into `initial_state`. All subsequent events (`workflow.started`, `workflow.complete`, `workflow.cancelled`, `node.start`, `llm.call_started`, `llm.error`) include this ID for end-to-end traceability.
+
+**Source**: `backend/workflow/workflow_runner.py`
+
+### Frontend Components
+
+#### Feedback Store (`feedback.svelte.js`)
+
+Svelte 5 `$state`-based singleton store that serves as the single source of truth for all feedback signals.
+
+**Key state fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `activityLog` | `Array` | Append-only log of all feedback events (max 500, auto-pruned) |
+| `statusMessage` | `{text, type, since} \| null` | Current persistent status message |
+| `activeErrors` | `Array` | Classified errors with dismiss functionality |
+| `llmState` | `'idle' \| 'calling' \| 'streaming' \| 'error'` | Current LLM operation state |
+| `llmModel` | `string \| null` | Active LLM model name |
+| `llmProvider` | `string \| null` | Active LLM provider name |
+| `layoutState` | `'idle' \| 'computing' \| 'error'` | ELK.js layout computation state |
+| `requestId` | `string \| null` | Current workflow request ID for correlation |
+
+**Key actions:** `logActivity()`, `setStatus()`, `reportError()`, `setLlmState()`, `setLayoutState()`, `setRequestId()`, `exportLog()`
+
+All activity log entries are automatically tagged with `requestId` when one is set.
+
+**Source**: `frontend/src/lib/stores/feedback.svelte.js`
+
+#### Activity Log Panel
+
+Collapsible bottom panel (default collapsed) with:
+- Filter by type: LLM, workflow, node, system, error
+- Auto-scroll to latest entry
+- Export to clipboard (JSON format including `requestId`)
+- Clear log
+- Keyboard shortcut: `Ctrl+Shift+L`
+
+**Source**: `frontend/src/components/feedback/ActivityLogPanel.svelte`
+
+#### Status Bar
+
+Thin persistent bar that appears only when an operation is active:
+- Color-coded by type: amber (LLM), cyan (layout), blue (workflow)
+- Shows spinner, status text, model/provider badge
+- Elapsed timer with slow warning (>15s)
+
+**Source**: `frontend/src/components/feedback/StatusBar.svelte`
+
+#### Error Panel
+
+Floating panel for classified errors:
+- Error class icons: ⏱ rate limit, ⌛ timeout, 🛡 content filter, 🌐 network, ⚠ unknown
+- Collapsible technical details
+- Copy error details to clipboard
+- Dismiss individual or all errors
+
+**Source**: `frontend/src/components/feedback/ErrorPanel.svelte`
+
+#### Workflow Canvas Integration
+
+- **AgentNode**: Spinning indicator during LLM calls, model name display, error badge on failure
+- **WorkflowCanvas**: Layout computing overlay (spinner), layout error overlay
+- **ELK layout engine**: Publishes `layoutState` transitions to feedback store
+
+### SSE Event Contract
+
+#### New Events
+
+| Event | Payload | Source |
+|---|---|---|
+| `llm.error` | `{node_id, node_type, role, round, error_class, message, raw_error, request_id}` | agent_nodes.py |
+| `llm.fallback` | `{node_id, role, round, from_profile, to_profile_id, model, provider}` | llm_service.py (via callback) |
+
+#### Enriched Events
+
+| Event | New Fields |
+|---|---|
+| `llm.call_started` | `model`, `provider`, `request_id` |
+| `workflow.started` | `request_id` |
+| `workflow.complete` | `request_id` |
+| `workflow.cancelled` | `request_id` |
+
+### Error Handling
+
+- Global `unhandledrejection` handler in `main.js` reports to feedback store
+- SSE client registers `llm.error` and `llm.fallback` in the event handler map
+- Both `DebateView.svelte` and `MvpDebateView.svelte` wire SSE events to the feedback store
+
+---
+
+*Documentation generated for Danwa (Debate-Agent) v2.3.0 | Last updated: 2026-06-08*

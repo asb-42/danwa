@@ -1,3 +1,12 @@
+/**
+ * Application entry point.
+ *
+ * Mounts the root Svelte 5 `App` component and installs a global
+ * `unhandledrejection` handler that forwards uncaught promise
+ * rejections to the Unified Feedback Store so they surface as
+ * classified error cards in the UI rather than being silently lost.
+ */
+
 import './app.css';
 import { mount } from 'svelte';
 import App from './App.svelte';

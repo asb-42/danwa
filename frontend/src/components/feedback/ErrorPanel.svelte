@@ -1,10 +1,34 @@
 <script>
   /**
-   * ErrorPanel — Structured error display with classification.
+   * ErrorPanel — Classified error display as floating toast cards.
    *
-   * Shows classified errors with icons, user-friendly messages,
-   * copy-to-clipboard, and dismiss functionality.
-   * Displays as a floating panel that doesn't block the UI.
+   * Renders active errors from {@link feedbackStore.activeErrors} as
+   * non-blocking floating cards in the top-right corner of the viewport.
+   * Each card is color-coded and icon-branded by error class:
+   *
+   * | Class           | Icon | Color   |
+   * |-----------------|------|---------|
+   * | `rate_limit`    | ⏱    | amber   |
+   * | `timeout`       | ⌛    | orange  |
+   * | `content_filter`| 🛡    | purple  |
+   * | `network`       | 🌐    | blue    |
+   * | `unknown`       | ⚠    | red     |
+   *
+   * **Features per error card:**
+   * - Error class icon and title badge.
+   * - Optional originating node ID badge.
+   * - User-friendly message text.
+   * - Collapsible `<details>` block with raw technical error string.
+   * - Copy-to-clipboard button (exports class, message, node, raw
+   *   error, and timestamp; falls back to a new window).
+   * - Dismiss button (removes the individual error).
+   * - "Dismiss all" button when multiple errors are active.
+   *
+   * **Accessibility:** Container uses `role="alert"` and
+   * `aria-live="assertive"` so screen readers announce errors
+   * immediately.
+   *
+   * **No props** — all state is read reactively from `feedbackStore`.
    */
   import { feedbackStore } from '../../lib/stores/feedback.svelte.js';
   import { tStore } from '../../lib/i18n/index.js';

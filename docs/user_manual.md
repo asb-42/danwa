@@ -36,6 +36,7 @@
 32. [Advanced Configuration](#advanced-configuration)
 33. [Development](#development)
 34. [Troubleshooting](#troubleshooting)
+35. [Unified Feedback System](#unified-feedback-system)
 
 ---
 
@@ -1763,6 +1764,83 @@ The debate process is visualized as an interactive graph using @xyflow/svelte an
 
 ---
 
+## Unified Feedback System
+
+Danwa provides a **unified, non-intrusive feedback system** that keeps you informed about what the backend is doing at every moment during workflow execution — without interrupting your work.
+
+### What You See
+
+#### Status Bar
+
+When a workflow is running, a thin **status bar** appears below the header showing:
+- 🔄 **Spinner** with color coding: amber for LLM calls, cyan for layout, blue for workflow
+- **Current operation**: e.g., "LLM calling GPT-4o…"
+- **Elapsed time** for the current operation
+- A ⚠ **slow warning** appears if an operation exceeds 15 seconds
+
+The status bar automatically disappears when the operation completes.
+
+#### Agent Node Indicators
+
+Each agent node in the workflow graph shows:
+- A **spinning indicator** while waiting for an LLM response
+- The **model name** being called (e.g., "gpt-4o")
+- A **red error badge** (❌) if the agent fails
+- A **red glow** on the node border for failed states
+
+#### Error Panel
+
+When errors occur (LLM failures, network issues), a **floating error panel** appears with:
+- **Classified error type** with icon:
+  - ⏱ **Rate Limit** — "Model is busy — switching to backup model…"
+  - ⌛ **Timeout** — "LLM response took too long — retrying…"
+  - 🛡 **Content Filter** — "Response was filtered — adjusting and retrying…"
+  - 🌐 **Network** — "Connection issue — retrying…"
+  - ⚠ **Unknown** — "Something went wrong — please try again"
+- **Copy error details** button for debugging
+- **Dismiss** button to remove individual errors or dismiss all
+
+#### Activity Log Panel
+
+A **collapsible activity log** at the bottom of the screen tracks all workflow events:
+
+- **Toggle**: Click the activity log tab or press `Ctrl+Shift+L`
+- **Filter by type**: LLM, workflow, node, system, or error
+- **Auto-scrolls** to the latest entry
+- **Export** to clipboard as JSON (includes request ID for debugging)
+- **Clear** to reset the log
+
+Each entry is automatically tagged with a **request ID** for correlation across the full workflow lifecycle.
+
+#### Layout Feedback
+
+When the workflow graph layout is being computed:
+- A **spinner overlay** appears in the top-right corner of the canvas
+- If layout computation fails, an **error overlay** with details is shown
+
+### Error Classification
+
+LLM errors are automatically classified and presented with actionable messages:
+
+| Error Class | Icon | What It Means | What Happens |
+|---|---|---|---|
+| Rate Limit | ⏱ | Too many requests to the LLM provider | System retries or uses backup model |
+| Timeout | ⌛ | LLM took too long to respond | System retries the request |
+| Content Filter | 🛡 | Response was blocked by safety filters | System adjusts and retries |
+| Network | 🌐 | Connection to LLM provider failed | System retries with backoff |
+| Unknown | ⚠ | Unexpected error | Details available in error panel |
+
+### Request ID Correlation
+
+Every workflow run is assigned a **request ID** (UUID) that appears in:
+- All SSE events from the backend
+- Activity log entries
+- Exported log JSON
+
+This enables end-to-end traceability from the UI back to backend logs.
+
+---
+
 ## Internationalization (i18n)
 
 ### Supported Languages
@@ -2159,4 +2237,4 @@ danwa/
 
 ---
 
-*Documentation generated for Danwa v2.2.0 — 2026-06-01*
+*Documentation generated for Danwa v2.3.0 — 2026-06-08*

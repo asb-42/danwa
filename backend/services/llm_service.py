@@ -275,12 +275,31 @@ class LLMService:
         max_tokens: int | None = None,
         on_fallback: Any | None = None,
     ) -> GenerationResult:
-        """Generate with automatic fallback on A2A failure.
+        """Generate text with automatic fallback to a secondary LLM profile.
+
+        Attempts generation using the primary profile. If an ``A2AError``
+        is raised **and** a ``fallback_llm_profile_id`` is configured on
+        the primary profile, retries the call with the fallback profile.
 
         Args:
-            on_fallback: Optional async callback ``(from_profile, to_profile)``
-                invoked when a fallback actually occurs.  Callers can use
-                this to publish SSE events (e.g. ``llm.fallback``).
+            prompt: The user prompt text.
+            system_prompt: Optional system prompt for the LLM.
+            temperature: Override temperature (uses profile default if ``None``).
+            max_tokens: Override max tokens (uses profile default if ``None``).
+            on_fallback: Optional async callback ``(from_profile_id, to_profile_id,
+                fallback_model, fallback_provider)`` invoked when a fallback
+                actually occurs. Callers typically use this to publish an
+                ``llm.fallback`` SSE event so the frontend can display a
+                notification. The callback is wrapped in a ``try/except``
+                so a failing callback never aborts the fallback itself.
+
+        Returns:
+            GenerationResult from the primary or fallback profile.
+
+        Raises:
+            A2AError: Re-raised if no fallback profile is configured.
+            RuntimeError: If no LLM profile is configured.
+            ValueError: If the API key cannot be resolved.
         """
         from backend.a2a.exceptions import A2AError
 

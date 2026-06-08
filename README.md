@@ -67,6 +67,7 @@ The debate runs for configurable rounds (1-20) and stops early when consensus th
 - **RAG Pipeline** - Automatic and manual document retrieval for debate context
 - **Hybrid Retrieval** - BM25 + Vector search + Re-ranking for optimal results
 - **Real-Time Updates** - Server-Sent Events (SSE) for live debate progress visualization
+- **Unified Feedback System** - Real-time status bar, activity log panel, classified error display, and node execution indicators during workflow runs
 - **Modern Web UI** - Svelte 5 + Tailwind CSS + @xyflow/svelte workflow graph
 - **Internationalization** - Full i18n support for 14 languages (de, en, fr, es, it, pt, ru, zh, ja, ko, sv, el, ar, he) with RTL support and Translation Dashboard
 - **Module System** - Extensible module architecture for agents, prompts, roles, LLM profiles, and workflow templates

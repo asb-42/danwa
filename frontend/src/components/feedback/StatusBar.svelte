@@ -1,10 +1,26 @@
 <script>
   /**
-   * StatusBar — Thin persistent bar showing current operation status.
+   * StatusBar — Thin persistent status bar at the top of the viewport.
    *
-   * Only appears when something is actively happening:
-   * "LLM thinking… (GPT-4o)" / "Layout computing…" / "Workflow idle"
-   * Shows elapsed time for the current operation.
+   * Displays the current operation status sourced from
+   * {@link feedbackStore.statusMessage}. Only visible when an operation
+   * is actively in progress (status message is non-null); hidden
+   * otherwise to avoid visual noise.
+   *
+   * **Visual behavior:**
+   * - Animated spinner with type-based color coding:
+   *   - `llm` → amber/yellow
+   *   - `layout` → cyan
+   *   - `workflow` → blue
+   *   - default → zinc/gray
+   * - Elapsed time counter updated every 100 ms.
+   * - "⚠ slow" warning badge appears after 15 seconds.
+   * - Model and provider badges shown when `llmState` is `'calling'`.
+   *
+   * **Accessibility:** Uses `role="status"` and `aria-live="polite"`
+   * so screen readers announce status changes.
+   *
+   * **No props** — all state is read reactively from `feedbackStore`.
    */
   import { feedbackStore } from '../../lib/stores/feedback.svelte.js';
 

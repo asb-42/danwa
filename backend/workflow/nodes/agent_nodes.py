@@ -2,6 +2,19 @@
 
 Creates agent execution nodes that resolve their ``AgentBlueprint`` at
 runtime and call the LLM via ``LLMService``.
+
+Each agent node publishes enriched feedback events for the Unified
+Feedback System:
+
+- ``llm.call_started`` — emitted before the LLM call with the resolved
+  model name, provider, and ``request_id`` for frontend correlation.
+- ``llm.error`` — emitted on LLM failure with a classified error
+  (rate_limit, timeout, content_filter, network, unknown) and a
+  user-friendly message so the frontend ``ErrorPanel`` can display
+  actionable guidance.
+
+Error classification is handled by :func:`_classify_llm_error` and
+human-readable messages by :func:`_user_friendly_error_message`.
 """
 
 from __future__ import annotations
@@ -36,9 +49,18 @@ logger = logging.getLogger(__name__)
 
 
 def _classify_llm_error(exc: Exception) -> str:
-    """Classify an LLM error into a user-friendly category.
+    """Classify an LLM exception into a user-friendly error category.
 
-    Returns one of: 'rate_limit', 'timeout', 'content_filter', 'network', 'unknown'.
+    Inspects the exception type and message content to determine the
+    most likely cause of failure. Used by agent nodes to populate the
+    ``error_class`` field of ``llm.error`` SSE events.
+
+    Args:
+        exc: The exception raised during an LLM call.
+
+    Returns:
+        One of ``'rate_limit'``, ``'timeout'``, ``'content_filter'``,
+        ``'network'``, or ``'unknown'``.
     """
     exc_str = str(exc).lower()
     exc_type = type(exc).__name__.lower()
@@ -67,7 +89,19 @@ def _classify_llm_error(exc: Exception) -> str:
 
 
 def _user_friendly_error_message(error_class: str) -> str:
-    """Return a user-friendly message for a classified LLM error."""
+    """Return a user-facing message string for a classified LLM error.
+
+    Maps each error class to a concise, actionable message displayed in
+    the frontend ``ErrorPanel``. Falls back to a generic message for
+    unrecognised classes.
+
+    Args:
+        error_class: One of ``'rate_limit'``, ``'timeout'``,
+            ``'content_filter'``, ``'network'``, or ``'unknown'``.
+
+    Returns:
+        A short, user-friendly error message string.
+    """
     messages = {
         "rate_limit": "Model is busy — switching to backup model…",
         "timeout": "LLM response took too long — retrying…",

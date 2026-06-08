@@ -512,7 +512,18 @@ def audit_decorator(
     """Decorator that wraps an async node function with audit logging.
 
     Records ``node_started`` before execution and ``node_completed`` or
-    ``node_failed`` after execution, including full content and SHA-256 hashes.
+    ``node_failed`` after execution, including full content and SHA-256
+    hashes.
+
+    All synchronous SQLite writes are dispatched via
+    :func:`asyncio.to_thread` so the I/O never blocks the event loop.
+    This is critical in multi-workflow deployments where several agent
+    nodes run concurrently on the same loop.
+
+    Args:
+        audit_log: The ``AuditLogger`` instance to write events to.
+        node_id: The workflow node ID being decorated.
+        actor: The actor label for audit entries (default ``"system"``).
 
     Usage::
 

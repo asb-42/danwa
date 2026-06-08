@@ -2,6 +2,21 @@
 
 Takes a structured ``WorkflowDefinition`` (nodes, edges, entry_point) and
 produces a compiled LangGraph graph that can be executed via ``graph.ainvoke()``.
+
+Compilation steps:
+
+1. Validate all blueprint references (delegates to ``CompilerService``).
+2. Resolve agent configurations from the repository (Bundle, AgentBlueprint,
+   or module agent-core).
+3. Topological sort of nodes (Kahn's algorithm with fallback for cycles).
+4. Build ``StateGraph`` with node functions, conditional edge routing
+   (gate, decision, feedback), and fan-out/fan-in wiring.
+5. **Convergence validation** — for fan-out nodes, verify that all
+   parallel branches eventually reach a common downstream node via
+   :meth:`_find_common_downstream`. Warns if branches diverge to
+   ``__complete__`` independently, which would cause duplicate output
+   assembly.
+6. Compile and return a :class:`CompiledWorkflow`.
 """
 
 from __future__ import annotations
@@ -917,10 +932,25 @@ class WorkflowCompiler:
         start_ids: list[str],
         workflow: WorkflowDefinition,
     ) -> set[str]:
-        """Find nodes reachable from ALL start_ids (BFS convergence check).
+        """Find nodes reachable from ALL *start_ids* via BFS.
 
-        Returns the set of node IDs that every fan-out target can reach.
-        Empty set means the branches never converge.
+        Performs a reachability search from each start node and returns
+        the intersection — i.e. nodes that every fan-out target can
+        eventually reach. Used during graph compilation to validate
+        that parallel branches converge before reaching ``__complete__``.
+
+        Implicit terminators (``__complete__`` and ``END``) are excluded
+        from the result so only *meaningful* convergence points (e.g.
+        a shared gate or join node) are reported.
+
+        Args:
+            start_ids: Node IDs of the fan-out targets to check.
+            workflow: The workflow definition providing the edge graph.
+
+        Returns:
+            Set of node IDs reachable from every *start_id*, excluding
+            ``__complete__`` and ``END``. An empty set means the
+            branches never converge at a meaningful point.
         """
         # Build adjacency from workflow edges (all non-interjection edges)
         adj: dict[str, list[str]] = {}
