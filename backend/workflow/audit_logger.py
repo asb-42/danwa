@@ -527,12 +527,19 @@ def audit_decorator(
         @functools.wraps(fn)
         async def wrapper(state: dict) -> dict:
             """Wrapper the instance."""
+            import asyncio
+
             session_id = state.get("session_id", "")
             workflow_id = state.get("workflow_id", "")
             workflow_version = state.get("workflow_version", 1)
 
+            # 4.1: Run synchronous audit writes off the event loop
+            # thread via asyncio.to_thread() so the SQLite I/O doesn't
+            # block other coroutines in multi-workflow deployments.
+
             # --- Log: node started ---
-            audit_log.log_node_started(
+            await asyncio.to_thread(
+                audit_log.log_node_started,
                 session_id=session_id,
                 workflow_id=workflow_id,
                 workflow_version=workflow_version,
@@ -547,7 +554,8 @@ def audit_decorator(
                 elapsed_ms = int((time.monotonic() - start) * 1000)
 
                 # --- Log: node completed ---
-                audit_log.log_node_execution(
+                await asyncio.to_thread(
+                    audit_log.log_node_execution,
                     session_id=session_id,
                     workflow_id=workflow_id,
                     workflow_version=workflow_version,
@@ -563,7 +571,8 @@ def audit_decorator(
                 elapsed_ms = int((time.monotonic() - start) * 1000)
 
                 # --- Log: node failed ---
-                audit_log.log_node_failed(
+                await asyncio.to_thread(
+                    audit_log.log_node_failed,
                     session_id=session_id,
                     workflow_id=workflow_id,
                     workflow_version=workflow_version,

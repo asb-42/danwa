@@ -6,7 +6,6 @@ runtime and call the LLM via ``LLMService``.
 
 from __future__ import annotations
 
-import asyncio
 import json as _json
 import logging
 import re
@@ -97,11 +96,13 @@ def agent_node_factory(
         session_id = state.get("session_id", "")
         current_round = state.get("current_round", 1)
 
-        # Check for cancellation before starting work
-        from backend.workflow.workflow_runner import is_cancelled
+        # Check for cancellation before starting work.
+        # 4.2: Use WorkflowCancelledError instead of asyncio.CancelledError
+        # to avoid ambiguity with LangGraph's internal cancellation handling.
+        from backend.workflow.workflow_runner import WorkflowCancelledError, is_cancelled
 
         if is_cancelled(session_id):
-            raise asyncio.CancelledError(f"Workflow session {session_id} was cancelled")
+            raise WorkflowCancelledError(f"Workflow session {session_id} was cancelled")
 
         start_time = time.monotonic()
 

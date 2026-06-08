@@ -35,6 +35,20 @@ from backend.workflow.workflow_state import WorkflowTemplate
 
 logger = logging.getLogger(__name__)
 
+
+class WorkflowCancelledError(Exception):
+    """Raised by workflow nodes when the session is cancelled.
+
+    Unlike ``asyncio.CancelledError``, this exception is **not** caught
+    or suppressed by LangGraph's graph executor, which intercepts
+    ``CancelledError`` for its own internal task-cancellation logic.
+    Using a custom exception guarantees that the workflow runner's
+    ``except WorkflowCancelledError`` block always fires, ensuring the
+    session status is set to "cancelled" even when LangGraph would
+    otherwise swallow the error.
+    """
+
+
 # Module-level task tracking for asyncio cancellation.
 # All other state (cancel, pause, status) lives in get_workflow_state().
 _running_tasks: dict[str, asyncio.Task] = {}  # session_id -> asyncio.Task
@@ -46,8 +60,19 @@ def is_cancelled(session_id: str) -> bool:
 
 
 def cancel_session(session_id: str) -> None:
-    """Mark a session as cancelled and cancel the running asyncio task."""
+    """Mark a session as cancelled and cancel the running asyncio task.
+
+    4.3: Also fires the extension signal so any node blocked in
+    ``wait_for_extension_signal()`` (e.g. the moderator waiting for
+    an extension decision) unblocks immediately instead of polling
+    with a 2-second timeout.
+    """
     get_workflow_state().cancel(session_id)
+    # Fire extension signal to unblock any waiting moderator node
+    try:
+        get_workflow_state().set_extension_signal(session_id)
+    except Exception:
+        logger.debug("Failed to fire extension signal on cancel for %s", session_id, exc_info=True)
     task = _running_tasks.get(session_id)
     if task and not task.done():
         task.cancel()
@@ -273,7 +298,7 @@ async def run_workflow_background(
             duration_ms,
         )
 
-    except asyncio.CancelledError:
+    except (asyncio.CancelledError, WorkflowCancelledError):
         duration_ms = int((time.monotonic() - start_time) * 1000)
         logger.info("Workflow %s cancelled for session %s after %dms", workflow_id, session_id, duration_ms)
 
