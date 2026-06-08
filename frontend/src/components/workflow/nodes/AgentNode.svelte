@@ -21,11 +21,14 @@
   let colors = $derived(roleColors[data.role] || roleColors.strategist);
   let icon = $derived(roleIcons[data.role] || '🤖');
   let statusClass = $derived(data.isActive ? 'active' : data.status || 'idle');
+  let isFailed = $derived(data.status === 'failed');
+  let isCalling = $derived(data.isActive && data.activity === 'llm_calling');
 </script>
 
 <div
   class="workflow-node agent-node status-{statusClass}"
-  style="border-color: {colors.border}; --role-bg: {colors.bg}; --role-dark-bg: {colors.darkBg}; --role-border: {colors.border};"
+  class:failed={isFailed}
+  style="border-color: {isFailed ? '#ef4444' : colors.border}; --role-bg: {colors.bg}; --role-dark-bg: {colors.darkBg}; --role-border: {isFailed ? '#ef4444' : colors.border};"
 >
   <Handle type="target" position={Position.Left} />
   <div class="node-header">
@@ -34,15 +37,23 @@
     {#if data.hasFeedbackLoop}
       <span class="loop-badge" title="Has feedback loop">🔄</span>
     {/if}
+    {#if isFailed}
+      <span class="error-badge" title="Failed">❌</span>
+    {/if}
   </div>
   <div class="node-body">
     <span class="node-round">Round {data.round}</span>
     {#if data.profile}
       <span class="node-profile">{data.profile}</span>
     {/if}
+    {#if data.model}
+      <span class="node-model">🤖 {data.model}</span>
+    {/if}
     {#if data.activity}
       <span class="node-activity">
         {#if data.activity === 'searching'}🔍 {data.activityDetail || 'Searching...'}
+        {:else if data.activity === 'llm_calling'}
+          <span class="spinner"></span> LLM calling…
         {:else if data.activity === 'thinking'}🧠 Thinking...
         {:else}{data.activity}
         {/if}
@@ -96,6 +107,14 @@
     font-size: 12px;
     opacity: 0.7;
   }
+  .error-badge {
+    margin-left: auto;
+    font-size: 12px;
+  }
+  .workflow-node.failed {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 12px rgba(239,68,68,0.3);
+  }
   .node-body {
     display: flex;
     flex-direction: column;
@@ -111,6 +130,12 @@
     color: #9ca3af;
     font-family: monospace;
   }
+  .node-model {
+    font-size: 9px;
+    color: #6b7280;
+    font-family: monospace;
+  }
+  :global(.dark) .node-model { color: #9ca3af; }
   .node-activity {
     font-size: 10px;
     color: #3b82f6;
@@ -121,6 +146,20 @@
   @keyframes activity-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+  .spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #3b82f6;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 3px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
   .pulse-ring {
     position: absolute;

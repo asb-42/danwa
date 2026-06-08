@@ -8,6 +8,7 @@
   import WorkflowGraph from '../components/WorkflowGraph.svelte';
   import { handleWorkflowSSE } from '../lib/workflow/mapper.js';
   import { resetWorkflow } from '../lib/workflow/store.svelte.js';
+  import { feedbackStore } from '../lib/stores/feedback.svelte.js';
   // HITL components
   import InjectPanel from '../components/hitl/InjectPanel.svelte';
   import PauseControls from '../components/hitl/PauseControls.svelte';
@@ -216,6 +217,22 @@
       if (import.meta.env.DEV) console.warn('Workflow SSE mapping error:', e);
     }
 
+    // T-11: Wire SSE events to feedback store
+    if (event.type === 'workflow_started' && event.request_id) {
+      feedbackStore.setRequestId(event.request_id);
+      feedbackStore.logActivity('workflow', 'system', 'Workflow started', { request_id: event.request_id });
+    }
+    if (event.type === 'llm.call_started') {
+      feedbackStore.setLlmState('calling', event.model || null, event.provider || null);
+      feedbackStore.logActivity('llm', event.role || 'system', `LLM calling ${event.model || '…'} (${event.provider || ''})`, {
+        node_id: event.node_id, role: event.role, round: event.round, model: event.model,
+      });
+    }
+    if (event.type === 'llm.error') {
+      feedbackStore.setLlmState('error');
+      feedbackStore.reportError(event.error_class || 'unknown', event.message || 'LLM error', event.raw_error, event.node_id);
+    }
+
     if (event.type === 'title_generating') {
       titleGenerating = true;
       titleFadedIn = false;
@@ -249,6 +266,12 @@
         workflowPhase = null;
         stopProcessingTimer();
         stopWorkflowTimer();
+        // T-11: Clear feedback LLM state on debate completion
+        feedbackStore.setLlmState('idle');
+        feedbackStore.clearStatus();
+        feedbackStore.logActivity('workflow', 'system',
+          event.status === 'completed' ? 'Debate completed' : 'Debate failed',
+        );
         handleRefreshStatus();
       }
       return;
@@ -341,6 +364,12 @@
       currentActivity = null;
       workflowPhase = null;
       stopWorkflowTimer();
+      // T-11: Clear LLM calling state and log agent completion
+      feedbackStore.setLlmState('idle');
+      feedbackStore.logActivity('node', event.role,
+        `${event.role} completed (Round ${event.round}, ${tokensOut} tokens, ${event.duration_ms || 0}ms)`,
+        { round: event.round, tokens_out: tokensOut, duration_ms: event.duration_ms },
+      );
       liveOutputs = [...liveOutputs, {
         round: event.round, role: event.role, content: event.content,
         tokens: event.tokens_used, tokens_in: tokensIn, tokens_out: tokensOut,
