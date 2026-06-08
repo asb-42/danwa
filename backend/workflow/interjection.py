@@ -218,7 +218,7 @@ class InterjectionService:
         if self._db_path is None or self._db_lock is None:
             return
         channel = get_pubsub().channel(f"{_WAKE_CHANNEL_PREFIX}{session_id}")
-        current_version = channel._set_count
+        current_version = channel.set_count
         if self._hydration_version.get(session_id) == current_version:
             return
         conn = self._get_conn()

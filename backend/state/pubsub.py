@@ -45,6 +45,15 @@ class PubSubBackend(Protocol):
 class PubSubChannel(Protocol):
     """A named pub/sub channel."""
 
+    @property
+    def set_count(self) -> int:
+        """Number of times the channel has been set/published to.
+
+        Used by :class:`InterjectionService` to detect cross-process
+        submissions without accessing private implementation details.
+        """
+        ...
+
     async def publish(self, message: str) -> int:
         """Publish a message to the channel.
 
@@ -170,6 +179,16 @@ class InMemoryChannel:
             self._subscribers.remove(sub)
         except ValueError:
             pass
+
+    @property
+    def set_count(self) -> int:
+        """Number of times the channel has been set/published to.
+
+        Public read-only accessor for the internal counter.
+        Used by :class:`InterjectionService` to detect cross-process
+        submissions without accessing private implementation details.
+        """
+        return self._set_count
 
     def is_set(self) -> bool:
         """True if the channel has been published to at least once.
@@ -318,6 +337,17 @@ class RedisChannel:
         self.name = name
         self._redis = redis_client
         self._flag_key = f"{name}:flag"
+
+    @property
+    def set_count(self) -> int:
+        """Return 1 if the Redis flag key exists, 0 otherwise.
+
+        Redis does not maintain a monotonic counter — only an
+        existence flag with TTL.  The return value is therefore
+        clamped to 0 or 1, which is sufficient for the
+        hydration-version check in :class:`InterjectionService`.
+        """
+        return 1 if self._redis.exists(self._flag_key) else 0
 
     async def publish(self, message: str) -> int:
         """Deliver ``message`` to current Redis subscribers.

@@ -379,19 +379,26 @@ async def run_workflow_background(
 def _serialize_state(state: dict[str, Any]) -> dict[str, Any]:
     """Serialize WorkflowState for snapshot storage.
 
-    Converts non-JSON-serializable values to strings.
+    Recursively converts non-JSON-serializable values to strings.
+    Nested dicts and lists are preserved (not stringified) so that
+    snapshots stored in SQLite retain their structure and can be
+    queried or reconstructed for replay/debugging.
     """
-    serialized: dict[str, Any] = {}
-    for key, value in state.items():
-        if isinstance(value, (str, int, float, bool, type(None))):
-            serialized[key] = value
-        elif isinstance(value, list):
-            serialized[key] = [str(item) if not isinstance(item, (str, int, float, bool, dict, type(None))) else item for item in value]
-        elif isinstance(value, dict):
-            serialized[key] = {k: str(v) for k, v in value.items()}
-        else:
-            serialized[key] = str(value)
-    return serialized
+
+    def _serialize_value(v: Any) -> Any:
+        if isinstance(v, (str, int, float, bool, type(None))):
+            return v
+        if isinstance(v, dict):
+            return {k: _serialize_value(val) for k, val in v.items()}
+        if isinstance(v, list):
+            return [_serialize_value(item) for item in v]
+        if hasattr(v, "model_dump"):
+            return _serialize_value(v.model_dump(mode="json"))
+        if hasattr(v, "value"):
+            return v.value
+        return str(v)
+
+    return {k: _serialize_value(v) for k, v in state.items()}
 
 
 def normalize_transcript_for_display(state: dict) -> list[dict]:

@@ -137,15 +137,24 @@ class DebateStore:
         return True
 
     def move(self, debate_id: str, target_store: DebateStore) -> bool:
-        """Move a debate file to another project's store and update caches."""
+        """Move a debate file to another project's store and update caches.
+
+        The target write is attempted first.  If it fails, the source
+        is left untouched.  If the target write succeeds but the source
+        file deletion fails, the debate exists in both stores (safe
+        duplication rather than data loss).
+        """
         with self._lock:
             debate = self._cache.get(debate_id)
             if not debate:
                 return False
-        target_store.put(debate_id, debate)
+        try:
+            target_store.put(debate_id, debate)
+        except Exception as exc:
+            logger.error("Failed to write debate %s to target store: %s", debate_id, exc)
+            return False
         with self._lock:
-            if debate_id in self._cache:
-                del self._cache[debate_id]
+            self._cache.pop(debate_id, None)
         path = self._data_dir / f"{debate_id}.json"
         try:
             if path.exists():
