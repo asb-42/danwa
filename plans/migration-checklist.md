@@ -124,24 +124,31 @@
 
 ## Phase 5: Cleanup
 
-### 5a — Remove ProjectStore
-- [ ] Verify no backend code imports `ProjectStore`
-- [ ] Archive or delete `backend/persistence/project_store.py`
-- [ ] Verify backend starts
+### 5a — Remove Project CRUD dead code ✅
+- [x] Simplified `projects.py` router to list-only endpoint
+- [x] Cleaned `project.js` frontend to keep only `getProjects()`
+- [x] Removed dead CRUD models from `project.py`
 
-### 5b — Remove Project model
-- [ ] Verify no backend code imports `Project` model
-- [ ] Archive or delete `backend/models/project.py`
-- [ ] Verify backend starts
+### 5b — Create `get_case_dir` abstraction ✅
+- [x] Added `get_case_dir(case_id)` in `deps.py` wrapping `ProjectStore.get_project_dir()`
+- [x] Added `get_debate_store_for_case(case_id)` in `deps.py`
+- [x] Added `get_profile_service_for_case(case_id)` in `deps.py`
+- [x] Legacy functions kept as thin wrappers
 
-### 5c — Remove legacy debate.py router
-- [ ] Verify no frontend code calls `/api/v1/debate` (legacy)
-- [ ] Archive or delete `backend/api/routers/debate.py`
-- [ ] Verify backend starts
+### 5c — Migrate all callers from ProjectStore ✅
+- [x] **5c-1–8**: Routers (audit, dms, debate, output_composer, input_composer, debate_stream, workflow_exec+workflow_reports, hitl)
+- [x] **5c-9**: Services (debate_workflow, debate_rag, dms/service, render_engine) + dispatch + case_scoped
+- [x] **5c-10**: Workflow (nodes, legacy_nodes, moderator_nodes, workflow_runner)
+- [x] **5c-11**: A2A (router, server)
+- [x] **5c-12**: Other (config.py)
+- Commits: `decdd62`, `4849139`, `d921227`, `4aad443`, `6ad7d6b`, `6d1a613`, `1a4f98d`
 
-### 5d — Final verification
+### 5d — Final removal of ProjectStore + Project model
+- [ ] Replace `get_case_dir()` internals: `ProjectStore.get_project_dir()` → `CaseStore` directory resolution
+- [ ] Replace `get_project_store()` inline callers (render_engine, a2a, case_scoped, config, debate) with CaseStore
+- [ ] Verify migrations still work (they legitimately use ProjectStore)
+- [ ] Remove `backend/persistence/project_store.py` (keep for migrations only if needed)
+- [ ] Remove `backend/models/project.py` (Project, ProjectConfig)
+- [ ] Remove `backend/api/routers/projects.py` (list endpoint)
 - [ ] Full frontend build passes
 - [ ] Full backend test suite passes
-- [ ] No remaining references to `activeProject` in frontend
-- [ ] No remaining references to `X-Project-Id` in frontend
-- [ ] No remaining imports of `ProjectStore` in backend
