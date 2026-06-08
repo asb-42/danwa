@@ -231,7 +231,14 @@ class InterjectionService:
                     "metadata, status, created_at "
                     "FROM interjections "
                     "WHERE session_id = ? AND status = 'pending' "
-                    "ORDER BY created_at ASC",
+                    # F-05 fix: ``interjection_id`` is a UUID-derived
+                    # 12-hex-char string, uniformly distributed — a
+                    # deterministic tie-breaker for submits that
+                    # happened in the same microsecond.  Without it
+                    # SQLite falls back to rowid order, which can
+                    # shift after a VACUUM and silently re-order
+                    # items across a process restart.
+                    "ORDER BY created_at ASC, interjection_id ASC",
                     (session_id,),
                 ).fetchall()
             except sqlite3.DatabaseError:
@@ -769,6 +776,16 @@ class InterjectionService:
             # re-uses the id.
             self._hydration_version.pop(session_id, None)
             self._queued_ids.difference_update(session_ids)
+            # F-06 fix: Clear the wake event while still holding the
+            # lock.  The old code cleared it *after* releasing the
+            # lock, which created a window where a concurrent submit()
+            # could set the event, then we would clear its signal —
+            # causing the consumer to miss the new item until the
+            # next interaction.  Clearing inside the lock guarantees
+            # that no submit() can race with our clear.
+            event = self._wake_events.get(session_id)
+            if event is not None:
+                event.clear()
         # Mirror to SQLite *outside* the lock so the ``DELETE`` plus
         # ``commit()`` runs on a worker thread (F-02).  In-memory state
         # is the source of truth for the running session; the DB is a
@@ -776,10 +793,6 @@ class InterjectionService:
         # cleanup — it does not block the event loop.
         if self._db_path is not None:
             await asyncio.to_thread(self._persist_delete_session, session_id)
-        # Reset the wake-up event so future consumers block.
-        event = self._wake_events.get(session_id)
-        if event is not None:
-            event.clear()
         logger.info("Cleared interjection queue for session %s", session_id)
 
 
