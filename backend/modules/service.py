@@ -371,45 +371,42 @@ class ModuleService:
             # In Phase 2: warn only, don't block installation
             warnings.extend(role_errors)
 
-        try:
-            report = self.installer.install_from_url(download_url)
-            if report.status == "ok" and checksum and not report.checksum:
-                report.checksum = checksum
-            if warnings:
-                report.warnings.extend(warnings)
-            return report
-        except Exception as download_err:
-            # If download fails for a language-pack module, try an
-            # alternative URL using lang-{code}.zip naming (GitHub
-            # releases may use locale-based naming instead of UUID).
-            if target.get("type") == "language-pack":
-                locale = target.get("language", "")
-                if locale and not download_url.endswith(f"lang-{locale}.zip"):
-                    alt_url = DANWA_MODULES_RELEASE_URL.format(
-                        module_id=f"lang-{locale}", version=module_version,
-                    )
-                    logger.info(
-                        "Primary download failed for %s, trying alternative URL: %s",
-                        module_id, alt_url,
-                    )
-                    try:
-                        report = self.installer.install_from_url(alt_url)
-                        if report.status == "ok" and checksum and not report.checksum:
-                            report.checksum = checksum
-                        if warnings:
-                            report.warnings.extend(warnings)
-                        return report
-                    except Exception:
-                        logger.debug("Alternative URL also failed for %s", module_id)
+        report = self.installer.install_from_url(download_url)
+        if report.status == "ok" and checksum and not report.checksum:
+            report.checksum = checksum
+        if warnings:
+            report.warnings.extend(warnings)
 
-                # Final fallback: create the module from existing DB translations.
-                logger.warning(
-                    "Download failed for language-pack %s (%s), falling back to DB install",
-                    module_id,
-                    download_err,
+        # If the primary download failed for a language-pack module,
+        # try an alternative URL using lang-{code}.zip naming (GitHub
+        # releases may use locale-based naming instead of UUID).
+        if report.status == "error" and target.get("type") == "language-pack":
+            locale = target.get("language", "")
+            if locale and not download_url.endswith(f"lang-{locale}.zip"):
+                alt_url = DANWA_MODULES_RELEASE_URL.format(
+                    module_id=f"lang-{locale}", version=module_version,
                 )
-                return self._install_langpack_from_db(module_id, target)
-            raise
+                logger.info(
+                    "Primary download failed for %s, trying alternative URL: %s",
+                    module_id, alt_url,
+                )
+                alt_report = self.installer.install_from_url(alt_url)
+                if alt_report.status == "ok":
+                    if checksum and not alt_report.checksum:
+                        alt_report.checksum = checksum
+                    if warnings:
+                        alt_report.warnings.extend(warnings)
+                    return alt_report
+
+            # Final fallback: create the module from existing DB translations.
+            logger.warning(
+                "Download failed for language-pack %s (%s), falling back to DB install",
+                module_id,
+                report.errors,
+            )
+            return self._install_langpack_from_db(module_id, target)
+
+        return report
 
     def _install_langpack_from_db(
         self,
