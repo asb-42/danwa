@@ -21,6 +21,7 @@
  */
 
 import { workflowStore } from './store.svelte.js';
+import { feedbackStore } from '../stores/feedback.svelte.js';
 import { runLayout } from '../elk-service.js';
 
 const elkOptions = {
@@ -74,12 +75,23 @@ export function scheduleLayout() {
     if (nodes.length === 0) return;
 
     try {
+      // T-12: Notify feedback store that layout is computing
+      feedbackStore.setLayoutState('computing');
       const positions = await calculateLayout(nodes, edges);
       if (positions && currentGeneration === layoutGeneration) {
         applyPositions(positions);
       }
+      feedbackStore.setLayoutState('idle');
     } catch (err) {
       console.warn('[workflow/layout] ELK layout failed:', err);
+      feedbackStore.setLayoutState('error');
+      feedbackStore.reportError('unknown', 'Layout computation failed — using fallback positions', String(err));
+      // Clear error state after a brief delay so the status bar doesn't stick
+      setTimeout(() => {
+        if (feedbackStore.layoutState === 'error') {
+          feedbackStore.setLayoutState('idle');
+        }
+      }, 3000);
     }
   }, 100);
 

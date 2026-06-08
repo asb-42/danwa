@@ -12,6 +12,7 @@
   import { SvelteFlow, Background, Controls, MiniMap } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import { workflowStore } from '../../lib/workflow/store.svelte.js';
+  import { feedbackStore } from '../../lib/stores/feedback.svelte.js';
   import { scheduleLayout } from '../../lib/workflow/layout.js';
   import { tStore } from '../../lib/i18n/index.js';
 
@@ -94,6 +95,19 @@
 
 <div class="workflow-canvas-container" class:has-panel={selectedNode}>
   <div class="canvas-area">
+    <!-- T-13: Layout computing overlay -->
+    {#if feedbackStore.layoutState === 'computing'}
+      <div class="layout-overlay">
+        <div class="layout-spinner"></div>
+        <span class="layout-text">Layout computing…</span>
+      </div>
+    {/if}
+    {#if feedbackStore.layoutState === 'error'}
+      <div class="layout-overlay layout-error">
+        <span>⚠ Layout failed — using fallback positions</span>
+      </div>
+    {/if}
+
     {#if workflowStore.flowNodes.length === 0}
       <div class="empty-state">
         <span class="empty-icon">🔄</span>
@@ -206,6 +220,43 @@
   .status-indicator.waiting { color: #f59e0b; }
   .status-indicator.completed { color: #6b7280; }
   .node-count { color: #9ca3af; }
+
+  /* T-13: Layout computing overlay */
+  .layout-overlay {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(0,0,0,0.75);
+    color: #e5e7eb;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+  }
+  .layout-overlay.layout-error {
+    background: rgba(127,29,29,0.85);
+    color: #fca5a5;
+  }
+  .layout-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #60a5fa;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   /* Ensure SvelteFlow handles are visible on all nodes */
   :global(.svelte-flow__handle) {
