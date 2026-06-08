@@ -180,30 +180,33 @@ def route_feedback(
     def _router(state: WorkflowState) -> str:
         current_round = state.get("current_round", 1)
         enable_extra = state.get("enable_extra_rounds", False)
+        # F-10: Clamp to at least 1 so max_rounds=0 doesn't allow
+        # the extension branch to fire for regular rounds.
+        effective = max(max_rounds, 1)
 
         # Normal round budget
-        if current_round <= max_rounds:
+        if current_round <= effective:
             logger.info("Feedback loop: round %d <= max %d, continuing", current_round, max_rounds)
             return "continue"
 
         # Extension zone — allow up to max_rounds + 2 if extension was granted
-        if enable_extra and current_round <= max_rounds + 2:
+        if enable_extra and current_round <= effective + 2:
             extension_granted = state.get("extension_granted")
             if extension_granted is True:
                 logger.info(
                     "Feedback loop: extra round %d (of max %d+2) granted, continuing",
                     current_round,
-                    max_rounds,
+                    effective,
                 )
                 return "continue"
             logger.info(
                 "Feedback loop: extra round %d (of max %d+2) not granted, exiting",
                 current_round,
-                max_rounds,
+                effective,
             )
             return "exit"
 
-        logger.info("Feedback loop: round %d > max %d, exiting", current_round, max_rounds)
+        logger.info("Feedback loop: round %d > max %d, exiting", current_round, effective)
         return "exit"
 
     return _router

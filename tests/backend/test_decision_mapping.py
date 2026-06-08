@@ -26,7 +26,7 @@ from backend.blueprints.workflow_models import (
     WorkflowNode,
 )
 from backend.workflow.workflow_compiler import WorkflowCompiler
-from backend.workflow.workflow_routers import route_decision
+from backend.workflow.workflow_routers import route_decision, route_feedback
 
 # ---------------------------------------------------------------------------
 # Module-lookup mocks — main's P3 refactor moved RoleDefinition / RoleType
@@ -472,3 +472,75 @@ class TestCompilerSourceGuards:
         # in unrelated docstrings).
         assert 'targets.get("approved", "__complete__")' not in src
         assert 'targets.get("revision_required", END)' not in src
+
+
+# ---------------------------------------------------------------------------
+# F-10 — route_feedback max_rounds=0 edge case
+# ---------------------------------------------------------------------------
+
+
+class TestRouteFeedbackMaxRoundsZero:
+    """Verify that ``route_feedback`` clamps ``max_rounds`` to at least 1
+    so that the extension zone (max_rounds + 2) doesn't allow regular
+    rounds through when ``max_rounds=0`` (F-10 from the code-review report).
+    """
+
+    def test_max_rounds_zero_treats_as_one(self) -> None:
+        """With ``max_rounds=0`` and ``current_round=1``, the router
+        should return ``"exit"`` (round 1 > clamped max of 1 is False,
+        but the clamp makes effective=1 so round 1 is normal → continue).
+        Actually: round 1 <= 1 → continue.  Round 2 > 1, and extension
+        zone covers 2-3.  Without extension_granted → exit.
+        """
+        router = route_feedback(max_rounds=0)
+
+        # Round 1: clamped to effective=1, so 1 <= 1 → continue
+        state = {"current_round": 1, "enable_extra_rounds": True, "extension_granted": True}
+        assert router(state) == "continue"
+
+        # Round 2: 2 > 1, extension zone 2 <= 1+2=3, extension_granted → continue
+        state["current_round"] = 2
+        assert router(state) == "continue"
+
+        # Round 3: still in extension zone 3 <= 3, granted → continue
+        state["current_round"] = 3
+        assert router(state) == "continue"
+
+        # Round 4: beyond extension zone 4 > 3 → exit
+        state["current_round"] = 4
+        assert router(state) == "exit"
+
+    def test_max_rounds_zero_without_extension(self) -> None:
+        """With ``max_rounds=0`` (clamped to 1) and no extension grant,
+        round 1 is normal (continue), round 2+ exits.
+        """
+        router = route_feedback(max_rounds=0)
+
+        state = {"current_round": 1, "enable_extra_rounds": False}
+        assert router(state) == "continue"
+
+        state["current_round"] = 2
+        assert router(state) == "exit"
+
+    def test_normal_max_rounds_still_works(self) -> None:
+        """Ensure the clamp doesn't break normal ``max_rounds=5``."""
+        router = route_feedback(max_rounds=5)
+
+        state = {"current_round": 1}
+        assert router(state) == "continue"
+
+        state["current_round"] = 5
+        assert router(state) == "continue"
+
+        # Round 6: past max, no extension → exit
+        state["current_round"] = 6
+        assert router(state) == "exit"
+
+        # Round 6 with extension granted → continue
+        state["enable_extra_rounds"] = True
+        state["extension_granted"] = True
+        assert router(state) == "continue"
+
+        # Round 8: beyond max+2=7 → exit
+        state["current_round"] = 8
+        assert router(state) == "exit"
