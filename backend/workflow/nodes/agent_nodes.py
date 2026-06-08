@@ -35,6 +35,49 @@ logger = logging.getLogger(__name__)
 # file imports the helper directly and no longer holds local copies.
 
 
+def _classify_llm_error(exc: Exception) -> str:
+    """Classify an LLM error into a user-friendly category.
+
+    Returns one of: 'rate_limit', 'timeout', 'content_filter', 'network', 'unknown'.
+    """
+    exc_str = str(exc).lower()
+    exc_type = type(exc).__name__.lower()
+
+    # Rate limit (HTTP 429)
+    if "429" in exc_str or "rate limit" in exc_str or "ratelimit" in exc_str:
+        return "rate_limit"
+
+    # Timeout
+    if "timeout" in exc_str or "timeout" in exc_type or "timed out" in exc_str:
+        return "timeout"
+    if isinstance(exc, TimeoutError):
+        return "timeout"
+
+    # Content filter
+    if "content_filter" in exc_str or "content_policy" in exc_str or "safety" in exc_str:
+        return "content_filter"
+
+    # Network
+    if "connect" in exc_str or "connection" in exc_str or "network" in exc_str:
+        return "network"
+    if isinstance(exc, (ConnectionError, OSError)):
+        return "network"
+
+    return "unknown"
+
+
+def _user_friendly_error_message(error_class: str) -> str:
+    """Return a user-friendly message for a classified LLM error."""
+    messages = {
+        "rate_limit": "Model is busy — switching to backup model…",
+        "timeout": "LLM response took too long — retrying…",
+        "content_filter": "Response was filtered — adjusting and retrying…",
+        "network": "Connection issue — retrying…",
+        "unknown": "Something went wrong — please try again",
+    }
+    return messages.get(error_class, messages["unknown"])
+
+
 def _estimate_tokens(content: str) -> int:
     """Best-effort token estimate for a piece of LLM-generated text.
 
@@ -292,7 +335,16 @@ def agent_node_factory(
         duration_ms = 0
         status = "completed"
 
-        # Publish LLM call started event for live progress feedback
+        # T-1: Resolve LLM service before publishing so we can include
+        # model and provider in the llm.call_started event.
+        llm_service = LLMService(
+            profile_id=llm_profile_id,
+            profile_service=_get_profile_service(),
+        )
+        llm_model = getattr(llm_service.profile, "model", "") if llm_service.profile else ""
+        llm_provider = str(getattr(llm_service.profile, "provider", "")) if llm_service.profile else ""
+
+        # Publish enriched LLM call started event for live progress feedback
         await publish_async(
             session_id,
             "llm.call_started",
@@ -302,14 +354,13 @@ def agent_node_factory(
                 "role": role,
                 "round": current_round,
                 "llm_profile_id": llm_profile_id,
+                "model": llm_model,
+                "provider": llm_provider,
+                "request_id": state.get("request_id", ""),
             },
         )
 
         try:
-            llm_service = LLMService(
-                profile_id=llm_profile_id,
-                profile_service=_get_profile_service(),
-            )
             gen_result = await llm_service.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
@@ -344,6 +395,24 @@ def agent_node_factory(
                 exc,
                 exc_info=True,
             )
+
+            # T-2: Publish structured llm.error event for frontend feedback
+            error_class = _classify_llm_error(exc)
+            await publish_async(
+                session_id,
+                "llm.error",
+                {
+                    "node_id": node_id,
+                    "node_type": node_type,
+                    "role": role,
+                    "round": current_round,
+                    "error_class": error_class,
+                    "message": _user_friendly_error_message(error_class),
+                    "raw_error": str(exc)[:500],
+                    "request_id": state.get("request_id", ""),
+                },
+            )
+
             content = f"[{role}] Round {current_round}: LLM call failed ({exc})"
             tokens_used = _estimate_tokens(content)
             status = "failed"

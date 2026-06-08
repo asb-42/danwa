@@ -273,8 +273,15 @@ class LLMService:
         system_prompt: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        on_fallback: Any | None = None,
     ) -> GenerationResult:
-        """Generate with automatic fallback on A2A failure."""
+        """Generate with automatic fallback on A2A failure.
+
+        Args:
+            on_fallback: Optional async callback ``(from_profile, to_profile)``
+                invoked when a fallback actually occurs.  Callers can use
+                this to publish SSE events (e.g. ``llm.fallback``).
+        """
         from backend.a2a.exceptions import A2AError
 
         try:
@@ -283,8 +290,17 @@ class LLMService:
             fallback_id = getattr(self._profile, "fallback_llm_profile_id", None)
             if not fallback_id:
                 raise
-            logger.warning("A2A failed for profile %s, falling back to %s", self._profile.id, fallback_id)
+            from_profile = self._profile.id
+            logger.warning("A2A failed for profile %s, falling back to %s", from_profile, fallback_id)
             fallback_service = LLMService(profile_id=fallback_id, profile_service=self._profile_service)
+            # T-3: Notify caller about fallback so it can emit an SSE event
+            if on_fallback is not None:
+                try:
+                    fallback_model = getattr(fallback_service.profile, "model", "")
+                    fallback_provider = str(getattr(fallback_service.profile, "provider", ""))
+                    await on_fallback(from_profile, fallback_id, fallback_model, fallback_provider)
+                except Exception:
+                    logger.debug("on_fallback callback failed", exc_info=True)
             return await fallback_service.generate(prompt, system_prompt, temperature, max_tokens)
 
     async def _generate_a2a(

@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from typing import Any
 
 from backend.api.events import publish_async
@@ -162,7 +163,20 @@ async def run_workflow_background(
     """
     set_session_status(session_id, "running")
 
-    # Publish workflow.started event
+    # T-4: Generate a unique request_id for log/SSE correlation.
+    # Inject into initial_state so all downstream nodes can include
+    # it in their published events.
+    request_id = str(uuid.uuid4())
+    initial_state["request_id"] = request_id
+
+    logger.info(
+        "Workflow %s starting for session %s (request_id=%s)",
+        workflow_id,
+        session_id,
+        request_id,
+    )
+
+    # Publish enriched workflow.started event
     await publish_async(
         session_id,
         "workflow.started",
@@ -170,6 +184,7 @@ async def run_workflow_background(
             "type": "workflow.started",
             "session_id": session_id,
             "workflow_id": workflow_id,
+            "request_id": request_id,
             "node_sequence": compiled_workflow.node_sequence,
         },
     )
@@ -233,7 +248,7 @@ async def run_workflow_background(
                 exc_info=True,
             )
 
-        # Publish workflow.complete event
+        # Publish workflow.complete event with request_id for correlation
         await publish_async(
             session_id,
             "workflow.complete",
@@ -241,6 +256,7 @@ async def run_workflow_background(
                 "type": "workflow.complete",
                 "session_id": session_id,
                 "workflow_id": workflow_id,
+                "request_id": request_id,
                 "output": final_state.get("output", ""),
                 "final_consensus": final_state.get("final_consensus", 0.0),
                 "duration_ms": duration_ms,
@@ -309,6 +325,7 @@ async def run_workflow_background(
                 "type": "workflow.cancelled",
                 "session_id": session_id,
                 "workflow_id": workflow_id,
+                "request_id": request_id,
                 "duration_ms": duration_ms,
             },
         )
