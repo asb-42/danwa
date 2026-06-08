@@ -9,6 +9,9 @@
   // LoginView stays eager — it's the first thing users see and is small.
   import LoginView from './views/LoginView.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
+  import StatusBar from './components/feedback/StatusBar.svelte';
+  import ErrorPanel from './components/feedback/ErrorPanel.svelte';
+  import ActivityLogPanel from './components/feedback/ActivityLogPanel.svelte';
 
   // Register toast callback for i18n fallback warnings
   setToastCallback(addToast);
@@ -167,6 +170,9 @@
       </div>
     {/snippet}
   </svelte:boundary>
+  <StatusBar />
+  <ErrorPanel />
   <ToastContainer />
+  <ActivityLogPanel />
 </Layout>
 {/if}
