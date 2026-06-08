@@ -335,14 +335,21 @@ def agent_node_factory(
         duration_ms = 0
         status = "completed"
 
-        # T-1: Resolve LLM service before publishing so we can include
-        # model and provider in the llm.call_started event.
-        llm_service = LLMService(
-            profile_id=llm_profile_id,
-            profile_service=_get_profile_service(),
-        )
-        llm_model = getattr(llm_service.profile, "model", "") if llm_service.profile else ""
-        llm_provider = str(getattr(llm_service.profile, "provider", "")) if llm_service.profile else ""
+        # T-1: Peek at the LLM profile to include model and provider
+        # in the llm.call_started event.  If resolution fails, we
+        # still publish the event with empty values — the actual
+        # LLMService creation happens inside the try block below.
+        llm_model = ""
+        llm_provider = ""
+        try:
+            _peek_svc = LLMService(
+                profile_id=llm_profile_id,
+                profile_service=_get_profile_service(),
+            )
+            llm_model = getattr(_peek_svc.profile, "model", "") if _peek_svc.profile else ""
+            llm_provider = str(getattr(_peek_svc.profile, "provider", "")) if _peek_svc.profile else ""
+        except Exception:
+            pass
 
         # Publish enriched LLM call started event for live progress feedback
         await publish_async(
@@ -361,6 +368,10 @@ def agent_node_factory(
         )
 
         try:
+            llm_service = LLMService(
+                profile_id=llm_profile_id,
+                profile_service=_get_profile_service(),
+            )
             gen_result = await llm_service.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
