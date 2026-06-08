@@ -37,6 +37,13 @@ export function deleteCase(tenantId, caseId) {
 
 // --- Case-scoped debates ---
 
+export function getTenantDebates(tenantId, { limit = 50, offset = 0, status, search } = {}) {
+  let q = `?limit=${limit}&offset=${offset}`;
+  if (status) q += `&status=${status}`;
+  if (search) q += `&search=${encodeURIComponent(search)}`;
+  return request(`/api/v1/tenants/${tenantId}/debates${q}`);
+}
+
 export function getCaseDebates(tenantId, caseId, { limit = 50, offset = 0, status, search } = {}) {
   let q = `?limit=${limit}&offset=${offset}`;
   if (status) q += `&status=${status}`;

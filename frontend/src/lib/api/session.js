@@ -3,7 +3,7 @@
  */
 
 import { get } from 'svelte/store';
-import { activeProject } from '../stores.js';
+import { activeCase } from '../stores.js';
 import { request, API_BASE, DEFAULT_HEADERS } from './core.js';
 
 // ---------------------------------------------------------------------------
@@ -59,10 +59,10 @@ export function getReportStatus(jobId) {
 
 export async function downloadReport(jobId) {
   const url = `${API_BASE}/api/v1/reports/${jobId}/download`;
-  const projectId = get(activeProject)?.id;
+  const caseId = get(activeCase)?.id;
   const headers = {
     ...DEFAULT_HEADERS,
-    ...(projectId ? { 'X-Project-Id': projectId } : {}),
+    ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
   };
   const response = await fetch(url, { headers });
   if (!response.ok) {

@@ -6,13 +6,13 @@
  */
 
 import { get } from 'svelte/store';
-import { activeProject } from '../stores.js';
+import { activeCase } from '../stores.js';
 
 const BASE = '/api/v1';
 
 function projectHeaders() {
-  const projectId = get(activeProject)?.id;
-  return projectId ? { 'X-Project-Id': projectId } : {};
+  const caseId = get(activeCase)?.id;
+  return caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {};
 }
 
 /**

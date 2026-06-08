@@ -3,7 +3,7 @@
   import { tStore } from '../lib/i18n/index.js';
   import { getLLMActivity } from '../lib/api.js';
   import LanguageSwitcher from './LanguageSwitcher.svelte';
-  import ProjectSelector from './ProjectSelector.svelte';
+  import CaseSelector from './CaseSelector.svelte';
   import TenantSelector from './TenantSelector.svelte';
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { logout } from '../lib/auth.js';
@@ -174,8 +174,8 @@
     <!-- Tenant selector -->
     <TenantSelector />
 
-    <!-- Project selector -->
-    <ProjectSelector compact={true} />
+    <!-- Case selector -->
+    <CaseSelector compact={true} />
 
     <!-- Language switcher -->
     <LanguageSwitcher />

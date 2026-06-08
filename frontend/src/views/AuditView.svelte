@@ -1,6 +1,8 @@
 <script>
+  import { get } from 'svelte/store';
   import { onMount } from 'svelte';
   import { auditEvents, currentDebate, loading, error } from '../lib/stores.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
   import { getAuditEvents } from '../lib/api.js';
   import { tStore, formatDate } from '../lib/i18n/index.js';
   import AuditTrailVisualization from '../components/AuditTrailVisualization.svelte';
@@ -26,15 +28,18 @@
       auditEvents.set(events);
       // Try to resolve the debate title for display
       try {
-        const { getDebates } = await import('../lib/api.js');
-        const debates = await getDebates(500);
-        const match = debates.find(d =>
-          d.debate_id === id ||
-          d.title === id ||
-          (d.title && d.title.toLowerCase().includes(id.toLowerCase()))
-        );
-        if (match?.title) {
-          resolvedTitle = match.title;
+        const tid = get(currentTenant)?.id;
+        if (tid) {
+          const { getTenantDebates } = await import('../lib/api.js');
+          const debates = await getTenantDebates(tid, { limit: 500 });
+          const match = debates.find(d =>
+            d.debate_id === id ||
+            d.title === id ||
+            (d.title && d.title.toLowerCase().includes(id.toLowerCase()))
+          );
+          if (match?.title) {
+            resolvedTitle = match.title;
+          }
         }
       } catch {
         // Title resolution is best-effort

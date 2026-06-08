@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
-  import { loading, error, activeProject } from '../lib/stores.js';
-  import { getDebates, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
+  import { loading, error } from '../lib/stores.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { getTenantDebates, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
   import { formatDate, tStore } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
@@ -41,7 +42,7 @@
   let isLoadingTrace = $state(false);
   let showTraceModal = $state(false);
 
-  let projectId = $derived($activeProject?.id);
+  let tenantId = $derived($currentTenant?.id);
 
   const statusOptions = [
     { value: '', label: 'archive.filterAll' },
@@ -55,18 +56,20 @@
     loadDebates();
   });
 
-  // Reload when project changes
+  // Reload when tenant changes
   $effect(() => {
-    if (projectId) {
+    if (tenantId) {
       loadDebates();
     }
   });
 
   async function loadDebates() {
+    if (!tenantId) return;
     loading.set(true);
     error.set(null);
     try {
-      const result = await getDebates(PAGE_SIZE, {
+      const result = await getTenantDebates(tenantId, {
+        limit: PAGE_SIZE,
         status: statusFilter || null,
         search: searchQuery || null,
         offset: currentPage * PAGE_SIZE,
@@ -297,12 +300,11 @@
       <!-- Table header -->
       <div class="hidden md:grid md:grid-cols-12 gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         <div class="col-span-2">{t('debate.titleLabel')}</div>
-        <div class="col-span-2">{t('archive.project')}</div>
+        <div class="col-span-2">{t('archive.case')}</div>
+        <div class="col-span-2">{t('archive.tags')}</div>
         <div class="col-span-1">{t('archive.date')}</div>
         <div class="col-span-1">{t('debate.round')}</div>
         <div class="col-span-1">{t('debate.consensus')}</div>
-        <div class="col-span-1">{t('archive.forks')}</div>
-        <div class="col-span-1">{t('archive.parentDebate')}</div>
         <div class="col-span-1">{t('debate.status')}</div>
         <div class="col-span-2"></div>
       </div>
@@ -340,12 +342,33 @@
               {/if}
             </div>
 
-            <!-- Project -->
-            <div class="md:col-span-2 text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 md:mb-0">
-              {#if debate.project_name}
-                📁 {debate.project_name}
+            <!-- Case -->
+            <div class="md:col-span-2 text-xs font-medium mb-1 md:mb-0">
+              {#if debate.case_title}
+                <p class="text-blue-600 dark:text-blue-400 line-clamp-1">📋 {debate.case_title}</p>
+                {#if debate.tenant_name}
+                  <p class="text-gray-400 dark:text-gray-500 text-[11px] mt-0.5">{debate.tenant_name}</p>
+                {/if}
+              {:else if debate.project_name}
+                <p class="text-blue-600 dark:text-blue-400 line-clamp-1">📁 {debate.project_name}</p>
               {:else}
                 <span class="text-gray-400 dark:text-gray-500">—</span>
+              {/if}
+            </div>
+
+            <!-- Tags -->
+            <div class="md:col-span-2 flex flex-wrap gap-1 mb-1 md:mb-0">
+              {#if debate.tags && debate.tags.length > 0}
+                {#each debate.tags as tag}
+                  <span
+                    class="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                    style="background-color: {tag.color}20; color: {tag.color}; border: 1px solid {tag.color}40"
+                  >
+                    {tag.name}
+                  </span>
+                {/each}
+              {:else}
+                <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
               {/if}
             </div>
 
@@ -469,7 +492,7 @@
                     bind:value={targetProjectId}
                   >
                     <option value="">{t('archive.selectProject')}</option>
-                    {#each availableProjects.filter(p => p.id !== projectId) as project}
+                    {#each availableProjects as project}
                       <option value={project.id}>{project.name}</option>
                     {/each}
                   </select>

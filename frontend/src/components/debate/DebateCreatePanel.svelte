@@ -5,7 +5,7 @@
    * Owns all form state and emits onCreate with the collected parameters.
    */
   import { onMount } from 'svelte';
-  import { loading, error, selectedLLMProfile, activeProject, userLanguage } from '../../lib/stores.js';
+  import { loading, error, selectedLLMProfile, activeCase, userLanguage } from '../../lib/stores.js';
   import { createDebate, startDebate, getDocuments } from '../../lib/api.js';
   import { startWorkflow } from '../../lib/workflowExec.js';
   import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
@@ -17,7 +17,7 @@
 
   let t = $derived($tStore);
 
-  let projectId = $derived($activeProject?.id);
+  let caseId = $derived($activeCase?.id);
 
   // Debate language: user's configured preference (synced with UI locale)
   let debateLanguage = $derived($userLanguage || $locale || 'de');
@@ -63,7 +63,7 @@
 
   // Reload documents when project changes
   $effect(() => {
-    if (projectId) {
+    if (caseId) {
       loadAvailableDocuments();
       loadAvailableWorkflows();
     }
@@ -157,7 +157,7 @@
         // Phase 5: Use workflow-exec endpoint for selected workflow
         const response = await startWorkflow(selectedWorkflowId, caseText, {
           language: debateLanguage,
-          projectId: projectId || 'default',
+          projectId: caseId || 'default',
           maxRounds: maxRounds,
           threshold: consensusThreshold,
           documentIds: selectedDocumentIds,

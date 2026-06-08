@@ -3,7 +3,7 @@
  */
 
 import { get } from 'svelte/store';
-import { activeProject } from '../stores.js';
+import { activeCase } from '../stores.js';
 import { request, API_BASE } from './core.js';
 
 // ---------------------------------------------------------------------------
@@ -19,14 +19,14 @@ export function getDocument(documentId) {
 }
 
 export function uploadDocument(file) {
-  const projectId = get(activeProject)?.id;
+  const caseId = get(activeCase)?.id;
   const formData = new FormData();
   formData.append('file', file);
   return fetch(`${API_BASE}/api/v1/dms/documents`, {
     method: 'POST',
     headers: {
       'Accept-Language': 'en',
-      ...(projectId ? { 'X-Project-Id': projectId } : {}),
+      ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
     },
     body: formData,
   }).then(async (response) => {
@@ -87,12 +87,12 @@ export function searchRAG(query, limit = 5) {
 }
 
 export function exportAnalysis(format = 'pdf') {
-  const projectId = get(activeProject)?.id;
+  const caseId = get(activeCase)?.id;
   return fetch(`${API_BASE}/api/v1/dms/analyze/export`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(projectId ? { 'X-Project-Id': projectId } : {}),
+      ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
     },
     body: JSON.stringify({ format }),
   }).then(async (response) => {

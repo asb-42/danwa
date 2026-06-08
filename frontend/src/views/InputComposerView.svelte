@@ -6,9 +6,11 @@
    * workflow templates) with the DebateCreatePanel (full debate creation form).
    * After creating a debate, auto-navigates to "Laufende Debatte" and starts it.
    */
+  import { get } from 'svelte/store';
   import { onDestroy } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
   import {
     listInputPlugins,
     submitInput,
@@ -281,11 +283,13 @@
 
   function loadCompletedDebates() {
     if (loadingCompletedDebates) return;
+    const tid = get(currentTenant)?.id;
+    if (!tid) return;
     loadingCompletedDebates = true;
     (async () => {
       try {
-        const { getDebates } = await import('../lib/api.js');
-        const res = await getDebates(100, { status: 'completed' });
+        const { getTenantDebates } = await import('../lib/api.js');
+        const res = await getTenantDebates(tid, { limit: 100, status: 'completed' });
         completedDebates = res || [];
       } catch (e) {
         if (import.meta.env.DEV) console.warn('Failed to load completed debates:', e);

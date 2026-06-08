@@ -1,6 +1,7 @@
 <script>
   import { tStore } from '../../lib/i18n/index.js';
-  import { getDebates } from '../../lib/api.js';
+  import { getTenantDebates } from '../../lib/api.js';
+  import { currentTenant } from '../../lib/stores/auth.svelte.js';
 
   let {
     config = $bindable(),
@@ -33,9 +34,11 @@
 
   async function loadCompletedDebates() {
     if (loadingCompletedDebates) return;
+    const tid = $currentTenant?.id;
+    if (!tid) return;
     loadingCompletedDebates = true;
     try {
-      const res = await getDebates(100, { status: 'completed' });
+      const res = await getTenantDebates(tid, { limit: 100, status: 'completed' });
       completedDebates = res || [];
       config.selectedDebateIds = completedDebates.map(d => d.debate_id);
     } catch (e) {

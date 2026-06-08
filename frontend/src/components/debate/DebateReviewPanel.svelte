@@ -1,6 +1,6 @@
 <script>
   import { tStore } from '../../lib/i18n/index.js';
-  import { activeProject, userLanguage } from '../../lib/stores.js';
+  import { activeCase, userLanguage } from '../../lib/stores.js';
 
   let {
     config = {},
@@ -159,8 +159,8 @@
         <span class="confirm-value">{($userLanguage || 'de').toUpperCase()}</span>
       </div>
       <div class="confirm-card">
-        <span class="confirm-label">{t('mvpDebate.confirm.activeProject')}</span>
-        <span class="confirm-value">{$activeProject?.name || '—'}</span>
+        <span class="confirm-label">{t('mvpDebate.confirm.activeCase')}</span>
+        <span class="confirm-value">{$activeCase?.title || '—'}</span>
       </div>
     </div>
   </div>

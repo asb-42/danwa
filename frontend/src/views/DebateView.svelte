@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { currentDebate, debates, loading, error, sseConnected, activeProject, autoStartDebate, addToast } from '../lib/stores.js';
+  import { currentDebate, debates, loading, error, sseConnected, activeCase, autoStartDebate, addToast } from '../lib/stores.js';
   import { getDebate, startDebate, cancelDebate } from '../lib/api.js';
   import { createSSE } from '../lib/sse.js';
   import { tStore, formatNumber, formatDate, tn } from '../lib/i18n/index.js';
@@ -40,7 +40,7 @@
   let titleFadedIn = $state(false);
   let titleError = $state('');
 
-  let projectId = $derived($activeProject?.id);
+  let projectId = $derived($activeCase?.id);
 
   // Live web search results
   let liveSearchResults = $state([]);
@@ -633,7 +633,11 @@
     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
       {isArchiveMode ? t('debate.archiveTitle') : t('debate.title')}
     </h2>
-    {#if $currentDebate?.project_name}
+    {#if $currentDebate?.case_title}
+      <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+        📋 {$currentDebate.case_title}
+      </span>
+    {:else if $currentDebate?.project_name}
       <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
         📁 {$currentDebate.project_name}
       </span>

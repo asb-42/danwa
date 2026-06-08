@@ -4,12 +4,12 @@
   import { appVersion } from '../lib/stores.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { getActiveWorkflowSession } from '../lib/workflowSession.js';
-  import ProjectSelector from './ProjectSelector.svelte';
+  import CaseSelector from './CaseSelector.svelte';
   import CaseNavigator from './CaseNavigator.svelte';
 
   let { navigate, currentRoute } = $props();
 
-  let projectSelector;
+  let caseSelector;
 
   let t = $derived($tStore);
 
@@ -135,9 +135,9 @@
     <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v{$appVersion || '…'}</span>
   </div>
 
-  <!-- Project Selector -->
+  <!-- Case Selector -->
   <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-    <ProjectSelector bind:this={projectSelector} {navigate} />
+    <CaseSelector bind:this={caseSelector} />
   </div>
 
   <!-- Case Navigator -->

@@ -20,7 +20,7 @@ import { get } from 'svelte/store';
 import { getDebates, getDebate } from './api/debate.js';
 import { getWorkflowState } from './workflowExec.js';
 import { createWorkflowSSE } from './workflowSSE.js';
-import { activeProject } from './stores.js';
+import { activeCase } from './stores.js';
 import {
   paletteFor,
   NODE_STATUS,
@@ -129,8 +129,8 @@ export function useLastCompletedDebatePipeline() {
     result.loading = true;
     result.error = null;
     try {
-      const projectId = get(activeProject)?.id;
-      const debate = await fetchLastCompletedDebate(projectId);
+      const caseId = get(activeCase)?.id;
+      const debate = await fetchLastCompletedDebate(caseId);
       if (!debate) {
         result.meta = null;
         result.nodes = [];
@@ -171,7 +171,7 @@ export function useLastCompletedDebatePipeline() {
 
   // Auto-load on construction and whenever the project changes
   $effect(() => {
-    void get(activeProject)?.id; // dependency tracking
+    void get(activeCase)?.id; // dependency tracking
     load();
   });
 

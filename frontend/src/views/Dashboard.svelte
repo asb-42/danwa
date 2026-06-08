@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { healthStatus, loading, error, activeProject, currentDebate, route } from '../lib/stores.js';
-  import { getHealth, getDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
+  import { healthStatus, loading, error, currentDebate, route } from '../lib/stores.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { getHealth, getTenantDebates, findRunningDebateAcrossProjects, request } from '../lib/api.js';
   
   import { formatNumber, formatDate, tStore, tn } from '../lib/i18n/index.js';
   import WorkflowPipeline from '../components/workflow/WorkflowPipeline.svelte';
@@ -24,7 +25,7 @@
   let recentDebates = $state([]);
   let tenant = $state(null);
 
-  let projectId = $derived($activeProject?.id);
+  let tenantId = $derived($currentTenant?.id);
   let runningDebatePoller = $state(null);
 
   onMount(async () => {
@@ -42,9 +43,9 @@
     } catch (e) { if (import.meta.env.DEV) console.warn('[Dashboard] tenant info load failed (optional):', e); }
   }
 
-  // Reload when project changes
+  // Reload when tenant changes
   $effect(() => {
-    if (projectId) {
+    if (tenantId) {
       loadDebateStats();
     }
   });
@@ -74,8 +75,9 @@
   }
 
   async function loadDebateStats() {
+    if (!tenantId) return;
     try {
-      const debates = await getDebates(100);
+      const debates = await getTenantDebates(tenantId, { limit: 100 });
       recentDebates = debates.slice(0, 10);
       stats = {
         totalDebates: debates.length,
@@ -222,7 +224,11 @@
                   </p>
                 {/if}
                 <div class="flex items-center gap-3 mt-1">
-                  {#if debate.project_name}
+                  {#if debate.case_title}
+                    <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      📋 {debate.case_title}
+                    </span>
+                  {:else if debate.project_name}
                     <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
                       📁 {debate.project_name}
                     </span>

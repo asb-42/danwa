@@ -3,7 +3,7 @@
  */
 
 import { get } from 'svelte/store';
-import { activeProject } from '../stores.js';
+import { activeCase } from '../stores.js';
 
 const BASE = '/api/v1';
 
@@ -88,12 +88,12 @@ export async function listInputJobs({ status, pluginKey, limit = 50, offset = 0 
  * @returns {Promise<{ session_id: string, status: string, workflow_id: string, debate_id?: string }>}
  */
 export async function launchWorkflow(jobId, options = {}) {
-  const projectId = get(activeProject)?.id;
+  const caseId = get(activeCase)?.id;
   const res = await fetch(`${BASE}/input/launch`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(projectId ? { 'X-Project-Id': projectId } : {}),
+      ...(caseId ? { 'X-Case-Id': caseId, 'X-Project-Id': caseId } : {}),
     },
     body: JSON.stringify({ job_id: jobId, ...options }),
   });

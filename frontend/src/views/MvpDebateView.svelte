@@ -4,7 +4,7 @@
   import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
   import { startMvpDebate, submitInterjection, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
-  import { activeProject, userLanguage } from '../lib/stores.js';
+  import { activeCase, userLanguage } from '../lib/stores.js';
   import { feedbackStore } from '../lib/stores/feedback.svelte.js';
 
   import { getHITLStatus, getInteractions } from '../lib/hitl.js';
@@ -594,7 +594,7 @@
         argumentationPatternIds: argPatternMap,
         toneProfileIds: toneMap,
         promptModifierIds: modifierMap,
-        projectId: $activeProject?.id,
+        projectId: $activeCase?.id,
         searchMode: config.searchMode,
         documentIds: config.selectedDocumentIds,
         ragAutoRetrieve: config.ragAutoRetrieve,

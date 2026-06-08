@@ -234,6 +234,14 @@ class DebateStatusResponse(BaseModel):
     total_interactions: int = 0
 
 
+class TagInfo(BaseModel):
+    """Compact tag representation for embedding in list responses."""
+
+    id: str
+    name: str
+    color: str = "#6366f1"
+
+
 class DebateListItem(BaseModel):
     """GET /api/v1/debate list item — lightweight summary for history."""
 
@@ -253,6 +261,12 @@ class DebateListItem(BaseModel):
     parent_debate_id: str | None = None
     forks_count: int = 0
     is_mvp: bool = False
+    # --- Tenant/case context (new multi-tenant structure) ---
+    tenant_id: str = ""
+    tenant_name: str = ""
+    case_id: str = ""
+    case_title: str = ""
+    tags: list[TagInfo] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

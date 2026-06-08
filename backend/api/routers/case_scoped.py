@@ -19,7 +19,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from backend.api.deps import (
     get_audit_service,
     get_case_store,
+    get_membership_store,
     get_project_store,
+    get_tag_store,
+    get_tenant_store,
 )
 from backend.models.schemas import (
     DebateListItem,
@@ -30,11 +33,14 @@ from backend.models.schemas import (
     OOBInputBody,
     OOBInputResponse,
     RoundData,
+    TagInfo,
 )
 from backend.persistence.audit import AuditService
 from backend.persistence.case_store import CaseStore
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
+from backend.persistence.tag_store import TagStore
+from backend.persistence.tenant_store import TenantStore
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +84,151 @@ def _resolve_llm_model(llm_profile_id: str, project_id: str) -> str:
     return llm_profile_id
 
 
+def _resolve_tags(tenant_id: str, tag_ids: list[str], tag_store: TagStore) -> list[TagInfo]:
+    """Resolve a list of tag IDs to TagInfo objects."""
+    if not tag_ids:
+        return []
+    result = []
+    for tid in tag_ids:
+        tag = tag_store.get(tenant_id, tid)
+        if tag:
+            result.append(TagInfo(id=tag.id, name=tag.name, color=tag.color))
+    return result
+
+
+def _build_debate_item(
+    d: dict,
+    debates: list[dict],
+    *,
+    tenant_id: str = "",
+    tenant_name: str = "",
+    case_id: str = "",
+    case_title: str = "",
+    tags: list[TagInfo] | None = None,
+) -> DebateListItem:
+    """Build a DebateListItem from raw debate dict with optional tenant/case context."""
+    req = d.get("request", {})
+    if hasattr(req, "case"):
+        case_text = req.case.text
+        language = getattr(req, "language", "de") or "de"
+    elif isinstance(req, dict):
+        case_text = req.get("case", {}).get("text", "") or ""
+        language = req.get("language", "de") or "de"
+    else:
+        case_text = ""
+        language = "de"
+
+    result = d.get("result")
+    consensus = result.get("final_consensus") if isinstance(result, dict) else None
+
+    fork_info = d.get("fork_info")
+    parent_id = fork_info.get("parent_debate_id") if isinstance(fork_info, dict) else None
+
+    debate_id_current = d["debate_id"]
+    forks_count = sum(
+        1
+        for other_d in debates
+        if isinstance(other_d.get("fork_info"), dict) and other_d["fork_info"].get("parent_debate_id") == debate_id_current
+    )
+
+    return DebateListItem(
+        debate_id=d["debate_id"],
+        status=d["status"],
+        title=d.get("title", ""),
+        current_round=d.get("current_round", 0),
+        max_rounds=d.get("max_rounds", 3),
+        consensus_score=consensus,
+        case_preview=case_text[:120],
+        case_text=case_text,
+        language=language,
+        created_at=d.get("created_at", datetime.now(UTC)),
+        updated_at=d.get("updated_at", datetime.now(UTC)),
+        project_id=case_id,
+        project_name=case_title or case_id,
+        parent_debate_id=parent_id,
+        forks_count=forks_count,
+        is_mvp=d.get("is_mvp", False),
+        tenant_id=tenant_id,
+        tenant_name=tenant_name,
+        case_id=case_id,
+        case_title=case_title,
+        tags=tags or [],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tenant-scoped debates — /tenants/{tid}/debates
+# ---------------------------------------------------------------------------
+
+
+@router.get("/tenants/{tenant_id}/debates", response_model=list[DebateListItem])
+async def list_tenant_debates(
+    tenant_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    search: str | None = None,
+    case_store: CaseStore = Depends(get_case_store),
+    tag_store: TagStore = Depends(get_tag_store),
+    tenant_store: TenantStore = Depends(get_tenant_store),
+) -> list[DebateListItem]:
+    """List ALL debates across all cases in a tenant (newest first).
+
+    Aggregates debates from every case belonging to the tenant,
+    enriching each item with case title, tenant name, and tag information.
+    """
+    tenant = tenant_store.get(tenant_id)
+    tenant_name = tenant.name if tenant else tenant_id
+
+    all_cases = case_store.list_by_tenant(tenant_id)
+    all_items: list[DebateListItem] = []
+
+    for case_obj in all_cases:
+        try:
+            store = _get_debate_store_for_case(tenant_id, case_obj.id, case_store)
+            debates = store.list_all(limit=1000)
+            tags = _resolve_tags(tenant_id, case_obj.tags, tag_store)
+
+            for d in debates:
+                req = d.get("request", {})
+                if hasattr(req, "case"):
+                    case_text = req.case.text
+                elif isinstance(req, dict):
+                    case_text = req.get("case", {}).get("text", "") or ""
+                else:
+                    case_text = ""
+
+                if status and d.get("status") != status:
+                    continue
+
+                debate_title = d.get("title", "")
+                if search:
+                    search_lower = search.lower()
+                    if (
+                        search_lower not in case_text.lower()
+                        and search_lower not in debate_title.lower()
+                        and search_lower not in d.get("debate_id", "").lower()
+                    ):
+                        continue
+
+                item = _build_debate_item(
+                    d, debates,
+                    tenant_id=tenant_id,
+                    tenant_name=tenant_name,
+                    case_id=case_obj.id,
+                    case_title=case_obj.title,
+                    tags=tags,
+                )
+                all_items.append(item)
+        except Exception:
+            logger.warning("Failed to load debates for case %s in tenant %s", case_obj.id, tenant_id, exc_info=True)
+            continue
+
+    # Sort by created_at descending, apply pagination
+    all_items.sort(key=lambda x: x.created_at, reverse=True)
+    return all_items[offset: offset + limit]
+
+
 # ---------------------------------------------------------------------------
 # Debate endpoints — /tenants/{tid}/cases/{cid}/debates
 # ---------------------------------------------------------------------------
@@ -92,23 +243,29 @@ async def list_case_debates(
     status: str | None = None,
     search: str | None = None,
     case_store: CaseStore = Depends(get_case_store),
+    tag_store: TagStore = Depends(get_tag_store),
+    tenant_store: TenantStore = Depends(get_tenant_store),
 ) -> list[DebateListItem]:
     """List debates in a case (newest first)."""
     store = _get_debate_store_for_case(tenant_id, case_id, case_store)
     debates = store.list_all(limit=limit + offset)
+
+    case_obj = case_store.get(tenant_id, case_id)
+    case_title = case_obj.title if case_obj else case_id
+    tags = _resolve_tags(tenant_id, case_obj.tags if case_obj else [], tag_store)
+
+    tenant = tenant_store.get(tenant_id)
+    tenant_name = tenant.name if tenant else tenant_id
 
     items = []
     for d in debates:
         req = d.get("request", {})
         if hasattr(req, "case"):
             case_text = req.case.text
-            language = getattr(req, "language", "de") or "de"
         elif isinstance(req, dict):
             case_text = req.get("case", {}).get("text", "") or ""
-            language = req.get("language", "de") or "de"
         else:
             case_text = ""
-            language = "de"
 
         if status and d.get("status") != status:
             continue
@@ -123,37 +280,14 @@ async def list_case_debates(
             ):
                 continue
 
-        result = d.get("result")
-        consensus = result.get("final_consensus") if isinstance(result, dict) else None
-
-        fork_info = d.get("fork_info")
-        parent_id = fork_info.get("parent_debate_id") if isinstance(fork_info, dict) else None
-
-        debate_id_current = d["debate_id"]
-        forks_count = sum(
-            1
-            for other_d in debates
-            if isinstance(other_d.get("fork_info"), dict) and other_d["fork_info"].get("parent_debate_id") == debate_id_current
-        )
-
         items.append(
-            DebateListItem(
-                debate_id=d["debate_id"],
-                status=d["status"],
-                title=d.get("title", ""),
-                current_round=d.get("current_round", 0),
-                max_rounds=d.get("max_rounds", 3),
-                consensus_score=consensus,
-                case_preview=case_text[:120],
-                case_text=case_text,
-                language=language,
-                created_at=d.get("created_at", datetime.now(UTC)),
-                updated_at=d.get("updated_at", datetime.now(UTC)),
-                project_id=case_id,
-                project_name=case_id,
-                parent_debate_id=parent_id,
-                forks_count=forks_count,
-                is_mvp=d.get("is_mvp", False),
+            _build_debate_item(
+                d, debates,
+                tenant_id=tenant_id,
+                tenant_name=tenant_name,
+                case_id=case_id,
+                case_title=case_title,
+                tags=tags,
             )
         )
 
