@@ -18,7 +18,6 @@ from backend.a2a.schemas import A2AMessage, A2ATask, A2ATextPart
 from backend.a2a.server import A2AServer
 from backend.a2a.task_manager import TaskManager
 from backend.api.deps import get_project_store
-from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +36,11 @@ def _get_task_manager() -> TaskManager:
     return _task_manager
 
 
-def _get_server(project_store: ProjectStore | None = None) -> A2AServer:
+def _get_server() -> A2AServer:
     """Return (or lazily create) server."""
     global _server
     if _server is None:
-        _server = A2AServer(task_manager=_get_task_manager(), project_store=project_store)
+        _server = A2AServer(task_manager=_get_task_manager())
     return _server
 
 
@@ -51,7 +50,7 @@ def _get_server(project_store: ProjectStore | None = None) -> A2AServer:
 
 
 @router.get("/.well-known/agent.json")
-async def get_agent_card(project_store: ProjectStore = Depends(get_project_store)):
+async def get_agent_card():
     """A2A Agent Card — discovery endpoint.
 
     Returns the Agent Card JSON so external A2A clients can discover
@@ -64,7 +63,7 @@ async def get_agent_card(project_store: ProjectStore = Depends(get_project_store
     if server_cfg.get("path"):
         card["url"] = server_cfg["path"]
 
-    projects = project_store.list_all()
+    projects = get_project_store().list_all()
     card["projects"] = [{"id": p.id, "name": p.name, "description": p.description or ""} for p in projects]
 
     card["languages"] = [
@@ -107,7 +106,7 @@ async def get_agent_card(project_store: ProjectStore = Depends(get_project_store
 
 
 @router.post("/a2a")
-async def handle_a2a_request(request: Request, project_store: ProjectStore = Depends(get_project_store)):
+async def handle_a2a_request(request: Request):
     """A2A JSON-RPC endpoint — handles all A2A methods.
 
     Supported methods:
@@ -134,7 +133,7 @@ async def handle_a2a_request(request: Request, project_store: ProjectStore = Dep
     params = body.get("params", {})
     req_id = body.get("id")
 
-    server = _get_server(project_store)
+    server = _get_server()
 
     try:
         if method == "tasks/send":

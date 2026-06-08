@@ -13,10 +13,9 @@ import uuid
 
 from backend.a2a.schemas import A2AMessage, A2ATask
 from backend.a2a.task_manager import TaskManager, TaskStatus
-from backend.api.deps import get_audit_service, get_debate_store_for_project
+from backend.api.deps import get_audit_service, get_debate_store_for_case, get_project_store
 from backend.core.config import is_service_llm_eligible
 from backend.models.schemas import DebateRequest
-from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +76,15 @@ class A2AServer:
         self,
         task_manager: TaskManager | None = None,
         project_id: str = "_default",
-        project_store: ProjectStore | None = None,
+        project_store=None,
     ) -> None:
-        """Initialise A2AServer."""
+        """Initialise A2AServer.
+
+        The ``project_store`` parameter is kept for backward compatibility
+        but is no longer used.
+        """
         self.task_manager = task_manager or TaskManager()
         self.project_id = project_id
-        self._project_store = project_store
 
     # ------------------------------------------------------------------
     # JSON-RPC method handlers
@@ -220,7 +222,7 @@ class A2AServer:
 
         effective_project = project_id or self.project_id
         debate_id = str(_uuid.uuid4())
-        store = get_debate_store_for_project(effective_project, self._project_store)
+        store = get_debate_store_for_case(effective_project)
         audit = get_audit_service()
 
         from datetime import UTC, datetime
@@ -239,7 +241,7 @@ class A2AServer:
         }
         store.put(debate_id, debate)
 
-        asyncio.create_task(run_debate_workflow(debate_id, effective_project, audit, store, self._project_store))
+        asyncio.create_task(run_debate_workflow(debate_id, effective_project, audit, store))
 
         return debate_id
 
@@ -254,7 +256,7 @@ class A2AServer:
         from backend.models.schemas import DebateStatus
 
         effective_project = project_id or self.project_id
-        store = get_debate_store_for_project(effective_project, self._project_store)
+        store = get_debate_store_for_case(effective_project)
 
         for _ in range(max_attempts):
             debate = store.get(debate_id)
@@ -317,9 +319,9 @@ class A2AServer:
         """Return detailed debate progress for a running debate."""
         from backend.models.schemas import DebateStatus
 
-        for project in self._project_store.list_all() if self._project_store else []:
+        for project in get_project_store().list_all():
             try:
-                store = get_debate_store_for_project(project.id, self._project_store)
+                store = get_debate_store_for_case(project.id)
                 debate = store.get(debate_id)
                 if debate:
                     break
