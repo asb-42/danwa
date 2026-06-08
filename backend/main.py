@@ -195,9 +195,13 @@ async def lifespan(app: FastAPI):
 
     deploy_import_main()
 
-    # Note: No seeded admin user. The first self-registered user is
-    # automatically promoted to admin (Drupal-style UID-1 mechanism).
-    # See POST /api/v1/auth/register in backend/api/routers/auth.py.
+    # Migrate away from legacy seeded admin user (admin@danwa.local).
+    # If the seed admin exists and real users are present, promote the
+    # first real user to admin and delete the seed.
+    try:
+        _migrate_seed_admin()
+    except Exception:
+        logger.debug("Seed admin migration skipped", exc_info=True)
 
     # Security check: warn if auth is enabled but JWT secret is empty
     if settings.auth_enabled and not settings.jwt_secret_key:
@@ -249,6 +253,38 @@ async def lifespan(app: FastAPI):
             )
     except Exception as exc:
         logger.error("Shutdown-Backup fehlgeschlagen: %s", exc)
+
+
+def _migrate_seed_admin() -> None:
+    """One-time migration: remove legacy seed admin and promote first real user.
+
+    If ``admin@danwa.local`` exists as the only admin and other users
+    are present, the first non-seed user is promoted to admin and the
+    seed admin is deleted.  Idempotent — no-op if seed admin is gone.
+    """
+    from backend.persistence.user_store import UserStore
+
+    store = UserStore()
+    seed = store.get_by_email("admin@danwa.local")
+    if not seed:
+        return  # nothing to migrate
+
+    all_users = store.list_all()
+    real_users = [u for u in all_users if u.email != "admin@danwa.local"]
+    if not real_users:
+        return  # only the seed admin exists; leave it until someone registers
+
+    # Promote the first real user to admin
+    first_user = min(real_users, key=lambda u: u.created_at)
+    if first_user.role != "admin":
+        store.update(first_user.id, role="admin")
+        logger.info(
+            "Seed admin migration: promoted %s to admin", first_user.email,
+        )
+
+    # Delete the seed admin
+    store.delete(seed.id)
+    logger.info("Seed admin migration: removed admin@danwa.local")
 
 
 def create_app() -> FastAPI:
