@@ -113,7 +113,13 @@ class WorkflowState(TypedDict, total=False):
     current_draft: Annotated[str, _merge_drafts]
 
     # --- Interjection ---
-    interjection_queue: list[dict]  # Pending interjections
+    # NOTE (2.2): last-write-wins semantics — no operator.add reducer.
+    # This is intentional: the interjection_node clears the queue with
+    # ``interjection_queue: []`` and external submissions go through
+    # ``interjection_service``, not state mutation.  Safe for linear
+    # graphs; if fan-out templates ever append to this field, switch
+    # to ``Annotated[list[dict], operator.add]``.
+    interjection_queue: list[dict]
     consumed_interjections: Annotated[list[str], operator.add]
 
     # --- Output ---
@@ -125,8 +131,20 @@ class WorkflowState(TypedDict, total=False):
     tone_profiles: dict[str, Any]  # node_id → ToneProfile dict
 
     # --- Control ---
+    # Metadata flag for API/status queries.  Does NOT gate graph
+    # execution — the actual pause mechanism is consume_blocking()
+    # inside the interjection_node (3.1 clarification).
     is_paused: bool
     pause_event: Any  # asyncio.Event for pause/resume
+
+    # --- Extension support ---
+    enable_extra_rounds: bool  # Allow up to max_rounds + 2 when True
+    extension_granted: bool | None  # None=pending, True/False=user decision
+
+    # --- Moderator assessment (2.1 — previously undeclared) ---
+    final_assessment: str  # Moderator's extracted text summary
+    usability_score: float  # Pragmatist's reality_score or consensus fallback
+    remaining_blockers: list[str]  # Blocking concerns from pragmatist evaluation
 
     # --- Transactional Drafting ---
     zero_draft: str | None  # Originaler Entwurf vom Strategist
@@ -141,3 +159,6 @@ class WorkflowState(TypedDict, total=False):
 
     # --- Workflow template identifier ---
     workflow_template: str  # WorkflowTemplate enum value
+
+    # --- Workflow versioning ---
+    workflow_version: int  # Schema version for audit/snapshot compatibility
