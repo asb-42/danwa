@@ -126,52 +126,30 @@ export function registerWorkflowNodes() {
 
   // ── Agent role nodes ────────────────────────────────────────────────
 
+  // F-09: Object format instead of tuples — field names are self-documenting
+  // and prevent silent position-mixing bugs in plain JS.
   const ROLE_TYPES = [
-    ['wf-strategist', '🧠', 'wfStrategist', 'Strategist', StrategistNode],
-    ['wf-critic', '🔍', 'wfCritic', 'Critic', CriticNode],
-    ['wf-optimizer', '⚡', 'wfOptimizer', 'Optimizer', OptimizerNode],
-    ['wf-moderator', '🎯', 'wfModerator', 'Moderator', ModeratorNode],
-    ['wf-fact-checker', '✅', 'wfFactChecker', 'Fact Checker', FactCheckerNode],
-    ['wf-analyst', '📊', 'wfAnalyst', 'Analyst', AnalystNode],
-    ['wf-creative', '💡', 'wfCreative', 'Creative', CreativeNode],
-    [
-      'wf-socratic-questioner',
-      '❓',
-      'wfSocraticQuestioner',
-      'Socratic Questioner',
-      SocraticQuestionerNode,
-    ],
-    [
-      'wf-expert-reviewer',
-      '🔬',
-      'wfExpertReviewer',
-      'Expert Reviewer',
-      ExpertReviewerNode,
-    ],
-    ['wf-steel-manner', '🛡️', 'wfSteelManner', 'Steel Manner', SteelMannerNode],
-    [
-      "wf-devils-advocate",
-      '👿',
-      'wfDevilsAdvocate',
-      "Devil's Advocate",
-      DevilsAdvocateNode,
-    ],
-    ['wf-troll', '🤡', 'wfTroll', 'Troll', TrollNode],
-    ['wf-mediator', '🤝', 'wfMediator', 'Mediator', MediatorNode],
-    ['wf-ethicist', '⚖️', 'wfEthicist', 'Ethicist', EthicistNode],
-    ['wf-synthesizer', '🔗', 'wfSynthesizer', 'Synthesizer', SynthesizerNode],
-    [
-      'wf-angels-advocate',
-      '🛡️',
-      'wfAngelsAdvocate',
-      "Angel's Advocate",
-      AngelsAdvocateNode,
-    ],
-    ['wf-builder', '🔨', 'wfBuilder', 'Builder', BuilderNode],
-    ['wf-pragmatist', '⚖️', 'wfPragmatist', 'Pragmatist', PragmatistNode],
+    { type: 'wf-strategist', icon: '🧠', labelKey: 'wfStrategist', label: 'Strategist', component: StrategistNode },
+    { type: 'wf-critic', icon: '🔍', labelKey: 'wfCritic', label: 'Critic', component: CriticNode },
+    { type: 'wf-optimizer', icon: '⚡', labelKey: 'wfOptimizer', label: 'Optimizer', component: OptimizerNode },
+    { type: 'wf-moderator', icon: '🎯', labelKey: 'wfModerator', label: 'Moderator', component: ModeratorNode },
+    { type: 'wf-fact-checker', icon: '✅', labelKey: 'wfFactChecker', label: 'Fact Checker', component: FactCheckerNode },
+    { type: 'wf-analyst', icon: '📊', labelKey: 'wfAnalyst', label: 'Analyst', component: AnalystNode },
+    { type: 'wf-creative', icon: '💡', labelKey: 'wfCreative', label: 'Creative', component: CreativeNode },
+    { type: 'wf-socratic-questioner', icon: '❓', labelKey: 'wfSocraticQuestioner', label: 'Socratic Questioner', component: SocraticQuestionerNode },
+    { type: 'wf-expert-reviewer', icon: '🔬', labelKey: 'wfExpertReviewer', label: 'Expert Reviewer', component: ExpertReviewerNode },
+    { type: 'wf-steel-manner', icon: '🛡️', labelKey: 'wfSteelManner', label: 'Steel Manner', component: SteelMannerNode },
+    { type: "wf-devils-advocate", icon: '👿', labelKey: 'wfDevilsAdvocate', label: "Devil's Advocate", component: DevilsAdvocateNode },
+    { type: 'wf-troll', icon: '🤡', labelKey: 'wfTroll', label: 'Troll', component: TrollNode },
+    { type: 'wf-mediator', icon: '🤝', labelKey: 'wfMediator', label: 'Mediator', component: MediatorNode },
+    { type: 'wf-ethicist', icon: '⚖️', labelKey: 'wfEthicist', label: 'Ethicist', component: EthicistNode },
+    { type: 'wf-synthesizer', icon: '🔗', labelKey: 'wfSynthesizer', label: 'Synthesizer', component: SynthesizerNode },
+    { type: 'wf-angels-advocate', icon: '🛡️', labelKey: 'wfAngelsAdvocate', label: "Angel's Advocate", component: AngelsAdvocateNode },
+    { type: 'wf-builder', icon: '🔨', labelKey: 'wfBuilder', label: 'Builder', component: BuilderNode },
+    { type: 'wf-pragmatist', icon: '⚖️', labelKey: 'wfPragmatist', label: 'Pragmatist', component: PragmatistNode },
   ];
 
-  for (const [type, icon, labelKey, label, component] of ROLE_TYPES) {
+  for (const { type, icon, labelKey, label, component } of ROLE_TYPES) {
     registerNode({
       type,
       component,
