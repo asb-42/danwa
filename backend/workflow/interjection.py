@@ -310,7 +310,7 @@ class InterjectionService:
                         interjection.session_id,
                         interjection.content,
                         interjection.source,
-                        json.dumps(interjection.metadata or {}),
+                        self._safe_json_dumps(interjection.metadata),
                         interjection.status,
                         datetime.now(UTC).isoformat(),
                     ),
@@ -361,6 +361,21 @@ class InterjectionService:
                 )
                 self._persist_failure_count += 1
                 return False
+
+    @staticmethod
+    def _safe_json_dumps(obj: Any) -> str:
+        """Serialize *obj* to JSON, returning ``"{}"`` on any error.
+
+        F-07 fix: ``json.dumps`` can raise ``TypeError`` or
+        ``ValueError`` (e.g. circular references, non-serializable
+        values).  Callers should never see a 500 because of bad
+        metadata — degrade to an empty object instead.
+        """
+        try:
+            return json.dumps(obj or {})
+        except (TypeError, ValueError):
+            logger.warning("Failed to serialize metadata — falling back to '{}'", exc_info=True)
+            return "{}"
 
     def _persist_delete_session(self, session_id: str) -> bool:
         """Delete every interjection row for ``session_id`` from SQLite.
@@ -447,13 +462,23 @@ class InterjectionService:
         Returns:
             The generated interjection_id.
         """
+        # F-07: sanitize metadata — reject non-dict values to prevent
+        # serialization failures and data loss on reload.
+        if not isinstance(metadata, dict):
+            if metadata is not None:
+                logger.warning(
+                    "submit(): metadata is %s (expected dict), coercing to {}",
+                    type(metadata).__name__,
+                )
+            metadata = {}
+
         interjection_id = f"inj-{uuid.uuid4().hex[:12]}"
         interjection = Interjection(
             interjection_id=interjection_id,
             session_id=session_id,
             content=content,
             source=source,
-            metadata=metadata or {},
+            metadata=metadata,
         )
 
         async with self._lock:

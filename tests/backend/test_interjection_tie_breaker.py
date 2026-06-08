@@ -18,18 +18,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import threading
-import time
-from datetime import UTC, datetime
 from pathlib import Path
-
-import pytest
 
 from backend.state.pubsub import reset_pubsub_cache
 from backend.workflow.interjection import (
-    _WAKE_CHANNEL_PREFIX,
     InterjectionService,
-    get_pubsub,
 )
 
 
@@ -43,10 +36,7 @@ def _insert_row(
     """Insert a row directly into the SQLite mirror with a fixed ``created_at``."""
     with sqlite3.connect(str(db)) as conn:
         conn.execute(
-            "INSERT INTO interjections "
-            "(interjection_id, session_id, content, source, metadata, "
-            "status, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO interjections (interjection_id, session_id, content, source, metadata, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 interjection_id,
                 session_id,
@@ -63,9 +53,7 @@ def _insert_row(
 class TestEnsureLoadedTieBreaker:
     """Verify ``_ensure_loaded`` uses ``interjection_id`` as a tie-breaker."""
 
-    def test_identical_created_at_returns_interjection_id_ascending(
-        self, tmp_path: Path
-    ) -> None:
+    def test_identical_created_at_returns_interjection_id_ascending(self, tmp_path: Path) -> None:
         """Rows with the *same* ``created_at`` must come back ordered by id.
 
         The insertion order is deliberately non-alphabetic
@@ -103,9 +91,7 @@ class TestEnsureLoadedTieBreaker:
         finally:
             reset_pubsub_cache()
 
-    def test_mixed_timestamps_keep_created_at_order_with_tie_break(
-        self, tmp_path: Path
-    ) -> None:
+    def test_mixed_timestamps_keep_created_at_order_with_tie_break(self, tmp_path: Path) -> None:
         """Different ``created_at`` values are still the primary sort key.
 
         The tie-breaker only kicks in for *ties* on ``created_at``.
@@ -134,9 +120,7 @@ class TestEnsureLoadedTieBreaker:
         finally:
             reset_pubsub_cache()
 
-    def test_tie_break_within_a_shared_timestamp_group(
-        self, tmp_path: Path
-    ) -> None:
+    def test_tie_break_within_a_shared_timestamp_group(self, tmp_path: Path) -> None:
         """Mix of unique and shared timestamps — tie-breaker applies
         only to the shared-timestamp group.
         """

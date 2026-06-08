@@ -33,9 +33,7 @@ class TestClearRaceCondition:
     """Verify ``clear()`` and ``submit()`` don't race on the wake event."""
 
     @pytest.mark.asyncio
-    async def test_clear_removes_items_and_wake_event(
-        self, service: InterjectionService
-    ) -> None:
+    async def test_clear_removes_items_and_wake_event(self, service: InterjectionService) -> None:
         """After ``clear()``, the session queue is empty and the wake
         event is not set."""
         await service.submit("sess-cr-1", "hello", "user")
@@ -51,15 +49,10 @@ class TestClearRaceCondition:
 
         event_after = service._wake_events.get("sess-cr-1")
         if event_after is not None:
-            assert not event_after.is_set(), (
-                "Wake event should be cleared after clear(), "
-                "but it was still set — race condition likely"
-            )
+            assert not event_after.is_set(), "Wake event should be cleared after clear(), but it was still set — race condition likely"
 
     @pytest.mark.asyncio
-    async def test_clear_then_submit_recreates_wake_event(
-        self, service: InterjectionService
-    ) -> None:
+    async def test_clear_then_submit_recreates_wake_event(self, service: InterjectionService) -> None:
         """After ``clear()``, a fresh ``submit()`` creates a new item
         and sets the wake event again — the cleared state doesn't
         permanently break the session."""
@@ -76,9 +69,7 @@ class TestClearRaceCondition:
         assert event.is_set(), "Wake event should be set after new submit"
 
     @pytest.mark.asyncio
-    async def test_wake_event_not_clobbered_by_clear_after_submit(
-        self, service: InterjectionService
-    ) -> None:
+    async def test_wake_event_not_clobbered_by_clear_after_submit(self, service: InterjectionService) -> None:
         """The core F-06 scenario: ``submit()`` sets the wake event,
         then ``clear()`` must not erase it after releasing the lock.
 
@@ -110,7 +101,5 @@ class TestClearRaceCondition:
 
         if len(queue) > 0 and event is not None:
             assert event.is_set(), (
-                "Queue has items but wake event is not set — "
-                "submit() queued an item but clear() wiped the "
-                "signal (F-06 race condition)"
+                "Queue has items but wake event is not set — submit() queued an item but clear() wiped the signal (F-06 race condition)"
             )
