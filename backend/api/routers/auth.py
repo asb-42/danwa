@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 
-from backend.api.deps import get_current_user, get_membership_store, get_tenant_store, get_user_store, require_role
+from backend.api.deps import get_current_user, get_membership_store, get_settings, get_tenant_store, get_user_store, require_role
 from backend.core.security import (
     create_access_token,
     create_refresh_token,
@@ -253,9 +253,31 @@ def list_my_tenants(
     user=Depends(get_current_user),
     membership_store=Depends(get_membership_store),
     tenant_store=Depends(get_tenant_store),
+    settings=Depends(get_settings),
 ):
     """List all tenants the current user belongs to."""
+    from datetime import UTC, datetime
+
     memberships = membership_store.list_by_user(user.id)
+
+    # Dev mode (auth disabled): the synthetic dev-user has no memberships
+    # in the DB.  Return all tenants as admin memberships so the
+    # TenantSelector works without authentication.
+    if not settings.auth_enabled and not memberships:
+        all_tenants = tenant_store.list_all()
+        now = datetime.now(UTC)
+        return [
+            TenantMembershipResponse(
+                tenant_id=t.id,
+                user_id=user.id,
+                role="admin",
+                invited_by=None,
+                joined_at=now,
+                tenant_name=t.name,
+            )
+            for t in all_tenants
+        ]
+
     # Build a cache of tenant_id -> name for enrichment
     tenant_names: dict[str, str] = {}
     for m in memberships:
