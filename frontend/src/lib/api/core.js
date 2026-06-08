@@ -5,7 +5,7 @@
 
 import { get } from 'svelte/store';
 import { i18n } from '../i18n/index.js';
-import { activeProject, activeCase } from '../stores.js';
+import { activeCase } from '../stores.js';
 import { accessToken, refreshToken, setAuth, clearAuth } from '../stores/auth.svelte.js';
 
 export const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -82,14 +82,14 @@ async function doRefresh() {
  *
  * Automatically injects:
  * - ``Authorization: Bearer <token>`` from the auth store
- * - ``X-Case-Id`` header from the ``activeCase`` store (falls back to ``activeProject``)
+ * - ``X-Case-Id`` header from the ``activeCase`` store
  * - ``X-Project-Id`` header (same value, for backward compatibility)
  *
  * On 401 responses, attempts a token refresh and retries once.
  */
 export async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  const caseId = get(activeCase)?.id || get(activeProject)?.id;
+  const caseId = get(activeCase)?.id;
   const token = get(accessToken);
 
   const headers = {

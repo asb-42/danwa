@@ -81,22 +81,22 @@
 ## Phase 3: Remove Legacy Project UI
 
 ### 3a — Remove ProjectSelector
-- [ ] Delete `frontend/src/components/ProjectSelector.svelte`
-- [ ] Remove all imports of `ProjectSelector`
-- [ ] Verify: no build errors
+- [x] Delete `frontend/src/components/ProjectSelector.svelte`
+- [x] Remove all imports of `ProjectSelector`
+- [x] Verify: no build errors
 
 ### 3b — Remove `activeProject` store
-- [ ] Remove `activeProject` from `frontend/src/lib/stores.js`
-- [ ] Remove all `$activeProject` references across all files (core.js, sse.js, TenantSelector)
-- [ ] Remove `getProjects` import where no longer needed
-- [ ] Verify: no build errors
+- [x] Remove `activeProject` from `frontend/src/lib/stores.js`
+- [x] Remove all `$activeProject` references across all files (core.js, sse.js, TenantSelector)
+- [x] Remove `getProjects` import where no longer needed (kept in DocumentsView/ArchiveView for move dialogs)
+- [x] Verify: no build errors
 
 ### 3c — Remove ProjectsView + ProjectSettings
-- [ ] Archive or delete `frontend/src/views/ProjectsView.svelte`
-- [ ] Archive or delete `frontend/src/components/ProjectSettings.svelte`
-- [ ] Remove from router/sidebar
-- [ ] Remove `projects.*` i18n keys
-- [ ] Verify: no build errors, no broken routes
+- [x] Delete `frontend/src/views/ProjectsView.svelte`
+- [x] Delete `frontend/src/components/ProjectSettings.svelte`
+- [x] Remove from router/sidebar
+- [x] Remove `projects.*` i18n keys
+- [x] Verify: no build errors, no broken routes
 
 ---
 

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { currentTenant, setAuth } from '../lib/stores/auth.svelte.js';
-  import { activeCase, activeProject, addToast } from '../lib/stores.js';
+  import { activeCase, addToast } from '../lib/stores.js';
   import { getMyTenants, selectTenant } from '../lib/auth.js';
   import { tStore } from '../lib/i18n/index.js';
 
@@ -43,7 +43,6 @@
         name: tenant.tenant_name || tenant.tenant_id,
       });
       activeCase.set(null);
-      activeProject.set(null);
       isOpen = false;
     } catch (err) {
       addToast({ type: 'error', message: err.message || t('tenants.switchFailed') });

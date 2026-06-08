@@ -111,10 +111,6 @@
       {#await import('./views/ArchiveView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'audit'}
       {#await import('./views/AuditView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'projects' && $routeParams.length >= 2 && $routeParams[1] === 'settings'}
-      {#await import('./components/ProjectSettings.svelte') then Mod}<Mod.default projectId={$routeParams[0]} {navigate} />{/await}
-    {:else if $route === 'projects'}
-      {#await import('./views/ProjectsView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'config'}
       {#await import('./views/ConfigView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'manage'}

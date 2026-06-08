@@ -27,7 +27,6 @@
   );
 
   const routeGroups = {
-    projects: ['projects'],
     blueprint: ['blueprint'],
     config: ['config'],
     modules: ['modules'],
@@ -105,7 +104,6 @@
       id: 'config',
       label: t('nav.section.config'),
       items: [
-        { id: 'projects', label: t('nav.projects'), icon: '📁', route: 'projects' },
         { id: 'audit', label: t('nav.audit'), icon: '📋', route: 'audit' },
         { id: 'configure', label: t('nav.section.configure') || 'Configure', icon: '⚙️', route: 'config' },
       ],

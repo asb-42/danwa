@@ -58,9 +58,6 @@ function persisted(key, defaultValue) {
   return store;
 }
 
-/** Active project — persisted to localStorage. Stores { id, name }. */
-export const activeProject = persisted('danwa.activeProject', null);
-
 /** Active case — persisted to localStorage. Stores { id, title }. */
 export const activeCase = persisted('danwa.activeCase', null);
 
