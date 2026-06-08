@@ -261,14 +261,12 @@ def moderator_node_factory(
                 # ``is_cancelled`` on every iteration so a cancel
                 # during the wait exits the loop promptly.
                 if debate_id:
-                    from backend.api.deps import get_debate_store_for_project
-                    from backend.persistence.project_store import ProjectStore
+                    from backend.api.deps import get_debate_store_for_case
                     from backend.state.workflow_state import get_workflow_state
                     from backend.workflow.workflow_runner import is_cancelled
 
-                    project_store = ProjectStore()
                     try:
-                        debate_store = get_debate_store_for_project(project_id, project_store)
+                        debate_store = get_debate_store_for_case(project_id)
                         state = get_workflow_state()
                         poll_deadline = time.monotonic() + 300  # 5 min timeout
                         # The WaitEvent fires as soon as the HITL

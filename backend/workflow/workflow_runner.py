@@ -300,12 +300,10 @@ async def run_workflow_background(
         debate_id = initial_state.get("debate_id")
         if debate_id:
             try:
-                from backend.api.deps import get_debate_store_for_project
+                from backend.api.deps import get_debate_store_for_case
                 from backend.persistence.debate_store import DebateStatus
-                from backend.persistence.project_store import ProjectStore
 
-                project_store = ProjectStore()
-                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate_store = get_debate_store_for_case(project_id)
                 debate = debate_store.get(debate_id)
                 if debate:
                     debate["status"] = DebateStatus.COMPLETED
@@ -366,12 +364,10 @@ async def run_workflow_background(
         debate_id = initial_state.get("debate_id")
         if debate_id:
             try:
-                from backend.api.deps import get_debate_store_for_project
+                from backend.api.deps import get_debate_store_for_case
                 from backend.persistence.debate_store import DebateStatus
-                from backend.persistence.project_store import ProjectStore
 
-                project_store = ProjectStore()
-                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate_store = get_debate_store_for_case(project_id)
                 debate = debate_store.get(debate_id)
                 if debate:
                     debate["status"] = DebateStatus.CANCELLED
@@ -407,12 +403,10 @@ async def run_workflow_background(
         debate_id = initial_state.get("debate_id")
         if debate_id:
             try:
-                from backend.api.deps import get_debate_store_for_project
+                from backend.api.deps import get_debate_store_for_case
                 from backend.persistence.debate_store import DebateStatus
-                from backend.persistence.project_store import ProjectStore
 
-                project_store = ProjectStore()
-                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate_store = get_debate_store_for_case(project_id)
                 debate = debate_store.get(debate_id)
                 if debate:
                     debate["status"] = DebateStatus.FAILED

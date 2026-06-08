@@ -51,19 +51,18 @@ def _get_project_dir(project_id: str | None) -> Path | None:
     """Return the project directory for a given project_id, or None."""
     if not project_id:
         return None
-    from backend.persistence.project_store import ProjectStore
+    from backend.api.deps import get_case_dir
 
-    store = ProjectStore()
-    return store.get_project_dir(project_id)
+    return get_case_dir(project_id)
 
 
 def _get_project_config(project_id: str | None) -> ProjectConfig | None:
     """Return the ProjectConfig for a given project_id, or None."""
     if not project_id:
         return None
-    from backend.persistence.project_store import ProjectStore
+    from backend.api.deps import get_project_store
 
-    store = ProjectStore()
+    store = get_project_store()
     project = store.get(project_id)
     return project.config if project else None
 
