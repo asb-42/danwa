@@ -1,48 +1,15 @@
 /**
- * Project-related API functions.
+ * Project-related API functions (legacy — used only for move-to-project dialogs).
+ *
+ * @deprecated Projects are being replaced by tenants/cases.
  */
 
 import { request } from './core.js';
 
-// ---------------------------------------------------------------------------
-// Projects
-// ---------------------------------------------------------------------------
-
+/**
+ * List all projects in the current tenant.
+ * @deprecated Use tenant/case-scoped endpoints instead.
+ */
 export function getProjects() {
   return request('/api/v1/projects');
-}
-
-export function getProject(projectId) {
-  return request(`/api/v1/projects/${projectId}`);
-}
-
-export function createProject(name, description = '') {
-  return request('/api/v1/projects', {
-    method: 'POST',
-    body: JSON.stringify({ name, description }),
-  });
-}
-
-export function updateProject(projectId, data) {
-  return request(`/api/v1/projects/${projectId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-
-export function deleteProject(projectId) {
-  return request(`/api/v1/projects/${projectId}`, {
-    method: 'DELETE',
-  });
-}
-
-export function getProjectConfig(projectId) {
-  return request(`/api/v1/projects/${projectId}/config`);
-}
-
-export function updateProjectConfig(projectId, config) {
-  return request(`/api/v1/projects/${projectId}/config`, {
-    method: 'PUT',
-    body: JSON.stringify({ config }),
-  });
 }

@@ -48,50 +48,7 @@ class Project(BaseModel):
     config: ProjectConfig = Field(default_factory=ProjectConfig)
 
 
-# --- API request/response helpers ---
-
-
-class ProjectCreateRequest(BaseModel):
-    """POST /api/v1/projects request body."""
-
-    name: str = Field(..., min_length=1, max_length=200)
-    description: str = ""
-    tenant_id: str = "_default"
-
-
-class ProjectUpdateRequest(BaseModel):
-    """PUT /api/v1/projects/{id} request body."""
-
-    name: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = None
-
-
-class ProjectConfigUpdateRequest(BaseModel):
-    """PUT /api/v1/projects/{id}/config request body."""
-
-    config: ProjectConfig
-
-
-class ProjectResponse(BaseModel):
-    """GET /api/v1/projects/{id} response."""
-
-    id: str
-    name: str
-    description: str
-    is_system: bool
-    tenant_id: str
-    created_at: datetime
-    updated_at: datetime
-    config: ProjectConfig
-
-
-class ProjectListItem(BaseModel):
-    """GET /api/v1/projects list item — lightweight summary."""
-
-    id: str
-    name: str
-    description: str
-    is_system: bool
-    tenant_id: str
-    created_at: datetime
-    updated_at: datetime
+# NOTE: API request/response models (ProjectCreateRequest, ProjectUpdateRequest,
+# ProjectConfigUpdateRequest, ProjectResponse, ProjectListItem) were removed
+# in the project→tenant/case migration. Only Project and ProjectConfig remain
+# as internal models used by ProjectStore for directory resolution.
