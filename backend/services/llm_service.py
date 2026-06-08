@@ -723,9 +723,7 @@ class LLMService:
         import concurrent.futures
 
         def _run_in_thread():
-            return asyncio.run(
-                self.generate(prompt, system_prompt, temperature, max_tokens, context=context)
-            )
+            return asyncio.run(self.generate(prompt, system_prompt, temperature, max_tokens, context=context))
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_run_in_thread)

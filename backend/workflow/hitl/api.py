@@ -149,8 +149,7 @@ def register_agent_query(debate_id: str, query_context: dict) -> str:
     existing = _active_interrupts.get(debate_id)
     if existing and existing.get("status") == "waiting":
         logger.warning(
-            "Auto-resolving previous interrupt %s for debate %s "
-            "before registering new query from %s",
+            "Auto-resolving previous interrupt %s for debate %s before registering new query from %s",
             existing["interrupt_id"],
             debate_id,
             query_context.get("agent_role", "unknown"),
