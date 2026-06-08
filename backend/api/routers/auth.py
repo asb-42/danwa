@@ -42,13 +42,15 @@ def register_user(
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    # Self-registration always creates a "user" role.  Admin promotion
-    # happens only for the very first account; subsequent users must be
-    # invited by an admin (POST /auth/users/invite).
-    role = "user"
-    if user_store.count() == 0:
+    # Drupal-style UID-1 mechanism: promote to admin if no admin exists yet.
+    # This covers two cases:
+    #   1. Fresh install — first user ever becomes admin.
+    #   2. Existing install where the seeded admin was deleted — next
+    #      registrant recovers admin access.
+    role = "viewer"
+    if user_store.count() == 0 or not user_store.has_admin():
         role = "admin"
-        logger.info("First user registered — promoting to admin: %s", body.email)
+        logger.info("No admin exists — promoting new user to admin: %s", body.email)
 
     password_hash = hash_password(body.password)
 

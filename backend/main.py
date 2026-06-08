@@ -195,10 +195,9 @@ async def lifespan(app: FastAPI):
 
     deploy_import_main()
 
-    # Seed default admin user (idempotent)
-    from backend.core.seed import ensure_admin_user
-
-    ensure_admin_user()
+    # Note: No seeded admin user. The first self-registered user is
+    # automatically promoted to admin (Drupal-style UID-1 mechanism).
+    # See POST /api/v1/auth/register in backend/api/routers/auth.py.
 
     # Security check: warn if auth is enabled but JWT secret is empty
     if settings.auth_enabled and not settings.jwt_secret_key:
@@ -222,6 +221,13 @@ async def lifespan(app: FastAPI):
         i18n_svc.bootstrap_core_locales()
     except Exception as exc:
         logger.warning("i18n bootstrap skipped: %s", exc)
+
+    # Clean up legacy local langpack directories (lp-* zombies from old bootstrap).
+    # The danwa-modules repo is the single source of truth for language packs.
+    try:
+        i18n_svc.cleanup_legacy_local_langpacks()
+    except Exception as exc:
+        logger.warning("Legacy langpack cleanup skipped: %s", exc)
 
     yield
     logger.info("Debate Engine shutting down.")

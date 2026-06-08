@@ -115,6 +115,13 @@ class UserStore:
         )
         self.conn.commit()
 
+    def has_admin(self) -> bool:
+        """Check whether at least one active admin user exists."""
+        cursor = self.conn.execute(
+            "SELECT 1 FROM users WHERE role = 'admin' AND is_active = 1 LIMIT 1"
+        )
+        return cursor.fetchone() is not None
+
     def delete(self, user_id: str) -> bool:
         """Delete a user by ID. Returns True."""
         self.conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
