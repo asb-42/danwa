@@ -21,7 +21,6 @@ from backend.api.deps import get_project_store
 from backend.core.config import is_service_llm_eligible
 from backend.core.config import settings as app_settings
 from backend.persistence.backup import BackupResult, BackupService, VerificationResult
-from backend.persistence.project_store import ProjectStore
 from backend.services.dms.config import DEFAULT_DMS_CONFIG
 from backend.services.profile_service import ProfileService
 
@@ -68,9 +67,9 @@ def _save_settings(data: dict[str, Any]) -> None:
     logger.info("Settings saved to %s", _SETTINGS_PATH)
 
 
-def _load_project_config(project_id: str, project_store) -> dict[str, Any]:
+def _load_project_config(project_id: str) -> dict[str, Any]:
     """Load project-specific config, falling back to global settings."""
-    project = project_store.get(project_id)
+    project = get_project_store().get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -143,9 +142,9 @@ def update_settings(body: dict[str, Any]) -> dict:
 
 
 @router.get("/settings/project/{project_id}")
-def get_project_settings(project_id: str, project_store: ProjectStore = Depends(get_project_store)) -> dict:
+def get_project_settings(project_id: str) -> dict:
     """Get settings for a specific project (merged with global defaults)."""
-    return _load_project_config(project_id, project_store)
+    return _load_project_config(project_id)
 
 
 # --- Language ---
