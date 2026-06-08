@@ -85,6 +85,13 @@ class ModuleInstaller:
         now = datetime.now(UTC).isoformat()
         checksum = manifest.get("checksum", "")
         try:
+            # Preserve existing enabled state on re-install/update
+            existing = cursor.execute(
+                "SELECT enabled FROM module_registry WHERE id = ?",
+                (module_id,),
+            ).fetchone()
+            enabled_value = existing["enabled"] if existing else 1
+
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO module_registry
@@ -106,7 +113,7 @@ class ModuleInstaller:
                     checksum,
                     now,
                     now,
-                    1,
+                    enabled_value,
                     None,
                     manifest.get("schema_version", "1.0.0"),
                     json.dumps(manifest.get("tags", [])),

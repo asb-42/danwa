@@ -25,13 +25,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
-from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
+from backend.api.deps import get_debate_store_for_case, get_project_id
 from backend.api.events import publish_async, subscribe, unsubscribe
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.repository import BlueprintRepository
 from backend.models.schemas import SearchMode
 from backend.persistence.debate_store import DebateStatus
-from backend.persistence.project_store import ProjectStore
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.immutability import archive_session, guard_mutable, restore_session
 from backend.workflow.interjection import interjection_service
@@ -235,7 +234,6 @@ async def start_mvp_debate(
     body: StartMvpDebateRequest,
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> StartMvpDebateResponse:
     """Create and execute an MVP debate workflow with per-agent LLM profiles.
 
@@ -292,7 +290,6 @@ async def start_mvp_debate(
                 include_debate_results=body.include_debate_results,
                 debate_result_ids=body.debate_result_ids or None,
                 include_document_analysis=body.include_document_analysis,
-                project_store=project_store,
             )
         except Exception:
             logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
@@ -403,7 +400,7 @@ async def start_mvp_debate(
     now = datetime.now(UTC)
 
     try:
-        debate_store = get_debate_store_for_project(effective_project_id, project_store)
+        debate_store = get_debate_store_for_case(effective_project_id)
         debate_store.put(
             debate_id,
             {
@@ -463,7 +460,6 @@ async def start_workflow(
     body: StartWorkflowRequest,
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> StartWorkflowResponse:
     """Start executing a workflow definition.
 
@@ -507,7 +503,6 @@ async def start_workflow(
                 document_ids=body.document_ids,
                 rag_auto_retrieve=body.rag_auto_retrieve,
                 include_document_analysis=body.include_document_analysis,
-                project_store=project_store,
             )
             if rag_context:
                 logger.info(
@@ -586,7 +581,7 @@ async def start_workflow(
     now = datetime.now(UTC)
 
     try:
-        debate_store = get_debate_store_for_project(project_id, project_store)
+        debate_store = get_debate_store_for_case(project_id)
         debate_store.put(
             debate_id,
             {

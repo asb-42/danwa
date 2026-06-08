@@ -17,9 +17,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
+from backend.api.deps import get_debate_store_for_case, get_project_id
 from backend.api.events import publish_async, subscribe, unsubscribe
-from backend.persistence.project_store import ProjectStore
 from backend.workflow.report_generator import WorkflowReportGenerator
 from backend.workflow.report_jobs import ReportJobStore
 
@@ -93,7 +92,6 @@ async def _generate_report_job(
     session_id: str,
     fmt: str,
     project_id: str | None = None,
-    project_store: ProjectStore | None = None,
 ) -> None:
     """Background task that generates a report and updates the job store."""
     store = _get_job_store()
@@ -115,7 +113,7 @@ async def _generate_report_job(
         debate_data = None
         if project_id:
             try:
-                debate_store = get_debate_store_for_project(project_id, project_store)
+                debate_store = get_debate_store_for_case(project_id)
                 debate_data = debate_store.get(session_id)
             except Exception as exc:
                 logger.warning(
@@ -161,7 +159,6 @@ async def create_report_job(
     body: CreateReportRequest,
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> CreateReportResponse:
     """Create an async report generation job.
 

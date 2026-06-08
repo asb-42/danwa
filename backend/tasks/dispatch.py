@@ -28,6 +28,9 @@ def dispatch_debate_task(
 ) -> str:
     """Dispatch a debate workflow task.
 
+    The ``project_store`` parameter is kept for backward compatibility but
+    is no longer required.
+
     Returns:
         "celery" if dispatched to Celery, "background" if using BackgroundTasks.
     """
@@ -47,7 +50,7 @@ def dispatch_debate_task(
     # Fallback: FastAPI BackgroundTasks
     from backend.services.debate_workflow import run_debate_workflow
 
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, project_store)
+    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store)
     logger.info("Debate %s dispatched to BackgroundTasks", debate_id)
     return "background"
 

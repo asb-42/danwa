@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from backend.api.deps import get_profile_service_for_project, get_project_id, get_project_store
+from backend.api.deps import get_case_dir, get_profile_service_for_case, get_project_id
 from backend.services.dms.document_analyzer import (
     analyze_documents as run_document_analysis,
 )
@@ -27,6 +27,8 @@ from backend.services.dms.document_analyzer import (
 from backend.services.dms.service import get_dms_for_project
 
 logger = logging.getLogger(__name__)
+
+_DEPRECATION_NOTICE = "Use /api/v1/tenants/{tid}/cases/{cid}/dms/ instead. See /api/v1/dms for deprecation details."
 
 router = APIRouter()
 
@@ -49,11 +51,10 @@ class UpdateDocumentTextRequest(BaseModel):
 @router.get("/documents")
 def list_documents(
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """List documents in the active project."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     return dms.list_documents(project_id)
@@ -63,11 +64,10 @@ def list_documents(
 def get_document(
     document_id: str,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Get a single document with its content for viewing."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     doc = dms.get_document_content(document_id)
@@ -81,11 +81,10 @@ def update_document_text(
     document_id: str,
     body: UpdateDocumentTextRequest,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Update the extracted text of a document (re-chunks and re-indexes)."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     result = dms.update_document_text(document_id, body.text)
@@ -98,11 +97,10 @@ def update_document_text(
 async def upload_document(
     file: UploadFile = File(...),
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Upload a document to the active project."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -162,11 +160,10 @@ async def upload_document(
 def delete_document(
     document_id: str,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Delete a document from the active project."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     result = dms.delete_document(document_id)
@@ -180,7 +177,6 @@ def move_document(
     document_id: str,
     body: MoveDocumentRequest,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Move a document to another project.
 
@@ -192,8 +188,8 @@ def move_document(
         raise HTTPException(status_code=400, detail="Source and target project are the same")
 
     try:
-        src_dms = get_dms_for_project(project_id, project_store=project_store)
-        tgt_dms = get_dms_for_project(body.target_project_id, project_store=project_store)
+        src_dms = get_dms_for_project(project_id)
+        tgt_dms = get_dms_for_project(body.target_project_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -211,7 +207,6 @@ def move_document(
 def add_to_rag(
     document_id: str,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Add a document to manual RAG context.
 
@@ -220,7 +215,7 @@ def add_to_rag(
     active project's manual RAG selection set.
     """
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     if dms.get_document(document_id) is None:
@@ -235,11 +230,10 @@ def add_to_rag(
 def remove_from_rag(
     document_id: str,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Remove a document from manual RAG context."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     result = dms.remove_from_rag_context(document_id)
@@ -251,11 +245,10 @@ def remove_from_rag(
 @router.get("/rag/manual")
 def list_manual_rag(
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """List document IDs in manual RAG context."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"document_ids": dms.list_manual_rag_documents()}
@@ -266,11 +259,10 @@ def search_rag(
     query: str,
     k: int = 5,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Search RAG context for relevant chunks."""
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
     results = dms.get_rag_context(query, project_id=project_id, k=k)
@@ -329,7 +321,6 @@ async def analyze_documents(
     language: str = Query("de", description="Language for analysis content (e.g. 'de', 'en')"),
     mode: str = Query("full", description="Analysis mode: 'full' (regenerate all) or 'update' (merge new docs only)"),
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Analyze documents in the project and produce a structured case analysis.
 
@@ -342,7 +333,7 @@ async def analyze_documents(
       re-processing already analyzed documents.
     """
     try:
-        dms = get_dms_for_project(project_id, project_store=project_store)
+        dms = get_dms_for_project(project_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -350,8 +341,8 @@ async def analyze_documents(
     if not documents:
         raise HTTPException(status_code=400, detail="No documents to analyze")
 
-    profile_service = get_profile_service_for_project(project_id, project_store)
-    project_dir = project_store.get_project_dir(project_id)
+    profile_service = get_profile_service_for_case(project_id)
+    project_dir = get_case_dir(project_id)
 
     if mode == "update":
         existing = load_analysis(project_dir)
@@ -413,14 +404,14 @@ async def analyze_documents(
 @router.get("/analyze")
 def get_analysis(
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Get the stored document analysis for the current project."""
-    project = project_store.get(project_id)
+    from backend.api.deps import get_project_store
+    project = get_project_store().get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    project_dir = project_store.get_project_dir(project_id)
+    project_dir = get_case_dir(project_id)
     analysis = load_analysis(project_dir)
     if not analysis:
         raise HTTPException(status_code=404, detail="No analysis found. Run analysis first.")
@@ -445,14 +436,14 @@ class AnalysisExportRequest(BaseModel):
 async def export_analysis(
     body: AnalysisExportRequest,
     project_id: str = Depends(get_project_id),
-    project_store=Depends(get_project_store),
 ):
     """Export the document analysis as PDF, ODT, or Markdown."""
-    project = project_store.get(project_id)
+    from backend.api.deps import get_project_store
+    project = get_project_store().get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    project_dir = project_store.get_project_dir(project_id)
+    project_dir = get_case_dir(project_id)
     project_name = getattr(project, "name", project_id)
 
     analysis = load_analysis(project_dir)

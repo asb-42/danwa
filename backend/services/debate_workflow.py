@@ -15,7 +15,6 @@ from backend.core.config import is_service_llm_eligible, settings  # noqa: F401
 from backend.models.schemas import AuditEvent, DebateStatus
 from backend.persistence.audit import AuditService
 from backend.persistence.debate_store import DebateStore
-from backend.persistence.project_store import ProjectStore
 from backend.services.debate import (  # noqa: F401  # re-exports for backward compat
     SYSTEM_PROMPT_TITLES,
     _fallback_title,
@@ -55,12 +54,12 @@ def extract_rag_info(req: object | dict) -> tuple[list[str], bool]:
     return [], False
 
 
-def build_rag_preview(project_id: str, document_ids: list[str], project_store: ProjectStore | None = None) -> str:
+def build_rag_preview(project_id: str, document_ids: list[str], project_store=None) -> str:
     """Build a short preview of RAG context for the response."""
     if not document_ids:
         return ""
     try:
-        dms = get_dms_for_project(project_id, project_store)
+        dms = get_dms_for_project(project_id)
 
         chunks = []
         for doc_id in document_ids:
@@ -268,9 +267,13 @@ async def run_debate_workflow(
     project_id: str,
     audit: AuditService,
     store: DebateStore,
-    project_store: ProjectStore | None = None,
+    project_store=None,
 ) -> None:
-    """Run the LangGraph workflow for a debate (called as background task)."""
+    """Run the LangGraph workflow for a debate (called as background task).
+
+    The ``project_store`` parameter is kept for backward compatibility but
+    is no longer required.
+    """
     debate = store.get(debate_id)
     if not debate:
         return
@@ -315,7 +318,6 @@ async def run_debate_workflow(
         rag_auto_retrieve=fields["rag_auto_retrieve"],
         include_debate_results=fields.get("include_debate_results", False),
         include_document_analysis=fields.get("include_document_analysis", False),
-        project_store=project_store,
         store=store,
     )
     if rag_context:
@@ -756,16 +758,14 @@ async def on_debate_completed(debate_id: str, project_id: str):
     in another tenant's DMS. We now fail loud (log + return) instead of
     writing the summary to a different project.
     """
-    from backend.persistence.project_store import ProjectStore
+    from backend.api.deps import get_case_dir
     from backend.services.dms.service import get_dms_for_project
     from backend.workflow.report_generator import WorkflowReportGenerator
-
-    ps = ProjectStore()
 
     # Resolve DMS strictly for the given project. No fallback to
     # _default — that path is a cross-tenant write hazard.
     try:
-        dms = get_dms_for_project(project_id, ps)
+        dms = get_dms_for_project(project_id)
     except Exception as exc:
         logger.warning(
             "Could not initialize DMS for project %s (debate %s): %s — skipping RAG document creation",
@@ -779,7 +779,7 @@ async def on_debate_completed(debate_id: str, project_id: str):
     # the global default store either.
     debate_data = None
     try:
-        project_dir = ps.get_project_dir(project_id)
+        project_dir = get_case_dir(project_id)
         store = DebateStore(data_dir=project_dir / "debates")
         debate_data = store.get(debate_id)
     except Exception as exc:

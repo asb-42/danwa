@@ -38,7 +38,6 @@ from backend.models.schemas import (
 from backend.persistence.audit import AuditService
 from backend.persistence.case_store import CaseStore
 from backend.persistence.debate_store import DebateStore
-from backend.persistence.project_store import ProjectStore
 from backend.persistence.tag_store import TagStore
 from backend.persistence.tenant_store import TenantStore
 
@@ -333,7 +332,6 @@ async def get_case_debate(
     case_id: str,
     debate_id: str,
     case_store: CaseStore = Depends(get_case_store),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateStatusResponse:
     """Get a single debate's status and progress."""
     from backend.services.debate_workflow import build_rag_preview, extract_rag_info
@@ -363,12 +361,12 @@ async def get_case_debate(
     consensus = result.get("final_consensus") if isinstance(result, dict) else None
     anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
 
-    project = project_store.get(case_id)
+    project = get_project_store().get(case_id)
     project_name = project.name if project else case_id
 
     document_ids, rag_auto_retrieve = extract_rag_info(req)
     rag_enabled = bool(document_ids) or rag_auto_retrieve
-    rag_preview = build_rag_preview(case_id, document_ids, project_store) if document_ids else ""
+    rag_preview = build_rag_preview(case_id, document_ids) if document_ids else ""
 
     from backend.workflow.hitl.api import get_active_interrupt, get_hitl_config
     from backend.workflow.hitl.api import is_paused as hitl_is_paused
@@ -424,7 +422,6 @@ async def start_case_debate(
     background_tasks: BackgroundTasks,
     audit: AuditService = Depends(get_audit_service),
     case_store: CaseStore = Depends(get_case_store),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateStatusResponse:
     """Start a pending debate — launches the workflow in a background task."""
     from backend.services.debate_workflow import extract_rag_info
@@ -442,7 +439,7 @@ async def start_case_debate(
     debate["updated_at"] = datetime.now(UTC)
     store.put(debate_id, debate)
 
-    dispatch_debate_task(background_tasks, debate_id, case_id, audit, store, project_store)
+    dispatch_debate_task(background_tasks, debate_id, case_id, audit, store)
 
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
@@ -602,13 +599,12 @@ async def list_case_forks(
     limit: int = 50,
     offset: int = 0,
     case_store: CaseStore = Depends(get_case_store),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> list[DebateListItem]:
     """List all forks originating from a given debate in a case."""
     store = _get_debate_store_for_case(tenant_id, case_id, case_store)
     debates = store.list_all(limit=limit + offset)
 
-    project = project_store.get(case_id)
+    project = get_project_store().get(case_id)
     project_name = project.name if project else case_id
 
     items = []
@@ -909,7 +905,7 @@ async def start_case_workflow(
         rag_auto_retrieve=body.get("rag_auto_retrieve", False),
         include_document_analysis=body.get("include_document_analysis", False),
     )
-    return await start_workflow(workflow_id, req, background_tasks, project_id=project_id, project_store=get_project_store())
+    return await start_workflow(workflow_id, req, background_tasks, project_id=project_id)
 
 
 @router.get("/tenants/{tenant_id}/cases/{case_id}/workflows/{session_id}/state")

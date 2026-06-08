@@ -509,21 +509,18 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
 
     The entire check-then-create-then-insert sequence is protected by
     ``_dms_cache_lock`` to prevent duplicate instances under concurrent access.
+
+    The ``project_store`` parameter is kept for backward compatibility but
+    is no longer required. Internally ``get_case_dir()`` is used for
+    directory resolution.
     """
     with _dms_cache_lock:
         if project_id in _dms_cache:
             return _dms_cache[project_id]
 
-        if project_store is None:
-            from backend.api.deps import get_project_store
+        from backend.api.deps import get_case_dir
 
-            project_store = get_project_store()
-
-        project = project_store.get(project_id)
-        if not project:
-            raise ValueError(f"Project not found: {project_id}")
-
-        project_dir = project_store.get_project_dir(project_id)
+        project_dir = get_case_dir(project_id)
         dms_dir = project_dir / "dms"
         dms_dir.mkdir(parents=True, exist_ok=True)
 
@@ -542,9 +539,13 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
         )
 
         if not dms.db.get_project(project_id):
+            from backend.api.deps import get_project_store
+
+            project = get_project_store().get(project_id)
+            project_name = project.name if project else project_id
             dms.db.conn.execute(
                 "INSERT OR IGNORE INTO projects (id, name, description, created_at, metadata_json) VALUES (?, ?, ?, ?, ?)",
-                (project_id, project.name, "", datetime.now().isoformat(), ""),
+                (project_id, project_name, "", datetime.now().isoformat(), ""),
             )
             dms.db.conn.commit()
 

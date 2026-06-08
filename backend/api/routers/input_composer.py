@@ -23,13 +23,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.api.deps import get_debate_store_for_project, get_project_id, get_project_store
+from backend.api.deps import get_debate_store_for_case, get_project_id
 from backend.blueprints.compiler import CompilerService
 from backend.blueprints.mvp_debate_canvas import _ensure_blueprint
 from backend.blueprints.repository import BlueprintRepository
 from backend.models.input_job import InputJobStatus
 from backend.persistence.debate_store import DebateStatus
-from backend.persistence.project_store import ProjectStore
 from backend.services.input.input_engine import InputComposerService
 from backend.services.input.input_job_store import InputJobStore
 from backend.services.input.registry import InputPluginRegistry
@@ -438,7 +437,6 @@ async def launch_workflow_from_input(
     body: LaunchWorkflowRequest,
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> LaunchWorkflowResponse:
     """Launch a workflow execution from a completed input job.
 
@@ -608,7 +606,6 @@ async def launch_workflow_from_input(
                 include_debate_results=body.include_debate_results,
                 debate_result_ids=body.debate_result_ids or None,
                 include_document_analysis=body.include_document_analysis,
-                project_store=project_store,
             )
         except Exception:
             logger.warning("Failed to resolve RAG context for input-composer workflow", exc_info=True)
@@ -686,7 +683,7 @@ async def launch_workflow_from_input(
     now = datetime.now(UTC)
 
     try:
-        debate_store = get_debate_store_for_project(project_id, project_store)
+        debate_store = get_debate_store_for_case(project_id)
         debate_store.put(
             debate_id,
             {

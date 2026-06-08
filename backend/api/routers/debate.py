@@ -20,9 +20,9 @@ from pydantic import BaseModel, Field
 
 from backend.api.deps import (
     get_audit_service,
-    get_debate_store_for_project,
+    get_debate_store_for_case,
     get_project_id,
-    get_project_store,
+    get_debate_store_for_case,
 )
 from backend.api.events import publish_async
 from backend.models.schemas import (
@@ -36,7 +36,6 @@ from backend.models.schemas import (
     RoundData,
 )
 from backend.persistence.audit import AuditService
-from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,6 @@ async def list_debates(
     status: str | None = None,
     search: str | None = None,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> list[DebateListItem]:
     """List all debates (newest first) — for history panel.
 
@@ -87,10 +85,11 @@ async def list_debates(
         status: Filter by debate status (pending, running, completed, failed).
         search: Full-text search in case_preview (case-insensitive).
     """
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debates = store.list_all(limit=limit + offset)
 
-    project = project_store.get(project_id)
+    from backend.api.deps import get_project_store
+    project = get_project_store().get(project_id)
     project_name = project.name if project else project_id
 
     items = []
@@ -160,16 +159,16 @@ async def list_debates(
 
 @router.get("/cross-project/running")
 async def find_running_debate_across_projects(
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateListItem | None:
     """Find the first running debate across ALL projects.
 
     Used by the Dashboard to detect externally-started debates (e.g. via A2A)
     that may live in a different project than the active one.
     """
-    for project in project_store.list_all():
+    from backend.api.deps import get_project_store
+    for project in get_project_store().list_all():
         try:
-            store = get_debate_store_for_project(project.id, project_store)
+            store = get_debate_store_for_case(project.id)
             debates = store.list_all(limit=20)
             for d in debates:
                 if d.get("status") == DebateStatus.RUNNING:
@@ -214,10 +213,9 @@ async def create_debate(
     request: DebateRequest,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateResponse:
     """Create a new debate (status = pending)."""
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
@@ -244,10 +242,9 @@ async def delete_debate(
     debate_id: str,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Delete a debate and its associated audit events."""
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -283,7 +280,6 @@ async def move_debate(
     debate_id: str,
     body: MoveDebateBody,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
     audit: AuditService = Depends(get_audit_service),
 ) -> dict:
     """Move a debate to a different project.
@@ -294,11 +290,12 @@ async def move_debate(
     if body.project_id == project_id:
         raise HTTPException(status_code=400, detail="Source and target projects are the same")
 
-    target_project = project_store.get(body.project_id)
+    from backend.api.deps import get_project_store
+    target_project = get_project_store().get(body.project_id)
     if not target_project:
         raise HTTPException(status_code=404, detail="Target project not found")
 
-    source_store = get_debate_store_for_project(project_id, project_store)
+    source_store = get_debate_store_for_case(project_id)
     debate = source_store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -308,7 +305,7 @@ async def move_debate(
     if status_val == "running":
         raise HTTPException(status_code=409, detail="Cannot move a running debate")
 
-    target_store = get_debate_store_for_project(body.project_id, project_store)
+    target_store = get_debate_store_for_case(body.project_id)
     moved = source_store.move(debate_id, target_store)
     if not moved:
         raise HTTPException(status_code=500, detail="Failed to move debate")
@@ -336,12 +333,11 @@ async def move_debate(
 async def get_debate(
     debate_id: str,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateStatusResponse:
     """Get debate status and progress."""
     from backend.services.debate_workflow import build_rag_preview, extract_rag_info
 
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -366,12 +362,13 @@ async def get_debate(
     consensus = result.get("final_consensus") if isinstance(result, dict) else None
     anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
 
-    project = project_store.get(project_id)
+    from backend.api.deps import get_project_store
+    project = get_project_store().get(project_id)
     project_name = project.name if project else project_id
 
     document_ids, rag_auto_retrieve = extract_rag_info(req)
     rag_enabled = bool(document_ids) or rag_auto_retrieve
-    rag_preview = build_rag_preview(project_id, document_ids, project_store) if document_ids else ""
+    rag_preview = build_rag_preview(project_id, document_ids) if document_ids else ""
 
     from backend.workflow.hitl.api import (
         get_active_interrupt,
@@ -431,7 +428,6 @@ async def start_debate(
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateStatusResponse:
     """Start a pending debate — launches the workflow in a background task.
 
@@ -441,7 +437,7 @@ async def start_debate(
     from backend.services.debate_workflow import extract_rag_info
     from backend.tasks.dispatch import dispatch_debate_task
 
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -453,7 +449,7 @@ async def start_debate(
     debate["updated_at"] = datetime.now(UTC)
     store.put(debate_id, debate)
 
-    dispatch_debate_task(background_tasks, debate_id, project_id, audit, store, project_store)
+    dispatch_debate_task(background_tasks, debate_id, project_id, audit, store)
 
     req = debate.get("request", {})
     max_rounds = getattr(req, "max_rounds", None) if hasattr(req, "max_rounds") else req.get("max_rounds", 3) if isinstance(req, dict) else 3
@@ -528,7 +524,6 @@ async def start_debate_from_layout(
     background_tasks: BackgroundTasks,
     project_id: str = Depends(get_project_id),
     audit: AuditService = Depends(get_audit_service),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> DebateResponse:
     """Start a debate directly from a canvas layout.
 
@@ -540,7 +535,7 @@ async def start_debate_from_layout(
     from backend.tasks.dispatch import dispatch_debate_task
 
     repo = get_blueprint_repository()
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
 
     layout = repo.get_layout(layout_id)
     if not layout:
@@ -584,7 +579,7 @@ async def start_debate_from_layout(
     }
     store.put(debate_id, debate)
 
-    dispatch_debate_task(background_tasks, debate_id, project_id, audit, store, project_store)
+    dispatch_debate_task(background_tasks, debate_id, project_id, audit, store)
 
     return DebateResponse(
         debate_id=debate["debate_id"],
@@ -603,7 +598,6 @@ async def start_debate_from_layout(
 async def cancel_debate(
     debate_id: str,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Cancel a running debate.
 
@@ -613,7 +607,7 @@ async def cancel_debate(
     """
     from backend.services.debate_workflow import mark_cancelled
 
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -648,7 +642,6 @@ async def submit_oob_input(
     debate_id: str,
     body: OOBInputBody,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> OOBInputResponse:
     """Submit an out-of-band input for a running debate.
 
@@ -657,7 +650,7 @@ async def submit_oob_input(
     """
     from backend.services.debate_workflow import enqueue_oob
 
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -737,14 +730,13 @@ async def assign_documents(
     debate_id: str,
     body: DocumentAssignment,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Assign or update documents for a pending debate.
 
     Can be called before or after debate creation, but only while the
     debate is still pending (not yet started).
     """
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debate = store.get(debate_id)
     if not debate:
         raise HTTPException(status_code=404, detail="Debate not found")
@@ -792,16 +784,16 @@ async def list_forks(
     limit: int = 50,
     offset: int = 0,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> list[DebateListItem]:
     """List all forks originating from a given debate (P4).
 
     Allows tracing the fork tree of a debate.
     """
-    store = get_debate_store_for_project(project_id, project_store)
+    store = get_debate_store_for_case(project_id)
     debates = store.list_all(limit=limit + offset)
 
-    project = project_store.get(project_id)
+    from backend.api.deps import get_project_store
+    project = get_project_store().get(project_id)
     project_name = project.name if project else project_id
 
     items = []
@@ -854,7 +846,6 @@ async def list_forks(
 async def on_debate_completed_hook(
     debate_id: str,
     project_id: str = Depends(get_project_id),
-    project_store: ProjectStore = Depends(get_project_store),
 ) -> dict:
     """Internal hook triggered after a debate transitions to completed status (P3).
 

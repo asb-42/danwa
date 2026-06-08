@@ -48,17 +48,16 @@ def _create_task():
 
 async def _run_debate_async(debate_id: str, project_id: str):
     """Async debate execution — called inside the Celery worker's event loop."""
+    from backend.api.deps import get_case_dir
     from backend.persistence.audit import AuditService
     from backend.persistence.debate_store import DebateStore
-    from backend.persistence.project_store import ProjectStore
     from backend.services.debate_workflow import run_debate_workflow
 
-    project_store = ProjectStore()
-    project_dir = project_store.get_project_dir(project_id)
+    project_dir = get_case_dir(project_id)
     store = DebateStore(data_dir=project_dir / "debates")
     audit = AuditService()
 
-    await run_debate_workflow(debate_id, project_id, audit, store, project_store)
+    await run_debate_workflow(debate_id, project_id, audit, store)
 
 
 # Module-level reference — None if Celery is not available

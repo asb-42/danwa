@@ -207,14 +207,13 @@ class RenderEngineService:
         Searches all projects for a debate with the given session_id and builds
         an artifact from its rounds/result data.  Returns None if not found.
         """
+        from backend.api.deps import get_case_dir, get_project_store
         from backend.persistence.debate_store import DebateStore
-        from backend.persistence.project_store import ProjectStore
 
         # Try direct key lookup first (legacy debates keyed by session_id)
         try:
-            project_store = ProjectStore()
-            for project in project_store.list_all():
-                project_dir = project_store.get_project_dir(project.id)
+            for project in get_project_store().list_all():
+                project_dir = get_case_dir(project.id)
                 store = DebateStore(data_dir=project_dir / "debates")
                 debate = store.get(session_id)
                 if debate:
@@ -226,9 +225,8 @@ class RenderEngineService:
 
         # Try by session_id field (MVP debates: session_id=wf-xxx, key=debate_id=mvp-xxx)
         try:
-            project_store = ProjectStore()
-            for project in project_store.list_all():
-                project_dir = project_store.get_project_dir(project.id)
+            for project in get_project_store().list_all():
+                project_dir = get_case_dir(project.id)
                 store = DebateStore(data_dir=project_dir / "debates")
                 for d in store.list_all(limit=500):
                     if d.get("session_id") == session_id:

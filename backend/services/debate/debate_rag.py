@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 
 from backend.persistence.debate_store import DebateStore
-from backend.persistence.project_store import ProjectStore
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +39,11 @@ def _format_analysis_for_rag(analysis: dict) -> str:
 
 def _load_analysis_text(project_id: str, project_store=None) -> str:
     """Load and format document analysis for a project, or return empty string."""
+    from backend.api.deps import get_case_dir
     from backend.services.dms.document_analyzer import load_analysis
 
     try:
-        if project_store:
-            project_dir = project_store.get_project_dir(project_id)
-        else:
-            from backend.persistence.project_store import ProjectStore
-
-            ps = ProjectStore()
-            project_dir = ps.get_project_dir(project_id)
+        project_dir = get_case_dir(project_id)
         analysis = load_analysis(project_dir)
         if analysis and "error" not in analysis:
             logger.info("Loaded document analysis for project %s", project_id)
@@ -73,7 +67,12 @@ def resolve_rag_context(
     """Resolve RAG context for a debate.
 
     Returns (rag_context_string, document_count).
+
+    The ``project_store`` parameter is kept for backward compatibility but
+    is no longer required.
     """
+    from backend.api.deps import get_case_dir
+
     # Lazy imports to avoid circular dependency with debate_workflow
     from backend.services.debate_workflow import _build_transcript_for_followup, _generate_rag_friendly_summary
     from backend.services.dms.service import get_dms_for_project
@@ -81,7 +80,7 @@ def resolve_rag_context(
     analysis_text = _load_analysis_text(project_id, project_store) if include_document_analysis else ""
 
     try:
-        dms = get_dms_for_project(project_id, project_store)
+        dms = get_dms_for_project(project_id)
     except Exception as exc:
         logger.warning("Could not initialize DMS for project %s: %s", project_id, exc)
         if analysis_text:
@@ -122,8 +121,7 @@ def resolve_rag_context(
 
     if include_debate_results:
         try:
-            ps = project_store or ProjectStore()
-            project_dir = ps.get_project_dir(project_id)
+            project_dir = get_case_dir(project_id)
             proj_store = DebateStore(data_dir=project_dir / "debates")
 
             debates = proj_store.list_all(limit=50)
@@ -206,14 +204,19 @@ def resolve_rag_context_with_debate_results(
     project_store: ProjectStore | None = None,
     include_document_analysis: bool = False,
 ) -> tuple[str, int]:
-    """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3)."""
+    """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3).
+
+    The ``project_store`` parameter is kept for backward compatibility but
+    is no longer required.
+    """
+    from backend.api.deps import get_case_dir
     from backend.services.debate_workflow import _build_transcript_for_followup, _generate_rag_friendly_summary
     from backend.services.dms.service import get_dms_for_project
 
     analysis_text = _load_analysis_text(project_id, project_store) if include_document_analysis else ""
 
     try:
-        dms = get_dms_for_project(project_id, project_store)
+        dms = get_dms_for_project(project_id)
     except Exception:
         if analysis_text:
             return analysis_text, 0
@@ -246,8 +249,7 @@ def resolve_rag_context_with_debate_results(
     # Zusätzlich: Debattenergebnisse als Kontext einbeziehen
     if include_debate_results:
         try:
-            ps = project_store or ProjectStore()
-            project_dir = ps.get_project_dir(project_id)
+            project_dir = get_case_dir(project_id)
             debate_store = DebateStore(data_dir=project_dir / "debates")
 
             debates = debate_store.list_all(limit=50)
