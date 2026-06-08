@@ -34,7 +34,7 @@
     proposals: ['proposals'],
     manage: ['manage'],
     'mvp-debate': ['mvp-debate'],
-    inhabit: ['tenant-settings', 'case-list', 'tags'],
+    inhabit: ['tenant-settings', 'case-list', 'tags', 'profile', 'my-keys'],
   };
 
   function isActive(route) {
@@ -59,6 +59,8 @@
         { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
         { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
         { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
+        { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
+        { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
       ],
     },
     {
@@ -116,14 +118,6 @@
         { id: 'server-health', label: t('nav.serverHealth'), icon: '🖥️', route: 'server-health' },
       ],
     }] : []),
-    {
-      id: 'account',
-      label: t('nav.section.account'),
-      items: [
-        { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
-        { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
-      ],
-    },
     {
       id: 'evolve',
       label: t('nav.section.evolve'),
