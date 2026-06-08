@@ -33,8 +33,14 @@ class UserCreate(BaseModel):
     tenant_id: str = "_default"
 
 
+class ProfileUpdateRequest(BaseModel):
+    """Request model for self-service profile update (PUT /me)."""
+
+    display_name: str = Field(min_length=1, max_length=200)
+
+
 class UserUpdate(BaseModel):
-    """Request model for updating a user."""
+    """Request model for admin-updating a user."""
 
     display_name: str | None = None
     role: Literal["admin", "editor", "viewer"] = None

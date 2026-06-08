@@ -20,6 +20,7 @@ from backend.models.membership import TenantMembershipResponse
 from backend.models.user import (
     LoginRequest,
     PasswordChangeRequest,
+    ProfileUpdateRequest,
     RefreshRequest,
     TokenResponse,
     UserCreate,
@@ -137,16 +138,16 @@ def get_me(
 
 @router.put("/me", response_model=UserResponse)
 def update_me(
-    body: dict,
+    body: ProfileUpdateRequest,
     user=Depends(get_current_user),
     user_store=Depends(get_user_store),
 ):
-    """Update the current user's profile (display_name)."""
-    display_name = body.get("display_name")
-    if not display_name:
-        raise HTTPException(status_code=400, detail="display_name is required")
+    """Update the current user's profile (display_name).
 
-    updated = user_store.update(user.id, display_name=display_name)
+    S-03 fix: uses a typed Pydantic model instead of raw dict for
+    input validation (min_length=1, max_length=200 on display_name).
+    """
+    updated = user_store.update(user.id, display_name=body.display_name.strip())
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to update profile")
 
@@ -271,7 +272,14 @@ def select_tenant(
     if not membership:
         raise HTTPException(status_code=403, detail="Not a member of this tenant")
 
-    access_token = create_access_token(user, tenant_id=tenant_id)
+    # S-05 fix: use the tenant-specific role from the membership,
+    # not the user's global role, so a global admin is not
+    # automatically admin in every tenant.
+    access_token = create_access_token(
+        user,
+        tenant_id=tenant_id,
+        role_override=membership.role,
+    )
     refresh_token = create_refresh_token(user)
 
     logger.info("User %s switched to tenant %s (role=%s)", user.email, tenant_id, membership.role)
