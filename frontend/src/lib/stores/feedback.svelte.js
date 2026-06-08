@@ -63,6 +63,7 @@ class FeedbackStore {
       source,
       message,
       level,
+      ...(this.requestId ? { requestId: this.requestId } : {}),
     };
     if (details !== undefined) entry.details = details;
 

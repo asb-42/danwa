@@ -5,6 +5,7 @@
   import { startMvpDebate, submitInterjection, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeProject, userLanguage } from '../lib/stores.js';
+  import { feedbackStore } from '../lib/stores/feedback.svelte.js';
 
   import { getHITLStatus, getInteractions } from '../lib/hitl.js';
   import { hitlStatus, hitlInteractions, showAgentQueryModal, currentAgentQuery } from '../lib/stores/hitl.svelte.js';
@@ -304,10 +305,13 @@
     cleanupSSE = createWorkflowSSE(sid, {
       onOpen: () => { isConnected = true; },
       onClose: () => { isConnected = false; },
-      onWorkflowStarted: () => {
+      onWorkflowStarted: (data) => {
         status = 'running';
         workflowPhase = { type: 'workflow_started' };
         startWorkflowTimer();
+        // T-16: Set request ID for log correlation
+        if (data?.request_id) feedbackStore.setRequestId(data.request_id);
+        feedbackStore.logActivity('workflow', 'system', 'Workflow started', { request_id: data?.request_id });
       },
       onNodeStart: (data) => {
         try {
@@ -350,7 +354,19 @@
           };
           stopWorkflowTimer();
           startProcessingTimer();
+          // T-16: Feed LLM calling state to feedback store
+          feedbackStore.setLlmState('calling', data.model || null, data.provider || null);
+          feedbackStore.logActivity('llm', data.role || 'system', `LLM calling ${data.model || '…'} (${data.provider || ''})`, {
+            node_id: data.node_id, role: data.role, round: data.round, model: data.model,
+          });
         } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onLLMCallStarted error:', e); }
+      },
+      // T-16: Wire LLM error events to feedback store
+      onLLMError: (data) => {
+        try {
+          feedbackStore.setLlmState('error');
+          feedbackStore.reportError(data.error_class || 'unknown', data.message || 'LLM error', data.raw_error, data.node_id);
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onLLMError error:', e); }
       },
       onWebSearch: (data) => {
         try {
@@ -382,6 +398,11 @@
           workflowPhase = null;
           stopProcessingTimer();
           stopWorkflowTimer();
+          // T-16: Clear LLM state and log node completion
+          feedbackStore.setLlmState('idle');
+          feedbackStore.logActivity('node', data.role || 'system',
+            `${data.role || 'node'} completed (Round ${data.round || '?'}, ${tokensUsed} tokens, ${data.duration_ms || 0}ms)`,
+            { node_id: data.node_id, tokens: tokensUsed, duration_ms: data.duration_ms });
         } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onNodeComplete error:', e); }
       },
       onRoundUpdate: (data) => {
@@ -421,6 +442,11 @@
         stopWorkflowTimer();
         if (data.final_consensus !== undefined) { consensus = data.final_consensus; hasReceivedConsensus = true; }
         if (cleanupSSE) { cleanupSSE(); cleanupSSE = null; }
+        // T-16: Clear feedback state on workflow complete
+        feedbackStore.setLlmState('idle');
+        feedbackStore.clearStatus();
+        feedbackStore.logActivity('workflow', 'system',
+          'Workflow completed', { request_id: feedbackStore.requestId });
       },
       onWorkflowPaused: () => { status = 'paused'; },
       onWorkflowResumed: () => { status = 'running'; },
