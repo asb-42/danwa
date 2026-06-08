@@ -713,6 +713,7 @@ class WorkflowCompiler:
             # target when no condition matches.
             elif node.type == "wf-gate" and non_feedback:
                 conditions = {}
+                has_catch_all = False
                 for edge in non_feedback:
                     target = edge.target
                     # Redirect __end__ through __complete__ so the final
@@ -721,6 +722,20 @@ class WorkflowCompiler:
                         target = "__complete__"
                     condition = edge.condition or "True"
                     conditions[target] = condition
+                    if condition.strip() in ("True", "true", "1"):
+                        has_catch_all = True
+
+                # 3.2: Warn if no explicit catch-all condition exists —
+                # the fallback will be the last condition's target, which
+                # is arbitrary and may surprise template authors.
+                if not has_catch_all and not feedback_edges:
+                    warnings.append(
+                        f"Gate node '{node.id}' has no explicit catch-all "
+                        f"condition (e.g. 'True') and no feedback edge.  "
+                        f"Unmatched conditions will fall back to the last "
+                        f"target ('{list(conditions.keys())[-1]}').  "
+                        f"Add a 'True' condition to make the fallback explicit."
+                    )
 
                 router = route_conditional(conditions, gate_node_id=node.id)
                 mapping = {tid: tid for tid in conditions}
@@ -852,17 +867,33 @@ class WorkflowCompiler:
                 for edge in non_feedback:
                     graph.add_edge(node.id, edge.target)
                 target_ids = [e.target for e in non_feedback]
-                warnings.append(
-                    f"Node '{node.id}' has {len(non_feedback)} non-feedback "
-                    f"outgoing edges ({', '.join(target_ids)}).  Consider "
-                    f"using a wf-gate node for conditional branching."
-                )
-                logger.info(
-                    "Fan-out from '%s' to %d targets: %s",
-                    node.id,
-                    len(non_feedback),
-                    target_ids,
-                )
+
+                # 3.3: Validate fan-out convergence — check whether all
+                # targets eventually reach a common downstream node.
+                # If they don't, both branches reach __complete__
+                # independently, causing duplicate output assembly.
+                common = self._find_common_downstream(target_ids, workflow)
+                if common:
+                    logger.info(
+                        "Fan-out from '%s' converges at: %s",
+                        node.id,
+                        sorted(common),
+                    )
+                else:
+                    warnings.append(
+                        f"Node '{node.id}' fans out to {len(non_feedback)} "
+                        f"targets ({', '.join(target_ids)}) that do NOT "
+                        f"converge to a common downstream node.  Both "
+                        f"branches will reach __complete__ independently, "
+                        f"resulting in duplicate final output assembly.  "
+                        f"Add a shared downstream node (e.g. a wf-gate or "
+                        f"join node) to ensure convergence."
+                    )
+                    logger.warning(
+                        "Fan-out from '%s' has no convergence point — targets %s will each reach __complete__ independently",
+                        node.id,
+                        target_ids,
+                    )
 
         # --- Ensure terminal nodes connect to END ---
         # Find nodes with no outgoing edges that aren't already connected
@@ -880,6 +911,45 @@ class WorkflowCompiler:
         )
 
         return graph.compile(), warnings
+
+    def _find_common_downstream(
+        self,
+        start_ids: list[str],
+        workflow: WorkflowDefinition,
+    ) -> set[str]:
+        """Find nodes reachable from ALL start_ids (BFS convergence check).
+
+        Returns the set of node IDs that every fan-out target can reach.
+        Empty set means the branches never converge.
+        """
+        # Build adjacency from workflow edges (all non-interjection edges)
+        adj: dict[str, list[str]] = {}
+        for edge in workflow.edges:
+            if edge.type != "interjection":
+                adj.setdefault(edge.source, []).append(edge.target)
+
+        def _reachable(start: str) -> set[str]:
+            visited: set[str] = set()
+            queue: deque[str] = deque([start])
+            while queue:
+                n = queue.popleft()
+                if n in visited:
+                    continue
+                visited.add(n)
+                for child in adj.get(n, []):
+                    if child not in visited:
+                        queue.append(child)
+            return visited
+
+        if not start_ids:
+            return set()
+
+        sets = [_reachable(tid) for tid in start_ids]
+        common = set.intersection(*sets)
+        # Exclude __complete__ and END — these are implicit terminators,
+        # not "real" convergence points.
+        meaningful = common - {"__complete__", "END"}
+        return meaningful
 
     def _create_node_function(
         self,

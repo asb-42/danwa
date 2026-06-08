@@ -142,10 +142,10 @@ class TestM1MultiTargetWarning:
         assert result.is_valid  # warning, not error
         assert len(result.warnings) == 1
         assert "node-s1" in result.warnings[0]
-        assert "non-feedback" in result.warnings[0]
+        # 3.3: The convergence warning replaces the old "non-feedback" message
+        # when fan-out targets don't share a common downstream node.
+        assert "do NOT converge" in result.warnings[0]
         assert "wf-sink-a" in result.warnings[0]
-        # The hint must mention how to fix
-        assert "wf-gate" in result.warnings[0]
 
     def test_single_target_emits_no_warning(self, repo: BlueprintRepository, sample_blueprint_id: str) -> None:
         """A well-formed workflow (single target per node) must NOT
