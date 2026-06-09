@@ -1,7 +1,10 @@
 <script>
   import { formatNumber, tStore } from '../lib/i18n/index.js';
   import { onDestroy } from 'svelte';
-  import { getLLMProfiles, getDebate, getDocuments } from '../lib/api.js';
+  import { get } from 'svelte/store';
+  import { getLLMProfiles, getDebate } from '../lib/api.js';
+  import { getCaseDocuments, getCaseDebate } from '../lib/api/case.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
   import { startMvpDebate, submitInterjection, getCompositionComponents } from '../lib/workflowExec.js';
   import { createWorkflowSSE } from '../lib/workflowSSE.js';
   import { activeCase, userLanguage } from '../lib/stores.js';
@@ -151,9 +154,15 @@
   });
 
   $effect(() => {
-    getDocuments()
-      .then((docs) => { availableDocuments = docs; })
-      .catch(() => { availableDocuments = []; });
+    const tenant = get(currentTenant);
+    const caseObj = get(activeCase);
+    if (tenant?.id && caseObj?.id) {
+      getCaseDocuments(tenant.id, caseObj.id)
+        .then((docs) => { availableDocuments = docs; })
+        .catch(() => { availableDocuments = []; });
+    } else {
+      availableDocuments = [];
+    }
   });
 
   $effect(() => {
@@ -166,7 +175,11 @@
 
     (async () => {
       try {
-        const debate = await getDebate(eid);
+        const tenant = get(currentTenant);
+        const caseObj = get(activeCase);
+        const debate = (tenant?.id && caseObj?.id)
+          ? await getCaseDebate(tenant.id, caseObj.id, eid)
+          : await getDebate(eid);
         debateId = debate.debate_id;
         debateTitle = debate.title || '';
         config.topic = debate.case_text || '';

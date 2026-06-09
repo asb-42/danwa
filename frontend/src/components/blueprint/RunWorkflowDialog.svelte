@@ -6,7 +6,10 @@
    * On confirm, calls the onstart callback with the collected parameters.
    */
   import { tStore } from '../../lib/i18n/index.js';
-  import { getDocuments } from '../../lib/api.js';
+  import { getCaseDocuments } from '../../lib/api/case.js';
+  import { currentTenant } from '../../lib/stores/auth.svelte.js';
+  import { activeCase } from '../../lib/stores.js';
+  import { get } from 'svelte/store';
 
   /** @type {{ visible?: boolean, layoutName?: string, onstart?: Function, onclose?: Function }} */
   let {
@@ -83,9 +86,15 @@
       includeDocumentAnalysis = false;
       error = '';
       isStarting = false;
-      getDocuments()
-        .then((docs) => { availableDocuments = docs; })
-        .catch(() => { availableDocuments = []; });
+      const tenant = get(currentTenant);
+      const caseObj = get(activeCase);
+      if (tenant?.id && caseObj?.id) {
+        getCaseDocuments(tenant.id, caseObj.id)
+          .then((docs) => { availableDocuments = docs; })
+          .catch(() => { availableDocuments = []; });
+      } else {
+        availableDocuments = [];
+      }
     }
   });
 </script>

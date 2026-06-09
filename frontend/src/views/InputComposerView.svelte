@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import { onDestroy } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
-  import { currentDebate, debates, autoStartDebate } from '../lib/stores.js';
+  import { currentDebate, debates, autoStartDebate, activeCase } from '../lib/stores.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
   import {
     listInputPlugins,
@@ -22,7 +22,7 @@
   } from '../lib/input/inputApi.js';
   import { createInputJobTracker } from '../lib/input/inputJobStore.js';
   import { listWorkflowTemplates } from '../lib/blueprint/api.js';
-  import { getDocuments } from '../lib/api/document.js';
+  import { getCaseDocuments } from '../lib/api/case.js';
   import { setActiveWorkflowSession } from '../lib/workflowSession.js';
   import PluginSelector from '../components/input/PluginSelector.svelte';
   import STTMicrophoneButton from '../components/input/STTMicrophoneButton.svelte';
@@ -90,10 +90,14 @@
       })
       .catch((e) => { if (import.meta.env.DEV) console.warn('Failed to load workflow templates:', e.message); });
 
-    // Phase 3: Load project documents for RAG
-    getDocuments()
-      .then((docs) => { documents = docs || []; })
-      .catch((e) => { if (import.meta.env.DEV) console.warn('Failed to load documents:', e.message) } );
+    // Phase 3: Load case documents for RAG
+    const tenant = $currentTenant;
+    const caseObj = $activeCase;
+    if (tenant?.id && caseObj?.id) {
+      getCaseDocuments(tenant.id, caseObj.id)
+        .then((docs) => { documents = docs || []; })
+        .catch((e) => { if (import.meta.env.DEV) console.warn('Failed to load documents:', e.message) } );
+    }
 
     // Phase 4: Start polling for pending A2A jobs
     startA2APolling();

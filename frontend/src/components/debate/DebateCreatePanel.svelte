@@ -5,8 +5,10 @@
    * Owns all form state and emits onCreate with the collected parameters.
    */
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { loading, error, selectedLLMProfile, activeCase, userLanguage } from '../../lib/stores.js';
-  import { createDebate, startDebate, getDocuments } from '../../lib/api.js';
+  import { currentTenant } from '../../lib/stores/auth.svelte.js';
+  import { getCaseDocuments, createCaseDebate, startCaseDebate } from '../../lib/api/case.js';
   import { startWorkflow } from '../../lib/workflowExec.js';
   import { listWorkflowDefinitions } from '../../lib/blueprint/api.js';
   import { discoverA2A } from '../../lib/a2aApi.js';
@@ -71,7 +73,12 @@
 
   async function loadAvailableDocuments() {
     try {
-      availableDocuments = await getDocuments();
+      const tenant = get(currentTenant);
+      if (tenant?.id && caseId) {
+        availableDocuments = await getCaseDocuments(tenant.id, caseId);
+      } else {
+        availableDocuments = [];
+      }
     } catch {
       availableDocuments = [];
     }
@@ -170,8 +177,14 @@
         a2aAgents = [];
         onCreated(response);
       } else {
-        // Legacy debate path
-        const response = await createDebate(caseText, {
+        // Tenant-scoped debate path
+        const tenant = get(currentTenant);
+        const tenantId = tenant?.id;
+        if (!tenantId || !caseId) {
+          throw new Error('No tenant or case selected');
+        }
+        const response = await createCaseDebate(tenantId, caseId, {
+          case_text: caseText,
           max_rounds: maxRounds,
           consensus_threshold: consensusThreshold,
           search_mode: searchMode,
@@ -183,9 +196,7 @@
           enable_extra_rounds: enableExtraRounds,
           a2a_agents: validA2AAgents,
         });
-        // The "Create Debate" button starts the debate immediately
-        // (no separate "Start" step in the legacy flow).
-        const started = await startDebate(response.debate_id);
+        const started = await startCaseDebate(tenantId, caseId, response.debate_id);
         caseText = '';
         selectedDocumentIds = [];
         ragAutoRetrieve = false;
