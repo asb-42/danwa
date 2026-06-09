@@ -91,16 +91,29 @@ def get_tag_store():
 def get_case_dir(case_id: str) -> Path:
     """Resolve a case/project ID to its filesystem directory.
 
-    This is the central abstraction for directory resolution.  Currently
-    delegates to ``ProjectStore.get_project_dir()`` internally.  Once all
-    callers are migrated, this will switch to ``CaseStore`` without any
-    downstream changes.
+    Resolution order:
+    1. Try ``ProjectStore.get_project_dir()`` (legacy project IDs).
+    2. If directory doesn't exist, search ``data/tenants/*/cases/{case_id}/``
+       for a CaseStore-managed case directory.
     """
     ps = get_project_store()
     project_dir = ps.get_project_dir(case_id)
-    if not project_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Case directory not found: {case_id}")
-    return project_dir
+    if project_dir.exists():
+        return project_dir
+
+    # Fallback: search CaseStore tenant directories for the case_id.
+    # Case IDs are UUIDs so a filesystem scan is safe and rare.
+    from backend.persistence.case_store import _DEFAULT_BASE_DIR as CASE_BASE
+
+    if CASE_BASE.is_dir():
+        for tenant_dir in sorted(CASE_BASE.iterdir()):
+            if not tenant_dir.is_dir():
+                continue
+            candidate = tenant_dir / "cases" / case_id
+            if candidate.is_dir():
+                return candidate
+
+    raise HTTPException(status_code=404, detail=f"Case directory not found: {case_id}")
 
 
 def get_debate_store_for_case(case_id: str) -> DebateStore:
