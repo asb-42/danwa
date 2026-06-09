@@ -213,11 +213,11 @@ class TestHeaderValidation:
         assert response.status_code == 200
 
     def test_invalid_project_id_returns_error(self, client):
-        with pytest.raises(Exception):
-            client.get(
-                "/api/v1/debate",
-                headers={"X-Case-Id": "nonexistent-case"},
-            )
+        response = client.get(
+            "/api/v1/debate",
+            headers={"X-Case-Id": "nonexistent-case"},
+        )
+        assert response.status_code == 404
 
     def test_valid_project_id_accepted(self, client, two_projects):
         pa, _ = two_projects
