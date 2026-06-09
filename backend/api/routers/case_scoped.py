@@ -534,6 +534,36 @@ async def cancel_case_debate(
     return {"status": "ok", "message": "Cancellation requested"}
 
 
+@router.post("/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}/force-reset")
+async def force_reset_case_debate(
+    tenant_id: str,
+    case_id: str,
+    debate_id: str,
+    case_store: CaseStore = Depends(get_case_store),
+) -> dict:
+    """Force-reset a stuck 'running' debate to 'failed' (idempotent)."""
+    from datetime import UTC, datetime
+
+    store = _get_debate_store_for_case(tenant_id, case_id, case_store)
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate.get("status")
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val != "running":
+        return {"status": status_val, "message": f"Debate is not running (current status: {status_val})"}
+
+    store.update(
+        debate_id,
+        status=DebateStatus.FAILED,
+        updated_at=datetime.now(UTC),
+        result={"error": "Force-reset: debate was stuck in 'running' state"},
+    )
+    logger.info("Force-reset debate %s in case %s from 'running' to 'failed'", debate_id, case_id)
+    return {"status": "ok", "message": "Debate reset to 'failed'"}
+
+
 @router.post("/tenants/{tenant_id}/cases/{case_id}/debates/{debate_id}/oob", response_model=OOBInputResponse)
 async def submit_case_oob_input(
     tenant_id: str,

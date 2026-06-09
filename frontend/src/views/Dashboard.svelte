@@ -188,8 +188,7 @@
           {t(`tenant.plan.${tenant.plan}`) || tenant.plan}
         </span>
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <QuotaIndicator label={t('tenant.projectsUsed', { used: '—', max: tenant.max_projects })} max={tenant.max_projects} icon="📁" />
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
         <QuotaIndicator label={t('tenant.debatesUsed', { used: '—', max: tenant.max_concurrent_debates })} max={tenant.max_concurrent_debates} icon="💬" />
         <QuotaIndicator label={t('tenant.documentsUsed', { used: '—', max: tenant.max_documents })} max={tenant.max_documents} icon="📄" />
         <QuotaIndicator label={t('tenant.storageUsed', { used: '—', max: tenant.max_storage_mb })} max={tenant.max_storage_mb} icon="💾" />

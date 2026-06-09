@@ -113,6 +113,14 @@ class DebateStore:
         )
         return debates[offset : offset + limit]
 
+    def list_by_status(self, status: DebateStatus) -> list[dict]:
+        """Return all debates with the given status."""
+        return [
+            d
+            for d in self._cache.values()
+            if d.get("status") == status
+        ]
+
     def count(self) -> int:
         """Total number of debates."""
         return len(self._cache)

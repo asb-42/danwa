@@ -226,6 +226,12 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.debug("Membership backfill skipped", exc_info=True)
 
+    # Reset stale "running" debates that survived a previous crash/restart.
+    try:
+        _reset_stale_running_debates()
+    except Exception:
+        logger.debug("Stale debate cleanup skipped", exc_info=True)
+
     # Bootstrap i18n: migrate core locale translations to langpack namespace (idempotent)
     from backend.services.ui_translation_service import UITranslationService
 
@@ -336,6 +342,38 @@ def _backfill_memberships() -> None:
 
     if backfilled:
         logger.info("Membership backfill: created %d membership(s)", backfilled)
+
+
+def _reset_stale_running_debates() -> None:
+    """Reset debates stuck in 'running' state from a previous crash or restart.
+
+    On startup any debate still marked 'running' is presumed dead (the
+    previous process was killed before it could update the status).
+    Resets them to 'failed' so the dashboard counter is accurate and
+    the tenant quota is released.
+    """
+    from datetime import UTC, datetime
+
+    from backend.models.schemas import DebateStatus
+    from backend.persistence.debate_store import DebateStore
+
+    store = DebateStore()
+    stale = store.list_by_status(DebateStatus.RUNNING)
+    if not stale:
+        return
+
+    now = datetime.now(UTC)
+    for d in stale:
+        debate_id = d.get("debate_id", "unknown")
+        store.update(
+            debate_id,
+            status=DebateStatus.FAILED,
+            updated_at=now,
+            result={"error": "Reset on startup: debate was stuck in 'running' state"},
+        )
+        logger.warning("Reset stale running debate %s to 'failed'", debate_id)
+
+    logger.info("Startup cleanup: reset %d stale running debate(s) to 'failed'", len(stale))
 
 
 def create_app() -> FastAPI:

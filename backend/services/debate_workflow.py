@@ -278,6 +278,23 @@ async def run_debate_workflow(
     if not debate:
         return
 
+    try:
+      await _run_debate_workflow_inner(debate_id, project_id, audit, store, debate)
+    except Exception as exc:
+        logger.error("Debate %s failed with unhandled exception: %s", debate_id, exc, exc_info=True)
+        store.update(debate_id, status=DebateStatus.FAILED, updated_at=datetime.now(UTC))
+        clear_cancel(debate_id)
+
+
+async def _run_debate_workflow_inner(
+    debate_id: str,
+    project_id: str,
+    audit: AuditService,
+    store: DebateStore,
+    debate: dict,
+) -> None:
+    """Inner workflow body — separated so the outer wrapper can catch all exceptions."""
+
     # --- Publish: workflow started ---
     await publish_async(
         debate_id,

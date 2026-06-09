@@ -634,6 +634,38 @@ async def cancel_debate(
     return {"status": "ok", "message": "Cancellation requested"}
 
 
+@router.post("/{debate_id}/force-reset")
+async def force_reset_debate(
+    debate_id: str,
+    project_id: str = Depends(get_project_id),
+) -> dict:
+    """Force-reset a stuck 'running' debate to 'failed'.
+
+    Use this when a debate is stuck in 'running' state after a crash
+    or server restart. Only operates on debates with status 'running'.
+    """
+    from datetime import UTC, datetime
+
+    store = get_debate_store_for_case(project_id)
+    debate = store.get(debate_id)
+    if not debate:
+        raise HTTPException(status_code=404, detail="Debate not found")
+
+    status = debate.get("status")
+    status_val = status.value if hasattr(status, "value") else status
+    if status_val != "running":
+        return {"status": status_val, "message": f"Debate is not running (current status: {status_val})"}
+
+    store.update(
+        debate_id,
+        status=DebateStatus.FAILED,
+        updated_at=datetime.now(UTC),
+        result={"error": "Force-reset: debate was stuck in 'running' state"},
+    )
+    logger.info("Force-reset debate %s from 'running' to 'failed'", debate_id)
+    return {"status": "ok", "message": "Debate reset to 'failed'"}
+
+
 # ---------------------------------------------------------------------------
 # Out-of-Band (OOB) Input endpoint
 # ---------------------------------------------------------------------------
