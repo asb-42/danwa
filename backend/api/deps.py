@@ -97,8 +97,11 @@ def get_case_dir(case_id: str) -> Path:
        for a CaseStore-managed case directory.
     """
     ps = get_project_store()
-    project_dir = ps.get_project_dir(case_id)
-    if project_dir.exists():
+    try:
+        project_dir = ps.get_project_dir(case_id)
+    except FileNotFoundError:
+        project_dir = None
+    if project_dir and project_dir.exists():
         return project_dir
 
     # Fallback: search CaseStore tenant directories for the case_id.
