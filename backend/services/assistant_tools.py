@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -128,11 +129,59 @@ async def get_system_status(**ctx: Any) -> dict[str, Any]:
         except Exception:
             pass
 
+        # If the provided store is empty (legacy dir), scan case directories
+        if debates_count == 0:
+            debates_count = len(_aggregate_debates_from_cases())
+
     return {
         "active_sessions": sessions_count,
         "llm_profiles_count": profiles_count,
         "active_debates_count": debates_count,
     }
+
+
+def _aggregate_debates_from_cases() -> list[dict]:
+    """Scan all tenant/case debate directories and aggregate debates."""
+    from backend.persistence.case_store import _DEFAULT_BASE_DIR as CASE_BASE
+
+    debates: list[dict] = []
+    if not CASE_BASE.is_dir():
+        return debates
+
+    for tenant_dir in sorted(CASE_BASE.iterdir()):
+        if not tenant_dir.is_dir():
+            continue
+        cases_dir = tenant_dir / "cases"
+        if not cases_dir.is_dir():
+            continue
+        for case_dir in sorted(cases_dir.iterdir()):
+            if not case_dir.is_dir():
+                continue
+            debates_dir = case_dir / "debates"
+            if not debates_dir.is_dir():
+                continue
+            for path in debates_dir.glob("*.json"):
+                try:
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                    if data.get("debate_id"):
+                        debates.append(data)
+                except Exception:
+                    pass
+
+    # Also scan legacy data/debates/ directory
+    legacy_dir = Path("data/debates")
+    if legacy_dir.is_dir():
+        for path in legacy_dir.glob("*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if data.get("debate_id") and data["debate_id"] not in {d["debate_id"] for d in debates}:
+                    debates.append(data)
+            except Exception:
+                pass
+
+    # Sort newest first
+    debates.sort(key=lambda d: d.get("created_at", ""), reverse=True)
+    return debates
 
 
 @tool(
@@ -161,30 +210,32 @@ async def list_debates(
 ) -> list[dict[str, Any]]:
     """Return a list of debates with key metadata."""
     debate_store = ctx.get("debate_store")
-    if not debate_store:
+
+    # If the provided store has no debates, scan all case directories
+    debates = []
+    if debate_store:
+        debates = debate_store.list_all(limit=999)
+        if not debates:
+            debates = _aggregate_debates_from_cases()
+    else:
         return [{"error": "Debate store not available"}]
 
-    try:
-        all_debates = debate_store.list_all(limit=min(limit, 50))
-        result = []
-        for d in all_debates:
-            d_status = d.get("status", "unknown")
-            if status != "all" and d_status != status:
-                continue
-            result.append(
-                {
-                    "debate_id": d.get("debate_id", ""),
-                    "title": d.get("title", "")[:100],
-                    "status": d_status,
-                    "current_round": d.get("current_round", 0),
-                    "max_rounds": d.get("max_rounds", 0),
-                    "created_at": str(d.get("created_at", "")),
-                }
-            )
-        return result
-    except Exception as e:
-        logger.error("Failed to list debates: %s", e, exc_info=True)
-        return [{"error": str(e)}]
+    result = []
+    for d in debates[:min(limit, 50)]:
+        d_status = d.get("status", "unknown")
+        if status != "all" and d_status != status:
+            continue
+        result.append(
+            {
+                "debate_id": d.get("debate_id", ""),
+                "title": d.get("title", "")[:100],
+                "status": d_status,
+                "current_round": d.get("current_round", 0),
+                "max_rounds": d.get("max_rounds", 0),
+                "created_at": str(d.get("created_at", "")),
+            }
+        )
+    return result
 
 
 @tool(
@@ -204,29 +255,35 @@ async def list_debates(
 async def get_debate_details(debate_id: str, **ctx: Any) -> dict[str, Any]:
     """Return full details of a single debate."""
     debate_store = ctx.get("debate_store")
-    if not debate_store:
+
+    debate = None
+    if debate_store:
+        debate = debate_store.get(debate_id)
+
+        # If not found in the provided store, scan case directories
+        if not debate:
+            for d in _aggregate_debates_from_cases():
+                if d.get("debate_id") == debate_id:
+                    debate = d
+                    break
+    else:
         return {"error": "Debate store not available"}
 
-    try:
-        debate = debate_store.get(debate_id)
-        if not debate:
-            return {"error": f"Debate not found: {debate_id}"}
+    if not debate:
+        return {"error": f"Debate not found: {debate_id}"}
 
-        return {
-            "debate_id": debate.get("debate_id", ""),
-            "title": debate.get("title", ""),
-            "status": debate.get("status", "unknown"),
-            "current_round": debate.get("current_round", 0),
-            "max_rounds": debate.get("max_rounds", 0),
-            "consensus": debate.get("final_consensus", None),
-            "created_at": str(debate.get("created_at", "")),
-            "updated_at": str(debate.get("updated_at", "")),
-            "round_count": len(debate.get("rounds", [])),
-            "llm_assignments": debate.get("llm_assignments", {}),
-        }
-    except Exception as e:
-        logger.error("Failed to get debate details: %s", e, exc_info=True)
-        return {"error": str(e)}
+    return {
+        "debate_id": debate.get("debate_id", ""),
+        "title": debate.get("title", ""),
+        "status": debate.get("status", "unknown"),
+        "current_round": debate.get("current_round", 0),
+        "max_rounds": debate.get("max_rounds", 0),
+        "consensus": debate.get("final_consensus", None),
+        "created_at": str(debate.get("created_at", "")),
+        "updated_at": str(debate.get("updated_at", "")),
+        "round_count": len(debate.get("rounds", [])),
+        "llm_assignments": debate.get("llm_assignments", {}),
+    }
 
 
 @tool(
