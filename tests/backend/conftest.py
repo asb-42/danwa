@@ -2,23 +2,30 @@
 
 from __future__ import annotations
 
+from unittest import mock
+
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.api import deps as deps_module
 from backend.api.deps import (
     get_audit_service,
+    get_case_store,
     get_current_user,
     get_debate_store,
     get_project_id,
     get_project_store,
     get_settings,
+    get_tenant_store,
 )
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.models.user import User
 from backend.persistence.audit import AuditService
+from backend.persistence.case_store import CaseStore
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
+from backend.persistence.tenant_store import TenantStore
 
 
 @pytest.fixture()
@@ -51,6 +58,18 @@ def project_store(tmp_path) -> ProjectStore:
 
 
 @pytest.fixture()
+def tenant_store(tmp_path) -> TenantStore:
+    """Isolated TenantStore with temp database."""
+    return TenantStore(db_path=tmp_path / "test_tenant.db")
+
+
+@pytest.fixture()
+def case_store(tmp_path) -> CaseStore:
+    """Isolated CaseStore with temp directory."""
+    return CaseStore(base_dir=tmp_path / "test_cases")
+
+
+@pytest.fixture()
 def default_project(project_store):
     """Ensure a default project exists and return its ID."""
     project = project_store.get_or_create_default()
@@ -58,7 +77,33 @@ def default_project(project_store):
 
 
 @pytest.fixture()
-def app(settings, audit_service, debate_store, project_store, default_project):
+def default_tenant(tenant_store):
+    """Ensure a default tenant exists and return its ID."""
+    existing = tenant_store.get("_default")
+    if existing:
+        return existing.id
+    return tenant_store.create("Default Tenant", tenant_id="_default").id
+
+
+@pytest.fixture()
+def default_case(case_store, default_tenant):
+    """Ensure a default case exists for the default tenant and return its ID."""
+    case = case_store.get_or_create_default(default_tenant)
+    return case.id
+
+
+@pytest.fixture()
+def app(
+    settings,
+    audit_service,
+    debate_store,
+    project_store,
+    tenant_store,
+    case_store,
+    default_project,
+    default_tenant,
+    default_case,
+):
     """FastAPI app with overridden dependencies."""
     get_project_store.cache_clear()
     application = create_app()
@@ -69,7 +114,7 @@ def app(settings, audit_service, debate_store, project_store, default_project):
         display_name="Test User",
         password_hash="",
         role="admin",
-        tenant_id="_default",
+        tenant_id=default_tenant,
     )
 
     application.dependency_overrides[get_settings] = lambda: settings
@@ -78,9 +123,28 @@ def app(settings, audit_service, debate_store, project_store, default_project):
     application.dependency_overrides[get_debate_store] = lambda: debate_store
     application.dependency_overrides[get_project_store] = lambda: project_store
     application.dependency_overrides[get_project_id] = lambda: default_project
-    # Store for test helpers to access via client.app.state.test_project_store
+    application.dependency_overrides[get_tenant_store] = lambda: tenant_store
+    application.dependency_overrides[get_case_store] = lambda: case_store
+    # Store for test helpers to access via client.app.state
     application.state.test_project_store = project_store
-    return application
+    application.state.test_tenant_store = tenant_store
+    application.state.test_case_store = case_store
+    application.state.test_default_tenant = default_tenant
+    application.state.test_default_case = default_case
+
+    # Monkeypatch module-level functions called outside FastAPI DI
+    # (e.g. get_case_dir -> get_project_store, get_tenant_store, get_case_store)
+    mpatch = mock.patch.multiple(
+        deps_module,
+        get_project_store=mock.MagicMock(return_value=project_store),
+        get_tenant_store=mock.MagicMock(return_value=tenant_store),
+        get_case_store=mock.MagicMock(return_value=case_store),
+    )
+    mpatch.start()
+    application.state._deps_monkeypatch = mpatch
+    yield application
+    mpatch.stop()
+    del application.state._deps_monkeypatch
 
 
 @pytest.fixture(autouse=True)

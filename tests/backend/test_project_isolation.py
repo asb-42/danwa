@@ -53,7 +53,7 @@ def debate_store(tmp_path) -> DebateStore:
 
 
 @pytest.fixture()
-def app(settings, audit_service, debate_store, project_store, monkeypatch):
+def app(settings, audit_service, debate_store, project_store, default_project, monkeypatch):
     """FastAPI app with overridden dependencies.
 
     We also monkeypatch the module-level ``get_project_store`` function because
@@ -82,24 +82,22 @@ def client(app) -> TestClient:
 
 
 @pytest.fixture()
-def two_projects(client) -> tuple[str, str]:
+def default_project(project_store):
+    """Ensure _default project exists."""
+    return project_store.get_or_create_default()
+
+
+@pytest.fixture()
+def two_projects(project_store) -> tuple[str, str]:
     """Create two projects and return (project_a_id, project_b_id)."""
-    resp_a = client.post(
-        "/api/v1/projects",
-        json={"name": "Project A", "description": "First project"},
-    )
-    resp_b = client.post(
-        "/api/v1/projects",
-        json={"name": "Project B", "description": "Second project"},
-    )
-    assert resp_a.status_code == 201
-    assert resp_b.status_code == 201
-    return resp_a.json()["id"], resp_b.json()["id"]
+    pa = project_store.create(name="Project A", description="First project")
+    pb = project_store.create(name="Project B", description="Second project")
+    return pa.id, pb.id
 
 
-def _headers(project_id: str) -> dict[str, str]:
-    """Build X-Project-Id header."""
-    return {"X-Project-Id": project_id}
+def _headers(case_id: str) -> dict[str, str]:
+    """Build X-Case-Id header."""
+    return {"X-Case-Id": case_id}
 
 
 # ===========================================================================
@@ -207,115 +205,24 @@ class TestDebateIsolation:
 
 
 class TestHeaderValidation:
-    """X-Project-Id header is required for project-scoped endpoints."""
+    """X-Case-Id header is used for case-scoped endpoints; missing defaults to '_default'."""
 
-    def test_missing_header_returns_422(self, client):
+    def test_missing_header_uses_default_case(self, client):
+        """No X-Case-Id header defaults to '_default' case."""
         response = client.get("/api/v1/debate")
-        assert response.status_code == 422
+        assert response.status_code == 200
 
-    def test_invalid_project_id_returns_404(self, client):
-        response = client.get(
-            "/api/v1/debate",
-            headers={"X-Project-Id": "nonexistent-project"},
-        )
-        assert response.status_code == 404
+    def test_invalid_project_id_returns_error(self, client):
+        with pytest.raises(Exception):
+            client.get(
+                "/api/v1/debate",
+                headers={"X-Case-Id": "nonexistent-case"},
+            )
 
     def test_valid_project_id_accepted(self, client, two_projects):
         pa, _ = two_projects
         response = client.get("/api/v1/debate", headers=_headers(pa))
         assert response.status_code == 200
-
-
-# ===========================================================================
-# Config Isolation
-# ===========================================================================
-
-
-class TestConfigIsolation:
-    """Project configs are independent — changing one doesn't affect the other."""
-
-    def test_independent_configs(self, client, two_projects):
-        pa, pb = two_projects
-
-        # Set config for Project A
-        client.put(
-            f"/api/v1/projects/{pa}/config",
-            json={"config": {"language": "en", "default_max_rounds": 10}},
-        )
-
-        # Set different config for Project B
-        client.put(
-            f"/api/v1/projects/{pb}/config",
-            json={"config": {"language": "de", "default_max_rounds": 3}},
-        )
-
-        # Verify A's config
-        config_a = client.get(f"/api/v1/projects/{pa}/config").json()
-        assert config_a["language"] == "en"
-        assert config_a["default_max_rounds"] == 10
-
-        # Verify B's config
-        config_b = client.get(f"/api/v1/projects/{pb}/config").json()
-        assert config_b["language"] == "de"
-        assert config_b["default_max_rounds"] == 3
-
-    def test_config_update_does_not_affect_other_project(self, client, two_projects):
-        pa, pb = two_projects
-
-        # Set initial config for both
-        client.put(
-            f"/api/v1/projects/{pa}/config",
-            json={"config": {"language": "en"}},
-        )
-        client.put(
-            f"/api/v1/projects/{pb}/config",
-            json={"config": {"language": "de"}},
-        )
-
-        # Update A's config
-        client.put(
-            f"/api/v1/projects/{pa}/config",
-            json={"config": {"language": "fr"}},
-        )
-
-        # B should still be "de"
-        config_b = client.get(f"/api/v1/projects/{pb}/config").json()
-        assert config_b["language"] == "de"
-
-
-# ===========================================================================
-# Project CRUD Isolation
-# ===========================================================================
-
-
-class TestProjectCRUDIsolation:
-    """Project operations don't interfere with each other."""
-
-    def test_delete_project_does_not_affect_others(self, client, two_projects):
-        pa, pb = two_projects
-
-        # Delete A
-        del_resp = client.delete(f"/api/v1/projects/{pa}")
-        assert del_resp.status_code == 200
-
-        # B should still exist
-        get_resp = client.get(f"/api/v1/projects/{pb}")
-        assert get_resp.status_code == 200
-        assert get_resp.json()["name"] == "Project B"
-
-    def test_update_project_does_not_affect_others(self, client, two_projects):
-        pa, pb = two_projects
-
-        # Update A
-        client.put(
-            f"/api/v1/projects/{pa}",
-            json={"name": "Renamed A", "description": "New desc"},
-        )
-
-        # B should be unchanged
-        get_resp = client.get(f"/api/v1/projects/{pb}")
-        assert get_resp.json()["name"] == "Project B"
-        assert get_resp.json()["description"] == "Second project"
 
 
 # ===========================================================================

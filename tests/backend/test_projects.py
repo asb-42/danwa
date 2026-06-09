@@ -1,26 +1,31 @@
-"""Tests for project management — ProjectStore unit tests and API tests."""
+"""Tests for project management — ProjectStore unit tests and tenant/case API tests."""
 
 from __future__ import annotations
 
-import uuid
+from unittest import mock
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.api import deps as deps_module
 from backend.api.deps import (
     get_audit_service,
+    get_case_store,
     get_current_user,
     get_debate_store,
     get_project_store,
     get_settings,
+    get_tenant_store,
 )
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.models.project import ProjectConfig
 from backend.models.user import User
 from backend.persistence.audit import AuditService
+from backend.persistence.case_store import CaseStore
 from backend.persistence.debate_store import DebateStore
 from backend.persistence.project_store import ProjectStore
+from backend.persistence.tenant_store import TenantStore
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -53,8 +58,26 @@ def debate_store(tmp_path) -> DebateStore:
 
 
 @pytest.fixture()
-def app(settings, audit_service, debate_store, project_store):
-    """FastAPI app with overridden dependencies including project_store."""
+def tenant_store(tmp_path) -> TenantStore:
+    return TenantStore(db_path=tmp_path / "test_tenant.db")
+
+
+@pytest.fixture()
+def case_store(tmp_path) -> CaseStore:
+    return CaseStore(base_dir=tmp_path / "test_cases")
+
+
+@pytest.fixture()
+def default_tenant(tenant_store):
+    existing = tenant_store.get("_default")
+    if existing:
+        return existing.id
+    return tenant_store.create("Default Tenant", tenant_id="_default").id
+
+
+@pytest.fixture()
+def app(settings, audit_service, debate_store, project_store, tenant_store, case_store, default_tenant):
+    """FastAPI app with overridden dependencies."""
     application = create_app()
 
     _test_user = User(
@@ -63,7 +86,7 @@ def app(settings, audit_service, debate_store, project_store):
         display_name="Test User",
         password_hash="",
         role="admin",
-        tenant_id="_default",
+        tenant_id=default_tenant,
     )
 
     application.dependency_overrides[get_settings] = lambda: settings
@@ -71,6 +94,17 @@ def app(settings, audit_service, debate_store, project_store):
     application.dependency_overrides[get_audit_service] = lambda: audit_service
     application.dependency_overrides[get_debate_store] = lambda: debate_store
     application.dependency_overrides[get_project_store] = lambda: project_store
+    application.dependency_overrides[get_tenant_store] = lambda: tenant_store
+    application.dependency_overrides[get_case_store] = lambda: case_store
+
+    mpatch = mock.patch.multiple(
+        deps_module,
+        get_project_store=mock.MagicMock(return_value=project_store),
+        get_tenant_store=mock.MagicMock(return_value=tenant_store),
+        get_case_store=mock.MagicMock(return_value=case_store),
+    )
+    mpatch.start()
+    application.state._deps_monkeypatch = mpatch
     return application
 
 
@@ -138,7 +172,6 @@ class TestProjectStoreList:
         project_store.create(name="Second")
         projects = project_store.list_all()
         assert len(projects) == 2
-        # Newest first (p2 created after p1)
         assert projects[0].name == "Second"
         assert projects[1].name == "First"
 
@@ -174,7 +207,6 @@ class TestProjectStoreUpdate:
         project = project_store.create(name="Persist Update")
         project_store.update(project.id, name="Updated")
 
-        # Reload from disk to verify persistence
         fresh_store = ProjectStore(base_dir=tmp_path / "projects")
         reloaded = fresh_store.get(project.id)
         assert reloaded.name == "Updated"
@@ -231,7 +263,6 @@ class TestProjectStoreHelpers:
 class TestProjectStorePersistence:
     def test_reload_from_disk(self, project_store, tmp_path):
         project_store.create(name="Persisted", project_id="p1")
-        # Create a new store instance from the same directory
         fresh = ProjectStore(base_dir=tmp_path / "projects")
         assert fresh.count() == 1
         assert fresh.get("p1").name == "Persisted"
@@ -249,159 +280,143 @@ class TestProjectStorePersistence:
 
 
 # ===========================================================================
-# Projects API Tests
+# Cases API Tests (replaces deprecated Projects API tests)
 # ===========================================================================
 
 
-class TestProjectsAPIList:
-    def test_list_empty_projects(self, client):
-        response = client.get("/api/v1/projects")
+class TestCasesAPIList:
+    def test_list_empty_cases(self, client, default_tenant):
+        response = client.get(f"/api/v1/tenants/{default_tenant}/cases")
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_returns_created_projects(self, client):
-        client.post("/api/v1/projects", json={"name": "Alpha"})
-        client.post("/api/v1/projects", json={"name": "Beta"})
-        response = client.get("/api/v1/projects")
+    def test_list_returns_created_cases(self, client, default_tenant):
+        client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "Alpha", "description": ""},
+        )
+        client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "Beta", "description": ""},
+        )
+        response = client.get(f"/api/v1/tenants/{default_tenant}/cases")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
-        names = {p["name"] for p in data}
-        assert names == {"Alpha", "Beta"}
+        titles = {c["title"] for c in data}
+        assert titles == {"Alpha", "Beta"}
 
 
-class TestProjectsAPICreate:
-    def test_create_project_returns_201(self, client):
+class TestCasesAPICreate:
+    def test_create_case_returns_201(self, client, default_tenant):
         response = client.post(
-            "/api/v1/projects",
-            json={"name": "My Project", "description": "Test desc"},
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "My Case", "description": "Test desc"},
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["name"] == "My Project"
+        assert data["title"] == "My Case"
         assert data["description"] == "Test desc"
-        assert data["is_system"] is False
         assert "id" in data
-        assert "config" in data
 
-    def test_create_project_has_uuid(self, client):
-        response = client.post("/api/v1/projects", json={"name": "UUID Test"})
-        project_id = response.json()["id"]
-        uuid.UUID(project_id)  # raises if invalid
-
-    def test_create_project_minimal(self, client):
-        response = client.post("/api/v1/projects", json={"name": "Minimal"})
+    def test_create_case_minimal(self, client, default_tenant):
+        response = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "Minimal"},
+        )
         assert response.status_code == 201
         assert response.json()["description"] == ""
 
-    def test_create_project_empty_name_rejected(self, client):
-        response = client.post("/api/v1/projects", json={"name": ""})
+    def test_create_case_empty_title_rejected(self, client, default_tenant):
+        response = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": ""},
+        )
         assert response.status_code == 422
 
-    def test_create_project_missing_name_rejected(self, client):
-        response = client.post("/api/v1/projects", json={})
+    def test_create_case_missing_title_rejected(self, client, default_tenant):
+        response = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={},
+        )
         assert response.status_code == 422
 
+    def test_create_case_system_default(self, client, default_tenant):
+        response = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "System"},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["title"] == "System"
+        assert data["status"] == "active"
 
-class TestProjectsAPIGet:
-    def test_get_existing_project(self, client):
-        create_resp = client.post("/api/v1/projects", json={"name": "Get Test"})
-        project_id = create_resp.json()["id"]
 
-        response = client.get(f"/api/v1/projects/{project_id}")
+class TestCasesAPIGet:
+    def test_get_existing_case(self, client, default_tenant):
+        create_resp = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "Get Test"},
+        )
+        case_id = create_resp.json()["id"]
+
+        response = client.get(f"/api/v1/tenants/{default_tenant}/cases/{case_id}")
         assert response.status_code == 200
-        assert response.json()["name"] == "Get Test"
+        assert response.json()["title"] == "Get Test"
 
-    def test_get_nonexistent_returns_404(self, client):
-        response = client.get("/api/v1/projects/nonexistent")
+    def test_get_nonexistent_returns_404(self, client, default_tenant):
+        response = client.get(f"/api/v1/tenants/{default_tenant}/cases/nonexistent")
         assert response.status_code == 404
 
 
-class TestProjectsAPIUpdate:
-    def test_update_project_name(self, client):
-        create_resp = client.post("/api/v1/projects", json={"name": "Old"})
-        project_id = create_resp.json()["id"]
+class TestCasesAPIUpdate:
+    def test_update_case(self, client, default_tenant):
+        create_resp = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "Old"},
+        )
+        case_id = create_resp.json()["id"]
 
-        response = client.put(
-            f"/api/v1/projects/{project_id}",
-            json={"name": "New", "description": "Updated"},
+        response = client.patch(
+            f"/api/v1/tenants/{default_tenant}/cases/{case_id}",
+            json={"title": "New"},
         )
         assert response.status_code == 200
-        assert response.json()["name"] == "New"
-        assert response.json()["description"] == "Updated"
+        assert response.json()["title"] == "New"
 
-    def test_update_nonexistent_returns_404(self, client):
-        response = client.put("/api/v1/projects/nope", json={"name": "X"})
+    def test_update_nonexistent_returns_404(self, client, default_tenant):
+        response = client.patch(
+            f"/api/v1/tenants/{default_tenant}/cases/nope",
+            json={"title": "X"},
+        )
         assert response.status_code == 404
 
 
-class TestProjectsAPIDelete:
-    def test_delete_project(self, client):
-        create_resp = client.post("/api/v1/projects", json={"name": "Delete"})
-        project_id = create_resp.json()["id"]
+class TestCasesAPIDelete:
+    def test_delete_case(self, client, default_tenant):
+        create_resp = client.post(
+            f"/api/v1/tenants/{default_tenant}/cases",
+            json={"title": "Delete"},
+        )
+        case_id = create_resp.json()["id"]
 
-        response = client.delete(f"/api/v1/projects/{project_id}")
+        response = client.delete(f"/api/v1/tenants/{default_tenant}/cases/{case_id}")
         assert response.status_code == 200
-        assert response.json()["deleted"] == project_id
+        assert response.json()["deleted"] == case_id
 
-        # Verify gone
-        get_resp = client.get(f"/api/v1/projects/{project_id}")
+        get_resp = client.get(f"/api/v1/tenants/{default_tenant}/cases/{case_id}")
         assert get_resp.status_code == 404
 
-    def test_delete_system_project_refused(self, client, project_store):
-        project_store.create(name="System", is_system=True, project_id="sys")
-        response = client.delete("/api/v1/projects/sys")
+    def test_delete_system_case_refused(self, client, default_tenant, case_store):
+        case_store.create(
+            tenant_id=default_tenant,
+            title="System",
+            case_id="_default",
+            is_system=True,
+        )
+        response = client.delete(f"/api/v1/tenants/{default_tenant}/cases/_default")
         assert response.status_code == 403
 
-    def test_delete_nonexistent_returns_404(self, client):
-        response = client.delete("/api/v1/projects/nope")
-        assert response.status_code == 404
-
-
-class TestProjectsAPIConfig:
-    def test_get_default_config(self, client):
-        create_resp = client.post("/api/v1/projects", json={"name": "Config"})
-        project_id = create_resp.json()["id"]
-
-        response = client.get(f"/api/v1/projects/{project_id}/config")
-        assert response.status_code == 200
-        config = response.json()
-        assert config["language"] is None
-        assert config["default_max_rounds"] is None
-        assert config["search_mode"] is None
-
-    def test_update_config(self, client):
-        create_resp = client.post("/api/v1/projects", json={"name": "Config Update"})
-        project_id = create_resp.json()["id"]
-
-        response = client.put(
-            f"/api/v1/projects/{project_id}/config",
-            json={"config": {"language": "en", "default_max_rounds": 5}},
-        )
-        assert response.status_code == 200
-        config = response.json()["config"]
-        assert config["language"] == "en"
-        assert config["default_max_rounds"] == 5
-
-    def test_update_config_persists(self, client):
-        create_resp = client.post("/api/v1/projects", json={"name": "Persist Config"})
-        project_id = create_resp.json()["id"]
-
-        client.put(
-            f"/api/v1/projects/{project_id}/config",
-            json={"config": {"search_mode": "required"}},
-        )
-
-        get_resp = client.get(f"/api/v1/projects/{project_id}/config")
-        assert get_resp.json()["search_mode"] == "required"
-
-    def test_get_config_nonexistent_returns_404(self, client):
-        response = client.get("/api/v1/projects/nope/config")
-        assert response.status_code == 404
-
-    def test_update_config_nonexistent_returns_404(self, client):
-        response = client.put(
-            "/api/v1/projects/nope/config",
-            json={"config": {"language": "en"}},
-        )
+    def test_delete_nonexistent_returns_404(self, client, default_tenant):
+        response = client.delete(f"/api/v1/tenants/{default_tenant}/cases/nope")
         assert response.status_code == 404

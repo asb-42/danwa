@@ -4,17 +4,30 @@ Uses httpx AsyncClient against the FastAPI test app.
 """
 
 from __future__ import annotations
+from unittest import mock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from backend.api.deps import get_current_user
+from backend.api import deps as deps_module
+from backend.api.deps import get_current_user, get_project_id, get_project_store
 from backend.main import create_app
 from backend.models.user import User
+from backend.persistence.project_store import ProjectStore
 
 
 @pytest.fixture
-def app():
+def project_store(tmp_path) -> ProjectStore:
+    return ProjectStore(base_dir=tmp_path / "projects")
+
+
+@pytest.fixture
+def default_project(project_store):
+    return project_store.get_or_create_default().id
+
+
+@pytest.fixture
+def app(project_store, default_project):
     application = create_app()
     _test_user = User(
         id="test-user",
@@ -25,6 +38,12 @@ def app():
         tenant_id="_default",
     )
     application.dependency_overrides[get_current_user] = lambda: _test_user
+    application.dependency_overrides[get_project_id] = lambda: default_project
+    application.dependency_overrides[get_project_store] = lambda: project_store
+
+    mpatch = mock.patch.object(deps_module, "get_project_store", return_value=project_store)
+    mpatch.start()
+    application.state._deps_monkeypatch = mpatch
     return application
 
 
@@ -88,14 +107,10 @@ class TestRenderJobEndpoints:
 
 
 class TestSessionSearchEndpoint:
-    async def test_search_empty(self, client: AsyncClient):
-        # Create a project first
-        create = await client.post("/api/v1/projects", json={"name": "Test"})
-        assert create.status_code == 201
-        pid = create.json()["id"]
+    async def test_search_empty(self, client: AsyncClient, default_project):
         res = await client.get(
             "/api/v1/render-sessions?q=test",
-            headers={"X-Project-Id": pid},
+            headers={"X-Project-Id": default_project},
         )
         assert res.status_code == 200
         assert isinstance(res.json(), list)
