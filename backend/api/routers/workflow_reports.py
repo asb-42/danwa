@@ -176,7 +176,7 @@ async def create_report_job(
     store = _get_job_store()
     job_id = store.create_job(session_id, fmt)
 
-    background_tasks.add_task(_generate_report_job, job_id, session_id, fmt, project_id, project_store)
+    background_tasks.add_task(_generate_report_job, job_id, session_id, fmt, project_id)
 
     return CreateReportResponse(job_id=job_id, status="pending", format=fmt)
 

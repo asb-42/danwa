@@ -19,7 +19,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from backend.api.deps import (
     get_audit_service,
     get_case_store,
-    get_membership_store,
     get_project_store,
     get_tag_store,
     get_tenant_store,

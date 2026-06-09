@@ -66,6 +66,8 @@ from backend.workflow.hitl.api import router as hitl_router  # noqa: E402
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 _LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 
+logger = logging.getLogger(__name__)
+
 
 def _setup_logging() -> None:
     """Configure application logging with file + console handlers.
@@ -139,7 +141,6 @@ async def lifespan(app: FastAPI):
 
     setup_logging(debug=_settings.debug)
 
-    logger = logging.getLogger(__name__)
     logger.info("Debate Engine starting up...")
 
     settings = get_settings()
@@ -397,7 +398,7 @@ def create_app() -> FastAPI:
         return response
 
     # --- Deprecation Headers for Legacy Routes ---
-    _LEGACY_ROUTE_DEPRECATION = {
+    legacy_route_deprecation = {
         "/api/v1/debate": "Use /api/v1/tenants/{tid}/cases/{cid}/debates/ instead.",
         "/api/v1/dms": "Use /api/v1/tenants/{tid}/cases/{cid}/dms/ instead.",
         "/api/v1/audit": "Use /api/v1/tenants/{tid}/cases/{cid}/audit/ instead.",
@@ -411,7 +412,7 @@ def create_app() -> FastAPI:
         """Add X-Deprecation header to responses from legacy (pre-tenant) routes."""
         response = await call_next(request)
         path = request.url.path.rstrip("/")
-        for prefix, notice in _LEGACY_ROUTE_DEPRECATION.items():
+        for prefix, notice in legacy_route_deprecation.items():
             if path == prefix or path.startswith(prefix + "/"):
                 response.headers["X-Deprecation"] = notice
                 break

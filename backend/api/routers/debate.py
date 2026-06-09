@@ -22,7 +22,6 @@ from backend.api.deps import (
     get_audit_service,
     get_debate_store_for_case,
     get_project_id,
-    get_debate_store_for_case,
 )
 from backend.api.events import publish_async
 from backend.models.schemas import (

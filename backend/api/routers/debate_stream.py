@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_debate_store_for_case

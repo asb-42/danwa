@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from backend.persistence.debate_store import DebateStore
 
@@ -60,7 +61,7 @@ def resolve_rag_context(
     rag_auto_retrieve: bool = False,
     include_debate_results: bool = False,
     debate_result_ids: list[str] | None = None,
-    project_store: ProjectStore | None = None,
+    project_store: Any | None = None,
     store: DebateStore | None = None,
     include_document_analysis: bool = False,
 ) -> tuple[str, int]:
@@ -201,7 +202,7 @@ def resolve_rag_context_with_debate_results(
     rag_auto_retrieve: bool = False,
     include_debate_results: bool = True,
     store: DebateStore | None = None,
-    project_store: ProjectStore | None = None,
+    project_store: Any | None = None,
     include_document_analysis: bool = False,
 ) -> tuple[str, int]:
     """Erweitert RAG-Kontext um vorherige Debattenergebnisse (P3).
