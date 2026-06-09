@@ -518,7 +518,11 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
         if project_id in _dms_cache:
             return _dms_cache[project_id]
 
-        from backend.api.deps import get_case_dir
+        from backend.api.deps import get_case_dir, get_project_store
+
+        project = get_project_store().get(project_id)
+        if not project:
+            raise ValueError(f"Project not found: {project_id}")
 
         project_dir = get_case_dir(project_id)
         dms_dir = project_dir / "dms"
@@ -539,9 +543,6 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
         )
 
         if not dms.db.get_project(project_id):
-            from backend.api.deps import get_project_store
-
-            project = get_project_store().get(project_id)
             project_name = project.name if project else project_id
             dms.db.conn.execute(
                 "INSERT OR IGNORE INTO projects (id, name, description, created_at, metadata_json) VALUES (?, ?, ?, ?, ?)",
