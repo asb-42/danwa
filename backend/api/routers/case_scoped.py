@@ -888,11 +888,33 @@ def list_case_audit_events(
     audit: AuditService = Depends(get_audit_service),
     case_store: CaseStore = Depends(get_case_store),
 ):
-    """List audit events for a debate within a case."""
-    events = audit.get_events(
-        debate_id=debate_id_or_title,
+    """List audit events for a debate within a case.
+
+    Falls back to workflow audit_log table for MVP debates (same logic as
+    the legacy ``/api/v1/audit`` endpoint).
+    """
+    from backend.api.routers.audit import (
+        _enrich_events_with_debate_data,
+        _resolve_debate_id,
+        _transform_workflow_audit_events,
     )
-    return events
+
+    debate_id, debate_data = _resolve_debate_id(debate_id_or_title, case_id)
+    events = audit.get_events(debate_id=debate_id)
+    if events:
+        return _enrich_events_with_debate_data(events, debate_data)
+
+    # Fallback: check workflow audit_log table for MVP debates
+    if debate_data and debate_data.get("session_id"):
+        from backend.workflow.audit_logger import get_audit_logger
+
+        session_id = debate_data["session_id"]
+        al = get_audit_logger()
+        wf_events = al.get_audit_log(session_id)
+        if wf_events:
+            return _transform_workflow_audit_events(wf_events, session_id)
+
+    return []
 
 
 # ---------------------------------------------------------------------------
