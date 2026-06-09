@@ -407,6 +407,7 @@ def get_analysis(
 ):
     """Get the stored document analysis for the current project."""
     from backend.api.deps import get_project_store
+
     project = get_project_store().get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -439,6 +440,7 @@ async def export_analysis(
 ):
     """Export the document analysis as PDF, ODT, or Markdown."""
     from backend.api.deps import get_project_store
+
     project = get_project_store().get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

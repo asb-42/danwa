@@ -1166,9 +1166,7 @@ class UITranslationService:
             try:
                 db = sqlite3.connect(str(blueprints_db), timeout=5.0)
                 db.row_factory = sqlite3.Row
-                orphans = db.execute(
-                    "SELECT id FROM module_registry WHERE id LIKE 'lp-%' OR id LIKE 'lang-%'"
-                ).fetchall()
+                orphans = db.execute("SELECT id FROM module_registry WHERE id LIKE 'lp-%' OR id LIKE 'lang-%'").fetchall()
                 for row in orphans:
                     orphan_id = row["id"]
                     if orphan_id not in removed_ids:

@@ -19,17 +19,17 @@ logger = logging.getLogger(__name__)
 # ── Standard-Include-Pfade ──────────────────────────────────────────────
 INCLUDE_PATHS: list[str] = [
     # ── Multi-tenant data (JSON file tree) ──────────────────────────────
-    "data/projects",       # legacy project store
-    "data/tenants",        # tenant-cased structure (cases, tags, debates, DMS)
+    "data/projects",  # legacy project store
+    "data/tenants",  # tenant-cased structure (cases, tags, debates, DMS)
     # ── SQLite databases ───────────────────────────────────────────────
-    "data/auth.db",        # users, tenants, memberships
-    "data/audit.db",       # audit trail
-    "data/a2a_tasks.db",   # A2A task queue
+    "data/auth.db",  # users, tenants, memberships
+    "data/audit.db",  # audit trail
+    "data/a2a_tasks.db",  # A2A task queue
     "data/blueprints.db",  # blueprints & workflow templates
-    "data/modules.db",     # module registry
-    "data/profiles.db",    # profile configurations
+    "data/modules.db",  # module registry
+    "data/profiles.db",  # profile configurations
     # ── i18n translations ──────────────────────────────────────────────
-    "data/i18n",           # UI translation database
+    "data/i18n",  # UI translation database
     # ── Application config ─────────────────────────────────────────────
     "config/settings.yaml",
     "config/a2a.json",

@@ -27,10 +27,16 @@ def list_all_tenants(
     tenants = tenant_store.list_all()
     return [
         TenantResponse(
-            id=t.id, name=t.name, plan=t.plan,
-            max_projects=t.max_projects, max_concurrent_debates=t.max_concurrent_debates,
-            max_documents=t.max_documents, max_storage_mb=t.max_storage_mb,
-            settings=t.settings, created_at=t.created_at, is_active=t.is_active,
+            id=t.id,
+            name=t.name,
+            plan=t.plan,
+            max_projects=t.max_projects,
+            max_concurrent_debates=t.max_concurrent_debates,
+            max_documents=t.max_documents,
+            max_storage_mb=t.max_storage_mb,
+            settings=t.settings,
+            created_at=t.created_at,
+            is_active=t.is_active,
         )
         for t in tenants
     ]
@@ -51,10 +57,16 @@ def create_tenant(
     membership_store.add(tenant.id, user.id, role="admin", invited_by=None)
     logger.info("Tenant created: %s (%s) by user %s", tenant.name, tenant.id, user.email)
     return TenantResponse(
-        id=tenant.id, name=tenant.name, plan=tenant.plan,
-        max_projects=tenant.max_projects, max_concurrent_debates=tenant.max_concurrent_debates,
-        max_documents=tenant.max_documents, max_storage_mb=tenant.max_storage_mb,
-        settings=tenant.settings, created_at=tenant.created_at, is_active=tenant.is_active,
+        id=tenant.id,
+        name=tenant.name,
+        plan=tenant.plan,
+        max_projects=tenant.max_projects,
+        max_concurrent_debates=tenant.max_concurrent_debates,
+        max_documents=tenant.max_documents,
+        max_storage_mb=tenant.max_storage_mb,
+        settings=tenant.settings,
+        created_at=tenant.created_at,
+        is_active=tenant.is_active,
     )
 
 

@@ -288,7 +288,8 @@ def _migrate_seed_admin() -> None:
     if first_user.role != "admin":
         store.update(first_user.id, role="admin")
         logger.info(
-            "Seed admin migration: promoted %s to admin", first_user.email,
+            "Seed admin migration: promoted %s to admin",
+            first_user.email,
         )
 
     # Delete the seed admin

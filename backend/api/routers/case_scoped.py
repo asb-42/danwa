@@ -124,9 +124,7 @@ def _build_debate_item(
 
     debate_id_current = d["debate_id"]
     forks_count = sum(
-        1
-        for other_d in debates
-        if isinstance(other_d.get("fork_info"), dict) and other_d["fork_info"].get("parent_debate_id") == debate_id_current
+        1 for other_d in debates if isinstance(other_d.get("fork_info"), dict) and other_d["fork_info"].get("parent_debate_id") == debate_id_current
     )
 
     return DebateListItem(
@@ -210,7 +208,8 @@ async def list_tenant_debates(
                         continue
 
                 item = _build_debate_item(
-                    d, debates,
+                    d,
+                    debates,
                     tenant_id=tenant_id,
                     tenant_name=tenant_name,
                     case_id=case_obj.id,
@@ -224,7 +223,7 @@ async def list_tenant_debates(
 
     # Sort by created_at descending, apply pagination
     all_items.sort(key=lambda x: x.created_at, reverse=True)
-    return all_items[offset: offset + limit]
+    return all_items[offset : offset + limit]
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +279,8 @@ async def list_case_debates(
 
         items.append(
             _build_debate_item(
-                d, debates,
+                d,
+                debates,
                 tenant_id=tenant_id,
                 tenant_name=tenant_name,
                 case_id=case_id,

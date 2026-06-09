@@ -36,9 +36,19 @@ WETENA_TENANT_DIR = BASE_DIR / "tenants" / WETENA_TENANT_ID
 
 # Colours assigned to tags by project name hash (cosmetic, no functional impact)
 TAG_COLOURS = [
-    "#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6",
-    "#8b5cf6", "#ef4444", "#14b8a6", "#f97316", "#06b6d4",
-    "#84cc16", "#e11d48", "#a855f7",
+    "#6366f1",
+    "#ec4899",
+    "#f59e0b",
+    "#10b981",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ef4444",
+    "#14b8a6",
+    "#f97316",
+    "#06b6d4",
+    "#84cc16",
+    "#e11d48",
+    "#a855f7",
 ]
 
 logging.basicConfig(
@@ -174,7 +184,9 @@ def migrate(dry_run: bool = False) -> None:
         tag_id = tag_map[project_name]
         logger.info(
             "Project '%s' — %d debates, tag_id=%s",
-            project_name, len(debate_files), tag_id,
+            project_name,
+            len(debate_files),
+            tag_id,
         )
 
         for debate_path in debate_files:
@@ -199,9 +211,11 @@ def migrate(dry_run: bool = False) -> None:
 
             if dry_run:
                 logger.info(
-                    "  [DRY-RUN] Would create case: id=%s, title='%s', "
-                    "debate_title='%s', tags=[%s]",
-                    case_id, project_name, debate_title, tag_id,
+                    "  [DRY-RUN] Would create case: id=%s, title='%s', debate_title='%s', tags=[%s]",
+                    case_id,
+                    project_name,
+                    debate_title,
+                    tag_id,
                 )
                 continue
 
@@ -244,7 +258,8 @@ def migrate(dry_run: bool = False) -> None:
             first_debate = sorted(debates_dir.glob("*.json"))
             if first_debate:
                 first_case_id = json.loads(first_debate[0].read_text()).get(
-                    "debate_id", first_debate[0].stem,
+                    "debate_id",
+                    first_debate[0].stem,
                 )
                 target_dir = WETENA_TENANT_DIR / "cases" / first_case_id
                 if target_dir.is_dir():
@@ -252,12 +267,15 @@ def migrate(dry_run: bool = False) -> None:
                     if not target_analysis.exists():
                         shutil.copy2(analysis_path, target_analysis)
                         logger.debug(
-                            "  Copied analysis.json to case %s", first_case_id,
+                            "  Copied analysis.json to case %s",
+                            first_case_id,
                         )
 
     logger.info(
         "Migration complete: %d debates found, %d migrated, %d skipped (already exist)",
-        total_debates, migrated, skipped,
+        total_debates,
+        migrated,
+        skipped,
     )
 
     # ------------------------------------------------------------------
@@ -269,11 +287,7 @@ def migrate(dry_run: bool = False) -> None:
         logger.info("Tags in Wetena: %d", len(existing_tags))
         logger.info(
             "Cases in Wetena: %d",
-            sum(
-                1
-                for d in (WETENA_TENANT_DIR / "cases").iterdir()
-                if d.is_dir() and (d / "case.json").exists()
-            )
+            sum(1 for d in (WETENA_TENANT_DIR / "cases").iterdir() if d.is_dir() and (d / "case.json").exists())
             if (WETENA_TENANT_DIR / "cases").is_dir()
             else 0,
         )

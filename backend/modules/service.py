@@ -384,11 +384,13 @@ class ModuleService:
             locale = target.get("language", "")
             if locale and not download_url.endswith(f"lang-{locale}.zip"):
                 alt_url = DANWA_MODULES_RELEASE_URL.format(
-                    module_id=f"lang-{locale}", version=module_version,
+                    module_id=f"lang-{locale}",
+                    version=module_version,
                 )
                 logger.info(
                     "Primary download failed for %s, trying alternative URL: %s",
-                    module_id, alt_url,
+                    module_id,
+                    alt_url,
                 )
                 alt_report = self.installer.install_from_url(alt_url)
                 if alt_report.status == "ok":

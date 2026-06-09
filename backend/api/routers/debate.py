@@ -88,6 +88,7 @@ async def list_debates(
     debates = store.list_all(limit=limit + offset)
 
     from backend.api.deps import get_project_store
+
     project = get_project_store().get(project_id)
     project_name = project.name if project else project_id
 
@@ -157,14 +158,14 @@ async def list_debates(
 
 
 @router.get("/cross-project/running")
-async def find_running_debate_across_projects(
-) -> DebateListItem | None:
+async def find_running_debate_across_projects() -> DebateListItem | None:
     """Find the first running debate across ALL projects.
 
     Used by the Dashboard to detect externally-started debates (e.g. via A2A)
     that may live in a different project than the active one.
     """
     from backend.api.deps import get_project_store
+
     for project in get_project_store().list_all():
         try:
             store = get_debate_store_for_case(project.id)
@@ -290,6 +291,7 @@ async def move_debate(
         raise HTTPException(status_code=400, detail="Source and target projects are the same")
 
     from backend.api.deps import get_project_store
+
     target_project = get_project_store().get(body.project_id)
     if not target_project:
         raise HTTPException(status_code=404, detail="Target project not found")
@@ -362,6 +364,7 @@ async def get_debate(
     anomalies = result.get("anomalies", []) if isinstance(result, dict) else []
 
     from backend.api.deps import get_project_store
+
     project = get_project_store().get(project_id)
     project_name = project.name if project else project_id
 
@@ -792,6 +795,7 @@ async def list_forks(
     debates = store.list_all(limit=limit + offset)
 
     from backend.api.deps import get_project_store
+
     project = get_project_store().get(project_id)
     project_name = project.name if project else project_id
 
