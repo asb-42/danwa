@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { tStore, tn, i18n } from '../lib/i18n/index.js';
   import { activeCase } from '../lib/stores.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, getProjects, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let { navigate } = $props();
@@ -49,10 +50,11 @@
 
   let t = $derived($tStore);
 
-  let projectId = $derived($activeCase?.id);
+  let tenantId = $derived($currentTenant?.id);
+  let caseId = $derived($activeCase?.id);
 
   async function loadDocuments() {
-    if (!projectId) {
+    if (!tenantId || !caseId) {
       documents = [];
       loading = false;
       return;
@@ -77,9 +79,9 @@
       .catch(() => { ocrAvailable = false; });
   });
 
-  // Reload when project changes
+  // Reload when tenant/case changes
   $effect(() => {
-    if (projectId) {
+    if (tenantId && caseId) {
       loadDocuments();
     }
   });
@@ -210,12 +212,8 @@
     moveTargetId = '';
     moveError = '';
     moveSaving = false;
-    try {
-      const allProjects = await getProjects();
-      moveProjects = allProjects.filter(p => p.id !== projectId);
-    } catch (e) {
-      moveError = 'Failed to load projects';
-    }
+    // Move between projects is deprecated — show message
+    moveError = 'Moving documents between projects is deprecated. Use cases instead.';
     moveDialogOpen = true;
   }
 

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { loading, error } from '../lib/stores.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
-  import { getTenantDebates, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate, getProjects } from '../lib/api.js';
+  import { getTenantDebates, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate } from '../lib/api.js';
   import { formatDate, tStore } from '../lib/i18n/index.js';
 
   let { navigate = () => {} } = $props();
@@ -151,11 +151,8 @@
   }
 
   async function loadAvailableProjects() {
-    try {
-      availableProjects = await getProjects();
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('Could not load projects:', err);
-    }
+    // Move between projects is deprecated
+    availableProjects = [];
   }
 
   function confirmMove(debateId) {
