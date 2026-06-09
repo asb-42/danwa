@@ -184,7 +184,7 @@
           throw new Error('No tenant or case selected');
         }
         const response = await createCaseDebate(tenantId, caseId, {
-          case_text: caseText,
+          case: { text: caseText },
           max_rounds: maxRounds,
           consensus_threshold: consensusThreshold,
           search_mode: searchMode,

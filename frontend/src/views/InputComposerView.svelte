@@ -306,8 +306,13 @@
 
   function handleCreated(response) {
     if (response.debate_id) {
-      // Workflow with debate record — navigate to rich debate view
-      navigate('mvp-debate/' + response.debate_id);
+      if (response.is_mvp) {
+        // MVP debate — use rich workflow view
+        navigate('mvp-debate/' + response.debate_id);
+      } else {
+        // Regular debate — use debate view
+        navigate('debate/' + response.debate_id);
+      }
     } else if (response.session_id) {
       // Workflow-exec path without debate — navigate to execution view
       setActiveWorkflowSession({
