@@ -889,10 +889,8 @@ def list_case_audit_events(
     case_store: CaseStore = Depends(get_case_store),
 ):
     """List audit events for a debate within a case."""
-    events = audit.list_events(
+    events = audit.get_events(
         debate_id=debate_id_or_title,
-        limit=limit,
-        offset=offset,
     )
     return events
 

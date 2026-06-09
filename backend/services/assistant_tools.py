@@ -221,7 +221,7 @@ async def list_debates(
         return [{"error": "Debate store not available"}]
 
     result = []
-    for d in debates[:min(limit, 50)]:
+    for d in debates[: min(limit, 50)]:
         d_status = d.get("status", "unknown")
         if status != "all" and d_status != status:
             continue

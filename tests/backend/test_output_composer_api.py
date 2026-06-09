@@ -4,6 +4,7 @@ Uses httpx AsyncClient against the FastAPI test app.
 """
 
 from __future__ import annotations
+
 from unittest import mock
 
 import pytest
