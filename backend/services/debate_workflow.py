@@ -279,7 +279,7 @@ async def run_debate_workflow(
         return
 
     try:
-      await _run_debate_workflow_inner(debate_id, project_id, audit, store, debate)
+        await _run_debate_workflow_inner(debate_id, project_id, audit, store, debate)
     except Exception as exc:
         logger.error("Debate %s failed with unhandled exception: %s", debate_id, exc, exc_info=True)
         store.update(debate_id, status=DebateStatus.FAILED, updated_at=datetime.now(UTC))
