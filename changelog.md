@@ -23,6 +23,9 @@
   - Neuer Helper `_iter_cached_debates` nutzt `store._cache.items()` (debate_id ist der Cache-Key)
   - Fallback auf `list_all()` mit `d.get("debate_id", "")` für Stores ohne `_cache`-Attribut
 - test(audit): Router-Tests für `/api/v1/audit/{id}` + Helper (25 Tests, 91 % Coverage, vorher 15 %)
+- test(case-scoped): Router-Tests für `/api/v1/tenants/{tid}/...` + Helper (51 Tests, 69 % Coverage, vorher 44 %)
+  - Abdeckung: Helper (`_resolve_case_dir`, `_get_debate_store_for_case`, `_resolve_tags`, `_resolve_llm_model`, `_build_debate_item`), List/Create/Get/Delete/Cancel/Force-Reset Debate, OOB-Input, Forks, Case-Audit-Delegation
+  - Verbleibende Lücken v.a. DMS- und Workflow-Delegation-Pfade (komplexe externe Abhängigkeiten)
 
 ## 2026-05-12
 
