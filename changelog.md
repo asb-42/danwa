@@ -26,6 +26,9 @@
 - test(case-scoped): Router-Tests für `/api/v1/tenants/{tid}/...` + Helper (51 Tests, 69 % Coverage, vorher 44 %)
   - Abdeckung: Helper (`_resolve_case_dir`, `_get_debate_store_for_case`, `_resolve_tags`, `_resolve_llm_model`, `_build_debate_item`), List/Create/Get/Delete/Cancel/Force-Reset Debate, OOB-Input, Forks, Case-Audit-Delegation
   - Verbleibende Lücken v.a. DMS- und Workflow-Delegation-Pfade (komplexe externe Abhängigkeiten)
+- test(auth): Router-Tests für `/api/v1/auth/...` (31 Tests, 100 % Coverage, vorher 39 %)
+  - Abdeckung: register (first-user-admin, duplicate, validation, internal error), login (success, unknown, wrong password, deactivated), refresh (success, invalid JWT, access token rejected, user not found, deactivated), /me (GET, PUT, PUT update-fails), /password (change, wrong current), /users (list, invite, duplicate, internal error, delete, self-delete guard, unknown), /my-tenants (dev-mode, membership-based), /select-tenant (dev-mode, membership-role, unknown+auth-enabled 403)
+  - Eigene Fixtures `app_with_auth` / `app_empty_store` mit überschriebenen `get_user_store`/`get_membership_store`/`get_current_user`/`get_settings`-Dependencies (lru_cache-Reset zwischen Tests)
 
 ## 2026-05-12
 
