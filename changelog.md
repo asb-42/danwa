@@ -7,6 +7,11 @@
   - Kein Backend-Code, kein Frontend, kein Plugin-Manifest und kein dynamischer Import verweist noch auf das Modul
   - Verifikation: statische Suche (alle `.py`/`.json`/`.yml`/`.toml`/`.md`) + Import-Blocker-Test (Backend startet ohne diese Datei)
 - docs: Test-Coverage-Analyse `reports/2026-06-12_test-coverage-analysis.md` (Gesamt: 59,8 %)
+- fix(blueprints): RENAME-Strategie in `bundle_io.import_bundle` speichert jetzt umbenannte Entitäten (LLM/Tone/Bundle)
+  - Vorher: bei RENAME wurde die umbenannte Entität nicht persistiert → Export zeigte auf nicht existierende ID
+  - Bedingung erweitert: `if not existing or strategy == OVERWRITE or resolved_id != raw["id"]`
+- test(blueprints): Round-Trip- und Konflikt-Strategie-Tests für `bundle_io` (16 Tests, 91 % Coverage, vorher 0 %)
+- test(persistence): CRUD-Tests für `UserKeyStore` (15 Tests, 100 % Coverage, vorher 0 %)
 
 ## 2026-05-12
 

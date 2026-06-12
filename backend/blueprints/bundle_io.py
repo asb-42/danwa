@@ -327,7 +327,15 @@ def _import_llm_profile(
         service_eligible=raw.get("service_eligible", True),
     )
 
-    if not existing or strategy == ImportConflictStrategy.OVERWRITE:
+    # Persist when the profile is new, was renamed (so it lives under a
+    # new ID), or when the caller asked to overwrite the existing one.
+    # The previous logic skipped the save on RENAME, leaving the bundle
+    # pointing at an LLM profile that was never inserted.
+    if (
+        not existing
+        or strategy == ImportConflictStrategy.OVERWRITE
+        or resolved_id != raw["id"]
+    ):
         repo.save_llm_profile(profile)
     return profile
 
@@ -358,7 +366,11 @@ def _import_tone_profile(
         is_system=raw.get("is_system", False),
     )
 
-    if not existing or strategy == ImportConflictStrategy.OVERWRITE:
+    if (
+        not existing
+        or strategy == ImportConflictStrategy.OVERWRITE
+        or resolved_id != raw["id"]
+    ):
         repo.save_tone_profile(tp)
     return tp
 
@@ -397,6 +409,10 @@ def _import_bundle_entity(
         model_params=raw.get("model_params", {}),
     )
 
-    if not existing or strategy == ImportConflictStrategy.OVERWRITE:
+    if (
+        not existing
+        or strategy == ImportConflictStrategy.OVERWRITE
+        or resolved_id != raw["id"]
+    ):
         repo.save_bundle(bundle)
     return bundle
