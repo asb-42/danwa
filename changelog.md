@@ -29,6 +29,10 @@
 - test(auth): Router-Tests für `/api/v1/auth/...` (31 Tests, 100 % Coverage, vorher 39 %)
   - Abdeckung: register (first-user-admin, duplicate, validation, internal error), login (success, unknown, wrong password, deactivated), refresh (success, invalid JWT, access token rejected, user not found, deactivated), /me (GET, PUT, PUT update-fails), /password (change, wrong current), /users (list, invite, duplicate, internal error, delete, self-delete guard, unknown), /my-tenants (dev-mode, membership-based), /select-tenant (dev-mode, membership-role, unknown+auth-enabled 403)
   - Eigene Fixtures `app_with_auth` / `app_empty_store` mit überschriebenen `get_user_store`/`get_membership_store`/`get_current_user`/`get_settings`-Dependencies (lru_cache-Reset zwischen Tests)
+- test(i18n): Tests für `UITranslationService` (95 Tests, 89 % Coverage, vorher 41 %)
+  - Abdeckung: TranslationJob (progress, to_dict), TranslationJobRegistry, get_plural_tags, CRUD (set/get/bulk/delete/import), Resolve mit Fallback-Kette, resolve_bulk_for_locale (langpack-Namespace-Merging), Cache-Management, Stats/Coverage, wipe_locale, Custom-Locales, _select_llm_for_locale, _locale_name, translate_via_llm (mit gemocktem LLM, inkl. Rate-Limit-Retry), bulk_translate + bulk_translate_async, get_locale_details, bootstrap_core_locales (idempotent), cleanup_legacy_local_langpacks, _create_langpack_module_dir, get_installed_locales
+  - LLM-Aufrufe via `_FakeLLM` Stub deterministisch gehalten; `_scan_bundled_loaders` per monkeypatch gestubbt um 808 gebündelte Keys in den Bulk-Translate-Tests zu vermeiden
+  - Verbleibende Lücken (~11 %): Exception-Branches in `bootstrap_core_locales` (rollback), `cleanup_legacy_local_langpacks` (DB-Orphan-Cleanup, JSON-Parse-Fehler, blueprint-db-Pfade), `_select_llm_for_locale` Locale-Defaults für hindi, ukrainisch
 
 ## 2026-05-12
 
