@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-12
+
+- chore(workflow): remove dead `backend/workflow/nodes.py` (422 stmts, 0 % coverage)
+  - Datei wurde durch das `backend/workflow/nodes/`-Subpackage ersetzt (siehe `node_functions.py` `_LAZY_IMPORT_MAP`)
+  - Kein Backend-Code, kein Frontend, kein Plugin-Manifest und kein dynamischer Import verweist noch auf das Modul
+  - Verifikation: statische Suche (alle `.py`/`.json`/`.yml`/`.toml`/`.md`) + Import-Blocker-Test (Backend startet ohne diese Datei)
+- docs: Test-Coverage-Analyse `reports/2026-06-12_test-coverage-analysis.md` (Gesamt: 59,8 %)
+
 ## 2026-05-12
 
 - docs: update technical documentation with Blueprint System, HITL System, and Input/Output Composer
