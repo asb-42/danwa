@@ -107,7 +107,7 @@ def _build_node_phase_map(state: dict[str, Any], workflow_id: str = "") -> dict[
     phase_names: dict[str, str] = {}
     phase_set: set[str] = set()
     try:
-        from backend.blueprints.repo import BlueprintRepository
+        from backend.blueprints.repository import BlueprintRepository
 
         repo = BlueprintRepository()
         wf_def = repo.get_workflow_definition(workflow_id) if workflow_id else None
@@ -411,7 +411,7 @@ def _build_audit_context_map(session_id: str) -> dict[str, dict[str, Any]]:
     # --- Phase: from workflow definition phase_configs + node_sequence ---
     node_phase_map: dict[str, str] = {}
     try:
-        from backend.blueprints.repo import BlueprintRepository
+        from backend.blueprints.repository import BlueprintRepository
 
         repo = BlueprintRepository()
         wf_def = repo.get_workflow_definition(workflow_id) if workflow_id else None
