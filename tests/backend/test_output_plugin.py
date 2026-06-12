@@ -76,10 +76,27 @@ class TestPluginRegistry:
         assert registry.has_plugin("dummy")
 
     def test_duplicate_register_raises(self) -> None:
+        """Registering a *different* class with the same key still raises.
+
+        Re-registering the *same* class is now an idempotent no-op (useful
+        when test runners re-import the plugin module), so this test
+        constructs a second plugin class that differs from ``DummyPlugin``
+        but uses the same ``plugin_key`` to assert the guard fires.
+        """
+
+        class _OtherDummyPlugin(OutputPlugin):
+            plugin_key: ClassVar[str] = "dummy"  # same as DummyPlugin
+            plugin_name: ClassVar[str] = "Other Dummy"
+            supported_formats: ClassVar[list[str]] = ["txt"]
+            config_schema: ClassVar[type[BaseModel]] = DummyConfig
+
+            async def render(self, artifact, config, job_id, output_dir):
+                return []
+
         registry = PluginRegistry.instance()
         registry.register(DummyPlugin)
         with pytest.raises(ValueError, match="already registered"):
-            registry.register(DummyPlugin)
+            registry.register(_OtherDummyPlugin)
 
 
 class TestRegisterPluginDecorator:

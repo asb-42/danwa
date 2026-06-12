@@ -46,17 +46,31 @@ class PluginRegistry:
     def register(self, plugin_class: type[OutputPlugin]) -> None:
         """Register a plugin class.
 
+        Idempotent for the same fully-qualified class identity: re-registering
+        a class with the same ``__module__ + __qualname__`` is treated as the
+        same plugin and is a no-op. Registering a *different* class with the
+        same key still raises ``ValueError``.
+
         Args:
             plugin_class: A subclass of :class:`OutputPlugin` with
                 ``plugin_key`` defined as a ``ClassVar[str]``.
 
         Raises:
-            ValueError: If a plugin with the same key is already registered.
+            ValueError: If a *different* plugin with the same key is
+                already registered.
         """
         key = plugin_class.plugin_key
+        new_identity = f"{plugin_class.__module__}.{plugin_class.__qualname__}"
         if key in self._plugins:
+            existing = self._plugins[key]
+            existing_identity = f"{existing.__module__}.{existing.__qualname__}"
+            if existing_identity == new_identity:
+                # Idempotent re-registration (e.g. coverage re-imports the
+                # module and re-runs the decorator on a new class object
+                # that represents the same logical plugin).
+                return
             raise ValueError(
-                f"Plugin with key {key!r} is already registered ({self._plugins[key].__name__}). Cannot register {plugin_class.__name__}."
+                f"Plugin with key {key!r} is already registered ({existing.__name__}). Cannot register {plugin_class.__name__}."
             )
         self._plugins[key] = plugin_class
         logger.info("Output plugin registered: %s (%s)", key, plugin_class.plugin_name)
