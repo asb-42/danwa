@@ -579,7 +579,7 @@ class ModuleService:
             return UninstallationReport(
                 status="error",
                 module_id=module_id,
-                errors=[f"Module directory not found: {module_id}"],
+                blocked_by=[f"Module directory not found: {module_id}"],
             )
         files_removed = 0
         if target_dir.exists():
@@ -607,7 +607,7 @@ class ModuleService:
             return UninstallationReport(
                 status="error",
                 module_id=module_id,
-                errors=[f"Database error: {e}"],
+                blocked_by=[f"Database error: {e}"],
             )
 
         logger.info("Force-uninstalled module %s (%d files, %d DB entries)", module_id, files_removed, db_entries_removed)
