@@ -12,6 +12,17 @@
   - Bedingung erweitert: `if not existing or strategy == OVERWRITE or resolved_id != raw["id"]`
 - test(blueprints): Round-Trip- und Konflikt-Strategie-Tests für `bundle_io` (16 Tests, 91 % Coverage, vorher 0 %)
 - test(persistence): CRUD-Tests für `UserKeyStore` (15 Tests, 100 % Coverage, vorher 0 %)
+- fix(workflow): kaputten Lazy-Import `backend.blueprints.repo` in `report_generator.py` repariert (2 Vorkommen)
+  - Korrektes Modul ist `backend.blueprints.repository`
+  - Ohne diesen Fix würden alle Report-Generator-Pfade, die `_build_node_phase_map` nutzen, mit `ModuleNotFoundError` abstürzen
+- test(workflow): Smoke-Tests für `report_generator` (29 Tests, 21 % Coverage, vorher 7 %)
+- fix(audit): `UnboundLocalError` in `_transform_workflow_audit_events` behoben
+  - `_format_audit_content` wurde nur im `if session_id:`-Zweig importiert, aber immer referenziert
+  - Import auf Funktionsanfang verschoben + `_use_formatter`-Flag für Fallback
+- fix(audit): `_resolve_debate_id` griff auf `d["debate_id"]` zu, aber `DebateStore.list_all()` liefert Dicts ohne dieses Feld
+  - Neuer Helper `_iter_cached_debates` nutzt `store._cache.items()` (debate_id ist der Cache-Key)
+  - Fallback auf `list_all()` mit `d.get("debate_id", "")` für Stores ohne `_cache`-Attribut
+- test(audit): Router-Tests für `/api/v1/audit/{id}` + Helper (25 Tests, 91 % Coverage, vorher 15 %)
 
 ## 2026-05-12
 

@@ -68,6 +68,13 @@ def _resolve_debate_id(debate_id_or_title: str, project_id: str) -> tuple[str, d
     """Resolve a debate ID or title to the actual debate ID and data.
 
     Returns (debate_id, debate_data) or (debate_id_or_title, None) if not found.
+
+    ``DebateStore.list_all()`` only returns the stored dicts (which do not
+    contain a ``debate_id`` key — that is the cache key).  To resolve a
+    title back to a debate_id we therefore iterate the underlying cache
+    via the store's internal ``_cache`` mapping.  The store is also
+    monkeypatched in tests so the access goes through ``list_all`` and
+    ``get`` for hermeticity.
     """
     store = get_debate_store_for_case(project_id)
 
@@ -76,19 +83,38 @@ def _resolve_debate_id(debate_id_or_title: str, project_id: str) -> tuple[str, d
     if debate_data:
         return debate_id_or_title, debate_data
 
-    # Try exact title match
-    for d in store.list_all(limit=500):
+    # Try exact title match — iterate cache items so we have the debate_id key
+    for candidate_id, d in _iter_cached_debates(store):
         if d.get("title", "") == debate_id_or_title:
-            return d["debate_id"], d
+            return candidate_id, d
 
     # Try case-insensitive partial match on title
     search_lower = debate_id_or_title.lower()
-    for d in store.list_all(limit=500):
+    for candidate_id, d in _iter_cached_debates(store):
         title = d.get("title", "")
         if title and search_lower in title.lower():
-            return d["debate_id"], d
+            return candidate_id, d
 
     return debate_id_or_title, None
+
+
+def _iter_cached_debates(store) -> list[tuple[str, dict]]:
+    """Yield ``(debate_id, debate_dict)`` pairs from a debate store.
+
+    Prefers the internal ``_cache`` mapping (gives us the debate_id as the
+    key).  Falls back to ``list_all()`` for stores that don't expose a
+    ``_cache`` attribute, in which case the debate_id is taken from the
+    dict if present.
+    """
+    cache = getattr(store, "_cache", None)
+    if isinstance(cache, dict) and cache:
+        return list(cache.items())
+    # Fallback: try to use debate_id embedded in the dict itself
+    out: list[tuple[str, dict]] = []
+    for d in store.list_all(limit=500):
+        d_id = d.get("debate_id", "")
+        out.append((d_id, d))
+    return out
 
 
 @router.get("/{debate_id_or_title}")
@@ -129,18 +155,23 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
     # Build enrichment maps from state snapshot
     llm_name_map: dict[str, str] = {}
     ctx_map: dict[str, dict] = {}
+    # Default to the real helper; if session_id is empty or the import
+    # fails, fall back to the raw content (avoid UnboundLocalError).
+    from backend.workflow.report_generator import _format_audit_content
+    _use_formatter = True
     if session_id:
         try:
             from backend.workflow.report_generator import (
                 _build_audit_context_map,
                 _build_node_llm_name_map,
-                _format_audit_content,
             )
 
             llm_name_map = _build_node_llm_name_map(session_id)
             ctx_map = _build_audit_context_map(session_id)
         except Exception:
-            _format_audit_content = None  # type: ignore[assignment]
+            _use_formatter = False
+    else:
+        _use_formatter = False
 
     result = []
     for entry in wf_events:
@@ -149,7 +180,11 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
         llm_display = llm_name_map.get(node_id, "") or entry.get("llm_profile_id", "")
         ctx = ctx_map.get(node_id, {})
         raw_content = entry.get("output_content", "")
-        formatted = _format_audit_content(raw_content, event_type) if _format_audit_content else raw_content
+        formatted = (
+            _format_audit_content(raw_content, event_type)
+            if _use_formatter
+            else raw_content
+        )
         if event_type == "node_completed":
             result.append(
                 {
