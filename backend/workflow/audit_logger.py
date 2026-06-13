@@ -45,6 +45,10 @@ class AuditLogger:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None
         self._lock = threading.RLock()
+        # P4.5+ §4.5 — counters that make audit-insert failures visible
+        # without spamming the log on every call.  See ``_insert``.
+        self._insert_failures: int = 0
+        self._session_error_logged: set[str] = set()
 
     # ------------------------------------------------------------------
     # Connection helper
@@ -101,8 +105,23 @@ class AuditLogger:
                 try:
                     self._conn.close()
                 except Exception:
-                    logger.debug("Error closing audit logger connection", exc_info=True)
+                    # P4.5+ §4.5 — promote from ``debug`` to ``warning``.
+                    # A close failure almost always means the DB file
+                    # was already removed or the process is in a bad
+                    # state; the operator should know.
+                    logger.warning(
+                        "Error closing audit logger connection", exc_info=True
+                    )
                 self._conn = None
+
+    def get_insert_failure_count(self) -> int:
+        """Return the number of failed ``_insert`` calls (P4.5+ §4.5).
+
+        Exposed for tests and health checks.  A non-zero value means
+        some audit events have been lost \u2014 typically because the
+        audit DB was unreachable at the time of the insert.
+        """
+        return self._insert_failures
 
     # ------------------------------------------------------------------
     # Hash helper
@@ -163,45 +182,94 @@ class AuditLogger:
         against each other and the cached connection is never used
         from two threads at once.  Commits after the insert so the
         row is durable before the call returns.
+
+        Failure handling (P4.5+ §4.5):
+            A failing insert does **not** raise.  The first failure
+            per ``session_id`` is logged at ``error`` level with the
+            underlying exception; subsequent failures for the same
+            session drop to ``debug``.  The cached connection is
+            dropped on every failure so the next call reopens (which
+            recovers from transient file-lock / WAL / rotation
+            errors).  The failure counter is exposed via
+            :meth:`get_insert_failure_count` for tests and health
+            checks.
         """
         now = datetime.now(UTC).isoformat()
         with self._lock:
-            conn = self._get_conn()
-            conn.execute(
-                """
-                INSERT INTO audit_log
-                    (session_id, workflow_id, workflow_version, timestamp,
-                     event_type, node_id, actor,
-                     input_hash, output_hash,
-                     input_content, output_content, trace_log_path,
-                     llm_profile_id, latency_ms, prompt_tokens, completion_tokens,
-                     critic_item_id, build_response_id, draft_version, constructivity_score)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    session_id,
-                    workflow_id,
-                    workflow_version,
-                    now,
-                    event_type,
-                    node_id,
-                    actor,
-                    input_hash,
-                    output_hash,
-                    input_content,
-                    output_content,
-                    trace_log_path,
-                    llm_profile_id,
-                    latency_ms,
-                    prompt_tokens,
-                    completion_tokens,
-                    critic_item_id,
-                    build_response_id,
-                    draft_version,
-                    constructivity_score,
-                ),
-            )
-            conn.commit()
+            try:
+                conn = self._get_conn()
+                conn.execute(
+                    """
+                    INSERT INTO audit_log
+                        (session_id, workflow_id, workflow_version, timestamp,
+                         event_type, node_id, actor,
+                         input_hash, output_hash,
+                         input_content, output_content, trace_log_path,
+                         llm_profile_id, latency_ms, prompt_tokens, completion_tokens,
+                         critic_item_id, build_response_id, draft_version, constructivity_score)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        session_id,
+                        workflow_id,
+                        workflow_version,
+                        now,
+                        event_type,
+                        node_id,
+                        actor,
+                        input_hash,
+                        output_hash,
+                        input_content,
+                        output_content,
+                        trace_log_path,
+                        llm_profile_id,
+                        latency_ms,
+                        prompt_tokens,
+                        completion_tokens,
+                        critic_item_id,
+                        build_response_id,
+                        draft_version,
+                        constructivity_score,
+                    ),
+                )
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001 — see docstring
+                # P4.5+ §4.5 — a dead DB must not crash the workflow
+                # node.  We:
+                #   1. increment the failure counter (visible to
+                #      tests / health checks via
+                #      ``get_insert_failure_count``);
+                #   2. drop the cached connection so the next call
+                #      reopens (recovers from a transient file-lock
+                #      or rotation);
+                #   3. log a single ``error`` per workflow session —
+                #      subsequent failures for the same session drop
+                #      to ``debug`` so the operator gets one loud
+                #      signal per session, not one per node.
+                self._insert_failures += 1
+                self._conn = None
+                if session_id in self._session_error_logged:
+                    logger.debug(
+                        "AuditLogger: insert failed for session %s "
+                        "(suppressed; see the first error above): %s",
+                        session_id,
+                        exc,
+                    )
+                else:
+                    self._session_error_logged.add(session_id)
+                    logger.error(
+                        "AuditLogger: insert failed for session %s; "
+                        "dropping cached connection and continuing. "
+                        "All further events for this session will be "
+                        "logged at debug level. Underlying error: %s",
+                        session_id,
+                        exc,
+                        exc_info=True,
+                    )
+                # Intentionally do NOT re-raise: the workflow runner
+                # and node bodies rely on audit failures being
+                # non-fatal.  The counter above is the only durable
+                # signal that audit is degraded.
 
     # ------------------------------------------------------------------
     # Public API — log events
