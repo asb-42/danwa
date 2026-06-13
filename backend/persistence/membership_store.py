@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -16,9 +17,73 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_DB_PATH = Path("data/auth.db")
 
+# Module-level invalidation observer registry.
+#
+# Resolves the N+1-lookup problem flagged in the 2026-06-12 code review
+# (section 3.3). The dependency layer in ``backend.api.deps`` caches the
+# per-user membership list for a short TTL, but the cache must be
+# invalidated when a membership is *added*, *removed*, or *role-changed*
+# so that the next request sees the new state immediately rather than
+# after the TTL expires.
+#
+# Rather than have the store reach up and import the deps module (which
+# would create a circular import), the store accepts zero or more
+# ``Callable[[str], None]`` observers that are invoked on every
+# mutating call.  The deps module registers its observer at import time
+# via ``MembershipStore.add_invalidator()``.
+#
+# Observers must be idempotent and cheap — they will be called on every
+# membership write.  Bad observers (exceptions, blocking I/O) are logged
+# and swallowed so they cannot poison the store.
+_MEMBERSHIP_INVALIDATORS: list[Callable[[str], None]] = []
+
 
 class MembershipStore:
     """CRUD operations for tenant memberships in the auth SQLite database."""
+
+    # ------------------------------------------------------------------
+    # Invalidation observers (section 3.3 of the 2026-06-12 code review)
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def add_invalidator(cls, fn: Callable[[str], None]) -> Callable[[], None]:
+        """Register an observer to be called on every mutating operation.
+
+        The observer is invoked with the affected ``user_id`` as its
+        single argument. Observers must be idempotent and cheap;
+        exceptions are logged and swallowed.
+
+        Returns a callable that removes the observer.  This is mainly
+        useful in tests, where observer leakage between test files would
+        cause cross-test pollution.
+        """
+        _MEMBERSHIP_INVALIDATORS.append(fn)
+
+        def _unregister() -> None:
+            try:
+                _MEMBERSHIP_INVALIDATORS.remove(fn)
+            except ValueError:  # pragma: no cover - already gone
+                pass
+
+        return _unregister
+
+    @classmethod
+    def _fire_invalidators(cls, user_id: str) -> None:
+        """Notify all registered observers that *user_id* changed."""
+        for fn in list(_MEMBERSHIP_INVALIDATORS):
+            try:
+                fn(user_id)
+            except Exception as exc:  # noqa: BLE001
+                # Bad observer: log it but do NOT let it poison the
+                # store. A failing cache invalidation is a
+                # *correctness* problem (stale read for up to TTL), not
+                # a *crash* problem.
+                logger.warning(
+                    "MembershipStore invalidator %r raised %s: %s",
+                    fn,
+                    type(exc).__name__,
+                    exc,
+                )
 
     def __init__(self, db_path: Path | str | None = None):
         """Initialise MembershipStore."""
@@ -54,6 +119,10 @@ class MembershipStore:
         )
         self.conn.commit()
         logger.info("Added membership: user=%s tenant=%s role=%s", user_id, tenant_id, role)
+        # Fire-and-forget: notify observers that this user's membership
+        # set has changed.  ``add`` uses INSERT OR REPLACE so a re-add
+        # is also a mutation that observers must see.
+        self._fire_invalidators(user_id)
         return TenantMembership(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -72,6 +141,9 @@ class MembershipStore:
         deleted = cursor.rowcount > 0
         if deleted:
             logger.info("Removed membership: user=%s tenant=%s", user_id, tenant_id)
+            # Fire invalidator only on a real delete so that no-op
+            # ``remove`` calls do not thrash the cache.
+            self._fire_invalidators(user_id)
         return deleted
 
     def get(self, tenant_id: str, user_id: str) -> TenantMembership | None:
@@ -101,11 +173,16 @@ class MembershipStore:
 
     def update_role(self, tenant_id: str, user_id: str, role: str) -> TenantMembership | None:
         """Update a user's role within a tenant."""
-        self.conn.execute(
+        cursor = self.conn.execute(
             "UPDATE memberships SET role = ? WHERE tenant_id = ? AND user_id = ?",
             (role, tenant_id, user_id),
         )
         self.conn.commit()
+        if cursor.rowcount > 0:
+            # Role changes affect ``is_admin`` etc. in downstream code,
+            # so notify observers even though the membership *set* has
+            # not changed.
+            self._fire_invalidators(user_id)
         return self.get(tenant_id, user_id)
 
     def count_by_tenant(self, tenant_id: str) -> int:
