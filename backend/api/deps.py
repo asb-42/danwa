@@ -5,6 +5,8 @@ Provides shared services (audit, graph, settings) as FastAPI dependencies.
 
 from __future__ import annotations
 
+import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -23,6 +25,55 @@ from backend.workflow.debate_graph import debate_graph
 _SETTINGS_PATH = Path("config/settings.yaml")
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+
+logger = logging.getLogger(__name__)
+
+# P3.4 — Dev-mode auth guardrails.
+# When auth is disabled, we emit a loud WARNING at every dependent call
+# (so it cannot be silently missed in a long-running log) AND refuse to
+# serve traffic in any environment that looks like production. The
+# operator can acknowledge the dev-mode once-per-process with
+# DANWA_DEV_AUTH_ACK=1, but cannot use that flag to bypass the prod check.
+_PROD_ENV_HINTS = {"production", "prod", "live"}
+
+
+def _looks_like_production() -> bool:
+    """Best-effort production detector.
+
+    Returns True if the runtime looks like production:
+    * ``DANWA_ENV`` is one of ``production/prod/live`` (case-insensitive), or
+    * debug is False AND settings reports a non-localhost CORS / DB path.
+    """
+    env = os.environ.get("DANWA_ENV", "").strip().lower()
+    if env in _PROD_ENV_HINTS:
+        return True
+    try:
+        if not settings.debug and not settings.host.startswith("127.") and settings.host != "0.0.0.0":
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def _dev_auth_acknowledged() -> bool:
+    return os.environ.get("DANWA_DEV_AUTH_ACK", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _warn_dev_auth(reason: str) -> None:
+    """Emit a loud, one-line dev-mode auth WARNING on every call.
+
+    We do NOT dedupe on a per-process flag because the operator needs to
+    be reminded continuously that auth is off — silent failure is the
+    most dangerous failure mode for this particular setting.
+    """
+    logger.warning(
+        "DEV-MODE AUTH ACTIVE (%s): get_current_user is returning a synthetic "
+        "admin user with role='admin' and tenant_id='_default'. ANY caller can "
+        "act as the first user. Set DANWA_AUTH_ENABLED=true (or unset "
+        "DANWA_AUTH_ENABLED) for production. Acknowledge with "
+        "DANWA_DEV_AUTH_ACK=1 to silence this warning.",
+        reason,
+    )
 
 
 @lru_cache
@@ -337,14 +388,38 @@ async def get_current_user(
 ):
     """Validate JWT bearer token and return the authenticated user.
 
-    If auth_enabled is False, returns a synthetic admin user (dev mode).
-    If no credentials are provided and auth is enabled, raises 401.
+    P3.4 — Dev-mode auth guardrails:
+    * When ``settings.auth_enabled`` is False:
+      - In a production-looking environment (DANWA_ENV=production / non-local
+        bind AND debug=False) the request is REFUSED with 503. The
+        ``DANWA_DEV_AUTH_ACK`` flag does NOT bypass this check.
+      - In a non-production environment the function returns a synthetic
+        admin user, but emits a loud WARNING on every call (silenceable
+        for one process by setting ``DANWA_DEV_AUTH_ACK=1``).
     """
     from backend.core.security import decode_token
     from backend.models.user import User
 
     if not settings.auth_enabled:
-        # Dev mode: return synthetic admin user
+        # P3.4 — refuse dev mode in production. This is the fail-closed
+        # check that the 2026-06-12 review demanded.
+        if _looks_like_production():
+            logger.error(
+                "REFUSING REQUEST: auth is disabled but the runtime looks like "
+                "production (DANWA_ENV=%r, host=%r, debug=%r). Set "
+                "DANWA_AUTH_ENABLED=true (or unset it) before serving traffic.",
+                os.environ.get("DANWA_ENV", ""),
+                settings.host,
+                settings.debug,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Authentication is disabled but the server is running "
+                "in production. Set DANWA_AUTH_ENABLED=true to enable auth.",
+            )
+
+        if not _dev_auth_acknowledged():
+            _warn_dev_auth(f"auth_enabled={settings.auth_enabled}")
         return User(
             id="dev-user",
             email="dev@danwa.local",
