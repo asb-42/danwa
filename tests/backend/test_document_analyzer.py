@@ -480,8 +480,10 @@ class TestAnalyzeDocuments:
         # Positional: (user_prompt, system_prompt, profile_service, profile_id, timeout)
         args = mock.call_args[0]
         user_prompt = args[0]
-        assert "Document 1: a.txt" in user_prompt
+        # P3.3 — documents are wrapped in <document> XML delimiters.
+        assert '<document i="1" filename="a.txt">' in user_prompt
         assert "hello world" in user_prompt
+        assert "</document>" in user_prompt
         assert args[3] == "p1"  # profile_id
         assert args[4] == 180  # default timeout
         # Language was passed to the system prompt builder
@@ -495,16 +497,17 @@ class TestAnalyzeDocuments:
         # The text was [:20000], so the document body contains 20 000 x's.
         # The filename "big.txt" also contains one x, so total is 20 001.
         assert user_prompt.count("x") == 20001
-        # Verify the body itself is at most 20 000 by checking the substring
-        # between the "--- Document ... ---" markers.
-        body = user_prompt.split("--- Document 1: big.txt ---\n", 1)[1].split("\n\n", 1)[0]
+        # P3.3 — verify the body is at most 20 000 by checking the
+        # substring between the <document ...> open and </document> close.
+        body = user_prompt.split('<document i="1" filename="big.txt">\n', 1)[1].split("\n</document>", 1)[0]
         assert body == "x" * 20000
 
     def test_filename_defaults_to_unknown(self) -> None:
         docs = [{"text": "no filename"}]
         with patch.object(da, "_call_llm", return_value={}) as mock:
             analyze_documents(docs, MagicMock())
-        assert "Document 1: unknown" in mock.call_args[0][0]
+        # P3.3 — filename defaults to "unknown" inside the <document> tag.
+        assert '<document i="1" filename="unknown">' in mock.call_args[0][0]
 
     def test_custom_timeout(self) -> None:
         docs = [{"filename": "a", "text": "x"}]
