@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -264,6 +265,94 @@ def get_membership_store():
     from backend.persistence.membership_store import MembershipStore
 
     return MembershipStore()
+
+
+# ---------------------------------------------------------------------------
+# Cache-busting helpers
+# ---------------------------------------------------------------------------
+# Resolves the lru_cache+lru_cache+... cascade issue flagged in the
+# 2026-06-12 code review, section 3.1.
+#
+# The @lru_cache-decorated store factories in this module keep a single
+# store instance alive for the lifetime of the process. In production this
+# is the right thing (one open SQLite connection per process, amortised).
+# In tests it leaks: a fixture that says "use a fresh DB" is silently
+# bypassed because the cached factory returns the *previous* test's store.
+#
+# The fix is two helpers:
+#   1. ``fresh_stores()`` -- a context manager that clears every cached
+#      store factory on entry, lets the test body install new overrides,
+#      and re-clears on exit so the *next* test starts from a known empty
+#      cache. This is what the conftest fixture uses.
+#   2. ``reset_cached_stores()`` -- a fire-and-forget variant for callers
+#      that don't want the surrounding context-manager ceremony.
+
+
+# The exact set of @lru_cache-decorated store/service factories in this
+# module.  Defined *after* the factories it references, so the names are
+# in scope.  Adding a new cached factory here is a deliberate act: append
+# it to the tuple and add a test in tests/backend/test_deps_cache.py that
+# covers it.  ``get_settings`` is intentionally included so that tests
+# that monkeypatch ``DANWA_*`` env vars can clear the cached
+# ``Settings`` instance after the patch.
+_CACHED_STORE_FACTORIES: tuple = (
+    get_settings,
+    get_audit_service,
+    get_debate_store,
+    get_project_store,
+    get_case_store,
+    get_tag_store,
+    get_blueprint_repository,
+    get_user_store,
+    get_tenant_store,
+    get_membership_store,
+)
+
+
+def reset_cached_stores() -> None:
+    """Clear every @lru_cache-decorated store factory in this module.
+
+    Idempotent. Safe to call from a test fixture's teardown. Returns
+    nothing -- the next call to the factory will re-populate the cache
+    lazily.
+
+    Production code should not call this; the cached factories exist so
+    that the same SQLite connection is reused across requests. Tests are
+    the only legitimate caller.
+    """
+    for factory in _CACHED_STORE_FACTORIES:
+        cache_clear = getattr(factory, "cache_clear", None)
+        if cache_clear is not None:
+            cache_clear()
+
+
+@contextmanager
+def fresh_stores() -> Iterator[None]:
+    """Bust every @lru_cache-decorated store factory for the scope of a test.
+
+    Usage::
+
+        def test_x(monkeypatch):
+            with fresh_stores():
+                # Body runs with an empty lru_cache so that any
+                # ``get_*_store()`` call inside it constructs a *new*
+                # store, picking up ``tmp_path`` / monkeypatched env vars.
+                ...
+            # After the block the cache is *still* empty: the next test
+            # starts with a clean slate even if the body of the test
+            # raised before the cleanup ran.
+
+    Why a context manager and not a plain fixture: pytest fixtures cannot
+    clean up after themselves if a test raises before the ``yield`` is
+    reached (parametrise / collection errors).  ``fresh_stores()`` always
+    runs its teardown branch, so a misbehaving test cannot poison the
+    next one.
+    """
+    reset_cached_stores()
+    try:
+        yield
+    finally:
+        reset_cached_stores()
 
 
 # ---------------------------------------------------------------------------
