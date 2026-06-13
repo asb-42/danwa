@@ -201,7 +201,48 @@ def _sanitize_for_prompt(text: str) -> str:
 
 
 def _extract_json(text: str) -> str | None:
-    """Extract a JSON object from LLM output, handling markdown fences and noise."""
+    """Extract a JSON object from LLM output (P4.5+ §4.3 — documented).
+
+    LLMs rarely return pristine JSON: they wrap it in markdown
+    fences, prefix it with apologies like "Sure! Here is the
+    document analysis:", or append trailing prose.  This helper
+    applies three fallback strategies, in order, to recover the
+    JSON object body:
+
+    1. **Markdown-fenced JSON** — looks for ``\\`\\`\\`json ... \\`\\`\\```
+       and returns the body.
+    2. **Generic markdown fence** — looks for ``\\`\\`\\` ... \\`\\`\\```
+       containing a JSON object (the language tag is optional).
+    3. **First balanced top-level object** — scans for the first
+       ``{`` and returns the substring up to the matching ``}``,
+       respecting string boundaries and ``\\`` escapes so a
+       literal ``}`` inside a string does not close the object
+       early.
+
+    The third strategy is a hand-rolled, **string-aware**
+    balanced-brace parser.  Without the string-awareness, a JSON
+    value like ``"see section } of the doc"`` would prematurely
+    terminate the scan.  See the regexes above and the loop below
+    for the exact logic.
+
+    Args:
+        text: The raw LLM response.
+
+    Returns:
+        The JSON object substring, or ``None`` if no JSON object
+        can be located (i.e. there is no ``{`` at all, or the
+        braces never balance before EOF — the latter would only
+        happen on truly truncated LLM output).
+
+    Note:
+        This function **does not parse** the JSON — callers feed
+        the result to :func:`_parse_json` which handles
+        ``json.loads`` + the progressive ``_clean_json`` repair
+        pass.  Keeping extraction and parsing separate lets us
+        log exactly which strategy succeeded and lets the repair
+        pass handle things like trailing commas that would still
+        be balanced-brace-valid.
+    """
     # 1. Try content between ```json ... ``` fences
     m = re.search(r"```(?:json)?\s*\n?(\{.*?\})\n?\s*```", text, re.DOTALL)
     if m:
