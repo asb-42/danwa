@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
@@ -270,9 +271,11 @@ def get_membership_store():
 # ---------------------------------------------------------------------------
 # Cache-busting helpers
 # ---------------------------------------------------------------------------
-# Resolves the lru_cache+lru_cache+... cascade issue flagged in the
-# 2026-06-12 code review, section 3.1.
+# Resolves two issues from the 2026-06-12 code review:
+#   3.1  the lru_cache+lru_cache+... cascade that leaks stores across tests
+#   3.3  the N+1 membership-lookup pattern in get_active_tenant et al.
 #
+# ---- 3.1 cascade --------------------------------------------------
 # The @lru_cache-decorated store factories in this module keep a single
 # store instance alive for the lifetime of the process. In production this
 # is the right thing (one open SQLite connection per process, amortised).
@@ -285,7 +288,27 @@ def get_membership_store():
 #      and re-clears on exit so the *next* test starts from a known empty
 #      cache. This is what the conftest fixture uses.
 #   2. ``reset_cached_stores()`` -- a fire-and-forget variant for callers
-#      that don't want the surrounding context-manager ceremony.
+#      that don't want the surrounding context-manager ceremony. Also
+#      clears the per-user membership TTL cache (see 3.3 below).
+#
+# ---- 3.3 membership N+1 --------------------------------------------
+# ``get_active_tenant``, ``get_tenant_context`` and ``get_case_context``
+# all used to call ``membership_store.list_by_user(user.id)`` on every
+# request and iterate the result linearly.  With many tenants the cost
+# is O(tenants) per request.
+#
+# The fix:
+#   * ``_user_memberships_cached(user_id)`` returns the membership list
+#     for a user, served from a 30-second in-process TTL cache keyed on
+#     ``user_id``.
+#   * ``invalidate_user_memberships(user_id)`` removes the cached entry
+#     for one user.
+#   * ``reset_user_memberships_cache()`` empties the entire cache.
+#   * The deps module registers ``invalidate_user_memberships`` as a
+#     ``MembershipStore`` invalidation observer at import time, so
+#     mutations in production immediately invalidate the right user.
+#   * ``reset_cached_stores()`` also clears this TTL cache, so
+#     ``fresh_stores()`` gives tests a clean slate.
 
 
 # The exact set of @lru_cache-decorated store/service factories in this
@@ -319,11 +342,98 @@ def reset_cached_stores() -> None:
     Production code should not call this; the cached factories exist so
     that the same SQLite connection is reused across requests. Tests are
     the only legitimate caller.
+
+    Also clears the per-user membership TTL cache (section 3.3 of the
+    2026-06-12 review) so the next test starts with a known-empty
+    cache, not a 30-second-stale one.
     """
     for factory in _CACHED_STORE_FACTORIES:
         cache_clear = getattr(factory, "cache_clear", None)
         if cache_clear is not None:
             cache_clear()
+    reset_user_memberships_cache()
+
+
+# ---------------------------------------------------------------------------
+# Per-user membership TTL cache  (section 3.3 of the 2026-06-12 review)
+# ---------------------------------------------------------------------------
+# Resolves the N+1 membership-lookup pattern in get_active_tenant,
+# get_tenant_context and get_case_context.  Each of those used to call
+# ``membership_store.list_by_user(user.id)`` on every request and
+# iterate the result linearly.  With many tenants per user, the cost
+# is O(tenants) per request.
+#
+# This 30-second TTL cache keys on user_id (NOT tenant_id -- a fan-out
+# per tenant would defeat the cache).  When a membership is mutated,
+# the store's invalidation observer (registered at import time, below)
+# drops the affected user's entry so the next request sees the new
+# state immediately.
+
+_USER_MEMBERSHIPS_CACHE: dict[str, tuple[float, list[Any]]] = {}
+_USER_MEMBERSHIPS_TTL_SECONDS: float = 30.0
+
+
+def _user_memberships_cached(user_id: str) -> list[Any]:
+    """Return the membership list for *user_id*, served from a 30s TTL cache.
+
+    Returns the cached value if it was written within
+    ``_USER_MEMBERSHIPS_TTL_SECONDS``.  Otherwise re-fetches from the
+    membership store and re-populates the cache.
+
+    The returned list is the cached list object -- callers MUST NOT
+    mutate it.  If you need to mutate, copy first.
+    """
+    now = time.monotonic()
+    cached = _USER_MEMBERSHIPS_CACHE.get(user_id)
+    if cached is not None:
+        ts, memberships = cached
+        if now - ts < _USER_MEMBERSHIPS_TTL_SECONDS:
+            return memberships
+    # Miss / expired: re-fetch from the store.  We use the module-level
+    # ``get_membership_store()`` so that the cache is keyed on the
+    # *process-singleton* store, exactly like the @lru_cache factories
+    # above.  In tests, ``fresh_stores()`` clears the store cache (so a
+    # new store is constructed) and the membership TTL cache, so the
+    # fetch picks up the test's temporary SQLite file.
+    memberships = list(get_membership_store().list_by_user(user_id))
+    _USER_MEMBERSHIPS_CACHE[user_id] = (now, memberships)
+    return memberships
+
+
+def invalidate_user_memberships(user_id: str) -> None:
+    """Drop the cached membership list for *user_id* (if any).
+
+    Idempotent. Safe to call for a user that has never been cached.
+
+    Wired up at import time as a ``MembershipStore`` invalidation
+    observer, so a write to ``membership_store.add/remove/update_role``
+    immediately invalidates the affected user.
+    """
+    _USER_MEMBERSHIPS_CACHE.pop(user_id, None)
+
+
+def reset_user_memberships_cache() -> None:
+    """Empty the entire per-user membership TTL cache.
+
+    Called by ``reset_cached_stores()`` (and therefore by
+    ``fresh_stores()``) so the next test starts with a known-empty
+    cache, not a 30-second-stale one.
+    """
+    _USER_MEMBERSHIPS_CACHE.clear()
+
+
+# Register the invalidation hook with the membership store.
+# Done at import time via a lazy import to avoid a circular dependency
+# (deps -> membership_store is one-way; if we imported
+# ``membership_store`` at module top, the store's observers would have
+# to import deps, which is the wrong direction).
+def _register_membership_invalidator() -> None:
+    from backend.persistence.membership_store import MembershipStore
+
+    MembershipStore.add_invalidator(invalidate_user_memberships)
+
+
+_register_membership_invalidator()
 
 
 @contextmanager
@@ -383,8 +493,11 @@ async def get_active_tenant(
     current_user = user or await _gcu()
     tid = tenant_id_header or current_user.tenant_id
 
-    membership_store = get_membership_store()
-    memberships = membership_store.list_by_user(current_user.id)
+    # P4.2 -- N+1 fix: serve the membership list from the per-user TTL
+    # cache (section 3.3 of the 2026-06-12 review).  The cache is
+    # invalidated by ``MembershipStore.add/remove/update_role`` so we
+    # always see the current state after a write.
+    memberships = _user_memberships_cached(current_user.id)
     if not any(m.tenant_id == tid for m in memberships):
         if any(m.tenant_id == current_user.tenant_id for m in memberships):
             return current_user.tenant_id
@@ -406,8 +519,8 @@ async def get_tenant_context(
     from backend.api.deps import get_current_user as _gcu
 
     current_user = user or await _gcu()
-    membership_store = get_membership_store()
-    memberships = membership_store.list_by_user(current_user.id)
+    # P4.2 -- N+1 fix: see get_active_tenant for rationale.
+    memberships = _user_memberships_cached(current_user.id)
     if not any(m.tenant_id == tid for m in memberships):
         raise HTTPException(status_code=403, detail=f"Not a member of tenant '{tid}'")
     return tid
@@ -427,8 +540,8 @@ async def get_case_context(
         from backend.api.deps import get_current_user as _gcu
 
         current_user = user or await _gcu()
-        membership_store = get_membership_store()
-        memberships = membership_store.list_by_user(current_user.id)
+        # P4.2 -- N+1 fix: see get_active_tenant for rationale.
+        memberships = _user_memberships_cached(current_user.id)
         if not any(m.tenant_id == tid for m in memberships):
             raise HTTPException(status_code=403, detail=f"Not a member of tenant '{tid}'")
 
