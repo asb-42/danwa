@@ -100,10 +100,37 @@ class TokenData:
 def decode_token(token: str) -> TokenData:
     """Decode and validate a JWT token.
 
+    The required claims are ``exp``, ``iat``, and ``sub``.
+
+    Why we check them manually (and not via ``options={"require": ...}``)
+    --------------------------------------------------------------------
+    The codebase uses ``python-jose`` (not PyJWT) for verification.
+    ``python-jose``'s :func:`jwt.decode` accepts the same ``options``
+    keyword as PyJWT for API compatibility, but **silently ignores
+    unknown keys** — ``require`` is never enforced.  A token without
+    ``exp`` is therefore treated as "not expired" (the default) and a
+    token without ``iat`` slips through the audit trail.  We therefore
+    re-check the three required claims explicitly after the
+    cryptographic decode, raising :class:`JWTError` if any is missing
+    or empty.
+
     Raises:
-        JWTError: If the token is invalid, expired, or malformed.
+        JWTError: If the token is invalid, expired, malformed, or
+            missing any of the required claims (``exp``, ``iat``,
+            ``sub``).
     """
-    payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret_key,
+        algorithms=[settings.jwt_algorithm],
+    )
+    # python-jose does not honour options={"require": [...]}, so the
+    # required-claim check is hand-rolled below.  Keep this in lock-step
+    # with the docstring and with the test
+    # ``tests/backend/test_auth.py::TestJWTRequiredClaims``.
+    for claim in ("exp", "iat", "sub"):
+        if not payload.get(claim):
+            raise JWTError(f"Token missing required '{claim}' claim")
     user_id = payload.get("sub")
     if not user_id:
         raise JWTError("Token missing 'sub' claim")

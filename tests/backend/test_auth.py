@@ -102,6 +102,89 @@ class TestJWT:
             decode_token(token)
 
 
+class TestJWTRequiredClaims:
+    """P4.5+ §4.9 — ``exp``, ``iat``, and ``sub`` must be present.
+
+    PyJWT treats a missing ``exp`` as "not expired" unless the caller
+    explicitly requires the claim via ``options={"require": [...]}``.
+    Same for ``iat``.  ``sub`` is already checked explicitly in
+    ``decode_token``; the new check via ``require`` is a defense in
+    depth that produces a clearer error message ("missing required
+    claim") and closes the door on a future maintainer who removes
+    the explicit check.
+    """
+
+    def test_token_missing_exp_is_rejected(self, monkeypatch):
+        from datetime import UTC, datetime
+
+        from jose import JWTError
+        from jose import jwt as jose_jwt
+
+        from backend.core.config import settings
+
+        monkeypatch.setattr("backend.core.security.settings.jwt_secret_key", "test-secret-key-for-testing")
+        # Build a token with ``iat`` and ``sub`` but no ``exp``.
+        payload = {
+            "sub": "user-1",
+            "iat": datetime.now(UTC),
+            "type": "access",
+        }
+        token = jose_jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+        with pytest.raises(JWTError):
+            decode_token(token)
+
+    def test_token_missing_iat_is_rejected(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        from jose import JWTError
+        from jose import jwt as jose_jwt
+
+        from backend.core.config import settings
+
+        monkeypatch.setattr("backend.core.security.settings.jwt_secret_key", "test-secret-key-for-testing")
+        # Build a token with ``exp`` and ``sub`` but no ``iat``.
+        payload = {
+            "sub": "user-1",
+            "exp": datetime.now(UTC) + timedelta(minutes=15),
+            "type": "access",
+        }
+        token = jose_jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+        with pytest.raises(JWTError):
+            decode_token(token)
+
+    def test_token_missing_sub_is_rejected(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        from jose import JWTError
+        from jose import jwt as jose_jwt
+
+        from backend.core.config import settings
+
+        monkeypatch.setattr("backend.core.security.settings.jwt_secret_key", "test-secret-key-for-testing")
+        # Build a token with ``exp`` and ``iat`` but no ``sub``.
+        payload = {
+            "iat": datetime.now(UTC),
+            "exp": datetime.now(UTC) + timedelta(minutes=15),
+            "type": "access",
+        }
+        token = jose_jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+        with pytest.raises(JWTError):
+            decode_token(token)
+
+    def test_canonical_tokens_still_decode(self, monkeypatch):
+        """The tokens produced by ``create_access_token`` /
+        ``create_refresh_token`` must satisfy the new requirement.
+        This guards against a future builder that drops a claim."""
+        monkeypatch.setattr("backend.core.security.settings.jwt_secret_key", "test-secret-key-for-testing")
+        user = _make_user()
+        # access
+        data = decode_token(create_access_token(user))
+        assert data.user_id == "test-id"
+        # refresh
+        data = decode_token(create_refresh_token(user))
+        assert data.user_id == "test-id"
+
+
 # ---------------------------------------------------------------------------
 # UserStore
 # ---------------------------------------------------------------------------
