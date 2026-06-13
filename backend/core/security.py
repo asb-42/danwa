@@ -27,8 +27,31 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against its bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plaintext password against its bcrypt hash.
+
+    Returns:
+        ``True`` iff the password matches the hash.
+
+    Note:
+        A malformed/garbled ``hashed_password`` does **not** raise
+        here (P4.5+ §4.7).  ``passlib`` would normally raise
+        :class:`ValueError` (e.g. ``malformed bcrypt hash``) which
+        would surface as an unhandled 500 in the auth login
+        endpoint.  We catch the broad family of passlib errors and
+        return ``False`` instead, with a loud ``logger.warning`` so
+        the operator can spot a corrupted ``password_hash`` column
+        and trigger a re-hash.  The login endpoint already maps
+        ``False`` to a clean 401, so the user-facing behaviour is
+        identical to "wrong password".
+    """
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as exc:  # noqa: BLE001 — see docstring
+        logger.warning(
+            "verify_password: treating exception as invalid credentials: %s",
+            exc,
+        )
+        return False
 
 
 # ---------------------------------------------------------------------------

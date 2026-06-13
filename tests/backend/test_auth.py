@@ -39,6 +39,44 @@ class TestPasswordHashing:
         h2 = hash_password("test")
         assert h1 != h2  # bcrypt uses random salt
 
+    def test_malformed_hash_returns_false_with_warning(self, caplog):
+        """P4.5+ §4.7 — a garbled ``password_hash`` must not raise.
+
+        A corrupted hash column (e.g. from a partial migration or
+        manual SQL update) used to make ``passlib`` raise
+        ``ValueError`` which surfaced as an unhandled 500 in the auth
+        login endpoint.  The fix is to treat any passlib exception as
+        a failed login (clean 401) with a loud ``logger.warning``.
+        """
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="backend.core.security"):
+            result = verify_password("any-password", "not-a-valid-bcrypt-hash")
+        assert result is False
+        assert any(
+            "treating exception as invalid credentials" in rec.getMessage()
+            for rec in caplog.records
+        ), caplog.records
+
+    def test_empty_hash_also_returns_false_with_warning(self, caplog):
+        """An empty hash is *also* treated as a corrupted row.
+
+        passlib raises ``hash could not be identified`` on an empty
+        string, so this falls into the same recovery path as a
+        malformed bcrypt hash.  The auth endpoint will get a clean
+        401 and the operator gets a loud warning that the row is
+        missing a password.
+        """
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="backend.core.security"):
+            result = verify_password("any-password", "")
+        assert result is False
+        assert any(
+            "treating exception as invalid credentials" in rec.getMessage()
+            for rec in caplog.records
+        ), caplog.records
+
 
 # ---------------------------------------------------------------------------
 # JWT tokens
