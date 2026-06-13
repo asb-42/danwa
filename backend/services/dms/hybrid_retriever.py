@@ -17,6 +17,25 @@ logger = logging.getLogger(__name__)
 # BM25 corpus cache TTL in seconds
 _CORPUS_CACHE_TTL = 300  # 5 minutes
 
+# Hard cap on the number of chunks fed into the BM25 index (P4.5+ §4.6).
+#
+# Without a cap, a project with N chunks will tokenize all N of them and
+# build an in-memory BM25 index that is O(N) in both CPU and memory.
+# On a large project (N ≥ 50k) this is a real DoS vector: a single query
+# to ``retrieve()`` would block the event loop for seconds-to-minutes
+# and the index would consume hundreds of MB.
+#
+# 10 000 was chosen because:
+#   * it is large enough that real RAG results are unaffected for the
+#     vast majority of projects (the BM25 top-20 still drives the
+#     final ranking via RRF + cross-encoder reranking);
+#   * it is small enough that index construction is bounded at
+#     single-digit MB and well under a second of CPU;
+#   * it is conservative — a project that actually has more than
+#     10 000 chunks in BM25-corpus range is almost certainly a sign
+#     that something upstream is chunking too aggressively.
+MAX_BM25_CORPUS_SIZE = 10_000
+
 
 class HybridRetriever:
     """Combines BM25 keyword search with vector similarity search using RRF."""
@@ -94,6 +113,13 @@ class HybridRetriever:
         Returns ``(chunks, bm25_or_none)``.  The BM25 index is built
         once per cache window and reused for every query in that
         window, avoiding redundant tokenisation and index construction.
+
+        The BM25 corpus is capped at :data:`MAX_BM25_CORPUS_SIZE`
+        chunks (P4.5+ §4.6) to prevent a single large project from
+        blocking the event loop on index construction.  The full
+        chunk list is still returned so the ``chunk_map`` lookup in
+        :meth:`retrieve` stays complete — only the BM25 input is
+        truncated.
         """
         now = time.time()
         if self._corpus_cache is not None and self._corpus_cache[0] == project_id and (now - self._corpus_cache[1]) < _CORPUS_CACHE_TTL:
@@ -102,7 +128,19 @@ class HybridRetriever:
         chunks = self._fetch_chunks_uncached(project_id)
         bm25 = None
         if chunks:
-            tokenized = [self._tokenize(c["text"]) for c in chunks]
+            corpus = chunks
+            if len(corpus) > MAX_BM25_CORPUS_SIZE:
+                logger.warning(
+                    "HybridRetriever: BM25 corpus truncated from %d to %d chunks "
+                    "(P4.5+ §4.6 cap). Cross-encoder reranking still uses the "
+                    "top-k results, so quality is unaffected for the returned set; "
+                    "consider re-chunking the source documents if you need full "
+                    "keyword coverage.",
+                    len(corpus),
+                    MAX_BM25_CORPUS_SIZE,
+                )
+                corpus = corpus[:MAX_BM25_CORPUS_SIZE]
+            tokenized = [self._tokenize(c["text"]) for c in corpus]
             bm25 = BM25Okapi(tokenized)
         self._corpus_cache = (project_id, now, chunks, bm25)
         return chunks, bm25
