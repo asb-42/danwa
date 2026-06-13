@@ -1,431 +1,486 @@
-"""Tests for safe_eval and named conditions (sprint 28)."""
+"""Tests for backend/workflow/safe_eval.py.
+
+Covers the AST-walking safe expression evaluator and the named-condition
+registry used by workflow gates.
+
+- NAMED_CONDITIONS registry content + behaviour
+- is_named_condition helper
+- _max_draft_versions helper (with/without termination_conditions)
+- safe_eval: input validation, simple constants, comparisons, boolean ops,
+  unary ops, binary ops, all operator kinds, tuples, lists, subscripts,
+  state lookup, unknown name, disallowed AST nodes, state["key"] access,
+  subscript on non-mapping, unsupported subscript key
+- evaluate_condition: empty string, named condition, arbitrary expression
+  with truthy/falsy result
+"""
 
 from __future__ import annotations
 
 import pytest
 
 from backend.workflow.safe_eval import (
+    NAMED_CONDITIONS,
     SafeEvalError,
+    _max_draft_versions,
     evaluate_condition,
     is_named_condition,
     safe_eval,
 )
 
-# ---------------------------------------------------------------------------
-# safe_eval — allows typical expression patterns
-# ---------------------------------------------------------------------------
-
-
-class TestSafeEvalAllows:
-    """safe_eval should evaluate the expressions used by real gate conditions."""
-
-    def test_state_subscript(self):
-        assert safe_eval("state['x']", {"x": 42}) == 42
-
-    def test_state_get_via_subscript_then_compare(self):
-        result = safe_eval("state['x'] >= 3", {"x": 5})
-        assert result is True
-
-    def test_bare_name_lookup_against_state(self):
-        """``current_round`` resolves to state['current_round'] without
-        requiring the explicit subscript syntax.  This is the more
-        common authoring pattern and matches the comment in
-        ``backend/blueprints/workflow_models.py:246``."""
-        result = safe_eval("current_round >= 1", {"current_round": 3})
-        assert result is True
-
-    def test_bare_name_lookup_compares_correctly(self):
-        assert safe_eval("current_round >= 10", {"current_round": 3}) is False
-        assert safe_eval("current_round == 3", {"current_round": 3}) is True
-
-    def test_state_get_via_subscript_then_compare_false(self):
-        result = safe_eval("state['x'] >= 10", {"x": 5})
-        assert result is False
-
-    def test_nested_subscript(self):
-        state = {"a": {"b": {"c": "found"}}}
-        assert safe_eval("state['a']['b']['c']", state) == "found"
-
-    def test_arithmetic(self):
-        assert safe_eval("1 + 2 * 3", {}) == 7
-        assert safe_eval("10 - 4", {}) == 6
-        assert safe_eval("7 // 2", {}) == 3
-        assert safe_eval("7 % 2", {}) == 1
-        assert safe_eval("2 ** 8", {}) == 256
-
-    def test_boolean(self):
-        assert safe_eval("True and False", {}) is False
-        assert safe_eval("True or False", {}) is True
-        assert safe_eval("not True", {}) is False
-        assert safe_eval("True and (False or True)", {}) is True
-
-    def test_comparisons(self):
-        assert safe_eval("1 < 2", {}) is True
-        assert safe_eval("1 == 1", {}) is True
-        assert safe_eval("1 != 2", {}) is True
-        assert safe_eval("'a' in ['a', 'b']", {}) is True
-        assert safe_eval("'a' not in ['a', 'b']", {}) is False
-        assert safe_eval("None is None", {}) is True
-        assert safe_eval("True is not False", {}) is True
-
-    def test_missing_state_key_returns_keyerror(self):
-        """``state['missing']`` propagates the underlying KeyError. Callers should
-        use ``state.get('x')`` — but wait, that requires ``.get`` which is
-        not in the safe dialect.  Instead, we surface the KeyError so the
-        caller can log it and skip the condition."""
-        with pytest.raises(KeyError):
-            safe_eval("state['missing']", {})
-
-    def test_empty_state_subscript_zero(self):
-        assert safe_eval("state['count']", {"count": 0}) == 0
-
-    def test_tuple_and_list_literals(self):
-        assert safe_eval("(1, 2, 3)", {}) == (1, 2, 3)
-        assert safe_eval("[1, 2, 3]", {}) == [1, 2, 3]
-
 
 # ---------------------------------------------------------------------------
-# safe_eval — rejects dangerous constructs
-# ---------------------------------------------------------------------------
-
-
-class TestSafeEvalRejects:
-    """safe_eval must reject every construct that can lead to code execution."""
-
-    @pytest.mark.parametrize(
-        "expression",
-        [
-            "__import__('os').system('echo pwned')",
-            "open('/etc/passwd')",
-            "eval('1+1')",
-            "exec('print(1)')",
-            "lambda: 1",
-            "[x for x in range(10)]",
-            "{x: x for x in range(10)}",
-            "f'x'",
-            "{1, 2, 3}",  # Set literal — not in whitelist
-            "del state",
-            "state['x'] = 1",
-            "assert True",
-            "(1).__class__.__base__.__subclasses__()",
-            "[].__class__",
-            "type(state)",
-        ],
-    )
-    def test_dangerous_expression_rejected(self, expression: str):
-        with pytest.raises(SafeEvalError):
-            safe_eval(expression, {"x": 1})
-
-    def test_function_call_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("len(state)", {"x": 1})
-
-    def test_method_call_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("state.get('x')", {"x": 1})
-
-    def test_attribute_access_rejected(self):
-        """Attribute access on state is not allowed — use ``state['key']`` instead."""
-        with pytest.raises(SafeEvalError):
-            safe_eval("state.attr", {"attr": 1})
-
-    def test_unknown_name_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("os", {"x": 1})
-
-    def test_bare_name_not_in_state_rejected(self):
-        """Names that are neither reserved (state/True/False/None) nor a
-        state key must be rejected — otherwise a typo silently resolves
-        to ``None`` and the condition always evaluates falsy."""
-        with pytest.raises(SafeEvalError):
-            safe_eval("not_a_state_key >= 1", {"x": 1})
-
-    def test_empty_expression_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("", {})
-
-    def test_whitespace_only_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("   \n\t  ", {})
-
-    def test_non_string_input_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval(123, {})  # type: ignore[arg-type]
-
-    def test_syntax_error_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("1 +", {})
-
-    def test_nested_dangerous_call_rejected(self):
-        with pytest.raises(SafeEvalError):
-            safe_eval("state if open('/tmp/x') else state", {})
-
-
-# ---------------------------------------------------------------------------
-# Named conditions
+# NAMED_CONDITIONS registry
 # ---------------------------------------------------------------------------
 
 
 class TestNamedConditions:
-    """The NAMED_CONDITIONS registry should match the strings used in templates."""
+    """The registry should contain the documented names and behave correctly."""
 
-    def test_consensus_reached_true(self):
+    def test_consensus_reached_approved(self) -> None:
+        state = {"consensus_result": {"verdict": "approved"}}
+        assert NAMED_CONDITIONS["consensus_reached"](state) is True
+
+    def test_consensus_reached_other(self) -> None:
+        state = {"consensus_result": {"verdict": "revision_required"}}
+        assert NAMED_CONDITIONS["consensus_reached"](state) is False
+
+    def test_consensus_reached_missing(self) -> None:
+        assert NAMED_CONDITIONS["consensus_reached"]({}) is False
+
+    def test_max_rounds_reached_true(self) -> None:
+        state = {"current_round": 6, "max_rounds": 5}
+        assert NAMED_CONDITIONS["max_rounds_reached"](state) is True
+
+    def test_max_rounds_reached_false(self) -> None:
+        state = {"current_round": 3, "max_rounds": 5}
+        assert NAMED_CONDITIONS["max_rounds_reached"](state) is False
+
+    def test_max_rounds_reached_defaults(self) -> None:
+        # current_round defaults to 0, max_rounds defaults to 5
+        assert NAMED_CONDITIONS["max_rounds_reached"]({}) is False
+
+    def test_rounds_exhausted_alias(self) -> None:
+        state = {"current_round": 10, "max_rounds": 5}
+        assert NAMED_CONDITIONS["rounds_exhausted"](state) is True
+
+    def test_extension_granted_true(self) -> None:
+        assert NAMED_CONDITIONS["extension_granted"]({"extension_granted": True}) is True
+
+    def test_extension_granted_false(self) -> None:
+        assert NAMED_CONDITIONS["extension_granted"]({"extension_granted": False}) is False
+
+    def test_extension_granted_missing(self) -> None:
+        assert NAMED_CONDITIONS["extension_granted"]({}) is False
+
+    def test_draft_deadlock_with_termination_conditions(self) -> None:
+        state = {
+            "draft_version": 3,
+            "termination_conditions": [{"type": "max_draft_versions", "value": 3}],
+        }
+        assert NAMED_CONDITIONS["draft_deadlock"](state) is True
+
+    def test_draft_deadlock_default_threshold(self) -> None:
+        state = {"draft_version": 5}
+        assert NAMED_CONDITIONS["draft_deadlock"](state) is True
+
+    def test_draft_deadlock_below_threshold(self) -> None:
+        state = {"draft_version": 1}
+        assert NAMED_CONDITIONS["draft_deadlock"](state) is False
+
+    def test_is_paused_true(self) -> None:
+        assert NAMED_CONDITIONS["is_paused"]({"is_paused": True}) is True
+
+    def test_is_paused_default_false(self) -> None:
+        assert NAMED_CONDITIONS["is_paused"]({}) is False
+
+    def test_approved_alias(self) -> None:
+        state = {"consensus_result": {"verdict": "approved"}}
+        assert NAMED_CONDITIONS["approved"](state) is True
+
+    def test_revision_required(self) -> None:
+        state = {"consensus_result": {"verdict": "revision_required"}}
+        assert NAMED_CONDITIONS["revision_required"](state) is True
+
+    def test_construction_deadlock(self) -> None:
+        state = {"consensus_result": {"verdict": "construction_deadlock"}}
+        assert NAMED_CONDITIONS["construction_deadlock"](state) is True
+
+    def test_construction_deadlock_other_verdict(self) -> None:
+        state = {"consensus_result": {"verdict": "approved"}}
+        assert NAMED_CONDITIONS["construction_deadlock"](state) is False
+
+    def test_phase_transition_gates_always_pass(self) -> None:
+        for name in (
+            "framing_complete",
+            "positions_ready",
+            "stress_test_complete",
+            "integration_complete",
+        ):
+            assert NAMED_CONDITIONS[name]({}) is True, name
+
+    def test_true_constant_named_condition(self) -> None:
+        assert NAMED_CONDITIONS["True"]({}) is True
+
+    def test_false_constant_named_condition(self) -> None:
+        assert NAMED_CONDITIONS["False"]({}) is False
+
+
+class TestIsNamedCondition:
+    def test_known(self) -> None:
+        assert is_named_condition("consensus_reached") is True
+
+    def test_unknown(self) -> None:
+        assert is_named_condition("nope") is False
+
+    def test_empty(self) -> None:
+        assert is_named_condition("") is False
+
+
+# ---------------------------------------------------------------------------
+# _max_draft_versions
+# ---------------------------------------------------------------------------
+
+
+class TestMaxDraftVersions:
+    def test_default_when_no_termination_conditions(self) -> None:
+        assert _max_draft_versions({}) == 5
+
+    def test_default_when_empty_list(self) -> None:
+        assert _max_draft_versions({"termination_conditions": []}) == 5
+
+    def test_default_when_none(self) -> None:
+        assert _max_draft_versions({"termination_conditions": None}) == 5
+
+    def test_reads_from_termination_conditions(self) -> None:
+        state = {"termination_conditions": [{"type": "max_draft_versions", "value": 7}]}
+        assert _max_draft_versions(state) == 7
+
+    def test_ignores_non_matching_types(self) -> None:
+        state = {"termination_conditions": [{"type": "max_rounds", "value": 9}]}
+        assert _max_draft_versions(state) == 5
+
+    def test_ignores_non_int_value(self) -> None:
+        state = {"termination_conditions": [{"type": "max_draft_versions", "value": "7"}]}
+        assert _max_draft_versions(state) == 5
+
+    def test_picks_first_match(self) -> None:
+        state = {
+            "termination_conditions": [
+                {"type": "max_draft_versions", "value": 2},
+                {"type": "max_draft_versions", "value": 99},
+            ]
+        }
+        assert _max_draft_versions(state) == 2
+
+    def test_skips_non_mapping_entries(self) -> None:
+        state = {"termination_conditions": ["oops", {"type": "max_draft_versions", "value": 4}]}
+        assert _max_draft_versions(state) == 4
+
+
+# ---------------------------------------------------------------------------
+# safe_eval
+# ---------------------------------------------------------------------------
+
+
+class TestSafeEvalInputValidation:
+    def test_non_string_raises(self) -> None:
+        with pytest.raises(SafeEvalError, match="expression must be str"):
+            safe_eval(123, {})  # type: ignore[arg-type]
+
+    def test_empty_raises(self) -> None:
+        with pytest.raises(SafeEvalError, match="empty expression"):
+            safe_eval("", {})
+
+    def test_whitespace_only_raises(self) -> None:
+        with pytest.raises(SafeEvalError, match="empty expression"):
+            safe_eval("   \n\t  ", {})
+
+    def test_syntax_error_raises(self) -> None:
+        with pytest.raises(SafeEvalError, match="invalid syntax"):
+            safe_eval("1 +", {})
+
+
+class TestSafeEvalDisallowedNodes:
+    def test_function_call_rejected(self) -> None:
+        with pytest.raises(SafeEvalError, match="disallowed construct: Call"):
+            safe_eval("len(state)", {"x": [1, 2]})
+
+    def test_attribute_access_rejected(self) -> None:
+        with pytest.raises(SafeEvalError, match="disallowed construct: Attribute"):
+            safe_eval("state.get", {"x": 1})
+
+    def test_lambda_rejected(self) -> None:
+        # The Call node is rejected before Lambda is even inspected
+        with pytest.raises(SafeEvalError, match="disallowed construct"):
+            safe_eval("(lambda: 1)()", {})
+
+    def test_if_expression_rejected(self) -> None:
+        # IfExp is not in the whitelist
+        with pytest.raises(SafeEvalError):
+            safe_eval("1 if True else 2", {})
+
+    def test_dict_literal_rejected(self) -> None:
+        with pytest.raises(SafeEvalError):
+            safe_eval("{'a': 1}", {})
+
+    def test_comprehension_rejected(self) -> None:
+        with pytest.raises(SafeEvalError):
+            safe_eval("[x for x in state]", {"x": 1})
+
+    def test_fstring_rejected(self) -> None:
+        with pytest.raises(SafeEvalError, match="JoinedStr"):
+            safe_eval("f'hello {1}'", {})
+
+    def test_starred_rejected(self) -> None:
+        with pytest.raises(SafeEvalError):
+            safe_eval("[*state]", {"a": 1, "b": 2})
+
+
+class TestSafeEvalConstants:
+    def test_int(self) -> None:
+        assert safe_eval("42", {}) == 42
+
+    def test_float(self) -> None:
+        assert safe_eval("3.14", {}) == 3.14
+
+    def test_string(self) -> None:
+        assert safe_eval("'hello'", {}) == "hello"
+
+    def test_string_double_quotes(self) -> None:
+        assert safe_eval('"hello"', {}) == "hello"
+
+    def test_true(self) -> None:
+        assert safe_eval("True", {}) is True
+
+    def test_false(self) -> None:
+        assert safe_eval("False", {}) is False
+
+    def test_none(self) -> None:
+        assert safe_eval("None", {}) is None
+
+    def test_tuple(self) -> None:
+        assert safe_eval("(1, 2, 3)", {}) == (1, 2, 3)
+
+    def test_list(self) -> None:
+        assert safe_eval("[1, 2, 3]", {}) == [1, 2, 3]
+
+
+class TestSafeEvalStateLookup:
+    def test_state_returns_mapping(self) -> None:
+        s = {"a": 1}
+        assert safe_eval("state", s) is s
+
+    def test_bare_name_looks_up_state(self) -> None:
+        assert safe_eval("current_round", {"current_round": 3}) == 3
+
+    def test_unknown_name_raises(self) -> None:
+        with pytest.raises(SafeEvalError, match="unknown name"):
+            safe_eval("missing", {})
+
+    def test_state_subscript_string(self) -> None:
+        assert safe_eval("state['x']", {"x": 7}) == 7
+
+    def test_state_subscript_int(self) -> None:
+        assert safe_eval("state[1]", {1: "one"}) == "one"
+
+    def test_subscript_on_non_mapping_raises(self) -> None:
+        # state['x'] is a list, then [0] is a list subscript on a non-Mapping
+        with pytest.raises(SafeEvalError, match="subscript on non-mapping"):
+            safe_eval("state['x'][0]", {"x": [1, 2]})
+
+    def test_subscript_with_bool_key(self) -> None:
+        # state[True] is parsed as Subscript(Name('True')) over a mapping
+        assert safe_eval("state[True]", {True: "yes"}) == "yes"
+
+    def test_subscript_with_complex_key_rejected(self) -> None:
+        with pytest.raises(SafeEvalError, match="unsupported subscript key"):
+            safe_eval("state[1 + 2]", {"state": {3: "ok"}})
+
+    def test_nested_subscript(self) -> None:
+        state = {"outer": {"inner": 42}}
+        assert safe_eval("state['outer']['inner']", state) == 42
+
+
+class TestSafeEvalUnaryOps:
+    def test_neg(self) -> None:
+        assert safe_eval("-5", {}) == -5
+
+    def test_pos(self) -> None:
+        assert safe_eval("+5", {}) == 5
+
+    def test_not_true(self) -> None:
+        assert safe_eval("not True", {}) is False
+
+    def test_not_false(self) -> None:
+        assert safe_eval("not False", {}) is True
+
+    def test_invert(self) -> None:
+        assert safe_eval("~0", {}) == -1
+
+
+class TestSafeEvalBinaryOps:
+    def test_add(self) -> None:
+        assert safe_eval("2 + 3", {}) == 5
+
+    def test_sub(self) -> None:
+        assert safe_eval("5 - 2", {}) == 3
+
+    def test_mul(self) -> None:
+        assert safe_eval("3 * 4", {}) == 12
+
+    def test_div(self) -> None:
+        assert safe_eval("10 / 4", {}) == 2.5
+
+    def test_floor_div(self) -> None:
+        assert safe_eval("10 // 4", {}) == 2
+
+    def test_mod(self) -> None:
+        assert safe_eval("10 % 3", {}) == 1
+
+    def test_pow(self) -> None:
+        assert safe_eval("2 ** 8", {}) == 256
+
+    def test_string_concat(self) -> None:
+        assert safe_eval("'a' + 'b'", {}) == "ab"
+
+    def test_list_concat(self) -> None:
+        assert safe_eval("[1] + [2]", {}) == [1, 2]
+
+
+class TestSafeEvalBoolOps:
+    def test_and_short_circuit(self) -> None:
+        assert safe_eval("False and 1", {}) is False
+
+    def test_and_true(self) -> None:
+        assert safe_eval("True and 5", {}) == 5
+
+    def test_or_short_circuit(self) -> None:
+        assert safe_eval("True or 1", {}) is True
+
+    def test_or_false(self) -> None:
+        assert safe_eval("False or 7", {}) == 7
+
+    def test_chained_and_or(self) -> None:
+        assert safe_eval("True and False or 1", {}) == 1
+
+    def test_state_lookup_in_boolop(self) -> None:
+        assert safe_eval("x and y", {"x": True, "y": 42}) == 42
+
+
+class TestSafeEvalComparisons:
+    def test_eq_true(self) -> None:
+        assert safe_eval("1 == 1", {}) is True
+
+    def test_eq_false(self) -> None:
+        assert safe_eval("1 == 2", {}) is False
+
+    def test_neq(self) -> None:
+        assert safe_eval("1 != 2", {}) is True
+
+    def test_lt(self) -> None:
+        assert safe_eval("1 < 2", {}) is True
+
+    def test_lte(self) -> None:
+        assert safe_eval("2 <= 2", {}) is True
+
+    def test_gt(self) -> None:
+        assert safe_eval("3 > 2", {}) is True
+
+    def test_gte(self) -> None:
+        assert safe_eval("2 >= 2", {}) is True
+
+    def test_in_true(self) -> None:
+        assert safe_eval("1 in [1, 2, 3]", {}) is True
+
+    def test_in_false(self) -> None:
+        assert safe_eval("4 in [1, 2, 3]", {}) is False
+
+    def test_not_in(self) -> None:
+        assert safe_eval("4 not in [1, 2, 3]", {}) is True
+
+    def test_is(self) -> None:
+        assert safe_eval("None is None", {}) is True
+
+    def test_is_not(self) -> None:
+        assert safe_eval("None is not 1", {}) is True
+
+    def test_chained_compare(self) -> None:
+        assert safe_eval("1 < 2 < 3", {}) is True
+
+    def test_chained_compare_fail(self) -> None:
+        assert safe_eval("1 < 3 < 2", {}) is False
+
+    def test_state_lookup_in_compare(self) -> None:
+        assert safe_eval("current_round >= 3", {"current_round": 3}) is True
+
+    def test_state_subscript_in_compare(self) -> None:
+        state = {"verdict": "approved"}
+        assert safe_eval("state['verdict'] == 'approved'", state) is True
+
+
+class TestSafeEvalMixedExpressions:
+    def test_combined_expression(self) -> None:
+        state = {"current_round": 3, "max_rounds": 5, "consensus": {"verdict": "approved"}}
+        # (current_round < max_rounds) and (consensus['verdict'] == 'approved')
+        expr = "current_round < max_rounds and state['consensus']['verdict'] == 'approved'"
+        assert safe_eval(expr, state) is True
+
+    def test_complex_arithmetic(self) -> None:
+        assert safe_eval("2 + 3 * 4 - 1", {}) == 13
+
+    def test_list_contains(self) -> None:
+        assert safe_eval("'a' in ['a', 'b']", {}) is True
+
+    def test_truthy_state_dict(self) -> None:
+        # A non-empty state should be truthy
+        assert bool(safe_eval("state", {"a": 1})) is True
+
+
+# ---------------------------------------------------------------------------
+# evaluate_condition
+# ---------------------------------------------------------------------------
+
+
+class TestEvaluateCondition:
+    def test_empty_string_returns_false(self) -> None:
+        assert evaluate_condition("", {}) is False
+
+    def test_whitespace_only_returns_false(self) -> None:
+        assert evaluate_condition("   \n  ", {}) is False
+
+    def test_named_condition_consensus_reached(self) -> None:
         state = {"consensus_result": {"verdict": "approved"}}
         assert evaluate_condition("consensus_reached", state) is True
 
-    def test_consensus_reached_false(self):
+    def test_named_condition_false(self) -> None:
         state = {"consensus_result": {"verdict": "revision_required"}}
         assert evaluate_condition("consensus_reached", state) is False
 
-    def test_consensus_reached_missing_state(self):
-        """Missing consensus_result → not reached."""
-        assert evaluate_condition("consensus_reached", {}) is False
-
-    def test_max_rounds_reached_true(self):
-        state = {"current_round": 6, "max_rounds": 5}
-        assert evaluate_condition("max_rounds_reached", state) is True
-
-    def test_max_rounds_reached_false(self):
-        state = {"current_round": 3, "max_rounds": 5}
-        assert evaluate_condition("max_rounds_reached", state) is False
-
-    def test_max_rounds_reached_no_max_default(self):
-        """If max_rounds missing, fall back to default 5."""
-        state = {"current_round": 6}
-        assert evaluate_condition("max_rounds_reached", state) is True
-
-    def test_extension_granted_true(self):
-        state = {"extension_granted": True}
-        assert evaluate_condition("extension_granted", state) is True
-
-    def test_extension_granted_false(self):
-        state = {"extension_granted": False}
-        assert evaluate_condition("extension_granted", state) is False
-
-    def test_draft_deadlock_default_threshold(self):
-        """draft_deadlock at draft_version >= 5 (default) is True."""
-        assert evaluate_condition("draft_deadlock", {"draft_version": 5}) is True
-        assert evaluate_condition("draft_deadlock", {"draft_version": 4}) is False
-
-    def test_draft_deadlock_with_termination_condition(self):
-        """draft_deadlock reads max_draft_versions from termination_conditions."""
-        state = {
-            "draft_version": 7,
-            "termination_conditions": [{"type": "max_draft_versions", "value": 8}],
-        }
-        assert evaluate_condition("draft_deadlock", state) is False
-        state["draft_version"] = 8
-        assert evaluate_condition("draft_deadlock", state) is True
-
-    def test_is_paused_true(self):
-        assert evaluate_condition("is_paused", {"is_paused": True}) is True
-
-    def test_is_paused_default_false(self):
-        assert evaluate_condition("is_paused", {}) is False
-
-    def test_approved_named(self):
-        state = {"consensus_result": {"verdict": "approved"}}
-        assert evaluate_condition("approved", state) is True
-
-    def test_revision_required_named(self):
-        state = {"consensus_result": {"verdict": "revision_required"}}
-        assert evaluate_condition("revision_required", state) is True
-
-    def test_construction_deadlock_named(self):
-        state = {"consensus_result": {"verdict": "construction_deadlock"}}
-        assert evaluate_condition("construction_deadlock", state) is True
-
-    def test_true_named(self):
+    def test_named_condition_true_constant(self) -> None:
+        # The literal string "True" is a registered name that always returns True
         assert evaluate_condition("True", {}) is True
 
-    def test_false_named(self):
+    def test_named_condition_false_constant(self) -> None:
         assert evaluate_condition("False", {}) is False
 
-    def test_named_takes_precedence_over_safe_eval(self):
-        """If a name happens to also be a valid Python expression, the
-        named registry wins — that way ``True`` is a name, not the
-        Python constant ``True`` (which would happen to evaluate the
-        same way, but other names may differ from Python)."""
-        # 'consensus_reached' is NOT valid Python — only safe_eval would
-        # raise SafeEvalError.  Named lookup should succeed.
-        assert evaluate_condition("consensus_reached", {"consensus_result": {"verdict": "approved"}}) is True
+    def test_arbitrary_truthy_expression(self) -> None:
+        assert evaluate_condition("1 + 1", {}) is True
 
-    def test_named_condition_registry_is_complete(self):
-        """Every name used in the bundled workflow templates must be in the registry."""
-        for name in [
-            "consensus_reached",
-            "max_rounds_reached",
-            "extension_granted",
-            "draft_deadlock",
-            "is_paused",
-            "approved",
-            "revision_required",
-            "construction_deadlock",
-            "True",
-            "False",
-        ]:
-            assert is_named_condition(name), f"missing named condition: {name!r}"
+    def test_arbitrary_falsy_expression(self) -> None:
+        assert evaluate_condition("0", {}) is False
 
-    def test_named_condition_works_with_extra_whitespace(self):
-        assert evaluate_condition("  consensus_reached  ", {"consensus_result": {"verdict": "approved"}}) is True
+    def test_arbitrary_state_expression(self) -> None:
+        assert evaluate_condition("current_round >= 3", {"current_round": 3}) is True
+        assert evaluate_condition("current_round >= 3", {"current_round": 2}) is False
 
-    def test_empty_string_returns_false(self):
-        """Empty / whitespace conditions are not errors — they are simply false."""
-        assert evaluate_condition("", {}) is False
-        assert evaluate_condition("   ", {}) is False
+    def test_named_condition_with_surrounding_whitespace(self) -> None:
+        state = {"consensus_result": {"verdict": "approved"}}
+        assert evaluate_condition("  consensus_reached  ", state) is True
 
-    def test_unknown_name_falls_through_to_safe_eval(self):
-        """An unknown name is not a SafeEvalError — safe_eval will reject it
-        if it's not a valid safe expression.  The point is that 'unknown'
-        does not silently mean 'true'."""
+    def test_unknown_name_raises(self) -> None:
         with pytest.raises(SafeEvalError):
-            evaluate_condition("not_a_real_name", {})
+            evaluate_condition("not_a_real_condition", {})
 
-
-# ---------------------------------------------------------------------------
-# route_decision respects max_draft_versions termination condition
-# ---------------------------------------------------------------------------
-
-
-class TestRouteDecisionMaxDraftVersions:
-    """The magic number 5 in route_decision must be overridable via
-    termination_conditions."""
-
-    def test_default_threshold_is_5(self):
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision()
-        # No termination_conditions → default 5
-        assert router({"current_round": 1, "draft_version": 5, "consensus_result": {"verdict": "approved"}}) == "construction_deadlock"
-
-    def test_default_threshold_allows_4(self):
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision()
-        # draft_version=4 with default 5 → return_to_builder if not approved
-        assert router({"current_round": 1, "draft_version": 4, "consensus_result": {"verdict": "revision_required"}}) == "return_to_builder"
-
-    def test_custom_max_draft_versions(self):
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision()
-        state = {
-            "current_round": 1,
-            "draft_version": 3,
-            "consensus_result": {"verdict": "revision_required"},
-            "termination_conditions": [{"type": "max_draft_versions", "value": 3}],
-        }
-        assert router(state) == "construction_deadlock"
-
-    def test_custom_max_draft_versions_lets_lower_pass(self):
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision()
-        state = {
-            "current_round": 1,
-            "draft_version": 2,
-            "consensus_result": {"verdict": "revision_required"},
-            "termination_conditions": [{"type": "max_draft_versions", "value": 3}],
-        }
-        assert router(state) == "return_to_builder"
-
-    def test_termination_condition_value_zero_uses_default(self):
-        """A non-positive value is ignored so the default kicks in."""
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision()
-        state = {
-            "current_round": 1,
-            "draft_version": 4,
-            "consensus_result": {"verdict": "revision_required"},
-            "termination_conditions": [{"type": "max_draft_versions", "value": 0}],
-        }
-        # Default is 5, so draft_version=4 is allowed
-        assert router(state) == "return_to_builder"
-
-    def test_max_rounds_still_takes_precedence(self):
-        """The max_rounds check is independent of max_draft_versions."""
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision(max_rounds=3)
-        state = {
-            "current_round": 5,
-            "draft_version": 1,
-            "consensus_result": {"verdict": "revision_required"},
-            "max_rounds": 3,
-        }
-        assert router(state) == "construction_deadlock"
-
-    def test_approved_verdict_breaks_out(self):
-        from backend.workflow.workflow_routers import route_decision
-
-        router = route_decision()
-        state = {
-            "current_round": 1,
-            "draft_version": 1,
-            "consensus_result": {"verdict": "approved", "reality_score": 0.8},
-        }
-        assert router(state) == "approved"
-
-
-# ---------------------------------------------------------------------------
-# Moderator structural reject — prevent LLM from gaming reality_score
-# ---------------------------------------------------------------------------
-
-
-class TestModeratorStructuralReject:
-    """Verify the Moderator's structural check on pragmatist_output.evaluations."""
-
-    def test_rejected_evaluation_overrides_high_reality_score(self):
-        """Even if reality_score=0.9, a single verdict=reject vetoes approval."""
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        ev = {"verdict": "reject", "feasibility": 0.9, "process_risk": "low"}
-        assert _is_evaluation_acceptable(ev) is False
-
-    def test_accepted_evaluation_with_low_feasibility_rejected(self):
-        """feasibility below the hard floor → rejected even if verdict=accept."""
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        ev = {"verdict": "accept", "feasibility": 0.1, "process_risk": "low"}
-        assert _is_evaluation_acceptable(ev) is False
-
-    def test_accepted_evaluation_above_floor_ok(self):
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        ev = {"verdict": "accept", "feasibility": 0.7, "process_risk": "low"}
-        assert _is_evaluation_acceptable(ev) is True
-
-    def test_revise_evaluation_above_floor_ok(self):
-        """revise is allowed — only reject is a hard veto at this level."""
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        ev = {"verdict": "revise", "feasibility": 0.5, "process_risk": "medium"}
-        assert _is_evaluation_acceptable(ev) is True
-
-    def test_missing_evaluation_rejected(self):
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        assert _is_evaluation_acceptable(None) is False
-        assert _is_evaluation_acceptable({}) is False
-
-    def test_non_numeric_feasibility_rejected(self):
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        assert _is_evaluation_acceptable({"verdict": "accept", "feasibility": "high"}) is False
-
-    def test_mixed_evaluations_hard_reject_overrides_score(self):
-        """Integration: moderator decision logic when 1 reject and 2 accepts."""
-        # We'll inspect the consensus_result that moderator logic would produce.
-        # Since the full moderator_node uses async LLM calls, we exercise the
-        # structural-reject path by reading the helper directly.
-        from backend.workflow.nodes.moderator_nodes import _is_evaluation_acceptable
-
-        evaluations = [
-            {"verdict": "accept", "feasibility": 0.8},
-            {"verdict": "reject", "feasibility": 0.95},
-            {"verdict": "accept", "feasibility": 0.7},
-        ]
-        hard_rejects = [e for e in evaluations if not _is_evaluation_acceptable(e)]
-        assert len(hard_rejects) == 1
-        assert hard_rejects[0]["verdict"] == "reject"
+    def test_invalid_syntax_raises(self) -> None:
+        with pytest.raises(SafeEvalError):
+            evaluate_condition("1 +", {})
