@@ -38,6 +38,8 @@ import logging
 import sqlite3
 import threading
 import uuid
+from collections import OrderedDict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -57,6 +59,223 @@ _DEFAULT_DB_PATH = Path("data/blueprints.db")
 # worker B (via the pub/sub backend in ``backend.state.pubsub``).
 # The full channel name is ``f"danwa:interjection:wake:{session_id}"``.
 _WAKE_CHANNEL_PREFIX = "danwa:interjection:wake:"
+
+
+# ---------------------------------------------------------------------------
+# Bounded in-process state
+# ---------------------------------------------------------------------------
+#
+# P4.4 fix: the per-process dedup set (``_queued_ids``) and the
+# session-keyed dicts (``_queues``, ``_hydration_version``,
+# ``_wake_events``) used to grow without bound for the lifetime of
+# the worker.  Even though consume() and clear() remove the obvious
+# references, a misbehaving caller that submits faster than it drains
+# could push memory usage up over time.  We cap each structure with
+# a process-wide LRU.  Eviction never raises: the oldest entries are
+# simply dropped, which is safe because every id / session is also
+# mirrored to SQLite, so a re-hydration after a long pause can
+# always re-populate the in-memory state.
+_MAX_QUEUED_IDS: int = 50_000  # cap on dedup set (per worker)
+_MAX_SESSION_KEYS: int = 5_000  # cap on per-session dicts
+_QUEUED_IDS_EVICT_LOG_EVERY: int = 1_000  # log every N evictions to avoid log spam
+
+
+class BoundedSet:
+    """A set with a hard cap, backed by an LRU ``OrderedDict``.
+
+    Exposes the ``set`` protocol actually used by InterjectionService
+    (``add``, ``discard``, ``difference_update``, ``clear``,
+    ``__contains__``, ``__len__``, ``__iter__``, ``__bool__``).
+    Eviction is silent except for a throttled ``logger.debug``.
+
+    The LRU is insertion-ordered — every ``add`` of an *existing*
+    key is a no-op (the value is re-inserted to the back, which
+    refreshes its position in the LRU).  The set's purpose is
+    "is this id present?", not "what is the most recently used
+    id?", so the LRU ordering is incidental: the cap is the
+    important part.
+
+    Eviction policy: when ``add`` would push the size over
+    ``maxlen``, the *oldest* ``maxlen - size + 1`` keys are popped
+    from the front and discarded.  This is bounded by ``maxlen``,
+    not by the size of the new addition, so the worst-case cost
+    of a single ``add`` is O(``maxlen``) which is fine for
+    ``maxlen=50_000``.
+    """
+
+    __slots__ = ("_data", "_maxlen", "_evict_log_counter", "_evictions_total")
+
+    def __init__(self, maxlen: int) -> None:
+        if maxlen <= 0:
+            raise ValueError("BoundedSet maxlen must be > 0")
+        self._data: OrderedDict[str, None] = OrderedDict()
+        self._maxlen = maxlen
+        self._evict_log_counter: int = 0
+        self._evictions_total: int = 0
+
+    @property
+    def maxlen(self) -> int:
+        return self._maxlen
+
+    @property
+    def evictions_total(self) -> int:
+        return self._evictions_total
+
+    def add(self, value: str) -> None:
+        # Insertion-order refresh: re-inserting an existing key bumps
+        # it to the back of the LRU.
+        if value in self._data:
+            self._data.move_to_end(value)
+            return
+        self._data[value] = None
+        # Trim from the front until we're at the cap.  The cap is
+        # inclusive: a set of size N holds N distinct values.
+        overflow = len(self._data) - self._maxlen
+        if overflow > 0:
+            for _ in range(overflow):
+                evicted = self._data.popitem(last=False)
+                self._evictions_total += 1
+                self._evict_log_counter += 1
+                if self._evict_log_counter >= _QUEUED_IDS_EVICT_LOG_EVERY:
+                    self._evict_log_counter = 0
+                    logger.debug(
+                        "BoundedSet eviction: dropped %r (size=%d cap=%d evictions_total=%d)",
+                        evicted[0],
+                        len(self._data),
+                        self._maxlen,
+                        self._evictions_total,
+                    )
+
+    def discard(self, value: str) -> None:
+        self._data.pop(value, None)
+
+    def difference_update(self, values: Iterable[str]) -> None:
+        # ``self._data`` is an OrderedDict[str, None]; using
+        # ``difference_update`` would force an intermediate set.  A
+        # loop with ``pop(value, None)`` is O(k) on the argument and
+        # stays on the underlying data structure.
+        for v in values:
+            self._data.pop(v, None)
+
+    def clear(self) -> None:
+        self._data.clear()
+
+    def __contains__(self, value: object) -> bool:
+        return value in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):  # type: ignore[no-untyped-def]
+        return iter(self._data)
+
+    def __bool__(self) -> bool:
+        return bool(self._data)
+
+    def __eq__(self, other: object) -> bool:
+        # Compare against any iterable of hashable elements so that
+        # ``BoundedSet({"a", "b"}) == {"a", "b"}`` works as users
+        # expect.  We intentionally do *not* check ``type(other)`` to
+        # stay duck-typed; this is for tests and debug output, not
+        # for production identity checks.
+        if isinstance(self, type(other)):
+            return set(self._data) == set(other._data)  # type: ignore[attr-defined]
+        try:
+            return set(self._data) == set(other)  # type: ignore[arg-type]
+        except TypeError:
+            return NotImplemented
+
+    def __hash__(self) -> int:  # pragma: no cover - sets are unhashable
+        # Sets are unhashable by contract; declaring __eq__ above
+        # would otherwise make Python set __hash__ to None, but
+        # being explicit is clearer.
+        raise TypeError("BoundedSet is unhashable")
+
+    def __repr__(self) -> str:  # pragma: no cover - debug aid
+        return f"BoundedSet(size={len(self._data)}, cap={self._maxlen}, evictions={self._evictions_total})"
+
+
+class BoundedLRU:
+    """Drop-in replacement for ``dict`` that caps the size with LRU
+    eviction.  Exposes the methods used by InterjectionService
+    (``__setitem__``, ``__getitem__``, ``get``, ``pop``, ``setdefault``,
+    ``__contains__``, ``__len__``, ``__iter__``, ``__delitem__``,
+    ``clear``, ``keys``, ``values``, ``items``)."""
+
+    __slots__ = ("_data", "_maxlen")
+
+    def __init__(self, maxlen: int) -> None:  # noqa: D401
+        if maxlen <= 0:
+            raise ValueError("BoundedLRU maxlen must be > 0")
+        self._data: OrderedDict[str, Any] = OrderedDict()
+        self._maxlen = maxlen
+
+    @property
+    def maxlen(self) -> int:
+        return self._maxlen
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in self._data:
+            self._data.move_to_end(key)
+            self._data[key] = value
+            return
+        self._data[key] = value
+        overflow = len(self._data) - self._maxlen
+        if overflow > 0:
+            for _ in range(overflow):
+                self._data.popitem(last=False)
+
+    def __getitem__(self, key: str) -> Any:
+        value = self._data[key]
+        self._data.move_to_end(key)
+        return value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key in self._data:
+            self._data.move_to_end(key)
+            return self._data[key]
+        return default
+
+    def pop(self, key: str, *default: Any) -> Any:
+        return self._data.pop(key, *default)
+
+    def setdefault(self, key: str, default: Any = None) -> Any:
+        if key in self._data:
+            self._data.move_to_end(key)
+            return self._data[key]
+        self._data[key] = default
+        overflow = len(self._data) - self._maxlen
+        if overflow > 0:
+            for _ in range(overflow):
+                self._data.popitem(last=False)
+        return default
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):  # type: ignore[no-untyped-def]
+        return iter(self._data)
+
+    def __delitem__(self, key: str) -> None:
+        del self._data[key]
+
+    def clear(self) -> None:
+        self._data.clear()
+
+    def keys(self):  # type: ignore[no-untyped-def]
+        return self._data.keys()
+
+    def values(self):  # type: ignore[no-untyped-def]
+        return self._data.values()
+
+    def items(self):  # type: ignore[no-untyped-def]
+        return self._data.items()
+
+    def __repr__(self) -> str:  # pragma: no cover - debug aid
+        return f"BoundedLRU(size={len(self._data)}, cap={self._maxlen})"
 
 
 @dataclass
@@ -84,7 +303,12 @@ class InterjectionService:
     def __init__(self, db_path: Path | str | None = None) -> None:
         # session_id → list of Interjection objects
         """Initialise InterjectionService."""
-        self._queues: dict[str, list[Interjection]] = {}
+        # P4.4 fix: cap every per-process collection with a process-
+        # wide LRU so a misbehaving caller cannot grow memory without
+        # bound across the worker's lifetime.  ``_MAX_SESSION_KEYS``
+        # is generous (5 000) — production traffic tops out at a few
+        # hundred concurrent sessions.
+        self._queues: dict[str, list[Interjection]] = BoundedLRU(maxlen=_MAX_SESSION_KEYS)
         # session_id → WaitEvent that is set when new items are queued
         # and cleared again after they are consumed.  Used by
         # consume_blocking() to suspend callers without polling.
@@ -94,7 +318,7 @@ class InterjectionService:
         # wakes a consume_blocking() in worker B.  The previous
         # asyncio.Event was bound to a single event loop and never
         # crossed process boundaries.
-        self._wake_events: dict[str, WaitEvent] = {}
+        self._wake_events: dict[str, WaitEvent] = BoundedLRU(maxlen=_MAX_SESSION_KEYS)
         self._lock = asyncio.Lock()
 
         self._db_path: Path | None = Path(db_path) if db_path else None
@@ -105,13 +329,23 @@ class InterjectionService:
         # advanced — this catches cross-process submissions that arrive
         # via the wake-up signal (F-01) without forcing a redundant
         # SELECT on every operation in the common case.
-        self._hydration_version: dict[str, int] = {}
+        # P4.4 fix: capped with the same LRU as ``_queues`` and
+        # ``_wake_events``.
+        self._hydration_version: dict[str, int] = BoundedLRU(maxlen=_MAX_SESSION_KEYS)
         # Set of interjection_ids currently in some in-memory queue.
         # Used by ``_ensure_loaded`` to skip DB rows that are already
         # represented in memory — a row the same process just submitted
         # would otherwise show up twice after a re-hydration triggered
         # by the wake event.
-        self._queued_ids: set[str] = set()
+        # P4.4 fix: previously a plain ``set`` that grew for the
+        # process lifetime.  Now a :class:`BoundedSet` capped at
+        # ``_MAX_QUEUED_IDS`` (50 000) with LRU eviction; if a
+        # misbehaving caller ever fills it, the *oldest* ids are
+        # dropped.  A dropped id can no longer suppress a re-hydration
+        # of the same row, which is fine because the SQLite mirror
+        # already stores the row as ``pending`` — the next
+        # ``_ensure_loaded`` will just re-add it.
+        self._queued_ids: set[str] = BoundedSet(maxlen=_MAX_QUEUED_IDS)
         # F-04 counter — number of times a ``_persist_*`` call failed.
         # Operations can poll this attribute (or call
         # :meth:`get_persist_failure_count`) to detect a chronically
