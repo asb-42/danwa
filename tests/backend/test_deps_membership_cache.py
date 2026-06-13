@@ -29,10 +29,9 @@ import pytest
 
 from backend.api import deps
 from backend.persistence.membership_store import (
-    MembershipStore,
     _MEMBERSHIP_INVALIDATORS,
+    MembershipStore,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -166,9 +165,7 @@ class TestAddInvalidator:
 class TestFireInvalidatorsErrorHandling:
     """A broken observer must NOT poison the store."""
 
-    def test_exception_in_observer_is_logged_and_swallowed(
-        self, store: MembershipStore, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_exception_in_observer_is_logged_and_swallowed(self, store: MembershipStore, caplog: pytest.LogCaptureFixture) -> None:
         def bad_observer(user_id: str) -> None:
             raise RuntimeError("boom")
 
@@ -178,9 +175,7 @@ class TestFireInvalidatorsErrorHandling:
             store.add("t1", "u-1", role="member")
         assert any("boom" in rec.message for rec in caplog.records)
 
-    def test_other_observers_still_called_after_one_fails(
-        self, store: MembershipStore
-    ) -> None:
+    def test_other_observers_still_called_after_one_fails(self, store: MembershipStore) -> None:
         seen: list[str] = []
 
         def good1(user_id: str) -> None:
@@ -231,18 +226,14 @@ class TestInvalidationWiring:
         assert store.remove("t1", "u-1") is False
         assert seen == []
 
-    def test_update_role_fires_observer_on_real_change(
-        self, store: MembershipStore
-    ) -> None:
+    def test_update_role_fires_observer_on_real_change(self, store: MembershipStore) -> None:
         store.add("t1", "u-1", role="member")
         seen: list[str] = []
         store.add_invalidator(lambda uid: seen.append(uid))
         store.update_role("t1", "u-1", "admin")
         assert seen == ["u-1"]
 
-    def test_update_role_fires_observer_even_when_value_unchanged(
-        self, store: MembershipStore
-    ) -> None:
+    def test_update_role_fires_observer_even_when_value_unchanged(self, store: MembershipStore) -> None:
         """SQLite's UPDATE returns rowcount=1 even if the value did not
         change.  The contract is: ``update_role`` fires whenever it
         *executes* against a real row.  This test pins that behaviour.
@@ -273,9 +264,7 @@ class TestInvalidationWiring:
 class TestUserMembershipsCached:
     """``_user_memberships_cached`` -- per-user 30s TTL cache."""
 
-    def test_first_call_fetches_from_store(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_first_call_fetches_from_store(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1", role="admin")
         store_in_deps.add("t2", "u-1", role="member")
         original = store_in_deps.list_by_user
@@ -292,9 +281,7 @@ class TestUserMembershipsCached:
         assert call_count["n"] == 1
         assert sorted(m.tenant_id for m in memberships) == ["t1", "t2"]
 
-    def test_second_call_within_ttl_does_not_hit_store(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_second_call_within_ttl_does_not_hit_store(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         deps._user_memberships_cached("u-1")
         original = store_in_deps.list_by_user
@@ -309,9 +296,7 @@ class TestUserMembershipsCached:
         deps._user_memberships_cached("u-1")
         assert call_count["n"] == 0
 
-    def test_ttl_expiry_triggers_refetch(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_ttl_expiry_triggers_refetch(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         deps._user_memberships_cached("u-1")
         # Force expiry by rewinding the timestamp.
@@ -339,9 +324,7 @@ class TestUserMembershipsCached:
         assert [m.tenant_id for m in ms_a] == ["t1"]
         assert [m.tenant_id for m in ms_b] == ["t2"]
 
-    def test_cache_returns_same_object_within_ttl(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_cache_returns_same_object_within_ttl(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         first = deps._user_memberships_cached("u-1")
         second = deps._user_memberships_cached("u-1")
@@ -362,9 +345,7 @@ class TestInvalidateUserMemberships:
         # Must not raise.
         deps.invalidate_user_memberships("never-cached")
 
-    def test_next_fetch_after_invalidate_refetches(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_next_fetch_after_invalidate_refetches(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         deps._user_memberships_cached("u-1")
         deps.invalidate_user_memberships("u-1")
@@ -405,9 +386,7 @@ class TestResetUserMembershipsCache:
 class TestEndToEndInvalidation:
     """Round-trip: a mutation on the store propagates to the deps cache."""
 
-    def test_add_propagates_to_deps_cache(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_add_propagates_to_deps_cache(self, store_in_deps: MembershipStore) -> None:
         # First fetch: empty.
         assert deps._user_memberships_cached("u-1") == []
         # Now add a membership.  The deps invalidator must drop the
@@ -417,20 +396,14 @@ class TestEndToEndInvalidation:
         assert [m.tenant_id for m in ms] == ["t1"]
         assert ms[0].role == "admin"
 
-    def test_remove_propagates_to_deps_cache(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_remove_propagates_to_deps_cache(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         store_in_deps.add("t2", "u-1")
-        assert sorted(
-            m.tenant_id for m in deps._user_memberships_cached("u-1")
-        ) == ["t1", "t2"]
+        assert sorted(m.tenant_id for m in deps._user_memberships_cached("u-1")) == ["t1", "t2"]
         store_in_deps.remove("t2", "u-1")
         assert [m.tenant_id for m in deps._user_memberships_cached("u-1")] == ["t1"]
 
-    def test_update_role_propagates_to_deps_cache(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_update_role_propagates_to_deps_cache(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1", role="member")
         ms = deps._user_memberships_cached("u-1")
         assert ms[0].role == "member"
@@ -438,9 +411,7 @@ class TestEndToEndInvalidation:
         ms = deps._user_memberships_cached("u-1")
         assert ms[0].role == "admin"
 
-    def test_other_users_cache_unaffected_by_invalidation(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_other_users_cache_unaffected_by_invalidation(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-a")
         store_in_deps.add("t1", "u-b")
         deps._user_memberships_cached("u-a")
@@ -464,18 +435,14 @@ class TestResetCachedStoresWipesMembershipCache:
     cache pollution.
     """
 
-    def test_reset_cached_stores_clears_membership_cache(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_reset_cached_stores_clears_membership_cache(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         deps._user_memberships_cached("u-1")
         assert "u-1" in deps._USER_MEMBERSHIPS_CACHE
         deps.reset_cached_stores()
         assert deps._USER_MEMBERSHIPS_CACHE == {}
 
-    def test_fresh_stores_clears_membership_cache_on_entry_and_exit(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_fresh_stores_clears_membership_cache_on_entry_and_exit(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         deps._user_memberships_cached("u-1")
         assert "u-1" in deps._USER_MEMBERSHIPS_CACHE
@@ -487,9 +454,7 @@ class TestResetCachedStoresWipesMembershipCache:
         # Cleared on exit.
         assert deps._USER_MEMBERSHIPS_CACHE == {}
 
-    def test_fresh_stores_clears_cache_even_on_exception(
-        self, store_in_deps: MembershipStore
-    ) -> None:
+    def test_fresh_stores_clears_cache_even_on_exception(self, store_in_deps: MembershipStore) -> None:
         store_in_deps.add("t1", "u-1")
         with pytest.raises(RuntimeError, match="boom"):
             with deps.fresh_stores():
@@ -511,9 +476,7 @@ class TestGetActiveTenantUsesCache:
     tests.  What we need is proof that the cache is actually consulted.
     """
 
-    def test_repeated_calls_do_not_re_hit_store(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_repeated_calls_do_not_re_hit_store(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """``_user_memberships_cached`` must not call the underlying
         store's ``list_by_user`` a second time within the TTL window.
         The previous implementation called it on every request.

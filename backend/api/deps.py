@@ -8,10 +8,11 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -616,8 +617,7 @@ async def get_current_user(
             )
             raise HTTPException(
                 status_code=503,
-                detail="Authentication is disabled but the server is running "
-                "in production. Set DANWA_AUTH_ENABLED=true to enable auth.",
+                detail="Authentication is disabled but the server is running in production. Set DANWA_AUTH_ENABLED=true to enable auth.",
             )
 
         if not _dev_auth_acknowledged():
