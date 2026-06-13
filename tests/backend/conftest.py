@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from backend.api import deps as deps_module
 from backend.api.deps import (
+    fresh_stores,
     get_audit_service,
     get_case_store,
     get_current_user,
@@ -104,47 +105,65 @@ def app(
     default_tenant,
     default_case,
 ):
-    """FastAPI app with overridden dependencies."""
-    get_project_store.cache_clear()
-    application = create_app()
+    """FastAPI app with overridden dependencies.
 
-    _test_user = User(
-        id="test-user",
-        email="test@danwa.local",
-        display_name="Test User",
-        password_hash="",
-        role="admin",
-        tenant_id=default_tenant,
-    )
+    Uses ``fresh_stores()`` (the cache-busting context manager from
+    ``backend.api.deps``) so that every cached store factory in
+    ``deps.py`` is empty on entry AND on exit. This guarantees that
+    *both* directions of test isolation work:
 
-    application.dependency_overrides[get_settings] = lambda: settings
-    application.dependency_overrides[get_current_user] = lambda: _test_user
-    application.dependency_overrides[get_audit_service] = lambda: audit_service
-    application.dependency_overrides[get_debate_store] = lambda: debate_store
-    application.dependency_overrides[get_project_store] = lambda: project_store
-    application.dependency_overrides[get_project_id] = lambda: default_project
-    application.dependency_overrides[get_tenant_store] = lambda: tenant_store
-    application.dependency_overrides[get_case_store] = lambda: case_store
-    # Store for test helpers to access via client.app.state
-    application.state.test_project_store = project_store
-    application.state.test_tenant_store = tenant_store
-    application.state.test_case_store = case_store
-    application.state.test_default_tenant = default_tenant
-    application.state.test_default_case = default_case
+    * The test starts with an empty cache so the ``dependency_overrides``
+      and ``mock.patch.multiple`` below actually take effect.
+    * The test ends with an empty cache so the *next* test does not
+      accidentally inherit a cached store from us.
 
-    # Monkeypatch module-level functions called outside FastAPI DI
-    # (e.g. get_case_dir -> get_project_store, get_tenant_store, get_case_store)
-    mpatch = mock.patch.multiple(
-        deps_module,
-        get_project_store=mock.MagicMock(return_value=project_store),
-        get_tenant_store=mock.MagicMock(return_value=tenant_store),
-        get_case_store=mock.MagicMock(return_value=case_store),
-    )
-    mpatch.start()
-    application.state._deps_monkeypatch = mpatch
-    yield application
-    mpatch.stop()
-    del application.state._deps_monkeypatch
+    See ``reports/2026-06-12_code-review.md`` section 3.1 for the
+    cascade bug this resolves.
+    """
+    with fresh_stores():
+        application = create_app()
+
+        _test_user = User(
+            id="test-user",
+            email="test@danwa.local",
+            display_name="Test User",
+            password_hash="",
+            role="admin",
+            tenant_id=default_tenant,
+        )
+
+        application.dependency_overrides[get_settings] = lambda: settings
+        application.dependency_overrides[get_current_user] = lambda: _test_user
+        application.dependency_overrides[get_audit_service] = lambda: audit_service
+        application.dependency_overrides[get_debate_store] = lambda: debate_store
+        application.dependency_overrides[get_project_store] = lambda: project_store
+        application.dependency_overrides[get_project_id] = lambda: default_project
+        application.dependency_overrides[get_tenant_store] = lambda: tenant_store
+        application.dependency_overrides[get_case_store] = lambda: case_store
+        # Store for test helpers to access via client.app.state
+        application.state.test_project_store = project_store
+        application.state.test_tenant_store = tenant_store
+        application.state.test_case_store = case_store
+        application.state.test_default_tenant = default_tenant
+        application.state.test_default_case = default_case
+
+        # Monkeypatch module-level functions called outside FastAPI DI
+        # (e.g. get_case_dir -> get_project_store, get_tenant_store, get_case_store)
+        mpatch = mock.patch.multiple(
+            deps_module,
+            get_project_store=mock.MagicMock(return_value=project_store),
+            get_tenant_store=mock.MagicMock(return_value=tenant_store),
+            get_case_store=mock.MagicMock(return_value=case_store),
+        )
+        mpatch.start()
+        application.state._deps_monkeypatch = mpatch
+        try:
+            yield application
+        finally:
+            mpatch.stop()
+            del application.state._deps_monkeypatch
+        # Note: the outer ``with fresh_stores()`` teardown re-clears the
+        # cache after the test body runs, so the next test starts fresh.
 
 
 @pytest.fixture(autouse=True)
