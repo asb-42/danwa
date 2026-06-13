@@ -216,6 +216,10 @@ class InMemoryChannel:
         the bump and the delivery separate avoids a race where
         a delayed publish task re-bumps the count after a
         ``clear()``.
+
+        P4.5+ §4.10 — slow-consumer drops (queue full) are also
+        counted in the module-level failure counter so the
+        diagnostic signal isn't lost.
         """
         delivered = 0
         # Snapshot to avoid mutation during iteration
@@ -231,6 +235,16 @@ class InMemoryChannel:
                 logger.warning(
                     "InMemoryPubSub: subscriber on %s dropped message (queue full)",
                     self.name,
+                )
+                # P4.5+ §4.10 — count the drop in the module-level
+                # failure counter.  We pass a synthetic exception
+                # (the QueueFull itself) so a real diagnostic still
+                # shows up in the throttled log path if a subscriber
+                # is permanently wedged.
+                _record_publish_failure(
+                    self.name,
+                    "publish_queue_full",
+                    asyncio.QueueFull(f"subscriber queue full on {self.name}"),
                 )
         return delivered
 
@@ -328,6 +342,11 @@ class RedisChannel:
     exists so that ``is_set()`` can return True without a
     separate round trip — useful for callers that want to check
     state without subscribing.
+
+    P4.5+ §4.10 — every Redis call is wrapped in a try/except
+    that increments the module-level failure counter.  The
+    methods stay best-effort (the caller's wait-loop tolerates
+    stale state) but no longer fail silently.
     """
 
     _SET_TTL_SECONDS = 3600  # 1 hour; refreshed on every publish
@@ -346,8 +365,16 @@ class RedisChannel:
         existence flag with TTL.  The return value is therefore
         clamped to 0 or 1, which is sufficient for the
         hydration-version check in :class:`InterjectionService`.
+
+        P4.5+ §4.10 — best-effort: a Redis error is counted
+        and logged via the module-level helper, then we return
+        0 (treat as "not set" — conservative).
         """
-        return 1 if self._redis.exists(self._flag_key) else 0
+        try:
+            return 1 if self._redis.exists(self._flag_key) else 0
+        except Exception as exc:  # noqa: BLE001
+            _record_publish_failure(self.name, "set_count", exc)
+            return 0
 
     async def publish(self, message: str) -> int:
         """Deliver ``message`` to current Redis subscribers.
@@ -355,8 +382,17 @@ class RedisChannel:
         The flag counter is incremented in ``WaitEvent.set()``
         synchronously, not here, for the same reason as in the
         in-memory backend (avoid a re-bump race after clear()).
+
+        P4.5+ §4.10 — best-effort: a Redis error is counted
+        and logged via the module-level helper, then we return
+        0 (number-of-deliveries unknown).  The caller's wait-loop
+        re-checks on the next message.
         """
-        return int(await self._redis.publish(self.name, message))
+        try:
+            return int(await self._redis.publish(self.name, message))
+        except Exception as exc:  # noqa: BLE001
+            _record_publish_failure(self.name, "publish", exc)
+            return 0
 
     def is_set(self) -> bool:
         """True if the channel's flag counter is > 0.
@@ -366,12 +402,28 @@ class RedisChannel:
         worst case is one stale ``is_set() == True`` after a
         clear, which is harmless (the wait() loop re-checks on
         the next message).
+
+        P4.5+ §4.10 — a Redis error is counted and logged, then
+        we return False (treat as "not set" — conservative).
         """
-        return bool(self._redis.exists(self._flag_key))
+        try:
+            return bool(self._redis.exists(self._flag_key))
+        except Exception as exc:  # noqa: BLE001
+            _record_publish_failure(self.name, "is_set", exc)
+            return False
 
     def clear(self) -> None:
-        """Reset the per-channel set flag in Redis."""
-        self._redis.delete(self._flag_key)
+        """Reset the per-channel set flag in Redis.
+
+        P4.5+ §4.10 — best-effort: a Redis error is counted and
+        logged via the module-level helper.  The next ``is_set()``
+        may still return True for up to the TTL, but that's
+        harmless (stale flag, same as a pre-existing race).
+        """
+        try:
+            self._redis.delete(self._flag_key)
+        except Exception as exc:  # noqa: BLE001
+            _record_publish_failure(self.name, "clear", exc)
 
     def subscribe(self) -> _RedisSubscription:
         """Create a new subscription on this channel."""
@@ -412,11 +464,6 @@ class RedisPubSub:
 # Factory
 # ---------------------------------------------------------------------------
 
-
-# ---------------------------------------------------------------------------
-# Factory
-# ---------------------------------------------------------------------------
-
 # Module-level singleton.  Caching matters because the InMemory
 # backend keeps its channel state in instance attributes — a fresh
 # instance per call would lose all subscribers between requests.
@@ -425,11 +472,88 @@ class RedisPubSub:
 _pubsub: PubSubBackend | None = None
 
 
+# ---------------------------------------------------------------------------
+# P4.5+ §4.10 — Best-effort but loud publish failures
+# ---------------------------------------------------------------------------
+# The pub/sub layer is intentionally fire-and-forget: a slow or
+# unreachable Redis must not block a wake-up signal in the calling
+# workflow.  But "swallow" must not mean "silent" — operators need
+# a signal that the cross-process notification channel is
+# chronically broken.  We mirror the audit-logger pattern: count
+# every failure, log the first one per (channel, op) pair at
+# ``error`` level, and demote the rest to ``debug`` to avoid log
+# spam.
+_publish_failures: int = 0
+_channel_error_logged: set[str] = set()
+
+
+def _record_publish_failure(channel: str, op: str, exc: BaseException) -> None:
+    """Increment the failure counter and emit a throttled log line.
+
+    P4.5+ §4.10 — the first failure for a given *channel*+*op*
+    pair is logged at ``error`` (with traceback) so it shows up
+    in any standard ``ERROR``-level alerting.  Subsequent
+    failures for the same pair drop to ``debug`` so a persistent
+    outage doesn't drown the log.  The counter is cumulative
+    and never reset by this helper; tests that need a clean
+    slate should call :func:`reset_publish_failure_count`.
+    """
+    global _publish_failures
+    _publish_failures += 1
+    key = f"{channel}:{op}"
+    if key in _channel_error_logged:
+        logger.debug(
+            "PubSub: %s on %s failed (suppressed; total=%d): %s",
+            op, channel, _publish_failures, exc,
+        )
+    else:
+        _channel_error_logged.add(key)
+        logger.error(
+            "PubSub: %s on %s failed (total=%d); first occurrence logged with traceback",
+            op, channel, _publish_failures, exc_info=True,
+        )
+
+
+def get_publish_failure_count() -> int:
+    """Return the cumulative number of pub/sub failures.
+
+    P4.5+ §4.10 — increments on every swallowed failure in the
+    pub/sub layer (Redis publish/exists/delete errors, in-memory
+    queue-full drops, and the Redis init fallback in
+    :func:`get_pubsub`).  Counter is per-process; for an
+    aggregate view across the 4-worker Gunicorn deployment, sum
+    the values from every worker's ``pubsub`` module.  The
+    counter survives a :func:`reset_pubsub_cache` (which only
+    resets the backend handle) because a fresh backend on the
+    same broken Redis would just keep failing — clearing the
+    count would mask that.
+    """
+    return _publish_failures
+
+
+def reset_publish_failure_count() -> int:
+    """Reset the pub/sub failure counter to 0.
+
+    P4.5+ §4.10 — intended for tests that want a clean
+    baseline.  Returns the previous counter value so callers
+    can assert on the delta.  Also clears the throttling set
+    so the *next* failure on a previously-logged channel is
+    logged again at ``error`` level.
+    """
+    global _publish_failures
+    previous = _publish_failures
+    _publish_failures = 0
+    _channel_error_logged.clear()
+    return previous
+
+
 def get_pubsub() -> PubSubBackend:
     """Return the configured pub/sub backend.
 
-    If ``settings.redis_url`` is set, attempt to connect to Redis.
-    On any failure, log a warning and fall back to in-memory.
+    If ``settings.redis_url`` is set, attempt to connect to
+    Redis.  On any failure, log a warning, count the failure in
+    the module-level counter (P4.5+ §4.10), and fall back to
+    in-memory.
 
     The result is cached module-globally.  Tests that need a
     fresh instance should call :func:`reset_pubsub_cache` first.
@@ -445,7 +569,18 @@ def get_pubsub() -> PubSubBackend:
             _pubsub = RedisPubSub(settings.redis_url)
             return _pubsub
         except Exception as exc:
-            logger.warning("Redis pub/sub unavailable (%s), falling back to in-memory", exc)
+            # P4.5+ §4.10 — count the Redis init failure so a
+            # chronically-broken Redis URL doesn't go silent
+            # (the operator only sees the warning once and the
+            # backend then silently serves from memory for the
+            # rest of the process lifetime).  We use a
+            # synthetic channel key so the throttling applies
+            # to "init" failures across processes.
+            _record_publish_failure("__init__", "redis_connect", exc)
+            logger.warning(
+                "Redis pub/sub unavailable (%s), falling back to in-memory",
+                exc,
+            )
     _pubsub = InMemoryPubSub()
     return _pubsub
 
