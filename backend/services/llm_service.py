@@ -181,6 +181,7 @@ class LLMService:
         tools: list[dict[str, Any]] | None = None,
         extra_kwargs: dict[str, Any] | None = None,
         context: str = "",
+        language: str = "en",
     ) -> GenerationResult:
         """Generate text using the configured LLM.
 
@@ -196,6 +197,13 @@ class LLMService:
             tools: Optional list of OpenAI-compatible tool definitions for
                    function calling. When provided, the LLM may respond with
                    ``tool_calls`` instead of text content.
+            language: ISO 639-1 code of the active UI language.  Used to
+                translate the injected "Today is {date}." date line so the
+                prefix matches the user's locale.  Defaults to ``"en"``
+                (English SSOT).  See
+                :mod:`backend.services.prompt_date_prefix` for the
+                caching + fallback policy (section 3.4 of the
+                2026-06-12 code review).
 
         Returns:
             GenerationResult with content, token counts, duration, model name,
@@ -208,11 +216,12 @@ class LLMService:
         if not self._profile:
             raise RuntimeError("No LLM profile configured")
 
-        # --- Time Awareness — inject current date into every system prompt ---
-        from datetime import datetime as _dt
+        # --- Time Awareness — inject current date into every system prompt.
+        # P4.3: English is the SSOT; other locales are translated on demand
+        # (DB-cached) by ``prompt_date_prefix.get_date_prefix``.
+        from backend.services.prompt_date_prefix import get_date_prefix
 
-        today = _dt.now().strftime("%Y-%m-%d")
-        date_line = f"Heute ist der {today}. Alle Fristen, Termine und zeitlichen Bewertungen beziehen sich auf dieses Datum."
+        date_line = get_date_prefix(language=language)
         if system_prompt:
             system_prompt = f"{date_line}\n\n{system_prompt}"
         else:
@@ -274,6 +283,7 @@ class LLMService:
         temperature: float | None = None,
         max_tokens: int | None = None,
         on_fallback: Any | None = None,
+        language: str = "en",
     ) -> GenerationResult:
         """Generate text with automatic fallback to a secondary LLM profile.
 
@@ -292,6 +302,9 @@ class LLMService:
                 ``llm.fallback`` SSE event so the frontend can display a
                 notification. The callback is wrapped in a ``try/except``
                 so a failing callback never aborts the fallback itself.
+            language: ISO 639-1 code of the active UI language; forwarded to
+                :meth:`generate` so the injected date prefix is translated
+                consistently.  Defaults to ``"en"`` (English SSOT).
 
         Returns:
             GenerationResult from the primary or fallback profile.
@@ -304,7 +317,7 @@ class LLMService:
         from backend.a2a.exceptions import A2AError
 
         try:
-            return await self.generate(prompt, system_prompt, temperature, max_tokens)
+            return await self.generate(prompt, system_prompt, temperature, max_tokens, language=language)
         except A2AError:
             fallback_id = getattr(self._profile, "fallback_llm_profile_id", None)
             if not fallback_id:
@@ -320,7 +333,7 @@ class LLMService:
                     await on_fallback(from_profile, fallback_id, fallback_model, fallback_provider)
                 except Exception:
                     logger.debug("on_fallback callback failed", exc_info=True)
-            return await fallback_service.generate(prompt, system_prompt, temperature, max_tokens)
+            return await fallback_service.generate(prompt, system_prompt, temperature, max_tokens, language=language)
 
     async def _generate_a2a(
         self,
@@ -740,6 +753,7 @@ class LLMService:
         temperature: float | None = None,
         max_tokens: int | None = None,
         context: str = "",
+        language: str = "en",
     ) -> GenerationResult:
         """Synchronous wrapper around async generate().
 
@@ -753,12 +767,25 @@ class LLMService:
         ``get_event_loop()`` — all such call sites have been
         migrated to ``get_running_loop()`` (Sprint 49), so
         ``asyncio.run()`` is now safe and more efficient.
+
+        Args:
+            language: ISO 639-1 code forwarded to :meth:`generate`; see
+                P4.3 in :mod:`backend.services.prompt_date_prefix`.
         """
         import asyncio
         import concurrent.futures
 
         def _run_in_thread():
-            return asyncio.run(self.generate(prompt, system_prompt, temperature, max_tokens, context=context))
+            return asyncio.run(
+                self.generate(
+                    prompt,
+                    system_prompt,
+                    temperature,
+                    max_tokens,
+                    context=context,
+                    language=language,
+                )
+            )
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_run_in_thread)
