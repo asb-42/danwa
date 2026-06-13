@@ -64,6 +64,15 @@ class LLMService:
             profiles = self._profile_service.list_llm_profiles()
             self._profile = profiles[0] if profiles else None
 
+        # Lazily-built cache of the per-user BYOK store (P4.5+ §4.1).
+        # ``UserKeyStore`` opens a sqlite3 connection + a Fernet PRAGMA
+        # in its ``__init__``; rebuilding it on every per-user LLM call
+        # was 5-20 ms of avoidable overhead. The cache is process-local
+        # and is invalidated by :meth:`_get_user_key_store` if the
+        # underlying connection is dead (e.g. master-key rotation that
+        # leaves the cached store pointed at a stale Fernet key).
+        self._user_key_store_cache: Any = None
+
     @property
     def profile(self) -> LLMProfile | None:
         """Profile the instance."""
@@ -93,6 +102,44 @@ class LLMService:
         "opencode-zen": ["OPENCODE_ZEN_API_KEY"],
     }
 
+    def _get_user_key_store(self) -> Any:
+        """Return a process-cached :class:`UserKeyStore` (P4.5+ §4.1).
+
+        ``UserKeyStore.__init__`` opens a sqlite3 connection and runs
+        ``PRAGMA journal_mode=WAL`` + a Fernet init. Doing that on every
+        per-user LLM call cost 5-20 ms.  We cache the instance on
+        ``self`` and rebuild it only if the cached connection is dead
+        (e.g. the underlying SQLite file was rotated or the Fernet key
+        was changed underneath us, which surfaces as an
+        :class:`OperationalError` on the next read).
+        """
+        # Lazy import: ``backend.persistence.user_key_store`` pulls in
+        # ``cryptography`` (Fernet) which is not needed by callers that
+        # never go through the BYOK path.
+        from backend.persistence.user_key_store import UserKeyStore
+
+        store = self._user_key_store_cache
+        # ``_init_db`` re-runs an idempotent CREATE IF NOT EXISTS
+        # which is the cheapest possible "is the connection still
+        # alive" probe.  We always run the probe — even on a freshly
+        # built store — so the dead-connection path is exercised
+        # regardless of whether the cache was already populated.
+        # If the connection is dead, sqlite3 raises
+        # ``OperationalError`` (file-rotation, lock, etc.); a closed
+        # connection raises ``ProgrammingError``.
+        if store is None:
+            store = UserKeyStore()
+        try:
+            store._init_db()
+        except Exception:
+            logger.debug(
+                "LLMService: UserKeyStore connection is dead, rebuilding",
+                exc_info=True,
+            )
+            store = UserKeyStore()
+        self._user_key_store_cache = store
+        return store
+
     def _resolve_api_key(self, required: bool = True) -> str:
         """Resolve the API key for this profile using the BYOK priority chain.
 
@@ -112,12 +159,12 @@ class LLMService:
         if self._profile.api_key:
             return self._profile.api_key
 
-        # 2. User-scoped key override (stored in auth.db)
+        # 2. User-scoped key override (stored in auth.db).  The store
+        # is process-cached via :meth:`_get_user_key_store` so a single
+        # sqlite3 connection + Fernet PRAGMA is reused across calls.
         if hasattr(self, "_user_id") and self._user_id:
             try:
-                from backend.persistence.user_key_store import UserKeyStore
-
-                store = UserKeyStore()
+                store = self._get_user_key_store()
                 user_key = store.get_key(self._user_id, self._profile.id)
                 if user_key:
                     return user_key
