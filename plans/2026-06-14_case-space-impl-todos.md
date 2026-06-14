@@ -112,7 +112,11 @@
   - [x] Props: `item` (InboxDebateItem), `selected` (boolean), `onCheck` (callback)
   - [x] Eigenständig wiederverwendbar (Dashboard recent-activity, Workspace recent-events, AuditView)
 - [x] **2.9 (Bonus)** Inline-Action-Dropdowns in Bulk-Bar: Move mit `<datalist>`+Typeahead, Tag mit debounced input
-- [x] **2.10 (Bonus)** Sidebar-Badge noch nicht implementiert (Punkt bleibt für Folge-Session; aktuell zählt der Tab-Badge die Items pro Kind)
+- [x] **2.10 Sidebar-Badge** mit `inboxStore.summary.items.length` in [`Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) implementiert
+  - [x] Liest aus `inboxStore.summary.items.length` (auto-reactive, $derived)
+  - [x] Rot bei > 0, versteckt bei 0 oder wenn `inboxDisabled` (Feature-Flag off)
+  - [x] aria-label mit Anzahl für Screenreader
+  - [x] Inaktiv-/Aktiv-Variante (blau wenn aktuelle Route, sonst rot)
 - [ ] **2.11 Frontend-Tests**:
   - [ ] 2.11.1 `inboxStore` Bulk-Actionen
   - [ ] 2.11.2 `InboxView` Tab-Wechsel behält Selektion nicht bei (gewollt)
@@ -266,7 +270,7 @@
 ### 🔄 In Bearbeitung
 
 - (Phase 1 verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
-- (Phase 2 verbleibend: 2.10 Sidebar-Badge, 2.11–2.12 Vitest/E2E)
+- (Phase 2 verbleibend: 2.11–2.12 Vitest/E2E)
 
 ### 📌 Decisions getroffen
 

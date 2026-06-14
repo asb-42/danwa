@@ -6,6 +6,7 @@
   import { getActiveWorkflowSession } from '../lib/workflowSession.js';
   import CaseSelector from './CaseSelector.svelte';
   import CaseNavigator from './CaseNavigator.svelte';
+  import { inboxStore } from '../lib/stores/inboxStore.svelte.js';
 
   let { navigate, currentRoute } = $props();
 
@@ -25,6 +26,14 @@
   let hasActiveExecution = $derived(
     activeWorkflowSession && ['running', 'paused'].includes(activeWorkflowSession.status)
   );
+
+  // Sidebar badge for the Inbox nav item.  Reads the cached
+  // summary from inboxStore (loaded by InboxView on mount).  When
+  // the store is empty (e.g. user has not visited Inbox yet) the
+  // badge is hidden — the Tab badges inside InboxView itself are
+  // the canonical counts.
+  let inboxCount = $derived(inboxStore.summary?.items?.length ?? 0);
+  let inboxDisabled = $derived(inboxStore.inboxDisabled);
 
   const routeGroups = {
     blueprint: ['blueprint'],
@@ -56,7 +65,7 @@
       label: t('nav.section.inhabit'),
       items: [
         { id: 'workspace', label: t('nav.workspace') || 'Workspace', icon: '🏠', route: 'workspace' },
-        { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox' },
+        { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox', badge: inboxCount, badgeHidden: inboxDisabled || inboxCount === 0 },
         { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
         { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
         { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
@@ -220,7 +229,18 @@
               aria-current={isActive(item.route) ? 'page' : undefined}
             >
               <span class="mr-3 text-lg" aria-hidden="true">{item.icon}</span>
-              {item.label}
+              <span class="flex-1 text-left">{item.label}</span>
+              {#if item.badge != null && !item.badgeHidden}
+                <span
+                  class="text-xs font-semibold rounded-full px-1.5 py-0.5
+                         {isActive(item.route)
+                           ? 'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-100'
+                           : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}"
+                  aria-label="{item.badge} pending item(s)"
+                >
+                  {item.badge}
+                </span>
+              {/if}
             </button>
           {/if}
         {/each}
