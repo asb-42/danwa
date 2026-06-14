@@ -172,10 +172,28 @@ class UserStore:
         return row[0]
 
     def set_last_workspace(self, user_id: str, case_id: str | None) -> bool:
-        """Persist the case id the user last opened (or clear it)."""
-        cur = self.conn.execute(
-            "UPDATE users SET last_workspace = ?, updated_at = ? WHERE id = ?",
-            (case_id, datetime.now().isoformat(), user_id),
-        )
-        self.conn.commit()
-        return cur.rowcount > 0
+        """Persist the case id the user last opened (or clear it).
+
+        Defensive: pre-existing DBs may not have the last_workspace
+        column, or the column may have an unexpected type, or the
+        commit may fail for transient reasons.  We try with a
+        try/except so the caller (the auth router) can still
+        return 200 -- the "last workspace" feature is a UX
+        nicety, not a security or correctness invariant.
+        """
+        try:
+            cur = self.conn.execute(
+                "UPDATE users SET last_workspace = ?, updated_at = ? WHERE id = ?",
+                (case_id, datetime.now().isoformat(), user_id),
+            )
+            self.conn.commit()
+            return cur.rowcount > 0
+        except Exception:  # noqa: BLE001
+            # OperationalError on missing column, IntegrityError on
+            # null constraint, etc.  The user simply gets a fresh
+            # session with no last-workspace remembered -- safe.
+            try:
+                self.conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            return False

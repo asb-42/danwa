@@ -60,6 +60,7 @@
       })
   );
   let truncated = $state(false);
+  let graphDisabled = $state(false);
 
   onMount(() => {
     if (entityId) load();
@@ -73,20 +74,30 @@
     if (!entityId) return;
     loading = true;
     error = null;
+    graphDisabled = false;
     try {
       const payload = await getLocalGraph(entityType, entityId, hops);
       nodes = Array.isArray(payload?.nodes) ? payload.nodes : [];
       edges = Array.isArray(payload?.edges) ? payload.edges : [];
       truncated = Boolean(payload?.truncated);
     } catch (err) {
-      error = err;
+      // Phase 5.4: the graph is feature-gated behind
+      // enable_case_space_graph (default False until Phase 4
+      // lands).  Rather than yelling at the user with a red
+      // toast every time they open the Graph tab, we detect the
+      // 404 / flag-off and render a friendly hint instead.
+      if (/DANWA_ENABLE_CASE_SPACE_GRAPH/.test(String(err?.message ?? err))) {
+        graphDisabled = true;
+      } else {
+        error = err;
+        addToast({
+          type: 'error',
+          message: t?.caseSpace?.graph?.loadFailed ??
+            'Could not load the graph for this entity.',
+        });
+      }
       nodes = [];
       edges = [];
-      addToast({
-        type: 'error',
-        message: t?.caseSpace?.graph?.loadFailed ??
-          'Could not load the graph for this entity.',
-      });
     } finally {
       loading = false;
     }
@@ -143,7 +154,16 @@
     </button>
   </div>
 
-  {#if !entityId}
+  {#if graphDisabled}
+    <p
+      class="text-sm italic
+             text-gray-500 dark:text-gray-400"
+      data-testid="graph-disabled"
+    >
+      {t?.caseSpace?.graph?.disabledHint ??
+        'The knowledge graph is not enabled on the backend yet. Set DANWA_ENABLE_CASE_SPACE_GRAPH=true to try it.'}
+    </p>
+  {:else if !entityId}
     <p class="text-sm italic text-gray-500 dark:text-gray-400">
       {t?.caseSpace?.graph?.noEntity ?? 'No entity selected.'}
     </p>
