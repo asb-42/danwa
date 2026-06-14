@@ -108,13 +108,64 @@
   function selectCase(c) {
     activeCase.set({ id: c.id, title: c.title });
   }
+
+  /**
+   * Case-Space Phase 5.6: clicking a row's "Open in Workspace"
+   * button sets the active case and navigates to the Workspace
+   * view, where the user can manage it (edit, delete, tag, etc.).
+   */
+  function openInWorkspace(c) {
+    if (!c) return;
+    activeCase.set({ id: c.id, title: c.title });
+    if (typeof navigate === 'function') {
+      navigate('workspace');
+    } else if (typeof window !== 'undefined') {
+      window.location.hash = '#/workspace';
+    }
+  }
 </script>
 
-<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto p-6 text-gray-900 dark:text-gray-100">
+  <!-- Case-Space Phase 5.6 banner: explain that the workspace
+       is the new home, and offer a "Switch to the Workspace"
+       button so power-users can still find this read-only view. -->
+  <div
+    class="mb-4 p-3 border rounded-md
+           bg-blue-50 dark:bg-blue-900/20
+           border-blue-200 dark:border-blue-700
+           text-blue-900 dark:text-blue-100"
+    role="status"
+  >
+    <div class="flex items-start gap-2">
+      <span aria-hidden="true">💡</span>
+      <div class="flex-1 text-sm">
+        <p class="font-medium">
+          {t('caseSpace.migration.caseSpaceBannerTitle') ??
+            'Case management has moved to the Workspace.'}
+        </p>
+        <p>
+          {t('caseSpace.migration.caseSpaceBannerBody') ??
+            'For day-to-day work (creating / editing / deleting cases, switching the active case) please use the new Workspace view. This page is kept for quick reference only.'}
+        </p>
+      </div>
+      <button
+        type="button"
+        class="shrink-0 inline-flex items-center px-3 py-1.5 rounded-md
+               bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
+        data-testid="go-to-workspace"
+        onclick={() => navigate?.('workspace')}
+      >
+        {t('caseSpace.migration.openWorkspace') ?? 'Open Workspace →'}
+      </button>
+    </div>
+  </div>
+
   <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-gray-800 dark:text-white">{t('cases.title')}</h1>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{t('cases.title')}</h1>
     <button
-      class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700
+             focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
       onclick={openCreate}
     >
       + {t('cases.create')}
@@ -176,9 +227,12 @@
     <div class="space-y-2">
       {#each cases as c}
         <div
-          class="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer
+          class="flex items-center justify-between p-4
+                 bg-white dark:bg-gray-800
+                 border border-gray-200 dark:border-gray-700
+                 rounded-lg hover:shadow-sm transition-shadow cursor-pointer
                  {$activeCase?.id === c.id ? 'ring-2 ring-blue-400 dark:ring-blue-500' : ''}"
-          onclick={() => selectCase(c)}
+          onclick={() => openInWorkspace(c)}
         >
           <div class="flex-1 min-w-0">
             <h3 class="font-medium text-gray-800 dark:text-white truncate">{c.title}</h3>
@@ -195,19 +249,25 @@
           </div>
           <div class="flex items-center gap-2 ml-4">
             {#if $activeCase?.id === c.id}
-              <span class="text-xs text-blue-600 font-medium">{t('cases.activeCase')}</span>
+              <span
+                class="px-2 py-0.5 text-xs rounded-full
+                       bg-blue-100 dark:bg-blue-900/40
+                       text-blue-800 dark:text-blue-200 font-medium"
+              >
+                {t('cases.activeCase')}
+              </span>
             {/if}
             <button
-              class="px-2 py-1 text-xs border rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors"
-              onclick={(e) => { e.stopPropagation(); openEdit(c); }}
+              type="button"
+              class="shrink-0 px-3 py-1 text-xs font-medium rounded-md
+                     bg-blue-600 hover:bg-blue-700 text-white
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     transition-colors"
+              data-testid="open-in-workspace"
+              onclick={(e) => { e.stopPropagation(); openInWorkspace(c); }}
             >
-              {t('common.edit')}
-            </button>
-            <button
-              class="px-2 py-1 text-xs border rounded text-red-600 hover:bg-red-50 disabled:hover:bg-red-50 dark:hover:bg-red-900 disabled:hover:bg-red-800/20 dark:border-gray-600 transition-colors disabled:opacity-50"
-              onclick={(e) => { e.stopPropagation(); confirmDelete = c; }}
-            >
-              {t('common.delete')}
+              {t('caseSpace.migration.openInWorkspace') ??
+                'Open in Workspace →'}
             </button>
           </div>
         </div>
