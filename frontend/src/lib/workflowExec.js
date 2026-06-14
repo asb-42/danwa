@@ -157,3 +157,67 @@ export function submitInterjection(sessionId, content, source = 'user') {
     body: JSON.stringify({ content, source }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Phase-snapshot history (workflow-observability feature, see
+// `plans/workflow-observability.md` and the new phase-snapshot API in
+// `backend/api/routers/workflow_exec.py:905-941`).
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {Object} PhaseSnapshotSummary
+ * @property {string} node_id
+ * @property {string} node_type
+ * @property {number} phase
+ * @property {number|null} round
+ * @property {number} state_size
+ * @property {string} created_at  ISO 8601 timestamp
+ */
+
+/**
+ * @typedef {Object} PhaseSnapshotDetail
+ * @property {string} node_id
+ * @property {string} node_type
+ * @property {number} phase
+ * @property {number|null} round
+ * @property {object} state       Full state JSON captured at this phase
+ * @property {string} created_at
+ */
+
+/**
+ * List all phase snapshots captured for a workflow session.
+ * Backend persists one snapshot per gate phase + one per `node.started` event
+ * via `StateSnapshotStore.save(...)` (see `backend/workflow/state_snapshot.py`).
+ *
+ * @param {string} sessionId
+ * @returns {Promise<PhaseSnapshotSummary[]>}
+ */
+export function getPhaseSnapshots(sessionId) {
+  return request(
+    `/api/v1/workflow-exec/${encodeURIComponent(sessionId)}/phase-snapshots`,
+  );
+}
+
+/**
+ * Fetch the full state for a single phase snapshot.
+ * Returns `null` when the snapshot does not exist (HTTP 404).
+ *
+ * @param {string} sessionId
+ * @param {string} nodeId
+ * @returns {Promise<PhaseSnapshotDetail | null>}
+ */
+export async function getPhaseSnapshotDetail(sessionId, nodeId) {
+  try {
+    return await request(
+      `/api/v1/workflow-exec/${encodeURIComponent(sessionId)}/phase-snapshots/${encodeURIComponent(nodeId)}`,
+    );
+  } catch (err) {
+    // `request()` in api/core.js throws on !ok with a translated message
+    // (e.g. "HTTP 404").  We treat 404 as a legitimate empty-result and
+    // re-throw everything else so callers can distinguish transient
+    // failures from "no such snapshot".
+    const msg = (err && err.message) || '';
+    if (/404|HTTP 404|not\s*found/i.test(msg)) return null;
+    throw err;
+  }
+}

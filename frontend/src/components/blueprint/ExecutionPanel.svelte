@@ -20,6 +20,7 @@
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
   import { patchActiveWorkflowSession } from '../../lib/workflowSession.js';
   import { normalizeTranscriptContent } from '../../lib/transcriptNormalizer.js';
+  import PhasesTab from '../workflow/PhasesTab.svelte';
 
   /**
    * @type {{
@@ -65,6 +66,19 @@
   let showState = $state(false);
   let stateData = $state(null);
   let isLoadingState = $state(false);
+
+  // Tab strip — 'log' (default) | 'state' | 'phases'
+  // Phases is only selectable when a sessionId is known.
+  let selectedTab = $state('log');
+  const TABS = [
+    { id: 'log',    label: 'Output' },
+    { id: 'state',  label: 'Current State' },
+    { id: 'phases', label: 'Phases' },
+  ];
+  $effect(() => {
+    // Reset to default tab when a new session begins.
+    if (sessionId) selectedTab = 'log';
+  });
 
   // Elapsed time timer
   let startTime = $state(null);
@@ -357,74 +371,133 @@
       </div>
     {/if}
 
-    <!-- Gate decision log (audit T-16 / P4.5+ UX fix — surface above
-         the long node-output log so users see routing choices without
-         scrolling). -->
-    {#if gateDecisions.length > 0}
-      <div class="output-section">
-        <h4 class="output-title">🔀 Gate Decisions</h4>
-        <div class="output-list">
-          {#each gateDecisions as gd}
-            <div class="gate-decision-item" class:gate-passed={gd.result} class:gate-failed={!gd.result}>
-              <div class="gate-decision-header">
-                <span class="gate-icon">{gd.result ? '✅' : '❌'}</span>
-                <span class="gate-condition">{gd.condition}</span>
-                <span class="gate-arrow">→ {gd.chosenTarget}</span>
-              </div>
-              {#if gd.fallbackUsed}
-                <div class="gate-fallback">⚠️ No condition matched — fallback used</div>
-              {/if}
-              {#if gd.allEvaluations.length > 1}
-                <details class="gate-evaluations">
-                  <summary>{gd.allEvaluations.length} conditions evaluated</summary>
-                  <ul>
-                    {#each gd.allEvaluations as ev}
-                      <li class:ev-true={ev.result} class:ev-false={!ev.result}>
-                        {ev.result ? '✓' : '✗'} {ev.condition} → {ev.target}
-                      </li>
-                    {/each}
-                  </ul>
-                </details>
-              {/if}
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
-
-    <!-- Node output log -->
-    {#if nodeOutputs.length > 0}
-      <div class="output-section">
-        <h4 class="output-title">{t('workflow.execution.nodeOutputs')}</h4>
-        <div class="output-list">
-          {#each nodeOutputs as output}
-            <div class="output-item">
-              <div class="output-header">
-                <span class="output-role">{output.role || output.nodeType}</span>
-                <span class="output-duration">{output.durationMs}ms</span>
-              </div>
-              <div class="output-content">{output.content}</div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
-
-    <!-- View State button -->
-    {#if sessionId && (status === 'running' || status === 'paused' || status === 'completed' || status === 'failed')}
-      <div class="state-section">
+    <!-- Tab strip — Output / Current State / Phases (Phase 5 / P5.3) -->
+    <div class="exec-tabs" role="tablist" aria-label="Execution panel views">
+      {#each TABS as tab (tab.id)}
         <button
-          class="btn btn-small btn-state"
-          onclick={handleViewState}
-          disabled={isLoadingState}
+          class="exec-tab"
+          role="tab"
+          type="button"
+          id={`exec-tab-${tab.id}`}
+          aria-selected={selectedTab === tab.id}
+          aria-controls={`exec-tabpanel-${tab.id}`}
+          tabindex={selectedTab === tab.id ? 0 : -1}
+          onclick={() => (selectedTab = tab.id)}
+          data-testid={`exec-tab-${tab.id}`}
         >
-          {isLoadingState ? '...' : t('workflow.execution.viewState')}
+          {tab.label}
         </button>
-        {#if showState && stateData}
-          <details open class="state-details">
-            <summary class="state-summary">{t('workflow.execution.currentState')}</summary>
-            <pre class="state-json">{JSON.stringify(stateData, null, 2)}</pre>
-          </details>
+      {/each}
+    </div>
+
+    <!-- Tab: Output log (gate decisions + node outputs) -->
+    {#if selectedTab === 'log'}
+      <div
+        class="tab-panel"
+        role="tabpanel"
+        id="exec-tabpanel-log"
+        aria-labelledby="exec-tab-log"
+        data-testid="exec-tabpanel-log"
+      >
+        <!-- Gate decision log (audit T-16 / P4.5+ UX fix — surface above
+             the long node-output log so users see routing choices without
+             scrolling). -->
+        {#if gateDecisions.length > 0}
+          <div class="output-section">
+            <h4 class="output-title">🔀 Gate Decisions</h4>
+            <div class="output-list">
+              {#each gateDecisions as gd}
+                <div class="gate-decision-item" class:gate-passed={gd.result} class:gate-failed={!gd.result}>
+                  <div class="gate-decision-header">
+                    <span class="gate-icon">{gd.result ? '✅' : '❌'}</span>
+                    <span class="gate-condition">{gd.condition}</span>
+                    <span class="gate-arrow">→ {gd.chosenTarget}</span>
+                  </div>
+                  {#if gd.fallbackUsed}
+                    <div class="gate-fallback">⚠️ No condition matched — fallback used</div>
+                  {/if}
+                  {#if gd.allEvaluations.length > 1}
+                    <details class="gate-evaluations">
+                      <summary>{gd.allEvaluations.length} conditions evaluated</summary>
+                      <ul>
+                        {#each gd.allEvaluations as ev}
+                          <li class:ev-true={ev.result} class:ev-false={!ev.result}>
+                            {ev.result ? '✓' : '✗'} {ev.condition} → {ev.target}
+                          </li>
+                        {/each}
+                      </ul>
+                    </details>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Node output log -->
+        {#if nodeOutputs.length > 0}
+          <div class="output-section">
+            <h4 class="output-title">{t('workflow.execution.nodeOutputs')}</h4>
+            <div class="output-list">
+              {#each nodeOutputs as output}
+                <div class="output-item">
+                  <div class="output-header">
+                    <span class="output-role">{output.role || output.nodeType}</span>
+                    <span class="output-duration">{output.durationMs}ms</span>
+                  </div>
+                  <div class="output-content">{output.content}</div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        {#if gateDecisions.length === 0 && nodeOutputs.length === 0}
+          <p class="tab-empty">No gate decisions or node outputs yet.</p>
+        {/if}
+      </div>
+    {/if}
+
+    <!-- Tab: Current State (one-shot fetch) -->
+    {#if selectedTab === 'state'}
+      <div
+        class="tab-panel"
+        role="tabpanel"
+        id="exec-tabpanel-state"
+        aria-labelledby="exec-tab-state"
+        data-testid="exec-tabpanel-state"
+      >
+        <div class="state-section">
+          <button
+            class="btn btn-small btn-state"
+            onclick={handleViewState}
+            disabled={isLoadingState || !sessionId}
+          >
+            {isLoadingState ? '...' : t('workflow.execution.viewState')}
+          </button>
+          {#if showState && stateData}
+            <details open class="state-details">
+              <summary class="state-summary">{t('workflow.execution.currentState')}</summary>
+              <pre class="state-json">{JSON.stringify(stateData, null, 2)}</pre>
+            </details>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Tab: Phases (workflow-observability history) -->
+    {#if selectedTab === 'phases'}
+      <div
+        class="tab-panel"
+        role="tabpanel"
+        id="exec-tabpanel-phases"
+        aria-labelledby="exec-tab-phases"
+        data-testid="exec-tabpanel-phases"
+      >
+        {#if sessionId}
+          <PhasesTab {sessionId} />
+        {:else}
+          <p class="tab-empty">Start a workflow to see its phase history.</p>
         {/if}
       </div>
     {/if}
@@ -799,5 +872,61 @@
     background: #111827;
     border-color: #1f2937;
     color: #d1d5db;
+  }
+
+  /* Tab strip (Phase 5 / P5.3) ---------------------------------------- */
+  .exec-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f3f4f6;
+  }
+  :global(.dark) .exec-tabs {
+    background: #111827;
+    border-bottom-color: #374151;
+  }
+  .exec-tab {
+    background: none;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 6px 12px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4b5563;
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  :global(.dark) .exec-tab { color: #9ca3af; }
+  .exec-tab:hover { color: #111827; }
+  :global(.dark) .exec-tab:hover { color: #f9fafb; }
+  .exec-tab[aria-selected='true'] {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    color: #111827;
+  }
+  :global(.dark) .exec-tab[aria-selected='true'] {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  .exec-tab:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
+  }
+  .tab-panel {
+    padding: 8px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tab-empty {
+    margin: 0;
+    padding: 12px 0;
+    color: #6b7280;
+    font-style: italic;
+    font-size: 12px;
   }
 </style>
