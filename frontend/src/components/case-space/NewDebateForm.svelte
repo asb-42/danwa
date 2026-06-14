@@ -32,13 +32,12 @@
 <script>
   import { onMount, untrack } from 'svelte';
   import { get } from 'svelte/store';
-  import { tStore } from '../lib/i18n/index.js';
-  import { currentTenant } from '../lib/stores/auth.svelte.js';
-  import { addToast } from '../lib/stores.js';
-  import { searchCases, getCase } from '../lib/api/workspace.js';
-  import { createCase } from '../lib/api/case.js';
-  import { createCaseDebate, startCaseDebate } from '../lib/api/case.js';
-  import TagPicker from './TagPicker.svelte';
+  import { tStore } from '../../lib/i18n/index.js';
+  import { currentTenant } from '../../lib/stores/auth.svelte.js';
+  import { addToast } from '../../lib/stores.js';
+  import { searchCases } from '../../lib/api/workspace.js';
+  import { createCase, getCase, createCaseDebate, startCaseDebate } from '../../lib/api/case.js';
+  import TagPicker from '../TagPicker.svelte';
 
   let { onCreated = () => {}, onCancel = () => {} } = $props();
 
@@ -124,7 +123,7 @@
       // the lightweight tag list once and pick the matching objects.
       // The result is intentionally a minimal projection so the
       // component does not depend on the TagPicker internals.
-      const { getTags } = await import('../lib/api/tag.js');
+      const { getTags } = await import('../../lib/api/tag.js');
       const all = await getTags(tenant.id);
       const map = new Map(all.map((tag) => [tag.tag_id, tag]));
       suggestedTags = tagIds
@@ -262,11 +261,12 @@
   }
 </script>
 
-<form
+<div
   class="new-debate-form"
   role="dialog"
+  aria-modal="true"
   aria-labelledby="new-debate-title"
-  onsubmit={handleSubmit}
+  tabindex="-1"
 >
   <h3 id="new-debate-title">
     {t?.caseSpace?.newDebate?.title ?? 'Start a new debate'}
@@ -277,7 +277,7 @@
   </p>
 
   <!-- ─── Mode toggle ─────────────────────────────────────────── -->
-  <fieldset class="mode-toggle" aria-label="Case source">
+  <fieldset class="mode-toggle">
     <legend class="sr-only">
       {t?.caseSpace?.newDebate?.modeLegend ?? 'Where should this debate live?'}
     </legend>
@@ -426,7 +426,7 @@
     </div>
   {/if}
 
-  <footer class="actions">
+  <form class="submit-form" onsubmit={handleSubmit}>
     <button
       type="button"
       class="btn"
@@ -447,8 +447,8 @@
         {t?.caseSpace?.newDebate?.submit ?? 'Start debate'}
       {/if}
     </button>
-  </footer>
-</form>
+  </form>
+</div>
 
 <style>
   .new-debate-form {

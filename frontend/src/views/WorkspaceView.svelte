@@ -343,12 +343,17 @@
       class="modal-backdrop"
       role="presentation"
       onclick={closeNewDebate}
+      onkeydown={(e) => {
+        if (e.key === 'Escape') closeNewDebate();
+      }}
     >
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
       <div
         class="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-debate-modal-title"
+        tabindex="-1"
         onclick={(e) => e.stopPropagation()}
       >
         <NewDebateForm

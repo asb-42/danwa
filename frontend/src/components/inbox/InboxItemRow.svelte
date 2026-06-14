@@ -10,7 +10,7 @@
   @see plans/2026-06-14_case-space-workspace.md (Phase 2.8)
 -->
 <script>
-  import { tStore } from '../lib/i18n/index.js';
+  import { tStore } from '../../lib/i18n/index.js';
 
   let { item, selected = false, onCheck = () => {} } = $props();
 
