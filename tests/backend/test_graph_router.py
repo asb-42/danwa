@@ -17,8 +17,8 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app
 from backend.api.routers import graph as graph_module
+from backend.main import app
 
 
 @pytest.fixture
@@ -63,9 +63,7 @@ def test_edges_returns_404_when_feature_disabled(client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_local_returns_empty_when_case_not_found(
-    client: TestClient, enabled: None
-) -> None:
+def test_local_returns_empty_when_case_not_found(client: TestClient, enabled: None) -> None:
     case_store = mock.MagicMock()
     case_store._cache = {"t1": {}}
     case_store.get.return_value = None
@@ -83,9 +81,7 @@ def test_local_returns_empty_when_case_not_found(
     assert response.status_code == 404
 
 
-def test_local_returns_centre_node_with_debates_and_tags(
-    client: TestClient, enabled: None
-) -> None:
+def test_local_returns_centre_node_with_debates_and_tags(client: TestClient, enabled: None) -> None:
     case = SimpleNamespace(
         id="c1",
         tenant_id="t1",
@@ -136,9 +132,7 @@ def test_local_returns_centre_node_with_debates_and_tags(
     assert body["total_count"] == 5
 
 
-def test_local_rejects_unknown_entity_type(
-    client: TestClient, enabled: None
-) -> None:
+def test_local_rejects_unknown_entity_type(client: TestClient, enabled: None) -> None:
     response = client.get(
         "/api/v1/graph/local",
         params={"entity_type": "alien", "entity_id": "x1"},
@@ -151,9 +145,7 @@ def test_local_rejects_unknown_entity_type(
 # ---------------------------------------------------------------------------
 
 
-def test_global_returns_empty_for_unknown_tenant(
-    client: TestClient, enabled: None
-) -> None:
+def test_global_returns_empty_for_unknown_tenant(client: TestClient, enabled: None) -> None:
     case_store = mock.MagicMock()
     case_store.list_by_tenant.return_value = []
     from backend.api.deps import get_case_store
@@ -172,9 +164,7 @@ def test_global_returns_empty_for_unknown_tenant(
     assert body["total_count"] == 0
 
 
-def test_global_aggregates_cases_with_shared_tags(
-    client: TestClient, enabled: None
-) -> None:
+def test_global_aggregates_cases_with_shared_tags(client: TestClient, enabled: None) -> None:
     """Tags that appear in multiple cases must be deduped in the node set."""
     case_store = mock.MagicMock()
     case_store.list_by_tenant.return_value = [
@@ -205,13 +195,8 @@ def test_global_aggregates_cases_with_shared_tags(
     assert len(tag_edges) == 2
 
 
-def test_global_caps_at_limit_and_sets_truncated(
-    client: TestClient, enabled: None
-) -> None:
-    big_cases = [
-        SimpleNamespace(id=f"c{i}", tenant_id="t1", title=f"C{i}", status="active", tags=[])
-        for i in range(10)
-    ]
+def test_global_caps_at_limit_and_sets_truncated(client: TestClient, enabled: None) -> None:
+    big_cases = [SimpleNamespace(id=f"c{i}", tenant_id="t1", title=f"C{i}", status="active", tags=[]) for i in range(10)]
     case_store = mock.MagicMock()
     case_store.list_by_tenant.return_value = big_cases
     debate_store = mock.MagicMock()
@@ -241,9 +226,7 @@ def test_global_caps_at_limit_and_sets_truncated(
     assert body["sampled_count"] == 3
 
 
-def test_global_rejects_limit_out_of_range(
-    client: TestClient, enabled: None
-) -> None:
+def test_global_rejects_limit_out_of_range(client: TestClient, enabled: None) -> None:
     response = client.get(
         "/api/v1/graph/global",
         params={"tenant_id": "t1", "limit": 0},
@@ -256,9 +239,7 @@ def test_global_rejects_limit_out_of_range(
 # ---------------------------------------------------------------------------
 
 
-def test_edges_returns_stub(
-    client: TestClient, enabled: None
-) -> None:
+def test_edges_returns_stub(client: TestClient, enabled: None) -> None:
     response = client.get(
         "/api/v1/graph/edges",
         params={"src": "case:c1", "tgt": "tag:ethics"},
