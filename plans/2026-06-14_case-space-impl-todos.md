@@ -282,6 +282,7 @@
 - (Phase 1 verbleibend: 1.14 Playwright E2E — auf Folge-Session verschoben)
 - (Phase 2 verbleibend: 2.12 Playwright E2E — auf Folge-Session verschoben)
 - (Phase 3 Backend-Tests grün, Frontend 3.5/3.6/3.7/3.8 für Folge-Session verschoben — LLM-Suggest optional)
+- (Phase 4 verbleibend: 4.3 graph_edge_cache, 4.5–4.15 Frontend Graph-UI + Cytoscape — alle für Folge-Session)
 
 ### 📌 Decisions getroffen
 
@@ -289,6 +290,7 @@
 - **D2** `recent_events` im Phase-1 Response bleibt leer `[]` — die Inbox-Engine (Phase 2) liefert sie. Damit ist die API stabil für Phase 1, ohne Phase 2 zu blockieren.
 - **D3** `last_workspace` User-Setting wird **nicht** im Backend persistiert, sondern aus `user.settings` (JSON) gelesen — ein neuer Endpoint ist unnötig, das bestehende `PATCH /api/v1/users/me` reicht. Konkretisierung folgt in 1.3.
 - **D4** DNS-Mock-Fixture ist autouse-aber-gescopet (nur für Module mit `a2a` im Namen). Sie greift **nicht** in `test_a2a_url_validator.py` ein, weil diese Tests `monkeypatch.setattr` selbst durchführen — die autouse-Fixture wird überschrieben. Verifiziert.
+- **D5** Knowledge-Graph `edges`-Endpoint ist bewusst als **Stub** ausgeliefert (siehe Commit `8095564`). Echte `evidence`-Listen erfordern ein pre-computed `graph_edge_cache` (Phase 5+ plan item 4.3) — bis dahin liefert der Stub einen expliziten Hinweis-String, der das dokumentiert.
 
 ### ⚠️ Offene Fragen
 
