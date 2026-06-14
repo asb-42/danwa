@@ -37,18 +37,32 @@ def enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(inbox_module.settings, "enable_case_space_inbox", True)
 
 
-# ---------------------------------------------------------------------------
-# Feature gate
+@pytest.fixture
+def disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force the inbox feature flag off for the duration of the test.
+
+    Case-Space Inbox is ON by default (P2 default was reversed — the
+    feature is no longer hidden behind an env-var gate).  Tests that
+    verify the 404-on-disabled behaviour must opt in explicitly.
+    """
+    monkeypatch.setattr(inbox_module.settings, "enable_case_space_inbox", False)
+
+
+# Feature gate tests below
 # ---------------------------------------------------------------------------
 
 
-def test_inbox_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_inbox_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None
+) -> None:
     response = client.get("/api/v1/inbox", params={"tenant_id": "t1"})
     assert response.status_code == 404
     assert "DANWA_ENABLE_CASE_SPACE_INBOX" in response.json()["detail"]
 
 
-def test_bulk_move_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_bulk_move_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None
+) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-move",
         json={"debate_ids": ["d1"], "target_case_id": "c1"},
@@ -56,7 +70,9 @@ def test_bulk_move_returns_404_when_feature_disabled(client: TestClient) -> None
     assert response.status_code == 404
 
 
-def test_bulk_tag_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_bulk_tag_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None
+) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-tag",
         json={"debate_ids": ["d1"], "tag_ids": ["a"]},
@@ -64,7 +80,9 @@ def test_bulk_tag_returns_404_when_feature_disabled(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_bulk_archive_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_bulk_archive_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None
+) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-archive",
         json={"debate_ids": ["d1"]},

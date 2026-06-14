@@ -115,13 +115,27 @@ class Settings(BaseSettings):
     prometheus_enabled: bool = True
 
     # --- Feature flags (progressive rollout) ---
-    # When False, the new Case-Space Workspace / Inbox / Browse views and
-    # their /api/workspace/* endpoints are hidden behind a 404.  The old
-    # CasesView, DocumentsView, TagManagerView etc. remain the only
-    # way to navigate.  See plans/2026-06-14_case-space-workspace.md
-    # for the rollout plan.
-    enable_case_space: bool = False
-    enable_case_space_inbox: bool = False
+    # Case-Space is the documented primary UI of the application
+    # (plans/2026-06-14_case-space-workspace.md).  The legacy views
+    # (CasesView, DocumentsView, TagManagerView, ...) remain available
+    # for power-users and admins, but the new Workspace / Inbox / Graph
+    # views are ON by default so a fresh installation is *usable* out
+    # of the box, not behind a hidden env-var gate.
+    #
+    # To opt out (e.g. for migration windows, or to force a stable
+    # legacy-only deployment), set the corresponding env-var to
+    # 'false' / '0' / 'no':
+    #
+    #   DANWA_ENABLE_CASE_SPACE=false
+    #   DANWA_ENABLE_CASE_SPACE_INBOX=false
+    #   DANWA_ENABLE_CASE_SPACE_GRAPH=false
+    #
+    # The original P1+P2 default (False) made the feature invisible
+    # during testing and is reverted here: the rollout plan's only
+    # outstanding concern was the knowledge-graph (Phase 4+5) which
+    # has its own independent flag (enable_case_space_graph).
+    enable_case_space: bool = True
+    enable_case_space_inbox: bool = True
     enable_case_space_graph: bool = False
 
 

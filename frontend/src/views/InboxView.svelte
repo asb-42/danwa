@@ -432,9 +432,11 @@
     padding: 1rem 1.25rem;
     border-radius: 6px;
     margin: 0 0 1rem;
+    color: var(--color-text, #111);
   }
-  .banner-warning { background: #fff3cd; border: 1px solid #ffeaa7; }
-  .banner-error   { background: #fde8e8; border: 1px solid #f5c6cb; }
+  .banner strong, .banner p { color: inherit; }
+  .banner-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #5c4400; }
+  .banner-error   { background: #fde8e8; border: 1px solid #f5c6cb; color: #7a1212; }
   .loading { color: var(--color-text-muted, #666); }
   .toast {
     position: fixed;

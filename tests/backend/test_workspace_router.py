@@ -35,6 +35,17 @@ def enabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
+def disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force the feature flag off for the duration of the test.
+
+    Case-Space is ON by default (P1+P2 default was reversed — the
+    feature is no longer hidden behind an env-var gate).  Tests that
+    verify the 404-on-disabled behaviour must opt in explicitly.
+    """
+    monkeypatch.setattr(workspace_module.settings, "enable_case_space", False)
+
+
+@pytest.fixture
 def fake_case_store():
     """Replace the case store dependency with a deterministic stub."""
 
@@ -80,13 +91,17 @@ def fake_case_store():
 # ---------------------------------------------------------------------------
 
 
-def test_summary_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_summary_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None
+) -> None:
     response = client.get("/api/v1/workspace/summary", params={"case_id": "c1"})
     assert response.status_code == 404
     assert "DANWA_ENABLE_CASE_SPACE" in response.json()["detail"]
 
 
-def test_search_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_search_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None
+) -> None:
     response = client.get("/api/v1/cases/search", params={"q": "ai"})
     assert response.status_code == 404
 
