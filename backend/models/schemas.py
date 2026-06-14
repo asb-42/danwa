@@ -619,3 +619,28 @@ class InboxBulkResult(BaseModel):
 
     succeeded: list[str] = Field(default_factory=list)
     failed: list[dict] = Field(default_factory=list)  # [{"id": str, "reason": str}]
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Onboarding (Phase 3 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class OnboardingState(BaseModel):
+    """The three booleans the Welcome-Card consumes.
+
+    - ``has_cases``    → at least one Case in the tenant
+    - ``has_documents`` → (reserved) at least one document in the
+                          tenant; in the current architecture
+                          documents are scoped per project, so
+                          this stays False (the welcome card uses
+                          it to decide whether to show the upload
+                          hint, but the upload flow itself works
+                          regardless)
+    - ``has_debates``   → at least one Debate in any case
+    """
+
+    tenant_id: str
+    has_cases: bool
+    has_documents: bool
+    has_debates: bool

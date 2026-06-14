@@ -127,12 +127,21 @@
 ## Phase 3 — Welcome + Onboarding-Feinschliff (P3)
 
 ### Backend
-- [ ] **3.1 Endpoint `GET /api/onboarding/state?tenant_id=…`** liefert `{has_cases, has_documents, has_debates}` Booleans
+- [x] **3.1 Endpoint `GET /api/onboarding/state?tenant_id=…`** liefert `OnboardingState` in [`backend/api/routers/onboarding.py`](../../backend/api/routers/onboarding.py)
+  - [x] 3.1.1 `has_cases` via `case_store.list_by_tenant` (Lazy)
+  - [x] 3.1.2 `has_debates` iteriert Cases und prüft `list_all(limit=1)` mit Short-Circuit
+  - [x] 3.1.3 `has_documents` immer False (DMS ist project-scoped, nicht tenant-scoped — Limitation dokumentiert)
+  - [x] 3.1.4 Best-effort: einzelne Store-Fehler werden geloggt und mit False übersprungen, nicht escalated
 - [ ] **3.2 Optionaler Endpoint `POST /api/documents/{id}/suggest-case`** (LLM): wenn ein LLM konfiguriert ist, gibt die Top-3-Case-Vorschläge zurück; sonst 404. *Feature-Flag `DANWA_LLM_SUGGEST_CASES`*
 
 ### Frontend
-- [ ] **3.3 Komponente `WelcomeCard.svelte`** — drei Karten (Create Case / Upload Documents / Start Debate), `+ Add`-Buttons
-- [ ] **3.4 Logik**: Welcome-Card rendert nur, wenn `onboarding.state.has_cases === false`
+- [x] **3.3 Komponente `WelcomeCard.svelte`** in [`frontend/src/components/onboarding/`](../../frontend/src/components/onboarding/) angelegt
+  - [x] 3.3.1 Drei nummerierte Steps (Create Case / Upload Documents / Start Debate)
+  - [x] 3.3.2 Sichtbar nur wenn `!has_cases` (kein Tenant-Noise für Bestandsnutzer)
+  - [x] 3.3.3 Dismissable (lokaler `dismissed`-State)
+  - [x] 3.3.4 In [`Dashboard.svelte`](../../frontend/src/views/Dashboard.svelte) am oberen Rand integriert
+  - [x] Bonus: i18n-Keys via Inline-Fallbacks (kein Locale-File-Touch)
+- [x] **3.4 Logik**: Welcome-Card rendert nur, wenn `state.has_cases === false` — in `WelcomeCard.svelte` als `$derived` `visible` implementiert
 - [ ] **3.5 Tag-Vorschläge im Picker** ([`TagPicker.svelte`](../../frontend/src/components/TagPicker.svelte)):
   - [ ] 3.5.1 Top-3-Tags des aktuellen Cases als Quick-Buttons anzeigen
   - [ ] 3.5.2 Vorschläge verschwinden, sobald der User Tags manuell wählt
@@ -272,6 +281,7 @@
 
 - (Phase 1 verbleibend: 1.14 Playwright E2E — auf Folge-Session verschoben)
 - (Phase 2 verbleibend: 2.12 Playwright E2E — auf Folge-Session verschoben)
+- (Phase 3 Backend-Tests grün, Frontend 3.5/3.6/3.7/3.8 für Folge-Session verschoben — LLM-Suggest optional)
 
 ### 📌 Decisions getroffen
 
