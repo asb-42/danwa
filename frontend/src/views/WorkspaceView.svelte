@@ -467,10 +467,11 @@
   .workspace-header h1 {
     margin: 0 0 0.25rem;
     font-size: 1.75rem;
+    color: #f3f4f6; /* readable on dark page background */
   }
   .workspace-header .subtitle {
     margin: 0 0 1.5rem;
-    color: var(--color-text-muted, #666);
+    color: #9ca3af;
   }
   .workspace-grid {
     display: grid;
@@ -501,6 +502,7 @@
   .card h2 {
     margin: 0 0 0.5rem;
     font-size: 1.15rem;
+    color: #111827;
   }
   .status {
     margin-left: 0.5rem;
@@ -535,7 +537,7 @@
   .counts dt { font-size: 0.8rem; color: var(--color-text-muted, #666); }
   .counts dd { margin: 0; font-size: 1.4rem; font-weight: 600; }
   .empty {
-    color: var(--color-text-muted, #666);
+    color: #4b5563;
     font-style: italic;
     margin: 0.5rem 0 0;
   }
@@ -562,15 +564,21 @@
   }
   .case-picker-hint {
     margin: 0 0 1rem;
-    color: var(--color-text-muted, #666);
+    color: #4b5563;
     font-size: 0.9rem;
   }
+  .case-picker-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    color: #111827;
+  }
   .empty-state {
-    background: var(--color-bg-muted, #f9fafb);
-    border: 1px dashed var(--color-border, #d1d5db);
+    background: #f9fafb;
+    border: 1px dashed #d1d5db;
     border-radius: 6px;
     padding: 1.5rem;
     text-align: center;
+    color: #1f2937;
   }
   .empty-state-actions {
     display: flex;
@@ -608,9 +616,10 @@
   }
   .case-list-title {
     font-weight: 600;
+    color: #111827;
   }
   .case-list-desc {
-    color: var(--color-text-muted, #666);
+    color: #4b5563;
     font-size: 0.85rem;
   }
   .case-list-id {

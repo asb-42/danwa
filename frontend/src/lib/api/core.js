@@ -6,6 +6,7 @@
 import { get } from 'svelte/store';
 import { i18n } from '../i18n/index.js';
 import { activeCase } from '../stores.js';
+import { currentTenant } from '../stores/auth.svelte.js';
 import { accessToken, refreshToken, setAuth, clearAuth } from '../stores/auth.svelte.js';
 
 export const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -95,6 +96,7 @@ export async function request(endpoint, options = {}) {
     ...DEFAULT_HEADERS,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(caseId ? { 'X-Case-Id': caseId } : {}),
+    ...(get(currentTenant)?.id ? { 'X-Tenant-Id': get(currentTenant).id } : {}),
     ...options.headers,
   };
 

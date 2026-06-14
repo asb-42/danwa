@@ -65,13 +65,16 @@
   .item-body { flex: 1; }
   .item-title { display: flex; align-items: center; gap: 0.5rem; }
   .item-title strong { font-size: 1rem; }
+  .item-title strong {
+    color: #111827; /* slate-900, dark-on-light for default theme */
+  }
   .item-message {
     margin: 0.25rem 0 0;
-    color: var(--color-text, #222);
+    color: #1f2937; /* slate-800 */
   }
   .item-meta {
     margin: 0.25rem 0 0;
-    color: var(--color-text-muted, #666);
+    color: #4b5563; /* slate-600, lighter than the title */
     font-size: 0.85rem;
     display: flex;
     gap: 0.4rem;
