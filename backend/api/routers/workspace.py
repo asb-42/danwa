@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.api.deps import get_case_store
+from backend.api.deps import get_active_tenant, get_case_store
 from backend.core.config import settings
 from backend.models.schemas import (
     CaseSearchHit,
@@ -83,6 +83,7 @@ def _build_suggested_next_steps(
 @router.get("/workspace/summary", response_model=WorkspaceSummary)
 def get_workspace_summary(
     case_id: str = Query(..., min_length=1),
+    tenant_id: str = Depends(get_active_tenant),
     store=Depends(get_case_store),
 ) -> WorkspaceSummary:
     """Return a case-scoped summary suitable for the Workspace view.
@@ -94,7 +95,13 @@ def get_workspace_summary(
     """
     _require_case_space()
 
-    case = store.get(case_id)
+    # CaseStore.get requires (tenant_id, case_id).  P1 bugfix: the
+    # original implementation called store.get(case_id) with a
+    # single argument, which raised TypeError on every request
+    # once the feature flag was on.  We now resolve the active
+    # tenant via get_active_tenant (which honours the
+    # X-Tenant-Id header) and pass it explicitly.
+    case = store.get(tenant_id, case_id)
     if case is None:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 

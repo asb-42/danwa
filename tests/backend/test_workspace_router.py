@@ -50,12 +50,13 @@ def fake_case_store():
     """Replace the case store dependency with a deterministic stub."""
 
     class _Stub:
-        def get(self, case_id: str):
+        def get(self, tenant_id: str, case_id: str):
+            # Mirrors the real CaseStore.get signature: (tenant_id, case_id)
             if case_id == "missing":
                 return None
             return SimpleNamespace(
                 id=case_id,
-                tenant_id="t1",
+                tenant_id=tenant_id,
                 title=f"Case {case_id}",
                 description="desc",
                 status="active",
@@ -119,7 +120,15 @@ def test_summary_returns_payload_when_enabled(client: TestClient, enabled: None,
 
     app.dependency_overrides[get_case_store] = lambda: fake_case_store
     try:
-        response = client.get("/api/v1/workspace/summary", params={"case_id": "c1"})
+        # X-Tenant-Id header is honoured by get_active_tenant; the
+        # fake stub's get() returns tenant_id="t1" for any caller,
+        # so the response body["tenant_id"] == "t1" assertion
+        # requires us to send the matching header.
+        response = client.get(
+            "/api/v1/workspace/summary",
+            params={"case_id": "c1"},
+            headers={"X-Tenant-Id": "t1"},
+        )
     finally:
         app.dependency_overrides = {}
 

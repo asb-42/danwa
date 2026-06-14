@@ -153,8 +153,20 @@ class UserStore:
     # because (a) the field is small and high-frequency, and
     # (b) it avoids a JSON parse on every GET /me call.
     def get_last_workspace(self, user_id: str) -> str | None:
-        """Return the case id the user last opened, or None."""
-        row = self.conn.execute("SELECT last_workspace FROM users WHERE id = ?", (user_id,)).fetchone()
+        """Return the case id the user last opened, or None.
+
+        Defensive: older DBs (pre-migration) may not have the
+        ``last_workspace`` column.  Catch the OperationalError and
+        return None so callers see a clean "never set" state
+        instead of a 500.
+        """
+        try:
+            row = self.conn.execute(
+                "SELECT last_workspace FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+        except Exception:  # noqa: BLE001
+            # Column missing or DB locked -- treat as "not set".
+            return None
         if row is None:
             return None
         return row[0]

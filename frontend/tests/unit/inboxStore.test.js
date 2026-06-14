@@ -156,6 +156,53 @@ describe('filteredItems', () => {
     setActiveTab('stale_running');
     const items = inboxStore.filteredItems;
     expect(items).toHaveLength(1);
+  });
+
+  it('dedupes by id when the same debate matches multiple kinds', () => {
+    // A debate can be both 'untagged' AND 'recently_completed' in the
+    // backend payload.  The "all" view must not surface the same id
+    // twice, or InboxView's {#each (item.id)} throws
+    // each_key_duplicate.
+    const overlap = {
+      tenant_id: TID,
+      items: [
+        { id: 'd-dup', kind: 'untagged', case_id: 'c1', title: 'A', tags: [], message: 'm' },
+        { id: 'd-dup', kind: 'recently_completed', case_id: 'c1', title: 'A', tags: [], message: 'm' },
+        { id: 'd-dup', kind: 'stale_running', case_id: 'c1', title: 'A', tags: [], message: 'm' },
+      ],
+      counts: {},
+      is_all_clear: false,
+      generated_at: '2026-06-14T10:00:00Z',
+    };
+    getInbox.mockResolvedValueOnce(overlap);
+    return load(TID).then(() => {
+      const items = inboxStore.filteredItems;
+      expect(items).toHaveLength(1);
+      // Kinds are merged, comma-separated.
+      const kinds = items[0].kind.split(',').map((s) => s.trim()).sort();
+      expect(kinds).toEqual(['recently_completed', 'stale_running', 'untagged']);
+    });
+  });
+
+  it('dedupes by id per-tab when a debate matches the active tab twice', () => {
+    // Defensive: even with the activeTab filter on, the backend
+    // might return the same id twice.  filteredItems should still
+    // surface it once.
+    const overlap = {
+      tenant_id: TID,
+      items: [
+        { id: 'd-dup', kind: 'untagged', case_id: 'c1', title: 'A', tags: [], message: 'm' },
+        { id: 'd-dup', kind: 'untagged', case_id: 'c1', title: 'A', tags: [], message: 'm' },
+      ],
+      counts: {},
+      is_all_clear: false,
+      generated_at: '2026-06-14T10:00:00Z',
+    };
+    getInbox.mockResolvedValueOnce(overlap);
+    return load(TID).then(() => {
+      setActiveTab('untagged');
+      expect(inboxStore.filteredItems).toHaveLength(1);
+    });
     expect(items[0].id).toBe('d-stale');
   });
 });

@@ -90,11 +90,38 @@ export const inboxStore = {
   get inboxDisabled() {
     return _state.inboxDisabled;
   },
-  /** Items filtered by the current activeTab; returns all items if tab is ''. */
+  /**
+   * Items filtered by the current activeTab.  Returns all items
+   * if tab is '', and always dedupes by id because a single
+   * debate can match multiple inbox kinds (e.g. a debate that is
+   * both 'untagged' and 'recently_completed' returns twice from
+   * the backend, and the {#each (item.id)} block in InboxView
+   * would otherwise throw each_key_duplicate).
+   *
+   * For the merged 'all' view, the kind field is a comma-joined
+   * string of the matched kinds (e.g. "untagged, recently_completed")
+   * so the row can show multiple badges if needed.
+   */
   get filteredItems() {
     const items = _state.summary?.items ?? [];
-    if (!_state.activeTab) return items;
-    return items.filter((it) => it.kind === _state.activeTab);
+    const byId = new Map();
+    for (const it of items) {
+      if (!it || !it.id) continue;
+      if (_state.activeTab && it.kind !== _state.activeTab) continue;
+      const existing = byId.get(it.id);
+      if (existing) {
+        // Same id, different kind (only happens for the 'all' view).
+        // Merge the kinds into the existing entry.
+        if (existing.kind && existing.kind !== it.kind) {
+          const set = new Set(existing.kind.split(',').map((s) => s.trim()).filter(Boolean));
+          set.add(it.kind);
+          existing.kind = Array.from(set).join(', ');
+        }
+      } else {
+        byId.set(it.id, { ...it });
+      }
+    }
+    return Array.from(byId.values());
   },
 };
 
@@ -158,11 +185,12 @@ export function toggleSelected(id) {
  * Select all currently filtered items (or clear if all are already selected).
  */
 export function toggleSelectAll() {
-  const items = _state.summary?.items ?? [];
-  const visibleIds = items
-    .filter((it) => !_state.activeTab || it.kind === _state.activeTab)
-    .map((it) => it.id);
-  const allSelected = visibleIds.every((id) => _state.selectedIds.has(id));
+  // Use the (deduplicated) filteredItems getter so we never add the
+  // same id twice when a debate matches multiple inbox kinds.
+  const visibleIds = inboxStore.filteredItems.map((it) => it.id);
+  const allSelected =
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => _state.selectedIds.has(id));
   if (allSelected) {
     for (const id of visibleIds) _state.selectedIds.delete(id);
   } else {
