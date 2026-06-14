@@ -25,6 +25,8 @@
     setActiveCase,
     loadSummary,
     reset,
+    restoreLastWorkspace,
+    persistActiveCase,
   } from '../lib/stores/workspaceStore.svelte.js';
 
   let { navigate = () => {}, initialCaseId = null } = $props();
@@ -95,6 +97,13 @@
     } else if (initialCaseId) {
       setActiveCase(initialCaseId);
       writeCaseToUrl(initialCaseId);
+    } else {
+      // Last fallback: restore the user's last opened case from
+      // the backend (Phase 1.3 + 1.10).  The async restore
+      // happens in parallel with the URL-state setup; the load
+      // triggered by the $effect below will pick up whichever id
+      // ends up in the store at that point.
+      restoreLastWorkspace();
     }
     if (workspaceStore.activeCaseId) {
       loadSummary();
@@ -108,13 +117,19 @@
     };
   });
 
-  // Mirror active case → URL whenever it changes via internal flow
-  // (form submit, reset, etc.).  This is decoupled from CaseSelector
-  // which sets the case via workspaceStore; the $effect below
-  // catches that too.
+  // Mirror active case → URL AND persist to backend whenever it
+  // changes via internal flow (form submit, CaseSelector, restore,
+  // reset).  Two side effects share the same trigger so the
+  // URL-state and the backend setting stay in lockstep.
   $effect(() => {
     const id = workspaceStore.activeCaseId;
     writeCaseToUrl(id);
+    // Best-effort persistence; the store's persistActiveCase handles
+    // the network call and logs errors silently so the user isn't
+    // interrupted.
+    if (id !== null) {
+      persistActiveCase();
+    }
   });
 
   // Re-fetch when the active case id changes (e.g. user typed in

@@ -104,6 +104,34 @@ export async function searchCases(q, limit = 10) {
   }
 }
 
+// ─── User-Setting: last_workspace (Phase 1.3) ────────────────────
+
+/**
+ * Fetch the case id the current user last opened (or null).
+ * Used by WorkspaceView on mount to restore the active case
+ * across logins.
+ *
+ * @returns {Promise<string|null>}
+ */
+export async function getLastWorkspace() {
+  const res = await request('/api/v1/auth/me/last-workspace');
+  return res?.case_id ?? null;
+}
+
+/**
+ * Persist the case id the user just opened (or null to clear).
+ * Called by WorkspaceView when the active case changes.
+ *
+ * @param {string|null} caseId
+ * @returns {Promise<void>}
+ */
+export async function setLastWorkspace(caseId) {
+  await request('/api/v1/auth/me/last-workspace', {
+    method: 'PUT',
+    body: JSON.stringify({ case_id: caseId || null }),
+  });
+}
+
 /**
  * Detect whether a thrown error corresponds to a 404 from the
  * feature-gated Case-Space endpoints.

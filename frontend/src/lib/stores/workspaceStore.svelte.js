@@ -202,6 +202,44 @@ export function invalidate(caseId) {
 }
 
 /**
+ * Persist the current active case to the backend so the user
+ * finds it on next login.  Best-effort: errors are logged but do
+ * not surface in the UI (the user already sees the case loaded
+ * in the workspace).
+ */
+export async function persistActiveCase() {
+  const caseId = _state.activeCaseId;
+  try {
+    const { setLastWorkspace } = await import('../api/workspace.js');
+    await setLastWorkspace(caseId);
+  } catch (err) {
+    if (import.meta.env?.DEV) {
+      console.debug('[workspace] persistActiveCase failed:', err?.message ?? err);
+    }
+  }
+}
+
+/**
+ * Restore the last_workspace from the backend and set it as
+ * active.  Called by WorkspaceView on mount.
+ */
+export async function restoreLastWorkspace() {
+  try {
+    const { getLastWorkspace } = await import('../api/workspace.js');
+    const caseId = await getLastWorkspace();
+    if (caseId && caseId !== _state.activeCaseId) {
+      setActiveCase(caseId);
+    }
+    return caseId;
+  } catch (err) {
+    if (import.meta.env?.DEV) {
+      console.debug('[workspace] restoreLastWorkspace failed:', err?.message ?? err);
+    }
+    return null;
+  }
+}
+
+/**
  * Reset the entire store.  Used by logout or tenant-switch flows.
  */
 export function reset() {
