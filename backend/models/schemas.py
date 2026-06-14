@@ -457,3 +457,74 @@ class DebateForkInfo(BaseModel):
     parent_debate_id: str
     fork_round: int | None = None
     fork_reason: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Workspace (Phase 1 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class WorkspaceRecentEvent(BaseModel):
+    """A condensed activity event for the Workspace's Recent Activity card.
+
+    Derived from the audit trail.  Only the fields relevant to a one-line
+    workspace summary are exposed — full audit events remain available via
+    the dedicated audit endpoint.
+    """
+
+    id: str
+    event_type: str
+    actor: str | None = None
+    subject: str | None = None  # e.g. debate title, document name
+    case_id: str | None = None
+    created_at: datetime
+
+
+class WorkspaceSuggestedNextStep(BaseModel):
+    """A contextual hint surfaced on the Workspace's Suggested Next Steps card.
+
+    Example kinds:
+    - "unlinked_documents"  → user has docs in the DMS without a case
+    - "untagged_debates"    → at least one debate has zero tags
+    - "inactive_audit"      → no audit event for the case in N days
+    """
+
+    kind: str
+    severity: str  # "info" | "warning"
+    message: str
+    action_label: str
+    action_target: str  # route or feature id to navigate to
+
+
+class WorkspaceSummary(BaseModel):
+    """Aggregated, case-scoped summary payload served by GET /api/workspace/summary.
+
+    The endpoint returns this in a single call to avoid N+1 round-trips from
+    the frontend when the workspace view mounts.
+    """
+
+    case_id: str
+    tenant_id: str
+    title: str
+    description: str | None = None
+    status: str
+    tags: list[str] = Field(default_factory=list)
+    members: list[str] = Field(default_factory=list)
+
+    debate_count: int = 0
+    document_count: int = 0
+
+    recent_events: list[WorkspaceRecentEvent] = Field(default_factory=list)
+    suggested_next_steps: list[WorkspaceSuggestedNextStep] = Field(default_factory=list)
+
+    generated_at: datetime
+
+
+class CaseSearchHit(BaseModel):
+    """Single result for GET /api/cases/search (typeahead for the Case selector)."""
+
+    case_id: str
+    tenant_id: str
+    title: str
+    status: str
+    tags: list[str] = Field(default_factory=list)

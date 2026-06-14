@@ -56,6 +56,7 @@ from backend.api.routers import (  # noqa: E402
     workflow_exec,
     workflow_reports,
     workflow_templates,
+    workspace,
 )
 from backend.api.routers.case_scoped import router as case_scoped_router  # noqa: E402
 from backend.api.routers.translation import router as translation_router  # noqa: E402
@@ -477,6 +478,9 @@ def create_app() -> FastAPI:
     app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
     app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
     app.include_router(case_scoped_router, prefix="/api/v1", tags=["cases"])
+
+    # --- Case-Space Workspace (Phase 1 of plans/2026-06-14_case-space-workspace.md) ---
+    app.include_router(workspace.router, prefix="/api/v1", tags=["case-space"])
 
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
     app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
