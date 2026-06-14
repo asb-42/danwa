@@ -9,21 +9,33 @@
   import { addToast } from '../lib/stores.js';
   import { getTags, createTag } from '../lib/api/tag.js';
 
-  let { value = [], onchange } = $props();
+  let { value = [], onchange, caseId = null } = $props();
 
   let t = $derived($tStore);
 
   let tags = $state([]);
+  let caseTags = $state([]); // Top-N tags from the active case (Phase 3.5)
   let search = $state('');
   let isOpen = $state(false);
   let isCreating = $state(false);
+  let suggestionsDismissed = $state(false);
 
   onMount(() => {
     if ($currentTenant) loadTags();
+    if (caseId && $currentTenant) loadCaseTags(caseId);
   });
 
   $effect(() => {
     if ($currentTenant) loadTags();
+  });
+
+  $effect(() => {
+    // Reload case-tag suggestions when the active case changes.
+    if (caseId && $currentTenant) {
+      loadCaseTags(caseId);
+    } else {
+      caseTags = [];
+    }
   });
 
   async function loadTags() {
@@ -34,6 +46,33 @@
       if (import.meta.env.DEV) console.warn('Failed to load tags:', err);
     }
   }
+
+  /**
+   * Phase 3.5: load the active case's tags and surface the top 3
+   * as one-click "Suggested tags" buttons above the main tag list.
+   * Dismissed as soon as the user picks a tag manually.
+   */
+  async function loadCaseTags(cid) {
+    try {
+      const mod = await import('../lib/api/case.js');
+      const c = await mod.getCase($currentTenant.id, cid);
+      const ids = (c?.tag_ids || c?.tags || []).slice(0, 3);
+      // Resolve to full tag objects from the already-loaded list.
+      caseTags = ids
+        .map((id) => tags.find((t) => t.tag_id === id) || { tag_id: id, name: id })
+        .filter(Boolean);
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('Failed to load case tags:', err);
+      caseTags = [];
+    }
+  }
+
+  let visibleSuggestions = $derived(
+    !suggestionsDismissed &&
+      caseTags.length > 0 &&
+      value.length === 0 &&
+      search === ''
+  );
 
   let filtered = $derived(
     search
@@ -55,6 +94,9 @@
     const selected = isSelected(tag)
       ? value.filter((v) => (typeof v === 'string' ? v !== tag.tag_id : v !== tag.tag_id))
       : [...value, tag.tag_id];
+    // Once the user manually picks any tag, hide the suggestions
+    // strip (they have expressed intent).
+    if (selected.length > 0) suggestionsDismissed = true;
     onchange?.(selected);
   }
 
@@ -88,6 +130,44 @@
 <svelte:window onclick={handleClickOutside} />
 
 <div class="tag-picker relative">
+  <!-- Suggested tags from the active case (Phase 3.5) -->
+  {#if visibleSuggestions}
+    <div
+      class="suggested-tags flex flex-wrap items-center gap-1 px-2 py-1.5 mb-1"
+      data-testid="tag-picker-suggestions"
+    >
+      <span class="text-[0.7rem] uppercase tracking-wider
+                   text-gray-500 dark:text-gray-400">
+        {t?.caseSpace?.newDebate?.suggestedTags ?? 'Suggested from this case'}:
+      </span>
+      {#each caseTags as tag (tag.tag_id)}
+        <button
+          type="button"
+          data-testid="tag-picker-suggested-tag"
+          class="text-xs font-medium px-2 py-0.5 rounded
+                 border-0
+                 hover:opacity-80 transition-opacity
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style="background-color: {tag.color || '#e5e7eb'};
+                 color: {tag.color ? '#fff' : '#374151'};"
+          onclick={() => toggleTag(tag)}
+        >
+          + {tag.name}
+        </button>
+      {/each}
+      <button
+        type="button"
+        class="text-[0.7rem] text-gray-400 dark:text-gray-500
+               hover:text-gray-600 dark:hover:text-gray-300 ml-1
+               bg-transparent border-0
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onclick={() => (suggestionsDismissed = true)}
+      >
+        ✕
+      </button>
+    </div>
+  {/if}
+
   <!-- Selected tags -->
   <div
     class="flex flex-wrap gap-1 px-2 py-1.5 border rounded cursor-text min-h-[32px]

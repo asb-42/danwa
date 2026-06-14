@@ -449,7 +449,7 @@
       <label class="text-sm text-gray-700 dark:text-gray-300">
         {t?.caseSpace?.newDebate?.newCaseTags ?? 'Tags'}
       </label>
-      <TagPicker value={newCaseTags} onchange={(v) => (newCaseTags = v)} />
+      <TagPicker value={newCaseTags} caseId={activeCaseId} onchange={(v) => (newCaseTags = v)} />
     </div>
   {/if}
 
