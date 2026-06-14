@@ -1,0 +1,340 @@
+<!--
+  Case-Space Workspace — primary view of the new Case-Space UI.
+
+  This view is the entry point for the Case-Space redesign described in
+  plans/2026-06-14_case-space-workspace.md (Phase 1).  It shows the
+  currently active case with three cards:
+    - This Case: debates, documents, tags of the active case
+    - Suggested Next Steps: contextual hints (empty-state nudges in P1)
+    - Recent Activity: list of recent audit-style events (P1: empty)
+
+  The view is intentionally minimal in P1 — it is the integration point
+  that proves the backend → store → view chain works.  Richer
+  sub-components (debate list, document uploader, etc.) are added in
+  later phases; see plans/2026-06-14_case-space-impl-todos.md.
+
+  @see plans/2026-06-14_case-space-workspace.md
+  @see plans/2026-06-14_case-space-impl-todos.md (Phase 1.7)
+-->
+<script>
+  import { onMount } from 'svelte';
+  import { tStore } from '../lib/i18n/index.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import {
+    workspaceStore,
+    setActiveCase,
+    loadSummary,
+    reset,
+  } from '../lib/stores/workspaceStore.svelte.js';
+
+  let { navigate = () => {}, initialCaseId = null } = $props();
+
+  // Read Svelte 5 runes proxy as plain JS
+  let t = $derived($tStore);
+  let summary = $derived(workspaceStore.summary);
+  let loading = $derived(workspaceStore.loading);
+  let error = $derived(workspaceStore.error);
+  let activeCaseId = $derived(workspaceStore.activeCaseId);
+  let caseSpaceDisabled = $derived(workspaceStore.caseSpaceDisabled);
+
+  // Local UI state
+  let localCaseInput = $state('');
+
+  onMount(() => {
+    // If the URL/router passed an initialCaseId, set it; otherwise
+    // the URL-state handler (1.9) will populate this before mount.
+    if (initialCaseId) {
+      setActiveCase(initialCaseId);
+    }
+    if (workspaceStore.activeCaseId) {
+      loadSummary();
+    }
+    return () => {
+      // On unmount: do NOT reset() — other views may still want the
+      // cached summary when the user navigates back.
+    };
+  });
+
+  // Re-fetch when the active case id changes (e.g. user typed in
+  // the CaseSelector).  setActiveCase nulls the summary, so this
+  // effect fires whenever the id transitions.
+  $effect(() => {
+    if (activeCaseId) {
+      loadSummary();
+    }
+  });
+
+  function handleCaseInputSubmit(event) {
+    event.preventDefault();
+    const id = (localCaseInput || '').trim();
+    if (!id) return;
+    setActiveCase(id);
+    localCaseInput = '';
+  }
+</script>
+
+<section class="workspace-view" aria-label="Case-Space Workspace">
+  <header class="workspace-header">
+    <h1>{t?.caseSpace?.workspace?.title ?? 'Workspace'}</h1>
+    <p class="subtitle">
+      {t?.caseSpace?.workspace?.subtitle ??
+        'Focus on a single case. Everything you need in one place.'}
+    </p>
+  </header>
+
+  {#if caseSpaceDisabled}
+    <div class="banner banner-warning" role="status">
+      <strong>{t?.caseSpace?.workspace?.flagOffTitle ?? 'Case-Space is not enabled'}</strong>
+      <p>
+        {t?.caseSpace?.workspace?.flagOffBody ??
+          'Set DANWA_ENABLE_CASE_SPACE=true on the backend to use the new view. The legacy Cases list is still available.'}
+      </p>
+      {#if navigate}
+        <button class="btn" onclick={() => navigate('cases')}>
+          {t?.caseSpace?.workspace?.goToLegacy ?? 'Open legacy Cases view'}
+        </button>
+      {/if}
+    </div>
+  {/if}
+
+  {#if !activeCaseId}
+    <form class="case-prompt" onsubmit={handleCaseInputSubmit}>
+      <label for="case-id-input">
+        {t?.caseSpace?.workspace?.enterCaseId ??
+          'Enter a case id to focus the workspace:'}
+      </label>
+      <input
+        id="case-id-input"
+        type="text"
+        bind:value={localCaseInput}
+        placeholder={t?.caseSpace?.workspace?.caseIdPlaceholder ?? 'case-1234'}
+        autocomplete="off"
+      />
+      <button type="submit" class="btn btn-primary" disabled={!localCaseInput.trim()}>
+        {t?.caseSpace?.workspace?.open ?? 'Open'}
+      </button>
+    </form>
+  {:else}
+    {#if loading}
+      <p class="loading" role="status">
+        {t?.caseSpace?.workspace?.loading ?? 'Loading workspace…'}
+      </p>
+    {:else if error}
+      <div class="banner banner-error" role="alert">
+        <strong>{t?.caseSpace?.workspace?.errorTitle ?? 'Could not load workspace'}</strong>
+        <p>{String(error?.message ?? error)}</p>
+        <button class="btn" onclick={() => loadSummary()}>
+          {t?.caseSpace?.workspace?.retry ?? 'Retry'}
+        </button>
+      </div>
+    {:else if summary}
+      <article class="workspace-grid">
+        <section class="card this-case" aria-labelledby="card-this-case">
+          <h2 id="card-this-case">
+            {summary.title}
+            <span class="status" data-status={summary.status}>
+              {summary.status}
+            </span>
+          </h2>
+          {#if summary.description}
+            <p class="description">{summary.description}</p>
+          {/if}
+          {#if summary.tags?.length}
+            <ul class="tags" aria-label="Tags">
+              {#each summary.tags as tag}
+                <li class="tag">{tag}</li>
+              {/each}
+            </ul>
+          {/if}
+          <dl class="counts">
+            <div>
+              <dt>{t?.caseSpace?.workspace?.debates ?? 'Debates'}</dt>
+              <dd>{summary.debate_count}</dd>
+            </div>
+            <div>
+              <dt>{t?.caseSpace?.workspace?.documents ?? 'Documents'}</dt>
+              <dd>{summary.document_count}</dd>
+            </div>
+            <div>
+              <dt>{t?.caseSpace?.workspace?.members ?? 'Members'}</dt>
+              <dd>{summary.members?.length ?? 0}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="card suggestions" aria-labelledby="card-suggestions">
+          <h2 id="card-suggestions">
+            {t?.caseSpace?.workspace?.suggestedNextSteps ?? 'Suggested next steps'}
+          </h2>
+          {#if summary.suggested_next_steps?.length}
+            <ul>
+              {#each summary.suggested_next_steps as step}
+                <li class="step" data-severity={step.severity}>
+                  <span class="step-message">{step.message}</span>
+                  {#if step.action_label}
+                    <span class="step-action">{step.action_label}</span>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="empty">
+              {t?.caseSpace?.workspace?.allClear ??
+                'Nothing to suggest right now. The case is in good shape.'}
+            </p>
+          {/if}
+        </section>
+
+        <section class="card recent" aria-labelledby="card-recent">
+          <h2 id="card-recent">
+            {t?.caseSpace?.workspace?.recentActivity ?? 'Recent activity'}
+          </h2>
+          {#if summary.recent_events?.length}
+            <ul>
+              {#each summary.recent_events as ev}
+                <li>
+                  <span class="event-type">{ev.event_type}</span>
+                  <span class="event-subject">{ev.subject ?? ev.id}</span>
+                  <time>{ev.created_at}</time>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="empty">
+              {t?.caseSpace?.workspace?.noRecent ??
+                'No recent activity yet. Run a debate or upload a document to see events here.'}
+            </p>
+          {/if}
+        </section>
+      </article>
+
+      <footer class="workspace-footer">
+        <small>
+          {t?.caseSpace?.workspace?.generatedAt ?? 'Generated at'}:
+          <time>{summary.generated_at}</time>
+        </small>
+        <button class="btn btn-link" onclick={() => reset()}>
+          {t?.caseSpace?.workspace?.clearActive ?? 'Switch case'}
+        </button>
+      </footer>
+    {/if}
+  {/if}
+</section>
+
+<style>
+  .workspace-view {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+  .workspace-header h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.75rem;
+  }
+  .workspace-header .subtitle {
+    margin: 0 0 1.5rem;
+    color: var(--color-text-muted, #666);
+  }
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    grid-template-areas:
+      'this-case suggestions'
+      'this-case recent';
+    gap: 1rem;
+  }
+  @media (max-width: 768px) {
+    .workspace-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        'this-case'
+        'suggestions'
+        'recent';
+    }
+  }
+  .this-case { grid-area: this-case; }
+  .suggestions { grid-area: suggestions; }
+  .recent { grid-area: recent; }
+  .card {
+    background: var(--color-bg-elevated, #fff);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+  }
+  .card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+  }
+  .status {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: var(--color-bg-muted, #eee);
+  }
+  .description {
+    color: var(--color-text-muted, #666);
+    margin: 0 0 0.75rem;
+  }
+  .tags {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .tag {
+    background: var(--color-bg-muted, #eee);
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  .counts {
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+  }
+  .counts dt { font-size: 0.8rem; color: var(--color-text-muted, #666); }
+  .counts dd { margin: 0; font-size: 1.4rem; font-weight: 600; }
+  .empty {
+    color: var(--color-text-muted, #666);
+    font-style: italic;
+    margin: 0.5rem 0 0;
+  }
+  .banner {
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    margin: 0 0 1rem;
+  }
+  .banner-warning { background: #fff3cd; border: 1px solid #ffeaa7; }
+  .banner-error   { background: #fde8e8; border: 1px solid #f5c6cb; }
+  .case-prompt {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .case-prompt input {
+    flex: 1 1 200px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 4px;
+  }
+  .btn {
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--color-border, #ddd);
+    background: var(--color-bg-elevated, #fff);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--color-primary, #3b82f6); color: white; border-color: transparent; }
+  .btn-link { background: transparent; border: none; color: var(--color-primary, #3b82f6); }
+  .workspace-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    color: var(--color-text-muted, #666);
+  }
+</style>

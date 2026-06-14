@@ -44,10 +44,10 @@
   - [x] 1.5.2 Actions: `setActiveCase(id)`, `loadSummary()`, `search(q)`, `invalidate(caseId)`, `reset()`
   - [x] 1.5.3 Dedup via `Map<caseId, Promise>`, debounce 200 ms für Typeahead
 - [x] **1.6 API-Wrapper** [`frontend/src/lib/api/workspace.js`](../../frontend/src/lib/api/workspace.js): `getWorkspaceSummary(caseId)`, `searchCases(q, limit)`, `isCaseSpaceDisabled(err)`
-- [ ] **1.7 Komponente `WorkspaceView.svelte`** in [`frontend/src/views/`](../../frontend/src/views/)
-  - [ ] 1.7.1 Header mit Tenant- + Case-Selector (Combobox)
-  - [ ] 1.7.2 Drei Karten: `ThisCaseCard`, `SuggestedNextStepsCard`, `RecentActivityCard`
-  - [ ] 1.7.3 Leerer Zustand mit Hinweis "Select a case to focus your workspace"
+- [x] **1.7 Komponente `WorkspaceView.svelte`** in [`frontend/src/views/`](../../frontend/src/views/) angelegt
+  - [x] 1.7.1 Header mit Titel/Subtitle (Tenant/Case-Selector folgt in 1.8)
+  - [x] 1.7.2 Drei Karten inline gerendert (ThisCase, SuggestedNextSteps, RecentActivity) — Card-Komponenten werden in P2 extrahiert
+  - [x] 1.7.3 Leerer Zustand: Eingabeformular für Case-Id mit Fallback-Button auf Legacy-Cases-View wenn Feature-Flag aus
 - [ ] **1.8 Komponente `CaseSelector.svelte`** (Erweiterung der bestehenden [`CaseSelector.svelte`](../../frontend/src/components/CaseSelector.svelte))
   - [ ] 1.8.1 Typeahead-Combobox
   - [ ] 1.8.2 Aktiver Case optisch markiert
@@ -249,8 +249,8 @@
 
 ### 🔄 In Bearbeitung
 
-- **1.7** `WorkspaceView.svelte` (nächste Session)
-- **1.8** `CaseSelector.svelte` (nächste Session)
+- **1.8** `CaseSelector.svelte` Erweiterung (Typeahead) — nächste Session
+- **1.9** URL-State-Synchronisation (`?case=…`) — nächste Session
 
 ### 📌 Decisions getroffen
 
@@ -274,7 +274,7 @@
 
 - Phase 1 Backend-Stand: **507 Zeilen** neuer Code in 5 Dateien, **10 Tests** grün
 - Branch: `case-space` (remote: `origin/case-space`)
-- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS-Fixture) + nächster Commit (Phase 1.5+1.6 Frontend Store+API)
+- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS-Fixture) + `95f5139` (Phase 1.5+1.6 Frontend Store+API) + nächster Commit (Phase 1.7 WorkspaceView)
 
 
 ## Risiken und Annahmen
