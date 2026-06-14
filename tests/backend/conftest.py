@@ -215,9 +215,23 @@ def client(app) -> TestClient:
 # behaviour in production.
 @pytest.fixture(autouse=True)
 def _a2a_dns_mock(request):
-    """Mock socket.getaddrinfo for A2A-related test modules only."""
-    module_name = request.node.module.__name__ if request.node.module else ""
-    if "a2a" not in module_name:
+    """Mock socket.getaddrinfo for A2A-related test modules only.
+
+    Detection: the test's file path contains "a2a" (case-sensitive,
+    matches the pytest test file naming convention).  We check
+    ``request.node.fspath`` rather than ``request.node.module`` so
+    the fixture also activates for async test coroutines and
+    parametrised tests where the module attribute can be None.
+    """
+    test_path = str(request.node.fspath).lower()
+    if "a2a" not in test_path:
+        yield
+        return
+    # We deliberately do NOT activate for test_a2a_url_validator.py
+    # because that test exercises the real socket.getaddrinfo (and
+    # the gaierror path).  Match more strictly on the other A2A test
+    # files we know need the mock.
+    if "a2a_url_validator" in test_path:
         yield
         return
 
