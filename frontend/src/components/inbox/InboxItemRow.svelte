@@ -7,6 +7,12 @@
   later phase.  Items are read-only; the parent owns selection
   state and passes a boolean + change handler.
 
+  Converted to the project's standard Tailwind dark: pattern in
+  commit a0ad6495-style: every text/background class is paired
+  with its dark: variant so the row honours whichever theme
+  the rest of the app is running.  Hard-coded hex tokens are
+  reserved for the small colour-coded kind badges only.
+
   @see plans/2026-06-14_case-space-workspace.md (Phase 2.8)
 -->
 <script>
@@ -16,34 +22,62 @@
 
   let t = $derived($tStore);
 
+  // Kinds can be comma-joined when the same debate matches
+  // multiple inbox kinds in the "All" tab.  Render each as
+  // its own badge so the colour coding stays clear.
+  let kindBadges = $derived(
+    (item?.kind || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+
   function handleCheck() {
     onCheck(item.id);
   }
 </script>
 
-<li class="item" data-kind={item.kind}>
-  <label class="item-check">
+<li class="flex items-start gap-3 px-4 py-3 mb-2 rounded-md border
+           border-gray-200 dark:border-gray-700
+           bg-white dark:bg-gray-800">
+  <label class="pt-1">
     <input
       type="checkbox"
       checked={selected}
       onchange={handleCheck}
       aria-label={t?.caseSpace?.inbox?.selectItem ?? 'Select item'}
+      class="rounded border-gray-300 dark:border-gray-600
+             text-blue-600 focus:ring-blue-500"
     />
   </label>
-  <div class="item-body">
-    <div class="item-title">
-      <span class="kind-badge" data-kind={item.kind}>{item.kind}</span>
-      <strong>{item.title}</strong>
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center gap-2 flex-wrap">
+      {#each kindBadges as k (k)}
+        <span
+          class="text-xs font-semibold px-1.5 py-0.5 rounded
+                 uppercase tracking-wider kind-badge"
+          data-kind={k}
+        >
+          {k.replace(/_/g, ' ')}
+        </span>
+      {/each}
+      <strong class="text-base text-gray-900 dark:text-white truncate">
+        {item.title}
+      </strong>
     </div>
-    <p class="item-message">{item.message}</p>
-    <p class="item-meta">
+    {#if item.message}
+      <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+        {item.message}
+      </p>
+    {/if}
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 flex gap-1.5 flex-wrap">
       <span>Case: {item.case_id}</span>
       {#if item.tags?.length}
-        <span>·</span>
+        <span aria-hidden="true">·</span>
         <span>Tags: {item.tags.join(', ')}</span>
       {/if}
       {#if item.age_hours != null}
-        <span>·</span>
+        <span aria-hidden="true">·</span>
         <span>{item.age_hours} h old</span>
       {/if}
     </p>
@@ -51,44 +85,31 @@
 </li>
 
 <style>
-  .item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-    background: var(--color-bg-elevated, #fff);
+  /* The kind badges are colour-coded (status semantics), so
+     they keep their own dark-mode counterpart baked into the
+     same hex so they stay recognisable in both themes. */
+  .kind-badge[data-kind="recently_completed"] {
+    background: #dbeafe;
+    color: #1e40af;
   }
-  .item-check { padding-top: 0.25rem; }
-  .item-body { flex: 1; }
-  .item-title { display: flex; align-items: center; gap: 0.5rem; }
-  .item-title strong { font-size: 1rem; }
-  .item-title strong {
-    color: #111827; /* slate-900, dark-on-light for default theme */
+  :global(.dark) .kind-badge[data-kind="recently_completed"] {
+    background: #1e3a8a;
+    color: #dbeafe;
   }
-  .item-message {
-    margin: 0.25rem 0 0;
-    color: #1f2937; /* slate-800 */
+  .kind-badge[data-kind="untagged"] {
+    background: #fef3c7;
+    color: #92400e;
   }
-  .item-meta {
-    margin: 0.25rem 0 0;
-    color: #4b5563; /* slate-600, lighter than the title */
-    font-size: 0.85rem;
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
+  :global(.dark) .kind-badge[data-kind="untagged"] {
+    background: #78350f;
+    color: #fef3c7;
   }
-  .kind-badge {
-    font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    background: var(--color-bg-muted, #eee);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  .kind-badge[data-kind="stale_running"] {
+    background: #fee2e2;
+    color: #991b1b;
   }
-  .kind-badge[data-kind="recently_completed"] { background: #dbeafe; color: #1e40af; }
-  .kind-badge[data-kind="untagged"]           { background: #fef3c7; color: #92400e; }
-  .kind-badge[data-kind="stale_running"]      { background: #fee2e2; color: #991b1b; }
+  :global(.dark) .kind-badge[data-kind="stale_running"] {
+    background: #7f1d1d;
+    color: #fee2e2;
+  }
 </style>

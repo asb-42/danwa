@@ -206,17 +206,29 @@
   }
 </script>
 
-<section class="workspace-view" aria-label="Case-Space Workspace">
-  <header class="workspace-header">
-    <h1>{t?.caseSpace?.workspace?.title ?? 'Workspace'}</h1>
-    <p class="subtitle">
+<section
+  class="max-w-6xl mx-auto p-6
+         text-gray-900 dark:text-gray-100"
+  aria-label="Case-Space Workspace"
+>
+  <header class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-100">
+      {t?.caseSpace?.workspace?.title ?? 'Workspace'}
+    </h1>
+    <p class="text-sm text-gray-400">
       {t?.caseSpace?.workspace?.subtitle ??
         'Focus on a single case. Everything you need in one place.'}
     </p>
   </header>
 
   {#if caseSpaceDisabled}
-    <div class="banner banner-warning" role="status">
+    <div
+          class="banner p-4 rounded-md border
+                 bg-yellow-50 dark:bg-yellow-900/20
+                 border-yellow-200 dark:border-yellow-700
+                 text-yellow-900 dark:text-yellow-100"
+          role="status"
+        >
       <strong>{t?.caseSpace?.workspace?.flagOffTitle ?? 'Case-Space is not enabled'}</strong>
       <p>
         {t?.caseSpace?.workspace?.flagOffBody ??
@@ -231,30 +243,44 @@
   {/if}
 
   {#if !activeCaseId}
-    <div class="case-picker" data-testid="case-picker">
-      <h2 class="case-picker-title">
+    <div
+      class="p-5 border rounded-lg max-w-2xl
+             bg-white dark:bg-gray-800
+             border-gray-200 dark:border-gray-700
+             text-gray-900 dark:text-gray-100"
+      data-testid="case-picker"
+    >
+      <h2 class="text-lg font-semibold mb-1">
         {t?.caseSpace?.workspace?.pickCaseTitle ??
           'Pick a case to focus your workspace'}
       </h2>
-      <p class="case-picker-hint">
+      <p class="text-sm mb-4 text-gray-600 dark:text-gray-400">
         {t?.caseSpace?.workspace?.pickCaseHint ??
           'Every debate and document lives in a case. Choose one to continue.'}
       </p>
 
       {#if availableCasesLoading}
-        <p class="loading" role="status">
+        <p class="text-sm text-gray-500 dark:text-gray-400" role="status">
           {t?.caseSpace?.workspace?.loadingCases ?? 'Loading cases…'}
         </p>
       {:else if availableCases.length === 0}
-        <div class="empty-state" data-testid="case-picker-empty">
-          <p>
+        <div
+          class="p-6 border border-dashed rounded-md text-center
+                 bg-gray-50 dark:bg-gray-700/40
+                 border-gray-300 dark:border-gray-600
+                 text-gray-700 dark:text-gray-200"
+          data-testid="case-picker-empty"
+        >
+          <p class="mb-3">
             {t?.caseSpace?.workspace?.noCases ??
               'No cases in this tenant yet.'}
           </p>
-          <div class="empty-state-actions">
+          <div class="flex gap-2 justify-center flex-wrap">
             <button
               type="button"
-              class="btn btn-primary"
+              class="inline-flex items-center px-4 py-2 rounded-md
+                     bg-blue-600 hover:bg-blue-700 text-white font-medium
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
               data-testid="create-first-case"
               onclick={() => {
                 // Inline-Erstellung eines Cases direkt aus dem
@@ -288,27 +314,43 @@
               {t?.caseSpace?.workspace?.createFirstCase ?? '+ Create your first case'}
             </button>
             {#if navigate}
-              <button class="btn" onclick={() => navigate('cases')}>
+              <button
+                class="inline-flex items-center px-4 py-2 rounded-md
+                       bg-gray-100 dark:bg-gray-700
+                       text-gray-700 dark:text-gray-200
+                       hover:bg-gray-200 dark:hover:bg-gray-600
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onclick={() => navigate('cases')}
+              >
                 {t?.caseSpace?.workspace?.openCasesView ?? 'Open Cases view'}
               </button>
             {/if}
           </div>
         </div>
       {:else}
-        <ul class="case-list" role="list">
+        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 list-none p-0" role="list">
           {#each availableCases as c (c.id)}
             <li>
               <button
                 type="button"
-                class="case-list-item"
+                class="flex flex-col items-start gap-1 w-full text-left p-3
+                       border rounded-md
+                       border-gray-200 dark:border-gray-700
+                       bg-white dark:bg-gray-700/40
+                       hover:border-blue-500
+                       text-gray-900 dark:text-gray-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
                 data-testid="case-list-item"
                 onclick={() => pickCaseFromList(c)}
               >
-                <span class="case-list-title">{c.title}</span>
+                <span class="font-semibold">{c.title}</span>
                 {#if c.description}
-                  <span class="case-list-desc">{c.description}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {c.description}
+                  </span>
                 {/if}
-                <span class="case-list-id" aria-hidden="true">{c.id}</span>
+                <span class="text-[0.7rem] font-mono text-gray-400 dark:text-gray-500"
+                      aria-hidden="true">{c.id}</span>
               </button>
             </li>
           {/each}
@@ -321,7 +363,13 @@
         {t?.caseSpace?.workspace?.loading ?? 'Loading workspace…'}
       </p>
     {:else if error}
-      <div class="banner banner-error" role="alert">
+      <div
+          class="banner p-4 rounded-md border
+                 bg-red-50 dark:bg-red-900/20
+                 border-red-200 dark:border-red-700
+                 text-red-900 dark:text-red-100"
+          role="alert"
+        >
         <strong>{t?.caseSpace?.workspace?.errorTitle ?? 'Could not load workspace'}</strong>
         <p>{String(error?.message ?? error)}</p>
         <button class="btn" onclick={() => loadSummary()}>
@@ -330,41 +378,77 @@
       </div>
     {:else if summary}
       <article class="workspace-grid">
-        <section class="card this-case" aria-labelledby="card-this-case">
-          <h2 id="card-this-case">
-            {summary.title}
-            <span class="status" data-status={summary.status}>
+        <section
+          class="card p-5 border rounded-lg
+                 bg-white dark:bg-gray-800
+                 border-gray-200 dark:border-gray-700
+                 text-gray-900 dark:text-gray-100"
+          aria-labelledby="card-this-case"
+        >
+          <h2 id="card-this-case" class="text-xl font-semibold mb-2 flex items-center gap-2 flex-wrap">
+            <span>{summary.title}</span>
+            <span
+              class="text-xs font-medium px-2 py-0.5 rounded
+                     bg-gray-100 dark:bg-gray-700
+                     text-gray-700 dark:text-gray-200"
+              data-status={summary.status}
+            >
               {summary.status}
             </span>
           </h2>
           {#if summary.description}
-            <p class="description">{summary.description}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              {summary.description}
+            </p>
           {/if}
           {#if summary.tags?.length}
-            <ul class="tags" aria-label="Tags">
+            <ul class="flex flex-wrap gap-1 mb-3 list-none p-0" aria-label="Tags">
               {#each summary.tags as tag}
-                <li class="tag">{tag}</li>
+                <li class="text-xs px-2 py-0.5 rounded
+                           bg-gray-100 dark:bg-gray-700
+                           text-gray-700 dark:text-gray-200">{tag}</li>
               {/each}
             </ul>
           {/if}
-          <dl class="counts">
+          <dl class="grid grid-cols-3 gap-4 mb-4">
             <div>
-              <dt>{t?.caseSpace?.workspace?.debates ?? 'Debates'}</dt>
-              <dd>{summary.debate_count}</dd>
+              <dt class="text-xs uppercase tracking-wide
+                         text-gray-500 dark:text-gray-400">
+                {t?.caseSpace?.workspace?.debates ?? 'Debates'}
+              </dt>
+              <dd class="text-2xl font-semibold
+                         text-gray-900 dark:text-white">
+                {summary.debate_count}
+              </dd>
             </div>
             <div>
-              <dt>{t?.caseSpace?.workspace?.documents ?? 'Documents'}</dt>
-              <dd>{summary.document_count}</dd>
+              <dt class="text-xs uppercase tracking-wide
+                         text-gray-500 dark:text-gray-400">
+                {t?.caseSpace?.workspace?.documents ?? 'Documents'}
+              </dt>
+              <dd class="text-2xl font-semibold
+                         text-gray-900 dark:text-white">
+                {summary.document_count}
+              </dd>
             </div>
             <div>
-              <dt>{t?.caseSpace?.workspace?.members ?? 'Members'}</dt>
-              <dd>{summary.members?.length ?? 0}</dd>
+              <dt class="text-xs uppercase tracking-wide
+                         text-gray-500 dark:text-gray-400">
+                {t?.caseSpace?.workspace?.members ?? 'Members'}
+              </dt>
+              <dd class="text-2xl font-semibold
+                         text-gray-900 dark:text-white">
+                {summary.members?.length ?? 0}
+              </dd>
             </div>
           </dl>
           <div class="case-actions">
             <button
               type="button"
-              class="btn btn-primary"
+              class="inline-flex items-center px-4 py-2 rounded-md
+                     bg-blue-600 hover:bg-blue-700
+                     text-white font-medium
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
               data-testid="open-new-debate"
               onclick={openNewDebate}
             >
@@ -373,45 +457,86 @@
           </div>
         </section>
 
-        <section class="card suggestions" aria-labelledby="card-suggestions">
-          <h2 id="card-suggestions">
+        <section
+          class="card p-5 border rounded-lg
+                 bg-white dark:bg-gray-800
+                 border-gray-200 dark:border-gray-700
+                 text-gray-900 dark:text-gray-100"
+          aria-labelledby="card-suggestions"
+        >
+          <h2 id="card-suggestions" class="text-xl font-semibold mb-3">
             {t?.caseSpace?.workspace?.suggestedNextSteps ?? 'Suggested next steps'}
           </h2>
           {#if summary.suggested_next_steps?.length}
-            <ul>
+            <ul class="space-y-2 list-none p-0">
               {#each summary.suggested_next_steps as step}
-                <li class="step" data-severity={step.severity}>
-                  <span class="step-message">{step.message}</span>
+                <li class="flex items-start gap-3 p-3 rounded
+                           border
+                           border-gray-200 dark:border-gray-700
+                           bg-gray-50 dark:bg-gray-700/40"
+                    data-severity={step.severity}>
+                  <span class="flex-1 text-sm
+                               text-gray-800 dark:text-gray-200">
+                    {step.message}
+                  </span>
                   {#if step.action_label}
-                    <span class="step-action">{step.action_label}</span>
+                    <button
+                      type="button"
+                      class="text-xs font-medium px-3 py-1 rounded
+                             bg-blue-100 dark:bg-blue-900/40
+                             text-blue-800 dark:text-blue-200
+                             hover:bg-blue-200 dark:hover:bg-blue-900/60
+                             focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onclick={() => handleSuggestionAction(step)}
+                    >
+                      {step.action_label}
+                    </button>
                   {/if}
                 </li>
               {/each}
             </ul>
           {:else}
-            <p class="empty">
+            <p class="text-sm italic
+                     text-gray-500 dark:text-gray-400">
               {t?.caseSpace?.workspace?.allClear ??
                 'Nothing to suggest right now. The case is in good shape.'}
             </p>
           {/if}
         </section>
 
-        <section class="card recent" aria-labelledby="card-recent">
-          <h2 id="card-recent">
+        <section
+          class="card p-5 border rounded-lg
+                 bg-white dark:bg-gray-800
+                 border-gray-200 dark:border-gray-700
+                 text-gray-900 dark:text-gray-100"
+          aria-labelledby="card-recent"
+        >
+          <h2 id="card-recent" class="text-xl font-semibold mb-3">
             {t?.caseSpace?.workspace?.recentActivity ?? 'Recent activity'}
           </h2>
           {#if summary.recent_events?.length}
-            <ul>
+            <ul class="space-y-2 list-none p-0">
               {#each summary.recent_events as ev}
-                <li>
-                  <span class="event-type">{ev.event_type}</span>
-                  <span class="event-subject">{ev.subject ?? ev.id}</span>
-                  <time>{ev.created_at}</time>
+                <li class="flex items-center gap-2 text-sm">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded
+                               bg-gray-100 dark:bg-gray-700
+                               text-gray-700 dark:text-gray-200">
+                    {ev.event_type}
+                  </span>
+                  <span class="flex-1 truncate
+                               text-gray-800 dark:text-gray-200">
+                    {ev.subject ?? ev.id}
+                  </span>
+                  <time class="text-xs font-mono
+                               text-gray-500 dark:text-gray-400">
+                    {ev.created_at}
+                  </time>
                 </li>
               {/each}
             </ul>
           {:else}
-            <p class="empty">
+            <p class="text-sm italic
+                     text-gray-500 dark:text-gray-400">
               {t?.caseSpace?.workspace?.noRecent ??
                 'No recent activity yet. Run a debate or upload a document to see events here.'}
             </p>
@@ -419,12 +544,16 @@
         </section>
       </article>
 
-      <footer class="workspace-footer">
+      <footer class="flex items-center justify-between mt-4 text-xs text-gray-500 dark:text-gray-400">
         <small>
           {t?.caseSpace?.workspace?.generatedAt ?? 'Generated at'}:
-          <time>{summary.generated_at}</time>
+          <time class="font-mono ml-1">{summary.generated_at}</time>
         </small>
-        <button class="btn btn-link" onclick={() => reset()}>
+        <button
+          class="text-blue-600 dark:text-blue-400 hover:underline
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onclick={() => reset()}
+        >
           {t?.caseSpace?.workspace?.clearActive ?? 'Switch case'}
         </button>
       </footer>
@@ -433,7 +562,8 @@
 
   {#if showNewDebateForm}
     <div
-      class="modal-backdrop"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4
+             bg-black/50"
       role="presentation"
       onclick={closeNewDebate}
       onkeydown={(e) => {
@@ -442,7 +572,10 @@
     >
       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
       <div
-        class="modal"
+        class="modal w-full max-w-2xl max-h-[90vh] overflow-auto
+               rounded-lg shadow-xl
+               bg-white dark:bg-gray-800
+               text-gray-900 dark:text-gray-100"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-debate-modal-title"
@@ -459,20 +592,10 @@
 </section>
 
 <style>
-  .workspace-view {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.5rem;
-  }
-  .workspace-header h1 {
-    margin: 0 0 0.25rem;
-    font-size: 1.75rem;
-    color: #f3f4f6; /* readable on dark page background */
-  }
-  .workspace-header .subtitle {
-    margin: 0 0 1.5rem;
-    color: #9ca3af;
-  }
+  /* Layout-only CSS: every visual property (colours, borders,
+     background) is now inline Tailwind on each element, paired
+     with its dark: variant, so the workspace honours whichever
+     theme the rest of the app is running. */
   .workspace-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -493,176 +616,9 @@
   .this-case { grid-area: this-case; }
   .suggestions { grid-area: suggestions; }
   .recent { grid-area: recent; }
-  .card {
-    background: var(--color-bg-elevated, #fff);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-  }
-  .card h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.15rem;
-    color: #111827;
-  }
-  .status {
-    margin-left: 0.5rem;
-    font-size: 0.75rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    background: var(--color-bg-muted, #eee);
-  }
-  .description {
-    color: var(--color-text-muted, #666);
-    margin: 0 0 0.75rem;
-  }
-  .tags {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 0.75rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-  .tag {
-    background: var(--color-bg-muted, #eee);
-    padding: 0.1rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-  }
-  .counts {
-    display: flex;
-    gap: 1.5rem;
-    margin: 0;
-  }
-  .counts dt { font-size: 0.8rem; color: var(--color-text-muted, #666); }
-  .counts dd { margin: 0; font-size: 1.4rem; font-weight: 600; }
-  .empty {
-    color: #4b5563;
-    font-style: italic;
-    margin: 0.5rem 0 0;
-  }
-  .banner {
-    padding: 1rem 1.25rem;
-    border-radius: 6px;
-    margin: 0 0 1rem;
-    color: var(--color-text, #111);
-  }
-  .banner strong { color: inherit; }
-  .banner p { margin: 0.25rem 0 0; color: inherit; }
-  .banner-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #5c4400; }
-  .banner-error   { background: #fde8e8; border: 1px solid #f5c6cb; color: #7a1212; }
-  .case-picker {
-    background: var(--color-bg-elevated, #fff);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    padding: 1.25rem;
-    max-width: 720px;
-  }
-  .case-picker-title {
-    margin: 0 0 0.25rem;
-    font-size: 1.1rem;
-  }
-  .case-picker-hint {
-    margin: 0 0 1rem;
-    color: #4b5563;
-    font-size: 0.9rem;
-  }
-  .case-picker-title {
-    margin: 0 0 0.25rem;
-    font-size: 1.1rem;
-    color: #111827;
-  }
-  .empty-state {
-    background: #f9fafb;
-    border: 1px dashed #d1d5db;
-    border-radius: 6px;
-    padding: 1.5rem;
-    text-align: center;
-    color: #1f2937;
-  }
-  .empty-state-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    margin-top: 1rem;
-    flex-wrap: wrap;
-  }
-  .case-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.5rem;
-  }
-  .case-list-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
-    width: 100%;
-    text-align: left;
-    background: var(--color-bg, #fff);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 6px;
-    padding: 0.7rem 0.9rem;
-    cursor: pointer;
-    font: inherit;
-    color: inherit;
-  }
-  .case-list-item:hover {
-    background: var(--color-bg-muted, #f3f4f6);
-    border-color: var(--color-primary, #3b82f6);
-  }
-  .case-list-title {
-    font-weight: 600;
-    color: #111827;
-  }
-  .case-list-desc {
-    color: #4b5563;
-    font-size: 0.85rem;
-  }
-  .case-list-id {
-    font-family: var(--font-mono, monospace);
-    font-size: 0.7rem;
-    color: var(--color-text-muted, #9ca3af);
-  }
-  .btn {
-    padding: 0.4rem 0.85rem;
-    border: 1px solid var(--color-border, #ddd);
-    background: var(--color-bg-elevated, #fff);
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .btn-primary { background: var(--color-primary, #3b82f6); color: white; border-color: transparent; }
-  .btn-link { background: transparent; border: none; color: var(--color-primary, #3b82f6); }
-  .workspace-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 1rem;
-    color: var(--color-text-muted, #666);
-  }
   .case-actions {
     margin-top: 0.75rem;
     display: flex;
     gap: 0.5rem;
-  }
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 1rem;
-  }
-  .modal {
-    max-height: 90vh;
-    overflow: auto;
-    border-radius: 8px;
-    background: transparent;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
   }
 </style>

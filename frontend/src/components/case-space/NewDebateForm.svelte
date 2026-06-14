@@ -262,64 +262,83 @@
 </script>
 
 <div
-  class="new-debate-form"
+  class="flex flex-col gap-3 p-5 border rounded-lg max-w-2xl w-full
+         bg-white dark:bg-gray-800
+         border-gray-200 dark:border-gray-700
+         text-gray-900 dark:text-gray-100"
   role="dialog"
   aria-modal="true"
   aria-labelledby="new-debate-title"
   tabindex="-1"
 >
-  <h3 id="new-debate-title">
+  <h3 id="new-debate-title" class="m-0 text-lg font-semibold">
     {t?.caseSpace?.newDebate?.title ?? 'Start a new debate'}
   </h3>
-  <p class="hint">
+  <p class="hint m-0 text-sm text-gray-600 dark:text-gray-400">
     {t?.caseSpace?.newDebate?.hint ??
       'Every debate lives in a case. Pick an existing case or create a new one on the fly.'}
   </p>
 
-  <!-- ─── Mode toggle ─────────────────────────────────────────── -->
-  <fieldset class="mode-toggle">
+  <!-- Mode toggle -->
+  <fieldset
+    class="flex gap-4 p-2 border rounded-md
+           border-gray-200 dark:border-gray-700"
+  >
     <legend class="sr-only">
       {t?.caseSpace?.newDebate?.modeLegend ?? 'Where should this debate live?'}
     </legend>
-    <label class:active={mode === 'existing'}>
+    <label
+      class="inline-flex items-center gap-1.5 cursor-pointer p-1 rounded
+             {mode === 'existing' ? 'bg-gray-100 dark:bg-gray-700' : ''}"
+    >
       <input
         type="radio"
         name="case-mode"
         value="existing"
         checked={mode === 'existing'}
         onchange={() => setMode('existing')}
+        class="text-blue-600 focus:ring-blue-500"
       />
       <span>{t?.caseSpace?.newDebate?.existing ?? 'Existing case'}</span>
     </label>
-    <label class:active={mode === 'new'}>
+    <label
+      class="inline-flex items-center gap-1.5 cursor-pointer p-1 rounded
+             {mode === 'new' ? 'bg-gray-100 dark:bg-gray-700' : ''}"
+    >
       <input
         type="radio"
         name="case-mode"
         value="new"
         checked={mode === 'new'}
         onchange={() => setMode('new')}
+        class="text-blue-600 focus:ring-blue-500"
       />
       <span>{t?.caseSpace?.newDebate?.new ?? 'New case'}</span>
     </label>
   </fieldset>
 
   {#if mode === 'existing'}
-    <!-- ─── Existing-case picker (3.7.1) ──────────────────────── -->
-    <div class="field">
-      <label for="new-debate-case">
+    <div class="flex flex-col gap-1">
+      <label for="new-debate-case" class="text-sm text-gray-700 dark:text-gray-300">
         {t?.caseSpace?.newDebate?.caseLabel ?? 'Case'}
       </label>
       {#if activeCaseId && selectedCaseId === activeCaseId && !caseSearchInput}
-        <!-- Fast path: the user has an active case, so the form is
-             pre-filled and they can submit with one click (3.7.1). -->
-        <div class="active-case-chip" data-testid="active-case-chip">
-          <span class="active-case-label">
+        <div
+          class="inline-flex items-center gap-2 p-2 border rounded
+                 bg-indigo-50 dark:bg-indigo-900/30
+                 border-indigo-200 dark:border-indigo-700"
+          data-testid="active-case-chip"
+        >
+          <span class="text-xs text-indigo-600 dark:text-indigo-300">
             {t?.caseSpace?.newDebate?.activeCase ?? 'Active case'}
           </span>
-          <code class="active-case-id">{activeCaseId}</code>
+          <code class="font-mono text-sm text-gray-900 dark:text-gray-100">
+            {activeCaseId}
+          </code>
           <button
             type="button"
-            class="btn-link"
+            class="text-blue-600 dark:text-blue-400 hover:underline
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent border-0 p-0"
             onclick={() => {
               selectedCaseId = null;
               caseSearchInput = '';
@@ -336,24 +355,43 @@
           value={caseSearchInput}
           oninput={onCaseSearchInput}
           placeholder={t?.caseSpace?.newDebate?.casePlaceholder ?? 'Search cases…'}
+          class="flex-1 w-full px-2 py-1.5 border rounded text-sm
+                 border-gray-300 dark:border-gray-600
+                 bg-white dark:bg-gray-700
+                 text-gray-900 dark:text-gray-100
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {#if caseSearchLoading}
-          <small class="muted">
+          <small class="text-xs text-gray-500 dark:text-gray-400">
             {t?.caseSpace?.newDebate?.searching ?? 'Searching…'}
           </small>
         {:else if caseSearchResults.length > 0}
-          <ul class="search-results" role="listbox">
+          <ul
+            class="list-none p-0 mt-1 border rounded
+                   border-gray-200 dark:border-gray-700
+                   bg-white dark:bg-gray-700
+                   max-h-48 overflow-y-auto"
+            role="listbox"
+          >
             {#each caseSearchResults as c (c.id)}
               <li>
                 <button
                   type="button"
-                  class="result"
+                  class="block w-full text-left px-3 py-2
+                         hover:bg-gray-100 dark:hover:bg-gray-600
+                         text-gray-900 dark:text-gray-100 bg-transparent border-0"
                   onclick={() => pickExistingCase(c)}
                 >
-                  <span class="result-title">{c.title}</span>
+                  <span class="font-medium">{c.title}</span>
                   {#if c.tags?.length}
-                    <span class="result-tags">
-                      {#each c.tags.slice(0, 3) as tag}<span class="tag-dot">{tag}</span>{/each}
+                    <span class="ml-2 inline-flex gap-1">
+                      {#each c.tags.slice(0, 3) as tag}
+                        <span
+                          class="text-[0.7rem] px-1.5 py-0.5 rounded
+                                 bg-gray-100 dark:bg-gray-600
+                                 text-gray-600 dark:text-gray-300"
+                        >{tag}</span>
+                      {/each}
                     </span>
                   {/if}
                 </button>
@@ -364,9 +402,8 @@
       {/if}
     </div>
   {:else}
-    <!-- ─── New-case inline creation (3.7.2) ───────────────────── -->
-    <div class="field">
-      <label for="new-debate-case-title">
+    <div class="flex flex-col gap-1">
+      <label for="new-debate-case-title" class="text-sm text-gray-700 dark:text-gray-300">
         {t?.caseSpace?.newDebate?.newCaseTitle ?? 'New case name'}
       </label>
       <input
@@ -374,22 +411,31 @@
         type="text"
         bind:value={newCaseTitle}
         placeholder={t?.caseSpace?.newDebate?.newCaseTitlePlaceholder ?? 'e.g. AI ethics research'}
+        class="w-full px-2 py-1.5 border rounded text-sm
+               border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700
+               text-gray-900 dark:text-gray-100
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
 
     {#if visibleSuggestions}
-      <div class="field">
-        <span class="label-static">
+      <div class="flex flex-col gap-1">
+        <span class="text-sm text-gray-700 dark:text-gray-300">
           {t?.caseSpace?.newDebate?.suggestedTags ??
             `Suggested tags from the active case (${activeCaseId})`}
         </span>
-        <div class="quick-tags" data-testid="suggested-tags">
+        <div class="flex flex-wrap gap-1.5" data-testid="suggested-tags">
           {#each suggestedTags as tag (tag.tag_id)}
             <button
               type="button"
-              class="quick-tag"
               data-testid="suggested-tag"
-              style="background-color: {tag.color || '#e5e7eb'}; color: {tag.color ? '#fff' : '#374151'}"
+              class="text-xs font-medium border-0 rounded-full px-2.5 py-0.5
+                     hover:opacity-80
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     transition-opacity"
+              style="background-color: {tag.color || '#e5e7eb'};
+                     color: {tag.color ? '#fff' : '#374151'};"
               onclick={() => applySuggestion(tag)}
             >
               + {tag.name}
@@ -399,17 +445,16 @@
       </div>
     {/if}
 
-    <div class="field">
-      <label>
+    <div class="flex flex-col gap-1">
+      <label class="text-sm text-gray-700 dark:text-gray-300">
         {t?.caseSpace?.newDebate?.newCaseTags ?? 'Tags'}
       </label>
       <TagPicker value={newCaseTags} onchange={(v) => (newCaseTags = v)} />
     </div>
   {/if}
 
-  <!-- ─── Topic ──────────────────────────────────────────────── -->
-  <div class="field">
-    <label for="new-debate-topic">
+  <div class="flex flex-col gap-1">
+    <label for="new-debate-topic" class="text-sm text-gray-700 dark:text-gray-300">
       {t?.caseSpace?.newDebate?.topic ?? 'Topic / question'}
     </label>
     <textarea
@@ -417,222 +462,62 @@
       rows="3"
       bind:value={topic}
       placeholder={t?.caseSpace?.newDebate?.topicPlaceholder ?? 'What should the agents debate?'}
+      class="w-full px-2 py-1.5 border rounded text-sm resize-y
+             border-gray-300 dark:border-gray-600
+             bg-white dark:bg-gray-700
+             text-gray-900 dark:text-gray-100
+             focus:outline-none focus:ring-2 focus:ring-blue-500"
     ></textarea>
   </div>
 
   {#if submitError}
-    <div class="banner banner-error" role="alert" data-testid="submit-error">
+    <div
+      class="banner p-3 rounded border text-sm
+             bg-red-50 dark:bg-red-900/20
+             border-red-200 dark:border-red-700
+             text-red-900 dark:text-red-100"
+      role="alert"
+      data-testid="submit-error"
+    >
       {submitError}
     </div>
   {/if}
 
   <form class="submit-form" onsubmit={handleSubmit}>
-    <button
-      type="button"
-      class="btn"
-      onclick={onCancel}
-      disabled={submitting}
-    >
-      {t?.caseSpace?.newDebate?.cancel ?? 'Cancel'}
-    </button>
-    <button
-      type="submit"
-      class="btn btn-primary"
-      disabled={submitting || !(topic || '').trim()}
-      data-testid="submit-new-debate"
-    >
-      {#if submitting}
-        {t?.caseSpace?.newDebate?.submitting ?? 'Starting…'}
-      {:else}
-        {t?.caseSpace?.newDebate?.submit ?? 'Start debate'}
-      {/if}
-    </button>
+    <div class="flex justify-end gap-2 mt-1">
+      <button
+        type="button"
+        class="px-4 py-1.5 rounded text-sm
+               bg-gray-100 dark:bg-gray-700
+               text-gray-700 dark:text-gray-200
+               hover:bg-gray-200 dark:hover:bg-gray-600
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onclick={onCancel}
+        disabled={submitting}
+      >
+        {t?.caseSpace?.newDebate?.cancel ?? 'Cancel'}
+      </button>
+      <button
+        type="submit"
+        class="px-4 py-1.5 rounded text-sm font-medium
+               bg-blue-600 hover:bg-blue-700
+               text-white
+               focus:outline-none focus:ring-2 focus:ring-blue-500
+               disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={submitting || !(topic || '').trim()}
+        data-testid="submit-new-debate"
+      >
+        {#if submitting}
+          {t?.caseSpace?.newDebate?.submitting ?? 'Starting…'}
+        {:else}
+          {t?.caseSpace?.newDebate?.submit ?? 'Start debate'}
+        {/if}
+      </button>
+    </div>
   </form>
 </div>
-
 <style>
-  .new-debate-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    background: var(--color-bg-elevated, #fff);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    padding: 1.25rem;
-    max-width: 560px;
-    width: 100%;
-  }
-  .new-debate-form h3 {
-    margin: 0;
-    font-size: 1.2rem;
-  }
-  .hint {
-    margin: 0;
-    color: var(--color-text-muted, #666);
-    font-size: 0.9rem;
-  }
-  .mode-toggle {
-    display: flex;
-    gap: 1rem;
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    margin: 0;
-  }
-  .mode-toggle label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    cursor: pointer;
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-  }
-  .mode-toggle label.active {
-    background: var(--color-bg-muted, #f3f4f6);
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .field label,
-  .label-static {
-    font-size: 0.85rem;
-    color: var(--color-text-muted, #666);
-  }
-  .field input[type='text'],
-  .field textarea {
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 4px;
-    font: inherit;
-    background: var(--color-bg, #fff);
-    color: var(--color-text, #111);
-  }
-  .field textarea {
-    resize: vertical;
-  }
-  .muted {
-    color: var(--color-text-muted, #666);
-  }
-  .active-case-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--color-bg-muted, #eef2ff);
-    border: 1px solid var(--color-border, #c7d2fe);
-    border-radius: 4px;
-    padding: 0.35rem 0.6rem;
-  }
-  .active-case-label {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #4f46e5);
-  }
-  .active-case-id {
-    font-family: var(--font-mono, monospace);
-    font-size: 0.85rem;
-  }
-  .btn-link {
-    background: transparent;
-    border: none;
-    color: var(--color-primary, #3b82f6);
-    cursor: pointer;
-    font: inherit;
-    padding: 0;
-  }
-  .search-results {
-    list-style: none;
-    padding: 0;
-    margin: 0.25rem 0 0;
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 4px;
-    max-height: 12rem;
-    overflow-y: auto;
-  }
-  .result {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: transparent;
-    border: none;
-    padding: 0.45rem 0.6rem;
-    cursor: pointer;
-  }
-  .result:hover {
-    background: var(--color-bg-muted, #f3f4f6);
-  }
-  .result-title {
-    font-weight: 500;
-  }
-  .result-tags {
-    margin-left: 0.5rem;
-    display: inline-flex;
-    gap: 0.25rem;
-  }
-  .tag-dot {
-    font-size: 0.7rem;
-    background: var(--color-bg-muted, #e5e7eb);
-    padding: 0.05rem 0.3rem;
-    border-radius: 3px;
-  }
-  .quick-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-top: 0.25rem;
-  }
-  .quick-tag {
-    border: none;
-    border-radius: 999px;
-    padding: 0.2rem 0.6rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-  .quick-tag:hover {
-    opacity: 0.85;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-  }
-  .btn {
-    padding: 0.45rem 0.85rem;
-    border: 1px solid var(--color-border, #ddd);
-    background: var(--color-bg-elevated, #fff);
-    color: var(--color-text, #111);
-    border-radius: 4px;
-    cursor: pointer;
-    font: inherit;
-  }
-  .btn-primary {
-    background: var(--color-primary, #3b82f6);
-    color: #fff;
-    border-color: transparent;
-  }
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  .banner {
-    padding: 0.6rem 0.8rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-  }
-  .banner-error {
-    background: #fde8e8;
-    border: 1px solid #f5c6cb;
-  }
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
+  /* All visual styling is inline Tailwind with paired dark:
+     variants so the modal honours whichever theme the rest of
+     the app is running.  See the <div> in this file. */
 </style>
