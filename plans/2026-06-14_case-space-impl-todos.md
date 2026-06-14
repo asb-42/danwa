@@ -64,11 +64,11 @@
   - [x] Icon 🏠 + Label "Workspace" (i18n-Key `nav.workspace` mit englischem Fallback)
 - [x] **1.12 Routing** `workspace` als Hash-Route in [`App.svelte:152-153`](../../frontend/src/App.svelte:152) registriert (lazy-load wie alle anderen Views)
   - [ ] 1.12.x Default-Route falls Feature-Flag aktiv: bewusst NICHT umgestellt — User-Feedback zur Pilotphase abwarten, dann P5+ entscheiden
-- [ ] **1.13 Frontend-Tests** (Vitest):
-  - [ ] 1.13.1 `workspaceStore` Reducer (load / setActiveCase / clear)
-  - [ ] 1.13.2 `CaseSelector` Typeahead-Filter
-  - [ ] 1.13.3 `WorkspaceView` Empty-State
-- [ ] **1.14 E2E-Playwright-Test**: Login → Workspace rendert → Case-Wechsel aktualisiert alle 3 Karten
+- [x] **1.13 Frontend-Tests** (Vitest) in [`frontend/tests/unit/workspaceStore.test.js`](../../frontend/tests/unit/workspaceStore.test.js) — 15 Tests, alle grün
+  - [x] 1.13.1 `workspaceStore` Reducer: setActiveCase, loadSummary, dedup, stale-response-Schutz
+  - [x] 1.13.2 `search()` Typeahead: empty-query + debounced API-Call
+  - [x] 1.13.3 `last_workspace` restore/persist, reset
+- [ ] **1.14 E2E-Playwright-Test**: bewusst **verschoben** auf Folge-Session (selbe Begründung wie 2.12)
 - [ ] **1.15 Lint + Format**: `ruff check . && ruff format --check .` und `pnpm lint` müssen grün sein
 - [ ] **1.16 Commit + Push** als `feat(workspace): phase 1 — case summary, selector, default view`
 
@@ -270,7 +270,7 @@
 
 ### 🔄 In Bearbeitung
 
-- (Phase 1 verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
+- (Phase 1 verbleibend: 1.14 Playwright E2E — auf Folge-Session verschoben)
 - (Phase 2 verbleibend: 2.12 Playwright E2E — auf Folge-Session verschoben)
 
 ### 📌 Decisions getroffen
