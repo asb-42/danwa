@@ -234,8 +234,8 @@
                 <span
                   class="text-xs font-semibold rounded-full px-1.5 py-0.5
                          {isActive(item.route)
-                           ? 'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-100'
-                           : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}"
+                           ? 'bg-blue-600 text-white dark:bg-blue-500 dark:text-white'
+                           : 'bg-red-600 text-white dark:bg-red-500 dark:text-white'}"
                   aria-label="{item.badge} pending item(s)"
                 >
                   {item.badge}

@@ -116,9 +116,6 @@
   let activeCaseId = $derived(workspaceStore.activeCaseId);
   let caseSpaceDisabled = $derived(workspaceStore.caseSpaceDisabled);
 
-  // Local UI state
-  let localCaseInput = $state('');
-
   onMount(() => {
     // URL > prop precedence: the explicit URL query param wins over
     // any prop passed in, because deep links should be sticky.
@@ -172,12 +169,40 @@
     }
   });
 
-  function handleCaseInputSubmit(event) {
-    event.preventDefault();
-    const id = (localCaseInput || '').trim();
-    if (!id) return;
-    setActiveCase(id);
-    localCaseInput = '';
+  // ─── Case-Liste für den Empty-State ────────────────────────
+  // Anstatt den User nach einer case-id zu fragen (was dem
+  // Konzept widerspricht — siehe plans/2026-06-14_case-space-
+  // workspace.md §4.2), zeigen wir die existierenden Cases des
+  // aktuellen Tenants als klickbare Liste an.  Wer keinen Case
+  // hat, sieht den Welcome-Hinweis.
+  let availableCases = $state([]);
+  let availableCasesLoading = $state(false);
+  let availableCasesLoaded = $state(false);
+
+  $effect(() => {
+    const tid = $currentTenant?.id;
+    if (!tid || activeCaseId) return;
+    if (availableCasesLoaded || availableCasesLoading) return;
+    availableCasesLoading = true;
+    import('../lib/api/case.js').then(({ getCases }) =>
+      getCases(tid)
+        .then((list) => {
+          availableCases = Array.isArray(list) ? list : [];
+          availableCasesLoaded = true;
+        })
+        .catch(() => {
+          availableCases = [];
+          availableCasesLoaded = true;
+        })
+        .finally(() => {
+          availableCasesLoading = false;
+        })
+    );
+  });
+
+  function pickCaseFromList(c) {
+    if (!c) return;
+    setActiveCase(c.id);
   }
 </script>
 
@@ -206,22 +231,90 @@
   {/if}
 
   {#if !activeCaseId}
-    <form class="case-prompt" onsubmit={handleCaseInputSubmit}>
-      <label for="case-id-input">
-        {t?.caseSpace?.workspace?.enterCaseId ??
-          'Enter a case id to focus the workspace:'}
-      </label>
-      <input
-        id="case-id-input"
-        type="text"
-        bind:value={localCaseInput}
-        placeholder={t?.caseSpace?.workspace?.caseIdPlaceholder ?? 'case-1234'}
-        autocomplete="off"
-      />
-      <button type="submit" class="btn btn-primary" disabled={!localCaseInput.trim()}>
-        {t?.caseSpace?.workspace?.open ?? 'Open'}
-      </button>
-    </form>
+    <div class="case-picker" data-testid="case-picker">
+      <h2 class="case-picker-title">
+        {t?.caseSpace?.workspace?.pickCaseTitle ??
+          'Pick a case to focus your workspace'}
+      </h2>
+      <p class="case-picker-hint">
+        {t?.caseSpace?.workspace?.pickCaseHint ??
+          'Every debate and document lives in a case. Choose one to continue.'}
+      </p>
+
+      {#if availableCasesLoading}
+        <p class="loading" role="status">
+          {t?.caseSpace?.workspace?.loadingCases ?? 'Loading cases…'}
+        </p>
+      {:else if availableCases.length === 0}
+        <div class="empty-state" data-testid="case-picker-empty">
+          <p>
+            {t?.caseSpace?.workspace?.noCases ??
+              'No cases in this tenant yet.'}
+          </p>
+          <div class="empty-state-actions">
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-testid="create-first-case"
+              onclick={() => {
+                // Inline-Erstellung eines Cases direkt aus dem
+                // Workspace (deckt Konzept §4.2 "Der Case ist die
+                // Heimat" ab — der User muss nicht erst zur
+                // Cases-View navigieren).
+                const title = window.prompt(
+                  t?.caseSpace?.workspace?.promptCaseTitle ??
+                    'Title for the new case:'
+                );
+                if (!title || !title.trim()) return;
+                import('../lib/api/case.js').then(({ createCase }) => {
+                  const tid = $currentTenant?.id;
+                  if (!tid) return;
+                  createCase(tid, { title: title.trim(), description: '', tags: [] })
+                    .then((c) => {
+                      availableCases = [c, ...availableCases];
+                      setActiveCase(c.id);
+                    })
+                    .catch((err) => {
+                      window.alert(
+                        (t?.caseSpace?.workspace?.createFailed ??
+                          'Could not create case:') +
+                          ' ' +
+                          (err?.message || String(err))
+                      );
+                    });
+                });
+              }}
+            >
+              {t?.caseSpace?.workspace?.createFirstCase ?? '+ Create your first case'}
+            </button>
+            {#if navigate}
+              <button class="btn" onclick={() => navigate('cases')}>
+                {t?.caseSpace?.workspace?.openCasesView ?? 'Open Cases view'}
+              </button>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <ul class="case-list" role="list">
+          {#each availableCases as c (c.id)}
+            <li>
+              <button
+                type="button"
+                class="case-list-item"
+                data-testid="case-list-item"
+                onclick={() => pickCaseFromList(c)}
+              >
+                <span class="case-list-title">{c.title}</span>
+                {#if c.description}
+                  <span class="case-list-desc">{c.description}</span>
+                {/if}
+                <span class="case-list-id" aria-hidden="true">{c.id}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   {:else}
     {#if loading}
       <p class="loading" role="status">
@@ -453,17 +546,74 @@
   }
   .banner-warning { background: #fff3cd; border: 1px solid #ffeaa7; }
   .banner-error   { background: #fde8e8; border: 1px solid #f5c6cb; }
-  .case-prompt {
+  .case-picker {
+    background: var(--color-bg-elevated, #fff);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    padding: 1.25rem;
+    max-width: 720px;
+  }
+  .case-picker-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+  }
+  .case-picker-hint {
+    margin: 0 0 1rem;
+    color: var(--color-text-muted, #666);
+    font-size: 0.9rem;
+  }
+  .empty-state {
+    background: var(--color-bg-muted, #f9fafb);
+    border: 1px dashed var(--color-border, #d1d5db);
+    border-radius: 6px;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .empty-state-actions {
     display: flex;
     gap: 0.5rem;
-    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
     flex-wrap: wrap;
   }
-  .case-prompt input {
-    flex: 1 1 200px;
-    padding: 0.4rem 0.6rem;
+  .case-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+  }
+  .case-list-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    width: 100%;
+    text-align: left;
+    background: var(--color-bg, #fff);
     border: 1px solid var(--color-border, #ddd);
-    border-radius: 4px;
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  .case-list-item:hover {
+    background: var(--color-bg-muted, #f3f4f6);
+    border-color: var(--color-primary, #3b82f6);
+  }
+  .case-list-title {
+    font-weight: 600;
+  }
+  .case-list-desc {
+    color: var(--color-text-muted, #666);
+    font-size: 0.85rem;
+  }
+  .case-list-id {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    color: var(--color-text-muted, #9ca3af);
   }
   .btn {
     padding: 0.4rem 0.85rem;

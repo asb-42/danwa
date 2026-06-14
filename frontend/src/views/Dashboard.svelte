@@ -8,6 +8,7 @@
   import WorkflowPipeline from '../components/workflow/WorkflowPipeline.svelte';
   import { useLastCompletedDebatePipeline } from '../lib/workflowPipelineAdapter.svelte.js';
   import QuotaIndicator from '../components/QuotaIndicator.svelte';
+  import WelcomeCard from '../components/onboarding/WelcomeCard.svelte';
 
   const lastCompleted = useLastCompletedDebatePipeline();
 
