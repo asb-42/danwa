@@ -48,10 +48,12 @@
   - [x] 1.7.1 Header mit Titel/Subtitle (Tenant/Case-Selector folgt in 1.8)
   - [x] 1.7.2 Drei Karten inline gerendert (ThisCase, SuggestedNextSteps, RecentActivity) — Card-Komponenten werden in P2 extrahiert
   - [x] 1.7.3 Leerer Zustand: Eingabeformular für Case-Id mit Fallback-Button auf Legacy-Cases-View wenn Feature-Flag aus
-- [ ] **1.8 Komponente `CaseSelector.svelte`** (Erweiterung der bestehenden [`CaseSelector.svelte`](../../frontend/src/components/CaseSelector.svelte))
-  - [ ] 1.8.1 Typeahead-Combobox
-  - [ ] 1.8.2 Aktiver Case optisch markiert
-  - [ ] 1.8.3 Tastatur-Navigation (↑/↓/Enter/Esc)
+- [x] **1.8 Komponente `CaseSelector.svelte`** (Erweiterung der bestehenden [`CaseSelector.svelte`](../../frontend/src/components/CaseSelector.svelte)) — **additiv, keine Breaking Changes**
+  - [x] 1.8.1 Typeahead-Combobox (200 ms debounce, gegen `searchCases`)
+  - [x] 1.8.2 Aktiver Case optisch markiert (bestehend)
+  - [x] 1.8.3 Tastatur-Navigation: Enter wählt ersten Treffer, Esc schließt Typeahead
+  - [x] Bonus: Typeahead schaltet sich automatisch ab wenn Feature-Flag off ist (`isCaseSpaceDisabled`)
+  - [x] Bonus: Selektion spiegelt sich in `workspaceStore` (für WorkspaceView)
 - [ ] **1.9 URL-State-Synchronisation**: Query-Param `?case=…` lesen + schreiben (kein SvelteKit-`$page`-Hack; einfacher `URLSearchParams`-Effekt)
 - [ ] **1.10 Login-Default-Wiederherstellung**: nach Login `last_workspace` lesen und Case automatisch setzen
 - [ ] **1.11 Sidebar-Eintrag "Workspace"** in [`Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) hinzufügen, *oberhalb* der bestehenden technischen Kategorien
@@ -249,8 +251,8 @@
 
 ### 🔄 In Bearbeitung
 
-- **1.8** `CaseSelector.svelte` Erweiterung (Typeahead) — nächste Session
-- **1.9** URL-State-Synchronisation (`?case=…`) — nächste Session
+- **1.9** URL-State-Synchronisation (`?case=…`) in `WorkspaceView` — nächste Session
+- **1.11+1.12** Sidebar-Eintrag "Workspace" + Routing — nächste Session
 
 ### 📌 Decisions getroffen
 
@@ -274,7 +276,7 @@
 
 - Phase 1 Backend-Stand: **507 Zeilen** neuer Code in 5 Dateien, **10 Tests** grün
 - Branch: `case-space` (remote: `origin/case-space`)
-- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS-Fixture) + `95f5139` (Phase 1.5+1.6 Frontend Store+API) + nächster Commit (Phase 1.7 WorkspaceView)
+- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS-Fixture) + `95f5139` (Phase 1.5+1.6 Frontend Store+API) + `cf0d283` (Phase 1.7 WorkspaceView) + nächster Commit (Phase 1.8 CaseSelector-Typeahead)
 
 
 ## Risiken und Annahmen
