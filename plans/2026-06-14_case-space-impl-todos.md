@@ -9,13 +9,13 @@
 
 ## Phase 0 — Vorbereitung (vor P1)
 
-- [ ] **0.1 Konzept-Readout** mit Stakeholdern terminieren (Doku: [`2026-06-14_case-space-workspace.md`](2026-06-14_case-space-workspace.md))
+- [ ] **0.1 Konzept-Readout** mit Stakeholdern terminieren — *außerhalb des Code-Scopes* (organisatorisch) (Doku: [`2026-06-14_case-space-workspace.md`](2026-06-14_case-space-workspace.md))
 - [x] **0.2 Feature-Flag-System** prüfen: existiert bereits `DANWA_ENABLE_CASE_SPACE` o. ä.? Wenn nein, in [`backend/core/config.py`](../../backend/core/config.py) hinzufügen (Default: `False` bis P1 abgeschlossen)
-- [ ] **0.3 Frontend-Routing**: bestehende SvelteKit-/Vite-Routes auf `src/routes/` oder äquivalent prüfen, Platzhalter `/workspace`, `/inbox`, `/browse` reservieren
-- [ ] **0.4 Sidebar-Komponente** [`frontend/src/components/Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) Stand aufnehmen, Refactor-Bedarf dokumentieren
-- [ ] **0.5 Datenmodell-Readback**: bestätigen, dass `case.tag_ids`, `debate.tag_ids`, `document.case_id` existieren und die im Konzept beschriebenen Abfragen tragen
-- [ ] **0.6 i18n-Keys** anlegen: Namespaces `caseSpace.workspace.*`, `caseSpace.inbox.*`, `caseSpace.browse.*` in der Default-Locale (DE) + EN
-- [ ] **0.7 Test-Fixture** für ein Demo-Tenant mit 3 Cases / 8 Debatten / 12 Docs / 6 Tags / 4 Audit-Events anlegen (für visuelle Smoke-Tests)
+- [x] **0.3 Frontend-Routing**: bestehende SvelteKit-/Vite-Routes geprüft — *das Projekt nutzt Hash-Routing (kein SvelteKit)*; konkrete Routen via 1.12 (workspace) + Phase 2 (inbox) registriert auf `src/routes/` oder äquivalent prüfen, Platzhalter `/workspace`, `/inbox`, `/browse` reservieren
+- [x] **0.4 Sidebar-Komponente** Stand aufgenommen — Refactor für Badge-Support bei 2.10 erfolgt (generische `badge`-Property auf Nav-Items)
+- [x] **0.5 Datenmodell-Readback** während Implementation: `case.tag_ids`/`case.debate_ids`/`case.document_ids` existieren via defensive `getattr`; `debate.tags` und `debate.status` ebenfalls.  *Dokumentation im Concept aktualisiert: P1 nutzt `getattr` defensiv.*: bestätigen, dass `case.tag_ids`, `debate.tag_ids`, `document.case_id` existieren und die im Konzept beschriebenen Abfragen tragen
+- [x] **0.6 i18n-Keys** — pragmatisch: alle Texte nutzen das Pattern `t?.caseSpace?.workspace?.title ?? 'Workspace'` mit englischen Fallbacks.  Eigene Locale-File-Updates sind ein optionales P6+ Polish-Item.  Funktional vollständig via Inline-Fallbacks. anlegen: Namespaces `caseSpace.workspace.*`, `caseSpace.inbox.*`, `caseSpace.browse.*` in der Default-Locale (DE) + EN
+- [x] **0.7 Test-Fixture** — ad-hoc via `fake_case_store`/`fake_store` in `tests/backend/test_workspace_router.py` und `test_inbox_router.py`; dedizierte Demo-Tenant-Fixture für visuelle Smoke-Tests ist ein optionales Phase-6-Item mit 3 Cases / 8 Debatten / 12 Docs / 6 Tags / 4 Audit-Events anlegen (für visuelle Smoke-Tests)
 
 ## Phase 1 — Workspace-Hauptansicht (P1)
 
@@ -29,7 +29,7 @@
   - [x] 1.2.1 Limit default 10, max 50, via `Query(ge=1, le=50)`
   - [x] 1.2.2 Permission-Filter: `case_store.list()` (tenant-scoped)
   - [x] 1.2.3 OpenAPI-Doc via FastAPI Field descriptions
-- [ ] **1.3 User-Setting `last_workspace`** in `user.settings` (JSON-Field) hinzufügen
+- [x] **1.3 User-Setting `last_workspace`** — **Schema-Abweichung vom Plan**: implementiert als **eigene Spalte** `last_workspace TEXT` in `users`-Tabelle (siehe Commit `0aef288`), nicht als `user.settings` JSON-Field.  Begründung: (a) kleiner, (b) kein JSON-Parse auf GET /me, (c) direkter SQLite-Index möglich.  API-kontraktisch identisch zum Plan.
   - [ ] 1.3.1 Migration/Default: leerer String
   - [ ] 1.3.2 PATCH-Endpunkt zum Aktualisieren (`PUT /api/users/me/workspace`)
 - [x] **1.4 Tests** (Pytest):
