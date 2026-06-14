@@ -41,6 +41,47 @@
   function openNewDebate() {
     showNewDebateForm = true;
   }
+
+  /**
+   * Handle a click on a Suggested Next Steps action button.
+   * Two well-known step kinds from the backend are special-cased
+   * (no_documents -> document uploader, no_debates -> open the
+   * new-debate modal locally).  Other steps honour
+   * step.action_target as a full relative app-route and pass
+   * the sub-path through to navigate().
+   */
+  function openDocumentUploader() {
+    // Phase 3.8 TODO: dedicated "upload" route.  For now we
+    // route the user to the document management view which
+    // already exposes a DocumentUploader.
+    if (typeof navigate === 'function') {
+      navigate('documents');
+    } else if (typeof window !== 'undefined') {
+      window.location.hash = '#/documents';
+    }
+  }
+
+  function handleSuggestionAction(step) {
+    if (!step) return;
+    if (step.kind === 'no_documents') {
+      openDocumentUploader();
+      return;
+    }
+    if (step.kind === 'no_debates') {
+      openNewDebate();
+      return;
+    }
+    const target = (step.action_target || '').replace(/^\//, '');
+    if (!target) return;
+    const parts = target.split('/').filter(Boolean);
+    const route = parts[0] || 'workspace';
+    const sub = parts.slice(1).join('/');
+    if (typeof navigate === 'function') {
+      navigate(route, sub ? { sub } : undefined);
+    } else if (typeof window !== 'undefined') {
+      window.location.hash = '#/' + target;
+    }
+  }
   function closeNewDebate() {
     showNewDebateForm = false;
   }

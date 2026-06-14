@@ -174,11 +174,15 @@ export async function load(tenantId) {
  * @param {string} id
  */
 export function toggleSelected(id) {
-  if (_state.selectedIds.has(id)) {
-    _state.selectedIds.delete(id);
+  // Svelte 5 runes do not track mutations on Set/Map reliably;
+  // we replace the set so the $derived getters re-run.
+  const next = new Set(_state.selectedIds);
+  if (next.has(id)) {
+    next.delete(id);
   } else {
-    _state.selectedIds.add(id);
+    next.add(id);
   }
+  _state.selectedIds = next;
 }
 
 /**
@@ -191,15 +195,20 @@ export function toggleSelectAll() {
   const allSelected =
     visibleIds.length > 0 &&
     visibleIds.every((id) => _state.selectedIds.has(id));
+  // Reassign the set so Svelte 5 runes pick up the change.  A
+  // .add() / .clear() in-place would mutate without triggering the
+  // $derived getters that read inboxStore.selectedIds.
+  const next = new Set(_state.selectedIds);
   if (allSelected) {
-    for (const id of visibleIds) _state.selectedIds.delete(id);
+    for (const id of visibleIds) next.delete(id);
   } else {
-    for (const id of visibleIds) _state.selectedIds.add(id);
+    for (const id of visibleIds) next.add(id);
   }
+  _state.selectedIds = next;
 }
 
 export function clearSelection() {
-  _state.selectedIds.clear();
+  _state.selectedIds = new Set();
 }
 
 /**
@@ -210,7 +219,7 @@ export function clearSelection() {
  */
 export function setActiveTab(kind) {
   _state.activeTab = kind;
-  _state.selectedIds.clear();
+  _state.selectedIds = new Set();
 }
 
 // ─── Bulk actions ────────────────────────────────────────────────────
@@ -257,8 +266,10 @@ async function _runBulk(caller, ids) {
     const result = await caller();
     _state.lastBulkResult = result;
     // Prune succeeded ids from the selection so the UI hides them
-    for (const id of result?.succeeded ?? []) {
-      _state.selectedIds.delete(id);
+    if (result && Array.isArray(result.succeeded)) {
+      const next = new Set(_state.selectedIds);
+      for (const id of result.succeeded) next.delete(id);
+      _state.selectedIds = next;
     }
     // Re-fetch the Inbox so the UI shows the post-bulk state
     if (_state.activeTenantId) {
@@ -296,7 +307,7 @@ export function reset() {
   _state.summary = null;
   _state.error = null;
   _state.loading = false;
-  _state.selectedIds.clear();
+  _state.selectedIds = new Set();
   _state.activeTab = '';
   _state.bulkInFlight = false;
   _state.lastBulkResult = null;
