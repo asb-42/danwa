@@ -149,10 +149,15 @@
   - [ ] 3.6.1 Phase-Spalte (sofern implementiert)
   - [ ] 3.6.2 Letzte 5 Events inline
   - [ ] 3.6.3 "Show full audit" Link vorausgefüllt
-- [ ] **3.7 "New Debate"-Form** mit Pflicht-Case-Disambiguierung (Abschnitt 7.2 des Konzepts)
-  - [ ] 3.7.1 Default = aktiver Case, falls vorhanden
-  - [ ] 3.7.2 Inline-Case-Erstellung mit Name + Tags
-  - [ ] 3.7.3 Tags-Selector mit Vorschlägen aus 3.5
+- [x] **3.7 "New Debate"-Form** mit Pflicht-Case-Disambiguierung (Abschnitt 7.2 des Konzepts)
+  - [x] 3.7.1 Default = aktiver Case, falls vorhanden — `NewDebateForm.svelte` setzt `mode='existing'` wenn `?case=…` in der URL ist
+  - [x] 3.7.2 Inline-Case-Erstellung mit Name + Tags — Mode-Toggle "Existing case" / "New case"; neuer Case wird via `createCase` angelegt, danach `createCaseDebate`
+  - [x] 3.7.3 Tags-Selector mit Vorschlägen aus 3.5 — Top-3 Tags des aktuellen Cases werden als Quick-Buttons geladen (`getCase` + `getTags`), verschwinden sobald der User Tags manuell wählt oder einen Case-Namen tippt
+  - [x] **Bonus**: Auslagerung der Logik in `frontend/src/lib/stores/newDebateFlow.svelte.js` für isolierte Unit-Tests (kein @testing-library/svelte verfügbar im Codebase)
+  - [x] **Bonus**: Eingebunden in [`WorkspaceView.svelte`](../../frontend/src/views/WorkspaceView.svelte) als Modal mit Trigger "Start a debate" in der This-Case-Karte
+  - [x] 3.7-Tests: [`tests/unit/newDebateFlow.test.js`](../../frontend/tests/unit/newDebateFlow.test.js) — 27 Tests, alle grün (Vitest)
+  - [x] 3.7-Cross-Cutting: i18n-Inline-Fallbacks (`t?.caseSpace?.newDebate?.…`) — keine Locale-File-Änderung nötig; a11y: `role="dialog"`, `aria-labelledby`, `aria-modal`, Label-`<legend class="sr-only">`; Tastatur: Esc schließt Modal (Backdrop-Klick)
+  - [ ] 3.7-Commit: erfolgt im selben Commit wie WorkspaceView-Update (oder als eigener `feat(case-space): phase 3.7 — new-debate disambiguation`)
 - [ ] **3.8 "Upload Document"-Form** mit Pflicht-Case-Selector
   - [ ] 3.8.1 Option "kein bestimmter Case" → Inbox
   - [ ] 3.8.2 Validierung: `case_id` ODER expliziter Inbox-Wunsch
@@ -276,12 +281,16 @@
 - **1.2** Backend-Endpoint `GET /api/v1/cases/search?q=…&limit=…` (Typeahead) — **in 1.1 mit-umgesetzt**, eigener Test
 - **1.4** 10 Pytest-Tests in [`tests/backend/test_workspace_router.py`](../../tests/backend/test_workspace_router.py), alle grün
 - **CI-Fix (zugehörig)** `_a2a_dns_mock` Fixture in [`tests/backend/conftest.py`](../../tests/backend/conftest.py) — autouse für A2A-Tests, löst 5 Fails + 2 Errors in CI
+- **3.7** `NewDebateForm.svelte` ([`frontend/src/components/case-space/NewDebateForm.svelte`](../../frontend/src/components/case-space/NewDebateForm.svelte)) — disambiguierende Form mit Mode-Toggle (existing/new), Typeahead-Suche, Inline-Case-Erstellung, Tag-Vorschlägen (Top-3) und `TagPicker`-Integration.  Eingebunden in [`WorkspaceView.svelte`](../../frontend/src/views/WorkspaceView.svelte) als Modal hinter "Start a debate"-Button
+- **3.7 (Logik-Helper)** `newDebateFlow.svelte.js` ([`frontend/src/lib/stores/newDebateFlow.svelte.js`](../../frontend/src/lib/stores/newDebateFlow.svelte.js)) — Pure Functions: `resolveInitialMode`, `pickTopTagIds`, `shouldShowTagSuggestions`, `applySuggestion`, `validateNewDebateForm`, `resolveTargetCaseId`.  Testbar ohne Svelte-Mount
+- **3.7 (Tests)** [`frontend/tests/unit/newDebateFlow.test.js`](../../frontend/tests/unit/newDebateFlow.test.js) — 27 Tests, alle grün
 
 ### 🔄 In Bearbeitung
 
 - (Phase 1 verbleibend: 1.14 Playwright E2E — auf Folge-Session verschoben)
 - (Phase 2 verbleibend: 2.12 Playwright E2E — auf Folge-Session verschoben)
-- (Phase 3 Backend-Tests grün, Frontend 3.5/3.6/3.7/3.8 für Folge-Session verschoben — LLM-Suggest optional)
+- (Phase 3 Backend-Tests grün, Frontend 3.5/3.6/3.8 für Folge-Session verschoben — LLM-Suggest optional)
+- (Phase 3.7 erledigt: NewDebateForm-Komponente, Helper, 27 Tests grün — siehe Erledigt-Block)
 - (Phase 4 verbleibend: 4.3 graph_edge_cache, 4.5–4.15 Frontend Graph-UI + Cytoscape — alle für Folge-Session)
 
 ### 📌 Decisions getroffen

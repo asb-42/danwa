@@ -28,8 +28,39 @@
     restoreLastWorkspace,
     persistActiveCase,
   } from '../lib/stores/workspaceStore.svelte.js';
+  import NewDebateForm from '../components/case-space/NewDebateForm.svelte';
 
   let { navigate = () => {}, initialCaseId = null } = $props();
+
+  // ─── Phase 3.7 — New-debate disambiguation modal ─────────────
+  // The modal is opened from the "Start a debate" button in the
+  // "This Case" card.  It captures the case context (existing vs.
+  // new) and the initial topic, then defers to the existing
+  // DebateCreatePanel for advanced parameters.
+  let showNewDebateForm = $state(false);
+  function openNewDebate() {
+    showNewDebateForm = true;
+  }
+  function closeNewDebate() {
+    showNewDebateForm = false;
+  }
+  function handleNewDebateCreated(debate, caseCtx) {
+    showNewDebateForm = false;
+    const caseId = caseCtx?.id || debate?.case_id || workspaceStore.activeCaseId;
+    const debateId = debate?.debate_id || debate?.id;
+    if (navigate && caseId) {
+      // Refresh summary so the new debate count shows up
+      loadSummary();
+      // Hand the user off to the debate view; if the parent does
+      // not provide a debate view route, we fall back to the
+      // case-scoped input composer.
+      if (debateId) {
+        navigate('debate', { caseId, debateId });
+      } else {
+        navigate('input', { caseId });
+      }
+    }
+  }
 
   // ─── URL state sync (Phase 1.9) ──────────────────────────────────
   // The active case id is mirrored to ?case=… in the URL so the
@@ -237,6 +268,16 @@
               <dd>{summary.members?.length ?? 0}</dd>
             </div>
           </dl>
+          <div class="case-actions">
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-testid="open-new-debate"
+              onclick={openNewDebate}
+            >
+              {t?.caseSpace?.workspace?.startDebate ?? 'Start a debate'}
+            </button>
+          </div>
         </section>
 
         <section class="card suggestions" aria-labelledby="card-suggestions">
@@ -295,6 +336,27 @@
         </button>
       </footer>
     {/if}
+  {/if}
+
+  {#if showNewDebateForm}
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      onclick={closeNewDebate}
+    >
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-debate-modal-title"
+        onclick={(e) => e.stopPropagation()}
+      >
+        <NewDebateForm
+          onCreated={handleNewDebateCreated}
+          onCancel={closeNewDebate}
+        />
+      </div>
+    </div>
   {/if}
 </section>
 
@@ -413,5 +475,27 @@
     align-items: center;
     margin-top: 1rem;
     color: var(--color-text-muted, #666);
+  }
+  .case-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 1rem;
+  }
+  .modal {
+    max-height: 90vh;
+    overflow: auto;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
   }
 </style>
