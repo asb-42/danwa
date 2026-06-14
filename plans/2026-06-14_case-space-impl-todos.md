@@ -54,7 +54,10 @@
   - [x] 1.8.3 Tastatur-Navigation: Enter wählt ersten Treffer, Esc schließt Typeahead
   - [x] Bonus: Typeahead schaltet sich automatisch ab wenn Feature-Flag off ist (`isCaseSpaceDisabled`)
   - [x] Bonus: Selektion spiegelt sich in `workspaceStore` (für WorkspaceView)
-- [ ] **1.9 URL-State-Synchronisation**: Query-Param `?case=…` lesen + schreiben (kein SvelteKit-`$page`-Hack; einfacher `URLSearchParams`-Effekt)
+- [x] **1.9 URL-State-Synchronisation**: Query-Param `?case=…` lesen + schreiben via `URLSearchParams` + `history.replaceState` (kein SvelteKit-`$page`-Hack)
+  - [x] 1.9.1 Read in `onMount` (URL > prop precedence für Deep-Links)
+  - [x] 1.9.2 Write via `$effect` auf `activeCaseId`
+  - [x] 1.9.3 Browser back/forward via `popstate`-Listener
 - [ ] **1.10 Login-Default-Wiederherstellung**: nach Login `last_workspace` lesen und Case automatisch setzen
 - [ ] **1.11 Sidebar-Eintrag "Workspace"** in [`Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) hinzufügen, *oberhalb* der bestehenden technischen Kategorien
 - [ ] **1.12 Routing**: `/workspace` als Default-Route konfigurieren, falls Feature-Flag aktiv
@@ -251,7 +254,6 @@
 
 ### 🔄 In Bearbeitung
 
-- **1.9** URL-State-Synchronisation (`?case=…`) in `WorkspaceView` — nächste Session
 - **1.11+1.12** Sidebar-Eintrag "Workspace" + Routing — nächste Session
 
 ### 📌 Decisions getroffen

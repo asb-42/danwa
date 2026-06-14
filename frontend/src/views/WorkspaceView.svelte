@@ -29,6 +29,52 @@
 
   let { navigate = () => {}, initialCaseId = null } = $props();
 
+  // ─── URL state sync (Phase 1.9) ──────────────────────────────────
+  // The active case id is mirrored to ?case=… in the URL so the
+  // workspace supports deep-linking and the browser back/forward
+  // buttons.  We use the History API to avoid triggering a router
+  // navigation in apps that have their own router.
+
+  const URL_PARAM = 'case';
+
+  function readCaseFromUrl() {
+    if (typeof window === 'undefined') return null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(URL_PARAM) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCaseToUrl(id) {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      if (id) {
+        url.searchParams.set(URL_PARAM, id);
+      } else {
+        url.searchParams.delete(URL_PARAM);
+      }
+      // Use replaceState so the user's back/forward history isn't
+      // cluttered when they switch cases by typing in the input.
+      window.history.replaceState(null, '', url.toString());
+    } catch {
+      // best-effort; do not crash the view on URL issues
+    }
+  }
+
+  function handlePopState() {
+    // User clicked browser back/forward → re-sync the active case
+    const id = readCaseFromUrl();
+    if (id && id !== workspaceStore.activeCaseId) {
+      setActiveCase(id);
+    } else if (!id && workspaceStore.activeCaseId) {
+      reset();
+    }
+  }
+
+
   // Read Svelte 5 runes proxy as plain JS
   let t = $derived($tStore);
   let summary = $derived(workspaceStore.summary);
@@ -41,18 +87,34 @@
   let localCaseInput = $state('');
 
   onMount(() => {
-    // If the URL/router passed an initialCaseId, set it; otherwise
-    // the URL-state handler (1.9) will populate this before mount.
-    if (initialCaseId) {
+    // URL > prop precedence: the explicit URL query param wins over
+    // any prop passed in, because deep links should be sticky.
+    const fromUrl = readCaseFromUrl();
+    if (fromUrl) {
+      setActiveCase(fromUrl);
+    } else if (initialCaseId) {
       setActiveCase(initialCaseId);
+      writeCaseToUrl(initialCaseId);
     }
     if (workspaceStore.activeCaseId) {
       loadSummary();
     }
+    window.addEventListener('popstate', handlePopState);
     return () => {
       // On unmount: do NOT reset() — other views may still want the
-      // cached summary when the user navigates back.
+      // cached summary when the user navigates back.  But we MUST
+      // remove the popstate listener to avoid leaks.
+      window.removeEventListener('popstate', handlePopState);
     };
+  });
+
+  // Mirror active case → URL whenever it changes via internal flow
+  // (form submit, reset, etc.).  This is decoupled from CaseSelector
+  // which sets the case via workspaceStore; the $effect below
+  // catches that too.
+  $effect(() => {
+    const id = workspaceStore.activeCaseId;
+    writeCaseToUrl(id);
   });
 
   // Re-fetch when the active case id changes (e.g. user typed in
