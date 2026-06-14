@@ -107,6 +107,10 @@
       if (active && active.workflowId === canvasStore.currentWorkflowId) {
         executionSessionId = active.sessionId;
         executionContext = active.context || '';
+        // P4.5+ UX fix: switch the canvas into workflow mode so the
+        // gate-decision edge highlighting (audit T-16) is actually
+        // visible while the panel is open. Reverted on close.
+        if (canvasStore.currentWorkflowId) canvasStore.setMode('workflow');
         showExecutionPanel = true;
       }
     }
@@ -511,6 +515,10 @@
         startedAt: new Date().toISOString(),
         status: 'running',
       });
+      // P4.5+ UX fix: switch the canvas into workflow mode so the
+      // gate-decision edge highlighting (audit T-16) is actually
+      // visible while the panel is open. Reverted on close.
+      canvasStore.setMode('workflow');
       showExecutionPanel = true;
     } catch (err) {
       addToast({ type: 'error', message: t('blueprint.workflow.startFailed', { error: err.message }) });
@@ -523,6 +531,10 @@
     showExecutionPanel = false;
     executionSessionId = null;
     clearActiveWorkflowSession();
+    // P4.5+ UX fix: revert canvas to blueprint mode so the user
+    // can resume editing after the workflow ends. See
+    // reports/2026-06-14_workflow-observability-ux-gap.md §3.
+    canvasStore.setMode('blueprint');
   }
 </script>
 

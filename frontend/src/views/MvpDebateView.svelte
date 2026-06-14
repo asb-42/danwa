@@ -446,6 +446,35 @@
         stopWorkflowTimer();
         nodeStatuses = { ...nodeStatuses, [data.node_id]: 'failed' };
       },
+      // Gate decision — surface the routing choice so users can see
+      // why the workflow branched. We feed it into the same activity
+      // log used for node/LLM/error events (audit T-16 pattern) so it
+      // shows up wherever the activity log is rendered.
+      onGateDecision: (data) => {
+        try {
+          const target = data.chosen_target || '?';
+          const result = data.result ? '✓' : '✗';
+          const fallback = data.fallback_used ? ' (fallback)' : '';
+          const evals = Array.isArray(data.all_evaluations) ? data.all_evaluations.length : 0;
+          const round = data.round ?? '?';
+          const message = `Gate ${data.gate_node_id || '?'}: ${result} → ${target}${fallback} (${evals} condition${evals === 1 ? '' : 's'} eval'd, R${round})`;
+          feedbackStore.logActivity(
+            'gate',
+            data.gate_node_id || 'gate',
+            message,
+            {
+              gate_node_id: data.gate_node_id,
+              condition: data.condition,
+              result: data.result,
+              chosen_target: data.chosen_target,
+              fallback_used: data.fallback_used,
+              all_evaluations: data.all_evaluations,
+              round: data.round,
+            },
+            data.result ? 'info' : 'warn',
+          );
+        } catch (e) { if (import.meta.env.DEV) console.warn('[MvpDebateView] onGateDecision error:', e); }
+      },
       onWorkflowComplete: (data) => {
         status = 'completed';
         stopTimer();

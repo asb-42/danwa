@@ -357,25 +357,9 @@
       </div>
     {/if}
 
-    <!-- Node output log -->
-    {#if nodeOutputs.length > 0}
-      <div class="output-section">
-        <h4 class="output-title">{t('workflow.execution.nodeOutputs')}</h4>
-        <div class="output-list">
-          {#each nodeOutputs as output}
-            <div class="output-item">
-              <div class="output-header">
-                <span class="output-role">{output.role || output.nodeType}</span>
-                <span class="output-duration">{output.durationMs}ms</span>
-              </div>
-              <div class="output-content">{output.content}</div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
-
-    <!-- Gate decision log -->
+    <!-- Gate decision log (audit T-16 / P4.5+ UX fix — surface above
+         the long node-output log so users see routing choices without
+         scrolling). -->
     {#if gateDecisions.length > 0}
       <div class="output-section">
         <h4 class="output-title">🔀 Gate Decisions</h4>
@@ -402,6 +386,24 @@
                   </ul>
                 </details>
               {/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Node output log -->
+    {#if nodeOutputs.length > 0}
+      <div class="output-section">
+        <h4 class="output-title">{t('workflow.execution.nodeOutputs')}</h4>
+        <div class="output-list">
+          {#each nodeOutputs as output}
+            <div class="output-item">
+              <div class="output-header">
+                <span class="output-role">{output.role || output.nodeType}</span>
+                <span class="output-duration">{output.durationMs}ms</span>
+              </div>
+              <div class="output-content">{output.content}</div>
             </div>
           {/each}
         </div>
