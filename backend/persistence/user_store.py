@@ -40,9 +40,15 @@ class UserStore:
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                last_login_at TEXT
+                last_login_at TEXT,
+                last_workspace TEXT
             )
         """)
+        # Idempotent migration for pre-existing DBs that don't have the column yet
+        try:
+            self.conn.execute("ALTER TABLE users ADD COLUMN last_workspace TEXT")
+        except Exception:  # noqa: BLE001
+            pass
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)")
         self.conn.commit()
@@ -141,3 +147,23 @@ class UserStore:
             updated_at=datetime.fromisoformat(d["updated_at"]),
             last_login_at=datetime.fromisoformat(d["last_login_at"]) if d.get("last_login_at") else None,
         )
+
+    # ─── Last-workspace setting (Case-Space Phase 1.3) ─────────────
+    # Stored as a separate column rather than a JSON settings blob,
+    # because (a) the field is small and high-frequency, and
+    # (b) it avoids a JSON parse on every GET /me call.
+    def get_last_workspace(self, user_id: str) -> str | None:
+        """Return the case id the user last opened, or None."""
+        row = self.conn.execute("SELECT last_workspace FROM users WHERE id = ?", (user_id,)).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def set_last_workspace(self, user_id: str, case_id: str | None) -> bool:
+        """Persist the case id the user last opened (or clear it)."""
+        cur = self.conn.execute(
+            "UPDATE users SET last_workspace = ?, updated_at = ? WHERE id = ?",
+            (case_id, datetime.now().isoformat(), user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount > 0

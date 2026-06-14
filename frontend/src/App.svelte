@@ -149,6 +149,10 @@
       {#await import('./views/ServerHealthView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'case-list'}
       {#await import('./views/CasesView.svelte') then Mod}<Mod.default {navigate} />{/await}
+    {:else if $route === 'workspace'}
+      {#await import('./views/WorkspaceView.svelte') then Mod}<Mod.default {navigate} />{/await}
+    {:else if $route === 'inbox'}
+      {#await import('./views/InboxView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'tags'}
       {#await import('./views/TagManagerView.svelte') then Mod}<Mod.default />{/await}
     {:else}

@@ -162,6 +162,44 @@ def update_me(
     return user_to_response(updated)
 
 
+# ─── Last-workspace setting (Case-Space Phase 1.3) ─────────────
+# These endpoints let the frontend remember which Case the user
+# had open at logout, and restore it on next login.  Storing a
+# single string column keeps the GET /me call cheap (no JSON
+# parse).  See plans/2026-06-14_case-space-workspace.md §4.2.
+
+
+@router.get("/me/last-workspace")
+def get_last_workspace(
+    user=Depends(get_current_user),
+    user_store=Depends(get_user_store),
+):
+    """Return the case id the current user last opened, or null."""
+    return {"case_id": user_store.get_last_workspace(user.id)}
+
+
+@router.put("/me/last-workspace")
+def set_last_workspace(
+    body: dict,
+    user=Depends(get_current_user),
+    user_store=Depends(get_user_store),
+):
+    """Persist (or clear) the case id the user last opened.
+
+    Body: ``{"case_id": "..."}`` to set, or ``{"case_id": null}`` to clear.
+    Returns 204 on success.
+    """
+    case_id = body.get("case_id")
+    if case_id is not None and not isinstance(case_id, str):
+        raise HTTPException(status_code=422, detail="case_id must be a string or null")
+    if case_id is not None and len(case_id) > 200:
+        raise HTTPException(status_code=422, detail="case_id too long")
+    ok = user_store.set_last_workspace(user.id, case_id)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to persist last_workspace")
+    return {"case_id": case_id}
+
+
 @router.put("/password")
 def change_password(
     body: PasswordChangeRequest,

@@ -457,3 +457,247 @@ class DebateForkInfo(BaseModel):
     parent_debate_id: str
     fork_round: int | None = None
     fork_reason: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Workspace (Phase 1 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class WorkspaceRecentEvent(BaseModel):
+    """A condensed activity event for the Workspace's Recent Activity card.
+
+    Derived from the audit trail.  Only the fields relevant to a one-line
+    workspace summary are exposed — full audit events remain available via
+    the dedicated audit endpoint.
+    """
+
+    id: str
+    event_type: str
+    actor: str | None = None
+    subject: str | None = None  # e.g. debate title, document name
+    case_id: str | None = None
+    created_at: datetime
+
+
+class WorkspaceSuggestedNextStep(BaseModel):
+    """A contextual hint surfaced on the Workspace's Suggested Next Steps card.
+
+    Example kinds:
+    - "unlinked_documents"  → user has docs in the DMS without a case
+    - "untagged_debates"    → at least one debate has zero tags
+    - "inactive_audit"      → no audit event for the case in N days
+    """
+
+    kind: str
+    severity: str  # "info" | "warning"
+    message: str
+    action_label: str
+    action_target: str  # route or feature id to navigate to
+
+
+class WorkspaceSummary(BaseModel):
+    """Aggregated, case-scoped summary payload served by GET /api/workspace/summary.
+
+    The endpoint returns this in a single call to avoid N+1 round-trips from
+    the frontend when the workspace view mounts.
+    """
+
+    case_id: str
+    tenant_id: str
+    title: str
+    description: str | None = None
+    status: str
+    tags: list[str] = Field(default_factory=list)
+    members: list[str] = Field(default_factory=list)
+
+    debate_count: int = 0
+    document_count: int = 0
+
+    recent_events: list[WorkspaceRecentEvent] = Field(default_factory=list)
+    suggested_next_steps: list[WorkspaceSuggestedNextStep] = Field(default_factory=list)
+
+    generated_at: datetime
+
+
+class CaseSearchHit(BaseModel):
+    """Single result for GET /api/cases/search (typeahead for the Case selector)."""
+
+    case_id: str
+    tenant_id: str
+    title: str
+    status: str
+    tags: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Inbox (Phase 2 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class InboxDebateItem(BaseModel):
+    """A debate surfaced on the Inbox because of one of the kinds below.
+
+    The "kind" determines which action buttons the UI renders:
+
+    - ``recently_completed``  → "Open", "Archive", "View report"
+    - ``untagged``            → "Add tags", "Open", "Open in Case"
+    - ``stale_running``       → "Open", "Force reset", "Cancel"
+    """
+
+    id: str
+    kind: str
+    tenant_id: str
+    case_id: str
+    title: str
+    status: str
+    tags: list[str] = Field(default_factory=list)
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
+    age_hours: float | None = None
+    message: str
+
+
+class InboxSummary(BaseModel):
+    """Aggregated, tenant-scoped Inbox payload.
+
+    The endpoint returns this in a single call to avoid N+1 round-trips
+    from the frontend when the Inbox view mounts.
+    """
+
+    tenant_id: str
+    items: list[InboxDebateItem] = Field(default_factory=list)
+    counts: dict[str, int] = Field(default_factory=dict)
+    is_all_clear: bool = True
+    generated_at: datetime
+
+
+class InboxBulkMoveBody(BaseModel):
+    """Request body for POST /api/v1/inbox/bulk-move.
+
+    Moves the listed debates to a new case.  All ids must belong to
+    the same tenant; the target case must also belong to the same
+    tenant (enforced server-side).
+    """
+
+    debate_ids: list[str] = Field(..., min_length=1, max_length=200)
+    target_case_id: str = Field(..., min_length=1)
+
+
+class InboxBulkTagBody(BaseModel):
+    """Request body for POST /api/v1/inbox/bulk-tag.
+
+    Adds the listed tags to each debate.  An empty ``tag_ids`` list is
+    treated as a no-op (not a 400) so the UI's "remove all tags"
+    button can submit cleanly without a special endpoint.
+    """
+
+    debate_ids: list[str] = Field(..., min_length=1, max_length=200)
+    tag_ids: list[str] = Field(default_factory=list, max_length=50)
+
+
+class InboxBulkArchiveBody(BaseModel):
+    """Request body for POST /api/v1/inbox/bulk-archive.
+
+    Marks the listed debates as archived.  Implementation may either
+    delete the debates or set an ``archived_at`` flag depending on the
+    store's policy; in Phase 2 we delete (the legacy archive view
+    already mirrors this behaviour).
+    """
+
+    debate_ids: list[str] = Field(..., min_length=1, max_length=200)
+
+
+class InboxBulkResult(BaseModel):
+    """Response body for any /api/v1/inbox/bulk-* endpoint.
+
+    ``succeeded`` and ``failed`` are mutually exclusive lists.  An item
+    is in ``failed`` when the store rejected it (e.g. wrong tenant,
+    not found) — the response is 200, not 4xx, so the UI can show a
+    partial-success message.
+    """
+
+    succeeded: list[str] = Field(default_factory=list)
+    failed: list[dict] = Field(default_factory=list)  # [{"id": str, "reason": str}]
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Onboarding (Phase 3 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class OnboardingState(BaseModel):
+    """The three booleans the Welcome-Card consumes.
+
+    - ``has_cases``    → at least one Case in the tenant
+    - ``has_documents`` → (reserved) at least one document in the
+                          tenant; in the current architecture
+                          documents are scoped per project, so
+                          this stays False (the welcome card uses
+                          it to decide whether to show the upload
+                          hint, but the upload flow itself works
+                          regardless)
+    - ``has_debates``   → at least one Debate in any case
+    """
+
+    tenant_id: str
+    has_cases: bool
+    has_documents: bool
+    has_debates: bool
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Knowledge Graph (Phase 4 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class GraphNode(BaseModel):
+    """A single node in the knowledge graph.
+
+    The ``id`` is namespaced by type (``case:<id>``, ``debate:<id>``,
+    ``document:<id>``, ``tag:<name>``) so two entities of different
+    types but the same raw id never collide.
+    """
+
+    id: str
+    type: str
+    label: str
+    meta: dict = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    """An edge between two nodes.  ``weight`` is unused in Phase 4
+    but reserved for Phase 5+ derived edges (e.g. embedding
+    similarity) where multiple edges of the same type can exist
+    between the same pair of nodes.
+    """
+
+    src: str
+    tgt: str
+    type: str
+    weight: float = 1.0
+
+
+class GraphPayload(BaseModel):
+    """The envelope returned by every /api/v1/graph/* endpoint.
+
+    ``truncated`` + ``total_count`` + ``sampled_count`` are
+    only meaningful for the global endpoint; the local endpoint
+    always returns the full 1-hop subgraph.
+    """
+
+    nodes: list[GraphNode] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+    truncated: bool = False
+    total_count: int = 0
+    sampled_count: int = 0
+
+
+class EdgeDetail(BaseModel):
+    """Response for GET /api/v1/graph/edges?src=…&tgt=…"""
+
+    src: str
+    tgt: str
+    type: str
+    weight: float = 1.0
+    evidence: list[str] = Field(default_factory=list)

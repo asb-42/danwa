@@ -191,3 +191,60 @@ def _disable_auth():
 def client(app) -> TestClient:
     """Synchronous test client."""
     return TestClient(app)
+
+
+# ---------------------------------------------------------------------------
+# A2A DNS resolution mock
+# ---------------------------------------------------------------------------
+#
+# backend/a2a/url_validator.py calls ``socket.getaddrinfo`` to defend against
+# DNS-rebinding attacks.  This is the *correct* behaviour in production, but
+# it makes the test suite order-dependent on the CI sandbox's DNS resolver:
+# placeholder hostnames like ``agent.example.com`` or single-label names like
+# ``ext-agent`` are not resolvable from the runner, which causes the A2A
+# unit and workflow tests to fail with ``A2AValidationError: DNS resolution
+# failed for ...`` *before* the pytest_httpx mock is ever consumed.
+#
+# This autouse-but-scoped fixture replaces ``socket.getaddrinfo`` for A2A
+# tests only.  It returns a single dummy A-record so the validator's
+# private-IP / public-IP branching logic still runs; tests that want a
+# genuine ``gaierror`` (e.g. for negative-path coverage) can opt out by
+# re-monkeypatching the symbol themselves.
+#
+# No production code is modified — the URL validator keeps its real DNS
+# behaviour in production.
+@pytest.fixture(autouse=True)
+def _a2a_dns_mock(request):
+    """Mock socket.getaddrinfo for A2A-related test modules only.
+
+    Detection: the test's file path contains "a2a" (case-sensitive,
+    matches the pytest test file naming convention).  We check
+    ``request.node.fspath`` rather than ``request.node.module`` so
+    the fixture also activates for async test coroutines and
+    parametrised tests where the module attribute can be None.
+    """
+    test_path = str(request.node.fspath).lower()
+    if "a2a" not in test_path:
+        yield
+        return
+    # We deliberately do NOT activate for test_a2a_url_validator.py
+    # because that test exercises the real socket.getaddrinfo (and
+    # the gaierror path).  Match more strictly on the other A2A test
+    # files we know need the mock.
+    if "a2a_url_validator" in test_path:
+        yield
+        return
+
+    import socket as _socket
+
+    def _fake_getaddrinfo(host, *args, **kwargs):
+        # Return a single dummy IPv4 record.  Tests that need a
+        # ``gaierror`` can re-monkeypatch over this fixture.
+        return [(2, 1, 6, "", ("203.0.113.10", 0))]
+
+    original = _socket.getaddrinfo
+    _socket.getaddrinfo = _fake_getaddrinfo
+    try:
+        yield
+    finally:
+        _socket.getaddrinfo = original

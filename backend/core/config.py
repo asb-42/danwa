@@ -114,6 +114,16 @@ class Settings(BaseSettings):
     # --- Observability ---
     prometheus_enabled: bool = True
 
+    # --- Feature flags (progressive rollout) ---
+    # When False, the new Case-Space Workspace / Inbox / Browse views and
+    # their /api/workspace/* endpoints are hidden behind a 404.  The old
+    # CasesView, DocumentsView, TagManagerView etc. remain the only
+    # way to navigate.  See plans/2026-06-14_case-space-workspace.md
+    # for the rollout plan.
+    enable_case_space: bool = False
+    enable_case_space_inbox: bool = False
+    enable_case_space_graph: bool = False
+
 
 def is_service_llm_eligible(profile) -> tuple[bool, str]:
     """Check whether an LLM profile is suitable as a service LLM.
