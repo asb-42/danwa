@@ -108,7 +108,9 @@
   - [x] 2.7.4 "All clear"-Card bei `summary.is_all_clear`
   - [x] Bonus: Move-to-Case Typeahead via existierender `searchCases()`-Helper
   - [x] Bonus: Toast-Notification mit Success/Partial-Failure-Anzeige
-- [x] **2.8 (Bonus)** InboxItemRow ist inline in InboxView integriert (kein separates Component, da Items strukturell einfach sind)
+- [x] **2.8 Komponente `InboxItemRow.svelte`** in [`frontend/src/components/inbox/`](../../frontend/src/components/inbox/) extrahiert
+  - [x] Props: `item` (InboxDebateItem), `selected` (boolean), `onCheck` (callback)
+  - [x] Eigenständig wiederverwendbar (Dashboard recent-activity, Workspace recent-events, AuditView)
 - [x] **2.9 (Bonus)** Inline-Action-Dropdowns in Bulk-Bar: Move mit `<datalist>`+Typeahead, Tag mit debounced input
 - [x] **2.10 (Bonus)** Sidebar-Badge noch nicht implementiert (Punkt bleibt für Folge-Session; aktuell zählt der Tab-Badge die Items pro Kind)
 - [ ] **2.11 Frontend-Tests**:
