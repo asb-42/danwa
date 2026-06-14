@@ -22,6 +22,8 @@
   import DebateTranscript from '../components/debate/DebateTranscript.svelte';
   import DebateInterjection from '../components/debate/DebateInterjection.svelte';
   import DebateActivityLog from '../components/debate/DebateActivityLog.svelte';
+  import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
+  import PhaseSnapshotsWidget from '../components/workflow/PhaseSnapshotsWidget.svelte';
 
   let { debateId: externalDebateId = null, navigate = () => {} } = $props();
 
@@ -81,6 +83,10 @@
   let debateId = $state(null);
   let debateTitle = $state('');
   let status = $state('idle');
+  // P5.4 — toggle for the side-rail ExecutionPanel / Phase-snapshot
+  // widget.  Default off so the existing activity strip keeps the
+  // user's screen real estate.
+  let showTrace = $state(false);
   let currentNodeId = $state('');
   let currentRound = $state(0);
   let consensus = $state(0);
@@ -717,6 +723,7 @@
     sessionId = null;
     debateId = null;
     debateTitle = '';
+    showTrace = false;
     status = 'idle';
     currentNodeId = '';
     currentRound = 0;
@@ -937,7 +944,28 @@
             🔄 New Debate
           </button>
         {/if}
+        {#if sessionId && status !== 'idle' && status !== 'setup'}
+          <button
+            type="button"
+            class="btn btn-trace"
+            data-testid="mvp-execution-trace-toggle"
+            aria-pressed={showTrace}
+            onclick={() => (showTrace = !showTrace)}
+          >
+            {showTrace ? '🪨 Hide' : '🪨 Show'} execution trace
+          </button>
+        {/if}
       </div>
+
+      {#if sessionId && showTrace}
+        <!-- P5.4: full ExecutionPanel (tabbed log + state + phases)
+             plus a compact PhaseSnapshotsWidget summary.  Both share
+             the phaseSnapshotsStore so this section is cheap to open. -->
+        <div class="trace-section" data-testid="mvp-execution-trace">
+          <ExecutionPanel sessionId={sessionId} />
+          <PhaseSnapshotsWidget {sessionId} />
+        </div>
+      {/if}
 
       {#if status === 'running' && debateId}
         <PauseControls {debateId} />
@@ -1216,6 +1244,21 @@
     color: white;
   }
   .btn-reset:hover { background: #059669; }
+  .btn-trace {
+    background: #6b7280;
+    color: white;
+  }
+  .btn-trace:hover { background: #4b5563; }
+  .btn-trace[aria-pressed='true'] { background: #2563eb; }
+
+  .trace-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #e5e7eb;
+  }
 
   .sse-badge {
     display: inline-flex;

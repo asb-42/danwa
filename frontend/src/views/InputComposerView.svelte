@@ -30,6 +30,7 @@
   import WorkflowTemplatePicker from '../components/input/WorkflowTemplatePicker.svelte';
   import DebateCreatePanel from '../components/debate/DebateCreatePanel.svelte';
   import DebateExecutionDisplay from '../components/blueprint/DebateExecutionDisplay.svelte';
+  import PhaseSnapshotsWidget from '../components/workflow/PhaseSnapshotsWidget.svelte';
 
   /** @type {function} Navigation helper from App.svelte */
   let { navigate = () => {} } = $props();
@@ -541,6 +542,13 @@
         context={topic}
         onclose={() => { showExecutionPanel = false; executionSessionId = null; currentDebateTitle = ''; currentDebateId = null; }}
       />
+
+      <!-- Phase-snapshot summary (P5.4): compact widget that opens
+           the full PhasesTab in a modal.  Shares the same
+           phaseSnapshotsStore as ExecutionPanel, so no extra fetch. -->
+      <div class="mt-3">
+        <PhaseSnapshotsWidget sessionId={executionSessionId} />
+      </div>
     {/if}
   {/if}
 </div>
