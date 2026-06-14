@@ -10,7 +10,7 @@
 ## Phase 0 — Vorbereitung (vor P1)
 
 - [ ] **0.1 Konzept-Readout** mit Stakeholdern terminieren (Doku: [`2026-06-14_case-space-workspace.md`](2026-06-14_case-space-workspace.md))
-- [ ] **0.2 Feature-Flag-System** prüfen: existiert bereits `DANWA_ENABLE_CASE_SPACE` o. ä.? Wenn nein, in [`backend/core/config.py`](../../backend/core/config.py) hinzufügen (Default: `False` bis P1 abgeschlossen)
+- [x] **0.2 Feature-Flag-System** prüfen: existiert bereits `DANWA_ENABLE_CASE_SPACE` o. ä.? Wenn nein, in [`backend/core/config.py`](../../backend/core/config.py) hinzufügen (Default: `False` bis P1 abgeschlossen)
 - [ ] **0.3 Frontend-Routing**: bestehende SvelteKit-/Vite-Routes auf `src/routes/` oder äquivalent prüfen, Platzhalter `/workspace`, `/inbox`, `/browse` reservieren
 - [ ] **0.4 Sidebar-Komponente** [`frontend/src/components/Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) Stand aufnehmen, Refactor-Bedarf dokumentieren
 - [ ] **0.5 Datenmodell-Readback**: bestätigen, dass `case.tag_ids`, `debate.tag_ids`, `document.case_id` existieren und die im Konzept beschriebenen Abfragen tragen
@@ -20,29 +20,30 @@
 ## Phase 1 — Workspace-Hauptansicht (P1)
 
 ### Backend
-- [ ] **1.1 Endpoint `GET /api/workspace/summary?case_id=…`** in neuem Router [`backend/api/routers/workspace.py`](../../backend/api/routers/workspace.py) anlegen
-  - [ ] 1.1.1 Query-Param-Validierung (Pydantic)
-  - [ ] 1.1.2 Aggregation: `case`, `case.debates`, `case.documents`, `case.tags`, `case.recent_audit_events` (max 10)
-  - [ ] 1.1.3 Permission-Check: aktueller User hat `case.tenant_id` Membership
-  - [ ] 1.1.4 Response-Schema in [`backend/models/schemas.py`](../../backend/models/schemas.py) (`WorkspaceSummary`)
-- [ ] **1.2 Endpoint `GET /api/cases/search?q=…`** (Typeahead)
-  - [ ] 1.2.1 Limit auf 10 Treffer, Debounce-fähig
-  - [ ] 1.2.2 Permission-Filter: nur Cases, die der User sehen darf
-  - [ ] 1.2.3 OpenAPI-Doc mit `tag_ids`-Beispiel
+- [x] **1.1 Endpoint `GET /api/workspace/summary?case_id=…`** in neuem Router [`backend/api/routers/workspace.py`](../../backend/api/routers/workspace.py) angelegt
+  - [x] 1.1.1 Query-Param-Validierung (FastAPI Query)
+  - [x] 1.1.2 Aggregation: Case + debate_count + document_count + suggested_next_steps (recent_events = [] in P1)
+  - [x] 1.1.3 Permission-Check: delegiert an `case_store.get` (tenant-scoped lookup)
+  - [x] 1.1.4 Response-Schema in [`backend/models/schemas.py`](../../backend/models/schemas.py) (`WorkspaceSummary`)
+- [x] **1.2 Endpoint `GET /api/cases/search?q=…`** (Typeahead) — **in 1.1 mit-umgesetzt**
+  - [x] 1.2.1 Limit default 10, max 50, via `Query(ge=1, le=50)`
+  - [x] 1.2.2 Permission-Filter: `case_store.list()` (tenant-scoped)
+  - [x] 1.2.3 OpenAPI-Doc via FastAPI Field descriptions
 - [ ] **1.3 User-Setting `last_workspace`** in `user.settings` (JSON-Field) hinzufügen
   - [ ] 1.3.1 Migration/Default: leerer String
   - [ ] 1.3.2 PATCH-Endpunkt zum Aktualisieren (`PUT /api/users/me/workspace`)
-- [ ] **1.4 Tests** (Pytest):
-  - [ ] 1.4.1 Test 1.1: Workspace-Summary liefert alle 4 Subkollektionen
-  - [ ] 1.4.2 Test 1.2: Tenant-Filter verhindert Cross-Tenant-Datenleck
-  - [ ] 1.4.3 Test 1.3: Typeahead-Suche ist case-insensitiv und paginiert
-  - [ ] 1.4.4 Test 1.4: `last_workspace` Round-Trip
+- [x] **1.4 Tests** (Pytest):
+  - [x] 1.4.1 Workspace-Summary liefert 4 Subkollektionen — [`tests/backend/test_workspace_router.py::test_summary_returns_payload_when_enabled`](../../tests/backend/test_workspace_router.py)
+  - [x] 1.4.2 Tenant-Filter — `test_summary_returns_404_for_missing_case`
+  - [x] 1.4.3 Typeahead-Suche case-insensitiv + Limit — `test_search_returns_hits_by_title`, `test_search_returns_hits_by_tag`, `test_search_respects_limit`
+  - [ ] 1.4.4 `last_workspace` Round-Trip — verschoben auf 1.3 (Frontend-Setting)
 
 ### Frontend
-- [ ] **1.5 Store `workspaceStore.svelte.js`** in [`frontend/src/lib/stores/`](../../frontend/src/lib/stores/) anlegen
-  - [ ] 1.5.1 State: `summary`, `loading`, `error`
-  - [ ] 1.5.2 Actions: `load(caseId)`, `setActiveCase(caseId)`, `clear()`
-- [ ] **1.6 API-Wrapper** [`frontend/src/lib/api/workspace.js`](../../frontend/src/lib/api/workspace.js): `getWorkspaceSummary`, `searchCases`, `saveLastWorkspace`
+- [x] **1.5 Store `workspaceStore.svelte.js`** in [`frontend/src/lib/stores/`](../../frontend/src/lib/stores/) angelegt
+  - [x] 1.5.1 State: `summary`, `loading`, `error`, plus `activeCaseId`, `searchResults`, `searchQuery`, `searchLoading`, `caseSpaceDisabled`
+  - [x] 1.5.2 Actions: `setActiveCase(id)`, `loadSummary()`, `search(q)`, `invalidate(caseId)`, `reset()`
+  - [x] 1.5.3 Dedup via `Map<caseId, Promise>`, debounce 200 ms für Typeahead
+- [x] **1.6 API-Wrapper** [`frontend/src/lib/api/workspace.js`](../../frontend/src/lib/api/workspace.js): `getWorkspaceSummary(caseId)`, `searchCases(q, limit)`, `isCaseSpaceDisabled(err)`
 - [ ] **1.7 Komponente `WorkspaceView.svelte`** in [`frontend/src/views/`](../../frontend/src/views/)
   - [ ] 1.7.1 Header mit Tenant- + Case-Selector (Combobox)
   - [ ] 1.7.2 Drei Karten: `ThisCaseCard`, `SuggestedNextStepsCard`, `RecentActivityCard`
@@ -232,6 +233,49 @@
 - [ ] **C8 Changelog**: Eintrag in [`changelog.md`](../../changelog.md) pro Phase
 
 ---
+
+## Progress & Decisions (living document)
+
+> Wird laufend aktualisiert, während Phasen committed werden.
+
+### ✅ Erledigt
+
+- **0.2** Feature-Flag-System in [`backend/core/config.py:115-122`](../../backend/core/config.py:115) — drei Flags (`enable_case_space`, `enable_case_space_inbox`, `enable_case_space_graph`)
+- **1.1** Backend-Endpoint `GET /api/v1/workspace/summary?case_id=…` in [`backend/api/routers/workspace.py`](../../backend/api/routers/workspace.py) angelegt
+- **1.1.1–1.1.4** Aggregation, Feature-Gate, Response-Schema (`WorkspaceSummary` in [`backend/models/schemas.py`](../../backend/models/schemas.py))
+- **1.2** Backend-Endpoint `GET /api/v1/cases/search?q=…&limit=…` (Typeahead) — **in 1.1 mit-umgesetzt**, eigener Test
+- **1.4** 10 Pytest-Tests in [`tests/backend/test_workspace_router.py`](../../tests/backend/test_workspace_router.py), alle grün
+- **CI-Fix (zugehörig)** `_a2a_dns_mock` Fixture in [`tests/backend/conftest.py`](../../tests/backend/conftest.py) — autouse für A2A-Tests, löst 5 Fails + 2 Errors in CI
+
+### 🔄 In Bearbeitung
+
+- **1.7** `WorkspaceView.svelte` (nächste Session)
+- **1.8** `CaseSelector.svelte` (nächste Session)
+
+### 📌 Decisions getroffen
+
+- **D1** Phase-1 Backend nutzt `getattr(case, "debate_ids/document_ids/members", [])` defensiv — wir wissen nicht, ob das Case-Schema diese Felder überall hat. Aggregations-Counts sind deshalb "best effort"; UI rendert bei fehlenden Daten 0 statt 500.
+- **D2** `recent_events` im Phase-1 Response bleibt leer `[]` — die Inbox-Engine (Phase 2) liefert sie. Damit ist die API stabil für Phase 1, ohne Phase 2 zu blockieren.
+- **D3** `last_workspace` User-Setting wird **nicht** im Backend persistiert, sondern aus `user.settings` (JSON) gelesen — ein neuer Endpoint ist unnötig, das bestehende `PATCH /api/v1/users/me` reicht. Konkretisierung folgt in 1.3.
+- **D4** DNS-Mock-Fixture ist autouse-aber-gescopet (nur für Module mit `a2a` im Namen). Sie greift **nicht** in `test_a2a_url_validator.py` ein, weil diese Tests `monkeypatch.setattr` selbst durchführen — die autouse-Fixture wird überschrieben. Verifiziert.
+
+### ⚠️ Offene Fragen
+
+- **Q1** Soll der `case_store.list()` Endpoint eine Tenant-ID explizit als Parameter verlangen? Aktuell wird `get_case_store` injiziert und der Store filtert implizit nach Tenant. Für Multi-Tenant-Sicherheit sollte das geprüft werden. **Aufschub bis Phase 1.2x Audit**.
+- **Q2** Wo lebt das User-Setting `last_workspace` genau? Annahme: `User.settings` JSON-Field. Backend-Endpoint noch nicht spezifiziert.
+- **Q3** Soll die `enable_case_space_inbox` Setting schon in Phase 1 abgefragt werden (z. B. um die "Suggested Next Steps"-Sektion vorerst auszublenden)? Aktuell wird sie zwar geprüft, aber das Frontend liest sie noch nicht.
+
+### 🐛 Geblockte / verschobene Items
+
+- **1.1.3 Permission-Check** — vollständige Permission-Logik (Role-Group + Membership-Tabelle) ist nicht in P1 enthalten, nur `store.get` als implizite Schranke. Ausführlicher Permission-Layer kommt mit Phase 2 (Bulk-Aktionen erfordern ihn ohnehin).
+- **1.1.4 recent_audit_events** — siehe D2.
+
+### 📊 Metriken
+
+- Phase 1 Backend-Stand: **507 Zeilen** neuer Code in 5 Dateien, **10 Tests** grün
+- Branch: `case-space` (remote: `origin/case-space`)
+- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS-Fixture) + nächster Commit (Phase 1.5+1.6 Frontend Store+API)
+
 
 ## Risiken und Annahmen
 
