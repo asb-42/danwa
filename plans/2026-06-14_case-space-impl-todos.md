@@ -59,8 +59,11 @@
   - [x] 1.9.2 Write via `$effect` auf `activeCaseId`
   - [x] 1.9.3 Browser back/forward via `popstate`-Listener
 - [ ] **1.10 Login-Default-Wiederherstellung**: nach Login `last_workspace` lesen und Case automatisch setzen
-- [ ] **1.11 Sidebar-Eintrag "Workspace"** in [`Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) hinzufügen, *oberhalb* der bestehenden technischen Kategorien
-- [ ] **1.12 Routing**: `/workspace` als Default-Route konfigurieren, falls Feature-Flag aktiv
+- [x] **1.11 Sidebar-Eintrag "Workspace"** in [`Sidebar.svelte`](../../frontend/src/components/Sidebar.svelte) hinzugefügt, *oberhalb* von tenant-settings in der inhabit-Section
+  - [x] In `routeGroups.inhabit` registriert (für Active-Highlighting)
+  - [x] Icon 🏠 + Label "Workspace" (i18n-Key `nav.workspace` mit englischem Fallback)
+- [x] **1.12 Routing** `workspace` als Hash-Route in [`App.svelte:152-153`](../../frontend/src/App.svelte:152) registriert (lazy-load wie alle anderen Views)
+  - [ ] 1.12.x Default-Route falls Feature-Flag aktiv: bewusst NICHT umgestellt — User-Feedback zur Pilotphase abwarten, dann P5+ entscheiden
 - [ ] **1.13 Frontend-Tests** (Vitest):
   - [ ] 1.13.1 `workspaceStore` Reducer (load / setActiveCase / clear)
   - [ ] 1.13.2 `CaseSelector` Typeahead-Filter
@@ -254,7 +257,7 @@
 
 ### 🔄 In Bearbeitung
 
-- **1.11+1.12** Sidebar-Eintrag "Workspace" + Routing — nächste Session
+- (Phase 1 substantiell abgeschlossen — verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
 
 ### 📌 Decisions getroffen
 
@@ -278,7 +281,7 @@
 
 - Phase 1 Backend-Stand: **507 Zeilen** neuer Code in 5 Dateien, **10 Tests** grün
 - Branch: `case-space` (remote: `origin/case-space`)
-- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS-Fixture) + `95f5139` (Phase 1.5+1.6 Frontend Store+API) + `cf0d283` (Phase 1.7 WorkspaceView) + nächster Commit (Phase 1.8 CaseSelector-Typeahead)
+- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS) + `95f5139` (Phase 1.5+1.6) + `cf0d283` (Phase 1.7) + `c8af2d9` (Phase 1.8 Typeahead) + `dc692a8` (Phase 1.9 URL-Sync) + nächster Commit (Phase 1.11+1.12 Sidebar+Routing)
 
 
 ## Risiken und Annahmen

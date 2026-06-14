@@ -33,7 +33,7 @@
     proposals: ['proposals'],
     manage: ['manage'],
     'mvp-debate': ['mvp-debate'],
-    inhabit: ['tenant-settings', 'case-list', 'tags', 'profile', 'my-keys'],
+    inhabit: ['tenant-settings', 'case-list', 'workspace', 'tags', 'profile', 'my-keys'],
   };
 
   function isActive(route) {
@@ -55,6 +55,7 @@
       id: 'inhabit',
       label: t('nav.section.inhabit'),
       items: [
+        { id: 'workspace', label: t('nav.workspace') || 'Workspace', icon: '🏠', route: 'workspace' },
         { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
         { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
         { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
