@@ -211,16 +211,27 @@ Add a CSS class `.flow-edge.taken` with a distinct color (e.g., green highlight)
 
 ## Files to Modify
 
+> **Note:** The two `frontend/src/components/workflow/...` rows in the
+> original plan (`WorkflowPipeline.svelte` / `PipelineEdge.svelte`) were
+> obsoleted by the Phase-2 canvas migration (`plans/phase2-canvas-migration.md`).
+> The visual-trace feature is now delivered by the BlueprintCanvas system
+> instead. See the auto-review at
+> `reports/2026-06-14_workflow-observability-review.md` §5 for context.
+
 | File | Change |
 |------|--------|
 | `backend/workflow/workflow_routers.py` | `route_conditional()` — accept `gate_node_id`, publish `gate.decision` SSE |
-| `backend/workflow/workflow_compiler.py` | Pass `gate_node_id` to `route_conditional()` factory |
-| `backend/workflow/nodes/moderator_nodes.py` | `gate_node_factory` — save phase snapshot |
+| `backend/workflow/workflow_compiler.py` | Pass `gate_node_id` to `route_conditional()` factory (incl. feedback-edge `_make_router` at `:768`) |
+| `backend/workflow/nodes/moderator_nodes.py` | `gate_node_factory` — save phase snapshot via `StateSnapshotStore` |
 | `backend/workflow/audit_logger.py` | Add `log_gate_decision()` method |
-| `frontend/src/lib/workflowSSE.js` | Register `gate.decision` event |
-| `frontend/src/components/blueprint/ExecutionPanel.svelte` | Gate decision cards + handler |
-| `frontend/src/components/workflow/WorkflowPipeline.svelte` | Edge "taken" highlighting |
-| `frontend/src/components/workflow/pipeline/PipelineEdge.svelte` | `.taken` CSS class |
+| `backend/workflow/state_snapshot.py` | Add `get_by_type(session_id, node_type)` query |
+| `backend/api/routers/workflow_exec.py` | `GET /{session_id}/phase-snapshots` + `GET /{session_id}/phase-snapshots/{node_id:path}` |
+| `frontend/src/lib/workflowSSE.js` | Register `gate.decision` event in `eventHandlerMap` and `namedEvents` |
+| `frontend/src/components/blueprint/ExecutionPanel.svelte` | Gate decision cards + `onGateDecisionUpdate` handler |
+| `frontend/src/views/BlueprintCanvasView.svelte` | Listen to gate decisions; mark chosen edge as `'taken'`, siblings as `'skipped'` in `edgeStatusMap` |
+| `frontend/src/components/blueprint/BlueprintCanvas.svelte` | `:global(.edge-taken) { stroke: #10b981 !important; }` + `.edge-skipped` |
+| `frontend/src/lib/blueprint/edgeStatus.js` | 5-state model: `idle \| active \| completed \| taken \| skipped` |
+| `tests/backend/test_workflow_routers.py` | `TestPublishGateDecision` — 3 tests: SSE+audit happy path, SSE failure swallowed, audit failure swallowed |
 
 ## New SSE Event Schema
 
