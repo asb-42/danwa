@@ -29,6 +29,7 @@
     persistActiveCase,
   } from '../lib/stores/workspaceStore.svelte.js';
   import NewDebateForm from '../components/case-space/NewDebateForm.svelte';
+  import InspectorGraphTab from '../components/case-space/InspectorGraphTab.svelte';
 
   let { navigate = () => {}, initialCaseId = null } = $props();
 
@@ -37,6 +38,10 @@
   // "This Case" card.  It captures the case context (existing vs.
   // new) and the initial topic, then defers to the existing
   // DebateCreatePanel for advanced parameters.
+  // Phase 5.4 — the Workspace summary now offers two views:
+  //   - 'summary' : the 3 cards (This Case, Suggested, Recent)
+  //   - 'graph'   : 1-hop graph around the active case
+  let activeTab = $state('summary');
   let showNewDebateForm = $state(false);
   function openNewDebate() {
     showNewDebateForm = true;
@@ -418,7 +423,28 @@
         </button>
       </div>
     {:else if summary}
-      <article class="workspace-grid">
+      {#if activeTab === 'summary'}
+        <div role="tablist" aria-label="Workspace view" class="flex gap-2 mb-4">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'summary'}
+            class="px-3 py-1.5 rounded-md text-sm font-medium {activeTab === 'summary' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" onclick={() => (activeTab = 'summary')}
+            data-testid="workspace-tab-summary"
+          >
+            Summary
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'graph'}
+            class="px-3 py-1.5 rounded-md text-sm font-medium {activeTab === 'graph' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" onclick={() => (activeTab = 'graph')}
+            data-testid="workspace-tab-graph"
+          >
+            Graph
+          </button>
+        </div>
+              <article class="workspace-grid">
         <section
           class="card p-5 border rounded-lg
                  bg-white dark:bg-gray-800
@@ -584,6 +610,11 @@
           {/if}
         </section>
       </article>
+      {:else if activeTab === 'graph'}
+        <div class="max-w-3xl">
+          <InspectorGraphTab entityType="case" entityId={activeCaseId} hops={1} />
+        </div>
+      {/if}
 
       <footer class="flex items-center justify-between mt-4 text-xs text-gray-500 dark:text-gray-400">
         <small>
