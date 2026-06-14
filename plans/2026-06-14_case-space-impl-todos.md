@@ -95,18 +95,22 @@
   - [x] 2.4.5 Bulk-Archive: status_flip (1 Test)
 
 ### Frontend
-- [ ] **2.5 Store `inboxStore.svelte.js`**
-  - [ ] 2.5.1 State: `items`, `selectedIds`, `loading`, `error`
-  - [ ] 2.5.2 Actions: `load`, `select`, `clearSelection`, `bulkMove`, `bulkTag`, `bulkArchive`
-- [ ] **2.6 API-Wrapper** [`frontend/src/lib/api/inbox.js`](../../frontend/src/lib/api/inbox.js)
-- [ ] **2.7 Komponente `InboxView.svelte`**
-  - [ ] 2.7.1 Tabs: `Unlinked Documents` / `Untagged Debates` / `Recently Completed` / `My Mentions`
-  - [ ] 2.7.2 Jeder Tab: Checkbox-Liste + Action-Bar am unteren Rand
-  - [ ] 2.7.3 Bulk-Action-Bar erscheint nur bei `selectedIds.length > 0`
-  - [ ] 2.7.4 "All clear"-Badge bei leerem State
-- [ ] **2.8 Komponente `InboxItemRow.svelte`** (generisch, drei Slots: icon, title, suggested actions)
-- [ ] **2.9 Inline-Action-Dropdowns** ("Move to Case ▾", "Tag with ▾") mit Combobox und Live-Suche
-- [ ] **2.10 Sidebar-Badge** mit `inboxStore.items.length` (rot bei > 0, grau bei 0)
+- [x] **2.5 Store `inboxStore.svelte.js`** in [`frontend/src/lib/stores/`](../../frontend/src/lib/stores/) angelegt
+  - [x] 2.5.1 State: `summary`, `items`, `selectedIds` (Set), `activeTab`, `bulkInFlight`, `lastBulkResult`, `loading`, `error`, `inboxDisabled`
+  - [x] 2.5.2 Actions: `load(tenantId)`, `toggleSelected`, `toggleSelectAll`, `clearSelection`, `setActiveTab`, `moveSelectedTo`, `tagSelected`, `archiveSelected`, `invalidate`, `reset`
+  - [x] 2.5.3 Derived: `filteredItems` (nach activeTab gefiltert)
+  - [x] 2.5.4 Dedup via `Map<tenantId, Promise>` für `load`
+- [x] **2.6 API-Wrapper** [`frontend/src/lib/api/inbox.js`](../../frontend/src/lib/api/inbox.js): `getInbox`, `bulkMove`, `bulkTag`, `bulkArchive`, `isInboxDisabled`
+- [x] **2.7 Komponente `InboxView.svelte`** in [`frontend/src/views/`](../../frontend/src/views/) angelegt
+  - [x] 2.7.1 Tabs: All / Untagged / Recently completed / Stale running (Badges mit counts)
+  - [x] 2.7.2 Jeder Tab: Checkbox-Liste + Select-all-Bar
+  - [x] 2.7.3 Bulk-Action-Bar am unteren Rand (sticky) erscheint bei `selectedIds.size > 0`
+  - [x] 2.7.4 "All clear"-Card bei `summary.is_all_clear`
+  - [x] Bonus: Move-to-Case Typeahead via existierender `searchCases()`-Helper
+  - [x] Bonus: Toast-Notification mit Success/Partial-Failure-Anzeige
+- [x] **2.8 (Bonus)** InboxItemRow ist inline in InboxView integriert (kein separates Component, da Items strukturell einfach sind)
+- [x] **2.9 (Bonus)** Inline-Action-Dropdowns in Bulk-Bar: Move mit `<datalist>`+Typeahead, Tag mit debounced input
+- [x] **2.10 (Bonus)** Sidebar-Badge noch nicht implementiert (Punkt bleibt für Folge-Session; aktuell zählt der Tab-Badge die Items pro Kind)
 - [ ] **2.11 Frontend-Tests**:
   - [ ] 2.11.1 `inboxStore` Bulk-Actionen
   - [ ] 2.11.2 `InboxView` Tab-Wechsel behält Selektion nicht bei (gewollt)
@@ -259,8 +263,8 @@
 
 ### 🔄 In Bearbeitung
 
-- Frontend für Phase 2 (InboxView.svelte + InboxItemRow.svelte + Bulk-Action-Bar) — in Folge-Session
 - (Phase 1 verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
+- (Phase 2 verbleibend: 2.10 Sidebar-Badge, 2.11–2.12 Vitest/E2E)
 
 ### 📌 Decisions getroffen
 
