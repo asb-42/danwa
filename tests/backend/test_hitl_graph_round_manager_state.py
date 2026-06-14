@@ -13,10 +13,9 @@ graph build, round-manager API) so future refactors break loudly.
 from __future__ import annotations
 
 import operator
-from typing import Annotated, get_type_hints
+from typing import get_type_hints
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # backend/workflow/hitl/state.py
@@ -69,7 +68,7 @@ class TestHITLStateTypedDicts:
     def test_hitl_state_interactions_uses_add_reducer(self):
         """``interactions`` is a list-accumulator; verify the Annotated
         metadata is intact so LangGraph doesn't drop entries on merge."""
-        from backend.workflow.hitl.state import HITLState, Interaction
+        from backend.workflow.hitl.state import HITLState
 
         hints = get_type_hints(HITLState, include_extras=True)
         ann = hints["interactions"]
@@ -104,7 +103,6 @@ class TestHITLStateTypedDicts:
 def manager():
     from backend.workflow.hitl.round_manager import (
         HITLRoundManager,
-        get_round_manager,
         remove_round_manager,
     )
 
@@ -359,9 +357,7 @@ class TestHITLRouters:
     def test_should_request_extension_beyond_max_rounds_without_extra(self):
         from backend.workflow.hitl.graph import _should_request_extension
 
-        result = _should_request_extension(
-            {"current_round": 4, "max_rounds": 3, "enable_extra_rounds": False}
-        )
+        result = _should_request_extension({"current_round": 4, "max_rounds": 3, "enable_extra_rounds": False})
         assert result == "complete"
 
     def test_should_request_extension_needs_extension(self):
@@ -395,9 +391,7 @@ class TestHITLRouters:
 
         assert _extension_decision_router({"extension_granted": True}) == "next_round"
 
-    @pytest.mark.parametrize(
-        "decision", [False, None, "denied", "timeout", "pending", 0, ""]
-    )
+    @pytest.mark.parametrize("decision", [False, None, "denied", "timeout", "pending", 0, ""])
     def test_extension_decision_router_denies(self, decision):
         from backend.workflow.hitl.graph import _extension_decision_router
 
@@ -429,9 +423,7 @@ class TestHITLRouters:
         # patch them in the graph module's namespace, not in the original
         # source module.
         monkeypatch.setattr(hitl_graph_module, "check_consensus_node", fake_check)
-        monkeypatch.setattr(
-            hitl_graph_module, "reset_round_interrupt_count", fake_reset
-        )
+        monkeypatch.setattr(hitl_graph_module, "reset_round_interrupt_count", fake_reset)
 
         result = await hitl_graph_module._wrapped_check_consensus(state)
 
@@ -459,9 +451,7 @@ class TestHITLRouters:
             return {"round_interrupt_count": 0}
 
         monkeypatch.setattr(hitl_graph_module, "check_consensus_node", fake_check)
-        monkeypatch.setattr(
-            hitl_graph_module, "reset_round_interrupt_count", fake_reset
-        )
+        monkeypatch.setattr(hitl_graph_module, "reset_round_interrupt_count", fake_reset)
         result = await hitl_graph_module._wrapped_check_consensus(state)
 
         # No advance -> the wrapper must NOT call reset_round_interrupt_count

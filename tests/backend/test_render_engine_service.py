@@ -9,18 +9,15 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 import json
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
 
 from backend.models.artifact import DebateArtifact, Turn
-from backend.models.render_job import RenderJob, RenderJobStatus
+from backend.models.render_job import RenderJobStatus
 from backend.services.output.base import OutputPlugin
 from backend.services.output.registry import PluginRegistry
 from backend.services.render_engine import (
@@ -29,7 +26,6 @@ from backend.services.render_engine import (
     _debate_to_artifact,
     _normalize_or_pass,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -165,17 +161,13 @@ class TestSubmitJob:
             await engine.submit_job("s1", "tiny", {"msg": "ok"})
 
     @pytest.mark.asyncio
-    async def test_missing_artifact_raises_valueerror(
-        self, engine: RenderEngineService
-    ) -> None:
+    async def test_missing_artifact_raises_valueerror(self, engine: RenderEngineService) -> None:
         PluginRegistry.instance().register(_TinyPlugin)
         with pytest.raises(ValueError, match="No DebateArtifact found"):
             await engine.submit_job("missing-session", "tiny", {"msg": "ok"})
 
     @pytest.mark.asyncio
-    async def test_happy_path_creates_queued_job(
-        self, engine: RenderEngineService
-    ) -> None:
+    async def test_happy_path_creates_queued_job(self, engine: RenderEngineService) -> None:
         PluginRegistry.instance().register(_TinyPlugin)
         engine.artifact_store.save(_make_artifact())
 
@@ -192,9 +184,7 @@ class TestSubmitJob:
         assert (engine.output_dir / job.id).is_dir()
 
     @pytest.mark.asyncio
-    async def test_config_is_serialized_into_job(
-        self, engine: RenderEngineService
-    ) -> None:
+    async def test_config_is_serialized_into_job(self, engine: RenderEngineService) -> None:
         PluginRegistry.instance().register(_TinyPlugin)
         engine.artifact_store.save(_make_artifact())
 
@@ -210,18 +200,14 @@ class TestSubmitJob:
 
 class TestExecuteJob:
     @pytest.mark.asyncio
-    async def test_unknown_job_id_logs_and_returns(
-        self, engine: RenderEngineService, caplog
-    ) -> None:
+    async def test_unknown_job_id_logs_and_returns(self, engine: RenderEngineService, caplog) -> None:
         # Just ensure no exception, no state change
         with caplog.at_level("ERROR"):
             await engine.execute_job("does-not-exist")
         assert any("not found" in rec.message for rec in caplog.records)
 
     @pytest.mark.asyncio
-    async def test_happy_path_runs_plugin_and_marks_completed(
-        self, engine: RenderEngineService
-    ) -> None:
+    async def test_happy_path_runs_plugin_and_marks_completed(self, engine: RenderEngineService) -> None:
         plugin_cls = _TinyPlugin
         PluginRegistry.instance().register(plugin_cls)
         engine.artifact_store.save(_make_artifact())
@@ -239,9 +225,7 @@ class TestExecuteJob:
         assert stored.progress_current == 3
 
     @pytest.mark.asyncio
-    async def test_plugin_failure_marks_job_failed(
-        self, engine: RenderEngineService
-    ) -> None:
+    async def test_plugin_failure_marks_job_failed(self, engine: RenderEngineService) -> None:
         PluginRegistry.instance().register(_TinyPlugin)
         engine.artifact_store.save(_make_artifact())
         job = await engine.submit_job("s1", "tiny", {"msg": "boom"})
@@ -266,9 +250,7 @@ class TestExecuteJob:
         assert stored.completed_at is not None
 
     @pytest.mark.asyncio
-    async def test_execute_job_artifact_disappeared_raises(
-        self, engine: RenderEngineService, monkeypatch
-    ) -> None:
+    async def test_execute_job_artifact_disappeared_raises(self, engine: RenderEngineService, monkeypatch) -> None:
         PluginRegistry.instance().register(_TinyPlugin)
         engine.artifact_store.save(_make_artifact())
         job = await engine.submit_job("s1", "tiny", {"msg": "ok"})
@@ -276,9 +258,7 @@ class TestExecuteJob:
         # Now make the artifact vanish before execute_job reloads it
         monkeypatch.setattr(engine.artifact_store, "get", lambda sid: None)
         # And ensure fallback also returns None
-        monkeypatch.setattr(
-            engine, "_build_artifact_from_debate_store", lambda sid: None
-        )
+        monkeypatch.setattr(engine, "_build_artifact_from_debate_store", lambda sid: None)
 
         await engine.execute_job(job.id)
 
@@ -294,27 +274,19 @@ class TestExecuteJob:
 
 
 class TestBuildArtifactFromDebateStore:
-    def test_no_fallback_returns_none(
-        self, engine: RenderEngineService, monkeypatch
-    ) -> None:
+    def test_no_fallback_returns_none(self, engine: RenderEngineService, monkeypatch) -> None:
         # Force all stores to look empty
         fake_project_store = MagicMock()
         fake_project_store.list_all.return_value = []
-        monkeypatch.setattr(
-            "backend.api.deps.get_project_store", lambda: fake_project_store
-        )
+        monkeypatch.setattr("backend.api.deps.get_project_store", lambda: fake_project_store)
         # Global DebateStore is also empty
         fake_debate_store = MagicMock()
         fake_debate_store.get.return_value = None
         fake_debate_store.list_all.return_value = []
-        monkeypatch.setattr(
-            "backend.persistence.debate_store.DebateStore", lambda *a, **k: fake_debate_store
-        )
+        monkeypatch.setattr("backend.persistence.debate_store.DebateStore", lambda *a, **k: fake_debate_store)
         assert engine._build_artifact_from_debate_store("nope") is None
 
-    def test_direct_key_lookup_succeeds(
-        self, engine: RenderEngineService, monkeypatch, tmp_path
-    ) -> None:
+    def test_direct_key_lookup_succeeds(self, engine: RenderEngineService, monkeypatch, tmp_path) -> None:
         # Set up a fake project + debate that matches the session_id directly
         project = MagicMock()
         project.id = "p1"
@@ -331,9 +303,7 @@ class TestBuildArtifactFromDebateStore:
                     "rounds": [
                         {
                             "round": 1,
-                            "agent_outputs": [
-                                {"role": "strategist", "content": "Hi", "tokens_used": 5}
-                            ],
+                            "agent_outputs": [{"role": "strategist", "content": "Hi", "tokens_used": 5}],
                         }
                     ],
                     "request": {"language": "de"},
@@ -343,12 +313,8 @@ class TestBuildArtifactFromDebateStore:
 
         fake_project_store = MagicMock()
         fake_project_store.list_all.return_value = [project]
-        monkeypatch.setattr(
-            "backend.api.deps.get_project_store", lambda: fake_project_store
-        )
-        monkeypatch.setattr(
-            "backend.api.deps.get_case_dir", lambda pid: proj_dir
-        )
+        monkeypatch.setattr("backend.api.deps.get_project_store", lambda: fake_project_store)
+        monkeypatch.setattr("backend.api.deps.get_case_dir", lambda pid: proj_dir)
 
         artifact = engine._build_artifact_from_debate_store("s1")
         assert artifact is not None
@@ -358,9 +324,7 @@ class TestBuildArtifactFromDebateStore:
         # And the artifact was persisted
         assert engine.artifact_store.get("s1") is not None
 
-    def test_fallback_search_by_session_id_field(
-        self, engine: RenderEngineService, monkeypatch, tmp_path
-    ) -> None:
+    def test_fallback_search_by_session_id_field(self, engine: RenderEngineService, monkeypatch, tmp_path) -> None:
         project = MagicMock()
         project.id = "p1"
         proj_dir = tmp_path / "p1"
@@ -382,12 +346,8 @@ class TestBuildArtifactFromDebateStore:
 
         fake_project_store = MagicMock()
         fake_project_store.list_all.return_value = [project]
-        monkeypatch.setattr(
-            "backend.api.deps.get_project_store", lambda: fake_project_store
-        )
-        monkeypatch.setattr(
-            "backend.api.deps.get_case_dir", lambda pid: proj_dir
-        )
+        monkeypatch.setattr("backend.api.deps.get_project_store", lambda: fake_project_store)
+        monkeypatch.setattr("backend.api.deps.get_case_dir", lambda pid: proj_dir)
 
         artifact = engine._build_artifact_from_debate_store("wf-abc")
         assert artifact is not None
@@ -513,15 +473,11 @@ class TestBuildTurnsFromNodeOutputs:
         assert "(Owl-Alpha)" in out[0].agent_name
 
     def test_default_node_id_uses_role_and_round(self) -> None:
-        out = _build_turns_from_node_outputs(
-            [{"role": "strategist", "round": 2, "content": "hi"}]
-        )
+        out = _build_turns_from_node_outputs([{"role": "strategist", "round": 2, "content": "hi"}])
         assert out[0].node_id == "strategist_round2"
 
     def test_role_falls_back_to_node_type(self) -> None:
-        out = _build_turns_from_node_outputs(
-            [{"node_type": "builder", "round": 1, "content": "hi"}]
-        )
+        out = _build_turns_from_node_outputs([{"node_type": "builder", "round": 1, "content": "hi"}])
         assert out[0].role_type == "builder"
 
 
@@ -539,15 +495,11 @@ class TestDebateToArtifact:
             "rounds": [
                 {
                     "round": 1,
-                    "agent_outputs": [
-                        {"role": "strategist", "content": "Plan", "tokens_used": 7}
-                    ],
+                    "agent_outputs": [{"role": "strategist", "content": "Plan", "tokens_used": 7}],
                 },
                 {
                     "round": 2,
-                    "agent_outputs": [
-                        {"role": "critic", "content": "Disagree", "tokens_used": 5}
-                    ],
+                    "agent_outputs": [{"role": "critic", "content": "Disagree", "tokens_used": 5}],
                 },
             ],
             "result": {"final_consensus": 0.8, "output": "We agree"},
@@ -628,9 +580,7 @@ class TestDebateToArtifact:
         assert art.transcript[0].content == "MVP plan"
         assert art.transcript[0].agent_name == "MVP-Strategist"
 
-    def test_mvp_debate_snapshot_failure_keeps_empty_transcript(
-        self, monkeypatch
-    ) -> None:
+    def test_mvp_debate_snapshot_failure_keeps_empty_transcript(self, monkeypatch) -> None:
         class _BrokenStore:
             def get_latest(self, session_id: str):
                 raise RuntimeError("disk error")

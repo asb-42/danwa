@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import base64
 import inspect
-import os
 import socket
 from pathlib import Path
 from unittest.mock import patch
@@ -316,18 +315,18 @@ class TestWrapUserDocument:
 
         # Build the input filename with an embedded double-quote.
         # Use string concatenation to avoid quote-escape issues in the source.
-        ENT = '&' + 'quot;'  # 6-char HTML entity as a plain Python string
-        DQ = chr(34)         # a single double-quote character
-        filename = 'evil' + DQ + 'name.txt'
+        ent = "&" + "quot;"  # 6-char HTML entity as a plain Python string
+        dq = chr(34)  # a single double-quote character
+        filename = "evil" + dq + "name.txt"
 
-        result = _wrap_user_document(1, filename, 'x')
+        result = _wrap_user_document(1, filename, "x")
         # The escaped filename in the attribute should contain the entity.
-        assert 'filename="evil' + ENT + 'name.txt"' in result
+        assert 'filename="evil' + ent + 'name.txt"' in result
         # The raw, unescaped double-quote must NOT appear inside the
         # attribute value (otherwise attribute injection is possible).
         assert 'filename="evil"' not in result
         # Sanity: a properly quoted attribute with the entity is present.
-        assert 'filename="evil' + ENT + 'name.txt"' in result
+        assert 'filename="evil' + ent + 'name.txt"' in result
 
     def test_filename_angle_bracket_escaped(self) -> None:
         from backend.services.dms.document_analyzer import _wrap_user_document
@@ -639,8 +638,8 @@ def test_p3_modules_have_expected_exports() -> None:
     assert callable(resolve_fernet_key)
     # P3.3
     from backend.services.dms.document_analyzer import (
-        _wrap_user_document,
         _escape_document_tag,
+        _wrap_user_document,
         analyze_documents,
         update_analysis,
     )

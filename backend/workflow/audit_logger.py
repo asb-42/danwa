@@ -109,9 +109,7 @@ class AuditLogger:
                     # A close failure almost always means the DB file
                     # was already removed or the process is in a bad
                     # state; the operator should know.
-                    logger.warning(
-                        "Error closing audit logger connection", exc_info=True
-                    )
+                    logger.warning("Error closing audit logger connection", exc_info=True)
                 self._conn = None
 
     def get_insert_failure_count(self) -> int:
@@ -250,8 +248,7 @@ class AuditLogger:
                 self._conn = None
                 if session_id in self._session_error_logged:
                     logger.debug(
-                        "AuditLogger: insert failed for session %s "
-                        "(suppressed; see the first error above): %s",
+                        "AuditLogger: insert failed for session %s (suppressed; see the first error above): %s",
                         session_id,
                         exc,
                     )

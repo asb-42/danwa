@@ -158,6 +158,7 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
     # Default to the real helper; if session_id is empty or the import
     # fails, fall back to the raw content (avoid UnboundLocalError).
     from backend.workflow.report_generator import _format_audit_content
+
     _use_formatter = True
     if session_id:
         try:
@@ -180,11 +181,7 @@ def _transform_workflow_audit_events(wf_events: list[dict], session_id: str = ""
         llm_display = llm_name_map.get(node_id, "") or entry.get("llm_profile_id", "")
         ctx = ctx_map.get(node_id, {})
         raw_content = entry.get("output_content", "")
-        formatted = (
-            _format_audit_content(raw_content, event_type)
-            if _use_formatter
-            else raw_content
-        )
+        formatted = _format_audit_content(raw_content, event_type) if _use_formatter else raw_content
         if event_type == "node_completed":
             result.append(
                 {

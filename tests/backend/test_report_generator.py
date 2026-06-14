@@ -20,7 +20,6 @@ from backend.workflow.report_generator import (
     _format_content_for_display,
 )
 
-
 # ---------------------------------------------------------------------------
 # _display_agent_role
 # ---------------------------------------------------------------------------
@@ -80,8 +79,7 @@ class TestFormatContentForDisplay:
             '"phase_transition": "P", "next_agent": "A"}'
         )
         out = _format_content_for_display(raw)
-        for label in ("Reasoning", "Directive", "Context", "Status",
-                      "Phase Transition", "Next Agent"):
+        for label in ("Reasoning", "Directive", "Context", "Status", "Phase Transition", "Next Agent"):
             assert label in out
 
     def test_orchestrator_json_skips_empty_values(self) -> None:
@@ -142,9 +140,7 @@ class TestBuildNodePhaseMap:
 
     def test_no_workflow_returns_empty(self, monkeypatch) -> None:
         _stub_repo_returns_none(monkeypatch)
-        result = _build_node_phase_map(
-            {"node_sequence": ["a", "b"]}, workflow_id="wf-1"
-        )
+        result = _build_node_phase_map({"node_sequence": ["a", "b"]}, workflow_id="wf-1")
         assert result == {}
 
     def test_phase_assigns_subsequent_nodes(self, monkeypatch) -> None:
@@ -180,9 +176,7 @@ class TestBuildNodePhaseMap:
         assert "a" in result
         assert result["a"]["phase_name"] == "P1"
 
-    def test_continues_phase_after_unrecognised_node(
-        self, monkeypatch
-    ) -> None:
+    def test_continues_phase_after_unrecognised_node(self, monkeypatch) -> None:
         # An unrecognised id is treated as a regular node (assigned the
         # current phase) — the function does not break out of the phase.
         from backend.blueprints.workflow_models import PhaseConfig

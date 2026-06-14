@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.routers import audit as audit_module
@@ -20,7 +19,6 @@ from backend.api.routers.audit import (
     _transform_workflow_audit_events,
 )
 from backend.models.schemas import AgentRole, AuditEvent
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,9 +64,7 @@ class TestEnrichEventsWithDebateData:
                 },
                 {
                     "round": 2,
-                    "agent_outputs": [
-                        {"role": "critic", "content": "Counter A", "tokens_used": 80}
-                    ],
+                    "agent_outputs": [{"role": "critic", "content": "Counter A", "tokens_used": 80}],
                 },
             ]
         }
@@ -86,9 +82,7 @@ class TestEnrichEventsWithDebateData:
                 "rounds": [
                     {
                         "round": 1,
-                        "agent_outputs": [
-                            {"role": "strategist", "content": "X", "tokens_used": 5}
-                        ],
+                        "agent_outputs": [{"role": "strategist", "content": "X", "tokens_used": 5}],
                     }
                 ]
             }
@@ -102,9 +96,7 @@ class TestEnrichEventsWithDebateData:
             "rounds": [
                 {
                     "round": 1,
-                    "agent_outputs": [
-                        {"role": "strategist", "content": "A", "tokens_used": 1}
-                    ],
+                    "agent_outputs": [{"role": "strategist", "content": "A", "tokens_used": 1}],
                 }
             ]
         }
@@ -122,9 +114,7 @@ class TestEnrichEventsWithDebateData:
             "rounds": [
                 {
                     "round": 1,
-                    "agent_outputs": [
-                        {"role": "strategist", "content": "F", "tokens_used": 11}
-                    ],
+                    "agent_outputs": [{"role": "strategist", "content": "F", "tokens_used": 11}],
                 }
             ]
         }
@@ -144,9 +134,7 @@ class TestEnrichEventsWithDebateData:
             "rounds": [
                 {
                     "round": 1,
-                    "agent_outputs": [
-                        {"role": "strategist", "content": "X", "tokens_used": 1}
-                    ],
+                    "agent_outputs": [{"role": "strategist", "content": "X", "tokens_used": 1}],
                 }
             ]
         }
@@ -236,12 +224,8 @@ class TestTransformWorkflowAuditEvents:
         # controlled value to verify the merge.
         import backend.workflow.report_generator as rg
 
-        monkeypatch.setattr(
-            rg, "_build_node_llm_name_map", lambda _sid: {"n5": "friendly-llm"}
-        )
-        monkeypatch.setattr(
-            rg, "_build_audit_context_map", lambda _sid: {"n5": {"round": 7, "phase": "x"}}
-        )
+        monkeypatch.setattr(rg, "_build_node_llm_name_map", lambda _sid: {"n5": "friendly-llm"})
+        monkeypatch.setattr(rg, "_build_audit_context_map", lambda _sid: {"n5": {"round": 7, "phase": "x"}})
         wf = [
             {
                 "event_type": "node_completed",
@@ -271,9 +255,7 @@ class TestGetAuditEventsEndpoint:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_debate_id_with_audit_events(
-        self, client: TestClient, audit_service
-    ) -> None:
+    def test_debate_id_with_audit_events(self, client: TestClient, audit_service) -> None:
         ev = _make_event("deb-1", 1, AgentRole.STRATEGIST)
         audit_service.record(ev, project_id="proj-1")
         resp = client.get("/api/v1/audit/deb-1")
@@ -284,9 +266,7 @@ class TestGetAuditEventsEndpoint:
         assert data[0]["round"] == 1
         assert data[0]["action"] == "agent_output"
 
-    def test_title_resolution_exact(
-        self, client: TestClient, debate_store, monkeypatch
-    ) -> None:
+    def test_title_resolution_exact(self, client: TestClient, debate_store, monkeypatch) -> None:
         # Seed a debate and stub get_debate_store_for_case to return our store
         debate_store.put(
             "deb-2",
@@ -296,24 +276,18 @@ class TestGetAuditEventsEndpoint:
                 "result": {},
             },
         )
-        monkeypatch.setattr(
-            audit_module, "get_debate_store_for_case", lambda _pid: debate_store
-        )
+        monkeypatch.setattr(audit_module, "get_debate_store_for_case", lambda _pid: debate_store)
         resp = client.get("/api/v1/audit/Unique Title X")
         assert resp.status_code == 200
         # Empty audit events for this debate — returns []
         assert resp.json() == []
 
-    def test_title_resolution_partial(
-        self, client: TestClient, debate_store, monkeypatch
-    ) -> None:
+    def test_title_resolution_partial(self, client: TestClient, debate_store, monkeypatch) -> None:
         debate_store.put(
             "deb-3",
             {"title": "Climate Policy 2026", "rounds": [], "result": {}},
         )
-        monkeypatch.setattr(
-            audit_module, "get_debate_store_for_case", lambda _pid: debate_store
-        )
+        monkeypatch.setattr(audit_module, "get_debate_store_for_case", lambda _pid: debate_store)
         # Partial match (case-insensitive)
         resp = client.get("/api/v1/audit/climate")
         assert resp.status_code == 200
@@ -336,9 +310,7 @@ class TestGetAuditEventsByProjectEndpoint:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_returns_events_for_project(
-        self, client: TestClient, audit_service
-    ) -> None:
+    def test_returns_events_for_project(self, client: TestClient, audit_service) -> None:
         ev1 = _make_event("d1", 1, AgentRole.CRITIC)
         ev2 = _make_event("d2", 1, AgentRole.OPTIMIZER)
         audit_service.record(ev1, project_id="proj-A")
@@ -351,9 +323,7 @@ class TestGetAuditEventsByProjectEndpoint:
         assert data[0]["debate_id"] == "d1"
         assert data[0]["agent"] == "critic"
 
-    def test_pagination_passthrough(
-        self, client: TestClient, audit_service
-    ) -> None:
+    def test_pagination_passthrough(self, client: TestClient, audit_service) -> None:
         for i in range(5):
             audit_service.record(
                 _make_event(f"d{i}", 1, AgentRole.MODERATOR),
@@ -372,35 +342,25 @@ class TestGetAuditEventsByProjectEndpoint:
 class TestResolveDebateIdHelper:
     def test_direct_id_lookup(self, monkeypatch, debate_store) -> None:
         debate_store.put("d-direct", {"title": "X", "rounds": [], "result": {}})
-        monkeypatch.setattr(
-            audit_module, "get_debate_store_for_case", lambda _pid: debate_store
-        )
+        monkeypatch.setattr(audit_module, "get_debate_store_for_case", lambda _pid: debate_store)
         d_id, d_data = _resolve_debate_id("d-direct", "p")
         assert d_id == "d-direct"
         assert d_data is not None and d_data["title"] == "X"
 
     def test_exact_title_match(self, monkeypatch, debate_store) -> None:
         debate_store.put("d-title", {"title": "My Title", "rounds": [], "result": {}})
-        monkeypatch.setattr(
-            audit_module, "get_debate_store_for_case", lambda _pid: debate_store
-        )
+        monkeypatch.setattr(audit_module, "get_debate_store_for_case", lambda _pid: debate_store)
         d_id, d_data = _resolve_debate_id("My Title", "p")
         assert d_id == "d-title"
 
     def test_partial_title_match(self, monkeypatch, debate_store) -> None:
-        debate_store.put(
-            "d-partial", {"title": "Long Title With Keyword", "rounds": [], "result": {}}
-        )
-        monkeypatch.setattr(
-            audit_module, "get_debate_store_for_case", lambda _pid: debate_store
-        )
+        debate_store.put("d-partial", {"title": "Long Title With Keyword", "rounds": [], "result": {}})
+        monkeypatch.setattr(audit_module, "get_debate_store_for_case", lambda _pid: debate_store)
         d_id, _ = _resolve_debate_id("keyword", "p")
         assert d_id == "d-partial"
 
     def test_not_found_returns_original(self, monkeypatch, debate_store) -> None:
-        monkeypatch.setattr(
-            audit_module, "get_debate_store_for_case", lambda _pid: debate_store
-        )
+        monkeypatch.setattr(audit_module, "get_debate_store_for_case", lambda _pid: debate_store)
         d_id, d_data = _resolve_debate_id("nope", "p")
         assert d_id == "nope"
         assert d_data is None

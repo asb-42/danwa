@@ -13,14 +13,11 @@ from __future__ import annotations
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from backend.services.dms.hybrid_retriever import (
-    HybridRetriever,
     _CORPUS_CACHE_TTL,
+    HybridRetriever,
 )
 from backend.services.dms.metadata_index import MetadataIndex
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -207,18 +204,14 @@ class TestFetchChunksUncached:
     def test_with_project_id_and_metadata_index(self) -> None:
         store = _make_fake_vector_store()
         idx = MagicMock()
-        idx.get_chunks_by_project.return_value = [
-            _make_chunk("doc1_chunk_0", "hello")
-        ]
+        idx.get_chunks_by_project.return_value = [_make_chunk("doc1_chunk_0", "hello")]
         retriever = HybridRetriever(vector_store=store, metadata_index=idx)
         result = retriever._fetch_chunks_uncached("p1")
         idx.get_chunks_by_project.assert_called_once_with("p1")
         assert len(result) == 1
 
     def test_with_project_id_uses_vector_store_fallback(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_chunk("doc1_chunk_0", "hello", project_id="p1")]
-        )
+        store = _make_fake_vector_store([_make_chunk("doc1_chunk_0", "hello", project_id="p1")])
         retriever = HybridRetriever(vector_store=store)  # no metadata_index
         result = retriever._fetch_chunks_uncached("p1")
         assert len(result) == 1
@@ -241,9 +234,7 @@ class TestFetchChunksUncached:
 
 class TestFetchChunksCaching:
     def test_cache_hit_same_project(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_chunk("doc1_chunk_0", "hello", project_id="p1")]
-        )
+        store = _make_fake_vector_store([_make_chunk("doc1_chunk_0", "hello", project_id="p1")])
         retriever = HybridRetriever(vector_store=store)
         # First call populates cache
         retriever._fetch_chunks("p1")
@@ -262,9 +253,7 @@ class TestFetchChunksCaching:
         assert len(chunks) == 1
 
     def test_cache_miss_different_project(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_chunk("doc1_chunk_0", "hello world", project_id="p2")]
-        )
+        store = _make_fake_vector_store([_make_chunk("doc1_chunk_0", "hello world", project_id="p2")])
         retriever = HybridRetriever(vector_store=store)
         # Pre-populate cache for p1
         retriever._corpus_cache = ("p1", time.time(), [_make_chunk("a", "alpha beta")], None)
@@ -279,9 +268,7 @@ class TestFetchChunksCaching:
         assert bm25 is not None
 
     def test_cache_miss_after_ttl(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_chunk("doc1_chunk_0", "hello", project_id="p1")]
-        )
+        store = _make_fake_vector_store([_make_chunk("doc1_chunk_0", "hello", project_id="p1")])
         retriever = HybridRetriever(vector_store=store)
         # Pre-populate cache with stale timestamp
         retriever._corpus_cache = ("p1", time.time() - _CORPUS_CACHE_TTL - 1, [], None)
@@ -382,9 +369,7 @@ class TestRetrieve:
             assert "score" in r
 
     def test_respects_k(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_vector_result("d_chunk_0", "x", document_id="d", chunk_index=0) for _ in range(10)]
-        )
+        store = _make_fake_vector_store([_make_vector_result("d_chunk_0", "x", document_id="d", chunk_index=0) for _ in range(10)])
         retriever = HybridRetriever(vector_store=store)
         retriever._corpus_cache = (
             "p1",
@@ -396,9 +381,7 @@ class TestRetrieve:
         assert len(results) <= 3
 
     def test_cross_encoder_rerank(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_vector_result("d_chunk_0", "x", document_id="d", chunk_index=0)]
-        )
+        store = _make_fake_vector_store([_make_vector_result("d_chunk_0", "x", document_id="d", chunk_index=0)])
         retriever = HybridRetriever(vector_store=store)
         # Inject a fake cross_encoder
         fake_ce = MagicMock()
@@ -419,9 +402,7 @@ class TestRetrieve:
         fake_ce.predict.assert_called_once()
 
     def test_cross_encoder_failure_is_swallowed(self) -> None:
-        store = _make_fake_vector_store(
-            [_make_vector_result("d_chunk_0", "x", document_id="d", chunk_index=0)]
-        )
+        store = _make_fake_vector_store([_make_vector_result("d_chunk_0", "x", document_id="d", chunk_index=0)])
         retriever = HybridRetriever(vector_store=store)
         fake_ce = MagicMock()
         fake_ce.predict.side_effect = RuntimeError("rerank fail")
@@ -452,13 +433,7 @@ class TestRetrieve:
 
     def test_vector_only_chunk_added_to_map(self) -> None:
         """Chunks only present in vector results (not in BM25 corpus) are still returned."""
-        store = _make_fake_vector_store(
-            [
-                _make_vector_result(
-                    "docX_chunk_0", "vector-only", document_id="docX", chunk_index=0
-                )
-            ]
-        )
+        store = _make_fake_vector_store([_make_vector_result("docX_chunk_0", "vector-only", document_id="docX", chunk_index=0)])
         retriever = HybridRetriever(vector_store=store)
         # Empty BM25 corpus (no metadata_index, no project_id... but then we can't get there)
         # Instead, use a project_id with empty corpus.

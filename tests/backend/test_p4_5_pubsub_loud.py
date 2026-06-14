@@ -171,9 +171,7 @@ class TestPerChannelThrottling:
         assert len(error_records) == 1
         assert "ch-B" in error_records[0].getMessage()
 
-    def test_throttling_is_per_op_within_channel(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_throttling_is_per_op_within_channel(self, caplog: pytest.LogCaptureFixture) -> None:
         """A failure on (channel, publish) does not suppress a
         failure on the same (channel, clear) — different ops
         are independent.
@@ -187,9 +185,7 @@ class TestPerChannelThrottling:
         assert len(error_records) == 1
         assert "clear" in error_records[0].getMessage()
 
-    def test_reset_clears_throttle_set(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_reset_clears_throttle_set(self, caplog: pytest.LogCaptureFixture) -> None:
         """``reset_publish_failure_count()`` clears the throttle
         set so the *next* failure on a previously-logged channel
         is logged again at ``error`` level.
@@ -219,9 +215,7 @@ class TestInMemoryQueueFullCounts:
         reset_publish_failure_count()
 
     @pytest.mark.asyncio
-    async def test_queue_full_increments_counter(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_queue_full_increments_counter(self, caplog: pytest.LogCaptureFixture) -> None:
         """When a subscriber's queue fills up, the drop is
         counted via the module-level counter.  We use a
         low-maxsize queue (4 messages) and publish 10 to
@@ -336,9 +330,7 @@ class TestRedisChannelSwallowPoints:
         ch.clear()
         assert get_publish_failure_count() == 0
 
-    def test_swallow_points_are_isolated_per_channel(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_swallow_points_are_isolated_per_channel(self, caplog: pytest.LogCaptureFixture) -> None:
         """A failure on channel A's ``is_set`` does not log
         at ``error`` when channel B's ``is_set`` fails for
         the first time.
@@ -376,9 +368,7 @@ class TestGetPubsubInitFailureCounts:
         pubsub.reset_pubsub_cache()
         reset_publish_failure_count()
 
-    def test_redis_init_failure_increments_counter(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_redis_init_failure_increments_counter(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
         """When :func:`get_pubsub` falls back to in-memory because
         Redis is unreachable, the failure is counted via the
         synthetic ``"__init__"`` channel key.

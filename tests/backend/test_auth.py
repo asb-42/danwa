@@ -53,10 +53,7 @@ class TestPasswordHashing:
         with caplog.at_level(logging.WARNING, logger="backend.core.security"):
             result = verify_password("any-password", "not-a-valid-bcrypt-hash")
         assert result is False
-        assert any(
-            "treating exception as invalid credentials" in rec.getMessage()
-            for rec in caplog.records
-        ), caplog.records
+        assert any("treating exception as invalid credentials" in rec.getMessage() for rec in caplog.records), caplog.records
 
     def test_empty_hash_also_returns_false_with_warning(self, caplog):
         """An empty hash is *also* treated as a corrupted row.
@@ -72,10 +69,7 @@ class TestPasswordHashing:
         with caplog.at_level(logging.WARNING, logger="backend.core.security"):
             result = verify_password("any-password", "")
         assert result is False
-        assert any(
-            "treating exception as invalid credentials" in rec.getMessage()
-            for rec in caplog.records
-        ), caplog.records
+        assert any("treating exception as invalid credentials" in rec.getMessage() for rec in caplog.records), caplog.records
 
 
 # ---------------------------------------------------------------------------

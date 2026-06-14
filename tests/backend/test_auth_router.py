@@ -15,12 +15,10 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import deps as deps_module
 from backend.api.deps import get_current_user
 from backend.core.security import create_access_token, hash_password
 from backend.persistence.membership_store import MembershipStore
 from backend.persistence.user_store import UserStore
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -136,9 +134,7 @@ class TestRegister:
         assert "password" not in data
         assert "password_hash" not in data
 
-    def test_duplicate_email_returns_409(
-        self, client_auth: TestClient, admin_user
-    ):
+    def test_duplicate_email_returns_409(self, client_auth: TestClient, admin_user):
         resp = client_auth.post(
             "/api/v1/auth/register",
             json={
@@ -150,9 +146,7 @@ class TestRegister:
         assert resp.status_code == 409
         assert "already registered" in resp.json()["detail"]
 
-    def test_second_user_becomes_viewer(
-        self, client_auth: TestClient, admin_user
-    ):
+    def test_second_user_becomes_viewer(self, client_auth: TestClient, admin_user):
         resp = client_auth.post(
             "/api/v1/auth/register",
             json={
@@ -176,12 +170,12 @@ class TestRegister:
         # Pydantic validation rejects short passwords
         assert resp.status_code in (422, 400)
 
-    def test_register_internal_error_returns_500(
-        self, client_empty_store: TestClient, user_store, monkeypatch
-    ):
+    def test_register_internal_error_returns_500(self, client_empty_store: TestClient, user_store, monkeypatch):
         """When user_store.create raises, /register returns 500."""
+
         def _boom(**kwargs):
             raise RuntimeError("db connection lost")
+
         monkeypatch.setattr(user_store, "create", _boom)
         resp = client_empty_store.post(
             "/api/v1/auth/register",
@@ -201,9 +195,7 @@ class TestRegister:
 
 
 class TestLogin:
-    def test_login_success(
-        self, client_auth: TestClient, regular_user
-    ):
+    def test_login_success(self, client_auth: TestClient, regular_user):
         resp = client_auth.post(
             "/api/v1/auth/login",
             json={"email": regular_user.email, "password": "userpass"},
@@ -221,18 +213,14 @@ class TestLogin:
         )
         assert resp.status_code == 401
 
-    def test_login_wrong_password(
-        self, client_auth: TestClient, regular_user
-    ):
+    def test_login_wrong_password(self, client_auth: TestClient, regular_user):
         resp = client_auth.post(
             "/api/v1/auth/login",
             json={"email": regular_user.email, "password": "WRONG"},
         )
         assert resp.status_code == 401
 
-    def test_login_deactivated_user(
-        self, client_auth: TestClient, user_store, regular_user
-    ):
+    def test_login_deactivated_user(self, client_auth: TestClient, user_store, regular_user):
         # Deactivate the user
         user_store.update(regular_user.id, is_active=False)
         resp = client_auth.post(
@@ -249,34 +237,24 @@ class TestLogin:
 
 
 class TestRefresh:
-    def test_refresh_success(
-        self, client_auth: TestClient, regular_user
-    ):
+    def test_refresh_success(self, client_auth: TestClient, regular_user):
         from backend.core.security import create_refresh_token
 
         token = create_refresh_token(regular_user)
-        resp = client_auth.post(
-            "/api/v1/auth/refresh", json={"refresh_token": token}
-        )
+        resp = client_auth.post("/api/v1/auth/refresh", json={"refresh_token": token})
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
         assert "refresh_token" in data
 
     def test_refresh_invalid_token(self, client_auth: TestClient):
-        resp = client_auth.post(
-            "/api/v1/auth/refresh", json={"refresh_token": "not-a-jwt"}
-        )
+        resp = client_auth.post("/api/v1/auth/refresh", json={"refresh_token": "not-a-jwt"})
         assert resp.status_code == 401
 
-    def test_refresh_with_access_token_rejected(
-        self, client_auth: TestClient, regular_user
-    ):
+    def test_refresh_with_access_token_rejected(self, client_auth: TestClient, regular_user):
         """An access token is not a refresh token."""
         access = create_access_token(regular_user)
-        resp = client_auth.post(
-            "/api/v1/auth/refresh", json={"refresh_token": access}
-        )
+        resp = client_auth.post("/api/v1/auth/refresh", json={"refresh_token": access})
         assert resp.status_code == 401
         assert "not a refresh token" in resp.json()["detail"]
 
@@ -295,15 +273,11 @@ class TestRefresh:
             tenant_id="_default",
         )
         token = create_refresh_token(fake_user)
-        resp = client_auth.post(
-            "/api/v1/auth/refresh", json={"refresh_token": token}
-        )
+        resp = client_auth.post("/api/v1/auth/refresh", json={"refresh_token": token})
         assert resp.status_code == 401
         assert "User not found" in resp.json()["detail"]
 
-    def test_refresh_deactivated_user(
-        self, client_auth: TestClient, user_store, regular_user
-    ):
+    def test_refresh_deactivated_user(self, client_auth: TestClient, user_store, regular_user):
         """A deactivated user holding a valid refresh token is rejected with 403."""
         from backend.core.security import create_refresh_token
 
@@ -311,9 +285,7 @@ class TestRefresh:
         # before deactivation.
         token = create_refresh_token(regular_user)
         user_store.update(regular_user.id, is_active=False)
-        resp = client_auth.post(
-            "/api/v1/auth/refresh", json={"refresh_token": token}
-        )
+        resp = client_auth.post("/api/v1/auth/refresh", json={"refresh_token": token})
         assert resp.status_code == 403
         assert "deactivated" in resp.json()["detail"].lower()
 
@@ -339,9 +311,7 @@ class TestMe:
         assert resp.status_code == 200
         assert resp.json()["display_name"] == "Renamed Admin"
 
-    def test_update_me_fails_when_update_returns_none(
-        self, client_auth: TestClient, admin_user, user_store, monkeypatch
-    ):
+    def test_update_me_fails_when_update_returns_none(self, client_auth: TestClient, admin_user, user_store, monkeypatch):
         """When user_store.update returns None, PUT /me returns 500."""
         # Patch update to return None, simulating a deletion race.
         monkeypatch.setattr(user_store, "update", lambda uid, **kw: None)
@@ -352,9 +322,7 @@ class TestMe:
         assert resp.status_code == 500
         assert "Failed to update profile" in resp.json()["detail"]
 
-    def test_change_password(
-        self, client_auth: TestClient, admin_user, user_store
-    ):
+    def test_change_password(self, client_auth: TestClient, admin_user, user_store):
         resp = client_auth.put(
             "/api/v1/auth/password",
             json={
@@ -373,9 +341,7 @@ class TestMe:
         )
         assert resp.status_code == 200
 
-    def test_change_password_wrong_current(
-        self, client_auth: TestClient, admin_user
-    ):
+    def test_change_password_wrong_current(self, client_auth: TestClient, admin_user):
         resp = client_auth.put(
             "/api/v1/auth/password",
             json={
@@ -392,9 +358,7 @@ class TestMe:
 
 
 class TestAdminUsers:
-    def test_list_users(
-        self, client_auth: TestClient, admin_user, regular_user
-    ):
+    def test_list_users(self, client_auth: TestClient, admin_user, regular_user):
         resp = client_auth.get("/api/v1/auth/users")
         assert resp.status_code == 200
         data = resp.json()
@@ -414,9 +378,7 @@ class TestAdminUsers:
         assert resp.status_code == 201
         assert resp.json()["email"] == "invited@example.com"
 
-    def test_invite_duplicate(
-        self, client_auth: TestClient, admin_user, regular_user
-    ):
+    def test_invite_duplicate(self, client_auth: TestClient, admin_user, regular_user):
         resp = client_auth.post(
             "/api/v1/auth/users/invite",
             json={
@@ -428,12 +390,12 @@ class TestAdminUsers:
         )
         assert resp.status_code == 409
 
-    def test_invite_internal_error_returns_500(
-        self, client_auth: TestClient, admin_user, user_store, monkeypatch
-    ):
+    def test_invite_internal_error_returns_500(self, client_auth: TestClient, admin_user, user_store, monkeypatch):
         """When user_store.create raises, /users/invite returns 500."""
+
         def _boom(**kwargs):
             raise RuntimeError("db connection lost")
+
         monkeypatch.setattr(user_store, "create", _boom)
         resp = client_auth.post(
             "/api/v1/auth/users/invite",
@@ -447,22 +409,16 @@ class TestAdminUsers:
         assert resp.status_code == 500
         assert "Failed to create user" in resp.json()["detail"]
 
-    def test_delete_user(
-        self, client_auth: TestClient, admin_user, regular_user
-    ):
+    def test_delete_user(self, client_auth: TestClient, admin_user, regular_user):
         resp = client_auth.delete(f"/api/v1/auth/users/{regular_user.id}")
         assert resp.status_code == 204
 
-    def test_delete_self_rejected(
-        self, client_auth: TestClient, admin_user
-    ):
+    def test_delete_self_rejected(self, client_auth: TestClient, admin_user):
         resp = client_auth.delete(f"/api/v1/auth/users/{admin_user.id}")
         assert resp.status_code == 400
         assert "Cannot delete yourself" in resp.json()["detail"]
 
-    def test_delete_unknown_user(
-        self, client_auth: TestClient, admin_user
-    ):
+    def test_delete_unknown_user(self, client_auth: TestClient, admin_user):
         resp = client_auth.delete("/api/v1/auth/users/ghost-id")
         assert resp.status_code == 404
 
@@ -490,9 +446,7 @@ class TestMyTenants:
         for m in data:
             assert m["role"] == "admin"
 
-    def test_with_memberships(
-        self, client_auth: TestClient, admin_user, membership_store
-    ):
+    def test_with_memberships(self, client_auth: TestClient, admin_user, membership_store):
         # Add a membership for the admin_user (the get_current_user target)
         membership_store.add("_default", admin_user.id, role="member")
         resp = client_auth.get("/api/v1/auth/my-tenants")
@@ -508,12 +462,8 @@ class TestMyTenants:
 
 
 class TestSelectTenant:
-    def test_dev_mode_select_any_tenant(
-        self, client_auth: TestClient, admin_user, default_tenant
-    ):
-        resp = client_auth.post(
-            f"/api/v1/auth/select-tenant/{default_tenant}"
-        )
+    def test_dev_mode_select_any_tenant(self, client_auth: TestClient, admin_user, default_tenant):
+        resp = client_auth.post(f"/api/v1/auth/select-tenant/{default_tenant}")
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
@@ -525,14 +475,10 @@ class TestSelectTenant:
         assert payload.get("tenant_id") == default_tenant
         assert payload.get("role") == "admin"
 
-    def test_with_membership_uses_membership_role(
-        self, client_auth: TestClient, admin_user, membership_store, default_tenant
-    ):
+    def test_with_membership_uses_membership_role(self, client_auth: TestClient, admin_user, membership_store, default_tenant):
         # Add membership for admin_user (the get_current_user target)
         membership_store.add(default_tenant, admin_user.id, role="member")
-        resp = client_auth.post(
-            f"/api/v1/auth/select-tenant/{default_tenant}"
-        )
+        resp = client_auth.post(f"/api/v1/auth/select-tenant/{default_tenant}")
         assert resp.status_code == 200
         from jose import jwt as jose_jwt
 
@@ -541,9 +487,7 @@ class TestSelectTenant:
         # The token role reflects the membership role, not the global role
         assert payload.get("role") == "member"
 
-    def test_unknown_membership_and_auth_enabled(
-        self, admin_user, client_auth, default_tenant
-    ):
+    def test_unknown_membership_and_auth_enabled(self, admin_user, client_auth, default_tenant):
         """When auth is enabled and user is not a member, returns 403.
 
         We override ``get_settings`` to return a Settings with
@@ -559,9 +503,7 @@ class TestSelectTenant:
         original_override = client_auth.app.dependency_overrides.get(get_settings)
         client_auth.app.dependency_overrides[get_settings] = lambda: _S()
         try:
-            resp = client_auth.post(
-                f"/api/v1/auth/select-tenant/{default_tenant}"
-            )
+            resp = client_auth.post(f"/api/v1/auth/select-tenant/{default_tenant}")
             assert resp.status_code == 403
         finally:
             if original_override is not None:

@@ -28,8 +28,6 @@ without hitting any real API.
 from __future__ import annotations
 
 import json
-import sqlite3
-import threading
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -46,7 +44,6 @@ from backend.services.ui_translation_service import (
     UITranslationService,
     get_plural_tags,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -170,9 +167,7 @@ class TestGetPluralTags:
         assert get_plural_tags("ru") == ["one", "few", "many", "other"]
 
     def test_arabic_has_full_set(self):
-        assert get_plural_tags("ar") == [
-            "zero", "one", "two", "few", "many", "other"
-        ]
+        assert get_plural_tags("ar") == ["zero", "one", "two", "few", "many", "other"]
 
     def test_unknown_locale_falls_back_to_default(self):
         assert get_plural_tags("xx") == ["one", "other"]
@@ -194,18 +189,11 @@ class TestCRUD:
         assert service.get_translation("nav.dashboard", "en") == "Dashboard v2"
 
     def test_set_with_namespace(self, service: UITranslationService):
-        service.set_translation(
-            "btn.save", "de", "Speichern", namespace="langpack:lang-de"
-        )
-        assert (
-            service.get_translation("btn.save", "de", namespace="langpack:lang-de")
-            == "Speichern"
-        )
+        service.set_translation("btn.save", "de", "Speichern", namespace="langpack:lang-de")
+        assert service.get_translation("btn.save", "de", namespace="langpack:lang-de") == "Speichern"
 
     def test_set_with_source_is_stored(self, service: UITranslationService):
-        service.set_translation(
-            "btn.save", "de", "Speichern", source="llm_generated"
-        )
+        service.set_translation("btn.save", "de", "Speichern", source="llm_generated")
         conn = service._get_conn()
         row = conn.execute(
             "SELECT source FROM ui_translations WHERE key = ? AND locale = ?",
@@ -231,9 +219,7 @@ class TestCRUD:
         assert "en" in service._locales_cache
         assert service._locales_cache["en"] == {"a": "A", "b": "B"}
 
-    def test_get_all_keys_unions_db_with_bundled(
-        self, service: UITranslationService
-    ):
+    def test_get_all_keys_unions_db_with_bundled(self, service: UITranslationService):
         service.set_translation("a", "en", "A")
         keys = service.get_all_keys()
         assert "a" in keys
@@ -291,9 +277,7 @@ class TestResolveBulk:
         result = service.resolve_bulk("de", keys=["unknown.key"])
         assert result["unknown.key"] == "unknown.key"
 
-    def test_resolve_bulk_fills_cache_via_inner_bulk_call(
-        self, service: UITranslationService
-    ):
+    def test_resolve_bulk_fills_cache_via_inner_bulk_call(self, service: UITranslationService):
         service.set_translation("a", "en", "A")
         service.resolve_bulk("de", keys=["a"])
         assert "en" in service._locales_cache
@@ -306,19 +290,13 @@ class TestResolveBulk:
 
 class TestResolveBulkForLocale:
     def test_merges_langpack_namespaces(self, service: UITranslationService):
-        service.set_translation(
-            "a", "de", "A-pack1", namespace="langpack:lang-de-1"
-        )
-        service.set_translation(
-            "b", "de", "B-pack2", namespace="langpack:lang-de-2"
-        )
+        service.set_translation("a", "de", "A-pack1", namespace="langpack:lang-de-1")
+        service.set_translation("b", "de", "B-pack2", namespace="langpack:lang-de-2")
         result = service.resolve_bulk_for_locale("de")
         assert result["a"] == "A-pack1"
         assert result["b"] == "B-pack2"
 
-    def test_later_namespace_overrides_earlier(
-        self, service: UITranslationService
-    ):
+    def test_later_namespace_overrides_earlier(self, service: UITranslationService):
         service.set_translation("a", "de", "A-first", namespace="langpack:lang-de-1")
         service.set_translation("a", "de", "A-second", namespace="langpack:lang-de-2")
         result = service.resolve_bulk_for_locale("de")
@@ -401,13 +379,9 @@ class TestCoverage:
         coverage = service.get_coverage(namespace="empty-ns")
         assert isinstance(coverage, dict)
 
-    def test_get_coverage_with_db_translations(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_get_coverage_with_db_translations(self, service: UITranslationService, monkeypatch):
         # Stub the bundled loaders to be empty so coverage is based purely on DB
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         service.set_translation("a", "en", "A")
         service.set_translation("a", "de", "A-de")
         coverage = service.get_coverage()
@@ -415,28 +389,18 @@ class TestCoverage:
         assert "de" in coverage
         assert coverage["de"]["coverage_pct"] == 100.0
 
-    def test_get_coverage_partial(
-        self, service: UITranslationService, monkeypatch
-    ):
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+    def test_get_coverage_partial(self, service: UITranslationService, monkeypatch):
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         service.set_translation("a", "en", "A")
         service.set_translation("b", "en", "B")
         service.set_translation("a", "de", "A-de")
         coverage = service.get_coverage()
         assert coverage["de"]["coverage_pct"] == 50.0
 
-    def test_get_coverage_with_langpack_merging(
-        self, service: UITranslationService, monkeypatch
-    ):
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+    def test_get_coverage_with_langpack_merging(self, service: UITranslationService, monkeypatch):
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         service.set_translation("a", "en", "A")
-        service.set_translation(
-            "a", "de", "A-pack", namespace="langpack:lang-de"
-        )
+        service.set_translation("a", "de", "A-pack", namespace="langpack:lang-de")
         coverage = service.get_coverage()
         assert coverage["de"]["coverage_pct"] == 100.0
 
@@ -479,9 +443,7 @@ class TestCustomLocales:
         assert result["name"] == "Magyar"
         assert result["is_rtl"] is False
 
-    def test_register_uses_code_as_default_name(
-        self, service: UITranslationService
-    ):
+    def test_register_uses_code_as_default_name(self, service: UITranslationService):
         result = service.register_custom_locale("xx")
         assert result["name"] == "xx"
 
@@ -523,9 +485,7 @@ class TestLLMHelpers:
         assert "deepseek" in service._select_llm_for_locale("zh", ps)
         assert "llama" in service._select_llm_for_locale("ar", ps)
 
-    def test_select_llm_fallback_to_setting(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_select_llm_fallback_to_setting(self, service: UITranslationService, monkeypatch):
         monkeypatch.setattr(
             "backend.services.ui_translation_service.settings.service_llm_profile_id",
             None,
@@ -565,53 +525,38 @@ class _FakeLLM:
 
 
 class TestTranslateViaLLM:
-    def test_translate_stores_and_returns(
-        self, service: UITranslationService
-    ):
+    def test_translate_stores_and_returns(self, service: UITranslationService):
         llm = _FakeLLM(content="Hallo")
-        result = service.translate_via_llm(
-            "nav.dashboard", "Dashboard", "de", llm=llm
-        )
+        result = service.translate_via_llm("nav.dashboard", "Dashboard", "de", llm=llm)
         assert result == "Hallo"
         assert service.get_translation("nav.dashboard", "de") == "Hallo"
 
-    def test_translate_empty_response_raises(
-        self, service: UITranslationService
-    ):
+    def test_translate_empty_response_raises(self, service: UITranslationService):
         llm = _FakeLLM(content="")
         with pytest.raises(Exception, match="empty"):
-            service.translate_via_llm(
-                "nav.dashboard", "Dashboard", "de", llm=llm
-            )
+            service.translate_via_llm("nav.dashboard", "Dashboard", "de", llm=llm)
 
-    def test_translate_updates_job_progress(
-        self, service: UITranslationService
-    ):
+    def test_translate_updates_job_progress(self, service: UITranslationService):
         llm = _FakeLLM(content="Hallo")
         job = TranslationJob(
-            job_id="j1", target_locales=["de"], namespace="global",
-            total_strings=2, completed_strings=0,
+            job_id="j1",
+            target_locales=["de"],
+            namespace="global",
+            total_strings=2,
+            completed_strings=0,
         )
-        service.translate_via_llm(
-            "nav.dashboard", "Dashboard", "de", llm=llm, job=job
-        )
+        service.translate_via_llm("nav.dashboard", "Dashboard", "de", llm=llm, job=job)
         assert job.completed_strings == 1
         assert job.current_key == "nav.dashboard"
         assert job.current_locale == "de"
 
-    def test_translate_keyword_detection_picks_context_hint(
-        self, service: UITranslationService
-    ):
+    def test_translate_keyword_detection_picks_context_hint(self, service: UITranslationService):
         llm = _FakeLLM(content="Speichern")
-        service.translate_via_llm(
-            "button.save", "Save", "de", llm=llm
-        )
+        service.translate_via_llm("button.save", "Save", "de", llm=llm)
         prompt = llm.calls[0]["system_prompt"]
         assert "button label" in prompt.lower()
 
-    def test_translate_retries_on_rate_limit_then_succeeds(
-        self, service: UITranslationService
-    ):
+    def test_translate_retries_on_rate_limit_then_succeeds(self, service: UITranslationService):
         call_count = {"n": 0}
 
         class _FlakyLLM:
@@ -623,38 +568,30 @@ class TestTranslateViaLLM:
 
         # Patch the time.sleep so we don't actually wait
         import backend.services.ui_translation_service as uts_mod
+
         uts_mod.time = MagicMock()
-        result = service.translate_via_llm(
-            "nav.dashboard", "Dashboard", "de", llm=_FlakyLLM()
-        )
+        result = service.translate_via_llm("nav.dashboard", "Dashboard", "de", llm=_FlakyLLM())
         assert result == "Hallo"
         assert call_count["n"] == 2
 
-    def test_translate_exhausts_retries_and_raises(
-        self, service: UITranslationService
-    ):
+    def test_translate_exhausts_retries_and_raises(self, service: UITranslationService):
         class _AlwaysLimitedLLM:
             def generate_sync(self, **kwargs):
                 raise RuntimeError("rate limit 429")
 
         import backend.services.ui_translation_service as uts_mod
+
         uts_mod.time = MagicMock()
         with pytest.raises(RuntimeError, match="rate limit"):
-            service.translate_via_llm(
-                "nav.dashboard", "Dashboard", "de", llm=_AlwaysLimitedLLM()
-            )
+            service.translate_via_llm("nav.dashboard", "Dashboard", "de", llm=_AlwaysLimitedLLM())
 
-    def test_translate_non_rate_limit_error_raises_immediately(
-        self, service: UITranslationService
-    ):
+    def test_translate_non_rate_limit_error_raises_immediately(self, service: UITranslationService):
         class _BadLLM:
             def generate_sync(self, **kwargs):
                 raise RuntimeError("connection refused")
 
         with pytest.raises(RuntimeError, match="connection refused"):
-            service.translate_via_llm(
-                "nav.dashboard", "Dashboard", "de", llm=_BadLLM()
-            )
+            service.translate_via_llm("nav.dashboard", "Dashboard", "de", llm=_BadLLM())
 
 
 # ---------------------------------------------------------------------------
@@ -663,64 +600,46 @@ class TestTranslateViaLLM:
 
 
 class TestBulkTranslate:
-    def test_bulk_translate_skips_complete_locales(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_bulk_translate_skips_complete_locales(self, service: UITranslationService, monkeypatch):
         # Stub bundled to avoid 808 keys
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         service.set_translation("a", "en", "A")
         results = service.bulk_translate(target_locales=["en"])
         assert results["en"]["status"] == "complete"
         assert results["en"]["translated"] == 0
 
-    def test_bulk_translate_missing_target_locales_falls_back_to_installed(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_bulk_translate_missing_target_locales_falls_back_to_installed(self, service: UITranslationService, monkeypatch):
         # Stub bundled to avoid 808 keys
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
-        monkeypatch.setattr(
-            service, "get_installed_locales",
+            service,
+            "get_installed_locales",
             lambda: [{"code": "en"}, {"code": "de"}],
         )
         llm = _FakeLLM(content="Ubersetzt")
-        monkeypatch.setattr(
-            "backend.services.llm_service.LLMService", lambda **kw: llm
-        )
+        monkeypatch.setattr("backend.services.llm_service.LLMService", lambda **kw: llm)
         service.set_translation("a", "en", "A")
         results = service.bulk_translate()
         assert "de" in results
         assert results["de"]["translated"] == 1
 
-    def test_bulk_translate_uses_bundled_to_skip(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_bulk_translate_uses_bundled_to_skip(self, service: UITranslationService, monkeypatch):
         # Stub bundled to avoid 808 keys
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         monkeypatch.setattr(
             "backend.services.ui_translation_service.settings.service_llm_profile_id",
             "test-profile",
         )
         llm = _FakeLLM(content="Ubersetzt")
-        monkeypatch.setattr(
-            "backend.services.llm_service.LLMService", lambda **kw: llm
-        )
+        monkeypatch.setattr("backend.services.llm_service.LLMService", lambda **kw: llm)
         service.set_translation("a", "en", "A")
         results = service.bulk_translate(target_locales=["de"])
         assert results["de"]["translated"] == 1
 
-    def test_bulk_translate_handles_failure(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_bulk_translate_handles_failure(self, service: UITranslationService, monkeypatch):
         # Stub bundled to avoid 808 keys
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
+
         class _BoomLLM:
             def generate_sync(self, **kwargs):
                 raise RuntimeError("boom")
@@ -729,9 +648,7 @@ class TestBulkTranslate:
             "backend.services.ui_translation_service.settings.service_llm_profile_id",
             "test-profile",
         )
-        monkeypatch.setattr(
-            "backend.services.llm_service.LLMService", lambda **kw: _BoomLLM()
-        )
+        monkeypatch.setattr("backend.services.llm_service.LLMService", lambda **kw: _BoomLLM())
         service.set_translation("a", "en", "A")
         results = service.bulk_translate(target_locales=["de"])
         assert results["de"]["failed"] == 1
@@ -747,6 +664,7 @@ class TestBulkTranslateAsync:
     def test_returns_job_id(self, service: UITranslationService):
         llm = _FakeLLM(content="Ubersetzt")
         import backend.services.llm_service as llm_mod
+
         original = getattr(llm_mod, "LLMService", None)
         llm_mod.LLMService = lambda **kw: llm
         try:
@@ -756,17 +674,11 @@ class TestBulkTranslateAsync:
             if original is not None:
                 llm_mod.LLMService = original
 
-    def test_async_job_completes(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_async_job_completes(self, service: UITranslationService, monkeypatch):
         # Stub bundled to avoid 808 keys
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         llm = _FakeLLM(content="Ubersetzt")
-        monkeypatch.setattr(
-            "backend.services.llm_service.LLMService", lambda **kw: llm
-        )
+        monkeypatch.setattr("backend.services.llm_service.LLMService", lambda **kw: llm)
         monkeypatch.setattr(
             "backend.services.ui_translation_service.settings.service_llm_profile_id",
             "test-profile",
@@ -779,16 +691,10 @@ class TestBulkTranslateAsync:
         assert "de" in job.results
         assert job.results["de"]["translated"] == 1
 
-    def test_async_job_sets_total_strings(
-        self, service: UITranslationService, monkeypatch
-    ):
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
+    def test_async_job_sets_total_strings(self, service: UITranslationService, monkeypatch):
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
         llm = _FakeLLM(content="Ubersetzt")
-        monkeypatch.setattr(
-            "backend.services.llm_service.LLMService", lambda **kw: llm
-        )
+        monkeypatch.setattr("backend.services.llm_service.LLMService", lambda **kw: llm)
         monkeypatch.setattr(
             "backend.services.ui_translation_service.settings.service_llm_profile_id",
             "test-profile",
@@ -799,27 +705,23 @@ class TestBulkTranslateAsync:
         job = _wait_for_job(job_id, timeout=10.0)
         assert job.total_strings == 2
 
-    def test_async_job_handles_rate_limit(
-        self, service: UITranslationService, monkeypatch
-    ):
+    def test_async_job_handles_rate_limit(self, service: UITranslationService, monkeypatch):
         class _LimitedLLM:
             def __init__(self, **kw) -> None:
                 pass
+
             def generate_sync(self, **kwargs):
                 raise RuntimeError("rate limit 429")
 
-        monkeypatch.setattr(
-            service, "_scan_bundled_loaders", lambda: {}
-        )
-        monkeypatch.setattr(
-            "backend.services.llm_service.LLMService", lambda **kw: _LimitedLLM()
-        )
+        monkeypatch.setattr(service, "_scan_bundled_loaders", lambda: {})
+        monkeypatch.setattr("backend.services.llm_service.LLMService", lambda **kw: _LimitedLLM())
         monkeypatch.setattr(
             "backend.services.ui_translation_service.settings.service_llm_profile_id",
             "test-profile",
         )
         # Speed up the inner sleep so retries don't take 14 real seconds
         import backend.services.ui_translation_service as uts_mod
+
         uts_mod.time = MagicMock()
         service.set_translation("a", "en", "A")
         job_id = service.bulk_translate_async(target_locales=["de"])
@@ -847,30 +749,22 @@ class TestGetLocaleDetails:
         assert result["translated"] >= 1
         assert "strings" in result
 
-    def test_get_locale_details_merges_langpack(
-        self, service: UITranslationService
-    ):
+    def test_get_locale_details_merges_langpack(self, service: UITranslationService):
         service.set_translation("a", "en", "A")
-        service.set_translation(
-            "a", "de", "A-pack", namespace="langpack:lang-de"
-        )
+        service.set_translation("a", "de", "A-pack", namespace="langpack:lang-de")
         result = service.get_locale_details("de")
         a_entry = next(s for s in result["strings"] if s["key"] == "a")
         assert a_entry["translated_value"] == "A-pack"
         assert a_entry["status"] == "translated"
 
-    def test_get_locale_details_missing_key(
-        self, service: UITranslationService
-    ):
+    def test_get_locale_details_missing_key(self, service: UITranslationService):
         service.set_translation("a", "en", "A")
         result = service.get_locale_details("de")
         a_entry = next(s for s in result["strings"] if s["key"] == "a")
         assert a_entry["status"] == "missing"
         assert a_entry["translated_value"] is None
 
-    def test_get_locale_details_counts_llm_vs_manual(
-        self, service: UITranslationService
-    ):
+    def test_get_locale_details_counts_llm_vs_manual(self, service: UITranslationService):
         service.set_translation("a", "en", "A")
         service.set_translation("a", "de", "A-de", source="manual")
         service.set_translation("b", "en", "B")
@@ -897,24 +791,15 @@ class TestBootstrapCoreLocales:
         result = service.bootstrap_core_locales()
         assert result == {}
 
-    def test_migrates_existing_translations(
-        self, service: UITranslationService
-    ):
+    def test_migrates_existing_translations(self, service: UITranslationService):
         service.set_translation("btn.save", "de", "Speichern", source="manual")
         service.set_translation("btn.cancel", "de", "Abbrechen", source="manual")
         result = service.bootstrap_core_locales()
         assert "de" in result
         assert result["de"] == 2
-        assert (
-            service.get_translation(
-                "btn.save", "de", namespace="langpack:lang-de"
-            )
-            == "Speichern"
-        )
+        assert service.get_translation("btn.save", "de", namespace="langpack:lang-de") == "Speichern"
 
-    def test_skips_locales_with_existing_langpack(
-        self, service: UITranslationService
-    ):
+    def test_skips_locales_with_existing_langpack(self, service: UITranslationService):
         service.set_translation("btn.save", "de", "Speichern", source="manual")
         service.set_translation(
             "btn.save",
@@ -925,9 +810,7 @@ class TestBootstrapCoreLocales:
         result = service.bootstrap_core_locales()
         assert "de" not in result
 
-    def test_skips_locales_without_translations(
-        self, service: UITranslationService
-    ):
+    def test_skips_locales_without_translations(self, service: UITranslationService):
         result = service.bootstrap_core_locales()
         assert "de" not in result
 
@@ -942,9 +825,7 @@ class TestCleanupLegacyLocalLangpacks:
         removed = service.cleanup_legacy_local_langpacks()
         assert removed == 0
 
-    def test_removes_legacy_lp_directory(
-        self, service: UITranslationService
-    ):
+    def test_removes_legacy_lp_directory(self, service: UITranslationService):
         # Create a fake legacy lp-* module
         root = Path(__file__).resolve().parent.parent.parent
         modules_dir = root / "modules"
@@ -956,9 +837,7 @@ class TestCleanupLegacyLocalLangpacks:
             "type": "language-pack",
             "module_id": "lp-test-1234",
         }
-        (legacy_dir / "manifest.json").write_text(
-            json.dumps(manifest), encoding="utf-8"
-        )
+        (legacy_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
         try:
             removed = service.cleanup_legacy_local_langpacks()
             assert removed >= 1
@@ -966,9 +845,7 @@ class TestCleanupLegacyLocalLangpacks:
         finally:
             pass
 
-    def test_skips_non_langpack_modules(
-        self, service: UITranslationService
-    ):
+    def test_skips_non_langpack_modules(self, service: UITranslationService):
         root = Path(__file__).resolve().parent.parent.parent
         modules_dir = root / "modules"
         if not modules_dir.exists():
@@ -979,38 +856,32 @@ class TestCleanupLegacyLocalLangpacks:
             "type": "agent-cores",
             "module_id": "agent-cores-test",
         }
-        (non_lp_dir / "manifest.json").write_text(
-            json.dumps(manifest), encoding="utf-8"
-        )
+        (non_lp_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
         try:
             service.cleanup_legacy_local_langpacks()
             assert non_lp_dir.exists()
         finally:
             import shutil
+
             shutil.rmtree(non_lp_dir)
 
-    def test_removes_invalid_manifest(
-        self, service: UITranslationService
-    ):
+    def test_removes_invalid_manifest(self, service: UITranslationService):
         root = Path(__file__).resolve().parent.parent.parent
         modules_dir = root / "modules"
         if not modules_dir.exists():
             modules_dir.mkdir()
         invalid_dir = modules_dir / "lp-invalid"
         invalid_dir.mkdir()
-        (invalid_dir / "manifest.json").write_text(
-            "{ invalid json", encoding="utf-8"
-        )
+        (invalid_dir / "manifest.json").write_text("{ invalid json", encoding="utf-8")
         try:
             service.cleanup_legacy_local_langpacks()
             assert invalid_dir.exists()
         finally:
             import shutil
+
             shutil.rmtree(invalid_dir)
 
-    def test_handles_missing_manifest(
-        self, service: UITranslationService
-    ):
+    def test_handles_missing_manifest(self, service: UITranslationService):
         root = Path(__file__).resolve().parent.parent.parent
         modules_dir = root / "modules"
         if not modules_dir.exists():
@@ -1022,6 +893,7 @@ class TestCleanupLegacyLocalLangpacks:
             assert no_manifest_dir.exists()
         finally:
             import shutil
+
             shutil.rmtree(no_manifest_dir)
 
 
@@ -1059,9 +931,7 @@ class TestCreateLangpackModuleDir:
             ui_strings={"a": "A-de"},
             now=now,
         )
-        manifest = json.loads(
-            (module_dir / "manifest.json").read_text(encoding="utf-8")
-        )
+        manifest = json.loads((module_dir / "manifest.json").read_text(encoding="utf-8"))
         assert manifest["module_id"] == "lp-test"
         assert manifest["type"] == "language-pack"
         assert manifest["language"] == "de"
@@ -1079,9 +949,7 @@ class TestCreateLangpackModuleDir:
             ui_strings={"a": "A-de", "b": "B-de"},
             now=now,
         )
-        strings = json.loads(
-            (module_dir / "ui_strings.json").read_text(encoding="utf-8")
-        )
+        strings = json.loads((module_dir / "ui_strings.json").read_text(encoding="utf-8"))
         assert strings == {"a": "A-de", "b": "B-de"}
 
     def test_unknown_locale_uses_code_as_name(self, tmp_path):
@@ -1096,9 +964,7 @@ class TestCreateLangpackModuleDir:
             ui_strings={"a": "A"},
             now=now,
         )
-        manifest = json.loads(
-            (module_dir / "manifest.json").read_text(encoding="utf-8")
-        )
+        manifest = json.loads((module_dir / "manifest.json").read_text(encoding="utf-8"))
         assert manifest["name"]["xx"] == "xx"
 
 
@@ -1108,24 +974,18 @@ class TestCreateLangpackModuleDir:
 
 
 class TestGetInstalledLocales:
-    def test_get_installed_locales_includes_en(
-        self, service: UITranslationService
-    ):
+    def test_get_installed_locales_includes_en(self, service: UITranslationService):
         result = service.get_installed_locales()
         codes = [loc["code"] for loc in result]
         assert "en" in codes
 
-    def test_get_installed_locales_en_is_bundled(
-        self, service: UITranslationService
-    ):
+    def test_get_installed_locales_en_is_bundled(self, service: UITranslationService):
         result = service.get_installed_locales()
         en_entry = next(loc for loc in result if loc["code"] == "en")
         assert en_entry["source"] == "bundled"
         assert en_entry["is_rtl"] is False
 
-    def test_get_installed_locales_includes_rtl_flag(
-        self, service: UITranslationService
-    ):
+    def test_get_installed_locales_includes_rtl_flag(self, service: UITranslationService):
         # Custom-register an RTL locale
         service.register_custom_locale("ar", "Arabic", is_rtl=True)
         result = service.get_installed_locales()
@@ -1133,13 +993,9 @@ class TestGetInstalledLocales:
         assert ar_entry["is_rtl"] is True
         assert ar_entry["source"] == "custom"
 
-    def test_get_installed_locales_skips_disabled_langpack(
-        self, service: UITranslationService
-    ):
+    def test_get_installed_locales_skips_disabled_langpack(self, service: UITranslationService):
         # Create a langpack entry that is not in module_registry
-        service.set_translation(
-            "a", "de", "A-de", namespace="langpack:lang-de"
-        )
+        service.set_translation("a", "de", "A-de", namespace="langpack:lang-de")
         # No blueprints.db -> all langpack modules are considered disabled
         result = service.get_installed_locales()
         codes = [loc["code"] for loc in result]

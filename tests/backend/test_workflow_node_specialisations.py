@@ -18,6 +18,7 @@ The tests follow the patterns already established in
 ``_get_profile_service`` to drive the factory closures without
 external I/O.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.workflow.workflow_state import WorkflowState, WorkflowTemplate
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -191,9 +191,7 @@ class TestInputNode:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.system_nodes.get_audit_logger")
-    async def test_audit_failure_is_swallowed(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_audit_failure_is_swallowed(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.system_nodes import input_node
 
         al = MagicMock()
@@ -214,9 +212,7 @@ class TestInitializeWfNode:
         from backend.workflow.nodes.system_nodes import initialize_wf_node
 
         mock_al.return_value = MagicMock()
-        result = await initialize_wf_node(
-            _make_state(current_round=5, current_draft="old", final_consensus=0.9)
-        )
+        result = await initialize_wf_node(_make_state(current_round=5, current_draft="old", final_consensus=0.9))
         assert result["current_round"] == 1
         assert result["current_draft"] == ""
         assert result["final_consensus"] == 0.0
@@ -330,9 +326,7 @@ class TestInterjectionNode:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.system_nodes.get_audit_logger")
-    async def test_in_state_queue_drained(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_in_state_queue_drained(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.system_nodes import interjection_node
 
         mock_al.return_value = MagicMock()
@@ -381,9 +375,7 @@ class TestExtractZeroDraftAA:
     def test_falls_back_to_strategist_node_output(self) -> None:
         from backend.workflow.nodes.angels_advocate_nodes import _extract_zero_draft
 
-        assert _extract_zero_draft(
-            {"node_outputs": [{"node_type": "wf-strategist", "content": "S"}], "context": "C"}
-        ) == "S"
+        assert _extract_zero_draft({"node_outputs": [{"node_type": "wf-strategist", "content": "S"}], "context": "C"}) == "S"
 
     def test_final_fallback_to_context(self) -> None:
         from backend.workflow.nodes.angels_advocate_nodes import _extract_zero_draft
@@ -421,9 +413,7 @@ class TestExtractCriticItemsAA:
         items = [{"a": 1}]
         state = {
             "critic_items": [],
-            "node_outputs": [
-                {"node_type": "wf-critic", "content": "```json\n" + json.dumps(items) + "\n```"}
-            ],
+            "node_outputs": [{"node_type": "wf-critic", "content": "```json\n" + json.dumps(items) + "\n```"}],
         }
         assert _extract_critic_items(state) == items
 
@@ -452,16 +442,12 @@ class TestAngelsAdvocateNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.angels_advocate_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.angels_advocate_nodes.get_audit_logger")
-    async def test_no_inputs_returns_placeholder(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_no_inputs_returns_placeholder(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.angels_advocate_nodes import angels_advocate_node_factory
 
         mock_al.return_value = MagicMock()
         node_fn = angels_advocate_node_factory("node-aa", {"role": "angels-advocate"})
-        result = await node_fn(
-            _make_state(context="", zero_draft="", critic_items=[], node_outputs=[])
-        )
+        result = await node_fn(_make_state(context="", zero_draft="", critic_items=[], node_outputs=[]))
         assert result["preserved_elements"] == []
         assert "No draft or critique available" in result["node_outputs"][0]["content"]
 
@@ -523,9 +509,7 @@ class TestAngelsAdvocateNodeFactory:
                 aa_mod.json_repair = fake_repair_module
 
             node_fn = aa_mod.angels_advocate_node_factory("node-aa", {"role": "angels-advocate"})
-            result = await node_fn(
-                _make_state(zero_draft="Z", critic_items=[_VALID_CRITIC_ITEM])
-            )
+            result = await node_fn(_make_state(zero_draft="Z", critic_items=[_VALID_CRITIC_ITEM]))
             assert len(result["preserved_elements"]) == 1
         finally:
             sys.modules.pop("json_repair", None)
@@ -635,15 +619,11 @@ class TestPragmatistNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.pragmatist_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.pragmatist_nodes.get_audit_logger")
-    async def test_no_build_responses(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_no_build_responses(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.pragmatist_nodes import pragmatist_node_factory
 
         mock_al.return_value = MagicMock()
-        node_fn = pragmatist_node_factory(
-            "node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"}
-        )
+        node_fn = pragmatist_node_factory("node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"})
         result = await node_fn(_make_state())
         assert result["pragmatist_output"]["reality_score"] == 0.0
         assert "No build responses" in result["pragmatist_output"]["blocking_concerns"][0]
@@ -668,9 +648,7 @@ class TestPragmatistNodeFactory:
         llm.generate = AsyncMock(return_value=_fake_llm_result(_pragmatist_valid_payload()))
         mock_llm_cls.return_value = llm
 
-        node_fn = pragmatist_node_factory(
-            "node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"}
-        )
+        node_fn = pragmatist_node_factory("node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"})
         result = await node_fn(
             _make_state(
                 build_responses=[
@@ -716,16 +694,8 @@ class TestPragmatistNodeFactory:
             if hasattr(prag_mod, "json_repair"):
                 prag_mod.json_repair = fake_repair_module
 
-            node_fn = prag_mod.pragmatist_node_factory(
-                "node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"}
-            )
-            result = await node_fn(
-                _make_state(
-                    build_responses=[
-                        {"response_to": "c-test-001", "provenance": {"draft_version": 1}}
-                    ]
-                )
-            )
+            node_fn = prag_mod.pragmatist_node_factory("node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"})
+            result = await node_fn(_make_state(build_responses=[{"response_to": "c-test-001", "provenance": {"draft_version": 1}}]))
             assert result["pragmatist_output"]["reality_score"] == 0.8
         finally:
             sys.modules.pop("json_repair", None)
@@ -752,12 +722,8 @@ class TestPragmatistNodeFactory:
         llm.generate = AsyncMock(return_value=_fake_llm_result("not json"))
         mock_llm_cls.return_value = llm
 
-        node_fn = pragmatist_node_factory(
-            "node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"}
-        )
-        result = await node_fn(
-            _make_state(build_responses=[{"response_to": "c-test-001", "provenance": {}}])
-        )
+        node_fn = pragmatist_node_factory("node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"})
+        result = await node_fn(_make_state(build_responses=[{"response_to": "c-test-001", "provenance": {}}]))
         assert result["node_outputs"][0]["status"] == "failed"
         # pragmatist_output is None when all retries fail
         assert result["pragmatist_output"] is None
@@ -782,12 +748,8 @@ class TestPragmatistNodeFactory:
         llm.generate = AsyncMock(side_effect=Exception("LLM down"))
         mock_llm_cls.return_value = llm
 
-        node_fn = pragmatist_node_factory(
-            "node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"}
-        )
-        result = await node_fn(
-            _make_state(build_responses=[{"response_to": "c-test-001", "provenance": {}}])
-        )
+        node_fn = pragmatist_node_factory("node-prag", {"llm_profile_id": "p1", "system_prompt": "sp"})
+        result = await node_fn(_make_state(build_responses=[{"response_to": "c-test-001", "provenance": {}}]))
         assert result["node_outputs"][0]["status"] == "failed"
         assert "LLM call failed" in result["node_outputs"][0]["content"]
 
@@ -798,9 +760,7 @@ class TestSaveProvenanceBatch:
     def test_success(self) -> None:
         from backend.workflow.nodes.pragmatist_nodes import _save_provenance_batch
 
-        with patch(
-            "backend.blueprints.repository.BlueprintRepository"
-        ) as repo_cls:
+        with patch("backend.blueprints.repository.BlueprintRepository") as repo_cls:
             repo = MagicMock()
             repo_cls.return_value = repo
             _save_provenance_batch("s", "wf", [{"response_to": "c"}])
@@ -1065,9 +1025,7 @@ class TestGateNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.moderator_nodes.get_audit_logger")
-    async def test_empty_condition_does_not_raise(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_empty_condition_does_not_raise(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.moderator_nodes import gate_node_factory
 
         mock_al.return_value = MagicMock()
@@ -1078,9 +1036,7 @@ class TestGateNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.moderator_nodes.get_audit_logger")
-    async def test_unsafe_condition_swallows_error(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_unsafe_condition_swallows_error(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.moderator_nodes import gate_node_factory
 
         mock_al.return_value = MagicMock()
@@ -1096,9 +1052,7 @@ class TestToneProfileNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.moderator_nodes.get_audit_logger")
-    async def test_inline_profile_dict(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_inline_profile_dict(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.moderator_nodes import tone_profile_node_factory
 
         mock_al.return_value = MagicMock()
@@ -1112,9 +1066,7 @@ class TestToneProfileNodeFactory:
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.moderator_nodes.publish_async", new_callable=AsyncMock)
     @patch("backend.workflow.nodes.moderator_nodes.get_audit_logger")
-    async def test_invalid_inline_profile_fails(
-        self, mock_al: MagicMock, mock_publish: AsyncMock
-    ) -> None:
+    async def test_invalid_inline_profile_fails(self, mock_al: MagicMock, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.moderator_nodes import tone_profile_node_factory
 
         mock_al.return_value = MagicMock()
@@ -1137,9 +1089,7 @@ class TestToneProfileNodeFactory:
 
         mock_al.return_value = MagicMock()
         repo = MagicMock()
-        repo.get_tone_profile = MagicMock(
-            return_value=ToneProfile(name="cat", description="d", style="academic")
-        )
+        repo.get_tone_profile = MagicMock(return_value=ToneProfile(name="cat", description="d", style="academic"))
         mock_repo_cls.return_value = repo
 
         node_fn = tone_profile_node_factory("node-tp", {"tone_profile_id": "tp-1"})
@@ -1242,9 +1192,7 @@ class TestExtractZeroDraft:
     def test_latest_wins(self) -> None:
         from backend.workflow.nodes.builder_nodes import _extract_zero_draft
 
-        assert (
-            _extract_zero_draft({"latest_draft": "L", "zero_draft": "Z", "context": "C"}) == "L"
-        )
+        assert _extract_zero_draft({"latest_draft": "L", "zero_draft": "Z", "context": "C"}) == "L"
 
     def test_zero_when_no_latest(self) -> None:
         from backend.workflow.nodes.builder_nodes import _extract_zero_draft
@@ -1330,9 +1278,7 @@ class TestBuilderNodeFactory:
 
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.builder_nodes.publish_async", new_callable=AsyncMock)
-    async def test_no_critic_items_returns_placeholder(
-        self, mock_publish: AsyncMock
-    ) -> None:
+    async def test_no_critic_items_returns_placeholder(self, mock_publish: AsyncMock) -> None:
         from backend.workflow.nodes.builder_nodes import builder_node_factory
 
         node_fn = builder_node_factory("node-bld", {"llm_profile_id": "p1", "role": "builder"})
@@ -1364,9 +1310,7 @@ class TestBuilderNodeFactory:
             _make_state(
                 critic_items=[_VALID_CRITIC_ITEM],
                 zero_draft="Z",
-                preserved_elements=[
-                    {"source_location": "§1", "preserved_text": "T", "rationale": "R"}
-                ],
+                preserved_elements=[{"source_location": "§1", "preserved_text": "T", "rationale": "R"}],
                 pragmatist_output={"blocking_concerns": ["concern 1"]},
                 draft_version=2,
             )
@@ -1393,9 +1337,7 @@ class TestBuilderNodeFactory:
         mock_ps.return_value = MagicMock()
         mock_al.return_value = MagicMock()
         llm = MagicMock()
-        llm.generate = AsyncMock(
-            return_value=_fake_llm_result(_builder_valid_payload(with_global=False))
-        )
+        llm.generate = AsyncMock(return_value=_fake_llm_result(_builder_valid_payload(with_global=False)))
         mock_llm_cls.return_value = llm
 
         node_fn = builder_node_factory("node-bld", {"llm_profile_id": "p1", "role": "builder"})
@@ -1458,9 +1400,7 @@ class TestBuilderNodeFactory:
             if hasattr(bld_mod, "json_repair"):
                 bld_mod.json_repair = fake_repair_module
 
-            node_fn = bld_mod.builder_node_factory(
-                "node-bld", {"llm_profile_id": "p1", "role": "builder"}
-            )
+            node_fn = bld_mod.builder_node_factory("node-bld", {"llm_profile_id": "p1", "role": "builder"})
             result = await node_fn(_make_state(critic_items=[_VALID_CRITIC_ITEM]))
             assert len(result["build_responses"]) == 1
         finally:
@@ -1551,9 +1491,7 @@ class TestBuilderNodeFactory:
             llm.generate = AsyncMock(return_value=_fake_llm_result(payload))
             mock_llm_cls.return_value = llm
 
-            node_fn = builder_node_factory(
-                "node-bld", {"llm_profile_id": "p1", "role": "builder"}
-            )
+            node_fn = builder_node_factory("node-bld", {"llm_profile_id": "p1", "role": "builder"})
             result = await node_fn(_make_state(critic_items=[_VALID_CRITIC_ITEM]))
             assert result["build_responses"][0]["provenance"]["revision_type"] == expected
 
@@ -1579,7 +1517,5 @@ class TestBuilderNodeFactory:
 
         # Just check that the english branch doesn't crash
         node_fn = builder_node_factory("node-bld", {"llm_profile_id": "p1", "role": "builder"})
-        result = await node_fn(
-            _make_state(critic_items=[_VALID_CRITIC_ITEM], language="en")
-        )
+        result = await node_fn(_make_state(critic_items=[_VALID_CRITIC_ITEM], language="en"))
         assert result["node_outputs"][0]["status"] == "completed"

@@ -128,8 +128,7 @@ def _load_or_create_dev_key(db_path: Path) -> tuple[bytes, str]:
     full_id = f"{_DEV_KEY_ID_PREFIX}:{key_id}"
     _DEV_KEY_CACHE[cache_key] = (fernet_key, full_id)
     logger.warning(
-        "UserKeyStore: generated NEW DEV-FALLBACK Fernet key (id=%s). "
-        "Stored at %s. Set DANWA_USER_KEYS_ENCRYPTION_KEY for production.",
+        "UserKeyStore: generated NEW DEV-FALLBACK Fernet key (id=%s). Stored at %s. Set DANWA_USER_KEYS_ENCRYPTION_KEY for production.",
         full_id,
         key_file,
     )
@@ -163,9 +162,7 @@ def resolve_fernet_key(db_path: Path, crypto_key: bytes | None = None) -> tuple[
             if len(decoded) != 32:
                 raise ValueError(f"expected 32 bytes, got {len(decoded)}")
         except Exception as exc:  # noqa: BLE001
-            raise ValueError(
-                f"DANWA_USER_KEYS_ENCRYPTION_KEY is not a valid Fernet key: {exc}"
-            ) from exc
+            raise ValueError(f"DANWA_USER_KEYS_ENCRYPTION_KEY is not a valid Fernet key: {exc}") from exc
         key_id = "env:" + hashlib.sha256(env_key.encode("ascii")).hexdigest()[:12]
         return env_key.encode("ascii"), key_id
 
@@ -228,8 +225,7 @@ class UserKeyStore:
             return self._fernet.decrypt(ciphertext.encode("ascii")).decode("utf-8")
         except self._InvalidToken:
             logger.warning(
-                "UserKeyStore: failed to decrypt API key (key_id=%s) — "
-                "the row may have been written with a different key",
+                "UserKeyStore: failed to decrypt API key (key_id=%s) — the row may have been written with a different key",
                 self._key_id,
             )
             return None

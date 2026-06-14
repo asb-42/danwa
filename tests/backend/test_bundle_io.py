@@ -7,6 +7,8 @@ strategies (SKIP, OVERWRITE, RENAME) and the documented error paths.
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from backend.blueprints.bundle_io import (
@@ -22,7 +24,6 @@ from backend.blueprints.models import (
     ToneProfile,
 )
 from backend.blueprints.repository import BlueprintRepository
-
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
@@ -119,14 +120,14 @@ class TestExportBundle:
         # Insert a bundle that references a non-existent LLM profile by
         # bypassing FK enforcement.  ``export_bundle`` must still refuse
         # to produce an inconsistent export.
-        import sqlite3
         import json as _json
-        from datetime import datetime, timezone
+        import sqlite3
+        from datetime import datetime
 
         conn = sqlite3.connect(str(repo.db_path))
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=OFF")
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         conn.execute(
             """
             INSERT INTO agent_bundles (
@@ -262,9 +263,7 @@ class TestImportBundleRename:
 class TestImportBundleSkip:
     def test_skip_returns_existing(self, seeded_repo):
         data = export_bundle("b-1", seeded_repo)
-        result = import_bundle(
-            data, seeded_repo, conflict_strategy=ImportConflictStrategy.SKIP
-        )
+        result = import_bundle(data, seeded_repo, conflict_strategy=ImportConflictStrategy.SKIP)
         # No new entity created; the original is returned
         assert result.id == "b-1"
 
@@ -275,9 +274,7 @@ class TestImportBundleOverwrite:
         data["bundle"]["name"] = "Renamed Bundle"
         data["llm_profile"]["name"] = "Renamed LLM"
 
-        result = import_bundle(
-            data, seeded_repo, conflict_strategy=ImportConflictStrategy.OVERWRITE
-        )
+        result = import_bundle(data, seeded_repo, conflict_strategy=ImportConflictStrategy.OVERWRITE)
         assert result.id == "b-1"
         assert result.name == "Renamed Bundle"
 
@@ -308,9 +305,7 @@ class TestBundleRoundTrip:
         exported = export_bundle("b-1", seeded_repo)
         target = BlueprintRepository(db_path=tmp_path / "target_skip.db")
 
-        result = import_bundle(
-            exported, target, conflict_strategy=ImportConflictStrategy.SKIP
-        )
+        result = import_bundle(exported, target, conflict_strategy=ImportConflictStrategy.SKIP)
         # First import into an empty repo: SKIP has no effect, IDs preserved
         assert result.id == "b-1"
         assert target.get_llm_profile("llm-1") is not None

@@ -504,13 +504,19 @@ def _record_publish_failure(channel: str, op: str, exc: BaseException) -> None:
     if key in _channel_error_logged:
         logger.debug(
             "PubSub: %s on %s failed (suppressed; total=%d): %s",
-            op, channel, _publish_failures, exc,
+            op,
+            channel,
+            _publish_failures,
+            exc,
         )
     else:
         _channel_error_logged.add(key)
         logger.error(
             "PubSub: %s on %s failed (total=%d); first occurrence logged with traceback",
-            op, channel, _publish_failures, exc_info=True,
+            op,
+            channel,
+            _publish_failures,
+            exc_info=True,
         )
 
 

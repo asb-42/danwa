@@ -35,7 +35,6 @@ from backend.api.deps import (
     reset_cached_stores,
 )
 
-
 # ---------------------------------------------------------------------------
 # _CACHED_STORE_FACTORIES
 # ---------------------------------------------------------------------------
@@ -64,10 +63,9 @@ class TestCachedStoreFactoriesTuple:
         actual = {f.__name__ for f in _CACHED_STORE_FACTORIES}
         expected = set(self.EXPECTED_FACTORIES)
         missing = expected - actual
-        extra = actual - expected
         assert not missing, f"Missing factories: {sorted(missing)}"
-        # We don't assert ``not extra`` because future cached factories
-        # are allowed to be added; the test should be a *floor*, not a
+        # We don't assert ``not (actual - expected)`` because future cached
+        # factories are allowed to be added; the test should be a *floor*, not a
         # ceiling.  But the message above flags unexpected additions.
 
     def test_every_member_has_cache_clear(self) -> None:
@@ -80,8 +78,7 @@ class TestCachedStoreFactoriesTuple:
         """
         for factory in _CACHED_STORE_FACTORIES:
             assert callable(getattr(factory, "cache_clear", None)), (
-                f"{factory.__name__} is in _CACHED_STORE_FACTORIES but "
-                f"has no cache_clear() — it is not @lru_cache-decorated."
+                f"{factory.__name__} is in _CACHED_STORE_FACTORIES but has no cache_clear() — it is not @lru_cache-decorated."
             )
 
     def test_every_factory_is_callable(self) -> None:
@@ -117,17 +114,12 @@ class TestResetCachedStores:
             # Sanity check: at least one factory actually got cached.
             # (get_settings is a no-op singleton-return; the rest construct
             # new objects, so all 10 should be cached now.)
-            assert any(
-                f.cache_info().currsize > 0 for f in _CACHED_STORE_FACTORIES
-            ), "Expected at least one factory to be cached after invocation"
+            assert any(f.cache_info().currsize > 0 for f in _CACHED_STORE_FACTORIES), "Expected at least one factory to be cached after invocation"
 
             reset_cached_stores()
 
             for factory in _CACHED_STORE_FACTORIES:
-                assert factory.cache_info().currsize == 0, (
-                    f"{factory.__name__}.cache_info().currsize == "
-                    f"{factory.cache_info().currsize} after reset"
-                )
+                assert factory.cache_info().currsize == 0, f"{factory.__name__}.cache_info().currsize == {factory.cache_info().currsize} after reset"
         finally:
             reset_cached_stores()
 
@@ -161,9 +153,7 @@ class TestFreshStores:
                 factory()
             with fresh_stores():
                 for factory in _CACHED_STORE_FACTORIES:
-                    assert factory.cache_info().currsize == 0, (
-                        f"{factory.__name__} not cleared on entry"
-                    )
+                    assert factory.cache_info().currsize == 0, f"{factory.__name__} not cleared on entry"
         finally:
             reset_cached_stores()
 
@@ -178,15 +168,10 @@ class TestFreshStores:
                 # *constructive* factories.
                 # (get_settings is a no-op-return of the module-level
                 # singleton, so we just check that some factory has > 0.)
-                assert any(
-                    f.cache_info().currsize > 0
-                    for f in _CACHED_STORE_FACTORIES
-                )
+                assert any(f.cache_info().currsize > 0 for f in _CACHED_STORE_FACTORIES)
             # After exit: every cache must be empty again.
             for factory in _CACHED_STORE_FACTORIES:
-                assert factory.cache_info().currsize == 0, (
-                    f"{factory.__name__} not cleared on exit"
-                )
+                assert factory.cache_info().currsize == 0, f"{factory.__name__} not cleared on exit"
         finally:
             reset_cached_stores()
 
@@ -202,9 +187,7 @@ class TestFreshStores:
                     raise RuntimeError("boom")
             # Teardown must have run despite the exception.
             for factory in _CACHED_STORE_FACTORIES:
-                assert factory.cache_info().currsize == 0, (
-                    f"{factory.__name__} not cleared after raised body"
-                )
+                assert factory.cache_info().currsize == 0, f"{factory.__name__} not cleared after raised body"
         finally:
             reset_cached_stores()
 
@@ -244,9 +227,7 @@ class TestFactoriesReturnSingletons:
                 first = deps.get_audit_service()
                 reset_cached_stores()
                 second = deps.get_audit_service()
-                assert first is not second, (
-                    "cache_clear() should force a new instance on the next call"
-                )
+                assert first is not second, "cache_clear() should force a new instance on the next call"
         finally:
             reset_cached_stores()
 
@@ -299,9 +280,7 @@ class TestCascadeRegression:
                 a = deps.get_audit_service()
             with fresh_stores():
                 b = deps.get_audit_service()
-            assert a is not b, (
-                "fresh_stores() should force a new store on every entry"
-            )
+            assert a is not b, "fresh_stores() should force a new store on every entry"
         finally:
             reset_cached_stores()
 

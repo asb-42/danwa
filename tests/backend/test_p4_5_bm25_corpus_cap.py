@@ -105,9 +105,7 @@ class TestBM25CorpusCap:
         assert bm25 is not None
         assert len(bm25.doc_freqs) == MAX_BM25_CORPUS_SIZE
         # And a warning was logged.
-        assert any(
-            "BM25 corpus truncated" in rec.getMessage() for rec in caplog.records
-        ), caplog.records
+        assert any("BM25 corpus truncated" in rec.getMessage() for rec in caplog.records), caplog.records
 
     def test_oversized_corpus_warning_includes_counts(self) -> None:
         """The truncation warning reports both the original and capped counts."""

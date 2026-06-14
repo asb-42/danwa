@@ -69,9 +69,7 @@ class PluginRegistry:
                 # module and re-runs the decorator on a new class object
                 # that represents the same logical plugin).
                 return
-            raise ValueError(
-                f"Plugin with key {key!r} is already registered ({existing.__name__}). Cannot register {plugin_class.__name__}."
-            )
+            raise ValueError(f"Plugin with key {key!r} is already registered ({existing.__name__}). Cannot register {plugin_class.__name__}.")
         self._plugins[key] = plugin_class
         logger.info("Output plugin registered: %s (%s)", key, plugin_class.plugin_name)
 

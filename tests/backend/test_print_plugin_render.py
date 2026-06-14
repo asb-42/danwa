@@ -21,7 +21,6 @@ What is exercised:
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -41,7 +40,6 @@ from backend.services.output.plugins.print_plugin import (
     PrintTemplate,
 )
 from backend.workflow.workflow_state import WorkflowTemplate
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -233,9 +231,7 @@ class TestRenderHtml:
         assert len(html) > 0
         assert "Hello" in html
 
-    def test_format_number_filter_via_probe_template(
-        self, tmp_path, monkeypatch
-    ) -> None:
+    def test_format_number_filter_via_probe_template(self, tmp_path, monkeypatch) -> None:
         """Drive the inner ``_format_number`` filter via the real ``_render_html``
         by pointing ``_TEMPLATES_DIR`` at a temporary directory containing a
         tiny template that uses the filter.
@@ -272,7 +268,6 @@ class TestRenderHtml:
         # Instead: just call _render_html on a template that uses
         # format_number. We craft a minimal template on the fly.
         # The cleanest approach: register the filter manually and test it.
-        from backend.services.output.plugins.print_plugin import PrintOutputPlugin
 
         # Recreate the inner function: the closure is private, so we
         # patch _render_html to expose the filter. Use a simpler test:
@@ -280,7 +275,7 @@ class TestRenderHtml:
         # is installed.
         from backend.services.output.plugins import print_plugin as pp_mod
 
-        probe_dir = pp_mod._TEMPLATES_DIR
+        pp_mod._TEMPLATES_DIR  # noqa: B018  (probe-only reference)
 
         # The filter is only registered on the local env inside _render_html.
         # Use a minimal inline template by writing a temporary template
@@ -292,9 +287,7 @@ class TestRenderHtml:
         with tempfile.TemporaryDirectory() as td:
             tdir = Path(td)
             (tdir / "probe.html").write_text(
-                "{{ 1234567 | format_number }}|"
-                "{{ 'oops' | format_number }}|"
-                "{{ None | format_number }}",
+                "{{ 1234567 | format_number }}|{{ 'oops' | format_number }}|{{ None | format_number }}",
                 encoding="utf-8",
             )
             env = jinja2.Environment(
@@ -333,16 +326,12 @@ class TestRenderOrchestration:
         finally:
             loop.close()
 
-    def test_creates_job_dir(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_creates_job_dir(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.PDF)
         self._run(plugin.render(artifact, config, "job1", output_dir))
         assert (output_dir / "job1").is_dir()
 
-    def test_pdf_only(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_pdf_only(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.PDF)
         files = self._run(plugin.render(artifact, config, "job1", output_dir))
         assert len(files) == 1
@@ -354,9 +343,7 @@ class TestRenderOrchestration:
         assert stub_generators["odt"] == []
         assert stub_generators["md"] == []
 
-    def test_docx_only(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_docx_only(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.DOCX)
         files = self._run(plugin.render(artifact, config, "j", output_dir))
         assert [f.name for f in files] == ["debate.docx"]
@@ -365,17 +352,13 @@ class TestRenderOrchestration:
         assert stub_generators["odt"] == []
         assert stub_generators["md"] == []
 
-    def test_odt_only(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_odt_only(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.ODT)
         files = self._run(plugin.render(artifact, config, "j", output_dir))
         assert [f.name for f in files] == ["debate.odt"]
         assert (output_dir / "j" / "debate.odt").read_text(encoding="utf-8") == "ODT"
 
-    def test_md_only(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_md_only(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.MD)
         files = self._run(plugin.render(artifact, config, "j", output_dir))
         assert [f.name for f in files] == ["debate.md"]
@@ -385,9 +368,7 @@ class TestRenderOrchestration:
         assert stub_generators["odt"] == []
         assert len(stub_generators["md"]) == 1
 
-    def test_all_formats(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_all_formats(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.ALL)
         files = self._run(plugin.render(artifact, config, "j", output_dir))
         names = sorted(f.name for f in files)
@@ -397,18 +378,14 @@ class TestRenderOrchestration:
         assert len(stub_generators["odt"]) == 1
         assert len(stub_generators["md"]) == 1
 
-    def test_runs_progress_callback(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_runs_progress_callback(self, plugin, artifact, output_dir, stub_generators) -> None:
         progress_calls: list[tuple[int, int]] = []
 
         async def cb(current: int, total: int) -> None:
             progress_calls.append((current, total))
 
         config = PrintPluginConfig(primary_format=PrintFormat.PDF)
-        self._run(
-            plugin.render(artifact, config, "j", output_dir, progress_callback=cb)
-        )
+        self._run(plugin.render(artifact, config, "j", output_dir, progress_callback=cb))
         # _render_html is called via asyncio.to_thread but progress
         # callback is only invoked if the plugin calls it. The current
         # implementation does not invoke progress_callback from
@@ -417,9 +394,7 @@ class TestRenderOrchestration:
         # will need to update.
         assert isinstance(progress_calls, list)
 
-    def test_html_passed_to_pdf_generator(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_html_passed_to_pdf_generator(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.PDF)
         self._run(plugin.render(artifact, config, "j", output_dir))
         html_passed, path = stub_generators["pdf"][0]
@@ -427,17 +402,13 @@ class TestRenderOrchestration:
         assert len(html_passed) > 0
         assert path.name == "debate.pdf"
 
-    def test_i18n_passed_to_md_generator(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_i18n_passed_to_md_generator(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.MD, language="en")
         self._run(plugin.render(artifact, config, "j", output_dir))
         _doc, i18n, _cfg = stub_generators["md"][0]
         assert i18n["turn_label"] == "Turn"
 
-    def test_md_uses_german_labels_when_configured(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_md_uses_german_labels_when_configured(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(primary_format=PrintFormat.MD, language="de")
         self._run(plugin.render(artifact, config, "j", output_dir))
         _doc, i18n, _cfg = stub_generators["md"][0]
@@ -462,12 +433,8 @@ class TestRenderTemplateAutoDetection:
         finally:
             loop.close()
 
-    def test_td_workflow_switches_template(
-        self, plugin, output_dir, stub_generators
-    ) -> None:
-        artifact = _make_artifact(
-            workflow_template=WorkflowTemplate.TRANSACTIONAL_DRAFTING
-        )
+    def test_td_workflow_switches_template(self, plugin, output_dir, stub_generators) -> None:
+        artifact = _make_artifact(workflow_template=WorkflowTemplate.TRANSACTIONAL_DRAFTING)
         config = PrintPluginConfig(
             primary_format=PrintFormat.PDF,
             template_name=PrintTemplate.ACADEMIC_DEBATE,
@@ -479,9 +446,7 @@ class TestRenderTemplateAutoDetection:
         self._run(plugin.render(artifact, config, "j", output_dir))
         assert len(stub_generators["pdf"]) == 1
 
-    def test_non_td_workflow_keeps_template(
-        self, plugin, output_dir, stub_generators
-    ) -> None:
+    def test_non_td_workflow_keeps_template(self, plugin, output_dir, stub_generators) -> None:
         artifact = _make_artifact(workflow_template=WorkflowTemplate.ACADEMIC_DEBATE)
         config = PrintPluginConfig(
             primary_format=PrintFormat.PDF,
@@ -490,9 +455,7 @@ class TestRenderTemplateAutoDetection:
         self._run(plugin.render(artifact, config, "j", output_dir))
         assert len(stub_generators["pdf"]) == 1
 
-    def test_explicit_td_template_kept_even_without_workflow(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_explicit_td_template_kept_even_without_workflow(self, plugin, artifact, output_dir, stub_generators) -> None:
         # When the user explicitly chose TRANSACTIONAL_DRAFTING,
         # we should NOT override the choice even if the workflow
         # template says otherwise.
@@ -504,12 +467,8 @@ class TestRenderTemplateAutoDetection:
         self._run(plugin.render(artifact, config, "j", output_dir))
         assert len(stub_generators["pdf"]) == 1
 
-    def test_explicit_minimal_template_not_overridden(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
-        artifact = _make_artifact(
-            workflow_template=WorkflowTemplate.TRANSACTIONAL_DRAFTING
-        )
+    def test_explicit_minimal_template_not_overridden(self, plugin, artifact, output_dir, stub_generators) -> None:
+        artifact = _make_artifact(workflow_template=WorkflowTemplate.TRANSACTIONAL_DRAFTING)
         config = PrintPluginConfig(
             primary_format=PrintFormat.PDF,
             template_name=PrintTemplate.MINIMAL,
@@ -538,12 +497,8 @@ class TestRenderSections:
         finally:
             loop.close()
 
-    def test_td_template_builds_sections(
-        self, plugin, output_dir, stub_generators
-    ) -> None:
-        artifact = _make_artifact(
-            workflow_template=WorkflowTemplate.TRANSACTIONAL_DRAFTING
-        )
+    def test_td_template_builds_sections(self, plugin, output_dir, stub_generators) -> None:
+        artifact = _make_artifact(workflow_template=WorkflowTemplate.TRANSACTIONAL_DRAFTING)
         config = PrintPluginConfig(
             primary_format=PrintFormat.PDF,
             template_name=PrintTemplate.TRANSACTIONAL_DRAFTING,
@@ -552,10 +507,8 @@ class TestRenderSections:
         # `sections` (passed via the **extra kwarg). We patch the
         # layout engine to verify build_transactional_sections is
         # called.
-        with patch(
-            "backend.services.output.plugins.print_plugin.PrintLayoutEngine"
-        ) as MockEngine:
-            mock_instance = MockEngine.return_value
+        with patch("backend.services.output.plugins.print_plugin.PrintLayoutEngine") as mock_engine:
+            mock_instance = mock_engine.return_value
             # transform() returns a stub with the right shape
             from backend.services.output.plugins.print_models import (
                 PrintDocument,
@@ -586,16 +539,12 @@ class TestRenderSections:
             self._run(plugin.render(artifact, config, "j", output_dir))
         mock_instance.build_transactional_sections.assert_called_once_with(artifact)
 
-    def test_non_td_template_skips_section_building(
-        self, plugin, artifact, output_dir, stub_generators
-    ) -> None:
+    def test_non_td_template_skips_section_building(self, plugin, artifact, output_dir, stub_generators) -> None:
         config = PrintPluginConfig(
             primary_format=PrintFormat.PDF,
             template_name=PrintTemplate.ACADEMIC_DEBATE,
         )
-        with patch(
-            "backend.services.output.plugins.print_plugin.PrintLayoutEngine"
-        ) as MockEngine:
+        with patch("backend.services.output.plugins.print_plugin.PrintLayoutEngine") as mock_engine:
             from backend.services.output.plugins.print_models import (
                 PrintDocument,
                 PrintMetadata,
@@ -618,7 +567,7 @@ class TestRenderSections:
                     PrintSection(type=SectionType.TITLE, content="<h1>X</h1>"),
                 ],
             )
-            mock_instance = MockEngine.return_value
+            mock_instance = mock_engine.return_value
             mock_instance.transform.return_value = doc
             self._run(plugin.render(artifact, config, "j", output_dir))
         mock_instance.build_transactional_sections.assert_not_called()
@@ -629,7 +578,7 @@ class TestRenderSections:
 # ---------------------------------------------------------------------------
 
 
-def _install_fake_html_to_md(monkeypatch: "pytest.MonkeyPatch") -> None:
+def _install_fake_html_to_md(monkeypatch: pytest.MonkeyPatch) -> None:
     """Inject a fake ``backend.services.output.html_to_md`` module.
 
     The real module imports ``html2text`` at module level — that import fails
@@ -642,6 +591,7 @@ def _install_fake_html_to_md(monkeypatch: "pytest.MonkeyPatch") -> None:
 
     def fake_html_to_markdown(html: str) -> str:
         import re as _re
+
         return _re.sub(r"<[^>]+>", "", html).strip()
 
     mod = _types.ModuleType("backend.services.output.html_to_md")
@@ -696,6 +646,8 @@ class TestGenerateMd:
         assert out.endswith("\n")
 
     def test_turn_section_renders_with_timestamp(self, monkeypatch) -> None:
+        from datetime import UTC, datetime
+
         from backend.services.output.plugins import print_plugin as pp_mod
         from backend.services.output.plugins.print_models import (
             PrintDocument,
@@ -703,7 +655,6 @@ class TestGenerateMd:
             PrintSection,
             SectionType,
         )
-        from datetime import UTC, datetime
 
         _install_fake_html_to_md(monkeypatch)
 
@@ -1005,9 +956,7 @@ class TestGenerateDocx:
     def test_pypandoc_path(self, monkeypatch, tmp_path) -> None:
         called: dict[str, object] = {}
 
-        def fake_convert_text(
-            html: str, to: str, format: str, outputfile: str
-        ) -> None:
+        def fake_convert_text(html: str, to: str, format: str, outputfile: str) -> None:
             called["html"] = html
             called["to"] = to
             called["format"] = format
@@ -1035,6 +984,7 @@ class TestGenerateDocx:
             return _orig_import(name, *args, **kwargs)
 
         import builtins as _bi
+
         _orig_import = _bi.__import__
         monkeypatch.setattr(_bi, "__import__", _raise_import)
 
@@ -1069,6 +1019,7 @@ class TestGenerateDocx:
             shared = type("shared", (), {"Pt": _FakePt})
 
         import sys as _sys
+
         monkeypatch.setitem(_sys.modules, "docx", _FakeDocx)
         # Add docx.shared submodule so ``from docx.shared import Pt`` works
         _sys.modules["docx.shared"] = _FakeDocx.shared
@@ -1093,9 +1044,7 @@ class TestGenerateOdt:
     def test_pypandoc_path(self, monkeypatch, tmp_path) -> None:
         called: dict[str, object] = {}
 
-        def fake_convert_text(
-            html: str, to: str, format: str, outputfile: str
-        ) -> None:
+        def fake_convert_text(html: str, to: str, format: str, outputfile: str) -> None:
             called["to"] = to
             Path(outputfile).write_text("ODT", encoding="utf-8")
 
@@ -1117,6 +1066,7 @@ class TestGenerateOdt:
             return _orig_import(name, *args, **kwargs)
 
         import builtins as _bi
+
         _orig_import = _bi.__import__
         monkeypatch.setattr(_bi, "__import__", _raise_import)
 
@@ -1128,7 +1078,7 @@ class TestGenerateOdt:
             def __init__(self) -> None:
                 self.elements: list[_FakeP] = []
 
-            def addElement(self, el: _FakeP) -> None:
+            def addElement(self, el: _FakeP) -> None:  # noqa: N802
                 self.elements.append(el)
 
         class _FakeOpenDocumentText:
@@ -1142,16 +1092,17 @@ class TestGenerateOdt:
                 )
 
         class _FakeOdf:
-            class opendocument:
+            class Opendocument:
                 OpenDocumentText = _FakeOpenDocumentText
 
-            class text:
+            class Text:
                 P = _FakeP
 
         import sys as _sys
+
         _sys.modules["odf"] = _FakeOdf
-        _sys.modules["odf.opendocument"] = _FakeOdf.opendocument
-        _sys.modules["odf.text"] = _FakeOdf.text
+        _sys.modules["odf.opendocument"] = _FakeOdf.Opendocument
+        _sys.modules["odf.text"] = _FakeOdf.Text
 
         out = tmp_path / "x.odt"
         PrintOutputPlugin._generate_odt("<p>Hello ODT</p>", out)
@@ -1159,9 +1110,7 @@ class TestGenerateOdt:
         content = out.read_text(encoding="utf-8")
         assert "Hello ODT" in content
 
-    def test_fallback_to_html_when_no_odfpy(
-        self, monkeypatch, tmp_path
-    ) -> None:
+    def test_fallback_to_html_when_no_odfpy(self, monkeypatch, tmp_path) -> None:
         """When both pypandoc and odfpy are missing, write raw HTML."""
 
         def _raise_import(name: str, *args: object, **kwargs: object) -> object:
@@ -1170,6 +1119,7 @@ class TestGenerateOdt:
             return _orig_import(name, *args, **kwargs)
 
         import builtins as _bi
+
         _orig_import = _bi.__import__
         monkeypatch.setattr(_bi, "__import__", _raise_import)
 

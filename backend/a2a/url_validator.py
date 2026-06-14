@@ -40,11 +40,11 @@ _PRIVATE_PREFIXES = [
     "127.0.0.0/8",
     "0.0.0.0/8",
     "169.254.0.0/16",  # link-local
-    "100.64.0.0/10",   # CGNAT
+    "100.64.0.0/10",  # CGNAT
     "::1/128",
     "fc00::/7",
     "fe80::/10",
-    "::ffff:0:0/96",   # IPv4-mapped IPv6 (catch-all for ::ffff:127.0.0.1 etc.)
+    "::ffff:0:0/96",  # IPv4-mapped IPv6 (catch-all for ::ffff:127.0.0.1 etc.)
 ]
 
 _private_networks = [ipaddress.ip_network(p) for p in _PRIVATE_PREFIXES]
@@ -98,11 +98,10 @@ def validate_a2a_url(url: str, allow_private_ips: bool = False) -> str:
     # --- Private-IP / DNS-rebinding defence --------------------------------
     # Step 1: literal IP in the hostname?
     try:
-        addr = ipaddress.ip_address(hostname)
+        ipaddress.ip_address(hostname)
         if _is_private_ip(hostname):
             raise A2AValidationError(
-                f"Private IP address '{hostname}' is blocked. "
-                "Set DANWA_A2A_ALLOW_PRIVATE_IPS=true to allow.",
+                f"Private IP address '{hostname}' is blocked. Set DANWA_A2A_ALLOW_PRIVATE_IPS=true to allow.",
                 endpoint=url,
             )
         # Public IP literal — accept.
@@ -136,8 +135,7 @@ def validate_a2a_url(url: str, allow_private_ips: bool = False) -> str:
                 ip_str,
             )
             raise A2AValidationError(
-                f"Hostname '{hostname}' resolves to a private IP "
-                f"({ip_str}). Set DANWA_A2A_ALLOW_PRIVATE_IPS=true to allow.",
+                f"Hostname '{hostname}' resolves to a private IP ({ip_str}). Set DANWA_A2A_ALLOW_PRIVATE_IPS=true to allow.",
                 endpoint=url,
             )
 

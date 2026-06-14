@@ -23,7 +23,6 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from backend.api.routers import case_scoped
 from backend.api.routers.case_scoped import (
     _build_debate_item,
     _get_debate_store_for_case,
@@ -36,7 +35,6 @@ from backend.models.schemas import (
     DebateRequest,
     DebateStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -158,9 +156,7 @@ class TestGetDebateStoreForCase:
         # subdirectory should be created
         assert (case_store.get_case_dir(tenant_a, case_a) / "debates").exists()
 
-    def test_returns_isolated_stores_per_case(
-        self, case_store, case_a, case_b, tenant_a
-    ):
+    def test_returns_isolated_stores_per_case(self, case_store, case_a, case_b, tenant_a):
         store_a = _get_debate_store_for_case(tenant_a, case_a, case_store)
         store_b = _get_debate_store_for_case(tenant_a, case_b, case_store)
         assert store_a is not store_b
@@ -173,9 +169,7 @@ class TestResolveLLMModel:
     def test_resolves_via_blueprint_repo(self, monkeypatch):
         fake_profile = mock.MagicMock(model="gpt-4o")
         fake_repo = mock.MagicMock(get_llm_profile=lambda _id: fake_profile)
-        monkeypatch.setattr(
-            "backend.api.deps.get_blueprint_repository", lambda: fake_repo
-        )
+        monkeypatch.setattr("backend.api.deps.get_blueprint_repository", lambda: fake_repo)
         result = _resolve_llm_model("profile-1", "p")
         assert result == "gpt-4o"
 
@@ -189,9 +183,7 @@ class TestResolveLLMModel:
 
     def test_falls_back_to_id_when_profile_missing(self, monkeypatch):
         fake_repo = mock.MagicMock(get_llm_profile=lambda _id: None)
-        monkeypatch.setattr(
-            "backend.api.deps.get_blueprint_repository", lambda: fake_repo
-        )
+        monkeypatch.setattr("backend.api.deps.get_blueprint_repository", lambda: fake_repo)
         assert _resolve_llm_model("missing", "p") == "missing"
 
 
@@ -300,9 +292,7 @@ class TestListTenantDebates:
         # Unknown tenant -> no cases -> empty list
         assert resp.json() == []
 
-    def test_aggregates_across_cases(
-        self, client: TestClient, case_store, tenant_a, case_a, case_b
-    ):
+    def test_aggregates_across_cases(self, client: TestClient, case_store, tenant_a, case_a, case_b):
         # Seed one debate per case
         _seed_debate(case_store.get_case_dir(tenant_a, case_a), "d-A")
         _seed_debate(case_store.get_case_dir(tenant_a, case_b), "d-B")
@@ -313,9 +303,7 @@ class TestListTenantDebates:
         ids = {d["debate_id"] for d in data}
         assert ids == {"d-A", "d-B"}
 
-    def test_filter_by_status(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_filter_by_status(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
             case_store.get_case_dir(tenant_a, case_a),
             "d-pending",
@@ -326,17 +314,13 @@ class TestListTenantDebates:
             "d-completed",
             status=DebateStatus.COMPLETED,
         )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/debates?status=completed"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/debates?status=completed")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
         assert data[0]["debate_id"] == "d-completed"
 
-    def test_search_by_title(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_search_by_title(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
             case_store.get_case_dir(tenant_a, case_a),
             "d1",
@@ -347,23 +331,15 @@ class TestListTenantDebates:
             "d2",
             title="Space Exploration",
         )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/debates?search=climate"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/debates?search=climate")
         assert resp.status_code == 200
         ids = {d["debate_id"] for d in resp.json()}
         assert ids == {"d1"}
 
-    def test_pagination(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_pagination(self, client: TestClient, case_store, tenant_a, case_a):
         for i in range(3):
-            _seed_debate(
-                case_store.get_case_dir(tenant_a, case_a), f"d{i}"
-            )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/debates?limit=2&offset=0"
-        )
+            _seed_debate(case_store.get_case_dir(tenant_a, case_a), f"d{i}")
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/debates?limit=2&offset=0")
         assert resp.status_code == 200
         assert len(resp.json()) == 2
 
@@ -375,37 +351,23 @@ class TestListTenantDebates:
 
 class TestListCaseDebates:
     def test_empty_case(self, client: TestClient, tenant_a, case_a):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates")
         assert resp.status_code == 200
         assert resp.json() == []
 
     def test_unknown_case_404(self, client: TestClient, tenant_a):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/no-such-case/debates"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/no-such-case/debates")
         assert resp.status_code == 404
 
-    def test_lists_debates_in_case(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
-        _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d1", title="First"
-        )
-        _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d2", title="Second"
-        )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates"
-        )
+    def test_lists_debates_in_case(self, client: TestClient, case_store, tenant_a, case_a):
+        _seed_debate(case_store.get_case_dir(tenant_a, case_a), "d1", title="First")
+        _seed_debate(case_store.get_case_dir(tenant_a, case_a), "d2", title="Second")
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates")
         assert resp.status_code == 200
         ids = {d["debate_id"] for d in resp.json()}
         assert ids == {"d1", "d2"}
 
-    def test_search_filter(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_search_filter(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
             case_store.get_case_dir(tenant_a, case_a),
             "d1",
@@ -424,9 +386,7 @@ class TestListCaseDebates:
                 "max_rounds": 3,
             },
         )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates?search=solar"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates?search=solar")
         assert resp.status_code == 200
         ids = {d["debate_id"] for d in resp.json()}
         assert ids == {"d1"}
@@ -438,16 +398,12 @@ class TestListCaseDebates:
 
 
 class TestCreateCaseDebate:
-    def test_creates_pending_debate(
-        self, client: TestClient, tenant_a, case_a
-    ):
+    def test_creates_pending_debate(self, client: TestClient, tenant_a, case_a):
         body = {
             "case": {"text": "Discuss AI ethics"},
             "max_rounds": 3,
         }
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates", json=body
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates", json=body)
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "pending"
@@ -456,9 +412,7 @@ class TestCreateCaseDebate:
 
     def test_unknown_case_returns_404(self, client: TestClient, tenant_a):
         body = {"case": {"text": "X"}}
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/no-such/debates", json=body
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/no-such/debates", json=body)
         assert resp.status_code == 404
 
 
@@ -468,36 +422,26 @@ class TestCreateCaseDebate:
 
 
 class TestGetCaseDebate:
-    def test_returns_status(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_returns_status(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
             case_store.get_case_dir(tenant_a, case_a),
             "d-1",
             status=DebateStatus.RUNNING,
             current_round=1,
         )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1")
         assert resp.status_code == 200
         data = resp.json()
         assert data["debate_id"] == "d-1"
         assert data["status"] == "running"
         assert data["current_round"] == 1
 
-    def test_unknown_debate_returns_404(
-        self, client: TestClient, tenant_a, case_a
-    ):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing"
-        )
+    def test_unknown_debate_returns_404(self, client: TestClient, tenant_a, case_a):
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing")
         assert resp.status_code == 404
 
     def test_unknown_case_returns_404(self, client: TestClient, tenant_a):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/no-such/debates/d-1"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/no-such/debates/d-1")
         assert resp.status_code == 404
 
 
@@ -507,54 +451,42 @@ class TestGetCaseDebate:
 
 
 class TestDeleteCaseDebate:
-    def test_deletes_pending(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_deletes_pending(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.PENDING,
         )
-        resp = client.delete(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1"
-        )
+        resp = client.delete(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1")
         assert resp.status_code == 200
         assert resp.json()["detail"] == "Debate deleted"
         # Verify it's actually gone
         from backend.persistence.debate_store import DebateStore
-        store = DebateStore(
-            data_dir=case_store.get_case_dir(tenant_a, case_a) / "debates"
-        )
+
+        store = DebateStore(data_dir=case_store.get_case_dir(tenant_a, case_a) / "debates")
         assert store.get("d-1") is None
 
-    def test_deletes_completed(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_deletes_completed(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.COMPLETED,
         )
-        resp = client.delete(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1"
-        )
+        resp = client.delete(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1")
         assert resp.status_code == 200
 
-    def test_running_returns_409(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_running_returns_409(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.RUNNING,
         )
-        resp = client.delete(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1"
-        )
+        resp = client.delete(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1")
         assert resp.status_code == 409
         assert "running" in resp.json()["detail"]
 
     def test_missing_returns_404(self, client: TestClient, tenant_a, case_a):
-        resp = client.delete(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing"
-        )
+        resp = client.delete(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing")
         assert resp.status_code == 404
 
 
@@ -564,49 +496,38 @@ class TestDeleteCaseDebate:
 
 
 class TestCancelCaseDebate:
-    def test_cancel_running(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_cancel_running(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.RUNNING,
         )
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/cancel"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/cancel")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
-    def test_cancel_pending(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_cancel_pending(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.PENDING,
         )
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/cancel"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/cancel")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
-    def test_cancel_completed_idempotent(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_cancel_completed_idempotent(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.COMPLETED,
         )
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/cancel"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/cancel")
         assert resp.status_code == 200
         assert resp.json()["status"] == "completed"
 
     def test_missing_404(self, client: TestClient, tenant_a, case_a):
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing/cancel"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing/cancel")
         assert resp.status_code == 404
 
 
@@ -616,50 +537,40 @@ class TestCancelCaseDebate:
 
 
 class TestForceResetCaseDebate:
-    def test_force_reset_running(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_force_reset_running(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.RUNNING,
         )
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/force-reset"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/force-reset")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
         from backend.persistence.debate_store import DebateStore
-        store = DebateStore(
-            data_dir=case_store.get_case_dir(tenant_a, case_a) / "debates"
-        )
+
+        store = DebateStore(data_dir=case_store.get_case_dir(tenant_a, case_a) / "debates")
         d = store.get("d-1")
         assert d["status"] == DebateStatus.FAILED
         assert "error" in (d.get("result") or {})
 
-    def test_force_reset_pending_noop(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_force_reset_pending_noop(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.PENDING,
         )
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/force-reset"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/d-1/force-reset")
         assert resp.status_code == 200
         # Status should be unchanged (pending) — only running gets reset
         from backend.persistence.debate_store import DebateStore
-        store = DebateStore(
-            data_dir=case_store.get_case_dir(tenant_a, case_a) / "debates"
-        )
+
+        store = DebateStore(data_dir=case_store.get_case_dir(tenant_a, case_a) / "debates")
         d = store.get("d-1")
         assert d["status"] == DebateStatus.PENDING
 
     def test_missing_404(self, client: TestClient, tenant_a, case_a):
-        resp = client.post(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing/force-reset"
-        )
+        resp = client.post(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/missing/force-reset")
         assert resp.status_code == 404
 
 
@@ -669,11 +580,10 @@ class TestForceResetCaseDebate:
 
 
 class TestOOBCaseInput:
-    def test_oob_non_running_returns_409(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_oob_non_running_returns_409(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.PENDING,
         )
         body = {
@@ -699,11 +609,10 @@ class TestOOBCaseInput:
         )
         assert resp.status_code == 404
 
-    def test_oob_running_queues_input(
-        self, client: TestClient, case_store, tenant_a, case_a, monkeypatch
-    ):
+    def test_oob_running_queues_input(self, client: TestClient, case_store, tenant_a, case_a, monkeypatch):
         _seed_debate(
-            case_store.get_case_dir(tenant_a, case_a), "d-1",
+            case_store.get_case_dir(tenant_a, case_a),
+            "d-1",
             status=DebateStatus.RUNNING,
         )
 
@@ -718,7 +627,8 @@ class TestOOBCaseInput:
 
         enqueued: list = []
         monkeypatch.setattr(
-            debate_workflow, "enqueue_oob",
+            debate_workflow,
+            "enqueue_oob",
             lambda _did, entry: enqueued.append(entry),
         )
 
@@ -749,20 +659,14 @@ class TestOOBCaseInput:
 
 
 class TestListCaseForks:
-    def test_no_forks(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_no_forks(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(case_store.get_case_dir(tenant_a, case_a), "parent")
         _seed_debate(case_store.get_case_dir(tenant_a, case_a), "other")
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/parent/forks"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/parent/forks")
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_lists_only_children(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_lists_only_children(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(case_store.get_case_dir(tenant_a, case_a), "parent")
         _seed_debate(
             case_store.get_case_dir(tenant_a, case_a),
@@ -774,17 +678,13 @@ class TestListCaseForks:
             "other-child",
             fork_info={"parent_debate_id": "different"},
         )
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/parent/forks"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/debates/parent/forks")
         assert resp.status_code == 200
         ids = {d["debate_id"] for d in resp.json()}
         assert ids == {"child1"}
 
     def test_unknown_case_404(self, client: TestClient, tenant_a):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/no-such/debates/d-1/forks"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/no-such/debates/d-1/forks")
         assert resp.status_code == 404
 
 
@@ -794,24 +694,16 @@ class TestListCaseForks:
 
 
 class TestListCaseAuditEvents:
-    def test_audit_for_unknown_debate(
-        self, client: TestClient, tenant_a, case_a
-    ):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/audit/missing"
-        )
+    def test_audit_for_unknown_debate(self, client: TestClient, tenant_a, case_a):
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/audit/missing")
         assert resp.status_code == 200
         assert resp.json() == []
 
     def test_audit_unknown_case_404(self, client: TestClient, tenant_a):
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/no-such/audit/missing"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/no-such/audit/missing")
         assert resp.status_code == 404
 
-    def test_audit_delegates_to_resolver(
-        self, client: TestClient, case_store, tenant_a, case_a
-    ):
+    def test_audit_delegates_to_resolver(self, client: TestClient, case_store, tenant_a, case_a):
         _seed_debate(
             case_store.get_case_dir(tenant_a, case_a),
             "d-1",
@@ -820,9 +712,7 @@ class TestListCaseAuditEvents:
         # The endpoint resolves via the case debate store, which should
         # find this title in the case-scoped store.  No events recorded,
         # so empty list returned.
-        resp = client.get(
-            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/audit/My Title"
-        )
+        resp = client.get(f"/api/v1/tenants/{tenant_a}/cases/{case_a}/audit/My Title")
         assert resp.status_code == 200
         # The debate is found but has no audit events
         assert resp.json() == []

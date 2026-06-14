@@ -16,7 +16,6 @@ from enum import Enum
 from typing import Any
 from unittest.mock import patch
 
-import pytest
 from pydantic import BaseModel
 
 from backend.workflow.workflow_runner import (
@@ -34,7 +33,6 @@ from backend.workflow.workflow_runner import (
     set_session_status,
 )
 from backend.workflow.workflow_state import WorkflowTemplate
-
 
 # ---------------------------------------------------------------------------
 # _serialize_state
@@ -129,7 +127,7 @@ class TestNormalizeTranscriptContent:
         assert normalize_transcript_content(txt, "strategist") == txt
 
     def test_json_code_fences_stripped(self) -> None:
-        fenced = "```json\n[{\"critic_id\": \"C1\", \"severity\": \"high\"}]\n```"
+        fenced = '```json\n[{"critic_id": "C1", "severity": "high"}]\n```'
         out = normalize_transcript_content(fenced, "critic")
         assert "C1" in out
         assert "HIGH" in out
@@ -388,9 +386,7 @@ class TestBuildArtifactFromState:
             "title": "T",
             "context": "C",
         }
-        art = _build_artifact_from_state(
-            session_id="s1", workflow_id="w1", state=state, duration_ms=42
-        )
+        art = _build_artifact_from_state(session_id="s1", workflow_id="w1", state=state, duration_ms=42)
         assert art.session_id == "s1"
         assert art.workflow_id == "w1"
         assert art.title == "T"
@@ -411,9 +407,7 @@ class TestBuildArtifactFromState:
             ],
             "node_sequence": ["x", "y", "z"],
         }
-        art = _build_artifact_from_state(
-            session_id="s1", workflow_id="w1", state=state
-        )
+        art = _build_artifact_from_state(session_id="s1", workflow_id="w1", state=state)
         assert len(art.transcript) == 1
         assert art.transcript[0].node_id == "z"
 
@@ -431,9 +425,7 @@ class TestBuildArtifactFromState:
             "node_configs": {"n1": cfg},
             "node_sequence": ["n1"],
         }
-        art = _build_artifact_from_state(
-            session_id="s1", workflow_id="w1", state=state
-        )
+        art = _build_artifact_from_state(session_id="s1", workflow_id="w1", state=state)
         assert "(p1)" in art.transcript[0].agent_name
 
     def test_transactional_path_uses_state_keys(self) -> None:
@@ -441,15 +433,11 @@ class TestBuildArtifactFromState:
             "workflow_template": WorkflowTemplate.TRANSACTIONAL_DRAFTING,
             "zero_draft": "First draft",
             "critic_items": [{"severity": "low", "flaw": "f", "principle": "p"}],
-            "build_responses": [
-                {"response_to": "ci_0", "option_a": "A"}
-            ],
+            "build_responses": [{"response_to": "ci_0", "option_a": "A"}],
             "pragmatist_output": {"reality_score": 0.7, "evaluations": []},
             "draft_version": 1,
         }
-        art = _build_artifact_from_state(
-            session_id="s1", workflow_id="w1", state=state
-        )
+        art = _build_artifact_from_state(session_id="s1", workflow_id="w1", state=state)
         # Zero-draft + critic + builder = 3 turns
         assert len(art.transcript) == 3
         # Transactional metadata block populated
@@ -464,9 +452,7 @@ class TestBuildArtifactFromState:
 
     def test_metadata_workflow_template_default(self) -> None:
         state = {"node_outputs": []}
-        art = _build_artifact_from_state(
-            session_id="s1", workflow_id="w1", state=state
-        )
+        art = _build_artifact_from_state(session_id="s1", workflow_id="w1", state=state)
         assert art.metadata["workflow_template"] == "debate"
 
 
@@ -527,40 +513,28 @@ class TestSessionLifecycle:
 
     def test_pause_session_writes_audit_log(self) -> None:
         backend, _ = self._patch_state()
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as get_logger:
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as get_logger:
             pause_session("s1")
         backend.pause.assert_called_once_with("s1")
         get_logger.return_value.log_workflow_event.assert_called_once()
 
     def test_pause_session_swallows_audit_error(self) -> None:
         backend, _ = self._patch_state()
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as get_logger:
-            get_logger.return_value.log_workflow_event.side_effect = RuntimeError(
-                "audit down"
-            )
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as get_logger:
+            get_logger.return_value.log_workflow_event.side_effect = RuntimeError("audit down")
             # Should not raise
             pause_session("s1")
 
     def test_resume_session_writes_audit_log(self) -> None:
         backend, _ = self._patch_state()
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as get_logger:
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as get_logger:
             resume_session("s1")
         backend.resume.assert_called_once_with("s1")
         get_logger.return_value.log_workflow_event.assert_called_once()
 
     def test_resume_session_swallows_audit_error(self) -> None:
         backend, _ = self._patch_state()
-        with patch(
-            "backend.workflow.workflow_runner.get_audit_logger"
-        ) as get_logger:
-            get_logger.return_value.log_workflow_event.side_effect = RuntimeError(
-                "audit down"
-            )
+        with patch("backend.workflow.workflow_runner.get_audit_logger") as get_logger:
+            get_logger.return_value.log_workflow_event.side_effect = RuntimeError("audit down")
             # Should not raise
             resume_session("s1")

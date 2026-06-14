@@ -37,9 +37,7 @@ class TestUserKeyStoreCache:
 
     def test_first_call_builds_store(self, svc: LLMService) -> None:
         assert svc._user_key_store_cache is None
-        with patch(
-            "backend.persistence.user_key_store.UserKeyStore"
-        ) as mock_store:  # noqa: N806
+        with patch("backend.persistence.user_key_store.UserKeyStore") as mock_store:  # noqa: N806
             instance = MagicMock(name="UserKeyStoreInstance")
             mock_store.return_value = instance
             store = svc._get_user_key_store()
@@ -50,9 +48,7 @@ class TestUserKeyStoreCache:
 
     def test_second_call_reuses_store(self, svc: LLMService) -> None:
         """The second call must NOT re-instantiate UserKeyStore."""
-        with patch(
-            "backend.persistence.user_key_store.UserKeyStore"
-        ) as mock_store:  # noqa: N806
+        with patch("backend.persistence.user_key_store.UserKeyStore") as mock_store:  # noqa: N806
             instance = MagicMock(name="UserKeyStoreInstance")
             mock_store.return_value = instance
             store1 = svc._get_user_key_store()
@@ -70,14 +66,10 @@ class TestUserKeyStoreCache:
         ``OperationalError`` on the first call, and verify that the
         second call gets a fresh ``UserKeyStore`` instance.
         """
-        with patch(
-            "backend.persistence.user_key_store.UserKeyStore"
-        ) as mock_store:  # noqa: N806
+        with patch("backend.persistence.user_key_store.UserKeyStore") as mock_store:  # noqa: N806
             dead = MagicMock(name="DeadStore")
             alive = MagicMock(name="AliveStore")
-            dead._init_db.side_effect = sqlite3.OperationalError(
-                "database is locked"
-            )
+            dead._init_db.side_effect = sqlite3.OperationalError("database is locked")
             mock_store.side_effect = [dead, alive]
 
             first = svc._get_user_key_store()
@@ -88,9 +80,7 @@ class TestUserKeyStoreCache:
 
         # Subsequent call must not re-instantiate — the rebuilt cache
         # is good and its _init_db probe is a no-op success.
-        with patch(
-            "backend.persistence.user_key_store.UserKeyStore"
-        ) as mock_store2:  # noqa: N806
+        with patch("backend.persistence.user_key_store.UserKeyStore") as mock_store2:  # noqa: N806
             mock_store2.return_value = MagicMock(name="AnotherStore")
             svc._get_user_key_store()
         assert mock_store2.call_count == 0

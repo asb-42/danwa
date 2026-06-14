@@ -30,7 +30,6 @@ from backend.blueprints.migrations import run_migrations
 from backend.modules.installer import ModuleInstaller
 from backend.modules.service import DANWA_MODULES_INDEX_URL, ModuleService
 
-
 # ---------------------------------------------------------------------------
 # Local fixtures (matching test_module_service.py)
 # ---------------------------------------------------------------------------
@@ -197,11 +196,15 @@ class TestDiscoverLocalExtended:
     def test_subdir_with_modules(self, service: ModuleService) -> None:
         alpha = service.modules_dir / "prompts" / "alpha"
         alpha.mkdir(parents=True, exist_ok=True)
-        (alpha / "manifest.json").write_text(json.dumps({
-            "module_id": "alpha",
-            "name": {"en": "alpha"},
-            "version": "1.0.0",
-        }))
+        (alpha / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "module_id": "alpha",
+                    "name": {"en": "alpha"},
+                    "version": "1.0.0",
+                }
+            )
+        )
         result = service.discover_local()
         assert any(m.module_id == "alpha" for m in result)
 
@@ -210,11 +213,15 @@ class TestDiscoverLocalExtended:
         cat.mkdir(parents=True, exist_ok=True)
         alpha = cat / "alpha"
         alpha.mkdir(parents=True, exist_ok=True)
-        (alpha / "manifest.json").write_text(json.dumps({
-            "module_id": "alpha",
-            "name": {"en": "alpha"},
-            "version": "1.0.0",
-        }))
+        (alpha / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "module_id": "alpha",
+                    "name": {"en": "alpha"},
+                    "version": "1.0.0",
+                }
+            )
+        )
         result = service.discover_local()
         assert any(m.module_id == "alpha" for m in result)
 
@@ -238,9 +245,7 @@ class TestDiscoverLocalWithStatusExtended:
         assert not any(m["module_id"] == "kitsune" for m in result)
 
     def test_db_only_prompt_variant_filtered(self, service: ModuleService) -> None:
-        _seed_db_module_registry(
-            service.db_path, "prompt-foo", name='"foo"', type="prompt-variant"
-        )
+        _seed_db_module_registry(service.db_path, "prompt-foo", name='"foo"', type="prompt-variant")
         result = service.discover_local_with_status()
         assert not any(m["module_id"] == "prompt-foo" for m in result)
 
@@ -273,9 +278,7 @@ class TestListAllExtended:
 
     def test_module_in_registry_enabled(self, service: ModuleService) -> None:
         _make_module(service.modules_dir, "beta", version="1.0.0")
-        _seed_db_module_registry(
-            service.db_path, "beta", name='{"en":"beta name"}', enabled=1
-        )
+        _seed_db_module_registry(service.db_path, "beta", name='{"en":"beta name"}', enabled=1)
         result = service.list_all()
         mod = next(m for m in result if m.module_id == "beta")
         assert mod.enabled is True
@@ -296,9 +299,7 @@ class TestFetchRepoIndex:
         assert result == [{"module_id": "cached-1", "version": "1.0.0"}]
 
     def test_returns_cached_legacy_repository(self, service: ModuleService) -> None:
-        service._registry_cache = {
-            "repository": {"alpha": {"module_id": "alpha", "version": "1.0.0"}}
-        }
+        service._registry_cache = {"repository": {"alpha": {"module_id": "alpha", "version": "1.0.0"}}}
         service._registry_cache_time = 1e18
         result = service.fetch_repo_index()
         assert result == [{"module_id": "alpha", "version": "1.0.0"}]
@@ -307,8 +308,8 @@ class TestFetchRepoIndex:
         service._registry_cache = {"modules": [{"module_id": "old"}]}
         service._registry_cache_time = 1e18
         with patch("urllib.request.urlopen") as urlopen:
-            urlopen.return_value.__enter__.return_value.read.return_value.decode.return_value = (
-                json.dumps({"modules": [{"module_id": "fresh", "version": "2.0.0"}]})
+            urlopen.return_value.__enter__.return_value.read.return_value.decode.return_value = json.dumps(
+                {"modules": [{"module_id": "fresh", "version": "2.0.0"}]}
             )
             result = service.fetch_repo_index(force_refresh=True)
         assert result == [{"module_id": "fresh", "version": "2.0.0"}]
@@ -340,11 +341,9 @@ class TestFetchRepoIndex:
 
 
 class TestInstallFromRepo:
-    def _patch_index(self, service: ModuleService, modules: list[dict]) -> "_patch":
+    def _patch_index(self, service: ModuleService, modules: list[dict]) -> object:
         """Patch fetch_repo_index to return the given modules list."""
-        return patch.object(
-            service, "fetch_repo_index", return_value=list(modules)
-        )
+        return patch.object(service, "fetch_repo_index", return_value=list(modules))
 
     def test_module_not_in_index_raises(self, service: ModuleService) -> None:
         with self._patch_index(service, []):
@@ -365,9 +364,7 @@ class TestInstallFromRepo:
             ],
         ):
             with patch.object(service.installer, "install_from_url") as install:
-                install.return_value = type(
-                    "R", (), {"status": "ok", "checksum": "", "warnings": []}
-                )()
+                install.return_value = type("R", (), {"status": "ok", "checksum": "", "warnings": []})()
                 service.install_from_repo("alpha", version="2.0.0")
         # URL passed to installer should correspond to v2
         assert install.call_args[0][0] == "http://u/2"
@@ -404,9 +401,7 @@ class TestInstallFromRepo:
             ],
         ):
             with patch.object(service.installer, "install_from_url") as install:
-                install.return_value = type(
-                    "R", (), {"status": "ok", "checksum": "", "warnings": []}
-                )()
+                install.return_value = type("R", (), {"status": "ok", "checksum": "", "warnings": []})()
                 report = service.install_from_repo("alpha")
         assert report.status == "ok"
         # The role-deps code path runs; warnings is a list (may or may not contain
@@ -425,9 +420,7 @@ class TestInstallFromRepo:
             ],
         ):
             with patch.object(service.installer, "install_from_url") as install:
-                install.return_value = type(
-                    "R", (), {"status": "ok", "checksum": "", "warnings": []}
-                )()
+                install.return_value = type("R", (), {"status": "ok", "checksum": "", "warnings": []})()
                 report = service.install_from_repo("alpha")
         assert report.checksum == "deadbeef"
 
@@ -492,9 +485,7 @@ class TestInstallFromRepo:
 
 class TestInstallLangpackFromDB:
     def test_no_translations_returns_error(self, service: ModuleService) -> None:
-        report = service._install_langpack_from_db(
-            "lang-xx", {"language": "xx", "version": "1.0.0"}
-        )
+        report = service._install_langpack_from_db("lang-xx", {"language": "xx", "version": "1.0.0"})
         assert report.status == "error"
         assert any("No translations" in e for e in report.errors)
 
@@ -598,9 +589,7 @@ class TestForceUninstall:
 
     def test_sqlite_error_returns_error_report(self, service: ModuleService) -> None:
         _make_module(service.modules_dir, "alpha", version="1.0.0")
-        with patch.object(
-            service.installer, "_get_db", side_effect=sqlite3.Error("boom")
-        ):
+        with patch.object(service.installer, "_get_db", side_effect=sqlite3.Error("boom")):
             report = service._force_uninstall("alpha")
         assert report.status == "error"
         assert any("Database error" in b for b in report.blocked_by)
@@ -618,7 +607,7 @@ class TestProfile:
         return path
 
     def test_yaml_profile(self, service: ModuleService) -> None:
-        mod = _make_module(
+        _make_module(
             service.modules_dir,
             "alpha",
             profile_file="profile.yaml",
@@ -634,7 +623,7 @@ class TestProfile:
         assert profile == {"name": "alpha", "role": "critic"}
 
     def test_json_profile(self, service: ModuleService) -> None:
-        mod = _make_module(
+        _make_module(
             service.modules_dir,
             "beta",
             profile_file="profile.json",
@@ -650,7 +639,7 @@ class TestProfile:
         assert profile == {"name": "beta"}
 
     def test_markdown_profile(self, service: ModuleService) -> None:
-        mod = _make_module(
+        _make_module(
             service.modules_dir,
             "gamma",
             profile_file="profile.md",
@@ -666,9 +655,7 @@ class TestProfile:
         assert profile == {"content": "# profile"}
 
     def test_unknown_format_returns_none(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "delta", profile_file="profile.txt", profile_format=None
-        )
+        _make_module(service.modules_dir, "delta", profile_file="profile.txt", profile_format=None)
         self._write(service.modules_dir / "delta", "profile.txt", "x")
         manifest_path = service.modules_dir / "delta" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -677,9 +664,7 @@ class TestProfile:
         assert service.get_profile("delta") is None
 
     def test_profile_file_missing_returns_none(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "epsilon", profile_file="missing.yaml", profile_format="yaml"
-        )
+        _make_module(service.modules_dir, "epsilon", profile_file="missing.yaml", profile_format="yaml")
         assert service.get_profile("epsilon") is None
 
     def test_module_dir_missing_returns_none(self, service: ModuleService) -> None:
@@ -692,7 +677,7 @@ class TestProfile:
 
     def test_no_profile_file_returns_none(self, service: ModuleService) -> None:
         # Empty string profile_file triggers early None return
-        mod = _make_module(service.modules_dir, "zeta")
+        _make_module(service.modules_dir, "zeta")
         manifest_path = service.modules_dir / "zeta" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
         manifest["profile_file"] = ""
@@ -700,9 +685,7 @@ class TestProfile:
         assert service.get_profile("zeta") is None
 
     def test_update_yaml_profile(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "eta", profile_file="profile.yaml", profile_format="yaml"
-        )
+        _make_module(service.modules_dir, "eta", profile_file="profile.yaml", profile_format="yaml")
         self._write(service.modules_dir / "eta", "profile.yaml", "name: eta\ncustom_field: foo\n")
         manifest_path = service.modules_dir / "eta" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -712,17 +695,13 @@ class TestProfile:
 
         ok = service.update_profile("eta", {"name": "new-name", "custom_field": "bar"})
         assert ok is True
-        loaded = yaml.safe_load(
-            (service.modules_dir / "eta" / "profile.yaml").read_text()
-        )
+        loaded = yaml.safe_load((service.modules_dir / "eta" / "profile.yaml").read_text())
         assert loaded["custom_field"] == "bar"
         m2 = json.loads(manifest_path.read_text())
         assert m2["name"] == {"en": "new-name"}
 
     def test_update_json_profile(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "theta", profile_file="profile.json", profile_format="json"
-        )
+        _make_module(service.modules_dir, "theta", profile_file="profile.json", profile_format="json")
         self._write(service.modules_dir / "theta", "profile.json", '{"custom":"critic"}')
         manifest_path = service.modules_dir / "theta" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -736,9 +715,7 @@ class TestProfile:
         assert loaded["custom"] == "moderator"
 
     def test_update_markdown_profile(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "iota", profile_file="profile.md", profile_format="markdown"
-        )
+        _make_module(service.modules_dir, "iota", profile_file="profile.md", profile_format="markdown")
         self._write(service.modules_dir / "iota", "profile.md", "old")
         manifest_path = service.modules_dir / "iota" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -751,9 +728,7 @@ class TestProfile:
         assert (service.modules_dir / "iota" / "profile.md").read_text() == "new body"
 
     def test_update_unknown_format_returns_false(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "kappa", profile_file="profile.txt", profile_format=None
-        )
+        _make_module(service.modules_dir, "kappa", profile_file="profile.txt", profile_format=None)
         self._write(service.modules_dir / "kappa", "profile.txt", "x")
         manifest_path = service.modules_dir / "kappa" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -763,9 +738,7 @@ class TestProfile:
 
     def test_update_profile_manifest_field_migration(self, service: ModuleService) -> None:
         # name/description provided as plain strings should be wrapped into {"en": ...}
-        mod = _make_module(
-            service.modules_dir, "lamda", profile_file="profile.yaml", profile_format="yaml"
-        )
+        _make_module(service.modules_dir, "lamda", profile_file="profile.yaml", profile_format="yaml")
         self._write(service.modules_dir / "lamda", "profile.yaml", "id: lamda\n")
         manifest_path = service.modules_dir / "lamda" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -789,12 +762,8 @@ class TestProfile:
 
 class TestDuplicateModule:
     def test_yaml_profile_duplicate(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "src", profile_file="profile.yaml", profile_format="yaml"
-        )
-        (service.modules_dir / "src" / "profile.yaml").write_text(
-            "id: original-id\nname: orig\n", encoding="utf-8"
-        )
+        _make_module(service.modules_dir, "src", profile_file="profile.yaml", profile_format="yaml")
+        (service.modules_dir / "src" / "profile.yaml").write_text("id: original-id\nname: orig\n", encoding="utf-8")
         manifest_path = service.modules_dir / "src" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
         manifest["profile_file"] = "profile.yaml"
@@ -804,19 +773,13 @@ class TestDuplicateModule:
         result = service.duplicate_module("src", "dup", new_name="Dup Name")
         assert result is not None
         # The duplicate's profile must have a fresh id
-        dup_profile = yaml.safe_load(
-            (service.modules_dir / "dup" / "profile.yaml").read_text()
-        )
+        dup_profile = yaml.safe_load((service.modules_dir / "dup" / "profile.yaml").read_text())
         assert dup_profile["id"] != "original-id"
         assert dup_profile["name"] == "Dup Name"
 
     def test_json_profile_duplicate(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "src2", profile_file="profile.json", profile_format="json"
-        )
-        (service.modules_dir / "src2" / "profile.json").write_text(
-            '{"id": "orig", "name": "orig"}', encoding="utf-8"
-        )
+        _make_module(service.modules_dir, "src2", profile_file="profile.json", profile_format="json")
+        (service.modules_dir / "src2" / "profile.json").write_text('{"id": "orig", "name": "orig"}', encoding="utf-8")
         manifest_path = service.modules_dir / "src2" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
         manifest["profile_file"] = "profile.json"
@@ -825,16 +788,12 @@ class TestDuplicateModule:
 
         result = service.duplicate_module("src2", "dup2", new_name="Dup2")
         assert result is not None
-        dup_profile = json.loads(
-            (service.modules_dir / "dup2" / "profile.json").read_text()
-        )
+        dup_profile = json.loads((service.modules_dir / "dup2" / "profile.json").read_text())
         assert dup_profile["id"] != "orig"
         assert dup_profile["name"] == "Dup2"
 
     def test_markdown_profile_duplicate_passthrough(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "src3", profile_file="profile.md", profile_format="markdown"
-        )
+        _make_module(service.modules_dir, "src3", profile_file="profile.md", profile_format="markdown")
         (service.modules_dir / "src3" / "profile.md").write_text("# markdown", encoding="utf-8")
         manifest_path = service.modules_dir / "src3" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -848,12 +807,8 @@ class TestDuplicateModule:
         assert (service.modules_dir / "dup3" / "profile.md").read_text() == "# markdown"
 
     def test_duplicate_without_new_name(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "src4", profile_file="profile.yaml", profile_format="yaml"
-        )
-        (service.modules_dir / "src4" / "profile.yaml").write_text(
-            "id: orig\n", encoding="utf-8"
-        )
+        _make_module(service.modules_dir, "src4", profile_file="profile.yaml", profile_format="yaml")
+        (service.modules_dir / "src4" / "profile.yaml").write_text("id: orig\n", encoding="utf-8")
         manifest_path = service.modules_dir / "src4" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
         manifest["profile_file"] = "profile.yaml"
@@ -890,9 +845,7 @@ class TestTranslateExtended:
 
 class TestDirToInfo:
     def test_markdown_profile_truncated(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "alpha", profile_file="profile.md", profile_format="markdown"
-        )
+        _make_module(service.modules_dir, "alpha", profile_file="profile.md", profile_format="markdown")
         # Write a 600-char markdown
         long_text = ("# line\n" * 200)[:600]
         (service.modules_dir / "alpha" / "profile.md").write_text(long_text)
@@ -910,15 +863,13 @@ class TestDirToInfo:
 
     def test_legacy_files_count(self, service: ModuleService) -> None:
         # No profile_file, but files[] present
-        _make_module(
-            service.modules_dir, "legacy", version="1.0.0", extra_files=["a.md", "b.md", "c.md"]
-        )
+        _make_module(service.modules_dir, "legacy", version="1.0.0", extra_files=["a.md", "b.md", "c.md"])
         info = service._dir_to_info(service.modules_dir / "legacy")
         assert info is not None
         assert info.file_count == 3
 
     def test_malformed_timestamps_use_db_fallback(self, service: ModuleService) -> None:
-        mod = _make_module(service.modules_dir, "alpha", version="1.0.0")
+        _make_module(service.modules_dir, "alpha", version="1.0.0")
         manifest_path = service.modules_dir / "alpha" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
         manifest["created_at"] = "not-a-date"
@@ -943,9 +894,7 @@ class TestDirToInfo:
         assert service._dir_to_info(mod_dir) is None
 
     def test_yaml_profile_loads(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "alpha", profile_file="profile.yaml", profile_format="yaml"
-        )
+        _make_module(service.modules_dir, "alpha", profile_file="profile.yaml", profile_format="yaml")
         (service.modules_dir / "alpha" / "profile.yaml").write_text("name: alpha\n")
         manifest_path = service.modules_dir / "alpha" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -957,9 +906,7 @@ class TestDirToInfo:
         assert info.profile_preview == {"name": "alpha"}
 
     def test_json_profile_loads(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "alpha", profile_file="profile.json", profile_format="json"
-        )
+        _make_module(service.modules_dir, "alpha", profile_file="profile.json", profile_format="json")
         (service.modules_dir / "alpha" / "profile.json").write_text('{"x": 1}')
         manifest_path = service.modules_dir / "alpha" / "manifest.json"
         manifest = json.loads(manifest_path.read_text())
@@ -985,31 +932,25 @@ class TestDirToInfo:
 
 class TestUpdateManifestChecksum:
     def test_no_profile_file_keeps_existing(self, service: ModuleService) -> None:
-        mod = _make_module(service.modules_dir, "alpha", version="1.0.0")
+        _make_module(service.modules_dir, "alpha", version="1.0.0")
         manifest = json.loads((service.modules_dir / "alpha" / "manifest.json").read_text())
         manifest["checksum"] = "old"
         original_updated = manifest.get("updated_at")
         service._update_manifest_checksum(service.modules_dir / "alpha", manifest)
-        new_manifest = json.loads(
-            (service.modules_dir / "alpha" / "manifest.json").read_text()
-        )
+        new_manifest = json.loads((service.modules_dir / "alpha" / "manifest.json").read_text())
         # No profile file → checksum stays as before
         assert new_manifest["checksum"] == "old"
         # updated_at is refreshed
         assert new_manifest["updated_at"] != original_updated
 
     def test_with_profile_file_recomputes(self, service: ModuleService) -> None:
-        mod = _make_module(
-            service.modules_dir, "alpha", profile_file="profile.yaml", profile_format="yaml"
-        )
+        _make_module(service.modules_dir, "alpha", profile_file="profile.yaml", profile_format="yaml")
         (service.modules_dir / "alpha" / "profile.yaml").write_text("id: a\nname: A\n")
         manifest = json.loads((service.modules_dir / "alpha" / "manifest.json").read_text())
         manifest["profile_file"] = "profile.yaml"
         manifest["checksum"] = "old"
         service._update_manifest_checksum(service.modules_dir / "alpha", manifest)
-        new_manifest = json.loads(
-            (service.modules_dir / "alpha" / "manifest.json").read_text()
-        )
+        new_manifest = json.loads((service.modules_dir / "alpha" / "manifest.json").read_text())
         assert new_manifest["checksum"] != "old"
         # SHA-256 of "id: a\nname: A\n"
         import hashlib
@@ -1039,9 +980,7 @@ class TestDbHelpers:
             assert service._get_db_module_info("alpha") is None
 
     def test_get_db_status_map_parses_names(self, service: ModuleService) -> None:
-        _seed_db_module_registry(
-            service.db_path, "alpha", name='{"en":"Alpha","de":"Alf"}'
-        )
+        _seed_db_module_registry(service.db_path, "alpha", name='{"en":"Alpha","de":"Alf"}')
         result = service._get_db_status_map()
         assert "alpha" in result
         assert result["alpha"]["name"] == {"en": "Alpha", "de": "Alf"}

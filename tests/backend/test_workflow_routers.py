@@ -15,9 +15,6 @@ import logging
 from typing import Any
 from unittest.mock import patch
 
-import pytest
-
-from backend.workflow.safe_eval import SafeEvalError
 from backend.workflow.workflow_routers import (
     _get_publish,
     _publish_gate_decision,
@@ -25,7 +22,6 @@ from backend.workflow.workflow_routers import (
     route_conditional,
     route_sequential,
 )
-
 
 # ---------------------------------------------------------------------------
 # Simple routers
@@ -51,9 +47,7 @@ class TestGetPublish:
         import backend.workflow.workflow_routers as r
 
         r._publish_async = None
-        with patch(
-            "backend.api.events.publish_async", autospec=True
-        ) as publish:
+        with patch("backend.api.events.publish_async", autospec=True) as publish:
             result = _get_publish()
             assert result is publish
             # Second call returns the same cached value
@@ -84,12 +78,8 @@ class TestPublishGateDecision:
             sent.append((sid, kind, payload))
 
         with (
-            patch(
-                "backend.api.events.publish_async", side_effect=fake_publish
-            ),
-            patch(
-                "backend.workflow.audit_logger.get_audit_logger"
-            ) as get_logger,
+            patch("backend.api.events.publish_async", side_effect=fake_publish),
+            patch("backend.workflow.audit_logger.get_audit_logger") as get_logger,
         ):
             logger = get_logger.return_value
             import asyncio
@@ -127,11 +117,7 @@ class TestPublishGateDecision:
 
             with caplog.at_level(logging.DEBUG, logger="backend.workflow.workflow_routers"):
                 # Must not raise
-                asyncio.run(
-                    _publish_gate_decision(
-                        "s1", "g1", "x>0", True, "ok", False, [], 1
-                    )
-                )
+                asyncio.run(_publish_gate_decision("s1", "g1", "x>0", True, "ok", False, [], 1))
         assert any("Failed to publish gate.decision" in rec.message for rec in caplog.records)
 
     def test_swallow_audit_error(self, caplog) -> None:
@@ -152,11 +138,7 @@ class TestPublishGateDecision:
 
             with caplog.at_level(logging.DEBUG, logger="backend.workflow.workflow_routers"):
                 # Must not raise
-                asyncio.run(
-                    _publish_gate_decision(
-                        "s1", "g1", "x>0", True, "ok", False, [], 1
-                    )
-                )
+                asyncio.run(_publish_gate_decision("s1", "g1", "x>0", True, "ok", False, [], 1))
         assert any("Failed to log gate decision" in rec.message for rec in caplog.records)
 
 
