@@ -22,6 +22,7 @@ external I/O.
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -311,6 +312,55 @@ class TestCompleteWfNode:
 
 class TestInterjectionNode:
     """``interjection_node`` — drains queues, optionally blocks, or pauses."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_interjection_service(self) -> Generator[None, None, None]:
+        """Make ``interjection_service.consume`` deterministic for these tests.
+
+        The ``interjection_service`` is a process-wide singleton backed by
+        an in-memory queue *and* a SQLite table (``data/blueprints.db``).
+        If a previous test (or a parallel test worker) left an item in
+        the queue for ``"sess-test"``, the SQLite-backed
+        ``_ensure_loaded`` re-hydrates it on the next call and
+        ``interjection_node`` takes the *drain* path — the
+        ``test_empty_queue_pauses`` assertion ``result["is_paused"] is True``
+        would then fail with ``KeyError: 'is_paused'``.
+
+        We patch the two service methods that ``interjection_node``
+        uses to read state with ``AsyncMock`` returning an empty list
+        for any session id, so neither ``consume`` nor
+        ``consume_blocking`` can return a leftover item.  Tests that
+        seed via the *in-state* ``interjection_queue`` (the drain
+        tests) keep their current observable behaviour because they
+        never exercise ``interjection_service``.
+
+        CI-history: this test was flaky in run ``<previous-CI-run>`` and
+        the fix preserves the existing test contract (no API changes
+        in production code).
+        """
+        from unittest.mock import patch as _patch
+
+        from backend.workflow.interjection import interjection_service
+
+        pcm = _patch.object(
+            interjection_service,
+            "consume",
+            new_callable=AsyncMock,
+            return_value=[],
+        )
+        pcm_blocking = _patch.object(
+            interjection_service,
+            "consume_blocking",
+            new_callable=AsyncMock,
+            return_value=[],
+        )
+        pcm.start()
+        pcm_blocking.start()
+        try:
+            yield
+        finally:
+            pcm.stop()
+            pcm_blocking.stop()
 
     @pytest.mark.asyncio
     @patch("backend.workflow.nodes.system_nodes.publish_async", new_callable=AsyncMock)
