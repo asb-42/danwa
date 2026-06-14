@@ -644,3 +644,60 @@ class OnboardingState(BaseModel):
     has_cases: bool
     has_documents: bool
     has_debates: bool
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Knowledge Graph (Phase 4 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class GraphNode(BaseModel):
+    """A single node in the knowledge graph.
+
+    The ``id`` is namespaced by type (``case:<id>``, ``debate:<id>``,
+    ``document:<id>``, ``tag:<name>``) so two entities of different
+    types but the same raw id never collide.
+    """
+
+    id: str
+    type: str
+    label: str
+    meta: dict = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    """An edge between two nodes.  ``weight`` is unused in Phase 4
+    but reserved for Phase 5+ derived edges (e.g. embedding
+    similarity) where multiple edges of the same type can exist
+    between the same pair of nodes.
+    """
+
+    src: str
+    tgt: str
+    type: str
+    weight: float = 1.0
+
+
+class GraphPayload(BaseModel):
+    """The envelope returned by every /api/v1/graph/* endpoint.
+
+    ``truncated`` + ``total_count`` + ``sampled_count`` are
+    only meaningful for the global endpoint; the local endpoint
+    always returns the full 1-hop subgraph.
+    """
+
+    nodes: list[GraphNode] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+    truncated: bool = False
+    total_count: int = 0
+    sampled_count: int = 0
+
+
+class EdgeDetail(BaseModel):
+    """Response for GET /api/v1/graph/edges?src=…&tgt=…"""
+
+    src: str
+    tgt: str
+    type: str
+    weight: float = 1.0
+    evidence: list[str] = Field(default_factory=list)
