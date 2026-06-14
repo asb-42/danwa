@@ -528,3 +528,94 @@ class CaseSearchHit(BaseModel):
     title: str
     status: str
     tags: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Case-Space Inbox (Phase 2 of plans/2026-06-14_case-space-workspace.md)
+# ---------------------------------------------------------------------------
+
+
+class InboxDebateItem(BaseModel):
+    """A debate surfaced on the Inbox because of one of the kinds below.
+
+    The "kind" determines which action buttons the UI renders:
+
+    - ``recently_completed``  → "Open", "Archive", "View report"
+    - ``untagged``            → "Add tags", "Open", "Open in Case"
+    - ``stale_running``       → "Open", "Force reset", "Cancel"
+    """
+
+    id: str
+    kind: str
+    tenant_id: str
+    case_id: str
+    title: str
+    status: str
+    tags: list[str] = Field(default_factory=list)
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
+    age_hours: float | None = None
+    message: str
+
+
+class InboxSummary(BaseModel):
+    """Aggregated, tenant-scoped Inbox payload.
+
+    The endpoint returns this in a single call to avoid N+1 round-trips
+    from the frontend when the Inbox view mounts.
+    """
+
+    tenant_id: str
+    items: list[InboxDebateItem] = Field(default_factory=list)
+    counts: dict[str, int] = Field(default_factory=dict)
+    is_all_clear: bool = True
+    generated_at: datetime
+
+
+class InboxBulkMoveBody(BaseModel):
+    """Request body for POST /api/v1/inbox/bulk-move.
+
+    Moves the listed debates to a new case.  All ids must belong to
+    the same tenant; the target case must also belong to the same
+    tenant (enforced server-side).
+    """
+
+    debate_ids: list[str] = Field(..., min_length=1, max_length=200)
+    target_case_id: str = Field(..., min_length=1)
+
+
+class InboxBulkTagBody(BaseModel):
+    """Request body for POST /api/v1/inbox/bulk-tag.
+
+    Adds the listed tags to each debate.  An empty ``tag_ids`` list is
+    treated as a no-op (not a 400) so the UI's "remove all tags"
+    button can submit cleanly without a special endpoint.
+    """
+
+    debate_ids: list[str] = Field(..., min_length=1, max_length=200)
+    tag_ids: list[str] = Field(default_factory=list, max_length=50)
+
+
+class InboxBulkArchiveBody(BaseModel):
+    """Request body for POST /api/v1/inbox/bulk-archive.
+
+    Marks the listed debates as archived.  Implementation may either
+    delete the debates or set an ``archived_at`` flag depending on the
+    store's policy; in Phase 2 we delete (the legacy archive view
+    already mirrors this behaviour).
+    """
+
+    debate_ids: list[str] = Field(..., min_length=1, max_length=200)
+
+
+class InboxBulkResult(BaseModel):
+    """Response body for any /api/v1/inbox/bulk-* endpoint.
+
+    ``succeeded`` and ``failed`` are mutually exclusive lists.  An item
+    is in ``failed`` when the store rejected it (e.g. wrong tenant,
+    not found) — the response is 200, not 4xx, so the UI can show a
+    partial-success message.
+    """
+
+    succeeded: list[str] = Field(default_factory=list)
+    failed: list[dict] = Field(default_factory=list)  # [{"id": str, "reason": str}]

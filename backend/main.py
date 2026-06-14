@@ -38,6 +38,7 @@ from backend.api.routers import (  # noqa: E402
     debate_stream,
     dms,
     health,
+    inbox,
     input_composer,
     llm_profiles,
     modules,
@@ -481,6 +482,7 @@ def create_app() -> FastAPI:
 
     # --- Case-Space Workspace (Phase 1 of plans/2026-06-14_case-space-workspace.md) ---
     app.include_router(workspace.router, prefix="/api/v1", tags=["case-space"])
+    app.include_router(inbox.router, prefix="/api/v1", tags=["case-space"])
 
     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
     app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])

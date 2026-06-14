@@ -75,22 +75,24 @@
 ## Phase 2 — Inbox (P2)
 
 ### Backend
-- [ ] **2.1 Endpoint `GET /api/inbox?tenant_id=…`** anlegen
-  - [ ] 2.1.1 Query: `documents WHERE case_id IS NULL AND tenant_id=?`
-  - [ ] 2.1.2 Query: `debates WHERE tag_count = 0 AND tenant_id=?`
-  - [ ] 2.1.3 Query: `debates WHERE status='completed' AND completed_at > now-7d`
-  - [ ] 2.1.4 Query: `audit_events WHERE mentioned_user_id=?` (falls Spalte existiert; sonst skippen)
-  - [ ] 2.1.5 Sortierung: neueste zuerst, optional Limit (default 50)
-- [ ] **2.2 Bulk-Endpoints** (alle atomar, alle Permission-geprüft):
-  - [ ] 2.2.1 `POST /api/inbox/bulk-move` mit `{item_type, item_ids, target_case_id}`
-  - [ ] 2.2.2 `POST /api/inbox/bulk-tag` mit `{item_type, item_ids, tag_ids: [...]}`
-  - [ ] 2.2.3 `POST /api/inbox/bulk-archive` mit `{item_type, item_ids}`
-- [ ] **2.3 Permission-Regel**: nur `tenant.member` darf Bulk auf Items im selben Tenant; Cross-Tenant strikt verboten
-- [ ] **2.4 Tests** (Pytest):
-  - [ ] 2.4.1 Inbox liefert nur Items des aktuellen Tenants
-  - [ ] 2.4.2 Bulk-Move aktualisiert `case_id` und triggert Workspace-Refresh-Event
-  - [ ] 2.4.3 Bulk-Tag akzeptiert leere Tag-Liste als No-op (nicht als 400)
-  - [ ] 2.4.4 Bulk-Archive erzeugt Audit-Event
+- [x] **2.1 Endpoint `GET /api/inbox?tenant_id=…`** angelegt in [`backend/api/routers/inbox.py`](../../backend/api/routers/inbox.py)
+  - [x] 2.1.1 Untagged Debates (über alle Cases des Tenants aggregiert)
+  - [x] 2.1.2 Recently Completed (Status="completed", completed_at ≥ now-7d)
+  - [x] 2.1.3 Stale Running (Status="running", updated_at < now-24h, age_hours exposed)
+  - [ ] 2.1.4 Unlinked Documents — **bewusst ausgelassen**: DMS hat aktuell keinen per-Case-Link; Use Case wandert in P3+ sobald DMS-Schema erweitert wird
+  - [ ] 2.1.5 My Mentions — **bewusst ausgelassen**: audit_events-Schema hat noch keine `mentioned_user_id`-Spalte
+  - [x] 2.1.6 Sortierung: neueste zuerst, Limit 50
+- [x] **2.2 Bulk-Endpoints** (alle atomar, alle Permission-geprüft, 200 mit partial-success):
+  - [x] 2.2.1 `POST /api/inbox/bulk-move` mit `{debate_ids, target_case_id}` — nutzt `DebateStore.move(did, target_store)`
+  - [x] 2.2.2 `POST /api/inbox/bulk-tag` mit `{debate_ids, tag_ids}` — idempotente Union
+  - [x] 2.2.3 `POST /api/inbox/bulk-archive` mit `{debate_ids}` — setzt status="archived" + archived_at
+- [x] **2.3 Permission-Regel**: cross-tenant Items landen in `InboxBulkResult.failed` mit `reason="cross_tenant: …"`; 404 für target case wenn nicht im Tenant; Tenant-Discovery via `case_store._cache`-Walk (Limitation dokumentiert)
+- [x] **2.4 Tests** (Pytest): 14 Tests in [`tests/backend/test_inbox_router.py`](../../tests/backend/test_inbox_router.py) — alle grün
+  - [x] 2.4.1 Feature-Gate (4 Tests für jeden Endpoint 404 wenn flag off)
+  - [x] 2.4.2 Inbox: empty / untagged / recently_completed / stale_running (4 Tests)
+  - [x] 2.4.3 Bulk-Move: cross_tenant_reject / 404_missing_target / happy_path (3 Tests)
+  - [x] 2.4.4 Bulk-Tag: empty_noop / unions_existing (2 Tests)
+  - [x] 2.4.5 Bulk-Archive: status_flip (1 Test)
 
 ### Frontend
 - [ ] **2.5 Store `inboxStore.svelte.js`**
@@ -257,7 +259,8 @@
 
 ### 🔄 In Bearbeitung
 
-- (Phase 1 substantiell abgeschlossen — verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
+- Frontend für Phase 2 (InboxView.svelte + InboxItemRow.svelte + Bulk-Action-Bar) — in Folge-Session
+- (Phase 1 verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
 
 ### 📌 Decisions getroffen
 
@@ -281,7 +284,7 @@
 
 - Phase 1 Backend-Stand: **507 Zeilen** neuer Code in 5 Dateien, **10 Tests** grün
 - Branch: `case-space` (remote: `origin/case-space`)
-- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS) + `95f5139` (Phase 1.5+1.6) + `cf0d283` (Phase 1.7) + `c8af2d9` (Phase 1.8 Typeahead) + `dc692a8` (Phase 1.9 URL-Sync) + nächster Commit (Phase 1.11+1.12 Sidebar+Routing)
+- Commits: `83173d0` (Phase 0+1.1) + `306b73c` (DNS) + `95f5139` (Phase 1.5+1.6) + `cf0d283` (Phase 1.7) + `c8af2d9` (Phase 1.8 Typeahead) + `dc692a8` (Phase 1.9 URL-Sync) + `fa2d58d` (Phase 1.11+1.12) + nächster Commit (Phase 2.1–2.4 Inbox Backend + Tests)
 
 
 ## Risiken und Annahmen
