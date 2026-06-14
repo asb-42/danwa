@@ -117,10 +117,11 @@
   - [x] Rot bei > 0, versteckt bei 0 oder wenn `inboxDisabled` (Feature-Flag off)
   - [x] aria-label mit Anzahl für Screenreader
   - [x] Inaktiv-/Aktiv-Variante (blau wenn aktuelle Route, sonst rot)
-- [ ] **2.11 Frontend-Tests**:
-  - [ ] 2.11.1 `inboxStore` Bulk-Actionen
-  - [ ] 2.11.2 `InboxView` Tab-Wechsel behält Selektion nicht bei (gewollt)
-- [ ] **2.12 E2E-Playwright**: Bulk-Move von 3 Docs → Workspace reflektiert die Änderung
+- [x] **2.11 Frontend-Tests** (Vitest) in [`frontend/tests/unit/inboxStore.test.js`](../../frontend/tests/unit/inboxStore.test.js) — 17 Tests, alle grün
+  - [x] 2.11.1 `inboxStore` Reducer: load, dedup, selection, bulkMove, bulkTag, bulkArchive, partial-failure, reset
+  - [x] 2.11.2 Selection ist tab-scoped (`setActiveTab` cleared sie)
+  - [x] 2.11.3 Bonus: `filteredItems` derived state, `moveSelectedTo` rejects empty target
+- [ ] **2.12 E2E-Playwright**: bewusst **verschoben** auf Folge-Session — erfordert laufenden Dev-Server (Backend + Frontend), Mocking des Auth-Flows, und stabile Selektoren.  Aufwand ~2 h, kein CI-Pflicht.  Aktueller Stand: nur Backend-Tests vorhanden, die alle Logik-Pfade abdecken.
 - [ ] **2.13 Commit + Push** als `feat(inbox): phase 2 — unlinked items and bulk actions`
 
 ## Phase 3 — Welcome + Onboarding-Feinschliff (P3)
@@ -270,7 +271,7 @@
 ### 🔄 In Bearbeitung
 
 - (Phase 1 verbleibend: 1.3 User-Setting, 1.10 Login-Default, 1.13–1.14 Vitest/Playwright)
-- (Phase 2 verbleibend: 2.11–2.12 Vitest/E2E)
+- (Phase 2 verbleibend: 2.12 Playwright E2E — auf Folge-Session verschoben)
 
 ### 📌 Decisions getroffen
 
