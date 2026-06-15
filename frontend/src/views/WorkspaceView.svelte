@@ -582,25 +582,91 @@
             {t?.caseSpace?.workspace?.recentActivity ?? 'Recent activity'}
           </h2>
           {#if summary.recent_events?.length}
-            <ul class="space-y-2 list-none p-0">
-              {#each summary.recent_events as ev}
-                <li class="flex items-center gap-2 text-sm">
-                  <span class="text-xs font-mono px-2 py-0.5 rounded
-                               bg-gray-100 dark:bg-gray-700
-                               text-gray-700 dark:text-gray-200">
-                    {ev.event_type}
-                  </span>
-                  <span class="flex-1 truncate
-                               text-gray-800 dark:text-gray-200">
-                    {ev.subject ?? ev.id}
-                  </span>
-                  <time class="text-xs font-mono
-                               text-gray-500 dark:text-gray-400">
-                    {ev.created_at}
-                  </time>
-                </li>
-              {/each}
-            </ul>
+            <!-- Phase 3.6: Inspector columns.  We add a phase badge
+                 and a round column inline so the user can see
+                 context without opening AuditView.  Click on a
+                 row to drill into the full audit for that debate. -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm" data-testid="recent-audit-table">
+                <thead>
+                  <tr class="text-xs uppercase tracking-wider
+                             text-gray-500 dark:text-gray-400">
+                    <th class="text-left font-medium py-1">Event</th>
+                    <th class="text-left font-medium py-1">Phase</th>
+                    <th class="text-left font-medium py-1">Round</th>
+                    <th class="text-left font-medium py-1">Subject</th>
+                    <th class="text-left font-medium py-1">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each summary.recent_events as ev}
+                    <tr
+                      class="border-t border-gray-200 dark:border-gray-700
+                             hover:bg-gray-50 dark:hover:bg-gray-700/30
+                             cursor-pointer"
+                      data-testid="recent-audit-row"
+                      onclick={() => {
+                        if (ev.debate_id && typeof navigate === 'function') {
+                          navigate('audit', { debateId: ev.debate_id });
+                        }
+                      }}
+                    >
+                      <td class="py-1.5">
+                        <span class="text-xs font-mono px-2 py-0.5 rounded
+                                     bg-gray-100 dark:bg-gray-700
+                                     text-gray-700 dark:text-gray-200">
+                          {ev.event_type}
+                        </span>
+                      </td>
+                      <td class="py-1.5">
+                        {#if ev.phase}
+                          <span class="text-xs px-1.5 py-0.5 rounded
+                                       bg-indigo-50 dark:bg-indigo-900/30
+                                       text-indigo-700 dark:text-indigo-200">
+                            {ev.phase}
+                          </span>
+                        {:else}
+                          <span class="text-xs text-gray-400">—</span>
+                        {/if}
+                      </td>
+                      <td class="py-1.5 text-xs font-mono
+                                 text-gray-500 dark:text-gray-400">
+                        {ev.round ?? '—'}
+                      </td>
+                      <td class="py-1.5 truncate max-w-[180px]
+                                 text-gray-800 dark:text-gray-200">
+                        {ev.subject ?? ev.id}
+                      </td>
+                      <td class="py-1.5 text-xs font-mono
+                                 text-gray-500 dark:text-gray-400">
+                        {ev.created_at}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+            <a
+              class="inline-block mt-2 text-sm
+                     text-blue-600 dark:text-blue-400
+                     hover:underline
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+              data-testid="show-full-audit"
+              onclick={(e) => {
+                e.preventDefault();
+                const lastDebate = summary.recent_events.find((x) => x.debate_id);
+                if (typeof navigate === 'function') {
+                  navigate('audit', lastDebate?.debate_id ? { debateId: lastDebate.debate_id } : undefined);
+                } else if (typeof window !== 'undefined') {
+                  window.location.hash = '#/audit';
+                }
+              }}
+              role="button"
+              tabindex="0"
+            >
+              {t?.caseSpace?.workspace?.showFullAudit ??
+                'Show full audit →'}
+            </a>
           {:else}
             <p class="text-sm italic
                      text-gray-500 dark:text-gray-400">
