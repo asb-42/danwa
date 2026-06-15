@@ -430,8 +430,7 @@ def bulk_archive_legacy_alias(
 ) -> InboxBulkResult:
     _require_inbox()
     logger.warning(
-        "Deprecated endpoint /inbox/bulk-archive called with %d debate_ids; "
-        "migrate callers to /inbox/bulk-delete",
+        "Deprecated endpoint /inbox/bulk-archive called with %d debate_ids; migrate callers to /inbox/bulk-delete",
         len(body.debate_ids),
     )
     return _soft_delete_debates(body.debate_ids, case_store)

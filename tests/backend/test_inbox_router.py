@@ -476,12 +476,13 @@ def test_bulk_delete_flips_status(client: TestClient, enabled: None) -> None:
     assert "archived_at" in persisted
 
 
-
 # /api/v1/inbox/bulk-delete (canonical)
 # ---------------------------------------------------------------------------
 
+
 def test_bulk_delete_canonical_flips_status(
-    client: TestClient, enabled: None,
+    client: TestClient,
+    enabled: None,
 ) -> None:
     """The canonical /inbox/bulk-delete endpoint sets
     status='deleted' on the listed debates."""
@@ -502,6 +503,7 @@ def test_bulk_delete_canonical_flips_status(
 
     with mock.patch("backend.api.routers.inbox.get_debate_store_for_case", return_value=fake_store):
         from backend.api.deps import get_case_store
+
         app.dependency_overrides[get_case_store] = lambda: case_store
         try:
             response = client.post(
@@ -521,7 +523,8 @@ def test_bulk_delete_canonical_flips_status(
 
 
 def test_bulk_delete_canonical_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None,
+    client: TestClient,
+    disabled: None,
 ) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-delete",
@@ -533,8 +536,10 @@ def test_bulk_delete_canonical_returns_404_when_feature_disabled(
 # /api/v1/inbox/bulk-archive (deprecated alias — kept for backward compat)
 # ---------------------------------------------------------------------------
 
+
 def test_bulk_archive_legacy_alias_still_works(
-    client: TestClient, enabled: None,
+    client: TestClient,
+    enabled: None,
 ) -> None:
     """The legacy /inbox/bulk-archive endpoint remains callable
     and produces the same effect as /bulk-delete."""
@@ -555,6 +560,7 @@ def test_bulk_archive_legacy_alias_still_works(
 
     with mock.patch("backend.api.routers.inbox.get_debate_store_for_case", return_value=fake_store):
         from backend.api.deps import get_case_store
+
         app.dependency_overrides[get_case_store] = lambda: case_store
         try:
             response = client.post(
