@@ -43,8 +43,12 @@ dependencies = [
     "html2text>=2025.4.15",
 ]
 
-[tool.uv]
-dev-dependencies = [
+# PEP 735 dependency-groups replace the legacy [tool.uv] dev-dependencies
+# table.  ``uv pip install --group dev`` reads this list; ``[test]`` in
+# project.optional-dependencies is still used by the existing
+# ``uv pip install -e ".[test]"`` line in CI.
+[dependency-groups]
+dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-httpx>=0.30",

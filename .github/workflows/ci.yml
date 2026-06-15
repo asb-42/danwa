@@ -15,7 +15,11 @@ jobs:
       - name: Setup Python
         run: uv python install 3.11 && uv venv .venv
       - name: Sync dependencies
-        run: uv pip install -e ".[test]"
+        # Install the project (with the [test] extra) and the
+        # PEP 735 ``dev`` dependency-group (pytest-httpx, pdoc, etc.).
+        # PEP 735 is the supported replacement for the deprecated
+        # [tool.uv] dev-dependencies table.
+        run: uv pip install -e ".[test]" --group dev
       - name: Lint
         run: uv run ruff check . && uv run ruff format --check .
       - name: Test
