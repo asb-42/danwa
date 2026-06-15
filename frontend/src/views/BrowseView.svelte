@@ -137,10 +137,12 @@
         type="button"
         role="tab"
         aria-selected={mode === 'graph'}
-        class="px-3 py-1 rounded text-sm font-medium cursor-not-allowed opacity-50
-               text-gray-700 dark:text-gray-200"
-        title="Graph renderer requires a Cytoscape bundle spike"
-        disabled
+        class="px-3 py-1 rounded text-sm font-medium
+               {mode === 'graph'
+                 ? 'bg-blue-600 text-white'
+                 : 'text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'}"
+        onclick={() => (mode = 'graph')}
+        data-testid="browse-tab-graph"
       >
         {t?.caseSpace?.browse?.graphMode ?? 'Graph'}
       </button>
@@ -156,14 +158,14 @@
       {error?.message ?? String(error)}
     </p>
   {:else if mode === 'graph'}
-    <!-- Phase 4.5-4.7 Cytoscape renderer placeholder -->
     <div
-      class="p-8 border border-dashed rounded-md text-center
-             border-gray-300 dark:border-gray-600
-             text-gray-500 dark:text-gray-400"
+      class="border rounded-lg p-2
+             border-gray-200 dark:border-gray-700
+             bg-white dark:bg-gray-800"
     >
-      {t?.caseSpace?.browse?.graphPending ??
-        'The Cytoscape graph renderer is pending a bundle-size spike. The list renderer on the left already shows the same data.'}
+      {#await import('../components/case-space/CytoscapeGraphView.svelte') then Mod}
+        <Mod.default nodes={nodes} edges={edges} height={520} />
+      {/await}
     </div>
   {:else if nodes.length === 0}
     <p class="text-sm italic text-gray-500 dark:text-gray-400">
