@@ -52,17 +52,13 @@ def disabled(monkeypatch: pytest.MonkeyPatch) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_inbox_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None
-) -> None:
+def test_inbox_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.get("/api/v1/inbox", params={"tenant_id": "t1"})
     assert response.status_code == 404
     assert "DANWA_ENABLE_CASE_SPACE_INBOX" in response.json()["detail"]
 
 
-def test_bulk_move_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None
-) -> None:
+def test_bulk_move_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-move",
         json={"debate_ids": ["d1"], "target_case_id": "c1"},
@@ -70,9 +66,7 @@ def test_bulk_move_returns_404_when_feature_disabled(
     assert response.status_code == 404
 
 
-def test_bulk_tag_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None
-) -> None:
+def test_bulk_tag_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-tag",
         json={"debate_ids": ["d1"], "tag_ids": ["a"]},
@@ -80,9 +74,7 @@ def test_bulk_tag_returns_404_when_feature_disabled(
     assert response.status_code == 404
 
 
-def test_bulk_archive_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None
-) -> None:
+def test_bulk_archive_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-archive",
         json={"debate_ids": ["d1"]},

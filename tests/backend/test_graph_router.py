@@ -245,9 +245,7 @@ def test_global_rejects_limit_out_of_range(client: TestClient, enabled: None) ->
 # ---------------------------------------------------------------------------
 
 
-def test_edges_without_case_id_returns_placeholder(
-    client: TestClient, enabled: None
-) -> None:
+def test_edges_without_case_id_returns_placeholder(client: TestClient, enabled: None) -> None:
     """No case_id supplied -> router cannot resolve a tenant and
     returns a soft placeholder instead of an error."""
     response = client.get(
@@ -263,9 +261,7 @@ def test_edges_without_case_id_returns_placeholder(
     assert any("not yet materialised" in e for e in body["evidence"])
 
 
-def test_edges_with_unknown_case_id_returns_placeholder(
-    client: TestClient, enabled: None
-) -> None:
+def test_edges_with_unknown_case_id_returns_placeholder(client: TestClient, enabled: None) -> None:
     """case_id is provided but does not resolve to any known
     case (case_store cache is empty in tests).  Router falls
     back to the same soft placeholder as the no-case-id path."""

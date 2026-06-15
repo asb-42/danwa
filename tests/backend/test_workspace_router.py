@@ -92,17 +92,13 @@ def fake_case_store():
 # ---------------------------------------------------------------------------
 
 
-def test_summary_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None
-) -> None:
+def test_summary_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.get("/api/v1/workspace/summary", params={"case_id": "c1"})
     assert response.status_code == 404
     assert "DANWA_ENABLE_CASE_SPACE" in response.json()["detail"]
 
 
-def test_search_returns_404_when_feature_disabled(
-    client: TestClient, disabled: None
-) -> None:
+def test_search_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.get("/api/v1/cases/search", params={"q": "ai"})
     assert response.status_code == 404
 

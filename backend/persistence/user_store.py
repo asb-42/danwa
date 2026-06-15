@@ -161,9 +161,7 @@ class UserStore:
         instead of a 500.
         """
         try:
-            row = self.conn.execute(
-                "SELECT last_workspace FROM users WHERE id = ?", (user_id,)
-            ).fetchone()
+            row = self.conn.execute("SELECT last_workspace FROM users WHERE id = ?", (user_id,)).fetchone()
         except Exception:  # noqa: BLE001
             # Column missing or DB locked -- treat as "not set".
             return None

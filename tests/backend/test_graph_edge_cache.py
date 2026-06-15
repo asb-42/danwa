@@ -8,6 +8,7 @@ edge-evidence format the router exposes to the frontend.
 Backend tests run against an isolated audit.db created in a
 tmp_path fixture; we never touch the production DB.
 """
+
 from __future__ import annotations
 
 import json
@@ -89,14 +90,9 @@ def _recent_iso(days_ago: int = 1) -> str:
 def test_migration_creates_table_and_indexes(audit_db: Path) -> None:
     """The v003 migration is idempotent and creates 3 indexes."""
     with sqlite3.connect(str(audit_db)) as conn:
-        tables = [r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()]
+        tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
         assert "graph_edge_cache" in tables
-        idx = [r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' "
-            "AND tbl_name='graph_edge_cache'"
-        ).fetchall()]
+        idx = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='graph_edge_cache'").fetchall()]
         assert "idx_gec_src" in idx
         assert "idx_gec_tgt" in idx
         assert "idx_gec_pair" in idx
@@ -131,8 +127,7 @@ def test_refresh_aggregates_audit_events_into_edges(audit_db: Path) -> None:
 
     with sqlite3.connect(str(audit_db)) as conn:
         edges = conn.execute(
-            "SELECT src_type, tgt_type, type, evidence_count "
-            "FROM graph_edge_cache WHERE tenant_id = ?",
+            "SELECT src_type, tgt_type, type, evidence_count FROM graph_edge_cache WHERE tenant_id = ?",
             (tid,),
         ).fetchall()
     assert len(edges) == 6
@@ -145,8 +140,13 @@ def test_refresh_is_idempotent(audit_db: Path) -> None:
     """Two refreshes in a row produce the same row count."""
     tid = "tenant-1"
     _insert_audit(
-        audit_db, id="e1", project_id=tid, debate_id="d1",
-        agent="strategist", action="node_started", ts=_recent_iso(),
+        audit_db,
+        id="e1",
+        project_id=tid,
+        debate_id="d1",
+        agent="strategist",
+        action="node_started",
+        ts=_recent_iso(),
     )
     svc = GraphEdgeCacheService(db_path=audit_db)
     svc.refresh_for_tenant(tid)
@@ -161,12 +161,21 @@ def test_refresh_skips_audit_events_outside_window(audit_db: Path) -> None:
     cached."""
     tid = "tenant-1"
     _insert_audit(
-        audit_db, id="recent", project_id=tid, debate_id="d1",
-        agent="strategist", action="node_started", ts=_recent_iso(5),
+        audit_db,
+        id="recent",
+        project_id=tid,
+        debate_id="d1",
+        agent="strategist",
+        action="node_started",
+        ts=_recent_iso(5),
     )
     _insert_audit(
-        audit_db, id="old", project_id=tid, debate_id="d2",
-        agent="strategist", action="node_started",
+        audit_db,
+        id="old",
+        project_id=tid,
+        debate_id="d2",
+        agent="strategist",
+        action="node_started",
         ts=_recent_iso(120),  # > REFRESH_AUDIT_WINDOW_DAYS=90
     )
     svc = GraphEdgeCacheService(db_path=audit_db)
@@ -175,8 +184,7 @@ def test_refresh_skips_audit_events_outside_window(audit_db: Path) -> None:
     assert touched == 2  # 1 emitted_by + 1 performed
     with sqlite3.connect(str(audit_db)) as conn:
         only_recent = conn.execute(
-            "SELECT tgt_id FROM graph_edge_cache "
-            "WHERE tenant_id = ? AND type = 'emitted_by'",
+            "SELECT tgt_id FROM graph_edge_cache WHERE tenant_id = ? AND type = 'emitted_by'",
             (tid,),
         ).fetchone()
     assert only_recent is not None
@@ -188,12 +196,22 @@ def test_get_evidence_returns_evidence_for_cached_edge(audit_db: Path) -> None:
     EdgeEvidence with a formatted sample line."""
     tid = "tenant-1"
     _insert_audit(
-        audit_db, id="e1", project_id=tid, debate_id="d42",
-        agent="strategist", action="node_started", ts=_recent_iso(2),
+        audit_db,
+        id="e1",
+        project_id=tid,
+        debate_id="d42",
+        agent="strategist",
+        action="node_started",
+        ts=_recent_iso(2),
     )
     _insert_audit(
-        audit_db, id="e2", project_id=tid, debate_id="d42",
-        agent="critic", action="node_completed", ts=_recent_iso(1),
+        audit_db,
+        id="e2",
+        project_id=tid,
+        debate_id="d42",
+        agent="critic",
+        action="node_completed",
+        ts=_recent_iso(1),
     )
 
     svc = GraphEdgeCacheService(db_path=audit_db)
@@ -225,15 +243,25 @@ def test_get_evidence_persists_refresh(audit_db: Path) -> None:
     evidence is unchanged."""
     tid = "tenant-1"
     _insert_audit(
-        audit_db, id="e1", project_id=tid, debate_id="d1",
-        agent="strategist", action="node_started", ts=_recent_iso(1),
+        audit_db,
+        id="e1",
+        project_id=tid,
+        debate_id="d1",
+        agent="strategist",
+        action="node_started",
+        ts=_recent_iso(1),
     )
     svc = GraphEdgeCacheService(db_path=audit_db)
     ev1 = svc.get_evidence(tid, "AuditEvent:audit:d1", "Debate:debate:d1")
     # Insert a new event AFTER the first refresh
     _insert_audit(
-        audit_db, id="e2", project_id=tid, debate_id="d1",
-        agent="critic", action="node_completed", ts=_recent_iso(0),
+        audit_db,
+        id="e2",
+        project_id=tid,
+        debate_id="d1",
+        agent="critic",
+        action="node_completed",
+        ts=_recent_iso(0),
     )
     ev2 = svc.get_evidence(tid, "AuditEvent:audit:d1", "Debate:debate:d1")
     # Same evidence (no re-scan)

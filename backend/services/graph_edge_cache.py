@@ -47,6 +47,7 @@ Document->Debate edges here.  Those are pure-RAG-embedding
 edges (Phase 4+ future work, see plans §A.7) and live outside
 the audit log.
 """
+
 from __future__ import annotations
 
 import json
@@ -91,6 +92,7 @@ class EdgeEvidence:
     but is engine-agnostic so the service can be tested without
     importing the FastAPI layer.
     """
+
     src: str
     tgt: str
     type: str
@@ -184,9 +186,7 @@ class GraphEdgeCacheService:
                         (tenant_id, cutoff),
                     ).fetchall()
                     for debate_id, first_ts, last_ts, count in rows_aed:
-                        sample = self._sample_evidence_for_debate(
-                            conn, tenant_id, debate_id, cutoff
-                        )
+                        sample = self._sample_evidence_for_debate(conn, tenant_id, debate_id, cutoff)
                         self._upsert(
                             conn,
                             tenant_id=tenant_id,
@@ -215,9 +215,7 @@ class GraphEdgeCacheService:
                     ).fetchall()
                     for agent, debate_id, first_ts, last_ts, count in rows_perf:
                         # One row per (user, debate) the user acted on.
-                        sample = self._sample_evidence_for_user_debate(
-                            conn, tenant_id, agent, debate_id, cutoff
-                        )
+                        sample = self._sample_evidence_for_user_debate(conn, tenant_id, agent, debate_id, cutoff)
                         self._upsert(
                             conn,
                             tenant_id=tenant_id,
@@ -246,7 +244,8 @@ class GraphEdgeCacheService:
             self._last_refresh[tenant_id] = datetime.now(UTC)
             logger.debug(
                 "graph_edge_cache: refreshed tenant=%s, touched=%d rows",
-                tenant_id, touched,
+                tenant_id,
+                touched,
             )
             return touched
 
@@ -288,8 +287,7 @@ class GraphEdgeCacheService:
             return None
 
     def _row_to_evidence(self, row: tuple) -> EdgeEvidence:
-        (src_type, src_id, tgt_type, tgt_id, type_, weight,
-         count, first_seen, last_seen, sample_json) = row
+        (src_type, src_id, tgt_type, tgt_id, type_, weight, count, first_seen, last_seen, sample_json) = row
         try:
             sample = json.loads(sample_json) if sample_json else []
         except json.JSONDecodeError:
@@ -298,9 +296,7 @@ class GraphEdgeCacheService:
         # Append a summary line so the user sees the count even when
         # the sample list is empty.
         if count and not evidence:
-            evidence.append(
-                f"{count} audit events between {first_seen[:10]} and {last_seen[:10]}"
-            )
+            evidence.append(f"{count} audit events between {first_seen[:10]} and {last_seen[:10]}")
         return EdgeEvidence(
             src=f"{src_type}:{src_id}",
             tgt=f"{tgt_type}:{tgt_id}",
@@ -348,8 +344,7 @@ class GraphEdgeCacheService:
                 last_seen  = MAX(last_seen,  excluded.last_seen),
                 sample_evidence = excluded.sample_evidence
             """,
-            (tenant_id, src_type, src_id, tgt_type, tgt_id, type,
-             weight, evidence_count, first_seen, last_seen, sample_json),
+            (tenant_id, src_type, src_id, tgt_type, tgt_id, type, weight, evidence_count, first_seen, last_seen, sample_json),
         )
 
     def _sample_evidence_for_debate(
@@ -389,9 +384,7 @@ class GraphEdgeCacheService:
             """,
             (tenant_id, agent, debate_id, cutoff, SAMPLE_EVIDENCE_MAX),
         ).fetchall()
-        return [
-            self._format_evidence_line(agent, action, ts) for action, ts in rows
-        ]
+        return [self._format_evidence_line(agent, action, ts) for action, ts in rows]
 
     @staticmethod
     def _format_evidence_line(agent: str, action: str, timestamp: str) -> str:

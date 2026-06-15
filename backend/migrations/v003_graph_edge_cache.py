@@ -38,6 +38,7 @@ runs; it fills up as new audit events are recorded and
 stop using the product for >90 days will not get their older
 edges cached — the design choice is "live working set only".
 """
+
 from __future__ import annotations
 
 import logging

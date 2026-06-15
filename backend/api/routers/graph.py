@@ -294,9 +294,7 @@ def get_edge_details(
     tenant_id: str | None = None
     if case_id:
         # Try every known tenant for the case
-        for tid in _known_tenants_via_case_store(
-            _peek_case_store()
-        ):
+        for tid in _known_tenants_via_case_store(_peek_case_store()):
             c = _peek_case_store().get(tid, case_id)
             if c is not None:
                 tenant_id = tid
@@ -326,10 +324,7 @@ def get_edge_details(
             tgt=tgt,
             type="unknown",
             weight=1.0,
-            evidence=[
-                f"No audit evidence found for edge {src} \u2192 {tgt} "
-                f"in tenant {tenant_id}."
-            ],
+            evidence=[f"No audit evidence found for edge {src} \u2192 {tgt} in tenant {tenant_id}."],
         )
     return EdgeDetail(
         src=ev.src,
@@ -351,4 +346,5 @@ def _peek_case_store():
     singleton in backend.api.deps.
     """
     from backend.api.deps import get_case_store
+
     return get_case_store()
