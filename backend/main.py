@@ -185,6 +185,11 @@ async def lifespan(app: FastAPI):
 
     migrate_to_case_paths()
 
+    # Run v003 graph-edge-cache migration (idempotent, Phase 4.3/5.2)
+    from backend.migrations.v003_graph_edge_cache import migrate_graph_edge_cache
+
+    migrate_graph_edge_cache()
+
     # Seed system workflow templates (idempotent)
     from scripts.seed_templates import seed_system_templates
 

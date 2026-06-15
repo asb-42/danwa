@@ -38,6 +38,7 @@ from backend.models.schemas import (
     GraphNode,
     GraphPayload,
 )
+from backend.services.graph_edge_cache import get_graph_edge_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -263,19 +264,91 @@ def get_global_graph(
 def get_edge_details(
     src: str = Query(..., min_length=1),
     tgt: str = Query(..., min_length=1),
+    case_id: str | None = Query(
+        None,
+        min_length=1,
+        description=(
+            "Optional case id.  When supplied, the service is scoped "
+            "to that case's tenant and only that case's audit events "
+            "are considered.  When omitted, the active tenant is "
+            "inferred from the auth context (TODO Phase 7)."
+        ),
+    ),
 ) -> EdgeDetail:
     """Return metadata for one edge (kind, weight, evidence).
 
-    Phase-4 stub: returns a minimal payload.  Real implementation
-    (Phase 5+ graph_edge_cache) would query the pre-computed
-    edge store for "evidence" — the events that caused the edge
-    to exist.
+    Phase 4.3 / 5.2: delegates to
+    :class:`GraphEdgeCacheService` which materialises edges from
+    the audit log.  When no evidence is found the response carries
+    a short placeholder so the UI can still render a "no evidence
+    yet" hint without falling back to a hard error.
     """
     _require_graph()
+
+    # Resolve the tenant for this lookup.  Phase 7 will use the
+    # authenticated user's tenant; for now we use the case_store's
+    # tenant discovery (mirrors what inbox.py does for cross-
+    # tenant safety).  If the caller supplied a case_id we look
+    # up that case's tenant directly; otherwise we fall back to
+    # the case_store cache walk.
+    tenant_id: str | None = None
+    if case_id:
+        # Try every known tenant for the case
+        for tid in _known_tenants_via_case_store(
+            _peek_case_store()
+        ):
+            c = _peek_case_store().get(tid, case_id)
+            if c is not None:
+                tenant_id = tid
+                break
+
+    if not tenant_id:
+        # No case_id supplied and no auth context: best-effort
+        # discovery.  In practice the frontend always passes a
+        # case_id from the active workspace.
+        return EdgeDetail(
+            src=src,
+            tgt=tgt,
+            type="unknown",
+            weight=1.0,
+            evidence=[
+                "Edge evidence is not yet materialised for this lookup. "
+                "Open a Workspace and try again \u2014 the cache will be "
+                "populated from the audit log on the next request."
+            ],
+        )
+
+    service = get_graph_edge_cache_service()
+    ev = service.get_evidence(tenant_id, src, tgt)
+    if ev is None:
+        return EdgeDetail(
+            src=src,
+            tgt=tgt,
+            type="unknown",
+            weight=1.0,
+            evidence=[
+                f"No audit evidence found for edge {src} \u2192 {tgt} "
+                f"in tenant {tenant_id}."
+            ],
+        )
     return EdgeDetail(
-        src=src,
-        tgt=tgt,
-        type="unknown",
-        weight=1.0,
-        evidence=["graph_edge_cache not yet implemented (Phase 5+ plan item)"],
+        src=ev.src,
+        tgt=ev.tgt,
+        type=ev.type,
+        weight=ev.weight,
+        evidence=ev.evidence,
+        created_at=ev.created_at,
     )
+
+
+def _peek_case_store():
+    """Local helper to access the case_store at request time.
+
+    The router is a module-level object; case_store is created
+    lazily by get_case_store() which uses a FastAPI dependency.
+    Outside the request handler we need a stable accessor that
+    does not raise — we fall back to the lru_cache-protected
+    singleton in backend.api.deps.
+    """
+    from backend.api.deps import get_case_store
+    return get_case_store()

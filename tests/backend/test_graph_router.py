@@ -241,11 +241,15 @@ def test_global_rejects_limit_out_of_range(client: TestClient, enabled: None) ->
 
 
 # ---------------------------------------------------------------------------
-# /api/v1/graph/edges
+# /api/v1/graph/edges  (Phase 4.3/5.2 - graph_edge_cache)
 # ---------------------------------------------------------------------------
 
 
-def test_edges_returns_stub(client: TestClient, enabled: None) -> None:
+def test_edges_without_case_id_returns_placeholder(
+    client: TestClient, enabled: None
+) -> None:
+    """No case_id supplied -> router cannot resolve a tenant and
+    returns a soft placeholder instead of an error."""
     response = client.get(
         "/api/v1/graph/edges",
         params={"src": "case:c1", "tgt": "tag:ethics"},
@@ -255,5 +259,26 @@ def test_edges_returns_stub(client: TestClient, enabled: None) -> None:
     assert body["src"] == "case:c1"
     assert body["tgt"] == "tag:ethics"
     assert body["weight"] == 1.0
-    # The stub documents that graph_edge_cache is not yet implemented
-    assert any("graph_edge_cache" in e for e in body["evidence"])
+    # No audit events in the test DB -> placeholder is returned
+    assert any("not yet materialised" in e for e in body["evidence"])
+
+
+def test_edges_with_unknown_case_id_returns_placeholder(
+    client: TestClient, enabled: None
+) -> None:
+    """case_id is provided but does not resolve to any known
+    case (case_store cache is empty in tests).  Router falls
+    back to the same soft placeholder as the no-case-id path."""
+    response = client.get(
+        "/api/v1/graph/edges",
+        params={"src": "case:c1", "tgt": "tag:ethics", "case_id": "missing"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert any("not yet materialised" in e for e in body["evidence"])
+
+
+def test_edges_validation_422(client: TestClient, enabled: None) -> None:
+    """Empty src/tgt are rejected by the Query validation."""
+    response = client.get("/api/v1/graph/edges", params={"src": "", "tgt": "x"})
+    assert response.status_code == 422
