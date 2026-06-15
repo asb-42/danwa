@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-15
+
+- feat(case-space): phase 0-5 vollstaendig implementiert (plans/2026-06-14_case-space-impl-todos.md)
+  - **Phase 1 Workspace**: Backend `GET /api/v1/workspace/summary` + `GET /api/v1/cases/search` (Typeahead) in [`backend/api/routers/workspace.py`](backend/api/routers/workspace.py:1); Frontend `workspaceStore.svelte.js`, `WorkspaceView.svelte` (763 Z.), `CaseSelector.svelte` mit Typeahead, URL-State-Sync, Sidebar-Item, `last_workspace` User-Setting (eigene Spalte)
+  - **Phase 2 Inbox**: Backend `GET /api/v1/inbox` + 3 Bulk-Endpoints (move/tag/archive) in [`backend/api/routers/inbox.py`](backend/api/routers/inbox.py:1); Frontend `inboxStore.svelte.js`, `InboxView.svelte` (452 Z.) mit Tabs + Bulk-Action-Bar, Sidebar-Badge
+  - **Phase 3 Onboarding**: Backend `GET /api/v1/onboarding/state`; Frontend `WelcomeCard.svelte` im Dashboard, `NewDebateForm.svelte` (524 Z.) mit Disambiguierung + Top-3-Tag-Vorschlaegen (27 Tests), DocumentUploader mit Pflicht-Case-Selector
+  - **Phase 3.6 Inline-Audit** (Commits `7f52e96` + `cb3bd85`): Backend-Helper `_collect_recent_audit_events()` aggregiert Audit-Log in `WorkspaceSummary.recent_events`; Frontend-WorkspaceView zeigt 5-Spalten-Inspector-Tabelle (Event/Phase/Round/Subject/When) mit Click-through zur Audit-View + Show-Full-Audit-Link
+  - **Phase 4 Graph**: Backend `GET /api/v1/graph/{local,global,edges}` in [`backend/api/routers/graph.py`](backend/api/routers/graph.py:1); Frontend `CytoscapeGraphView.svelte` mit List-Mode-Fallback, `BrowseView.svelte` mit List/Graph-Toggle
+  - **Phase 5 Inspector + Legacy**: `InspectorGraphTab.svelte`, `CasesView.svelte` wird read-only
+- chore(config): Feature-Flags `enable_case_space*` auf `True` als Default (Commits `a3ee18e`, `1b01b83`); opt-out via `DANWA_ENABLE_CASE_SPACE=false` moeglich
+- test(case-space): 41 Pytest-Tests (workspace + inbox + graph + onboarding) + 61 Vitest-Tests (workspaceStore + inboxStore + newDebateFlow) gruen
+- docs(plans): `plans/2026-06-14_case-space-impl-todos.md` mit realem Code-Stand synchronisiert (Sync-Hinweis im Header)
+
 ## 2026-06-12
 
 - chore(workflow): remove dead `backend/workflow/nodes.py` (422 stmts, 0 % coverage)
