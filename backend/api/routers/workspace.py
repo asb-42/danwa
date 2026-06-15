@@ -27,6 +27,7 @@ from backend.api.deps import get_active_tenant, get_case_store
 from backend.core.config import settings
 from backend.models.schemas import (
     CaseSearchHit,
+    WorkspaceRecentEvent,
     WorkspaceSuggestedNextStep,
     WorkspaceSummary,
 )
@@ -80,6 +81,54 @@ def _build_suggested_next_steps(
     return steps
 
 
+def _collect_recent_audit_events(tenant_id: str, case_id: str, limit: int = 5) -> list[WorkspaceRecentEvent]:
+    """Aggregate the most recent audit events across all debates of a case.
+
+    Phase 3.6: the Inspector / Recent-Activity strip in the
+    Workspace view shows the last 5 events for the active
+    case.  We pull the per-debate audit log (sorted by
+    timestamp) and flatten them into a WorkspaceRecentEvent
+    list.  Defensive: any error from the underlying audit
+    service is swallowed and an empty list is returned --
+    the Recent-Activity strip is a nice-to-have.
+    """
+    from backend.api.deps import get_debate_store_for_case
+    from backend.workflow.audit_logger import get_audit_logger
+
+    try:
+        debate_store = get_debate_store_for_case(case_id)
+        debates = debate_store.list_all() or []
+    except Exception:  # noqa: BLE001
+        debates = []
+
+    events: list[WorkspaceRecentEvent] = []
+    for d in debates[:50]:  # cap to 50 debates per case for sanity
+        sid = d.get("session_id") or ""
+        if not sid:
+            continue
+        try:
+            al = get_audit_logger()
+            wf_events = al.get_audit_log(sid) or []
+        except Exception:  # noqa: BLE001
+            continue
+        for ev in wf_events:
+            events.append(
+                WorkspaceRecentEvent(
+                    id=str(ev.get("id") or ev.get("timestamp") or ""),
+                    event_type=str(ev.get("action") or ev.get("event_type") or "event"),
+                    actor=ev.get("agent"),
+                    subject=ev.get("role") or ev.get("agent"),
+                    case_id=case_id,
+                    debate_id=d.get("debate_id") or d.get("id") or "",
+                    round=ev.get("round") if isinstance(ev.get("round"), int) else None,
+                    phase=ev.get("phase"),
+                    created_at=str(ev.get("timestamp") or ev.get("created_at") or ""),
+                )
+            )
+    events.sort(key=lambda e: e.created_at, reverse=True)
+    return events[:limit]
+
+
 @router.get("/workspace/summary", response_model=WorkspaceSummary)
 def get_workspace_summary(
     case_id: str = Query(..., min_length=1),
@@ -128,7 +177,7 @@ def get_workspace_summary(
         members=list(getattr(case, "members", []) or []),
         debate_count=debate_count,
         document_count=document_count,
-        recent_events=[],  # populated in Phase 2 once the inbox engine exists
+        recent_events=_collect_recent_audit_events(tenant_id, case_id, limit=5),
         suggested_next_steps=_build_suggested_next_steps(
             case_id=case.id,
             debate_count=debate_count,
