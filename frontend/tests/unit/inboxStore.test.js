@@ -39,6 +39,9 @@ import {
   moveSelectedTo,
   tagSelected,
   archiveSelected,
+  moveItem,
+  tagItem,
+  archiveItem,
   reset,
 } from '../../src/lib/stores/inboxStore.svelte.js';
 
@@ -285,5 +288,56 @@ describe('reset', () => {
     expect(inboxStore.selectedIds.size).toBe(0);
     expect(inboxStore.error).toBeNull();
     expect(inboxStore.inboxDisabled).toBe(false);
+  });
+});
+
+// ─── Single-item actions (Phase 2.8 visual revision) ─────────────
+
+describe('moveItem (single)', () => {
+  it('calls bulkMove with a one-element array', async () => {
+    vi.mocked(bulkMove).mockResolvedValue({ succeeded: ['d-1'], failed: [] });
+    const r = await moveItem('d-1', 'c-target');
+    expect(r.succeeded).toEqual(['d-1']);
+    expect(bulkMove).toHaveBeenCalledWith(['d-1'], 'c-target');
+  });
+
+  it('returns null for missing inputs', async () => {
+    expect(await moveItem('', 'c-target')).toBeNull();
+    expect(await moveItem('d-1', '')).toBeNull();
+    expect(bulkMove).not.toHaveBeenCalled();
+  });
+});
+
+describe('tagItem (single)', () => {
+  it('calls bulkTag with a one-element array', async () => {
+    vi.mocked(bulkTag).mockResolvedValue({ succeeded: ['d-1'], failed: [] });
+    const r = await tagItem('d-1', ['urgent']);
+    expect(r.succeeded).toEqual(['d-1']);
+    expect(bulkTag).toHaveBeenCalledWith(['d-1'], ['urgent']);
+  });
+
+  it('treats null/undefined tagIds as an empty list', async () => {
+    vi.mocked(bulkTag).mockResolvedValue({ succeeded: ['d-1'], failed: [] });
+    await tagItem('d-1', null);
+    expect(bulkTag).toHaveBeenCalledWith(['d-1'], []);
+  });
+
+  it('returns null for missing itemId', async () => {
+    expect(await tagItem('', ['urgent'])).toBeNull();
+    expect(bulkTag).not.toHaveBeenCalled();
+  });
+});
+
+describe('archiveItem (single)', () => {
+  it('calls bulkArchive with a one-element array', async () => {
+    vi.mocked(bulkArchive).mockResolvedValue({ succeeded: ['d-1'], failed: [] });
+    const r = await archiveItem('d-1');
+    expect(r.succeeded).toEqual(['d-1']);
+    expect(bulkArchive).toHaveBeenCalledWith(['d-1']);
+  });
+
+  it('returns null for missing itemId', async () => {
+    expect(await archiveItem('')).toBeNull();
+    expect(bulkArchive).not.toHaveBeenCalled();
   });
 });

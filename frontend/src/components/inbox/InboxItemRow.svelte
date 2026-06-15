@@ -18,7 +18,20 @@
 <script>
   import { tStore } from '../../lib/i18n/index.js';
 
-  let { item, selected = false, onCheck = () => {} } = $props();
+  // Phase 2.8 visual revision (2026-06-15): rows now expose inline
+  // action buttons.  The optional checkbox + onCheck props stay for
+  // bulk-select use cases (e.g. "Archive 5 selected items"), but
+  // the row does not require them.  Every row is interactive
+  // out of the box.
+  let {
+    item,
+    selected = false,
+    onCheck = () => {},
+    onOpen = () => {},
+    onTag = () => {},
+    onMove = () => {},
+    onArchive = () => {},
+  } = $props();
 
   let t = $derived($tStore);
 
@@ -35,21 +48,27 @@
   function handleCheck() {
     onCheck(item.id);
   }
+  function handleOpen()  { onOpen(item); }
+  function handleTag()   { onTag(item); }
+  function handleMove()  { onMove(item); }
+  function handleArchive() { onArchive(item); }
 </script>
 
 <li class="flex items-start gap-3 px-4 py-3 mb-2 rounded-md border
            border-gray-200 dark:border-gray-700
            bg-white dark:bg-gray-800">
-  <label class="pt-1">
-    <input
-      type="checkbox"
-      checked={selected}
-      onchange={handleCheck}
-      aria-label={t?.caseSpace?.inbox?.selectItem ?? 'Select item'}
-      class="rounded border-gray-300 dark:border-gray-600
-             text-blue-600 focus:ring-blue-500"
-    />
-  </label>
+  {#if onCheck !== undefined}
+    <label class="pt-1">
+      <input
+        type="checkbox"
+        checked={selected}
+        onchange={handleCheck}
+        aria-label={t?.caseSpace?.inbox?.selectItem ?? 'Select item'}
+        class="rounded border-gray-300 dark:border-gray-600
+               text-blue-600 focus:ring-blue-500"
+      />
+    </label>
+  {/if}
   <div class="flex-1 min-w-0">
     <div class="flex items-center gap-2 flex-wrap">
       {#each kindBadges as k (k)}
@@ -81,6 +100,69 @@
         <span>{item.age_hours} h old</span>
       {/if}
     </p>
+
+    <!-- Inline action buttons (Phase 2.8 visual revision).
+         These match the button style used by AuditTable / CaseList
+         so the Inbox row is no longer the only place that lacks
+         direct per-row actions. -->
+    <div class="mt-2 flex flex-wrap gap-2">
+      <button
+        type="button"
+        class="text-xs px-2 py-1 rounded
+               border border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700
+               text-gray-800 dark:text-gray-100
+               hover:bg-gray-100 dark:hover:bg-gray-600
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
+        data-testid="inbox-row-open"
+        onclick={handleOpen}
+        title={t?.caseSpace?.inbox?.open ?? 'Open this debate in its main view'}
+      >
+        {t?.caseSpace?.inbox?.open ?? 'Open'}
+      </button>
+      <button
+        type="button"
+        class="text-xs px-2 py-1 rounded
+               border border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700
+               text-gray-800 dark:text-gray-100
+               hover:bg-gray-100 dark:hover:bg-gray-600
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
+        data-testid="inbox-row-tag"
+        onclick={handleTag}
+        title={t?.caseSpace?.inbox?.tag ?? 'Add tags to this item'}
+      >
+        {t?.caseSpace?.inbox?.tag ?? 'Tag'}
+      </button>
+      <button
+        type="button"
+        class="text-xs px-2 py-1 rounded
+               border border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700
+               text-gray-800 dark:text-gray-100
+               hover:bg-gray-100 dark:hover:bg-gray-600
+               focus:outline-none focus:ring-2 focus:ring-blue-500"
+        data-testid="inbox-row-move"
+        onclick={handleMove}
+        title={t?.caseSpace?.inbox?.move ?? 'Move this item to another case'}
+      >
+        {t?.caseSpace?.inbox?.move ?? 'Move'}
+      </button>
+      <button
+        type="button"
+        class="text-xs px-2 py-1 rounded
+               border border-amber-300 dark:border-amber-600
+               bg-amber-50 dark:bg-amber-900/30
+               text-amber-800 dark:text-amber-200
+               hover:bg-amber-100 dark:hover:bg-amber-900/50
+               focus:outline-none focus:ring-2 focus:ring-amber-500"
+        data-testid="inbox-row-archive"
+        onclick={handleArchive}
+        title={t?.caseSpace?.inbox?.archive ?? 'Archive this item (removes it from the Inbox)'}
+      >
+        {t?.caseSpace?.inbox?.archive ?? 'Archive'}
+      </button>
+    </div>
   </div>
 </li>
 

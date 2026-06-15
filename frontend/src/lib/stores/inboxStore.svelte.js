@@ -259,6 +259,48 @@ export async function archiveSelected() {
   return _runBulk(() => bulkArchive(ids), ids);
 }
 
+// ─── Single-item actions (Phase 2.8 visual revision) ─────────────
+//
+// The Inbox rows now expose inline action buttons ("Open", "Tag",
+// "Move", "Archive") so the user can act on one item at a time
+// without first having to discover and tick the checkbox.
+// These wrappers delegate to the same bulk-* endpoints that the
+// multi-select path uses; the backend accepts a single-element
+// array identically.  The contract is symmetric so future
+// "Select all matching" actions can reuse the same primitives.
+
+/**
+ * Move a single inbox item to a different case.
+ * @param {string} itemId
+ * @param {string} targetCaseId
+ * @returns {Promise<InboxBulkResult|null>}
+ */
+export async function moveItem(itemId, targetCaseId) {
+  if (!itemId || !targetCaseId) return null;
+  return _runBulk(() => bulkMove([itemId], targetCaseId), [itemId]);
+}
+
+/**
+ * Add tag ids to a single inbox item.
+ * @param {string} itemId
+ * @param {string[]} tagIds
+ * @returns {Promise<InboxBulkResult|null>}
+ */
+export async function tagItem(itemId, tagIds) {
+  if (!itemId) return null;
+  return _runBulk(() => bulkTag([itemId], tagIds || []), [itemId]);
+}
+
+/**
+ * Archive a single inbox item (sets status=archived + archived_at).
+ * @param {string} itemId
+ * @returns {Promise<InboxBulkResult|null>}
+ */
+export async function archiveItem(itemId) {
+  if (!itemId) return null;
+  return _runBulk(() => bulkArchive([itemId]), [itemId]);
+}
+
 async function _runBulk(caller, ids) {
   _state.bulkInFlight = true;
   _state.error = null;

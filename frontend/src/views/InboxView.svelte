@@ -31,10 +31,15 @@
     moveSelectedTo,
     tagSelected,
     archiveSelected,
+    moveItem,
+    tagItem,
+    archiveItem,
     reset,
   } from '../lib/stores/inboxStore.svelte.js';
   import { searchCases } from '../lib/api/workspace.js';
   import InboxItemRow from '../components/inbox/InboxItemRow.svelte';
+  import TagPicker from '../components/TagPicker.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let { navigate = () => {}, initialTenantId = null } = $props();
 
@@ -46,15 +51,104 @@
   let filteredItems = $derived(inboxStore.filteredItems);
   let selectedIds = $derived(inboxStore.selectedIds);
   let activeTab = $derived(inboxStore.activeTab);
-  let bulkInFlight = $derived(inboxStore.bulkInFlight);
   let lastBulkResult = $derived(inboxStore.lastBulkResult);
   let inboxDisabled = $derived(inboxStore.inboxDisabled);
 
   // Local UI state
   let moveTargetInput = $state('');
   let moveTargetSearchResults = $state([]);
-  let tagInput = $state('');
   let toastMessage = $state(null);
+
+  // ─── Phase 2.8 single-item modal state ──────────────────────
+  // The Tag and Move buttons open a modal scoped to the chosen
+  // item.  Archive opens a ConfirmDialog.  The bulk-* paths stay
+  // for multi-select use cases (currently exposed via the row
+  // checkbox + the future "select all matching" actions).
+  let moveModalItem = $state(null);     // { id, case_id, title } or null
+  let tagModalItem = $state(null);
+  let pendingTagIds = $state([]);         // TagPicker value
+  let archiveConfirmItem = $state(null);
+  let singleInFlight = $state(false);
+
+  function openItem(item) {
+    if (!item) return;
+    if (typeof window === 'undefined') return;
+    // Decide route based on whether the debate is a "real" MVP
+    // debate or a case-scoped one.  WorkspaceView's own
+    // 'mvp-debate' vs 'debate' route distinction is mirrored
+    // here so Open behaves consistently.
+    const route = item.case_id?.startsWith('mvp-') ? 'mvp-debate' : 'debate';
+    window.location.hash = `#/${route}/${item.id}`;
+  }
+  function openMoveModal(item) {
+    if (!item) return;
+    moveModalItem = { id: item.id, case_id: item.case_id, title: item.title };
+    moveTargetInput = '';
+    moveTargetSearchResults = [];
+  }
+  function closeMoveModal() {
+    moveModalItem = null;
+    moveTargetInput = '';
+    moveTargetSearchResults = [];
+  }
+  async function confirmMoveModal() {
+    const target = (moveTargetInput || '').trim();
+    if (!target || !moveModalItem) return;
+    singleInFlight = true;
+    try {
+      await moveItem(moveModalItem.id, target);
+    } finally {
+      singleInFlight = false;
+      closeMoveModal();
+    }
+  }
+  function openTagModal(item) {
+    if (!item) return;
+    tagModalItem = { id: item.id, case_id: item.case_id, title: item.title };
+    pendingTagIds = Array.isArray(item.tags) ? [...item.tags] : [];
+  }
+  function closeTagModal() {
+    tagModalItem = null;
+    pendingTagIds = [];
+  }
+  async function confirmTagModal() {
+    if (!tagModalItem) return;
+    // Filter out IDs that are already on the item (idempotent union
+    // is the backend contract, so this is an optimisation, not a
+    // correctness requirement).
+    const existing = tagModalItem.id && inboxStore.summary?.items
+      ? (inboxStore.summary.items.find((it) => it.id === tagModalItem.id)?.tags || [])
+      : [];
+    const newOnes = pendingTagIds.filter((t) => !existing.includes(t));
+    if (newOnes.length === 0) {
+      closeTagModal();
+      return;
+    }
+    singleInFlight = true;
+    try {
+      await tagItem(tagModalItem.id, newOnes);
+    } finally {
+      singleInFlight = false;
+      closeTagModal();
+    }
+  }
+  function openArchiveConfirm(item) {
+    if (!item) return;
+    archiveConfirmItem = { id: item.id, case_id: item.case_id, title: item.title };
+  }
+  function closeArchiveConfirm() {
+    archiveConfirmItem = null;
+  }
+  async function confirmArchiveItem() {
+    if (!archiveConfirmItem) return;
+    singleInFlight = true;
+    try {
+      await archiveItem(archiveConfirmItem.id);
+    } finally {
+      singleInFlight = false;
+      closeArchiveConfirm();
+    }
+  }
   let toastTimer = null;
 
   onMount(() => {
@@ -115,67 +209,11 @@
     }, 200);
   }
 
-  async function doMove() {
-    const target = (moveTargetInput || '').trim();
-    if (!target) return;
-    const count = inboxStore.selectedIds.size;
-    // Phase 6.2 / C5 telemetry: bulk_action_used event.
-    feedbackStore.logActivity(
-      'case-space',
-      'inbox-bulk',
-      'Bulk move executed',
-      { kind: 'move', count, target }
-    );
-    const res = await moveSelectedTo(target);
-    if (res) {
-      showToast(formatResult('Moved', res));
-      moveTargetInput = '';
-      moveTargetSearchResults = [];
-    }
-  }
 
   // ─── Tag input ─────────────────────────────────────────────────
   let tagTimer = null;
-  async function onTagInput(e) {
-    tagInput = e.target.value;
-    if (tagTimer) clearTimeout(tagTimer);
-    tagTimer = setTimeout(async () => {
-      const tags = (tagInput || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (tags.length === 0) return;
-      const count = inboxStore.selectedIds.size;
-      // Phase 6.2 / C5 telemetry: bulk_action_used event.
-      feedbackStore.logActivity(
-        'case-space',
-        'inbox-bulk',
-        'Bulk tag executed',
-        { kind: 'tag', count, tagCount: tags.length }
-      );
-      const res = await tagSelected(tags);
-      if (res) {
-        showToast(formatResult('Tagged', res));
-        tagInput = '';
-      }
-    }, 800); // longer debounce: tag input is multi-tag
-  }
 
   // ─── Archive ───────────────────────────────────────────────────
-  async function doArchive() {
-    const count = selectedIds.size;
-    // Phase 6.2 / C5 telemetry: bulk_action_used event.
-    feedbackStore.logActivity(
-      'case-space',
-      'inbox-bulk',
-      'Bulk archive executed',
-      { kind: 'archive', count }
-    );
-    const res = await archiveSelected();
-    if (res) {
-      showToast(formatResult('Archived', res));
-    }
-  }
 
   // ─── Toast helper ──────────────────────────────────────────────
   function formatResult(action, res) {
@@ -299,64 +337,174 @@
               {item}
               selected={selectedIds.has(item.id)}
               onCheck={onRowCheck}
+              onOpen={openItem}
+              onTag={openTagModal}
+              onMove={openMoveModal}
+              onArchive={openArchiveConfirm}
             />
           {/each}
         </ul>
       {/if}
     {/if}
 
-    <!-- Bulk action bar -->
-    {#if selectedIds.size > 0}
-      <div class="bulk-bar" role="region" aria-label="Bulk actions">
-        <strong>
-          {selectedIds.size}
-          {t?.caseSpace?.inbox?.selectedItems ?? 'item(s) selected'}
-        </strong>
-
-        <div class="bulk-actions">
-          <div class="action-group">
-            <input
-              type="text"
-              class="action-input"
-              placeholder={t?.caseSpace?.inbox?.movePlaceholder ?? 'Target case id (typeahead)…'}
-              value={moveTargetInput}
-              oninput={onMoveTargetInput}
-              list="move-target-suggestions"
-              disabled={bulkInFlight}
-            />
-            <datalist id="move-target-suggestions">
-              {#each moveTargetSearchResults as hit}
-                <option value={hit.case_id}>{hit.title}</option>
-              {/each}
-            </datalist>
-            <button class="btn btn-primary" onclick={doMove} disabled={bulkInFlight || !moveTargetInput.trim()}>
-              {t?.caseSpace?.inbox?.move ?? 'Move'}
-            </button>
-          </div>
-
-          <div class="action-group">
-            <input
-              type="text"
-              class="action-input"
-              placeholder={t?.caseSpace?.inbox?.tagPlaceholder ?? 'Tags (comma-separated)…'}
-              value={tagInput}
-              oninput={onTagInput}
-              disabled={bulkInFlight}
-            />
-          </div>
-
-          <button class="btn btn-warning" onclick={doArchive} disabled={bulkInFlight}>
-            {t?.caseSpace?.inbox?.archive ?? 'Archive'}
-          </button>
-        </div>
-      </div>
-    {/if}
+    <!-- Phase 2.8 visual-revision: per-row action buttons now
+         provide the move/tag/archive UX.  The sticky bottom bar
+         was a duplicate of the row buttons in a different style
+         and the user found it confusingly unreadable (light
+         text on white).  We keep the bulk-* state and APIs in
+         the inboxStore for future "select all matching"
+         actions, but the UI exposes only the row buttons.
+         The selectedIds counter + clear survives in the row
+         header so users can still deselect all. -->
 
     <!-- Toast -->
     {#if toastMessage}
       <div class="toast" role="status">
         {toastMessage}
       </div>
+    {/if}
+
+    <!-- Phase 2.8 single-item modals -->
+    {#if moveModalItem}
+      <div
+        class="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="inbox-move-title"
+        data-testid="inbox-move-modal"
+        onclick={(e) => { if (e.target === e.currentTarget) closeMoveModal(); }}
+      >
+        <div
+          class="modal-card"
+          onclick={(e) => e.stopPropagation()}
+        >
+          <h3 id="inbox-move-title" class="text-lg font-semibold mb-2">
+            {t?.caseSpace?.inbox?.moveModalTitle ?? 'Move to case'}
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            {t?.caseSpace?.inbox?.moveModalBody ??
+              `Move "${moveModalItem.title}" (current case: ${moveModalItem.case_id}) to:`}
+          </p>
+          <input
+            type="text"
+            class="modal-input w-full px-3 py-2 rounded border
+                   border-gray-300 dark:border-gray-600
+                   bg-white dark:bg-gray-700
+                   text-gray-900 dark:text-gray-100
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={t?.caseSpace?.inbox?.moveModalPlaceholder ?? 'Target case id (typeahead)…'}
+            value={moveTargetInput}
+            oninput={onMoveTargetInput}
+            list="inbox-move-suggestions"
+            disabled={singleInFlight}
+            data-testid="inbox-move-input"
+          />
+          <datalist id="inbox-move-suggestions">
+            {#each moveTargetSearchResults as hit}
+              <option value={hit.case_id}>{hit.title}</option>
+            {/each}
+          </datalist>
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-600
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onclick={closeMoveModal}
+              disabled={singleInFlight}
+              data-testid="inbox-move-cancel"
+            >
+              {t?.common?.cancel ?? 'Cancel'}
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded
+                     bg-blue-600 text-white
+                     hover:bg-blue-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     disabled:opacity-50"
+              onclick={confirmMoveModal}
+              disabled={singleInFlight || !moveTargetInput.trim()}
+              data-testid="inbox-move-confirm"
+            >
+              {t?.caseSpace?.inbox?.move ?? 'Move'}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {#if tagModalItem}
+      <div
+        class="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="inbox-tag-title"
+        data-testid="inbox-tag-modal"
+        onclick={(e) => { if (e.target === e.currentTarget) closeTagModal(); }}
+      >
+        <div
+          class="modal-card"
+          onclick={(e) => e.stopPropagation()}
+        >
+          <h3 id="inbox-tag-title" class="text-lg font-semibold mb-2">
+            {t?.caseSpace?.inbox?.tagModalTitle ?? 'Add tags'}
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            {t?.caseSpace?.inbox?.tagModalBody ??
+              `Add tags to "${tagModalItem.title}". Existing tags are preserved.`}
+          </p>
+          <TagPicker
+            value={pendingTagIds}
+            onChange={(v) => (pendingTagIds = v)}
+          />
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-600
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onclick={closeTagModal}
+              disabled={singleInFlight}
+              data-testid="inbox-tag-cancel"
+            >
+              {t?.common?.cancel ?? 'Cancel'}
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded
+                     bg-blue-600 text-white
+                     hover:bg-blue-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     disabled:opacity-50"
+              onclick={confirmTagModal}
+              disabled={singleInFlight}
+              data-testid="inbox-tag-confirm"
+            >
+              {t?.caseSpace?.inbox?.tag ?? 'Tag'}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {#if archiveConfirmItem}
+      <ConfirmDialog
+        open={Boolean(archiveConfirmItem)}
+        title={t?.caseSpace?.inbox?.archiveTitle ?? 'Archive this item?'}
+        message={
+          (t?.caseSpace?.inbox?.archiveMessage ??
+            'Move this item out of the Inbox. You can still find archived items via the global search.')
+        }
+        detail={archiveConfirmItem.title}
+        confirmLabel={t?.caseSpace?.inbox?.archive ?? 'Archive'}
+        cancelLabel={t?.common?.cancel ?? 'Cancel'}
+        variant="warning"
+        onConfirm={confirmArchiveItem}
+        onCancel={closeArchiveConfirm}
+      />
     {/if}
   {/if}
 </section>
