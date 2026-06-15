@@ -20,6 +20,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { feedbackStore } from '../lib/stores/feedback.svelte.js';
   import {
     workspaceStore,
     setActiveCase,
@@ -163,6 +164,16 @@
   let caseSpaceDisabled = $derived(workspaceStore.caseSpaceDisabled);
 
   onMount(() => {
+    // Phase 6.2 / C5 telemetry: log that the user entered the
+    // Workspace view.  This is one of the four case-space
+    // events called out in plans/2026-06-14_case-space-workspace.md
+    // §6.2 (workspace_view, inbox_open, graph_view, bulk_action_used).
+    feedbackStore.logActivity(
+      'case-space',
+      'workspace-view',
+      'Workspace view mounted',
+      { hasInitialCaseId: Boolean(initialCaseId) }
+    );
     // URL > prop precedence: the explicit URL query param wins over
     // any prop passed in, because deep links should be sticky.
     const fromUrl = readCaseFromUrl();
@@ -438,7 +449,11 @@
             type="button"
             role="tab"
             aria-selected={activeTab === 'graph'}
-            class="px-3 py-1.5 rounded-md text-sm font-medium {activeTab === 'graph' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" onclick={() => (activeTab = 'graph')}
+            class="px-3 py-1.5 rounded-md text-sm font-medium {activeTab === 'graph' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" onclick={() => {
+              activeTab = 'graph';
+              // Phase 6.2 / C5 telemetry: graph_view event.
+              feedbackStore.logActivity('case-space', 'graph-view', 'Workspace graph tab activated', { entityType: 'case' });
+            }}
             data-testid="workspace-tab-graph"
           >
             Graph

@@ -20,6 +20,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { feedbackStore } from '../lib/stores/feedback.svelte.js';
   import {
     inboxStore,
     load,
@@ -61,6 +62,15 @@
     if (tid) {
       load(tid);
     }
+    // Phase 6.2 / C5 telemetry: log the Inbox-open event.
+    // Distinct from graph_view so we can later split "entered
+    // workspace" from "went to inbox" in the success metrics.
+    feedbackStore.logActivity(
+      'case-space',
+      'inbox-view',
+      'Inbox view mounted',
+      { tenantId: tid || null }
+    );
     return () => {
       if (toastTimer) clearTimeout(toastTimer);
     };
@@ -108,6 +118,14 @@
   async function doMove() {
     const target = (moveTargetInput || '').trim();
     if (!target) return;
+    const count = inboxStore.selectedIds.size;
+    // Phase 6.2 / C5 telemetry: bulk_action_used event.
+    feedbackStore.logActivity(
+      'case-space',
+      'inbox-bulk',
+      'Bulk move executed',
+      { kind: 'move', count, target }
+    );
     const res = await moveSelectedTo(target);
     if (res) {
       showToast(formatResult('Moved', res));
@@ -127,6 +145,14 @@
         .map((s) => s.trim())
         .filter(Boolean);
       if (tags.length === 0) return;
+      const count = inboxStore.selectedIds.size;
+      // Phase 6.2 / C5 telemetry: bulk_action_used event.
+      feedbackStore.logActivity(
+        'case-space',
+        'inbox-bulk',
+        'Bulk tag executed',
+        { kind: 'tag', count, tagCount: tags.length }
+      );
       const res = await tagSelected(tags);
       if (res) {
         showToast(formatResult('Tagged', res));
@@ -138,6 +164,13 @@
   // ─── Archive ───────────────────────────────────────────────────
   async function doArchive() {
     const count = selectedIds.size;
+    // Phase 6.2 / C5 telemetry: bulk_action_used event.
+    feedbackStore.logActivity(
+      'case-space',
+      'inbox-bulk',
+      'Bulk archive executed',
+      { kind: 'archive', count }
+    );
     const res = await archiveSelected();
     if (res) {
       showToast(formatResult('Archived', res));
