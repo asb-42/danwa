@@ -1324,6 +1324,7 @@ export default {
   'nav.section.inhabit': 'Inhabit',
   'nav.workspace': 'Workspace',
   'nav.inbox': 'Inbox',
+  'nav.browse': 'Browse',
   // Case-Space namespace (Phase 1+2+3 keys, see plans/2026-06-14_case-space-impl-todos.md)
   'caseSpace.workspace.title': 'Workspace',
   'caseSpace.workspace.subtitle': 'Focus on a single case. Everything you need in one place.',

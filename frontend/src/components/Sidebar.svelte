@@ -66,6 +66,7 @@
       items: [
         { id: 'workspace', label: t('nav.workspace') || 'Workspace', icon: '🏠', route: 'workspace' },
         { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox', badge: inboxCount, badgeHidden: inboxDisabled || inboxCount === 0 },
+        { id: 'browse', label: t('nav.browse') || 'Browse', icon: '🔎', route: 'browse' },
         { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
         { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
         { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
