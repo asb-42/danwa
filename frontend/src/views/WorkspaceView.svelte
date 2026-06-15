@@ -30,7 +30,12 @@
     persistActiveCase,
   } from '../lib/stores/workspaceStore.svelte.js';
   import NewDebateForm from '../components/case-space/NewDebateForm.svelte';
-  import InspectorGraphTab from '../components/case-space/InspectorGraphTab.svelte';
+  // Phase 5.4 visual-revision (2026-06-15): the Inspector tab now
+  // renders a real Cytoscape graph (1-hop, fixed radius) instead of
+  // the list-mode cards.  The list-mode implementation moved into
+  // a dedicated component (``InspectorGraphTab``) for other use
+  // sites but is no longer mounted here.
+  import { getLocalGraph } from '../lib/api/graph.js';
 
   let { navigate = () => {}, initialCaseId = null } = $props();
 
@@ -44,6 +49,41 @@
   //   - 'graph'   : 1-hop graph around the active case
   let activeTab = $state('summary');
   let showNewDebateForm = $state(false);
+
+  // Phase 5.4 visual-revision: graph state lives here now
+  // (the old InspectorGraphTab did this internally).  The Cytoscape
+  // renderer is mounted lazily so its 440 kB gzipped bundle only
+  // loads when the user opens the Graph tab.
+  let graphNodes = $state([]);
+  let graphEdges = $state([]);
+  let graphLoading = $state(false);
+  let graphError = $state(null);
+  let graphTruncated = $state(false);
+  let graphDisabled = $state(false);
+
+  async function loadGraph() {
+    if (!activeCaseId) return;
+    graphLoading = true;
+    graphError = null;
+    graphDisabled = false;
+    try {
+      const payload = await getLocalGraph('case', activeCaseId, 1);
+      graphNodes = Array.isArray(payload?.nodes) ? payload.nodes : [];
+      graphEdges = Array.isArray(payload?.edges) ? payload.edges : [];
+      graphTruncated = Boolean(payload?.truncated);
+    } catch (err) {
+      if (/DANWA_ENABLE_CASE_SPACE_GRAPH/.test(String(err?.message ?? err))) {
+        graphDisabled = true;
+      } else {
+        graphError = err;
+      }
+      graphNodes = [];
+      graphEdges = [];
+    } finally {
+      graphLoading = false;
+    }
+  }
+
   function openNewDebate() {
     showNewDebateForm = true;
   }
@@ -235,6 +275,20 @@
   let availableCases = $state([]);
   let availableCasesLoading = $state(false);
   let availableCasesLoaded = $state(false);
+
+  // Phase 5.4 visual-revision: re-fetch the graph whenever the
+  // active case changes AND the graph tab is the active tab.
+  // We deliberately only fetch when the tab is open so a
+  // tenant with a stale active case still gets a working
+  // Summary view; if the user opens the Graph tab, the
+  // onClick handler above calls loadGraph() explicitly.
+  $effect(() => {
+    if (activeTab !== 'graph') return;
+    // Reference the value so Svelte tracks it.
+    const _ = activeCaseId;
+    void _;
+    loadGraph();
+  });
 
   $effect(() => {
     const tid = $currentTenant?.id;
@@ -451,6 +505,7 @@
             aria-selected={activeTab === 'graph'}
             class="px-3 py-1.5 rounded-md text-sm font-medium {activeTab === 'graph' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" onclick={() => {
               activeTab = 'graph';
+              loadGraph();
               // Phase 6.2 / C5 telemetry: graph_view event.
               feedbackStore.logActivity('case-space', 'graph-view', 'Workspace graph tab activated', { entityType: 'case' });
             }}
@@ -693,7 +748,54 @@
       </article>
       {:else if activeTab === 'graph'}
         <div class="max-w-3xl">
-          <InspectorGraphTab entityType="case" entityId={activeCaseId} hops={1} />
+          <h2 class="text-lg font-semibold mb-3">
+            {t?.caseSpace?.workspace?.graphTitle ?? '1-hop graph'}
+          </h2>
+          {#if graphDisabled}
+            <p
+              class="text-sm italic p-3 rounded
+                     bg-amber-50 dark:bg-amber-900/20
+                     text-amber-700 dark:text-amber-300"
+              data-testid="workspace-graph-disabled"
+            >
+              {t?.caseSpace?.graph?.disabledHint ??
+                'The knowledge graph is not enabled on the backend yet.'}
+            </p>
+          {:else if !activeCaseId}
+            <p class="text-sm italic text-gray-500 dark:text-gray-400">
+              {t?.caseSpace?.graph?.noEntity ?? 'No entity selected.'}
+            </p>
+          {:else if graphLoading}
+            <p class="text-sm text-gray-500 dark:text-gray-400" role="status">
+              {t?.common?.loading ?? 'Loading…'}
+            </p>
+          {:else if graphError}
+            <p class="text-sm text-red-600 dark:text-red-400" role="alert">
+              {graphError?.message ?? String(graphError)}
+            </p>
+          {:else}
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              {graphNodes.length} {t?.caseSpace?.graph?.nodes ?? 'nodes'},
+              {graphEdges.length} {t?.caseSpace?.graph?.edges ?? 'edges'}.
+            </p>
+            {#await import('../components/case-space/CytoscapeGraphView.svelte') then Mod}
+              <Mod.default
+                nodes={graphNodes}
+                edges={graphEdges}
+                height={520}
+              />
+            {/await}
+            {#if graphTruncated}
+              <p
+                class="text-xs italic mt-2 px-3 py-1 rounded
+                       bg-amber-50 dark:bg-amber-900/20
+                       text-amber-700 dark:text-amber-300"
+              >
+                {t?.caseSpace?.graph?.truncated ??
+                  'Result was truncated; some neighbours may be missing.'}
+              </p>
+            {/if}
+          {/if}
         </div>
       {/if}
 
