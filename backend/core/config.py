@@ -136,7 +136,13 @@ class Settings(BaseSettings):
     # has its own independent flag (enable_case_space_graph).
     enable_case_space: bool = True
     enable_case_space_inbox: bool = True
-    enable_case_space_graph: bool = False
+    # Phase 4.9 (BrowseView list-graph) + Phase 5.4 (Inspector
+    # graph tab) both consume the /api/v1/graph/* endpoints.
+    # Both are now shippable behind this single flag because the
+    # Inspector tab degrades to a list renderer when Cytoscape
+    # is not desired, and the list renderer is the default for
+    # the BrowseView too.
+    enable_case_space_graph: bool = True
 
 
 def is_service_llm_eligible(profile) -> tuple[bool, str]:

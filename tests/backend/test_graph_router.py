@@ -31,12 +31,18 @@ def enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(graph_module.settings, "enable_case_space_graph", True)
 
 
+@pytest.fixture
+def disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force the graph feature flag off for the duration of the test."""
+    monkeypatch.setattr(graph_module.settings, "enable_case_space_graph", False)
+
+
 # ---------------------------------------------------------------------------
 # Feature gate
 # ---------------------------------------------------------------------------
 
 
-def test_local_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_local_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.get(
         "/api/v1/graph/local",
         params={"entity_type": "case", "entity_id": "c1"},
@@ -45,12 +51,12 @@ def test_local_returns_404_when_feature_disabled(client: TestClient) -> None:
     assert "DANWA_ENABLE_CASE_SPACE_GRAPH" in response.json()["detail"]
 
 
-def test_global_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_global_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.get("/api/v1/graph/global", params={"tenant_id": "t1"})
     assert response.status_code == 404
 
 
-def test_edges_returns_404_when_feature_disabled(client: TestClient) -> None:
+def test_edges_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.get(
         "/api/v1/graph/edges",
         params={"src": "case:c1", "tgt": "case:c2"},
