@@ -18,7 +18,7 @@ vi.mock('../../src/lib/api/inbox.js', () => ({
   getInbox: vi.fn(),
   bulkMove: vi.fn(),
   bulkTag: vi.fn(),
-  bulkArchive: vi.fn(),
+  bulkDelete: vi.fn(),
   isInboxDisabled: vi.fn(() => true),
 }));
 
@@ -26,7 +26,7 @@ import {
   getInbox,
   bulkMove,
   bulkTag,
-  bulkArchive,
+  bulkDelete,
 } from '../../src/lib/api/inbox.js';
 
 import {
@@ -41,7 +41,7 @@ import {
   archiveSelected,
   moveItem,
   tagItem,
-  archiveItem,
+  deleteItem,
   reset,
 } from '../../src/lib/stores/inboxStore.svelte.js';
 
@@ -237,12 +237,12 @@ describe('bulk actions', () => {
     expect(bulkTag).toHaveBeenCalledWith(['d-untagged'], ['new', 'existing']);
   });
 
-  it('archiveSelected calls bulkArchive with selected ids', async () => {
-    bulkArchive.mockResolvedValueOnce({ succeeded: ['d-stale'], failed: [] });
+  it('archiveSelected (bulk soft-delete) calls bulkDelete with selected ids', async () => {
+    bulkDelete.mockResolvedValueOnce({ succeeded: ['d-stale'], failed: [] });
     getInbox.mockResolvedValueOnce(SUMMARY);
     toggleSelected('d-stale');
     await archiveSelected();
-    expect(bulkArchive).toHaveBeenCalledWith(['d-stale']);
+    expect(bulkDelete).toHaveBeenCalledWith(['d-stale']);
   });
 
   it('no-op when nothing is selected', async () => {
@@ -328,16 +328,16 @@ describe('tagItem (single)', () => {
   });
 });
 
-describe('archiveItem (single)', () => {
-  it('calls bulkArchive with a one-element array', async () => {
-    vi.mocked(bulkArchive).mockResolvedValue({ succeeded: ['d-1'], failed: [] });
-    const r = await archiveItem('d-1');
+describe('deleteItem (single)', () => {
+  it('calls bulkDelete with a one-element array', async () => {
+    vi.mocked(bulkDelete).mockResolvedValue({ succeeded: ['d-1'], failed: [] });
+    const r = await deleteItem('d-1');
     expect(r.succeeded).toEqual(['d-1']);
-    expect(bulkArchive).toHaveBeenCalledWith(['d-1']);
+    expect(bulkDelete).toHaveBeenCalledWith(['d-1']);
   });
 
   it('returns null for missing itemId', async () => {
-    expect(await archiveItem('')).toBeNull();
-    expect(bulkArchive).not.toHaveBeenCalled();
+    expect(await deleteItem('')).toBeNull();
+    expect(bulkDelete).not.toHaveBeenCalled();
   });
 });

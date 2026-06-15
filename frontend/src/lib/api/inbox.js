@@ -7,7 +7,7 @@
  *   - ``GET  /api/v1/inbox?tenant_id=…``         → InboxSummary
  *   - ``POST /api/v1/inbox/bulk-move``            → InboxBulkResult
  *   - ``POST /api/v1/inbox/bulk-tag``             → InboxBulkResult
- *   - ``POST /api/v1/inbox/bulk-archive``         → InboxBulkResult
+ *   - ``POST /api/v1/inbox/bulk-delete``          → InboxBulkResult
  *
  * All endpoints are feature-gated by ``settings.enable_case_space_inbox``;
  * while the flag is False they return 404.  The bulk endpoints always
@@ -111,11 +111,11 @@ export async function bulkTag(debateIds, tagIds = []) {
  * @param {string[]} debateIds
  * @returns {Promise<InboxBulkResult>}
  */
-export async function bulkArchive(debateIds) {
+export async function bulkDelete(debateIds) {
   if (!Array.isArray(debateIds) || debateIds.length === 0) {
-    throw new TypeError('bulkArchive: debateIds must be a non-empty array');
+    throw new TypeError('bulkDelete: debateIds must be a non-empty array');
   }
-  return request('/api/v1/inbox/bulk-archive', {
+  return request('/api/v1/inbox/bulk-delete', {
     method: 'POST',
     body: JSON.stringify({ debate_ids: debateIds }),
   });

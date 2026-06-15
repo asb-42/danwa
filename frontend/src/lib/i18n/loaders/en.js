@@ -1397,7 +1397,10 @@ export default {
   'caseSpace.inbox.movePlaceholder': 'Target case id (typeahead)\u2026',
   'caseSpace.inbox.move': 'Move',
   'caseSpace.inbox.tagPlaceholder': 'Tags (comma-separated)\u2026',
-  'caseSpace.inbox.archive': 'Archive',
+  'caseSpace.inbox.delete': 'Delete',
+  'caseSpace.inbox.deleteTitle': 'Delete this item?',
+  'caseSpace.inbox.deleteMessage': 'Remove this item from the Inbox. This is a real delete; you will not be able to recover the item later.',
+  'caseSpace.inbox.deleteConfirm': 'Delete',
 
   // Tenant creation
   'tenant.create': 'Create New Tenant',

@@ -6,7 +6,8 @@ Phase 2 of plans/2026-06-14_case-space-workspace.md.  Covers:
   * GET /api/v1/inbox?tenant_id=…  → InboxSummary with kinds
   * POST /api/v1/inbox/bulk-move   → InboxBulkResult (incl. cross-tenant rejection)
   * POST /api/v1/inbox/bulk-tag    → InboxBulkResult (incl. empty-tag no-op)
-  * POST /api/v1/inbox/bulk-archive → InboxBulkResult (status flip)
+  * POST /api/v1/inbox/bulk-delete  → InboxBulkResult (soft-delete)
+ * POST /api/v1/inbox/bulk-archive → DEPRECATED alias of /bulk-delete
 
 The router is feature-gated by ``settings.enable_case_space_inbox``;
 while the flag is False all endpoints return 404.  We toggle via
@@ -74,7 +75,7 @@ def test_bulk_tag_returns_404_when_feature_disabled(client: TestClient, disabled
     assert response.status_code == 404
 
 
-def test_bulk_archive_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
+def test_bulk_delete_returns_404_when_feature_disabled(client: TestClient, disabled: None) -> None:
     response = client.post(
         "/api/v1/inbox/bulk-archive",
         json={"debate_ids": ["d1"]},
@@ -435,7 +436,7 @@ def test_bulk_tag_unions_existing(client: TestClient, enabled: None) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bulk_archive_flips_status(client: TestClient, enabled: None) -> None:
+def test_bulk_delete_flips_status(client: TestClient, enabled: None) -> None:
     case_obj = SimpleNamespace(id="c1", tenant_id="t1", title="C", tags=[])
     case_store = mock.MagicMock()
     case_store._cache = {"t1": {}}
@@ -467,5 +468,104 @@ def test_bulk_archive_flips_status(client: TestClient, enabled: None) -> None:
     body = response.json()
     assert body["succeeded"] == ["d1"]
     persisted = fake_store.put.call_args[0][1]
-    assert persisted["status"] == "archived"
+    # Phase 2.8 visual revision: the Inbox row's Delete button
+    # sets status='deleted' (was 'archived').  We keep archived_at
+    # as a mirror field for backward-compat with audit tooling.
+    assert persisted["status"] == "deleted"
+    assert "deleted_at" in persisted
     assert "archived_at" in persisted
+
+
+
+# /api/v1/inbox/bulk-delete (canonical)
+# ---------------------------------------------------------------------------
+
+def test_bulk_delete_canonical_flips_status(
+    client: TestClient, enabled: None,
+) -> None:
+    """The canonical /inbox/bulk-delete endpoint sets
+    status='deleted' on the listed debates."""
+    case_obj = SimpleNamespace(id="c1", tenant_id="t1", title="C", tags=[])
+    case_store = mock.MagicMock()
+    case_store._cache = {"t1": {}}
+    case_store.get.return_value = case_obj
+    case_store.list_by_tenant.return_value = [case_obj]
+
+    fake_store = mock.MagicMock()
+    fake_store.get.return_value = {
+        "debate_id": "d1",
+        "status": "completed",
+        "tags": [],
+        "topic": "Delete me",
+    }
+    fake_store.put = mock.MagicMock()
+
+    with mock.patch("backend.api.routers.inbox.get_debate_store_for_case", return_value=fake_store):
+        from backend.api.deps import get_case_store
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        try:
+            response = client.post(
+                "/api/v1/inbox/bulk-delete",
+                json={"debate_ids": ["d1"]},
+            )
+        finally:
+            app.dependency_overrides = {}
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["succeeded"] == ["d1"]
+    persisted = fake_store.put.call_args[0][1]
+    assert persisted["status"] == "deleted"
+    assert "deleted_at" in persisted
+    assert "archived_at" in persisted  # mirror for backward compat
+
+
+def test_bulk_delete_canonical_returns_404_when_feature_disabled(
+    client: TestClient, disabled: None,
+) -> None:
+    response = client.post(
+        "/api/v1/inbox/bulk-delete",
+        json={"debate_ids": ["d1"]},
+    )
+    assert response.status_code == 404
+
+
+# /api/v1/inbox/bulk-archive (deprecated alias — kept for backward compat)
+# ---------------------------------------------------------------------------
+
+def test_bulk_archive_legacy_alias_still_works(
+    client: TestClient, enabled: None,
+) -> None:
+    """The legacy /inbox/bulk-archive endpoint remains callable
+    and produces the same effect as /bulk-delete."""
+    case_obj = SimpleNamespace(id="c1", tenant_id="t1", title="C", tags=[])
+    case_store = mock.MagicMock()
+    case_store._cache = {"t1": {}}
+    case_store.get.return_value = case_obj
+    case_store.list_by_tenant.return_value = [case_obj]
+
+    fake_store = mock.MagicMock()
+    fake_store.get.return_value = {
+        "debate_id": "d-legacy",
+        "status": "completed",
+        "tags": [],
+        "topic": "Legacy archive endpoint",
+    }
+    fake_store.put = mock.MagicMock()
+
+    with mock.patch("backend.api.routers.inbox.get_debate_store_for_case", return_value=fake_store):
+        from backend.api.deps import get_case_store
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        try:
+            response = client.post(
+                "/api/v1/inbox/bulk-archive",
+                json={"debate_ids": ["d-legacy"]},
+            )
+        finally:
+            app.dependency_overrides = {}
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["succeeded"] == ["d-legacy"]
+    persisted = fake_store.put.call_args[0][1]
+    assert persisted["status"] == "deleted"  # same effect as canonical

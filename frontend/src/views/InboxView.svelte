@@ -33,7 +33,7 @@
     archiveSelected,
     moveItem,
     tagItem,
-    archiveItem,
+    deleteItem,
     reset,
   } from '../lib/stores/inboxStore.svelte.js';
   import { searchCases } from '../lib/api/workspace.js';
@@ -143,7 +143,7 @@
     if (!archiveConfirmItem) return;
     singleInFlight = true;
     try {
-      await archiveItem(archiveConfirmItem.id);
+      await deleteItem(archiveConfirmItem.id);
     } finally {
       singleInFlight = false;
       closeArchiveConfirm();
@@ -493,13 +493,13 @@
     {#if archiveConfirmItem}
       <ConfirmDialog
         open={Boolean(archiveConfirmItem)}
-        title={t?.caseSpace?.inbox?.archiveTitle ?? 'Archive this item?'}
+        title={t?.caseSpace?.inbox?.deleteTitle ?? 'Delete this item?'}
         message={
-          (t?.caseSpace?.inbox?.archiveMessage ??
-            'Move this item out of the Inbox. You can still find archived items via the global search.')
+          (t?.caseSpace?.inbox?.deleteMessage ??
+            'Remove this item from the Inbox. This is a real delete; you will not be able to recover the item later.')
         }
         detail={archiveConfirmItem.title}
-        confirmLabel={t?.caseSpace?.inbox?.archive ?? 'Archive'}
+        confirmLabel={t?.caseSpace?.inbox?.deleteConfirm ?? 'Delete'}
         cancelLabel={t?.common?.cancel ?? 'Cancel'}
         variant="warning"
         onConfirm={confirmArchiveItem}

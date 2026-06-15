@@ -156,11 +156,11 @@
                text-amber-800 dark:text-amber-200
                hover:bg-amber-100 dark:hover:bg-amber-900/50
                focus:outline-none focus:ring-2 focus:ring-amber-500"
-        data-testid="inbox-row-archive"
+        data-testid="inbox-row-delete"
         onclick={handleArchive}
-        title={t?.caseSpace?.inbox?.archive ?? 'Archive this item (removes it from the Inbox)'}
+        title={t?.caseSpace?.inbox?.delete ?? 'Delete this item from the Inbox'}
       >
-        {t?.caseSpace?.inbox?.archive ?? 'Archive'}
+        {t?.caseSpace?.inbox?.delete ?? 'Delete'}
       </button>
     </div>
   </div>

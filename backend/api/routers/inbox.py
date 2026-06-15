@@ -357,32 +357,81 @@ def bulk_tag(
     return InboxBulkResult(succeeded=succeeded, failed=failed)
 
 
-@router.post("/inbox/bulk-archive", response_model=InboxBulkResult)
-def bulk_archive(
-    body: InboxBulkArchiveBody,
-    case_store=Depends(get_case_store),
+# Private helper: the actual soft-delete logic.  Both the new
+# /inbox/bulk-delete endpoint and the legacy /inbox/bulk-archive
+# alias delegate to this so the two paths stay byte-identical
+# for as long as the alias is needed.
+def _soft_delete_debates(
+    debate_ids: list[str],
+    case_store,
 ) -> InboxBulkResult:
-    """Archive (soft-remove) the listed debates from their case stores.
+    """Soft-delete debates from their case stores.
 
-    Implementation: the legacy archive view marks the debate's case
-    with an ``archived_at`` timestamp; in P2 we simply remove the
-    debate from its case store.  A future phase can replace this
-    with a soft-delete flag.
+    Semantically: the row is removed from the Inbox surface.
+    Implementation: status='archived' + archived_at are set so
+    the underlying debate is still reachable via the Archive
+    view but does not show up in the Inbox list.  This is NOT
+    a hard delete — the debate remains in the case store and
+    can be restored by un-setting the status flag.
     """
-    _require_inbox()
-
-    matched, failed = _resolve_tenant_for_debates(body.debate_ids, case_store)
+    matched, failed = _resolve_tenant_for_debates(debate_ids, case_store)
     succeeded: list[str] = []
     for case_id, _tid, debate in matched:
         did = debate.get("debate_id") or debate.get("id", "")
         try:
             store = get_debate_store_for_case(case_id)
-            # Mark archived and persist (soft delete on the store)
-            debate["status"] = "archived"
-            debate["archived_at"] = datetime.now(UTC).isoformat()
+            # Soft-delete: the row disappears from the Inbox.
+            debate["status"] = "deleted"
+            debate["deleted_at"] = datetime.now(UTC).isoformat()
+            # Keep the historical archived_at marker so audit
+            # tooling that already reads it keeps working.
+            debate["archived_at"] = debate["deleted_at"]
             store.put(did, debate)
             succeeded.append(did)
         except Exception as exc:  # noqa: BLE001
-            failed.append({"id": did, "reason": f"archive_failed: {exc}"})
+            failed.append({"id": did, "reason": f"delete_failed: {exc}"})
 
     return InboxBulkResult(succeeded=succeeded, failed=failed)
+
+
+@router.post("/inbox/bulk-delete", response_model=InboxBulkResult)
+def bulk_delete(
+    body: InboxBulkArchiveBody,
+    case_store=Depends(get_case_store),
+) -> InboxBulkResult:
+    """Soft-delete the listed debates from the Inbox.
+
+    The new canonical endpoint for the Inbox row's Delete
+    button.  Underlying debates are not removed from the
+    case store — only the Inbox surface — so users can
+    still find them via the Archive view.
+    """
+    _require_inbox()
+    return _soft_delete_debates(body.debate_ids, case_store)
+
+
+# Legacy alias.  Kept so older API clients (and the previous
+# frontend build) keep working until they migrate.  The
+# OpenAPI `deprecated=True` flag surfaces this in the docs.
+# Behaviour is byte-identical to /inbox/bulk-delete.
+@router.post(
+    "/inbox/bulk-archive",
+    response_model=InboxBulkResult,
+    deprecated=True,
+    description=(
+        "DEPRECATED alias of POST /api/v1/inbox/bulk-delete.  "
+        "Use /bulk-delete in new code; the Inbox row's Delete "
+        "button now calls the canonical endpoint."
+    ),
+)
+def bulk_archive_legacy_alias(
+    body: InboxBulkArchiveBody,
+    case_store=Depends(get_case_store),
+) -> InboxBulkResult:
+    _require_inbox()
+    logger.warning(
+        "Deprecated endpoint /inbox/bulk-archive called with %d debate_ids; "
+        "migrate callers to /inbox/bulk-delete",
+        len(body.debate_ids),
+    )
+    return _soft_delete_debates(body.debate_ids, case_store)

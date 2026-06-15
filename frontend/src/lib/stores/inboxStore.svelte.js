@@ -17,7 +17,7 @@ import {
   getInbox,
   bulkMove,
   bulkTag,
-  bulkArchive,
+  bulkDelete,
   isInboxDisabled,
 } from '../api/inbox.js';
 
@@ -256,7 +256,7 @@ export async function tagSelected(tagIds) {
 export async function archiveSelected() {
   const ids = [..._state.selectedIds];
   if (ids.length === 0) return null;
-  return _runBulk(() => bulkArchive(ids), ids);
+  return _runBulk(() => bulkDelete(ids), ids);
 }
 
 // ─── Single-item actions (Phase 2.8 visual revision) ─────────────
@@ -292,13 +292,15 @@ export async function tagItem(itemId, tagIds) {
 }
 
 /**
- * Archive a single inbox item (sets status=archived + archived_at).
+ * Delete a single inbox item (marks the underlying debate as
+ * status='deleted' so it disappears from the Inbox; the row is
+ * recoverable only via the Audit trail + a status-reset tool).
  * @param {string} itemId
  * @returns {Promise<InboxBulkResult|null>}
  */
-export async function archiveItem(itemId) {
+export async function deleteItem(itemId) {
   if (!itemId) return null;
-  return _runBulk(() => bulkArchive([itemId]), [itemId]);
+  return _runBulk(() => bulkDelete([itemId]), [itemId]);
 }
 
 async function _runBulk(caller, ids) {
