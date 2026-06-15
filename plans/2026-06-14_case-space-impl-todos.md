@@ -137,7 +137,11 @@
   - [ ] 4.1.5 **Filter-Param nicht implementiert**: Plan sprach von `entity_types[]`, `tag_ids[]`, `status`, `date_from`, `date_to`; tatsächlich existiert nur `tenant_id` + `limit`.  Folgethema.
 - [x] **4.2 Endpoint `GET /api/graph/edges?src=…&tgt=…`** als **Stub** (Commit `8095564`) — gibt expliziten Hinweis-String zurück
   - [ ] 4.2.1 Echte evidence-Listen erfordern `graph_edge_cache` (siehe 4.3)
-- [ ] **4.3 Optional: Index-Tabelle** `graph_edge_cache(…)` — nicht implementiert
+- [x] **4.3 Index-Tabelle** `graph_edge_cache(tenant_id, src_type, src_id, tgt_type, tgt_id, type)` — implementiert in Commit `80d2613` (Phase 4.3/5.2)
+  - Migration: [`backend/migrations/v003_graph_edge_cache.py`](../../backend/migrations/v003_graph_edge_cache.py)
+  - Service: [`backend/services/graph_edge_cache.py`](../../backend/services/graph_edge_cache.py) (lazy refresh, 60s throttle, 90d window)
+  - Router-Update: `GET /api/v1/graph/edges` in [`backend/api/routers/graph.py:262`](../../backend/api/routers/graph.py:262) liefert echte Evidence
+  - Tests: 10 neue in [`test_graph_edge_cache.py`](../../tests/backend/test_graph_edge_cache.py), alle grün
 - [x] **4.4 Tests** (Pytest) in [`tests/backend/test_graph_router.py`](../../tests/backend/test_graph_router.py) — 11 Tests, alle grün
   - [ ] 4.4.1 Performance-Test: 200-Knoten-Antwort in < 300 ms — nicht als Test vorhanden
   - [x] 4.4.2 Cross-Tenant-Schutz (implizit über case_store.list_by_tenant)
@@ -174,7 +178,7 @@
   - [x] 5.1.1 Max 2 Hops (`LOCAL_MAX_HOPS = 2`)
   - [x] 5.1.2 Performance: < 100 ms (kleine Subgraphen)
   - [x] 5.1.3 Permission: User muss die zentrale Entität sehen dürfen
-- [ ] **5.2 Audit-Event-Hook**: bei `node.started` und `gate.decided` automatisch `graph_edge_cache` aktualisieren — hängt an 4.3
+- [x] **5.2 Audit-Event-Hook**: implementiert als Materialized View (lazy refresh) — nicht als Pub/Sub-Subscriber.  Hook-Quelle ist `audit_events` (Tabelle `audit_events`), Refresh-Trigger ist der erste Edge-Lookup pro Tenant pro 60s.  Deckt `node_started` (action='node_started') und `gate.decided` (action='gate_decision') automatisch ab.  Migration: `v003_graph_edge_cache`.  Service: `GraphEdgeCacheService.refresh_for_tenant()`.  Commit: `80d2613`.
 - [ ] **5.3 Optional: abgeleitete Kanten** (Chunk-Overlap) — nicht implementiert
 
 ### Frontend
@@ -280,7 +284,7 @@
 - **D2** `last_workspace` User-Setting als eigene Spalte `users.last_workspace TEXT` (Commit `0aef288`), nicht als `user.settings` JSON-Field — kleiner, schneller, direkter Index.
 - **D3** `recent_events` im Phase-1 Response war zunächst `[]` (D2 alt) — jetzt in Commit `7f52e96` durch `_collect_recent_audit_events()` ersetzt (Phase 3.6).
 - **D4** DNS-Mock-Fixture ist autouse-aber-gescopet (nur für Module mit `a2a` im Namen).
-- **D5** Knowledge-Graph `edges`-Endpoint ist als **Stub** ausgeliefert (Commit `8095564`) — echte `evidence`-Listen erfordern `graph_edge_cache` (Phase 4.3/5.2).
+- **D5** Knowledge-Graph `edges`-Endpoint war als **Stub** ausgeliefert (Commit `8095564`) — seit Commit `80d2613` liefert er echte Evidence aus `graph_edge_cache` (Phase 4.3/5.2).  D5 ist aufgelöst.
 - **D6** Feature-Flags `enable_case_space*` auf `True` als Default (Commit `a3ee18e`, `1b01b83`) — bewusste Abweichung vom P1+P2-Default (`False`), dokumentiert in [`backend/core/config.py:117-145`](../../backend/core/config.py:117).
 - **D7** Cytoscape-Graph-Renderer mit **List-Mode-Fallback** (Commit `0552e6b`, `c95f601`) — die Inspector-Tabelle ist der Default, Cytoscape wird lazy nachgeladen.
 - **D8** i18n pragmatisch: Inline-Fallbacks `t?.caseSpace?.workspace?.title ?? 'Workspace'` statt Locale-File-Updates.  Locale-Files sind Phase-6-Polish.
@@ -295,7 +299,7 @@
 
 - **1.1.3 Permission-Check** (P1): vollständige Permission-Logik (Role-Group + Membership) ist nicht in P1 enthalten, nur `store.get` als implizite Schranke.  Ausführlicher Layer kommt mit Phase 2.3.
 - **3.2 LLM-Suggest-Endpoint** (P3): wenn kein LLM konfiguriert ist, antwortet 404.  Feature-Flag `DANWA_LLM_SUGGEST_CASES` ist im Plan, im Code nicht verdrahtet.
-- **4.3 / 5.2 graph_edge_cache**: hängt an DB-Migration, die separat entschieden werden muss.
+- **4.3 / 5.2 graph_edge_cache**: ✅ erledigt in Commit `80d2613`.  Materialized View in `audit.db`, kein Backfill, on-demand refresh (60s throttle), 10 neue Tests grün.
 - **5.5 Inspector-Shell Tab-Strip**: Plan sah Tab-Strip im generischen rechts-Klappe-Inspector vor; die implementierte Architektur hat stattdessen `summary`/`graph`-Tabs in `WorkspaceView`.  Funktional gleichwertig (Graph-Tab erreichbar), architektonisch abweichend.  Siehe Commit `0552e6b`.
 - **1.14 / 2.12 Playwright E2E**: zurückgestellt — erfordert laufenden Dev-Server (Backend + Frontend), Mocking des Auth-Flows, stabile Selektoren.  Aufwand ~2 h, kein CI-Pflicht.  Aktueller Stand: nur Backend-Tests vorhanden, die alle Logik-Pfade abdecken.
 - **4.5 Cytoscape NPM-Dependencies (Detail)**: Cytoscape selbst ist als Dependency drin, die Layout-Plugins `cytoscape-dagre` und `cytoscape-cose-bilkent` fehlen weiterhin.  Aktuell wird Cytoscape's eingebautes `cose`-Layout genutzt.  Layout-Switcher (4.7.2) nicht implementiert.
@@ -314,10 +318,10 @@
 ### 📊 Metriken
 
 - Code-Stand: **507+ Zeilen** Backend (Phase 1) + ca. 2000+ Zeilen über alle Phasen
-- Tests: **102 grün** (41 Pytest + 61 Vitest)
+- Tests: **126+ grün** (51 Pytest + 75 Vitest) — zuletzt 10 weitere in `test_graph_edge_cache.py` (Commit `80d2613`) und 15 in `graphStore.test.js` (Commit `900aec2`)
 - Branch: `main` (case-space wurde in Commit `0b00eda` gemerged)
 - Commits seit Plan-Start: 24+ Commits im case-space-Bereich, jetzt konsolidiert in `main`
-- Aktuelle Commits (zuletzt): `7f52e96` (3.6 Backend), `cb3bd85` (3.6 Frontend), `0b6f1de` (4.5–4.7), `c95f601` (4.9), `1b01b83` (Flag-Default), `55440a2` (Write-Hardening), `0552e6b` (5.4), `0a2c593` (5.6), `c04028a` (3.8), `2e78228` (3.5), `e8006c7` (3.7)
+- Aktuelle Commits (zuletzt): `80d2613` (4.3+5.2 graph_edge_cache), `5b4b2bf` (TODO-Sync), `900aec2` (4.6 graphStore), `12973ca` (6.7 Retrospektive), `6a01c6f` (6.5 Walkthrough), `8a5382a` (6.3 Metriken-Doku), `3d49d1d` (6.2 Telemetrie), `d5d4ad7` (6.4 graph-i18n), `77bfa22` (Changelog), `df8a48a` (TODO-Sync), `cb3bd85`/`7f52e96` (3.6), `0b6f1de` (4.5-4.7)
 
 ---
 
