@@ -296,7 +296,20 @@
 - **1.1.3 Permission-Check** (P1): vollständige Permission-Logik (Role-Group + Membership) ist nicht in P1 enthalten, nur `store.get` als implizite Schranke.  Ausführlicher Layer kommt mit Phase 2.3.
 - **3.2 LLM-Suggest-Endpoint** (P3): wenn kein LLM konfiguriert ist, antwortet 404.  Feature-Flag `DANWA_LLM_SUGGEST_CASES` ist im Plan, im Code nicht verdrahtet.
 - **4.3 / 5.2 graph_edge_cache**: hängt an DB-Migration, die separat entschieden werden muss.
-- **5.5 Inspector-Shell Tab-Strip**: bestehende Inspector.svelte muss erweitert werden; aktuell ist die Graph-Tab-Integration nur ad-hoc im Case-Space-WorkspaceView.
+- **5.5 Inspector-Shell Tab-Strip**: Plan sah Tab-Strip im generischen rechts-Klappe-Inspector vor; die implementierte Architektur hat stattdessen `summary`/`graph`-Tabs in `WorkspaceView`.  Funktional gleichwertig (Graph-Tab erreichbar), architektonisch abweichend.  Siehe Commit `0552e6b`.
+- **1.14 / 2.12 Playwright E2E**: zurückgestellt — erfordert laufenden Dev-Server (Backend + Frontend), Mocking des Auth-Flows, stabile Selektoren.  Aufwand ~2 h, kein CI-Pflicht.  Aktueller Stand: nur Backend-Tests vorhanden, die alle Logik-Pfade abdecken.
+- **4.5 Cytoscape NPM-Dependencies (Detail)**: Cytoscape selbst ist als Dependency drin, die Layout-Plugins `cytoscape-dagre` und `cytoscape-cose-bilkent` fehlen weiterhin.  Aktuell wird Cytoscape's eingebautes `cose`-Layout genutzt.  Layout-Switcher (4.7.2) nicht implementiert.
+- **4.6 graphStore.svelte.js**: ✅ erledigt in Commit `900aec2` — Svelte 5 Runes Store mit LRU-Cache (10 Einträge), In-flight-Dedup, 15 Vitest-Tests grün.
+
+### 📐 Phase 6 Items (Stand 2026-06-15)
+
+- **6.1** Feature-Flag-Default `True` — ✅ erledigt (Commits `a3ee18e`, `1b01b83`)
+- **6.2** Telemetrie — ✅ erledigt in Commit `3d49d1d` (4 Events: workspace_view, inbox_open, graph_view, bulk_action_used)
+- **6.3** Metriken-Dashboard — ✅ Doku-Skelett in [`plans/2026-06-15_case-space-metrics.md`](2026-06-15_case-space-metrics.md) (Commit `8a5382a`); konkrete Dashboard-Visualisierung ist Phase 7+
+- **6.4** i18n-Vervollständigung — ✅ Graph-Keys in [`en.js`](../../frontend/src/lib/i18n/loaders/en.js:1397) ergänzt (Commit `d5d4ad7`); Locale-Files weitere Sprachen Phase 7+
+- **6.5** User-Doku — ✅ 90s-Walkthrough in [`docs/2026-06-15_case-space-walkthrough.md`](../../docs/2026-06-15_case-space-walkthrough.md) + neues Kapitel 36 in `user_manual.md` (Commit `6a01c6f`)
+- **6.6** Plan-Archivierung — ✅ erledigt (Commit `df8a48a`)
+- **6.7** Retrospektive — ✅ Template in [`plans/2026-07-15_case-space-retrospective.md`](2026-07-15_case-space-retrospective.md) (Commit `12973ca`); auszufüllen am 2026-07-15
 
 ### 📊 Metriken
 
