@@ -50,6 +50,45 @@ GLOBAL_MAX_LIMIT = 500
 LOCAL_MAX_HOPS = 2
 
 
+# ─── Tag name resolution (Phase 2.8 visual revision) ────────────
+# Case.tags are stored as TagStore UUIDs.  The BrowseView lists
+# them by GraphNode.label, so we resolve id -> name on the
+# fly.  Defensive: if the TagStore does not know the id (e.g.
+# the tag was deleted since the case was tagged), we fall
+# back to the raw id so the user still sees *something*.
+# The tenant tag map is computed per request (small, file-
+# backed) and is much simpler than a cross-request cache
+# that proved hard to keep correct under module reload.
+_TAG_NAME_FALLBACK = {}
+
+
+def _resolve_tag_name(tenant_id: str, tag_id: str) -> str:
+    """Return the human-readable name for a tag_id.
+
+    Looks up the tag in the tenant's TagStore.  Falls back
+    to the raw id if the tag is not found in the store
+    (e.g. tag was deleted after the case was tagged) or the
+    store cannot be loaded.
+    """
+    if not tenant_id or not tag_id:
+        return tag_id
+    fallback_key = f"{tenant_id}::{tag_id}"
+    try:
+        from backend.persistence.tag_store import TagStore
+        store = TagStore()
+        tags = store._load_tenant(tenant_id)  # noqa: SLF001
+        name = tags.get(tag_id)
+        if name is not None:
+            return name.name
+    except Exception:  # noqa: BLE001
+        # Store unavailable (e.g. dev environment without
+        # data/tenants/.../tags.json).  Fall through to the
+        # raw id so the UI still renders.
+        pass
+    return _TAG_NAME_FALLBACK.get(fallback_key, tag_id)
+
+
+
 def _require_graph() -> None:
     if not settings.enable_case_space_graph:
         raise HTTPException(
@@ -197,11 +236,13 @@ def _build_global_subgraph(case_store, tenant_id: str, limit: int) -> GraphPaylo
                 meta={"status": c.status, "tenant_id": c.tenant_id},
             )
         )
-        # Tags
+        # Tags — resolve id -> name via TagStore so the BrowseView
+        # shows "Science" instead of the raw UUID.
         for t in c.tags or []:
             tag_id = f"tag:{t}"
             if not any(n.id == tag_id for n in nodes):
-                nodes.append(GraphNode(id=tag_id, type="Tag", label=t))
+                tag_name = _resolve_tag_name(c.tenant_id, t)
+                nodes.append(GraphNode(id=tag_id, type="Tag", label=tag_name))
             edges.append(GraphEdge(src=f"case:{c.id}", tgt=tag_id, type="tagged_with", weight=1.0))
         # Debates
         try:

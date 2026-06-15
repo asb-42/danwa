@@ -278,3 +278,62 @@ def test_edges_validation_422(client: TestClient, enabled: None) -> None:
     """Empty src/tgt are rejected by the Query validation."""
     response = client.get("/api/v1/graph/edges", params={"src": "", "tgt": "x"})
     assert response.status_code == 422
+
+
+# ─── Phase 2.8: tag-id -> name resolution (TagStore lookup) ─────
+
+def test_global_graph_resolves_tag_ids_to_names(
+    client: TestClient, enabled: None, monkeypatch
+) -> None:
+    """The graph endpoints store tag IDs (UUIDs) in case.tags and
+    must resolve them to the human-readable tag name before
+    sending them to the BrowseView.  Without this, the
+    BrowseView lists tag rows by their raw UUID, which is
+    unreadable."""
+    # 1) Mock the TagStore so the test does not depend on the
+    #    real file-backed TagStore contents
+    from backend.persistence.tag_store import TagStore
+
+    class FakeTag:
+        def __init__(self, name):
+            self.name = name
+
+    def fake_load(self, tenant_id):
+        return {
+            "fake-tag-uuid-1": FakeTag("Science"),
+            "fake-tag-uuid-2": FakeTag("Ethics"),
+        }
+
+    monkeypatch.setattr(TagStore, "_load_tenant", fake_load)
+
+    # 2) Build a fake case_store that returns one case with
+    #    two tag UUIDs
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from backend.api.deps import get_case_store
+
+    case_obj = SimpleNamespace(
+        id="case-fake",
+        tenant_id="t-fake",
+        title="Fake Case",
+        status="active",
+        tags=["fake-tag-uuid-1", "fake-tag-uuid-2"],
+    )
+    case_store = MagicMock()
+    case_store._cache = {"t-fake": {}}
+    case_store.get.return_value = case_obj
+    case_store.list_by_tenant.return_value = [case_obj]
+    app.dependency_overrides[get_case_store] = lambda: case_store
+    try:
+        r = client.get(
+            "/api/v1/graph/global?tenant_id=t-fake&limit=10"
+        )
+    finally:
+        app.dependency_overrides = {}
+    assert r.status_code == 200
+    payload = r.json()
+    tag_nodes = {n["id"]: n["label"] for n in payload["nodes"] if n["type"] == "Tag"}
+    # Both tag UUIDs must resolve to their human names
+    assert tag_nodes.get("tag:fake-tag-uuid-1") == "Science"
+    assert tag_nodes.get("tag:fake-tag-uuid-2") == "Ethics"
