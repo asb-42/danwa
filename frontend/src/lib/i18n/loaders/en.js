@@ -1409,5 +1409,21 @@ export default {
   'tenant.allTenants': 'All Tenants',
   'tenant.noTenants': 'No tenants found',
 
-};
+  // Case-Space Knowledge Graph (Phase 4 + 5.4)
+  'caseSpace.graph.title': '1-hop subgraph',
+  'caseSpace.graph.disabledHint': 'The knowledge graph is not enabled on the backend yet. Set DANWA_ENABLE_CASE_SPACE_GRAPH=true to try it.',
+  'caseSpace.graph.loadFailed': 'Could not load the graph for this entity.',
+  'caseSpace.graph.empty': 'No related entities yet.',
+  'caseSpace.graph.noEntity': 'No entity selected.',
+  'caseSpace.graph.center': 'Center',
+  'caseSpace.graph.noNeighbours': 'No connected entities.',
+  'caseSpace.graph.kind': 'Kind',
+  'caseSpace.graph.weight': 'Weight',
+  'caseSpace.graph.createdAt': 'Created',
+  'caseSpace.graph.evidence': 'Evidence',
+  'caseSpace.graph.truncated': 'Showing a sample of {total} nodes; the rest are available via the API.',
+  'caseSpace.graph.edgeTitle': 'Edge details',
+  'caseSpace.graph.stubNote': 'Detailed edge evidence is not available in this build yet.',
+  'caseSpace.graph.refresh': 'Refresh',
 
+};
