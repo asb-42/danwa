@@ -37,6 +37,7 @@
 33. [Development](#development)
 34. [Troubleshooting](#troubleshooting)
 35. [Unified Feedback System](#unified-feedback-system)
+36. [Case-Space Workspace (Walkthrough)](#case-space-workspace-walkthrough)
 
 ---
 
@@ -2237,4 +2238,72 @@ danwa/
 
 ---
 
+## Case-Space Workspace (Walkthrough)
+
+The Case-Space redesign (released 2026-06-15) replaces the
+previous six-fragment navigation with three coherent entry
+points: **Workspace** (your active case), **Inbox** (open
+tasks), and **Browse** (global overview with optional graph
+view).  The technical structure (CasesView, DocumentsView,
+TagManagerView, etc.) remains accessible for power users but
+is no longer the default landing path.
+
+### What's new for end users
+
+- **Active Case is mandatory** — every action is anchored to
+  one case.  The case selector in the header is highlighted
+  in blue when active.
+- **Welcome Card** for first-time users — three click paths
+  (create case → upload docs → start debate), no modal wizard.
+- **Workspace** shows a 3-card view of the active case: This
+  Case, Suggested Next Steps, Recent Activity (with Phase +
+  Round columns from the audit log).
+- **Inbox** surfaces untagged debates, recently-completed
+  debates, and stale running debates.  Bulk move/tag/archive
+  actions.
+- **Browse** has a List/Graph toggle — graph mode uses
+  Cytoscape.js for the tenant-wide knowledge graph, list
+  mode is the default.
+
+### 90-second walkthrough script
+
+A full walkthrough with voice-over annotations is available
+in [`2026-06-15_case-space-walkthrough.md`](2026-06-15_case-space-walkthrough.md).
+The document is structured as 7 film sequences that together
+cover 80% of typical user paths in 90 seconds:
+
+1. **First login** — Welcome Card appears for empty tenants
+2. **Create your first case** — Inline form, auto-active
+3. **Work in the Workspace** — Three cards: This Case, Suggested, Recent
+4. **Disambiguated debate creation** — Modal forces a case choice
+5. **Inbox as task list** — Tabs + bulk actions
+6. **Browse with graph toggle** — Power-user view
+7. **URL deep-linking** — Shareable workspace URLs
+
+### Feature flags
+
+All three case-space feature flags are `True` by default since
+the rollout commit (2026-06-15).  To opt out (e.g. for a
+legacy-only deployment), set the corresponding env var:
+
+```bash
+DANWA_ENABLE_CASE_SPACE=false          # disables workspace + inbox
+DANWA_ENABLE_CASE_SPACE_INBOX=false    # disables inbox only
+DANWA_ENABLE_CASE_SPACE_GRAPH=false    # disables graph view
+```
+
+### Related documents
+
+- [2026-06-14_case-space-walkthrough.md](2026-06-15_case-space-walkthrough.md)
+  — 90-second walkthrough script
+- [2026-06-15_case-space-metrics.md](../plans/2026-06-15_case-space-metrics.md)
+  — metrics catalogue (Phase 6.3)
+- [plans/2026-06-14_case-space-workspace.md](../plans/2026-06-14_case-space-workspace.md)
+  — original concept document
+- [plans/2026-06-14_case-space-impl-todos.md](../plans/2026-06-14_case-space-impl-todos.md)
+  — implementation todo with per-phase status
+
+---
+
 *Documentation generated for Danwa v2.3.0 — 2026-06-08*
+*Updated 2026-06-15: Case-Space Walkthrough chapter added.*
