@@ -716,3 +716,146 @@ class TestListCaseAuditEvents:
         assert resp.status_code == 200
         # The debate is found but has no audit events
         assert resp.json() == []
+
+
+# ---------------------------------------------------------------------------
+# /tenants/{tid}/cases/{cid}/dms/analyze/export
+# ---------------------------------------------------------------------------
+#
+# The frontend hits this URL (see frontend/src/lib/api/document.js
+# ::exportAnalysis).  The route must accept POST {format: 'pdf'|'odt'|'md'}
+# and return a downloadable file response.  Before the 2026-06-16 fix the
+# endpoint did not exist on the case-scoped router, so the UI got a 404
+# ("Not Found") and the export silently failed.
+#
+# We seed the analysis payload by writing to the case dir directly (the
+# same path the analyze endpoint uses via ``get_case_dir(case_id)``).
+# The export handler is then expected to render that analysis to the
+# requested format and return a ``FileResponse``.
+
+
+def _seed_analysis(case_dir: Path, analysis: dict) -> None:
+    """Persist an analysis.json in the case dir for export tests."""
+    import json
+    (case_dir / "analysis.json").write_text(json.dumps(analysis))
+
+
+class TestCaseAnalysisExport:
+    """Pin down the case-scoped /dms/analyze/export endpoint."""
+
+    def test_endpoint_exists_and_returns_markdown(
+        self, client: TestClient, case_store, tenant_a, case_a,
+    ):
+        """The endpoint must exist (no 404) and return a downloadable md.
+
+        Before the fix this raised 404 because the route was only
+        registered on the legacy ``/dms/analyze/export`` path.
+        """
+        case_dir = case_store.get_case_dir(tenant_a, case_a)
+        _seed_analysis(
+            case_dir,
+            {
+                "case_summary": "Test summary",
+                "key_facts": ["fact 1"],
+                "parties": [],
+                "timeline": [],
+                "key_issues": [],
+                "documents": [],
+            },
+        )
+        response = client.post(
+            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/dms/analyze/export",
+            json={"format": "md"},
+        )
+        assert response.status_code == 200, response.text
+        assert "markdown" in response.headers.get("content-type", "")
+        body = response.text
+        # Body is a markdown rendering; the case summary must appear.
+        assert "Test summary" in body
+
+    def test_endpoint_404_when_no_analysis_exists(
+        self, client: TestClient, case_store, tenant_a, case_a,
+    ):
+        """If no analysis has been run yet, the endpoint must 404 with
+        a clear message (mirrors the legacy behaviour)."""
+        # Use a fresh case dir with no analysis.json written.
+        case_dir = case_store.get_case_dir(tenant_a, case_a)
+        if (case_dir / "analysis.json").exists():
+            (case_dir / "analysis.json").unlink()
+        response = client.post(
+            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/dms/analyze/export",
+            json={"format": "md"},
+        )
+        assert response.status_code == 404
+        assert "analysis" in response.json()["detail"].lower()
+
+    def test_endpoint_422_for_unsupported_format(
+        self, client: TestClient, case_store, tenant_a, case_a,
+    ):
+        """Requesting a non-pdf/odt/md format must return 422."""
+        case_dir = case_store.get_case_dir(tenant_a, case_a)
+        _seed_analysis(
+            case_dir,
+            {
+                "case_summary": "x",
+                "key_facts": [],
+                "parties": [],
+                "timeline": [],
+                "key_issues": [],
+                "documents": [],
+            },
+        )
+        response = client.post(
+            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/dms/analyze/export",
+            json={"format": "docx"},
+        )
+        assert response.status_code == 422
+        assert "format" in response.json()["detail"].lower()
+
+    def test_endpoint_pdf_uses_weasyprint(
+        self, client: TestClient, case_store, tenant_a, case_a, monkeypatch,
+    ):
+        """The PDF path must invoke WeasyPrint and return application/pdf.
+
+        We monkey-patch the underlying ``weasyprint.HTML.write_pdf`` to
+        avoid the real PDF generator (which is heavy in tests) and
+        assert that the endpoint produces a 200 with the correct
+        media-type and a non-empty body.
+        """
+        case_dir = case_store.get_case_dir(tenant_a, case_a)
+        _seed_analysis(
+            case_dir,
+            {
+                "case_summary": "PDF test",
+                "key_facts": [],
+                "parties": [],
+                "timeline": [],
+                "key_issues": [],
+                "documents": [],
+            },
+        )
+
+        import backend.services.dms.document_analyzer as da_module
+        # We don't need to monkey-patch the template; we just want to
+        # confirm the endpoint dispatches to the PDF branch and returns
+        # a file with the expected media-type.  Patch weasyprint to a
+        # minimal fake.
+        class _FakeHTML:
+            def __init__(self, string):
+                self.string = string
+            def write_pdf(self, target):
+                Path(target).write_bytes(b"%PDF-1.4 fake")
+
+        import sys
+        fake_weasy = mock.MagicMock()
+        fake_weasy.HTML = _FakeHTML
+        monkeypatch.setitem(sys.modules, "weasyprint", fake_weasy)
+
+        response = client.post(
+            f"/api/v1/tenants/{tenant_a}/cases/{case_a}/dms/analyze/export",
+            json={"format": "pdf"},
+        )
+        assert response.status_code == 200, response.text
+        assert "application/pdf" in response.headers.get("content-type", "")
+        # The fake PDF must come through as the response body.
+        assert response.content.startswith(b"%PDF-1.4")

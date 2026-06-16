@@ -1025,6 +1025,122 @@ def get_case_analysis(
 
 
 # ---------------------------------------------------------------------------
+# Case-Scoped Analysis Export (Phase X.7 / 2026-06-16)
+# ---------------------------------------------------------------------------
+#
+# The Documents-View Export button (PDF / ODT / MD) calls
+#   POST /api/v1/tenants/{tid}/cases/{cid}/dms/analyze/export
+# via frontend/src/lib/api/document.js::exportAnalysis.  Before the fix
+# the case-scoped router had no such route, so the frontend got a 404
+# and the export silently failed.
+#
+# We mirror the legacy export_analysis logic in
+# backend/api/routers/dms.py but resolve the storage path from
+# ``(tenant_id, case_id)`` via ``get_case_dir(case_id)`` — the same
+# case directory that ``analyze_case_documents`` writes its
+# ``analysis.json`` to.
+
+
+@router.post("/tenants/{tenant_id}/cases/{case_id}/dms/analyze/export")
+async def export_case_analysis(
+    tenant_id: str,
+    case_id: str,
+    body: dict | None = None,
+    case_store: CaseStore = Depends(get_case_store),
+):
+    """Export the case's document analysis as PDF, ODT, or Markdown.
+
+    Body: ``{"format": "pdf" | "odt" | "md"}`` (default ``pdf``).
+    Returns a downloadable ``FileResponse``.
+    """
+    import tempfile as _tf
+    from datetime import UTC, datetime
+
+    from fastapi.responses import FileResponse
+
+    from backend.api.deps import get_case_dir
+    from backend.services.dms.document_analyzer import load_analysis
+
+    body = body or {}
+    fmt = (body.get("format") or "pdf").lower()
+    if fmt not in ("pdf", "odt", "md"):
+        raise HTTPException(status_code=422, detail=f"Unsupported format: {fmt}")
+
+    # Resolve the case dir from the (tenant, case) pair and load the
+    # most recent analysis written by ``analyze_case_documents``.
+    # Re-use the same case_store lookup the analyze route uses, so a
+    # missing case is reported as 404 (not 500).
+    case = case_store.get(tenant_id, case_id)
+    if case is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Case {case_id} not found",
+        )
+    case_dir = get_case_dir(case_id)
+    analysis = load_analysis(case_dir)
+    if not analysis:
+        raise HTTPException(
+            status_code=404,
+            detail="No analysis found. Run analysis first.",
+        )
+
+    # Render the analysis to HTML using the same template the legacy
+    # route uses.  The template lives in
+    # ``backend/services/dms/templates/document_analysis.html``.
+    from backend.api.routers.dms import _TEMPLATES_DIR, _load_analysis_i18n
+
+    import jinja2
+
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
+        autoescape=True,
+    )
+    template = env.get_template("document_analysis.html")
+    now = datetime.now(UTC)
+    i18n = _load_analysis_i18n("de")
+    html = template.render(
+        project_name=getattr(case, "title", case_id),
+        analysis=analysis,
+        language="de",
+        generated=now.strftime("%Y-%m-%d %H:%M UTC"),
+        i18n=i18n,
+    )
+
+    stem = f"analysis_{case_id[:8]}_{now.strftime('%Y%m%d_%H%M')}"
+
+    if fmt == "pdf":
+        from weasyprint import HTML
+
+        tmp = _tf.NamedTemporaryFile(suffix=".pdf", delete=False)
+        HTML(string=html).write_pdf(tmp.name)
+        media_type = "application/pdf"
+        filename = f"{stem}.pdf"
+
+    elif fmt == "odt":
+        tmp = _tf.NamedTemporaryFile(suffix=".odt", delete=False)
+        try:
+            import pypandoc
+
+            pypandoc.convert_text(html, "odt", format="html", outputfile=tmp.name)
+        except ImportError:
+            tmp.write(html.encode("utf-8"))
+        media_type = "application/vnd.oasis.opendocument.text"
+        filename = f"{stem}.odt"
+
+    else:  # fmt == "md"
+        from backend.services.output.html_to_md import html_to_markdown
+
+        md = html_to_markdown(html)
+        tmp = _tf.NamedTemporaryFile(suffix=".md", delete=False)
+        tmp.write(md.encode("utf-8"))
+        media_type = "text/markdown"
+        filename = f"{stem}.md"
+
+    tmp.close()
+    return FileResponse(tmp.name, media_type=media_type, filename=filename)
+
+
+# ---------------------------------------------------------------------------
 # Audit endpoints — /tenants/{tid}/cases/{cid}/audit
 # ---------------------------------------------------------------------------
 
