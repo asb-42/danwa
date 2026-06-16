@@ -875,7 +875,14 @@
         {/if}
       </div>
 
-      {#if status === 'running'}
+      {#if false}
+        <!-- DEACTIVATED 2026-06-16: the DebateActivityStrip (the
+             orange strip at the bottom of the MvpDebateView
+             viewport) is redundant with the global header
+             LLM-Monitor (Header.svelte), which shows model,
+             context, elapsed, token count more prominently
+             and across all routes.  Revive by removing the
+             outer {#if false} guard. -->
         <DebateActivityStrip
           currentDebate={debateForStrip}
           {currentActivity}
@@ -892,13 +899,7 @@
         />
       {/if}
 
-      {#if false}
-        <!-- DEACTIVATED 2026-06-16: the DebateActivityLog indicator
-             at the bottom of MvpDebateView is redundant with the
-             global header LLM-Monitor (Header.svelte) which now
-             shows the same information (model, context, elapsed,
-             token count) more prominently and across all routes.
-             Revive by removing the outer guards. -->
+      {#if status === 'running' || status === 'paused'}
         <DebateActivityLog
           activityText={currentActivity ? t('mvpDebate.activity.agentCalling', { agent: AGENTS.find(a => a.role === currentActivity.role)?.label || currentActivity.role, llm: getProfileName(currentActivity.llm_profile_id), round: currentActivity.round }) : ''}
           {consumedInterjections}
