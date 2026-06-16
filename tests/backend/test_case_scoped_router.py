@@ -835,7 +835,6 @@ class TestCaseAnalysisExport:
             },
         )
 
-        import backend.services.dms.document_analyzer as da_module
         # We don't need to monkey-patch the template; we just want to
         # confirm the endpoint dispatches to the PDF branch and returns
         # a file with the expected media-type.  Patch weasyprint to a

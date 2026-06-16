@@ -21,10 +21,7 @@ the fix:
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
 from types import SimpleNamespace
-from unittest import mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,7 +29,6 @@ from fastapi.testclient import TestClient
 from backend.core.security import create_access_token, hash_password
 from backend.persistence.membership_store import MembershipStore
 from backend.persistence.user_store import UserStore
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -353,6 +349,7 @@ class TestWorkspaceSummaryTenantDefence:
         """
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
         from backend.persistence.case_store import CaseStore
@@ -393,6 +390,7 @@ class TestWorkspaceSummaryTenantDefence:
         """
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
 
