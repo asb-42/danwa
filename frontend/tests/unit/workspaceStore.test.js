@@ -22,11 +22,44 @@ vi.mock('../../src/lib/api/workspace.js', () => ({
   isCaseSpaceDisabled: vi.fn(() => true),
 }));
 
+// Bug C: restoreLastWorkspace validates against the active tenant
+// via getCase(tenantId, caseId).  Mock it so the test controls
+// whether the case is visible in the current tenant.
+vi.mock('../../src/lib/api/case.js', () => ({
+  getCase: vi.fn(),
+}));
+
+vi.mock('../../src/lib/stores/auth.svelte.js', () => ({
+  // restoreLastWorkspace reads the active tenant via get(currentTenant).
+  // We use a writable so individual tests can flip it before calling.
+  currentTenant: (() => {
+    let value = null;
+    return {
+      subscribe: (fn) => {
+        fn(value);
+        return () => {};
+      },
+      set: (v) => {
+        value = v;
+      },
+      __get: () => value,
+    };
+  })(),
+}));
+
 import {
   getWorkspaceSummary,
   getLastWorkspace,
   setLastWorkspace,
 } from '../../src/lib/api/workspace.js';
+
+import { getCase } from '../../src/lib/api/case.js';
+import { currentTenant as _currentTenant } from '../../src/lib/stores/auth.svelte.js';
+
+// Helper: set the mocked active tenant for a single test.
+function setActiveTenant(id) {
+  _currentTenant.set(id ? { id, name: id } : null);
+}
 
 import {
   workspaceStore,
@@ -159,13 +192,16 @@ describe('search (typeahead)', () => {
 
 describe('last_workspace restore / persist', () => {
   it('restoreLastWorkspace sets the active case when one is returned', async () => {
+    setActiveTenant('tenant-A');
     getLastWorkspace.mockResolvedValueOnce(CID);
+    getCase.mockResolvedValueOnce({ id: CID, tenant_id: 'tenant-A' });
     const result = await restoreLastWorkspace();
     expect(result).toBe(CID);
     expect(workspaceStore.activeCaseId).toBe(CID);
   });
 
   it('restoreLastWorkspace leaves the store untouched if the backend returns null', async () => {
+    setActiveTenant('tenant-A');
     getLastWorkspace.mockResolvedValueOnce(null);
     const result = await restoreLastWorkspace();
     expect(result).toBeNull();
@@ -176,7 +212,9 @@ describe('last_workspace restore / persist', () => {
     // No setActiveCase() call before restore — this is the typical
     // mount-time path when the user lands on /workspace with no
     // ?case=… query param.
+    setActiveTenant('tenant-A');
     getLastWorkspace.mockResolvedValueOnce(CID);
+    getCase.mockResolvedValueOnce({ id: CID, tenant_id: 'tenant-A' });
     const result = await restoreLastWorkspace();
     expect(result).toBe(CID);
     expect(workspaceStore.activeCaseId).toBe(CID);
@@ -210,4 +248,92 @@ describe('reset', () => {
     expect(workspaceStore.searchQuery).toBe('');
     expect(workspaceStore.caseSpaceDisabled).toBe(false);
   });
+});
+
+
+// ─── Bug C — restoreLastWorkspace must respect active tenant ─────────
+//
+// Symptom: after Bug A/B (cross-tenant last_workspace leak) was
+// fixed in the backend, the frontend still overrode the URL/Prop
+// active case with whatever the backend returned for the legacy
+// mapping.  The fix is: restoreLastWorkspace() must only call
+// setActiveCase() when (a) the case is visible in the active
+// tenant (verified via getCase) AND (b) no other source has set
+// activeCaseId in the meantime.  We pin both invariants below.
+
+describe('restoreLastWorkspace — Bug C: tenant validation', () => {
+  it('sets the active case when the backend value is visible in the active tenant', async () => {
+    setActiveTenant('tenant-A');
+    getLastWorkspace.mockResolvedValueOnce('case-in-A');
+    getCase.mockResolvedValueOnce({ id: 'case-in-A', tenant_id: 'tenant-A' });
+
+    const result = await restoreLastWorkspace();
+
+    expect(result).toBe('case-in-A');
+    expect(workspaceStore.activeCaseId).toBe('case-in-A');
+    expect(getCase).toHaveBeenCalledWith('tenant-A', 'case-in-A');
+  });
+
+  it('does NOT set the active case when the case is not visible in the active tenant', async () => {
+    setActiveTenant('tenant-A');
+    getLastWorkspace.mockResolvedValueOnce('foreign-case');
+    // Simulate the case not being visible: getCase rejects with 404.
+    getCase.mockRejectedValueOnce(new Error('404 Not Found'));
+
+    const result = await restoreLastWorkspace();
+
+    // The store must remain empty so the Workspace shows the case
+    // picker rather than a foreign case.
+    expect(result).toBeNull();
+    expect(workspaceStore.activeCaseId).toBeNull();
+  });
+
+  it('does NOT override a pre-existing active case set by URL or prop', async () => {
+    // Simulate the URL/prop path: WorkspaceView calls
+    // setActiveCase(urlCaseId) BEFORE restoreLastWorkspace() is
+    // awaited.  The restore must respect that, not clobber it.
+    setActiveTenant('tenant-A');
+    setActiveCase('S 201…');
+    getLastWorkspace.mockResolvedValueOnce('hkk');
+    // Even if the case IS visible, restore must not overwrite a
+    // value that was set by the caller (the URL takes precedence).
+    getCase.mockResolvedValueOnce({ id: 'hkk', tenant_id: 'tenant-A' });
+
+    const result = await restoreLastWorkspace();
+
+    // The pre-existing value (S 201…) must be preserved.
+    expect(workspaceStore.activeCaseId).toBe('S 201…');
+    // restoreLastWorkspace returns the value it found (hkk) so the
+    // caller can log/track it, but does not change the store.
+    expect(result).toBe('hkk');
+  });
+
+  it('returns null without error when the backend has no stored value', async () => {
+    setActiveTenant('tenant-A');
+    getLastWorkspace.mockResolvedValueOnce(null);
+
+    const result = await restoreLastWorkspace();
+
+    expect(result).toBeNull();
+    expect(workspaceStore.activeCaseId).toBeNull();
+  });
+
+  it('returns null when there is no active tenant (cannot verify ownership)', async () => {
+    setActiveTenant(null);
+    getLastWorkspace.mockResolvedValueOnce('some-case');
+
+    const result = await restoreLastWorkspace();
+
+    // No tenant → cannot verify cross-tenant safety → stay safe.
+    expect(result).toBeNull();
+    expect(workspaceStore.activeCaseId).toBeNull();
+  });
+
+  // Note: the defensive setLastWorkspace(null) cleanup call lives
+  // inside the dynamic import branch of restoreLastWorkspace and
+  // is hard to assert reliably in isolation.  Marked as .todo
+  // until we have a clean way to test the dynamic-import branch.
+});
+describe('TODO: defensive setLastWorkspace(null) cleanup branch', () => {
+  it.todo('clears the persisted value when the restored case is not in the active tenant');
 });

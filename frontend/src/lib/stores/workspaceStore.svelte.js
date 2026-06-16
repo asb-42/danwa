@@ -261,8 +261,18 @@ export async function restoreLastWorkspace() {
   try {
     const { getLastWorkspace } = await import('../api/workspace.js');
     const caseId = await getLastWorkspace();
-    if (!caseId || caseId === _state.activeCaseId) {
-      return caseId ?? null;
+    if (!caseId) {
+      return null;
+    }
+    // 2026-06-16 Bug C: URL/prop precedence.  If WorkspaceView's
+    // mount path has already populated activeCaseId (via the URL
+    // `?case=…` parameter or an `initialCaseId` prop), the restore
+    // step must NOT clobber it.  The URL is the user's explicit
+    // choice and is always more authoritative than the backend's
+    // persisted value, which can lag behind.
+    if (_state.activeCaseId !== null) {
+      // Still report what the backend had, for telemetry / logging.
+      return caseId;
     }
     const tenantId = _readActiveTenantId();
     if (!tenantId) {
