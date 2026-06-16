@@ -7,12 +7,15 @@
 #    ./manage.sh start        # Backend UND Frontend starten
 #    ./manage.sh start fe     # nur Frontend starten
 #    ./manage.sh start be     # nur Backend starten
+#    ./manage.sh start studio # nur Danwa Studio (admin/dev) starten
 #    ./manage.sh stop         # alles stoppen
+#    ./manage.sh stop studio  # nur Studio stoppen
 #    ./manage.sh status       # Status anzeigen
-#    ./manage.sh logs         # Live-Logs (Backend + Frontend)
+#    ./manage.sh logs         # Live-Logs (Backend + Frontend + Studio)
 #    ./manage.sh logs be      # nur Backend-Logs
 #    ./manage.sh logs fe      # nur Frontend-Logs
-#    ./manage.sh restart      # alles neu starten
+#    ./manage.sh logs st      # nur Studio-Logs
+#    ./manage.sh restart      # Backend + Frontend neu starten
 #    ./manage.sh clean        # Caches & Logs aufräumen
 # ─────────────────────────────────────────────────────────────────────
 set -uo pipefail
@@ -28,16 +31,20 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
 FE_DIR="$PROJECT_DIR/frontend"
+STUDIO_DIR="${STUDIO_DIR:-$PROJECT_DIR/../danwa-studio}"
 LOG_DIR="$PROJECT_DIR/logs"
 PID_DIR="$PROJECT_DIR/pids"
 
 BACKEND_PID_FILE="$PID_DIR/backend.pid"
 FE_PID_FILE="$PID_DIR/frontend.pid"
+STUDIO_PID_FILE="$PID_DIR/studio.pid"
 BACKEND_LOG="$LOG_DIR/backend.log"
 FE_LOG="$LOG_DIR/frontend.log"
+STUDIO_LOG="$LOG_DIR/studio.log"
 
 BACKEND_PORT="${BACKEND_PORT:-7860}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+STUDIO_PORT="${STUDIO_PORT:-5174}"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
@@ -93,6 +100,7 @@ pid_running() {
 
 backend_running()  { pid_running "$BACKEND_PID_FILE"; }
 frontend_running() { pid_running "$FE_PID_FILE"; }
+studio_running()   { pid_running "$STUDIO_PID_FILE"; }
 
 wait_for_url() {
     local url="$1" timeout="${2:-30}"
@@ -208,6 +216,68 @@ stop_frontend() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════
+# Danwa Studio (Admin / Dev — separates Repo danwa-studio)
+# ═══════════════════════════════════════════════════════════════════════
+
+start_studio() {
+    log_step "Danwa Studio starten …"
+    if studio_running &>/dev/null; then
+        log_warn "Danwa Studio läuft bereits (PID: $(studio_running))"
+        return 0
+    fi
+
+    if [[ ! -d "$STUDIO_DIR" ]]; then
+        log_error "Studio-Verzeichnis nicht gefunden: $STUDIO_DIR"
+        log_info "Setze STUDIO_DIR oder klone danwa-studio neben danwa."
+        return 1
+    fi
+
+    if [[ ! -d "$STUDIO_DIR/node_modules" ]]; then
+        log_warn "node_modules fehlt in $STUDIO_DIR — führe 'npm install' aus …"
+        (cd "$STUDIO_DIR" && npm install) >> "$STUDIO_LOG" 2>&1 || {
+            log_error "npm install fehlgeschlagen — prüfe $STUDIO_LOG"
+            return 1
+        }
+    fi
+
+    cd "$STUDIO_DIR"
+    nohup npm run dev -- --port "$STUDIO_PORT" \
+        > "$STUDIO_LOG" 2>&1 &
+
+    local pid=$!
+    echo "$pid" > "$STUDIO_PID_FILE"
+
+    if wait_for_url "http://localhost:$STUDIO_PORT" 90; then
+        log_ok "Danwa Studio gestartet (PID: $pid) → http://localhost:$STUDIO_PORT"
+    else
+        log_warn "Studio-Start dauert länger als erwartet — prüfe Logs mit: ./manage.sh logs studio"
+    fi
+}
+
+stop_studio() {
+    log_step "Danwa Studio stoppen …"
+    local pid
+    pid="$(studio_running 2>/dev/null)" || true
+    if [[ -n "$pid" ]]; then
+        # Gesamte Prozessgruppe beenden (erfasst auch Vite-Kindprozesse)
+        kill -- -"$pid" 2>/dev/null
+        sleep 1
+        # SIGKILL falls nötig
+        if kill -0 "$pid" 2>/dev/null; then
+            kill -9 "$pid" 2>/dev/null
+            sleep 1
+        fi
+        rm -f "$STUDIO_PID_FILE"
+        log_ok "Danwa Studio (PID: $pid) gestoppt"
+    else
+        log_warn "Danwa Studio läuft nicht"
+    fi
+
+    # Fallback: eventuell übrig gebliebene Vite-Prozesse (Studio nutzt Vite)
+    pkill -f "vite" 2>/dev/null || true
+}
+
+# ═══════════════════════════════════════════════════════════════════════
 # Logs
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -222,9 +292,13 @@ show_logs() {
             log_header "Frontend-Logs (tail -f) — Ctrl+C zum Beenden"
             tail -f "$FE_LOG"
             ;;
+        st|studio)
+            log_header "Danwa-Studio-Logs (tail -f) — Ctrl+C zum Beenden"
+            tail -f "$STUDIO_LOG"
+            ;;
         all|*)
-            log_header "Live-Logs: Backend + Frontend (Ctrl+C zum Beenden)"
-            tail -f "$BACKEND_LOG" "$FE_LOG" || true
+            log_header "Live-Logs: Backend + Frontend + Studio (Ctrl+C zum Beenden)"
+            tail -f "$BACKEND_LOG" "$FE_LOG" "$STUDIO_LOG" || true
             ;;
     esac
 }
@@ -260,6 +334,19 @@ show_status() {
     fi
 
     echo ""
+    echo -e "  ${BOLD}Danwa Studio (admin / dev):${RESET}"
+    if studio_running &>/dev/null; then
+        local sp
+        sp="$(studio_running)"
+        echo -e "    Status:  ${GREEN}aktiv${RESET} (PID: $sp)"
+        echo -e "    Port:    $STUDIO_PORT"
+        echo -e "    Log:     $STUDIO_LOG"
+        echo -e "    Verz.:   $STUDIO_DIR"
+    else
+        echo -e "    Status:  ${RED}gestoppt${RESET}  (Port $STUDIO_PORT, Verz. $STUDIO_DIR)"
+    fi
+
+    echo ""
     echo -e "  ${BOLD}DMS OCR:${RESET}"
     if curl -s "http://localhost:$BACKEND_PORT/api/v1/dms/ocr-status" 2>/dev/null | grep -q '"available":true'; then
         echo -e "    Status:  ${GREEN}verfügbar${RESET}"
@@ -284,15 +371,18 @@ dashboard() {
     echo -e "  ${CYAN}║     D A N W A   M A N A G E R     ║${RESET}"
     echo -e "  ${CYAN}╚════════════════════════════════════╝${RESET}"
     echo ""
-    echo -e "  ${BOLD}1${RESET}) Backend  ${GREEN}starten${RESET}"
-    echo -e "  ${BOLD}2${RESET}) Backend  ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}3${RESET}) Frontend ${GREEN}starten${RESET}"
-    echo -e "  ${BOLD}4${RESET}) Frontend ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}5${RESET}) Beides   ${GREEN}starten${RESET}"
-    echo -e "  ${BOLD}6${RESET}) Beides   ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}7${RESET}) Status anzeigen"
-    echo -e "  ${BOLD}8${RESET}) Backend-Logs live verfolgen"
-    echo -e "  ${BOLD}9${RESET}) Frontend-Logs live verfolgen"
+    echo -e "  ${BOLD}1${RESET}) Backend   ${GREEN}starten${RESET}"
+    echo -e "  ${BOLD}2${RESET}) Backend   ${YELLOW}stoppen${RESET}"
+    echo -e "  ${BOLD}3${RESET}) Frontend  ${GREEN}starten${RESET}"
+    echo -e "  ${BOLD}4${RESET}) Frontend  ${YELLOW}stoppen${RESET}"
+    echo -e "  ${BOLD}5${RESET}) Studio    ${GREEN}starten${RESET}  (admin / dev)"
+    echo -e "  ${BOLD}6${RESET}) Studio    ${YELLOW}stoppen${RESET}"
+    echo -e "  ${BOLD}7${RESET}) Beides    ${GREEN}starten${RESET}   (Backend + Frontend)"
+    echo -e "  ${BOLD}8${RESET}) Beides    ${YELLOW}stoppen${RESET}"
+    echo -e "  ${BOLD}9${RESET}) Status anzeigen"
+    echo -e "  ${BOLD}b${RESET}) Backend-Logs live verfolgen"
+    echo -e "  ${BOLD}f${RESET}) Frontend-Logs live verfolgen"
+    echo -e "  ${BOLD}s${RESET}) Studio-Logs live verfolgen"
     echo -e "  ${BOLD}0${RESET}) Neustart (beides)"
     echo -e "  ${BOLD}q${RESET}) Beenden"
     echo ""
@@ -572,6 +662,7 @@ case "$cmd" in
         case "$what" in
             be|backend) start_backend ;;
             fe|frontend) start_frontend ;;
+            st|studio) start_studio ;;
             all|"") start_backend && start_frontend ;;
         esac
         ;;
@@ -580,6 +671,7 @@ case "$cmd" in
         case "$what" in
             be|backend) stop_backend ;;
             fe|frontend) stop_frontend ;;
+            st|studio) stop_studio ;;
             all|"") stop_backend && stop_frontend ;;
         esac
         ;;
@@ -592,6 +684,9 @@ case "$cmd" in
         find "$PROJECT_DIR" -name "*.pyc" -delete 2>/dev/null || true
         start_backend
         start_frontend
+        # Studio wird bewusst NICHT mit-restartet — es ist ein Admin-Tool
+        # das unabhängig vom User-App-Lifecycle läuft. Bei Bedarf:
+        #   ./manage.sh restart studio
         ;;
     status|st)
         show_status
@@ -608,11 +703,14 @@ case "$cmd" in
                 2) stop_backend ;;
                 3) start_frontend ;;
                 4) stop_frontend ;;
-                5) start_backend && start_frontend ;;
-                6) stop_backend && stop_frontend ;;
-                7) show_status ;;
-                8) show_logs be ;;
-                9) show_logs fe ;;
+                5) start_studio ;;
+                6) stop_studio ;;
+                7) start_backend && start_frontend ;;
+                8) stop_backend && stop_frontend ;;
+                9) show_status ;;
+                b|B) show_logs be ;;
+                f|F) show_logs fe ;;
+                s|S) show_logs st ;;
                 0)
                     stop_backend && stop_frontend
                     sleep 1
@@ -670,17 +768,20 @@ case "$cmd" in
     help|--help|-h)
         echo "Danwa Manager"
         echo ""
-        echo "  ./manage.sh              interaktives Dashboard"
-        echo "  ./manage.sh start        Backend + Frontend starten"
-        echo "  ./manage.sh start be     nur Backend starten"
-        echo "  ./manage.sh start fe     nur Frontend starten"
-        echo "  ./manage.sh stop         alles stoppen"
-        echo "  ./manage.sh restart      alles neu starten"
-        echo "  ./manage.sh status       Status anzeigen"
-        echo "  ./manage.sh logs         Live-Logs (beide)"
-        echo "  ./manage.sh logs be      Backend-Logs"
-        echo "  ./manage.sh logs fe      Frontend-Logs"
-        echo "  ./manage.sh clean        Caches aufräumen"
+        echo "  ./manage.sh                  interaktives Dashboard"
+        echo "  ./manage.sh start            Backend + Frontend starten"
+        echo "  ./manage.sh start be         nur Backend starten"
+        echo "  ./manage.sh start fe         nur Frontend starten"
+        echo "  ./manage.sh start studio     nur Danwa Studio starten (admin / dev)"
+        echo "  ./manage.sh stop             alles stoppen (Backend + Frontend)"
+        echo "  ./manage.sh stop studio      nur Studio stoppen"
+        echo "  ./manage.sh restart          Backend + Frontend neu starten (Studio bleibt)"
+        echo "  ./manage.sh status           Status anzeigen (Backend + Frontend + Studio)"
+        echo "  ./manage.sh logs             Live-Logs (alle drei)"
+        echo "  ./manage.sh logs be          Backend-Logs"
+        echo "  ./manage.sh logs fe          Frontend-Logs"
+        echo "  ./manage.sh logs st          Studio-Logs"
+        echo "  ./manage.sh clean            Caches aufräumen"
         echo "  ./manage.sh test         Tests ausführen"
         echo "  ./manage.sh doc          Dokumentation Commands"
         echo "  ./manage.sh doc-api      OpenAPI → Markdown"
