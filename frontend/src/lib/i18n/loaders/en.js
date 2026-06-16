@@ -1325,6 +1325,18 @@ export default {
   'nav.workspace': 'Workspace',
   'nav.inbox': 'Inbox',
   'nav.browse': 'Browse',
+  // Case-Space migration banner (shown on the legacy /cases route to
+  // nudge users toward the new Workspace view).  Added 2026-06-16
+  // alongside the Inbox dark-theme and Browse subtitle fixes; the
+  // keys existed in the Svelte template but were never registered in
+  // the i18n catalog, so the inline fallbacks (English) were the only
+  // thing the user ever saw.
+  'caseSpace.migration.caseSpaceBannerTitle': 'Case management has moved to the Workspace.',
+  'caseSpace.migration.caseSpaceBannerBody':
+    'For day-to-day work (creating / editing / deleting cases, switching the active case) please use the new Workspace view. This page is kept for quick reference only.',
+  'caseSpace.migration.openWorkspace': 'Open Workspace →',
+  'caseSpace.migration.openInWorkspace': 'Open in Workspace →',
+
   // Case-Space namespace (Phase 1+2+3 keys, see plans/2026-06-14_case-space-impl-todos.md)
   'caseSpace.workspace.title': 'Workspace',
   'caseSpace.workspace.subtitle': 'Focus on a single case. Everything you need in one place.',
