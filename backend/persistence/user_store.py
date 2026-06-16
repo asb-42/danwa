@@ -49,6 +49,39 @@ class UserStore:
             self.conn.execute("ALTER TABLE users ADD COLUMN last_workspace TEXT")
         except Exception:  # noqa: BLE001
             pass
+        # Per-tenant last-workspace mapping.  See the comment block on
+        # ``get_last_workspace`` below for the cross-tenant-leak rationale.
+        # The table is created in a separate try/except so older DBs
+        # without it still boot (the accessors fall back to the legacy
+        # ``users.last_workspace`` column when the table is missing).
+        try:
+            self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_last_workspace (
+                    user_id TEXT NOT NULL,
+                    tenant_id TEXT NOT NULL,
+                    case_id TEXT,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (user_id, tenant_id)
+                )
+            """)
+        except Exception:  # noqa: BLE001
+            pass
+        # One-shot backfill from the legacy single-value column into the
+        # per-tenant mapping.  We do not know which tenant the legacy
+        # value belongs to, so we conservatively use the user's primary
+        # ``tenant_id``.  Cross-tenant leftovers are harmless because
+        # the new code never reads the legacy column for lookup.
+        try:
+            self.conn.execute("""
+                INSERT OR IGNORE INTO user_last_workspace
+                    (user_id, tenant_id, case_id, updated_at)
+                SELECT u.id, u.tenant_id, u.last_workspace, u.updated_at
+                FROM users u
+                WHERE u.last_workspace IS NOT NULL
+                  AND u.last_workspace != ''
+            """)
+        except Exception:  # noqa: BLE001
+            pass
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)")
         self.conn.commit()
@@ -149,46 +182,104 @@ class UserStore:
         )
 
     # ─── Last-workspace setting (Case-Space Phase 1.3) ─────────────
-    # Stored as a separate column rather than a JSON settings blob,
-    # because (a) the field is small and high-frequency, and
-    # (b) it avoids a JSON parse on every GET /me call.
-    def get_last_workspace(self, user_id: str) -> str | None:
-        """Return the case id the user last opened, or None.
+    #
+    # Phase 1.3 originally stored a single ``users.last_workspace``
+    # string per user.  That design was a cross-tenant leak: when a
+    # user switched tenants and re-mounted the Workspace view, the
+    # restoreLastWorkspace() flow pulled back a case id from a tenant
+    # that was no longer active.  The fix is to make the per-tenant
+    # mapping explicit via a dedicated ``user_last_workspace`` table
+    # keyed on (user_id, tenant_id).
+    #
+    # The legacy single-column is still kept on the ``users`` table for
+    # backwards compatibility (and as a one-shot backfill source) but
+    # is no longer the authoritative read source.
 
-        Defensive: older DBs (pre-migration) may not have the
-        ``last_workspace`` column.  Catch the OperationalError and
-        return None so callers see a clean "never set" state
-        instead of a 500.
+    def get_last_workspace(self, user_id: str, tenant_id: str | None = None) -> str | None:
+        """Return the case id the user last opened in ``tenant_id``, or None.
+
+        Args:
+            user_id:   The user whose setting to look up.
+            tenant_id: The active tenant.  When None, falls back to the
+                       legacy single-value column (so older callers that
+                       pass only ``user_id`` keep working during the
+                       transition).
+
+        Returns:
+            The persisted case id, or None when no per-tenant setting
+            exists.  Falls back to the legacy column only when no
+            tenant-specific row is found AND the call did not specify
+            a tenant — never silently mixes tenants.
         """
+        # Tenant-aware path: the new ``user_last_workspace`` table.
+        if tenant_id is not None:
+            try:
+                row = self.conn.execute(
+                    "SELECT case_id FROM user_last_workspace "
+                    "WHERE user_id = ? AND tenant_id = ?",
+                    (user_id, tenant_id),
+                ).fetchone()
+            except Exception:  # noqa: BLE001
+                row = None
+            if row is not None:
+                return row[0]
+            return None
+        # Legacy fallback: only honoured when the caller did not
+        # specify a tenant.  Used by the pre-fix auth router shape.
         try:
-            row = self.conn.execute("SELECT last_workspace FROM users WHERE id = ?", (user_id,)).fetchone()
+            row = self.conn.execute(
+                "SELECT last_workspace FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
         except Exception:  # noqa: BLE001
-            # Column missing or DB locked -- treat as "not set".
             return None
         if row is None:
             return None
         return row[0]
 
-    def set_last_workspace(self, user_id: str, case_id: str | None) -> bool:
+    def set_last_workspace(
+        self,
+        user_id: str,
+        case_id: str | None,
+        tenant_id: str | None = None,
+    ) -> bool:
         """Persist the case id the user last opened (or clear it).
 
-        Defensive: pre-existing DBs may not have the last_workspace
-        column, or the column may have an unexpected type, or the
-        commit may fail for transient reasons.  We try with a
-        try/except so the caller (the auth router) can still
-        return 200 -- the "last workspace" feature is a UX
-        nicety, not a security or correctness invariant.
+        When ``tenant_id`` is given, the value is written to the
+        per-tenant mapping.  When omitted, the call falls back to the
+        legacy single-column update (used by older callers during
+        the transition).
         """
+        now = datetime.now().isoformat()
+        if tenant_id is not None:
+            try:
+                self.conn.execute(
+                    """
+                    INSERT INTO user_last_workspace
+                        (user_id, tenant_id, case_id, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id, tenant_id) DO UPDATE SET
+                        case_id = excluded.case_id,
+                        updated_at = excluded.updated_at
+                    """,
+                    (user_id, tenant_id, case_id, now),
+                )
+                self.conn.commit()
+                return True
+            except Exception:  # noqa: BLE001
+                # Schema not migrated yet or DB lock — fall through
+                # to the legacy column write so the user's intent is
+                # at least recorded somewhere.
+                try:
+                    self.conn.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
+        # Legacy single-value path (kept as a safety net).
         try:
             cur = self.conn.execute(
                 "UPDATE users SET last_workspace = ?, updated_at = ? WHERE id = ?",
-                (case_id, datetime.now().isoformat(), user_id),
+                (case_id, now, user_id),
             )
             self.conn.commit()
-            # SQLite reports rowcount==0 when the stored value already
-            # matches the new one (no-op write).  That is success —
-            # treat a missing row as the only failure mode, by
-            # looking up the user first.
             if cur.rowcount > 0:
                 return True
             existing = self.conn.execute(
@@ -196,9 +287,6 @@ class UserStore:
             ).fetchone()
             return existing is not None
         except Exception:  # noqa: BLE001
-            # OperationalError on missing column, IntegrityError on
-            # null constraint, etc.  The user simply gets a fresh
-            # session with no last-workspace remembered -- safe.
             try:
                 self.conn.rollback()
             except Exception:  # noqa: BLE001

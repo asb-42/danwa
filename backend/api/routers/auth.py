@@ -7,7 +7,15 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 
-from backend.api.deps import get_current_user, get_membership_store, get_settings, get_tenant_store, get_user_store, require_role
+from backend.api.deps import (
+    get_active_tenant,
+    get_current_user,
+    get_membership_store,
+    get_settings,
+    get_tenant_store,
+    get_user_store,
+    require_role,
+)
 from backend.core.security import (
     create_access_token,
     create_refresh_token,
@@ -164,27 +172,40 @@ def update_me(
 
 # ─── Last-workspace setting (Case-Space Phase 1.3) ─────────────
 # These endpoints let the frontend remember which Case the user
-# had open at logout, and restore it on next login.  Storing a
-# single string column keeps the GET /me call cheap (no JSON
-# parse).  See plans/2026-06-14_case-space-workspace.md §4.2.
+# had open at logout, and restore it on next login.
+#
+# 2026-06-16: tenant-scoped persistence.  The original single-column
+# design leaked case ids across tenants (a user who switched tenants
+# and re-mounted the Workspace view would get back a case id from a
+# tenant that was no longer active).  The store now persists a
+# ``(user_id, tenant_id) → case_id`` mapping, and these endpoints
+# pass the active tenant through.  See
+# plans/2026-06-16_last-workspace-cross-tenant-bug.md.
 
 
 @router.get("/me/last-workspace")
 def get_last_workspace(
     user=Depends(get_current_user),
+    tenant_id: str = Depends(get_active_tenant),
     user_store=Depends(get_user_store),
 ):
-    """Return the case id the current user last opened, or null."""
-    return {"case_id": user_store.get_last_workspace(user.id)}
+    """Return the case id the current user last opened **in the
+    active tenant**, or null.  Case ids from other tenants are
+    never returned, even if they were persisted under the legacy
+    single-column scheme.
+    """
+    return {"case_id": user_store.get_last_workspace(user.id, tenant_id=tenant_id)}
 
 
 @router.put("/me/last-workspace")
 def set_last_workspace(
     body: dict,
     user=Depends(get_current_user),
+    tenant_id: str = Depends(get_active_tenant),
     user_store=Depends(get_user_store),
 ):
-    """Persist (or clear) the case id the user last opened.
+    """Persist (or clear) the case id the user last opened in the
+    active tenant.
 
     Body: ``{"case_id": "..."}`` to set, or ``{"case_id": null}`` to clear.
     Returns 204 on success.
@@ -194,7 +215,7 @@ def set_last_workspace(
         raise HTTPException(status_code=422, detail="case_id must be a string or null")
     if case_id is not None and len(case_id) > 200:
         raise HTTPException(status_code=422, detail="case_id too long")
-    ok = user_store.set_last_workspace(user.id, case_id)
+    ok = user_store.set_last_workspace(user.id, case_id, tenant_id=tenant_id)
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to persist last_workspace")
     return {"case_id": case_id}

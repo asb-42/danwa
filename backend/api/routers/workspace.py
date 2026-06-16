@@ -173,6 +173,24 @@ def get_workspace_summary(
     if case is None:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
+    # 2026-06-16 — Cross-tenant defence in depth.
+    # ``store.get(tenant_id, case_id)`` should already enforce
+    # tenant scoping, but a misconfigured store or a stale
+    # backfill could in principle return a case whose own
+    # ``tenant_id`` does not match the caller's active tenant.
+    # We re-check explicitly here so a mismatch is surfaced as
+    # 404 (not_found) rather than silently leaking the wrong
+    # tenant's data into the summary.  See
+    # plans/2026-06-16_last-workspace-cross-tenant-bug.md.
+    case_tenant = getattr(case, "tenant_id", None)
+    if case_tenant and case_tenant != tenant_id:
+        logger.warning(
+            "workspace/summary: case %s belongs to tenant %s but caller "
+            "is in tenant %s — refusing to render",
+            case_id, case_tenant, tenant_id,
+        )
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+
     # Aggregate counts.  The case object does not embed a
     # `debate_ids` list (debates live in their own per-case
     # DebateStore), so we count via the store.  We do not fetch
