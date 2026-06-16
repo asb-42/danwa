@@ -222,13 +222,38 @@ def get_workspace_summary(
         document_count = len(dms.list_documents(f"case:{tenant_id}:{case_id}"))
     except Exception:  # noqa: BLE001
         document_count = 0
+    # Union-Count (2026-06-16): debates can live in two stores
+    # depending on which path created them:
+    #   * case-scoped (Pfad 3): data/cases/<tenant>/cases/<id>/debates/
+    #   * project-scoped (Pfad 1+2): data/projects/<id>/debates/
+    # The case-scoped path is preferred (Bug D); the project-scoped
+    # path is added as a union so MVP/Legacy debates that pre-date
+    # the Case-Space migration are also visible.  Each branch is
+    # best-effort: a broken store must never 500 the endpoint.
     try:
         from backend.api.routers.case_scoped import _get_debate_store_for_case
-        debate_store = _get_debate_store_for_case(tenant_id, case_id, case_store)
-        all_debates = debate_store.list_all(limit=500) or []
-        debate_count = len(all_debates)
+        case_debate_store = _get_debate_store_for_case(tenant_id, case_id, case_store)
+        case_debates = case_debate_store.list_all(limit=500) or []
     except Exception:  # noqa: BLE001
-        debate_count = 0
+        case_debates = []
+    try:
+        from backend.api.deps import get_debate_store_for_case
+        project_debate_store = get_debate_store_for_case(case_id)
+        project_debates = project_debate_store.list_all(limit=500) or []
+    except Exception:  # noqa: BLE001
+        project_debates = []
+    # Deduplicate by debate_id (a debate that exists in both stores
+    # would otherwise be double-counted).
+    seen: set[str] = set()
+    unioned: list = []
+    for d in case_debates + project_debates:
+        did = d.get("debate_id")
+        if did and did in seen:
+            continue
+        if did:
+            seen.add(did)
+        unioned.append(d)
+    debate_count = len(unioned)
     try:
         member_count = len(membership_store.list_by_tenant(tenant_id))
     except Exception:  # noqa: BLE001

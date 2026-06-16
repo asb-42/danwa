@@ -584,3 +584,139 @@ class TestWorkspaceSummaryCountsReal:
             f"expected 3 members (from MembershipStore), got {body['member_count']!r} "
             "- the workspace route is likely still reading case.members"
         )
+
+
+# ---------------------------------------------------------------------------
+# Union-Count (2026-06-16) — workspace/summary must count debates
+# from BOTH the case-scoped store and the legacy project-scoped
+# store.  Pre-fix code only counted the case-scoped store, so
+# MVP-Debatten (Run -> MVP Debate) and Legacy-Debatten (Run ->
+# New Debate) that live in data/projects/<id>/debates/ were
+# invisible in the Workspace count.
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceSummaryDebateCountUnion:
+    """Pin down the Union-Count: case-scoped + project-scoped = total."""
+
+    def _seed_debate_in_store(self, data_dir, debate_id, **overrides):
+        """Persist a debate JSON file in the given store data dir."""
+        from backend.persistence.debate_store import DebateStore
+        store = DebateStore(data_dir=data_dir)
+        payload = {
+            "debate_id": debate_id,
+            "status": "completed",
+            "title": overrides.get("title", f"Debate {debate_id}"),
+            "request": {"case": {"text": "Sample", "project_id": None}, "language": "de", "max_rounds": 3},
+            "max_rounds": 3,
+            "current_round": 3,
+            "rounds": [],
+            "result": None,
+            "created_at": "2026-06-16T00:00:00+00:00",
+            "updated_at": "2026-06-16T00:00:00+00:00",
+        }
+        payload.update(overrides)
+        store.put(debate_id, payload)
+
+    def test_debate_count_unions_case_and_project_scoped_stores(
+        self, tmp_path, monkeypatch,
+    ):
+        from fastapi import FastAPI, Header
+        from fastapi.testclient import TestClient
+        from backend.api.deps import get_active_tenant, get_case_store
+        from backend.api.routers.workspace import router as workspace_router
+        from backend.persistence.case_store import CaseStore
+        from backend.persistence.debate_store import DebateStore
+
+        case_store = CaseStore(base_dir=tmp_path / "cases_union")
+        case_store.create("tenant-A", "X", case_id="case-X", description="")
+        case_dir = case_store.get_case_dir("tenant-A", "case-X")
+
+        for i in range(2):
+            self._seed_debate_in_store(case_dir / "debates", f"case-d-{i}")
+
+        project_debates_dir = tmp_path / "projects" / "case-X" / "debates"
+        for i in range(5):
+            self._seed_debate_in_store(project_debates_dir, f"proj-d-{i}")
+
+        legacy_store = DebateStore(data_dir=project_debates_dir)
+
+        from backend.api import deps as deps_module
+        monkeypatch.setattr(
+            deps_module,
+            "get_debate_store_for_case",
+            lambda case_id: legacy_store,
+        )
+
+        def _active_tenant(x_tenant_id=None):
+            return x_tenant_id or "tenant-A"
+
+        app = FastAPI()
+        app.include_router(workspace_router, prefix="/api/v1")
+        app.dependency_overrides[get_active_tenant] = _active_tenant
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        monkeypatch.setattr(
+            "backend.api.routers.workspace.settings.enable_case_space", True,
+        )
+
+        with TestClient(app) as tc:
+            response = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "case-X"},
+                headers={"X-Tenant-Id": "tenant-A"},
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        count = body["debate_count"]
+        assert count == 7, (
+            f"expected 7 (2 case + 5 project), got {count!r}"
+        )
+
+    def test_debate_count_only_case_scoped_when_no_legacy_debates(
+        self, tmp_path, monkeypatch,
+    ):
+        from fastapi import FastAPI, Header
+        from fastapi.testclient import TestClient
+        from backend.api.deps import get_active_tenant, get_case_store
+        from backend.api.routers.workspace import router as workspace_router
+        from backend.persistence.case_store import CaseStore
+        from backend.persistence.debate_store import DebateStore
+
+        case_store = CaseStore(base_dir=tmp_path / "cases_only")
+        case_store.create("tenant-A", "X", case_id="case-X", description="")
+        case_dir = case_store.get_case_dir("tenant-A", "case-X")
+        for i in range(3):
+            self._seed_debate_in_store(case_dir / "debates", f"case-d-{i}")
+
+        empty_legacy = DebateStore(
+            data_dir=tmp_path / "nonexistent" / "case-X" / "debates",
+        )
+
+        from backend.api import deps as deps_module
+        monkeypatch.setattr(
+            deps_module,
+            "get_debate_store_for_case",
+            lambda case_id: empty_legacy,
+        )
+
+        def _active_tenant(x_tenant_id=None):
+            return x_tenant_id or "tenant-A"
+
+        app = FastAPI()
+        app.include_router(workspace_router, prefix="/api/v1")
+        app.dependency_overrides[get_active_tenant] = _active_tenant
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        monkeypatch.setattr(
+            "backend.api.routers.workspace.settings.enable_case_space", True,
+        )
+
+        with TestClient(app) as tc:
+            response = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "case-X"},
+                headers={"X-Tenant-Id": "tenant-A"},
+            )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["debate_count"] == 3
