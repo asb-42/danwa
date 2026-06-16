@@ -56,17 +56,25 @@ async def generate_debate_title(
     from backend.services.profile_service import ProfileService
 
     try:
+        import uuid as _uuid
+
         ps = ProfileService()
+        # Each title-generation call gets its own ephemeral
+        # session id so audit/metering rows are per-title, not
+        # shared across calls.  (Bug fix 2026-06-16 - previously
+        # session_id was undefined, so the call raised NameError
+        # on every title generation.)
+        ephemeral_session_id = f"title-{_uuid.uuid4()}"
 
         if use_service_llm:
             service_id = _select_service_llm(ps)
             llm_service = LLMService(profile_id=service_id, profile_service=ps)
             llm_service.set_context('Debate Title')
-            llm_service.set_session_id(session_id)
+            llm_service.set_session_id(ephemeral_session_id)
         else:
             llm_service = LLMService(profile_id=llm_profile_id, profile_service=ps)
             llm_service.set_context('Debate Title')
-            llm_service.set_session_id(session_id)
+            llm_service.set_session_id(ephemeral_session_id)
 
         system_prompt = SYSTEM_PROMPT_TITLES.get(language, SYSTEM_PROMPT_TITLES["de"])
 

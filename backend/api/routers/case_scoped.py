@@ -905,12 +905,17 @@ async def analyze_case_documents(
     import asyncio
 
     from backend.api.deps import get_case_dir
-    from backend.services.profile_service import ProfileService
     from backend.services.dms.document_analyzer import (
         analyze_documents as run_document_analysis,
+    )
+    from backend.services.dms.document_analyzer import (
+        load_analysis,
         save_analysis,
+    )
+    from backend.services.dms.document_analyzer import (
         update_analysis as run_update_analysis,
     )
+    from backend.services.profile_service import ProfileService
 
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
     # The case-scoped DMS writes/reads under the synthetic project_id
@@ -1087,9 +1092,9 @@ async def export_case_analysis(
     # Render the analysis to HTML using the same template the legacy
     # route uses.  The template lives in
     # ``backend/services/dms/templates/document_analysis.html``.
-    from backend.api.routers.dms import _TEMPLATES_DIR, _load_analysis_i18n
-
     import jinja2
+
+    from backend.api.routers.dms import _TEMPLATES_DIR, _load_analysis_i18n
 
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),

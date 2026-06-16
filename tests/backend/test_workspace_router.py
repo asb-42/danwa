@@ -296,7 +296,6 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
 
     def _seed_debate(self, case_dir, debate_id: str, **overrides) -> None:
         """Persist a debate JSON file in the case's tenant-scoped debates dir."""
-        import json
         from backend.persistence.debate_store import DebateStore
 
         store = DebateStore(data_dir=case_dir / "debates")
@@ -324,6 +323,7 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         """
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
         from backend.persistence.case_store import CaseStore
@@ -373,6 +373,7 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         """
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
         from backend.persistence.case_store import CaseStore
@@ -466,8 +467,9 @@ class TestWorkspaceSummaryCountsReal:
         DMS path (add_document). Guarantees we test the same
         write/read path that production uses.
         """
-        from backend.api.routers.case_scoped import _get_dms_for_case
         import tempfile
+
+        from backend.api.routers.case_scoped import _get_dms_for_case
 
         dms = _get_dms_for_case(tenant_id, case_id, case_store)
         for i in range(count):
@@ -486,6 +488,7 @@ class TestWorkspaceSummaryCountsReal:
         """
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
         from backend.persistence.case_store import CaseStore
@@ -528,16 +531,17 @@ class TestWorkspaceSummaryCountsReal:
         """
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
+
         from backend.api.deps import (
             get_active_tenant,
             get_case_store,
             get_membership_store,
         )
         from backend.api.routers.workspace import router as workspace_router
+        from backend.core.security import hash_password
         from backend.persistence.case_store import CaseStore
         from backend.persistence.membership_store import MembershipStore
         from backend.persistence.user_store import UserStore
-        from backend.core.security import hash_password
 
         case_store = CaseStore(base_dir=tmp_path / "counts_members")
         case_store.create("tenant-A", "X", case_id="case-X", description="")
