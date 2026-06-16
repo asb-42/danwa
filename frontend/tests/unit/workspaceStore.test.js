@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { writable as _writable } from 'svelte/store';
 
 vi.mock('../../src/lib/api/workspace.js', () => ({
   getWorkspaceSummary: vi.fn(),
@@ -336,4 +337,82 @@ describe('restoreLastWorkspace — Bug C: tenant validation', () => {
 });
 describe('TODO: defensive setLastWorkspace(null) cleanup branch', () => {
   it.todo('clears the persisted value when the restored case is not in the active tenant');
+});
+
+
+// ─── Bug B — sync $activeCase (header) into workspaceStore ──────────
+//
+// Symptom: the header CaseSelector and the WorkspaceView use two
+// different stores.  When the user picks a case in the header,
+// $activeCase in stores.js updates, but workspaceStore.activeCaseId
+// stays stale.  The Workspace keeps rendering the previous case
+// even though the user has chosen a different one.
+//
+// Fix: a `syncFromActiveCase()` helper that reads the current value
+// of any $activeCase-shaped store and calls setActiveCase() iff it
+// differs from the current workspaceStore.activeCaseId.  WorkspaceView
+// wires this into an $effect that watches the global activeCase
+// store so the two are kept in lockstep.
+
+describe('syncFromActiveCase — Bug B: header ↔ workspace sync', () => {
+  // We dynamically import the helper to keep the static-import
+  // list at the top of the file stable.
+  it('updates workspaceStore.activeCaseId when the global active case changes', async () => {
+    const { syncFromActiveCase } = await import(
+      '../../src/lib/stores/workspaceStore.svelte.js'
+    );
+    const globalActiveCase = _writable(null);
+    syncFromActiveCase(globalActiveCase);
+    expect(workspaceStore.activeCaseId).toBeNull();
+
+    globalActiveCase.set({ id: 'case-X', title: 'X', tenant_id: 'tenant-A' });
+    // Svelte stores are synchronous; the sync helper reads the
+    // current value at call time, not via subscription.
+    syncFromActiveCase(globalActiveCase);
+    expect(workspaceStore.activeCaseId).toBe('case-X');
+  });
+
+  it('does NOT clobber a workspace value when the global store reports the same case', async () => {
+    const { syncFromActiveCase } = await import(
+      '../../src/lib/stores/workspaceStore.svelte.js'
+    );
+    setActiveCase('case-Y');
+    const globalActiveCase = _writable({ id: 'case-Y', title: 'Y', tenant_id: 'tenant-A' });
+    // Calling sync with the same id must not call setActiveCase
+    // (which would reset summary to null and trigger a re-fetch).
+    // We assert by checking that summary was not cleared.
+    getWorkspaceSummary.mockResolvedValueOnce(SUMMARY);
+    await loadSummary();
+    expect(workspaceStore.summary).not.toBeNull();
+
+    syncFromActiveCase(globalActiveCase);
+    expect(workspaceStore.activeCaseId).toBe('case-Y');
+    expect(workspaceStore.summary).not.toBeNull();
+  });
+
+  it('tolerates a null value (e.g. user deselected in the header)', async () => {
+    const { syncFromActiveCase } = await import(
+      '../../src/lib/stores/workspaceStore.svelte.js'
+    );
+    setActiveCase('case-Z');
+    const globalActiveCase = _writable(null);
+    syncFromActiveCase(globalActiveCase);
+    // null in the global store does NOT mean the workspace should
+    // forget its active case — the workspace has its own state.
+    // The sync helper must leave the workspace value untouched.
+    expect(workspaceStore.activeCaseId).toBe('case-Z');
+  });
+
+  it('handles stores that report undefined (initialised but no value yet)', async () => {
+    const { syncFromActiveCase } = await import(
+      '../../src/lib/stores/workspaceStore.svelte.js'
+    );
+    setActiveCase('case-keep');
+    const ghostStore = {
+      subscribe: (fn) => { fn(undefined); return () => {}; },
+    };
+    // Must not throw and must not clobber the current value.
+    expect(() => syncFromActiveCase(ghostStore)).not.toThrow();
+    expect(workspaceStore.activeCaseId).toBe('case-keep');
+  });
 });

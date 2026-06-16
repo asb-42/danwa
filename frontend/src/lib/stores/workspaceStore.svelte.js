@@ -110,6 +110,29 @@ export function setActiveCase(id) {
 }
 
 /**
+ * Bug B (2026-06-16) — Sync the global activeCase store (header
+ * CaseSelector via stores.js) into the workspaceStore.  Used by
+ * WorkspaceView in an $effect.  See test_syncFromActiveCase_*
+ * for the contract.
+ */
+export function syncFromActiveCase(sourceStore) {
+  if (!sourceStore || typeof sourceStore.subscribe !== 'function') {
+    return;
+  }
+  let snapshot = null;
+  const unsub = sourceStore.subscribe((v) => {
+    snapshot = v;
+  });
+  if (typeof unsub === 'function') unsub();
+  if (!snapshot || typeof snapshot !== 'object' || !snapshot.id) {
+    return;
+  }
+  if (snapshot.id !== _state.activeCaseId) {
+    setActiveCase(snapshot.id);
+  }
+}
+
+/**
  * Load the workspace summary for the active case.  Dedupe: if a
  * request for the same case id is already in flight, return the
  * existing promise.

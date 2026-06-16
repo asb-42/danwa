@@ -20,6 +20,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '../lib/i18n/index.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
+  import { activeCase } from '../lib/stores.js';
   import { feedbackStore } from '../lib/stores/feedback.svelte.js';
   import {
     workspaceStore,
@@ -28,6 +29,7 @@
     reset,
     restoreLastWorkspace,
     persistActiveCase,
+    syncFromActiveCase,
   } from '../lib/stores/workspaceStore.svelte.js';
   import NewDebateForm from '../components/case-space/NewDebateForm.svelte';
   // Phase 5.4 visual-revision (2026-06-15): the Inspector tab now
@@ -264,6 +266,17 @@
     if (activeCaseId) {
       loadSummary();
     }
+  });
+
+  // 2026-06-16 Bug B — header ↔ workspace sync.  The header
+  // CaseSelector writes to the global ``activeCase`` store; the
+  // Workspace reads from ``workspaceStore.activeCaseId``.  Without
+  // this $effect the two can drift apart: e.g. user picks a case
+  // in the header, the Workspace keeps showing the previous one.
+  // The sync is a pull (we re-read on every effect tick) and only
+  // fires setActiveCase when the value differs, so it is cheap.
+  $effect(() => {
+    syncFromActiveCase(activeCase);
   });
 
   // ─── Case-Liste für den Empty-State ────────────────────────
