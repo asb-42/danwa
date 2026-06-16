@@ -66,22 +66,24 @@ class UserStore:
             """)
         except Exception:  # noqa: BLE001
             pass
-        # One-shot backfill from the legacy single-value column into the
-        # per-tenant mapping.  We do not know which tenant the legacy
-        # value belongs to, so we conservatively use the user's primary
-        # ``tenant_id``.  Cross-tenant leftovers are harmless because
-        # the new code never reads the legacy column for lookup.
-        try:
-            self.conn.execute("""
-                INSERT OR IGNORE INTO user_last_workspace
-                    (user_id, tenant_id, case_id, updated_at)
-                SELECT u.id, u.tenant_id, u.last_workspace, u.updated_at
-                FROM users u
-                WHERE u.last_workspace IS NOT NULL
-                  AND u.last_workspace != ''
-            """)
-        except Exception:  # noqa: BLE001
-            pass
+        # 2026-06-16 Bug A: NO backfill from the legacy single-value
+        # column.  Pre-migration rows in ``users.last_workspace`` were
+        # stored without a tenant_id, so we have no idea which tenant
+        # they belong to.  Conservatively using the user's primary
+        # ``tenant_id`` silently leaks case ids into the wrong tenant.
+        #
+        # The safe behaviour is: leave the legacy column read-only
+        # (the back-compat read path in get_last_workspace still
+        # honours it when called without a tenant_id), and require
+        # the user to explicitly save their workspace per tenant
+        # via ``PUT /api/v1/auth/me/last-workspace`` with the
+        # X-Tenant-Id header.  Until then, no per-tenant row exists
+        # and the Workspace shows the case-picker (safe default).
+        #
+        # The legacy column can be cleared in a one-time data
+        # migration once we are confident no production user still
+        # relies on the back-compat read path; see plans/2026-06-16
+        # _last-workspace-cross-tenant-bug.md.
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)")
         self.conn.commit()

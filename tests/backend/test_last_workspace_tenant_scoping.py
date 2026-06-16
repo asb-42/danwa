@@ -155,36 +155,66 @@ class TestUserStoreLastWorkspacePerTenant:
         # Tenant-aware read returns None (no per-tenant row)
         assert user_store.get_last_workspace(admin_user.id, tenant_id="tenant-A") is None
 
-    def test_one_shot_backfill_uses_user_tenant(self, user_store):
-        """A pre-existing legacy value is backfilled into the per-tenant row
-        using the user's primary ``users.tenant_id``."""
-        # Create the user with a primary tenant and seed the legacy column
-        u = user_store.create(
-            email="bf@example.com",
-            display_name="Backfill",
+    def test_no_silent_backfill_from_legacy_column(self, tmp_path):
+        """Bug A (2026-06-16): the schema-migration block must NOT
+        backfill the legacy ``users.last_workspace`` value into the
+        new per-tenant mapping.
+
+        We pin this by simulating a real pre-migration DB:
+
+        1. Create a UserStore and seed a user with a value in the
+           legacy ``users.last_workspace`` column.
+        2. Close it.
+        3. Open a fresh UserStore against the same file.  This is
+           the "restart with an existing DB" scenario where the
+           backfill used to fire.
+        4. Assert that the per-tenant mapping is empty.
+
+        Silently using the user's primary ``tenant_id`` (as the
+        pre-fix code did) leaks case ids into the wrong tenant's
+        workspace.  The expected behaviour is: the user must
+        explicitly ``PUT /api/v1/auth/me/last-workspace`` with the
+        active ``X-Tenant-Id`` header to populate the per-tenant
+        row.
+        """
+        # Phase 1: build a pre-migration DB and seed the legacy column.
+        db_path = tmp_path / "backfill_test.db"
+        phase1 = UserStore(db_path=db_path)
+        u = phase1.create(
+            email="nolegacy@example.com",
+            display_name="No Backfill",
             password_hash=hash_password("p"),
             role="viewer",
             tenant_id="tenant-A",
         )
-        user_store.conn.execute(
+        phase1.conn.execute(
             "UPDATE users SET last_workspace = ? WHERE id = ?",
             ("hkk", u.id),
         )
-        user_store.conn.commit()
-        # Re-run the migration block (mirrors _init_db's backfill)
-        user_store.conn.execute("""
-            INSERT OR IGNORE INTO user_last_workspace
-                (user_id, tenant_id, case_id, updated_at)
-            SELECT u.id, u.tenant_id, u.last_workspace, u.updated_at
-            FROM users u
-            WHERE u.last_workspace IS NOT NULL
-              AND u.last_workspace != ''
-        """)
-        user_store.conn.commit()
-        # Per-tenant read for tenant-A returns the backfilled value
-        assert user_store.get_last_workspace(u.id, tenant_id="tenant-A") == "hkk"
-        # Per-tenant read for tenant-B returns None (no leak)
-        assert user_store.get_last_workspace(u.id, tenant_id="tenant-B") is None
+        phase1.conn.commit()
+        phase1.conn.close()
+
+        # Phase 2: re-open the DB.  The backfill (if any) would fire here.
+        phase2 = UserStore(db_path=db_path)
+        try:
+            # Per-tenant mapping is empty — the migration did NOT
+            # backfill the legacy value into any tenant row.
+            assert phase2.get_last_workspace(u.id, tenant_id="tenant-A") is None
+            assert phase2.get_last_workspace(u.id, tenant_id="tenant-B") is None
+
+            # The legacy column is preserved for back-compat reads
+            # when called without a tenant_id.
+            assert phase2.get_last_workspace(u.id) == "hkk"
+
+            # Only an explicit per-tenant write populates the new row.
+            phase2.set_last_workspace(
+                u.id, "case-in-A", tenant_id="tenant-A",
+            )
+            assert phase2.get_last_workspace(u.id, tenant_id="tenant-A") == "case-in-A"
+            # The other tenant stays empty.
+            assert phase2.get_last_workspace(u.id, tenant_id="tenant-B") is None
+        finally:
+            phase2.conn.close()
 
 
 # ---------------------------------------------------------------------------
