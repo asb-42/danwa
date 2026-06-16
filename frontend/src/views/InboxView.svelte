@@ -555,11 +555,25 @@
     background: #f0fdf4;
     border: 1px solid #bbf7d0;
     border-radius: 8px;
+    color: #14532d;
   }
   .all-clear .icon {
     display: block;
     font-size: 2rem;
     color: #16a34a;
+  }
+  /* Dark-theme variant: the empty Inbox state was rendered as a
+     bright green card on dark backgrounds because the background/
+     border/text colours were hardcoded.  Override only inside the
+     `.dark` scope (set by the app's theme switcher on <html> or
+     <body>) so the rest of the app stays unaffected. */
+  :global(.dark) .all-clear {
+    background: #052e16;
+    border-color: #14532d;
+    color: #bbf7d0;
+  }
+  :global(.dark) .all-clear .icon {
+    color: #4ade80;
   }
   .select-bar {
     display: flex;

@@ -1412,6 +1412,19 @@ export default {
   'tenant.allTenants': 'All Tenants',
   'tenant.noTenants': 'No tenants found',
 
+  // Case-Space Browse (Phase 4.9) — tenant-scoped list/graph view.
+  // Note: despite the legacy "cross-tenant" wording in older docs, the
+  // /api/v1/graph/global endpoint is tenant-scoped.  The real cross-tenant
+  // view is a planned Danwa-Studio feature; see
+  // plans/2026-06-16_browse-view-scope.md.
+  'caseSpace.browse.title': 'Browse',
+  'caseSpace.browse.subtitle': 'All cases, debates, documents and tags in this tenant.',
+  'caseSpace.browse.listMode': 'List',
+  'caseSpace.browse.graphMode': 'Graph',
+  'caseSpace.browse.empty': 'Nothing to display yet.',
+  'caseSpace.browse.openCase': 'Open case →',
+  'caseSpace.browse.globalLoadFailed': 'Could not load the global graph.',
+
   // Case-Space Knowledge Graph (Phase 4 + 5.4)
   'caseSpace.graph.title': '1-hop subgraph',
   'caseSpace.graph.disabledHint': 'The knowledge graph is not enabled on the backend yet. Set DANWA_ENABLE_CASE_SPACE_GRAPH=true to try it.',

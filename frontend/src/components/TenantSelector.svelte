@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { currentTenant, setAuth } from '../lib/stores/auth.svelte.js';
   import { activeCase, addToast } from '../lib/stores.js';
-  import { getMyTenants, selectTenant } from '../lib/auth.js';
+  import { getMyTenants, listAllTenants, selectTenant } from '../lib/auth.js';
   import { tStore } from '../lib/i18n/index.js';
 
   let t = $derived($tStore);
@@ -16,10 +16,47 @@
     loadTenants();
   });
 
+  /**
+   * Load the list of tenants shown in the header dropdown.
+   *
+   * TEMPORARY WORKAROUND — REMOVE WHEN DANWA-CORE / DANWA-STUDIO SHIP:
+   *
+   * The header dropdown and the "Inhabit → Tenant Settings" panel need to
+   * show the *same* set of tenants during the transition period, because
+   * the synthetic "Dev User" sees four tenants in Tenant Settings (system-
+   * wide list, admin-only) but would otherwise only see one or two in the
+   * header (membership-filtered list, `/api/v1/auth/my-tenants`).
+   *
+   * We therefore prefer `listAllTenants()` (admin-only, system-wide) and
+   * fall back to `getMyTenants()` (membership-filtered) for non-admin
+   * users in production.  Once Danwa is split into:
+   *   - Endbenutzer-Frontend (no admin features)
+   *   - Danwa-Core (FastAPI, no UI)
+   *   - Danwa-Studio (admin / builder / developer UI)
+   * the header dropdown should revert to `getMyTenants()` exclusively,
+   * because the admin-only `listAllTenants()` would 403 for ordinary
+   * end users in the consumer frontend.
+   *
+   * See plans/2026-06-16_tenant-dropdown-workaround.md for context.
+   */
   async function loadTenants() {
     isLoading = true;
     try {
-      tenants = await getMyTenants();
+      try {
+        tenants = await listAllTenants();
+        // Admin endpoint returns { id, name, ... } not { tenant_id, tenant_name, ... }.
+        // Normalise to the shape the dropdown expects.
+        tenants = tenants.map((t) => ({
+          tenant_id: t.id,
+          tenant_name: t.name,
+          ...t,
+        }));
+      } catch (err) {
+        // Non-admin user (or admin endpoint unavailable) — fall back to the
+        // membership-filtered list.  This is the post-workaround behaviour.
+        if (import.meta.env.DEV) console.debug('[TenantSelector] listAllTenants failed, falling back to getMyTenants:', err?.message);
+        tenants = await getMyTenants();
+      }
       if (!$currentTenant && tenants.length > 0) {
         currentTenant.set({ id: tenants[0].tenant_id, name: tenants[0].tenant_name || tenants[0].tenant_id });
       }

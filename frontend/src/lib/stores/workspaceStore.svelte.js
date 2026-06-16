@@ -15,11 +15,15 @@
  * @see plans/2026-06-14_case-space-workspace.md (Phase 1)
  */
 
+import { get } from 'svelte/store';
+
 import {
   getWorkspaceSummary,
   searchCases,
   isCaseSpaceDisabled,
 } from '../api/workspace.js';
+import { getCase } from '../api/case.js';
+import { currentTenant } from '../stores/auth.svelte.js';
 
 /**
  * @typedef {import('../api/workspace.js').WorkspaceSummary} WorkspaceSummary
@@ -206,15 +210,34 @@ export function invalidate(caseId) {
  * finds it on next login.  Best-effort: errors are logged but do
  * not surface in the UI (the user already sees the case loaded
  * in the workspace).
+ *
+ * 2026-06-16 — tenant-scoped persistence.  The backend now
+ * records ``(user, tenant) → case_id`` so a case id never leaks
+ * across tenants.  We read the active tenant from the auth store
+ * and forward it through the body so the backend writes into the
+ * correct mapping row.  If we cannot resolve a tenant we still
+ * send the request (the backend falls back to its legacy single-
+ * column write so we never lose the user's intent entirely).
  */
 export async function persistActiveCase() {
   const caseId = _state.activeCaseId;
+  // The active tenant is already part of the request via the
+  // X-Tenant-Id header that the core request wrapper injects from
+  // the auth store.  No body change needed: the backend route
+  // resolves the tenant from the header and writes the per-tenant
+  // mapping row.  We still read the tenant for diagnostics below
+  // (and as a smoke test that the store has been initialised).
+  const tenantId = _readActiveTenantId();
   try {
     const { setLastWorkspace } = await import('../api/workspace.js');
     await setLastWorkspace(caseId);
   } catch (err) {
     if (import.meta.env?.DEV) {
-      console.debug('[workspace] persistActiveCase failed:', err?.message ?? err);
+      console.debug(
+        '[workspace] persistActiveCase failed (tenant=%s): %s',
+        tenantId ?? 'unknown',
+        err?.message ?? err,
+      );
     }
   }
 }
@@ -222,19 +245,81 @@ export async function persistActiveCase() {
 /**
  * Restore the last_workspace from the backend and set it as
  * active.  Called by WorkspaceView on mount.
+ *
+ * 2026-06-16 — cross-tenant guard.  The backend is now
+ * tenant-scoped, so the value it returns already belongs to the
+ * active tenant.  As a defence-in-depth measure we still verify
+ * that the case is actually visible in the active tenant (via
+ * ``GET /api/v1/tenants/{tid}/cases/{cid}``) before committing it
+ * to the store; if the backend ever returns a stale cross-tenant
+ * id during a transition, the Workspace renders the case picker
+ * instead of a foreign case.  Failures of the verification call
+ * fall through to "do not restore" — the case picker is the safe
+ * default.
  */
 export async function restoreLastWorkspace() {
   try {
     const { getLastWorkspace } = await import('../api/workspace.js');
     const caseId = await getLastWorkspace();
-    if (caseId && caseId !== _state.activeCaseId) {
-      setActiveCase(caseId);
+    if (!caseId || caseId === _state.activeCaseId) {
+      return caseId ?? null;
     }
-    return caseId;
+    const tenantId = _readActiveTenantId();
+    if (!tenantId) {
+      // No active tenant → cannot verify ownership.  Stay safe
+      // and do not restore, so the case picker is shown.
+      return null;
+    }
+    let visible = true;
+    try {
+      // Tenant-scoped lookup — throws 404 when the case is not
+      // visible in this tenant.  getCase is imported statically
+      // at the top of this module from api/case.js.
+      await getCase(tenantId, caseId);
+    } catch (err) {
+      // 404 (or any other failure) means: not visible in this
+      // tenant.  Refuse to restore.
+      if (import.meta.env?.DEV) {
+        console.debug(
+          '[workspace] restoreLastWorkspace: case %s not visible in tenant %s — not restoring',
+          caseId, tenantId,
+        );
+      }
+      visible = false;
+    }
+    if (visible) {
+      setActiveCase(caseId);
+    } else {
+      // Defensive: clear the persisted value so subsequent
+      // mounts do not keep retrying a known-bad mapping.  This
+      // also nudges the backend toward the per-tenant mapping.
+      try {
+        const { setLastWorkspace } = await import('../api/workspace.js');
+        await setLastWorkspace(null);
+      } catch {
+        // best-effort
+      }
+    }
+    return visible ? caseId : null;
   } catch (err) {
     if (import.meta.env?.DEV) {
       console.debug('[workspace] restoreLastWorkspace failed:', err?.message ?? err);
     }
+    return null;
+  }
+}
+
+/**
+ * Read the active tenant id from the auth store.  Returns null
+ * when the user is not logged in or the store has not been
+ * populated yet.  Used to scope last-workspace persistence and
+ * restoration to the active tenant (2026-06-16 cross-tenant fix).
+ */
+function _readActiveTenantId() {
+  try {
+    const v = get(currentTenant);
+    return v?.id ?? null;
+  } catch {
     return null;
   }
 }

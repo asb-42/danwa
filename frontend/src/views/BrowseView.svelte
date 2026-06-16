@@ -112,7 +112,7 @@
       </h1>
       <p class="text-sm text-gray-600 dark:text-gray-400">
         {t?.caseSpace?.browse?.subtitle ??
-          'Cross-tenant view of all your cases, debates, documents and tags.'}
+          'All cases, debates, documents and tags in this tenant.'}
       </p>
     </div>
     <div
