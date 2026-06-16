@@ -21,6 +21,7 @@ INCLUDE_PATHS: list[str] = [
     # ── Multi-tenant data (JSON file tree) ──────────────────────────────
     "data/projects",  # legacy project store
     "data/tenants",  # tenant-cased structure (cases, tags, debates, DMS)
+    "data/workflows",  # MVP-Debatte + Case-Space-Workflow snapshots
     # ── SQLite databases ───────────────────────────────────────────────
     "data/auth.db",  # users, tenants, memberships
     "data/audit.db",  # audit trail
