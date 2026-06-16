@@ -737,6 +737,7 @@ class TestListCaseAuditEvents:
 def _seed_analysis(case_dir: Path, analysis: dict) -> None:
     """Persist an analysis.json in the case dir for export tests."""
     import json
+
     (case_dir / "analysis.json").write_text(json.dumps(analysis))
 
 
@@ -744,7 +745,11 @@ class TestCaseAnalysisExport:
     """Pin down the case-scoped /dms/analyze/export endpoint."""
 
     def test_endpoint_exists_and_returns_markdown(
-        self, client: TestClient, case_store, tenant_a, case_a,
+        self,
+        client: TestClient,
+        case_store,
+        tenant_a,
+        case_a,
     ):
         """The endpoint must exist (no 404) and return a downloadable md.
 
@@ -774,7 +779,11 @@ class TestCaseAnalysisExport:
         assert "Test summary" in body
 
     def test_endpoint_404_when_no_analysis_exists(
-        self, client: TestClient, case_store, tenant_a, case_a,
+        self,
+        client: TestClient,
+        case_store,
+        tenant_a,
+        case_a,
     ):
         """If no analysis has been run yet, the endpoint must 404 with
         a clear message (mirrors the legacy behaviour)."""
@@ -790,7 +799,11 @@ class TestCaseAnalysisExport:
         assert "analysis" in response.json()["detail"].lower()
 
     def test_endpoint_422_for_unsupported_format(
-        self, client: TestClient, case_store, tenant_a, case_a,
+        self,
+        client: TestClient,
+        case_store,
+        tenant_a,
+        case_a,
     ):
         """Requesting a non-pdf/odt/md format must return 422."""
         case_dir = case_store.get_case_dir(tenant_a, case_a)
@@ -813,7 +826,12 @@ class TestCaseAnalysisExport:
         assert "format" in response.json()["detail"].lower()
 
     def test_endpoint_pdf_uses_weasyprint(
-        self, client: TestClient, case_store, tenant_a, case_a, monkeypatch,
+        self,
+        client: TestClient,
+        case_store,
+        tenant_a,
+        case_a,
+        monkeypatch,
     ):
         """The PDF path must invoke WeasyPrint and return application/pdf.
 
@@ -842,10 +860,12 @@ class TestCaseAnalysisExport:
         class _FakeHTML:
             def __init__(self, string):
                 self.string = string
+
             def write_pdf(self, target):
                 Path(target).write_bytes(b"%PDF-1.4 fake")
 
         import sys
+
         fake_weasy = mock.MagicMock()
         fake_weasy.HTML = _FakeHTML
         monkeypatch.setitem(sys.modules, "weasyprint", fake_weasy)

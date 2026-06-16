@@ -217,8 +217,7 @@ class UserStore:
         if tenant_id is not None:
             try:
                 row = self.conn.execute(
-                    "SELECT case_id FROM user_last_workspace "
-                    "WHERE user_id = ? AND tenant_id = ?",
+                    "SELECT case_id FROM user_last_workspace WHERE user_id = ? AND tenant_id = ?",
                     (user_id, tenant_id),
                 ).fetchone()
             except Exception:  # noqa: BLE001
@@ -229,9 +228,7 @@ class UserStore:
         # Legacy fallback: only honoured when the caller did not
         # specify a tenant.  Used by the pre-fix auth router shape.
         try:
-            row = self.conn.execute(
-                "SELECT last_workspace FROM users WHERE id = ?", (user_id,)
-            ).fetchone()
+            row = self.conn.execute("SELECT last_workspace FROM users WHERE id = ?", (user_id,)).fetchone()
         except Exception:  # noqa: BLE001
             return None
         if row is None:
@@ -284,9 +281,7 @@ class UserStore:
             self.conn.commit()
             if cur.rowcount > 0:
                 return True
-            existing = self.conn.execute(
-                "SELECT 1 FROM users WHERE id = ?", (user_id,)
-            ).fetchone()
+            existing = self.conn.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone()
             return existing is not None
         except Exception:  # noqa: BLE001
             try:

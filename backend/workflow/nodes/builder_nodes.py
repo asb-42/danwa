@@ -250,9 +250,8 @@ def builder_node_factory(
                 profile_service=_get_profile_service(),
             )
 
-
-            llm_service.set_context('Builder')
-            llm_service.set_session_id(state.get('session_id', ''))
+            llm_service.set_context("Builder")
+            llm_service.set_session_id(state.get("session_id", ""))
             for attempt in range(_MAX_JSON_RETRIES):
                 gen_result = await llm_service.generate(
                     prompt=user_prompt,

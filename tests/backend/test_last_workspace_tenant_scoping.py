@@ -107,17 +107,23 @@ class TestUserStoreLastWorkspacePerTenant:
     def test_set_and_get_roundtrip_with_tenant(self, user_store, admin_user):
         """The new signature: (user_id, tenant_id) → case_id round-trips."""
         user_store.set_last_workspace(
-            admin_user.id, "case-in-A", tenant_id="tenant-A",
+            admin_user.id,
+            "case-in-A",
+            tenant_id="tenant-A",
         )
         assert user_store.get_last_workspace(admin_user.id, tenant_id="tenant-A") == "case-in-A"
 
     def test_tenant_isolation(self, user_store, admin_user):
         """A case id persisted for tenant-A is invisible to tenant-B."""
         user_store.set_last_workspace(
-            admin_user.id, "case-in-A", tenant_id="tenant-A",
+            admin_user.id,
+            "case-in-A",
+            tenant_id="tenant-A",
         )
         user_store.set_last_workspace(
-            admin_user.id, "case-in-B", tenant_id="tenant-B",
+            admin_user.id,
+            "case-in-B",
+            tenant_id="tenant-B",
         )
         assert user_store.get_last_workspace(admin_user.id, tenant_id="tenant-A") == "case-in-A"
         assert user_store.get_last_workspace(admin_user.id, tenant_id="tenant-B") == "case-in-B"
@@ -125,7 +131,9 @@ class TestUserStoreLastWorkspacePerTenant:
     def test_clear_with_none(self, user_store, admin_user):
         """Passing case_id=None removes the per-tenant row, not the legacy column."""
         user_store.set_last_workspace(
-            admin_user.id, "case-in-A", tenant_id="tenant-A",
+            admin_user.id,
+            "case-in-A",
+            tenant_id="tenant-A",
         )
         user_store.set_last_workspace(admin_user.id, None, tenant_id="tenant-A")
         assert user_store.get_last_workspace(admin_user.id, tenant_id="tenant-A") is None
@@ -204,7 +212,9 @@ class TestUserStoreLastWorkspacePerTenant:
 
             # Only an explicit per-tenant write populates the new row.
             phase2.set_last_workspace(
-                u.id, "case-in-A", tenant_id="tenant-A",
+                u.id,
+                "case-in-A",
+                tenant_id="tenant-A",
             )
             assert phase2.get_last_workspace(u.id, tenant_id="tenant-A") == "case-in-A"
             # The other tenant stays empty.
@@ -224,7 +234,9 @@ class TestAuthLastWorkspaceTenantScoped:
     def test_get_returns_case_for_active_tenant(self, client_auth, user_store, admin_user):
         """A case id written for tenant-A is returned when the caller is in tenant-A."""
         user_store.set_last_workspace(
-            admin_user.id, "case-in-A", tenant_id="tenant-A",
+            admin_user.id,
+            "case-in-A",
+            tenant_id="tenant-A",
         )
         response = client_auth.get(
             "/api/v1/auth/me/last-workspace",
@@ -242,7 +254,9 @@ class TestAuthLastWorkspaceTenantScoped:
         a case from another tenant.
         """
         user_store.set_last_workspace(
-            admin_user.id, "case-in-A", tenant_id="tenant-A",
+            admin_user.id,
+            "case-in-A",
+            tenant_id="tenant-A",
         )
         response = client_auth.get(
             "/api/v1/auth/me/last-workspace",
@@ -268,7 +282,9 @@ class TestAuthLastWorkspaceTenantScoped:
     def test_put_tenant_b_does_not_overwrite_tenant_a(self, client_auth, user_store, admin_user):
         """Writing for tenant-B must not clobber a value already stored for tenant-A."""
         user_store.set_last_workspace(
-            admin_user.id, "case-in-A", tenant_id="tenant-A",
+            admin_user.id,
+            "case-in-A",
+            tenant_id="tenant-A",
         )
         client_auth.put(
             "/api/v1/auth/me/last-workspace",
@@ -282,7 +298,9 @@ class TestAuthLastWorkspaceTenantScoped:
     def test_put_clear_with_null(self, client_auth, user_store, admin_user):
         """case_id=null clears the per-tenant row only."""
         user_store.set_last_workspace(
-            admin_user.id, "case-X", tenant_id="tenant-A",
+            admin_user.id,
+            "case-X",
+            tenant_id="tenant-A",
         )
         response = client_auth.put(
             "/api/v1/auth/me/last-workspace",
@@ -311,6 +329,7 @@ class TestWorkspaceSummaryTenantDefence:
     @pytest.fixture
     def enabled(self, monkeypatch):
         from backend.api.routers import workspace as workspace_module
+
         monkeypatch.setattr(workspace_module.settings, "enable_case_space", True)
 
     def _stub(self, *, case_tenant: str):
@@ -338,7 +357,8 @@ class TestWorkspaceSummaryTenantDefence:
         return _Stub()
 
     def test_summary_200_when_case_belongs_to_active_tenant(
-        self, tmp_path,
+        self,
+        tmp_path,
     ):
         """Sanity: matching tenant_id is served normally.
 
@@ -380,7 +400,8 @@ class TestWorkspaceSummaryTenantDefence:
         assert body["tenant_id"] == "tenant-A"
 
     def test_summary_404_when_case_belongs_to_other_tenant(
-        self, tmp_path,
+        self,
+        tmp_path,
     ):
         """Cross-tenant case is rejected with 404, not silently rendered.
 

@@ -315,7 +315,9 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         store.put(debate_id, payload)
 
     def test_summary_counts_debates_in_active_tenant(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """Two debates under ``data/cases/<tenant>/cases/<case>/debates/``
         must surface as ``debate_count == 2``.  The pre-fix code used
@@ -342,7 +344,8 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         app.dependency_overrides[get_active_tenant] = _active_tenant
         app.dependency_overrides[get_case_store] = lambda: case_store
         monkeypatch.setattr(
-            "backend.api.routers.workspace.settings.enable_case_space", True,
+            "backend.api.routers.workspace.settings.enable_case_space",
+            True,
         )
 
         with TestClient(app) as tc:
@@ -365,7 +368,9 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         )
 
     def test_summary_does_not_count_debates_from_other_tenant(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """Same case_id in two tenants; only the active tenant's
         debates must be counted.  Pre-fix code's filesystem walk
@@ -386,12 +391,14 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         for i in range(3):
             self._seed_debate(
                 case_store.get_case_dir("tenant-A", "shared"),
-                f"a-{i}", title=f"A debate {i}",
+                f"a-{i}",
+                title=f"A debate {i}",
             )
         # Tenant B: 1 debate.
         self._seed_debate(
             case_store.get_case_dir("tenant-B", "shared"),
-            "b-0", title="B debate 0",
+            "b-0",
+            title="B debate 0",
         )
 
         def _active_tenant(x_tenant_id: str | None = Header(default=None)) -> str:
@@ -402,7 +409,8 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         app.dependency_overrides[get_active_tenant] = _active_tenant
         app.dependency_overrides[get_case_store] = lambda: case_store
         monkeypatch.setattr(
-            "backend.api.routers.workspace.settings.enable_case_space", True,
+            "backend.api.routers.workspace.settings.enable_case_space",
+            True,
         )
 
         with TestClient(app) as tc:
@@ -420,16 +428,10 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
             )
 
         assert response_a.status_code == 200, response_a.text
-        assert response_a.json()["debate_count"] == 3, (
-            f"tenant-A: expected 3, got {response_a.json()['debate_count']!r}"
-        )
+        assert response_a.json()["debate_count"] == 3, f"tenant-A: expected 3, got {response_a.json()['debate_count']!r}"
         assert response_b.status_code == 200, response_b.text
-        assert response_b.json()["debate_count"] == 1, (
-            f"tenant-B: expected 1, got {response_b.json()['debate_count']!r}"
-        )
-        assert response_b.json()["title"] == "B's case", (
-            "tenant-B must see B's case title, not A's"
-        )
+        assert response_b.json()["debate_count"] == 1, f"tenant-B: expected 1, got {response_b.json()['debate_count']!r}"
+        assert response_b.json()["title"] == "B's case", "tenant-B must see B's case title, not A's"
 
 
 # ---------------------------------------------------------------------------
@@ -474,14 +476,19 @@ class TestWorkspaceSummaryCountsReal:
         dms = _get_dms_for_case(tenant_id, case_id, case_store)
         for i in range(count):
             with tempfile.NamedTemporaryFile(
-                suffix=".txt", delete=False, mode="w", encoding="utf-8",
+                suffix=".txt",
+                delete=False,
+                mode="w",
+                encoding="utf-8",
             ) as f:
                 f.write(f"Document {i} contents for testing.")
                 f_name = f.name
             dms.add_document(file_path=f_name, filename=f"file-{i}.txt")
 
     def test_document_count_uses_dms_not_case_object(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """document_count must come from the case-scoped DMS, not
         from case.document_ids (which is always empty).
@@ -506,7 +513,8 @@ class TestWorkspaceSummaryCountsReal:
         app.dependency_overrides[get_active_tenant] = _active_tenant
         app.dependency_overrides[get_case_store] = lambda: case_store
         monkeypatch.setattr(
-            "backend.api.routers.workspace.settings.enable_case_space", True,
+            "backend.api.routers.workspace.settings.enable_case_space",
+            True,
         )
 
         with TestClient(app) as tc:
@@ -519,12 +527,13 @@ class TestWorkspaceSummaryCountsReal:
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["document_count"] == 52, (
-            f"expected 52 documents (from the DMS), got {body['document_count']!r} "
-            "- the workspace route is likely still reading case.document_ids"
+            f"expected 52 documents (from the DMS), got {body['document_count']!r} - the workspace route is likely still reading case.document_ids"
         )
 
     def test_member_count_uses_membership_store(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         """member_count must come from the MembershipStore, not
         from case.members (which is always empty).
@@ -568,7 +577,8 @@ class TestWorkspaceSummaryCountsReal:
         app.dependency_overrides[get_case_store] = lambda: case_store
         app.dependency_overrides[get_membership_store] = lambda: membership_store
         monkeypatch.setattr(
-            "backend.api.routers.workspace.settings.enable_case_space", True,
+            "backend.api.routers.workspace.settings.enable_case_space",
+            True,
         )
 
         with TestClient(app) as tc:
@@ -581,8 +591,7 @@ class TestWorkspaceSummaryCountsReal:
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["member_count"] == 3, (
-            f"expected 3 members (from MembershipStore), got {body['member_count']!r} "
-            "- the workspace route is likely still reading case.members"
+            f"expected 3 members (from MembershipStore), got {body['member_count']!r} - the workspace route is likely still reading case.members"
         )
 
 
@@ -602,6 +611,7 @@ class TestWorkspaceSummaryDebateCountUnion:
     def _seed_debate_in_store(self, data_dir, debate_id, **overrides):
         """Persist a debate JSON file in the given store data dir."""
         from backend.persistence.debate_store import DebateStore
+
         store = DebateStore(data_dir=data_dir)
         payload = {
             "debate_id": debate_id,
@@ -619,7 +629,9 @@ class TestWorkspaceSummaryDebateCountUnion:
         store.put(debate_id, payload)
 
     def test_debate_count_unions_case_and_project_scoped_stores(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
@@ -642,6 +654,7 @@ class TestWorkspaceSummaryDebateCountUnion:
         legacy_store = DebateStore(data_dir=project_debates_dir)
 
         from backend.api import deps as deps_module
+
         monkeypatch.setattr(
             deps_module,
             "get_debate_store_for_case",
@@ -656,7 +669,8 @@ class TestWorkspaceSummaryDebateCountUnion:
         app.dependency_overrides[get_active_tenant] = _active_tenant
         app.dependency_overrides[get_case_store] = lambda: case_store
         monkeypatch.setattr(
-            "backend.api.routers.workspace.settings.enable_case_space", True,
+            "backend.api.routers.workspace.settings.enable_case_space",
+            True,
         )
 
         with TestClient(app) as tc:
@@ -669,12 +683,12 @@ class TestWorkspaceSummaryDebateCountUnion:
         assert response.status_code == 200, response.text
         body = response.json()
         count = body["debate_count"]
-        assert count == 7, (
-            f"expected 7 (2 case + 5 project), got {count!r}"
-        )
+        assert count == 7, f"expected 7 (2 case + 5 project), got {count!r}"
 
     def test_debate_count_only_case_scoped_when_no_legacy_debates(
-        self, tmp_path, monkeypatch,
+        self,
+        tmp_path,
+        monkeypatch,
     ):
         from fastapi import FastAPI, Header
         from fastapi.testclient import TestClient
@@ -694,6 +708,7 @@ class TestWorkspaceSummaryDebateCountUnion:
         )
 
         from backend.api import deps as deps_module
+
         monkeypatch.setattr(
             deps_module,
             "get_debate_store_for_case",
@@ -708,7 +723,8 @@ class TestWorkspaceSummaryDebateCountUnion:
         app.dependency_overrides[get_active_tenant] = _active_tenant
         app.dependency_overrides[get_case_store] = lambda: case_store
         monkeypatch.setattr(
-            "backend.api.routers.workspace.settings.enable_case_space", True,
+            "backend.api.routers.workspace.settings.enable_case_space",
+            True,
         )
 
         with TestClient(app) as tc:

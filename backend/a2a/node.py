@@ -115,8 +115,7 @@ async def run_a2a_agent_node(state: dict) -> dict:
                     prompt=f"[A2A Fallback] Context: {context}\nRole: {role}",
                 )
 
-
-                fallback_service.set_context('A2A Fallback')
+                fallback_service.set_context("A2A Fallback")
 
                 fallback_service.set_session_id("")
                 content = fallback_result.content

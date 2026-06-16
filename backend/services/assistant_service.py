@@ -412,8 +412,8 @@ class AssistantService:
                     profile_id=selected_profile,
                     profile_service=self._profile_service,
                 )
-                llm_service.set_context('Assistant')
-                llm_service.set_session_id(getattr(session, 'id', ''))
+                llm_service.set_context("Assistant")
+                llm_service.set_session_id(getattr(session, "id", ""))
 
                 result = await llm_service.generate(
                     prompt=current_message if iteration == 0 else "",

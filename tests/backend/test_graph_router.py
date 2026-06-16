@@ -282,9 +282,8 @@ def test_edges_validation_422(client: TestClient, enabled: None) -> None:
 
 # ─── Phase 2.8: tag-id -> name resolution (TagStore lookup) ─────
 
-def test_global_graph_resolves_tag_ids_to_names(
-    client: TestClient, enabled: None, monkeypatch
-) -> None:
+
+def test_global_graph_resolves_tag_ids_to_names(client: TestClient, enabled: None, monkeypatch) -> None:
     """The graph endpoints store tag IDs (UUIDs) in case.tags and
     must resolve them to the human-readable tag name before
     sending them to the BrowseView.  Without this, the
@@ -326,9 +325,7 @@ def test_global_graph_resolves_tag_ids_to_names(
     case_store.list_by_tenant.return_value = [case_obj]
     app.dependency_overrides[get_case_store] = lambda: case_store
     try:
-        r = client.get(
-            "/api/v1/graph/global?tenant_id=t-fake&limit=10"
-        )
+        r = client.get("/api/v1/graph/global?tenant_id=t-fake&limit=10")
     finally:
         app.dependency_overrides = {}
     assert r.status_code == 200

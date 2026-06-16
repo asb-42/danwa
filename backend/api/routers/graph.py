@@ -75,6 +75,7 @@ def _resolve_tag_name(tenant_id: str, tag_id: str) -> str:
     fallback_key = f"{tenant_id}::{tag_id}"
     try:
         from backend.persistence.tag_store import TagStore
+
         store = TagStore()
         tags = store._load_tenant(tenant_id)  # noqa: SLF001
         name = tags.get(tag_id)
@@ -86,7 +87,6 @@ def _resolve_tag_name(tenant_id: str, tag_id: str) -> str:
         # raw id so the UI still renders.
         pass
     return _TAG_NAME_FALLBACK.get(fallback_key, tag_id)
-
 
 
 def _require_graph() -> None:

@@ -194,7 +194,7 @@ Respond with ONLY a valid JSON object:
                 profile_id=self._llm_profile_id,
                 profile_service=self._profile_service,
             )
-            self._llm_service.set_context('Translation')
+            self._llm_service.set_context("Translation")
             self._llm_service.set_session_id(self._session_id)
         return self._llm_service
 

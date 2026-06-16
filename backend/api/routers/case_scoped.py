@@ -730,7 +730,6 @@ def _get_dms_for_case(tenant_id: str, case_id: str, case_store: CaseStore):
         return dms
 
 
-
 def _case_scope_id(tenant_id: str, case_id: str) -> str:
     """Return the synthetic DMS project_id for a (tenant, case) pair.
 
@@ -739,6 +738,7 @@ def _case_scope_id(tenant_id: str, case_id: str) -> str:
     here so the read-paths cannot drift from the write-path.
     """
     return f"case:{tenant_id}:{case_id}"
+
 
 @router.get("/tenants/{tenant_id}/cases/{case_id}/dms/documents")
 def list_case_documents(

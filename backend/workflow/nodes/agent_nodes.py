@@ -381,8 +381,8 @@ def agent_node_factory(
                 profile_service=_get_profile_service(),
             )
 
-            _peek_svc.set_context('Agent (peek)')
-            _peek_svc.set_session_id(state.get('session_id', ''))
+            _peek_svc.set_context("Agent (peek)")
+            _peek_svc.set_session_id(state.get("session_id", ""))
             llm_model = getattr(_peek_svc.profile, "model", "") if _peek_svc.profile else ""
             llm_provider = str(getattr(_peek_svc.profile, "provider", "")) if _peek_svc.profile else ""
         except Exception:
@@ -414,7 +414,7 @@ def agent_node_factory(
             # role is resolved from the workflow config and the
             # node_type ('wf-strategist' -> 'strategist').
             llm_service.set_context(f"Agent ({role})")
-            llm_service.set_session_id(state.get('session_id', ''))
+            llm_service.set_session_id(state.get("session_id", ""))
             gen_result = await llm_service.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,

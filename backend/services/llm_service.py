@@ -406,7 +406,7 @@ class LLMService:
             from_profile = self._profile.id
             logger.warning("A2A failed for profile %s, falling back to %s", from_profile, fallback_id)
             fallback_service = LLMService(profile_id=fallback_id, profile_service=self._profile_service)
-            fallback_service.set_context('Fallback')
+            fallback_service.set_context("Fallback")
             fallback_service.set_session_id(self._session_id)
             # T-3: Notify caller about fallback so it can emit an SSE event
             if on_fallback is not None:

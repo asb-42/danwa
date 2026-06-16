@@ -190,9 +190,10 @@ def get_workspace_summary(
     case_tenant = getattr(case, "tenant_id", None)
     if case_tenant and case_tenant != tenant_id:
         logger.warning(
-            "workspace/summary: case %s belongs to tenant %s but caller "
-            "is in tenant %s — refusing to render",
-            case_id, case_tenant, tenant_id,
+            "workspace/summary: case %s belongs to tenant %s but caller is in tenant %s — refusing to render",
+            case_id,
+            case_tenant,
+            tenant_id,
         )
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
@@ -218,6 +219,7 @@ def get_workspace_summary(
     # the summary endpoint, just report 0.
     try:
         from backend.api.routers.case_scoped import _get_dms_for_case
+
         dms = _get_dms_for_case(tenant_id, case_id, case_store)
         document_count = len(dms.list_documents(f"case:{tenant_id}:{case_id}"))
     except Exception:  # noqa: BLE001
@@ -232,12 +234,14 @@ def get_workspace_summary(
     # best-effort: a broken store must never 500 the endpoint.
     try:
         from backend.api.routers.case_scoped import _get_debate_store_for_case
+
         case_debate_store = _get_debate_store_for_case(tenant_id, case_id, case_store)
         case_debates = case_debate_store.list_all(limit=500) or []
     except Exception:  # noqa: BLE001
         case_debates = []
     try:
         from backend.api.deps import get_debate_store_for_case
+
         project_debate_store = get_debate_store_for_case(case_id)
         project_debates = project_debate_store.list_all(limit=500) or []
     except Exception:  # noqa: BLE001
@@ -270,10 +274,7 @@ def get_workspace_summary(
         # render "Science" instead of the UUID.  Falls back to
         # the raw id when the tag has been deleted since the
         # case was tagged.
-        tag_names=[
-            _resolve_tag_name(case.tenant_id, t)
-            for t in (getattr(case, "tags", []) or [])
-        ],
+        tag_names=[_resolve_tag_name(case.tenant_id, t) for t in (getattr(case, "tags", []) or [])],
         members=list(getattr(case, "members", []) or []),
         member_count=member_count,
         debate_count=debate_count,

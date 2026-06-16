@@ -111,11 +111,7 @@ class DMSDB:
         Idempotent: subsequent invocations are a no-op.
         """
         try:
-            self.conn.execute(
-                "CREATE TABLE IF NOT EXISTS schema_meta ("
-                "  key TEXT PRIMARY KEY, value TEXT NOT NULL"
-                ")"
-            )
+            self.conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (  key TEXT PRIMARY KEY, value TEXT NOT NULL)")
             done = self.conn.execute(
                 "SELECT value FROM schema_meta WHERE key = ?",
                 ("drop_documents_project_fk",),
@@ -126,29 +122,20 @@ class DMSDB:
             # Detect the FK by inspecting the table SQL. Only
             # proceed to recreate when the legacy constraint is
             # still present -- otherwise the migration is a no-op.
-            row = self.conn.execute(
-                "SELECT sql FROM sqlite_master "
-                "WHERE type = 'table' AND name = 'documents'"
-            ).fetchone()
+            row = self.conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'documents'").fetchone()
             table_sql = row["sql"] if row else ""
             if "REFERENCES projects(id)" not in (table_sql or ""):
                 self.conn.execute(
-                    "INSERT OR REPLACE INTO schema_meta (key, value) "
-                    "VALUES (?, ?)",
+                    "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
                     ("drop_documents_project_fk", "1"),
                 )
                 self.conn.commit()
                 return
 
-            logger.info(
-                "Migrating DMS documents table: dropping obsolete "
-                "FOREIGN KEY(project_id) REFERENCES projects(id)"
-            )
+            logger.info("Migrating DMS documents table: dropping obsolete FOREIGN KEY(project_id) REFERENCES projects(id)")
             self.conn.execute("PRAGMA foreign_keys = OFF")
             try:
-                self.conn.execute(
-                    "ALTER TABLE documents RENAME TO documents__legacy_fk"
-                )
+                self.conn.execute("ALTER TABLE documents RENAME TO documents__legacy_fk")
                 self.conn.execute(
                     """
                     CREATE TABLE documents (
@@ -169,13 +156,10 @@ class DMSDB:
                     )
                     """
                 )
-                self.conn.execute(
-                    "INSERT INTO documents SELECT * FROM documents__legacy_fk"
-                )
+                self.conn.execute("INSERT INTO documents SELECT * FROM documents__legacy_fk")
                 self.conn.execute("DROP TABLE documents__legacy_fk")
                 self.conn.execute(
-                    "INSERT OR REPLACE INTO schema_meta (key, value) "
-                    "VALUES (?, ?)",
+                    "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
                     ("drop_documents_project_fk", "1"),
                 )
                 self.conn.commit()
@@ -191,7 +175,6 @@ class DMSDB:
                 "until the migration succeeds.",
                 exc,
             )
-
 
     def _drop_chunks_document_fk(self) -> None:
         """Recreate document_chunks without the obsolete FK.
@@ -221,33 +204,21 @@ class DMSDB:
             if done and done["value"] == "1":
                 return
 
-            row = self.conn.execute(
-                "SELECT sql FROM sqlite_master "
-                "WHERE type = 'table' AND name = 'document_chunks'"
-            ).fetchone()
+            row = self.conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_chunks'").fetchone()
             table_sql = row["sql"] if row else ""
-            needs_fix = (
-                "documents__legacy_fk" in (table_sql or "")
-                or "FOREIGN KEY(document_id) REFERENCES documents(id)" in (table_sql or "")
-            )
+            needs_fix = "documents__legacy_fk" in (table_sql or "") or "FOREIGN KEY(document_id) REFERENCES documents(id)" in (table_sql or "")
             if not needs_fix:
                 self.conn.execute(
-                    "INSERT OR REPLACE INTO schema_meta (key, value) "
-                    "VALUES (?, ?)",
+                    "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
                     (sentinel_key, "1"),
                 )
                 self.conn.commit()
                 return
 
-            logger.info(
-                "Migrating DMS document_chunks table: dropping obsolete "
-                "FOREIGN KEY(document_id) -> documents"
-            )
+            logger.info("Migrating DMS document_chunks table: dropping obsolete FOREIGN KEY(document_id) -> documents")
             self.conn.execute("PRAGMA foreign_keys = OFF")
             try:
-                self.conn.execute(
-                    "ALTER TABLE document_chunks RENAME TO document_chunks__legacy_fk"
-                )
+                self.conn.execute("ALTER TABLE document_chunks RENAME TO document_chunks__legacy_fk")
                 self.conn.execute(
                     """
                     CREATE TABLE document_chunks (
@@ -261,13 +232,10 @@ class DMSDB:
                     )
                     """
                 )
-                self.conn.execute(
-                    "INSERT INTO document_chunks SELECT * FROM document_chunks__legacy_fk"
-                )
+                self.conn.execute("INSERT INTO document_chunks SELECT * FROM document_chunks__legacy_fk")
                 self.conn.execute("DROP TABLE document_chunks__legacy_fk")
                 self.conn.execute(
-                    "INSERT OR REPLACE INTO schema_meta (key, value) "
-                    "VALUES (?, ?)",
+                    "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, ?)",
                     (sentinel_key, "1"),
                 )
                 self.conn.commit()
