@@ -75,3 +75,109 @@ Das ist **defence in depth**: auch wenn ein Store-Bug durchrutscht, wird der Cas
 - [`frontend/src/lib/stores/workspaceStore.svelte.js`](../../frontend/src/lib/stores/workspaceStore.svelte.js) — `restoreLastWorkspace` validiert
 - [`plans/2026-06-15_danwa-studio.md`](2026-06-15_danwa-studio.md) — übergeordneter Split-Plan
 - [`plans/2026-06-16_tenant-dropdown-workaround.md`](2026-06-16_tenant-dropdown-workaround.md) — verwandter Admin/Membership-Bug
+
+---
+
+## Spätere Befunde (gleiche Symptom-Familie)
+
+Während der Verifikation des ursprünglichen Fixes tauchten
+weitere Bugs auf, die zusammen mit dem Cross-Tenant-Leak
+sichtbar wurden. Sie wurden im selben Sprint behoben:
+
+### Bug A — Cross-Tenant-Backfill (commit df0ba69)
+
+**Symptom:** Die UserStore-Migration aus Commit b6a9c61
+kopierte den Legacy-Wert aus `users.last_workspace` per
+One-Shot-Backfill in die neue `user_last_workspace`-Tabelle
+unter dem `tenant_id` des Users.  Bei einem User mit
+mehreren Memberships wurde der Case damit potentiell dem
+falschen Tenant zugeordnet.
+
+**Fix:** Backfill-Block komplett entfernt.  Legacy-Spalte
+bleibt nur als Lese-Cache für den Backward-Compat-Pfad
+(`get_last_workspace(tenant_id=None)`).
+
+**Tests:** `test_no_silent_backfill_from_legacy_column` — ein
+echter Pre-Migration-DB-Lifecycle (write legacy value, close,
+reopen) wird durchgespielt.
+
+### Bug D — Counts-Logik mit Cross-Tenant-Filesystem-Scan (commit b8779ab)
+
+**Symptom:** Workspace zeigte Debates=0 / Documents=0 für
+Cases, die nachweislich Diskussionen hatten.  Du hast in
+einer Anmerkung darauf hingewiesen, dass deine Cases nicht
+leer seien — das war die entscheidende Beobachtung.
+
+**Ursache:** `get_workspace_summary` rief
+`backend.api.deps.get_debate_store_for_case(case.id)` auf.
+Dieser Helper hat einen **Cross-Tenant-Filesystem-Scan**
+als Fallback, der im falschen Tenant-Verzeichnis landet
+(und im schlimmsten Fall Debates aus einem anderen Tenant
+als Counts für den aktuellen Tenant meldet).
+
+**Fix:** `get_workspace_summary` benutzt jetzt
+`case_scoped._get_debate_store_for_case(tenant_id, case_id,
+case_store)` — der tenant-scoped Helper, der den Case-Dir
+über `case_store.get_case_dir(tenant_id, case_id)` auflöst
+(gleicher Pfad, den der Debate-Erstellungs-Endpunkt
+schreibt).
+
+**Tests:** `TestWorkspaceSummaryDebateCountTenantScoped` (2
+Tests) — gleicher Case in zwei Tenants mit verschiedenen
+Counts;  Cross-Tenant-Leak wird verhindert.
+
+### Bug C — URL/Prop wird von async restore überschrieben (commit f5d5ec5)
+
+**Symptom:** Wenn WorkspaceView mountet, ruft sie
+`restoreLastWorkspace()` als async Promise auf.  Parallel
+schon gesetzter `activeCaseId` (über URL `?case=…` oder
+`initialCaseId`-Prop) wurde durch den Backend-Wert
+überschrieben — Race Condition.
+
+**Fix:** `restoreLastWorkspace()` ruft `setActiveCase()` nur
+dann auf, wenn `_state.activeCaseId === null` ist.  URL/Prop
+haben Vorrang; Backend-Wert ist nur Fallback.
+
+**Tests:** 5 neue Tests in
+`TestRestoreLastWorkspaceBugCtenantValidation` — happy path,
+cross-tenant 404, URL-Precedence, kein Tenant, defensives
+Cleanup.
+
+### Bug B — Header-CaseSelector vs. WorkspaceStore-Desync (commit 7459d09)
+
+**Symptom:** Header-CaseSelector und Workspace benutzten
+zwei unabhängige Stores.  User pickte "S 201…" im Header,
+Workspace zeigte weiter "hkk".
+
+**Fix:**
+1. Neuer Helper `workspaceStore.syncFromActiveCase(sourceStore)`
+liest den aktuellen Wert eines Svelte-Stores und ruft
+`setActiveCase()` nur bei Differenz auf.  Null/undefined
+werden ignoriert, damit Header-Deselection den Workspace
+nicht wischt.
+2. `WorkspaceView` hat jetzt einen `$effect`, der den Helper
+bei jedem Tick des globalen `activeCase`-Stores aufruft.
+
+**Tests:** 4 neue Tests in
+`TestSyncFromActiveCaseBugBHeaderWorkspaceSync` — happy
+path, gleicher Wert (kein Clobber), Null-Wert, undefinierter
+Store.
+
+## Gesamt-Test-Lage
+
+| Testset | Status |
+|---------|--------|
+| `test_workspace_router.py` (Backend) | 8/10 grün (2 pre-existing failures, nicht durch Fix verursacht) |
+| `test_case_scoped_router.py` (Backend) | 55/55 grün |
+| `test_last_workspace_tenant_scoping.py` (Backend) | 13/13 grün |
+| `workspaceStore.test.js` (Frontend) | 24/24 grün + 1 todo |
+| Volle Frontend-Suite | 309/310 grün (1 unhandled error in workflow/layout.test.js — pre-existing crypto.randomUUID() in Node-Env) |
+
+## Manuelle Verifikation (Browser)
+
+1. Backend + Frontend neu starten.
+2. Tenant "Default" → Cases → "S 201…" wählen → "Open in Workspace".
+3. Erwartet: Workspace zeigt "S 201…" mit korrekten Counts
+   (Debates, Documents, Members > 0 wenn aktiv).
+4. Tenant-Wechsel: A → B → A → Workspace rendert jeweils
+   den richtigen Case, kein Cross-Tenant-Leak.
