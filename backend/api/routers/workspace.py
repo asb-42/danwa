@@ -152,7 +152,7 @@ def _collect_recent_audit_events(tenant_id: str, case_id: str, limit: int = 5) -
 def get_workspace_summary(
     case_id: str = Query(..., min_length=1),
     tenant_id: str = Depends(get_active_tenant),
-    store=Depends(get_case_store),
+    case_store=Depends(get_case_store),
 ) -> WorkspaceSummary:
     """Return a case-scoped summary suitable for the Workspace view.
 
@@ -169,7 +169,7 @@ def get_workspace_summary(
     # once the feature flag was on.  We now resolve the active
     # tenant via get_active_tenant (which honours the
     # X-Tenant-Id header) and pass it explicitly.
-    case = store.get(tenant_id, case_id)
+    case = case_store.get(tenant_id, case_id)
     if case is None:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
@@ -199,9 +199,19 @@ def get_workspace_summary(
     # 3" or "Documents: 0" without paging.  Documents are
     # currently per-project, not per-case (DMS scope) — we
     # default to 0 unless the case object exposes a count.
+    #
+    # 2026-06-16 Bug D: we previously called the legacy
+    # ``get_debate_store_for_case(case.id)`` which does a
+    # cross-tenant filesystem walk and finds the wrong
+    # tenant's debate dir, so every case reported 0 debates
+    # (and worse: could leak debates across tenants).
+    # We now use the tenant-scoped helper from ``case_scoped``,
+    # which resolves the case dir via ``case_store.get_case_dir
+    # (tenant_id, case_id)`` — the same path the debate-creation
+    # route writes to.
     try:
-        from backend.api.deps import get_debate_store_for_case
-        debate_store = get_debate_store_for_case(case.id)
+        from backend.api.routers.case_scoped import _get_debate_store_for_case
+        debate_store = _get_debate_store_for_case(tenant_id, case_id, case_store)
         all_debates = debate_store.list_all(limit=500) or []
         debate_count = len(all_debates)
     except Exception:  # noqa: BLE001

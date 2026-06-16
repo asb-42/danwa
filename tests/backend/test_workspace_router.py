@@ -266,3 +266,166 @@ def test_search_handles_store_failure_gracefully(client: TestClient, enabled: No
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Bug D (2026-06-16) — workspace/summary must use the tenant-scoped debate
+# store, not the legacy project-scoped one with cross-tenant filesystem scan.
+# ---------------------------------------------------------------------------
+#
+# The pre-fix route called ``get_debate_store_for_case(case.id)`` which
+# searches the project store first, then walks every tenant dir looking
+# for ``<case_id>`` and uses the first match.  This led to two symptoms:
+#
+#   1. Cases in a non-default tenant got ``debate_count = 0`` because
+#      the filesystem scan did not find a ``debates/`` subdir under
+#      the wrong tenant.
+#   2. (Worse) Cross-tenant leak: a case with the same id in two
+#      tenants could pick up the other tenant's debate count.
+#
+# These tests build a minimal FastAPI app with a real CaseStore so the
+# tenant-scoped debate directory is the *only* valid path.  They fail
+# with the pre-fix route (``debate_count=0``) and pass once the route
+# is switched to ``_get_debate_store_for_case(tenant, case, store)``.
+
+
+class TestWorkspaceSummaryDebateCountTenantScoped:
+    """Pin down that the summary endpoint counts debates via the
+    tenant-scoped store, not via a cross-tenant filesystem walk.
+    """
+
+    def _seed_debate(self, case_dir, debate_id: str, **overrides) -> None:
+        """Persist a debate JSON file in the case's tenant-scoped debates dir."""
+        import json
+        from backend.persistence.debate_store import DebateStore
+
+        store = DebateStore(data_dir=case_dir / "debates")
+        payload = {
+            "debate_id": debate_id,
+            "status": "completed",
+            "title": overrides.get("title", f"Debate {debate_id}"),
+            "request": {"case": {"text": "Sample", "project_id": None}, "language": "de", "max_rounds": 3},
+            "max_rounds": 3,
+            "current_round": 3,
+            "rounds": [],
+            "result": None,
+            "created_at": "2026-06-16T00:00:00+00:00",
+            "updated_at": "2026-06-16T00:00:00+00:00",
+        }
+        payload.update(overrides)
+        store.put(debate_id, payload)
+
+    def test_summary_counts_debates_in_active_tenant(
+        self, tmp_path, monkeypatch,
+    ):
+        """Two debates under ``data/cases/<tenant>/cases/<case>/debates/``
+        must surface as ``debate_count == 2``.  The pre-fix code used
+        the legacy project-scoped helper and returned 0.
+        """
+        from fastapi import FastAPI, Header
+        from fastapi.testclient import TestClient
+        from backend.api.deps import get_active_tenant, get_case_store
+        from backend.api.routers.workspace import router as workspace_router
+        from backend.persistence.case_store import CaseStore
+
+        case_store = CaseStore(base_dir=tmp_path / "cases_d")
+        case_store.create("tenant-A", "X", case_id="case-X", description="")
+        case_dir = case_store.get_case_dir("tenant-A", "case-X")
+        self._seed_debate(case_dir, "d-1", title="Alpha")
+        self._seed_debate(case_dir, "d-2", title="Beta")
+
+        def _active_tenant(x_tenant_id: str | None = Header(default=None)) -> str:
+            return x_tenant_id or "tenant-A"
+
+        app = FastAPI()
+        app.include_router(workspace_router, prefix="/api/v1")
+        app.dependency_overrides[get_active_tenant] = _active_tenant
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        monkeypatch.setattr(
+            "backend.api.routers.workspace.settings.enable_case_space", True,
+        )
+
+        with TestClient(app) as tc:
+            response = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "case-X"},
+                headers={"X-Tenant-Id": "tenant-A"},
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["case_id"] == "case-X"
+        # The pre-fix code returned 0 because the legacy filesystem
+        # scan did not find the tenant-scoped debates/ dir.  After
+        # the fix the count must reflect the seeded debates.
+        assert body["debate_count"] == 2, (
+            f"expected debate_count=2, got {body['debate_count']!r} \u2014 "
+            "the workspace route is likely still using the legacy "
+            "project-scoped debate store"
+        )
+
+    def test_summary_does_not_count_debates_from_other_tenant(
+        self, tmp_path, monkeypatch,
+    ):
+        """Same case_id in two tenants; only the active tenant's
+        debates must be counted.  Pre-fix code's filesystem walk
+        would return whichever tenant's ``case_dir`` it found first.
+        """
+        from fastapi import FastAPI, Header
+        from fastapi.testclient import TestClient
+        from backend.api.deps import get_active_tenant, get_case_store
+        from backend.api.routers.workspace import router as workspace_router
+        from backend.persistence.case_store import CaseStore
+
+        case_store = CaseStore(base_dir=tmp_path / "cases_dx")
+        case_store.create("tenant-A", "A's case", case_id="shared", description="")
+        case_store.create("tenant-B", "B's case", case_id="shared", description="")
+
+        # Tenant A: 3 debates.
+        for i in range(3):
+            self._seed_debate(
+                case_store.get_case_dir("tenant-A", "shared"),
+                f"a-{i}", title=f"A debate {i}",
+            )
+        # Tenant B: 1 debate.
+        self._seed_debate(
+            case_store.get_case_dir("tenant-B", "shared"),
+            "b-0", title="B debate 0",
+        )
+
+        def _active_tenant(x_tenant_id: str | None = Header(default=None)) -> str:
+            return x_tenant_id or "tenant-A"
+
+        app = FastAPI()
+        app.include_router(workspace_router, prefix="/api/v1")
+        app.dependency_overrides[get_active_tenant] = _active_tenant
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        monkeypatch.setattr(
+            "backend.api.routers.workspace.settings.enable_case_space", True,
+        )
+
+        with TestClient(app) as tc:
+            # Caller is in tenant-A: must see exactly 3 (NOT 1, not 4).
+            response_a = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "shared"},
+                headers={"X-Tenant-Id": "tenant-A"},
+            )
+            # Caller is in tenant-B: must see exactly 1.
+            response_b = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "shared"},
+                headers={"X-Tenant-Id": "tenant-B"},
+            )
+
+        assert response_a.status_code == 200, response_a.text
+        assert response_a.json()["debate_count"] == 3, (
+            f"tenant-A: expected 3, got {response_a.json()['debate_count']!r}"
+        )
+        assert response_b.status_code == 200, response_b.text
+        assert response_b.json()["debate_count"] == 1, (
+            f"tenant-B: expected 1, got {response_b.json()['debate_count']!r}"
+        )
+        assert response_b.json()["title"] == "B's case", (
+            "tenant-B must see B's case title, not A's"
+        )
