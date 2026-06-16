@@ -28,6 +28,20 @@
   let isSaving = $state(false);
   let tagInput = $state('');
 
+  // Provider-specific default base URLs. Applied when the user picks a
+  // provider whose endpoint is fixed (e.g. TokenRouter). Users can still
+  // override the field manually; we only fill in an empty value.
+  const PROVIDER_DEFAULT_API_BASE = {
+    tokenrouter: 'https://api.tokenrouter.com/v1',
+  };
+  $effect(() => {
+    if (type !== 'llm') return;
+    const defaultBase = PROVIDER_DEFAULT_API_BASE[formData.provider];
+    if (defaultBase && !formData.api_base) {
+      formData.api_base = defaultBase;
+    }
+  });
+
   /** Auto-generate a unique LLM profile ID from provider + model. */
   function generateLLMId() {
     const p = (formData.provider || 'llm').replace(/[^a-z0-9]/g, '');
@@ -203,6 +217,7 @@
                 <option value="opencode-go">Opencode Go</option>
                 <option value="xiaomi">Xiaomi</option>
                 <option value="cloudflare">Cloudflare Workers AI</option>
+                <option value="tokenrouter">TokenRouter</option>
                 <option value="local">Local</option>
               </select>
             </div>
@@ -227,7 +242,7 @@
               <input id="form-apibase" type="text" bind:value={formData.api_base}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="http://localhost:11434/v1"
+                placeholder="https://api.tokenrouter.com/v1"
               />
             </div>
 

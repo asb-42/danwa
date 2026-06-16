@@ -561,6 +561,8 @@ class UITranslationService:
             if llm_profile_id is None:
                 llm_profile_id = self._select_llm_for_locale(target_locale, ps)
             llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
+            llm.set_context('UI i18n')
+            llm.set_session_id("")
 
         # Build context-aware system prompt
         # Detect key type for better context hints
@@ -721,7 +723,8 @@ class UITranslationService:
                 if not llm_profile_id:
                     llm_profile_id = self._select_llm_for_locale(target_locales[0], ps)
                 llm = LLMService(profile_id=llm_profile_id, profile_service=ps)
-
+                llm.set_context('UI i18n')
+                llm.set_session_id("")
                 all_keys = self.get_all_keys(namespace)
                 bundled = self._scan_bundled_loaders()
                 total = 0
@@ -784,6 +787,7 @@ class UITranslationService:
                                         f"Translated {translated_count} of {len(missing)} strings. "
                                         f"Try again later or use a different LLM profile."
                                     )
+
                                     job.status = "failed"
                                     logger.error("Translation aborted for %s: rate limit exceeded", locale)
                                     break

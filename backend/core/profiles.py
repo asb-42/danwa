@@ -25,6 +25,7 @@ class LLMProvider(StrEnum):
     XIAOMI = "xiaomi"
     DEEPSEEK = "deepseek"
     CLOUDFLARE = "cloudflare"
+    TOKENROUTER = "tokenrouter"
 
 
 class LLMProfile(BaseModel):
@@ -69,7 +70,7 @@ class LLMProfile(BaseModel):
     @field_validator("max_tokens")
     @classmethod
     def validate_max_tokens(cls, v: int) -> int:
-        """Validate max tokens."""
+        """Validate max_tokens."""
         if v < 1:
             raise ValueError("max_tokens must be at least 1")
         return v

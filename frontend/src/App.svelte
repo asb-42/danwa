@@ -11,7 +11,6 @@
   import ToastContainer from './components/ToastContainer.svelte';
   import StatusBar from './components/feedback/StatusBar.svelte';
   import ErrorPanel from './components/feedback/ErrorPanel.svelte';
-  import ActivityLogPanel from './components/feedback/ActivityLogPanel.svelte';
 
   // Register toast callback for i18n fallback warnings
   setToastCallback(addToast);
@@ -175,6 +174,5 @@
   <StatusBar />
   <ErrorPanel />
   <ToastContainer />
-  <ActivityLogPanel />
 </Layout>
 {/if}

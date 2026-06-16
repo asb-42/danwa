@@ -53,12 +53,19 @@ class DMSDB:
                 uploaded_at TEXT,
                 updated_at TEXT,
                 ocr_used INTEGER DEFAULT 0,
-                metadata_json TEXT,
-                FOREIGN KEY(project_id) REFERENCES projects(id)
+                metadata_json TEXT
             )
         """)
         # Migrate existing databases: add columns if missing
         self._migrate_documents_table()
+        # Drop the obsolete FK on documents.project_id -- see
+        # _drop_documents_project_fk for the rationale.
+        self._drop_documents_project_fk()
+        # Same dance for the FK on document_chunks.document_id,
+        # which after the previous migration can point to a
+        # dropped table ("documents__legacy_fk") and therefore
+        # breaks every chunk insert.  See _drop_chunks_document_fk.
+        self._drop_chunks_document_fk()
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS document_chunks (
                 id TEXT PRIMARY KEY,
@@ -67,8 +74,7 @@ class DMSDB:
                 text TEXT,
                 embedding_id TEXT,
                 page INTEGER,
-                metadata_json TEXT,
-                FOREIGN KEY(document_id) REFERENCES documents(id)
+                metadata_json TEXT
             )
         """)
         self.conn.execute("""
@@ -91,6 +97,192 @@ class DMSDB:
             self.conn.execute("ALTER TABLE documents ADD COLUMN file_size INTEGER DEFAULT 0")
         if "updated_at" not in existing_cols:
             self.conn.execute("ALTER TABLE documents ADD COLUMN updated_at TEXT")
+
+    def _drop_documents_project_fk(self) -> None:
+        """Recreate the documents table without the obsolete FK.
+
+        SQLite does not support ALTER TABLE ... DROP CONSTRAINT, so
+        we use the standard create-new / copy / swap / drop recipe.
+        The copy preserves every column and every row; only the
+        table-level FOREIGN KEY clause is lost.
+
+        The migration is guarded by a sentinel row in a dedicated
+        schema_meta table so it runs at most once per DB.
+        Idempotent: subsequent invocations are a no-op.
+        """
+        try:
+            self.conn.execute(
+                "CREATE TABLE IF NOT EXISTS schema_meta ("
+                "  key TEXT PRIMARY KEY, value TEXT NOT NULL"
+                ")"
+            )
+            done = self.conn.execute(
+                "SELECT value FROM schema_meta WHERE key = ?",
+                ("drop_documents_project_fk",),
+            ).fetchone()
+            if done and done["value"] == "1":
+                return
+
+            # Detect the FK by inspecting the table SQL. Only
+            # proceed to recreate when the legacy constraint is
+            # still present -- otherwise the migration is a no-op.
+            row = self.conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'documents'"
+            ).fetchone()
+            table_sql = row["sql"] if row else ""
+            if "REFERENCES projects(id)" not in (table_sql or ""):
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO schema_meta (key, value) "
+                    "VALUES (?, ?)",
+                    ("drop_documents_project_fk", "1"),
+                )
+                self.conn.commit()
+                return
+
+            logger.info(
+                "Migrating DMS documents table: dropping obsolete "
+                "FOREIGN KEY(project_id) REFERENCES projects(id)"
+            )
+            self.conn.execute("PRAGMA foreign_keys = OFF")
+            try:
+                self.conn.execute(
+                    "ALTER TABLE documents RENAME TO documents__legacy_fk"
+                )
+                self.conn.execute(
+                    """
+                    CREATE TABLE documents (
+                        id TEXT PRIMARY KEY,
+                        project_id TEXT NOT NULL,
+                        filename TEXT,
+                        original_filename TEXT,
+                        file_path TEXT,
+                        file_type TEXT,
+                        file_size INTEGER DEFAULT 0,
+                        page_count INTEGER,
+                        word_count INTEGER,
+                        char_count INTEGER,
+                        uploaded_at TEXT,
+                        updated_at TEXT,
+                        ocr_used INTEGER DEFAULT 0,
+                        metadata_json TEXT
+                    )
+                    """
+                )
+                self.conn.execute(
+                    "INSERT INTO documents SELECT * FROM documents__legacy_fk"
+                )
+                self.conn.execute("DROP TABLE documents__legacy_fk")
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO schema_meta (key, value) "
+                    "VALUES (?, ?)",
+                    ("drop_documents_project_fk", "1"),
+                )
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
+            finally:
+                self.conn.execute("PRAGMA foreign_keys = ON")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Could not drop obsolete documents.project_id FK: %s. "
+                "Existing DMS databases may continue to reject uploads "
+                "until the migration succeeds.",
+                exc,
+            )
+
+
+    def _drop_chunks_document_fk(self) -> None:
+        """Recreate document_chunks without the obsolete FK.
+
+        SQLite's ALTER TABLE RENAME does NOT update FK references
+        in other tables.  After ``_drop_documents_project_fk``
+        renames and re-creates ``documents`` (and drops the
+        ``documents__legacy_fk`` alias), any pre-existing FK in
+        ``document_chunks`` that referenced the old name is now
+        dangling -- the table does not exist -- and every chunk
+        insert fails with ``no such table: main.documents__legacy_fk``.
+
+        The fix mirrors the documents migration: detect the
+        dangling FK by inspecting the table SQL; if it references
+        the legacy alias (or any name other than the current
+        ``documents``), recreate the table without the FK.  The
+        copy preserves every column and every row.
+
+        Idempotent via the same ``schema_meta`` sentinel table.
+        """
+        try:
+            sentinel_key = "drop_chunks_document_fk"
+            done = self.conn.execute(
+                "SELECT value FROM schema_meta WHERE key = ?",
+                (sentinel_key,),
+            ).fetchone()
+            if done and done["value"] == "1":
+                return
+
+            row = self.conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'document_chunks'"
+            ).fetchone()
+            table_sql = row["sql"] if row else ""
+            needs_fix = (
+                "documents__legacy_fk" in (table_sql or "")
+                or "FOREIGN KEY(document_id) REFERENCES documents(id)" in (table_sql or "")
+            )
+            if not needs_fix:
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO schema_meta (key, value) "
+                    "VALUES (?, ?)",
+                    (sentinel_key, "1"),
+                )
+                self.conn.commit()
+                return
+
+            logger.info(
+                "Migrating DMS document_chunks table: dropping obsolete "
+                "FOREIGN KEY(document_id) -> documents"
+            )
+            self.conn.execute("PRAGMA foreign_keys = OFF")
+            try:
+                self.conn.execute(
+                    "ALTER TABLE document_chunks RENAME TO document_chunks__legacy_fk"
+                )
+                self.conn.execute(
+                    """
+                    CREATE TABLE document_chunks (
+                        id TEXT PRIMARY KEY,
+                        document_id TEXT NOT NULL,
+                        chunk_index INTEGER,
+                        text TEXT,
+                        embedding_id TEXT,
+                        page INTEGER,
+                        metadata_json TEXT
+                    )
+                    """
+                )
+                self.conn.execute(
+                    "INSERT INTO document_chunks SELECT * FROM document_chunks__legacy_fk"
+                )
+                self.conn.execute("DROP TABLE document_chunks__legacy_fk")
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO schema_meta (key, value) "
+                    "VALUES (?, ?)",
+                    (sentinel_key, "1"),
+                )
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
+            finally:
+                self.conn.execute("PRAGMA foreign_keys = ON")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Could not drop obsolete document_chunks.document_id FK: %s. "
+                "Existing DMS databases may continue to reject chunk inserts "
+                "until the migration succeeds.",
+                exc,
+            )
 
     # -- projects --
 

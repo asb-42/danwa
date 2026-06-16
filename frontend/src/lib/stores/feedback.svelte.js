@@ -66,6 +66,19 @@ class FeedbackStore {
 
   /**
    * Append an entry to the activity log.
+   *
+   * NOTE — DEACTIVATED 2026-06-15:
+   * The ActivityLogPanel UI was removed from App.svelte because the
+   * black bar at the bottom of the viewport showed only low-value
+   * phantom events (e.g. 'Workspace view mounted').  With no
+   * consumer left, the log grew unbounded (capped at 500 entries
+   * via #MAX_LOG_ENTRIES) but never surfaced.  This function is
+   * now a no-op so callers stay intact; the data they would have
+   * sent here should be wired to a more useful surface (e.g. the
+   * Header LLM monitor or the ErrorPanel) once we revisit the
+   * observability story.  See plans/2026-06-15_*.
+   *
+   * Original signature preserved:
    * @param {string} type - Category: 'llm', 'workflow', 'node', 'system', 'error'
    * @param {string} source - Originating component/role (e.g. 'strategist', 'elk', 'sse')
    * @param {string} message - Human-readable message
@@ -73,23 +86,9 @@ class FeedbackStore {
    * @param {'info'|'warn'|'error'} [level='info'] - Severity level
    */
   logActivity(type, source, message, details = undefined, level = 'info') {
-    const entry = {
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      type,
-      source,
-      message,
-      level,
-      ...(this.requestId ? { requestId: this.requestId } : {}),
-    };
-    if (details !== undefined) entry.details = details;
-
-    this.activityLog = [...this.activityLog, entry];
-
-    // Prune old entries
-    if (this.activityLog.length > this.#MAX_LOG_ENTRIES) {
-      this.activityLog = this.activityLog.slice(-this.#MAX_LOG_ENTRIES);
-    }
+    // No-op: the ActivityLogPanel that used to consume this data
+    // was removed.  See JSDoc above for the full context.
+    void type; void source; void message; void details; void level;
   }
 
   /**

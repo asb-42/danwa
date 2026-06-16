@@ -1,3 +1,15 @@
+{#if false}
+<!--
+  DEACTIVATED 2026-06-15: this component is no longer rendered in
+  App.svelte. The activity-log strip at the bottom of the viewport
+  was removed because it surfaced only low-value phantom events
+  (e.g. 'Workspace view mounted'). feedbackStore.logActivity() is
+  now a no-op (see feedback.svelte.js). This file is preserved on
+  disk per user request, wrapped in {#if false} so Svelte parses
+  it but no markup is rendered. Revive by removing the outer
+  {#if false}/{#if false} guards once a more useful display
+  destination is available (e.g. Header LLM monitor or ErrorPanel).
+-->
 <script>
   /**
    * ActivityLogPanel — Collapsible, timestamped activity log.
@@ -184,3 +196,4 @@
     </div>
   {/if}
 </div>
+{/if}

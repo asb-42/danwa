@@ -43,18 +43,44 @@ export function uploadDocument(file) {
   const formData = new FormData();
   formData.append('file', file);
 
+  // Flatten FastAPI error payloads (which put a list of validation
+  // errors in `detail`) into a single human-readable string.  Without
+  // this the user sees `[object Object]` when the backend rejects
+  // an upload for a missing/invalid field.
+  const flattenError = (err, fallback) => {
+    let detail = err?.detail ?? fallback;
+    if (Array.isArray(detail)) {
+      detail = detail
+        .map((e) => {
+          if (typeof e === 'string') return e;
+          if (e && typeof e === 'object') {
+            const loc = Array.isArray(e.loc) ? e.loc.join('.') : '';
+            const msg = e.msg || JSON.stringify(e);
+            return loc ? `${loc}: ${msg}` : msg;
+          }
+          return String(e);
+        })
+        .join('; ');
+    } else if (detail && typeof detail === 'object') {
+      const msg = detail.message || detail.msg || '';
+      const errors = Array.isArray(detail.errors) ? detail.errors.join('; ') : '';
+      detail = msg && errors ? `${msg}: ${errors}` : msg || errors || JSON.stringify(detail);
+    }
+    return typeof detail === 'string' ? detail : fallback;
+  };
+
+  const handleResponse = async (response) => {
+    if (response.ok) return response.json();
+    const error = await response.json().catch(() => ({}));
+    throw new Error(flattenError(error, `HTTP ${response.status}`));
+  };
+
   if (tenantId && caseId) {
     return fetch(`${API_BASE}/api/v1/tenants/${tenantId}/cases/${caseId}/dms/documents`, {
       method: 'POST',
       headers: { 'Accept-Language': 'en' },
       body: formData,
-    }).then(async (response) => {
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-      return response.json();
-    });
+    }).then(handleResponse);
   }
 
   const caseIdHeader = caseId || get(activeCase)?.id;
@@ -65,13 +91,7 @@ export function uploadDocument(file) {
       ...(caseIdHeader ? { 'X-Case-Id': caseIdHeader } : {}),
     },
     body: formData,
-  }).then(async (response) => {
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
-    }
-    return response.json();
-  });
+  }).then(handleResponse);
 }
 
 export function deleteDocument(documentId) {

@@ -317,6 +317,8 @@ def _call_llm(
     """
     llm_profile_id = profile_id or select_service_llm(profile_service)
     llm = LLMService(profile_id=llm_profile_id, profile_service=profile_service)
+    llm.set_context('Doc Analysis')
+    llm.set_session_id("")
 
     result = _generate_with_retry(llm, user_prompt, system_prompt)
     if "error" in result:
@@ -365,6 +367,7 @@ def _generate_with_retry(
                 max_tokens=8192,
                 context="Document Analysis",
             )
+
             return {
                 "content": result.content.strip(),
                 "model": result.model,

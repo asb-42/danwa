@@ -22,9 +22,22 @@
   let error = $state(null);
 
   const protocols = ['litellm', 'a2a'];
-  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'deepseek', 'xiaomi', 'opencode-zen', 'opencode-go', 'cloudflare'];
+  const providers = ['openrouter', 'openai', 'anthropic', 'local', 'ollama', 'deepseek', 'xiaomi', 'opencode-zen', 'opencode-go', 'cloudflare', 'tokenrouter'];
   const profileTypes = ['text', 'tts', 'stt'];
   let discovering = $state(false);
+
+  // Provider-specific default base URLs. Only applied when the user picks
+  // a provider whose endpoint is fixed and the field is currently empty,
+  // so explicit user values are never overwritten.
+  const PROVIDER_DEFAULT_API_BASE = {
+    tokenrouter: 'https://api.tokenrouter.com/v1',
+  };
+  $effect(() => {
+    const defaultBase = PROVIDER_DEFAULT_API_BASE[draft.provider];
+    if (defaultBase && !draft.api_base) {
+      draft.api_base = defaultBase;
+    }
+  });
   let discoverError = $state(null);
   let discoveredCapabilities = $state(null);
 

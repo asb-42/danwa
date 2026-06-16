@@ -141,7 +141,7 @@
     {#if isActive || totalTokens > 0}
       <div class="llm-activity" class:active={isActive} class:warn={tokenLevel === 'warn'} class:danger={tokenLevel === 'danger'} class:critical={tokenLevel === 'critical'}>
         {#if isActive}
-          <span class="llm-pulse"></span>
+          <span class="llm-spinner" aria-hidden="true"></span>
           <span class="llm-text">
             {#if primaryActive}
               {#if primaryActive.context}
@@ -409,19 +409,19 @@
     50% { border-color: #dc2626; box-shadow: 0 0 8px rgba(220, 38, 38, 0.3); }
   }
 
-  .llm-pulse {
+  .llm-spinner {
     display: inline-block;
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #3b82f6;
+    border-top-color: transparent;
     border-radius: 50%;
-    background: #3b82f6;
-    animation: blink 1s ease-in-out infinite;
+    animation: llm-spin 0.8s linear infinite;
     flex-shrink: 0;
   }
 
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+  @keyframes llm-spin {
+    to { transform: rotate(360deg); }
   }
 
   .llm-text {
@@ -475,8 +475,9 @@
     cursor: help;
   }
 
-  :global(.dark) .llm-pulse {
-    background: #60a5fa;
+  :global(.dark) .llm-spinner {
+    border-color: #60a5fa;
+    border-top-color: transparent;
   }
 
   :global(.dark) .token-warn {

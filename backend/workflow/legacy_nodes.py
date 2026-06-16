@@ -334,6 +334,9 @@ async def run_agent_node(state: DebateState) -> dict:
             profile_id=llm_profile_id,
             profile_service=_get_profile_service(project_id),
         )
+
+        llm_service.set_context('Legacy Debate')
+        llm_service.set_session_id(session_id)
         logger.info(
             "Agent %s (round %d): calling LLM profile '%s' (model=%s, api_base=%s)",
             role,
@@ -902,6 +905,8 @@ async def _evaluate_consensus_with_llm(
         ps = ProfileService()
         service_id = _select_consensus_llm(ps)
         svc = LLMService(profile_id=service_id, profile_service=ps)
+        svc.set_context('Consensus')
+        svc.set_session_id(session_id)
         result = await svc.generate(
             prompt=prompt_text,
             system_prompt=_CONSENSUS_SYSTEM_PROMPT,

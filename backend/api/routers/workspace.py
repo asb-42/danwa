@@ -81,6 +81,25 @@ def _build_suggested_next_steps(
     return steps
 
 
+def _resolve_tag_name(tenant_id: str, tag_id: str) -> str:
+    """Resolve a tag UUID to its display name.
+
+    Falls back to the raw id when the tag has been deleted (or the
+    TagStore cannot be reached for any reason).  This is a
+    nice-to-have for the Workspace summary — it must never break
+    the request, so every failure mode returns the raw id.
+    """
+    try:
+        from backend.api.deps import get_tag_store
+
+        tag = get_tag_store().get(tenant_id, tag_id)
+        if tag is not None and getattr(tag, "name", None):
+            return str(tag.name)
+    except Exception:  # noqa: BLE001
+        pass
+    return tag_id
+
+
 def _collect_recent_audit_events(tenant_id: str, case_id: str, limit: int = 5) -> list[WorkspaceRecentEvent]:
     """Aggregate the most recent audit events across all debates of a case.
 
@@ -154,12 +173,19 @@ def get_workspace_summary(
     if case is None:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
-    # Aggregate counts — keep this cheap: store.get already loaded the
-    # case; the per-entity counts are derived from the case's existing
-    # relationships (Phase 1 returns the bare minimum; richer aggregation
-    # in Phase 2 once the inbox engine is in place).
+    # Aggregate counts.  The case object does not embed a
+    # `debate_ids` list (debates live in their own per-case
+    # DebateStore), so we count via the store.  We do not fetch
+    # the full debate payloads here; ``list_all(limit=...)`` is
+    # used with a high-enough cap that the UI can show "Debates:
+    # 3" or "Documents: 0" without paging.  Documents are
+    # currently per-project, not per-case (DMS scope) — we
+    # default to 0 unless the case object exposes a count.
     try:
-        debate_count = len(getattr(case, "debate_ids", []) or [])
+        from backend.api.deps import get_debate_store_for_case
+        debate_store = get_debate_store_for_case(case.id)
+        all_debates = debate_store.list_all(limit=500) or []
+        debate_count = len(all_debates)
     except Exception:  # noqa: BLE001
         debate_count = 0
     try:
@@ -174,7 +200,16 @@ def get_workspace_summary(
         description=getattr(case, "description", None),
         status=getattr(case, "status", "active"),
         tags=list(getattr(case, "tags", []) or []),
+        # Phase 2.8: resolve tag UUIDs -> names so the UI can
+        # render "Science" instead of the UUID.  Falls back to
+        # the raw id when the tag has been deleted since the
+        # case was tagged.
+        tag_names=[
+            _resolve_tag_name(case.tenant_id, t)
+            for t in (getattr(case, "tags", []) or [])
+        ],
         members=list(getattr(case, "members", []) or []),
+        member_count=len(getattr(case, "members", []) or []),
         debate_count=debate_count,
         document_count=document_count,
         recent_events=_collect_recent_audit_events(tenant_id, case_id, limit=5),

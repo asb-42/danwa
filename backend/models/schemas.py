@@ -508,8 +508,20 @@ class WorkspaceSummary(BaseModel):
     title: str
     description: str | None = None
     status: str
+    # The raw tag UUIDs (stable identifiers).  The frontend
+    # uses these for graph lookups and routing.
     tags: list[str] = Field(default_factory=list)
+    # The human-readable tag names (parallel to `tags` by
+    # index).  Phase 2.8 visual-revision: the BrowseView
+    # and WorkspaceView show names like "Science" instead of
+    # the raw UUID.
+    tag_names: list[str] = Field(default_factory=list)
+    # Member user_ids (Phase 5+ feature; not yet editable
+    # in the UI).  Kept as list[str] for forward compat.
     members: list[str] = Field(default_factory=list)
+    # Convenience: number of members without forcing the
+    # frontend to .length on a potentially-long array.
+    member_count: int = 0
 
     debate_count: int = 0
     document_count: int = 0

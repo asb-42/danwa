@@ -61,8 +61,12 @@ async def generate_debate_title(
         if use_service_llm:
             service_id = _select_service_llm(ps)
             llm_service = LLMService(profile_id=service_id, profile_service=ps)
+            llm_service.set_context('Debate Title')
+            llm_service.set_session_id(session_id)
         else:
             llm_service = LLMService(profile_id=llm_profile_id, profile_service=ps)
+            llm_service.set_context('Debate Title')
+            llm_service.set_session_id(session_id)
 
         system_prompt = SYSTEM_PROMPT_TITLES.get(language, SYSTEM_PROMPT_TITLES["de"])
 

@@ -14,7 +14,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 
 from backend.api.deps import (
     get_audit_service,
@@ -730,6 +730,16 @@ def _get_dms_for_case(tenant_id: str, case_id: str, case_store: CaseStore):
         return dms
 
 
+
+def _case_scope_id(tenant_id: str, case_id: str) -> str:
+    """Return the synthetic DMS project_id for a (tenant, case) pair.
+
+    Must stay in sync with ``_get_dms_for_case`` (which constructs
+    the DMS with this exact value as ``project_id``).  Centralised
+    here so the read-paths cannot drift from the write-path.
+    """
+    return f"case:{tenant_id}:{case_id}"
+
 @router.get("/tenants/{tenant_id}/cases/{case_id}/dms/documents")
 def list_case_documents(
     tenant_id: str,
@@ -738,7 +748,7 @@ def list_case_documents(
 ):
     """List documents in the case DMS."""
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    return dms.list_documents(case_id)
+    return dms.list_documents(_case_scope_id(tenant_id, case_id))
 
 
 @router.get("/tenants/{tenant_id}/cases/{case_id}/dms/documents/{document_id}")
@@ -761,21 +771,50 @@ def get_case_document(
 async def upload_case_document(
     tenant_id: str,
     case_id: str,
-    file_bytes: bytes = File(...),
-    filename: str = Query(default="uploaded.pdf"),
+    file: UploadFile = File(...),
     case_store: CaseStore = Depends(get_case_store),
 ):
-    """Upload a document to the case DMS."""
+    """Upload a document to the case DMS via multipart/form-data.
+
+    The frontend posts the file as the ``file`` form-field; the
+    original filename is taken from ``UploadFile.filename`` and
+    can be overridden with the ``filename`` query param for
+    legacy clients.
+    """
     import tempfile
 
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix)
+    original_filename = file.filename or "uploaded.bin"
+    # Read the uploaded file once; guard against the DMS size limit
+    # the same way the legacy route does.
     try:
-        tmp.write(file_bytes)
+        from backend.services.dms.config import load_dms_config
+
+        dms_config = load_dms_config()
+        max_bytes = int(dms_config.get("max_file_size_mb", 50)) * 1024 * 1024
+    except Exception:
+        max_bytes = 50 * 1024 * 1024
+
+    content = await file.read()
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(content)} bytes). Maximum allowed: {max_bytes // (1024 * 1024)} MB",
+        )
+
+    suffix = Path(original_filename).suffix
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        tmp.write(content)
         tmp.close()
-        result = dms.add_document(tmp.name, filename=filename)
+        result = dms.add_document(tmp.name, filename=original_filename)
     finally:
         Path(tmp.name).unlink(missing_ok=True)
+    # Surface DMS errors (e.g. unsupported file type) with a 422
+    # rather than 200-with-error so the frontend can render a
+    # readable message via the standard error path.
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=422, detail=str(result["error"]))
     return result
 
 
@@ -839,7 +878,7 @@ def search_case_rag(
 ):
     """Search the RAG index for a case (hybrid retriever, project-scoped)."""
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    return {"results": dms.get_rag_context(query, project_id=dms._project_id, k=limit)}
+    return {"results": dms.get_rag_context(query, project_id=_case_scope_id(tenant_id, case_id), k=limit)}
 
 
 # ---------------------------------------------------------------------------
@@ -851,14 +890,111 @@ def search_case_rag(
 async def analyze_case_documents(
     tenant_id: str,
     case_id: str,
+    language: str = Query("de", description="Language for analysis content (e.g. 'de', 'en')"),
+    mode: str = Query("full", description="Analysis mode: 'full' (regenerate) or 'update' (merge new docs)"),
     case_store: CaseStore = Depends(get_case_store),
 ):
-    """Analyze all documents in the case DMS."""
-    from backend.services.dms.document_analyzer import analyze_documents as run_document_analysis
+    """Analyze all documents in the case DMS.
+
+    Mirrors the legacy ``/api/v1/dms/analyze`` route but operates on
+    the case-scoped DMS.  Supports two modes:
+    * ``full`` (default) -- re-analyze every document from scratch.
+    * ``update`` -- merge new documents into the existing analysis
+      without re-processing already-analyzed files.
+    """
+    import asyncio
+
+    from backend.api.deps import get_case_dir
+    from backend.services.profile_service import ProfileService
+    from backend.services.dms.document_analyzer import (
+        analyze_documents as run_document_analysis,
+        save_analysis,
+        update_analysis as run_update_analysis,
+    )
 
     dms = _get_dms_for_case(tenant_id, case_id, case_store)
-    result = await run_document_analysis(dms)
-    return result
+    # The case-scoped DMS writes/reads under the synthetic project_id
+    # ``case:{tenant_id}:{case_id}`` (see _get_dms_for_case).
+    documents = dms.list_documents(_case_scope_id(tenant_id, case_id))
+    if not documents:
+        raise HTTPException(status_code=400, detail="No documents to analyze")
+
+    # NOTE: do NOT use ``get_profile_service_for_case`` here -- it
+    # looks the case_id up in the legacy ProjectStore and raises
+    # 404 for cases that live in the new CaseStore.  Build the
+    # service directly; the standard profile repository already
+    # covers all user-configured LLM profiles.
+    profile_service = ProfileService()
+    # analysis.json is stored per case, not per scope_id -- case_id
+    # is the natural lookup key here.
+    case_dir = get_case_dir(case_id)
+
+    if mode == "update":
+        existing = load_analysis(case_dir)
+        if not existing:
+            raise HTTPException(
+                status_code=400,
+                detail="No existing analysis found. Run full analysis first.",
+            )
+
+        known_filenames = {d.get("filename", "") for d in existing.get("documents", [])}
+        new_documents = [d for d in documents if d.get("filename", "") not in known_filenames]
+
+        if not new_documents:
+            return {"status": "ok", "message": "No new documents to analyze", "analysis": existing}
+
+        document_texts = []
+        for doc in new_documents:
+            content = dms.get_document_content(doc["id"])
+            text = (content or {}).get("text_content", "")
+            if text:
+                document_texts.append({"filename": doc.get("filename", "unknown"), "text": text})
+
+        if not document_texts:
+            return {"status": "ok", "message": "No extractable text in new documents", "analysis": existing}
+
+        analysis = await asyncio.to_thread(
+            run_update_analysis,
+            existing,
+            document_texts,
+            profile_service=profile_service,
+            language=language,
+        )
+        if "error" in analysis:
+            raise HTTPException(status_code=500, detail=analysis["error"])
+
+        try:
+            save_analysis(case_dir, analysis)
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save analysis: {e}")
+        return {"status": "ok", "mode": "update", "analysis": analysis}
+
+    # full mode (default)
+    document_texts = []
+    for doc in documents:
+        content = dms.get_document_content(doc["id"])
+        text = (content or {}).get("text_content", "")
+        if text:
+            document_texts.append({"filename": doc.get("filename", "unknown"), "text": text})
+
+    if not document_texts:
+        raise HTTPException(status_code=400, detail="No extractable text found in documents")
+
+    analysis = await asyncio.to_thread(
+        run_document_analysis,
+        document_texts,
+        profile_service=profile_service,
+        language=language,
+    )
+    if "error" in analysis:
+        raise HTTPException(status_code=500, detail=analysis["error"])
+
+    try:
+        save_analysis(case_dir, analysis)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save analysis: {e}")
+
+    return {"status": "ok", "mode": "full", "analysis": analysis}
 
 
 @router.get("/tenants/{tenant_id}/cases/{case_id}/dms/analyze")
@@ -868,9 +1004,24 @@ def get_case_analysis(
     case_store: CaseStore = Depends(get_case_store),
 ):
     """Get the latest analysis for the case DMS."""
+    from backend.api.deps import get_case_dir
     from backend.services.dms.document_analyzer import load_analysis
 
-    return load_analysis(case_id)
+    case_dir = get_case_dir(case_id)
+    analysis = load_analysis(case_dir)
+    if not analysis:
+        # Match the legacy /api/v1/dms/analyze GET: 404 with a clear
+        # message when no analysis has been run yet.  The frontend
+        # then renders its empty-state message rather than crashing
+        # on `res.analysis` being undefined.
+        raise HTTPException(
+            status_code=404,
+            detail="No analysis found. Run analysis first.",
+        )
+    # Match the legacy route's response shape so the frontend can
+    # always read `res.analysis` regardless of which endpoint
+    # variant served the response.
+    return {"status": "ok", "analysis": analysis}
 
 
 # ---------------------------------------------------------------------------

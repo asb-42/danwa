@@ -185,7 +185,16 @@ class UserStore:
                 (case_id, datetime.now().isoformat(), user_id),
             )
             self.conn.commit()
-            return cur.rowcount > 0
+            # SQLite reports rowcount==0 when the stored value already
+            # matches the new one (no-op write).  That is success —
+            # treat a missing row as the only failure mode, by
+            # looking up the user first.
+            if cur.rowcount > 0:
+                return True
+            existing = self.conn.execute(
+                "SELECT 1 FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            return existing is not None
         except Exception:  # noqa: BLE001
             # OperationalError on missing column, IntegrityError on
             # null constraint, etc.  The user simply gets a fresh

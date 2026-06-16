@@ -18,6 +18,7 @@
     ollama: '🦙',
     google: '🔵',
     azure: '☁️',
+    tokenrouter: '🔀',
   };
 
   let icon = $derived(providerIcons[data?.provider] || '🧠');

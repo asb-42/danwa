@@ -73,6 +73,13 @@ class LLMService:
         # leaves the cached store pointed at a stale Fernet key).
         self._user_key_store_cache: Any = None
 
+        # LLM-activity metadata for the header monitor.  Set via
+        # ``set_context`` / ``set_session_id`` right before each call.
+        # Both default to empty so callers that don't care see no
+        # behaviour change.
+        self._context = ""
+        self._session_id = ""
+
     @property
     def profile(self) -> LLMProfile | None:
         """Profile the instance."""
@@ -100,6 +107,7 @@ class LLMService:
         "cloudflare": ["CLOUDFLARE_API_TOKEN"],
         "xiaomi": ["XIAOMI_API_KEY"],
         "opencode-zen": ["OPENCODE_ZEN_API_KEY"],
+        "tokenrouter": ["TOKENROUTER_API_KEY", "OPENAI_API_KEY"],
     }
 
     def _get_user_key_store(self) -> Any:
@@ -219,6 +227,26 @@ class LLMService:
         """Set the user context for BYOK key resolution."""
         self._user_id = user_id
 
+    def set_context(self, context: str) -> None:
+        """Set a human-readable context label for LLM-activity tracking.
+
+        The label surfaces in the header LLM-Monitor next to the
+        model name (e.g. "Debate", "Translate", "TTS").  Set this
+        right before calling ``generate()`` so the most-recent label
+        wins.  Default "" hides the label in the UI.
+        """
+        self._context = context or ""
+
+    def set_session_id(self, session_id: str) -> None:
+        """Set the session ID for LLM-activity token totals.
+
+        Each call's ``tokens_in + tokens_out`` is attributed to the
+        session ID, so the header LLM-Monitor can show the cumulative
+        token count for the active session.  Set this right before
+        calling ``generate()``.  Empty string disables attribution.
+        """
+        self._session_id = session_id or ""
+
     async def generate(
         self,
         prompt: str,
@@ -291,7 +319,11 @@ class LLMService:
         call_id = await llm_activity.start_call(
             model=model_name,
             provider=provider_name,
-            context=context,
+            # self._context wins over the per-call ``context`` arg so
+            # callers can set it once via ``llm_service.set_context()``
+            # and forget; the per-call kwarg still works for one-offs.
+            context=self._context or context,
+            session_id=self._session_id,
         )
 
         try:
@@ -311,6 +343,7 @@ class LLMService:
                 call_id,
                 tokens_in=result.tokens_in,
                 tokens_out=result.tokens_out,
+                session_id=self._session_id,
                 status="completed",
             )
             return result
@@ -318,6 +351,7 @@ class LLMService:
         except Exception as exc:
             await llm_activity.end_call(
                 call_id,
+                session_id=self._session_id,
                 status="failed",
                 error=str(exc),
             )
@@ -372,6 +406,8 @@ class LLMService:
             from_profile = self._profile.id
             logger.warning("A2A failed for profile %s, falling back to %s", from_profile, fallback_id)
             fallback_service = LLMService(profile_id=fallback_id, profile_service=self._profile_service)
+            fallback_service.set_context('Fallback')
+            fallback_service.set_session_id(self._session_id)
             # T-3: Notify caller about fallback so it can emit an SSE event
             if on_fallback is not None:
                 try:
@@ -655,6 +691,12 @@ class LLMService:
         # LiteLLM uses 'xiaomi_mimo/' prefix, not 'xiaomi/'
         if provider_prefix == "xiaomi":
             provider_prefix = "xiaomi_mimo"
+        # TokenRouter exposes an OpenAI-compatible API at
+        # https://api.tokenrouter.com/v1 but is not a native litellm
+        # provider. Route it through litellm's 'openai/' adapter using
+        # the profile's `api_base` (set automatically by the frontend).
+        if provider_prefix == "tokenrouter":
+            provider_prefix = "openai"
         if not model_name.startswith(f"{provider_prefix}/"):
             model_name = f"{provider_prefix}/{model_name}"
 

@@ -892,7 +892,13 @@
         />
       {/if}
 
-      {#if status === 'running' || status === 'paused'}
+      {#if false}
+        <!-- DEACTIVATED 2026-06-16: the DebateActivityLog indicator
+             at the bottom of MvpDebateView is redundant with the
+             global header LLM-Monitor (Header.svelte) which now
+             shows the same information (model, context, elapsed,
+             token count) more prominently and across all routes.
+             Revive by removing the outer guards. -->
         <DebateActivityLog
           activityText={currentActivity ? t('mvpDebate.activity.agentCalling', { agent: AGENTS.find(a => a.role === currentActivity.role)?.label || currentActivity.role, llm: getProfileName(currentActivity.llm_profile_id), round: currentActivity.round }) : ''}
           {consumedInterjections}
