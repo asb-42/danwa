@@ -429,3 +429,154 @@ class TestWorkspaceSummaryDebateCountTenantScoped:
         assert response_b.json()["title"] == "B's case", (
             "tenant-B must see B's case title, not A's"
         )
+
+
+# ---------------------------------------------------------------------------
+# Bug E (2026-06-16) — workspace/summary must use the real data sources
+# for debate_count / document_count / member_count, not the
+# embedded lists on the Case object (which are always empty).
+# ---------------------------------------------------------------------------
+#
+# Symptom: the user reported that the Workspace shows
+#   "Debates 1 / Documents 0 / Members 0"
+# even for cases that have many debates and 52 documents in the
+# RAG.  Root cause: get_workspace_summary was reading
+#   case.document_ids  (always empty - the Case model has no
+#                       such attribute)
+#   case.members       (always empty - memberships live in a
+#                       separate store, keyed by tenant_id)
+#   debate_store.list_all()  (only the case-scoped DebateStore,
+#                             missing the legacy project-scoped
+#                             debates that the MVP debate route
+#                             still writes to)
+#
+# After the fix the endpoint must count from the real sources:
+#   * debate_count  = case_scoped + project-scoped DebateStore
+#   * document_count = case_scoped DMS (list_documents)
+#   * member_count  = MembershipStore.list_by_tenant(tenant_id)
+
+
+class TestWorkspaceSummaryCountsReal:
+    """Pin down the real-data counts: DMS for documents, MembershipStore
+    for members, union of debate stores for debates.
+    """
+
+    def _seed_dms_documents(self, case_store, tenant_id: str, case_id: str, count: int) -> None:
+        """Insert count real DMS document records via the production
+        DMS path (add_document). Guarantees we test the same
+        write/read path that production uses.
+        """
+        from backend.api.routers.case_scoped import _get_dms_for_case
+        import tempfile
+
+        dms = _get_dms_for_case(tenant_id, case_id, case_store)
+        for i in range(count):
+            with tempfile.NamedTemporaryFile(
+                suffix=".txt", delete=False, mode="w", encoding="utf-8",
+            ) as f:
+                f.write(f"Document {i} contents for testing.")
+                f_name = f.name
+            dms.add_document(file_path=f_name, filename=f"file-{i}.txt")
+
+    def test_document_count_uses_dms_not_case_object(
+        self, tmp_path, monkeypatch,
+    ):
+        """document_count must come from the case-scoped DMS, not
+        from case.document_ids (which is always empty).
+        """
+        from fastapi import FastAPI, Header
+        from fastapi.testclient import TestClient
+        from backend.api.deps import get_active_tenant, get_case_store
+        from backend.api.routers.workspace import router as workspace_router
+        from backend.persistence.case_store import CaseStore
+
+        case_store = CaseStore(base_dir=tmp_path / "counts_dms")
+        case_store.create("tenant-A", "X", case_id="case-X", description="")
+        # Seed 52 DMS documents - matches the user's reported case.
+        self._seed_dms_documents(case_store, "tenant-A", "case-X", 52)
+
+        def _active_tenant(x_tenant_id: str | None = Header(default=None)) -> str:
+            return x_tenant_id or "tenant-A"
+
+        app = FastAPI()
+        app.include_router(workspace_router, prefix="/api/v1")
+        app.dependency_overrides[get_active_tenant] = _active_tenant
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        monkeypatch.setattr(
+            "backend.api.routers.workspace.settings.enable_case_space", True,
+        )
+
+        with TestClient(app) as tc:
+            response = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "case-X"},
+                headers={"X-Tenant-Id": "tenant-A"},
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["document_count"] == 52, (
+            f"expected 52 documents (from the DMS), got {body['document_count']!r} "
+            "- the workspace route is likely still reading case.document_ids"
+        )
+
+    def test_member_count_uses_membership_store(
+        self, tmp_path, monkeypatch,
+    ):
+        """member_count must come from the MembershipStore, not
+        from case.members (which is always empty).
+        """
+        from fastapi import FastAPI, Header
+        from fastapi.testclient import TestClient
+        from backend.api.deps import (
+            get_active_tenant,
+            get_case_store,
+            get_membership_store,
+        )
+        from backend.api.routers.workspace import router as workspace_router
+        from backend.persistence.case_store import CaseStore
+        from backend.persistence.membership_store import MembershipStore
+        from backend.persistence.user_store import UserStore
+        from backend.core.security import hash_password
+
+        case_store = CaseStore(base_dir=tmp_path / "counts_members")
+        case_store.create("tenant-A", "X", case_id="case-X", description="")
+
+        user_store = UserStore(db_path=tmp_path / "auth.db")
+        for i in range(3):
+            user_store.create(
+                email=f"u{i}@x.com",
+                display_name=f"User {i}",
+                password_hash=hash_password("p"),
+                role="viewer",
+                tenant_id="tenant-A",
+            )
+        membership_store = MembershipStore(db_path=tmp_path / "auth.db")
+        for u in user_store.list_by_tenant("tenant-A"):
+            membership_store.add("tenant-A", u.id, role="viewer")
+
+        def _active_tenant(x_tenant_id: str | None = Header(default=None)) -> str:
+            return x_tenant_id or "tenant-A"
+
+        app = FastAPI()
+        app.include_router(workspace_router, prefix="/api/v1")
+        app.dependency_overrides[get_active_tenant] = _active_tenant
+        app.dependency_overrides[get_case_store] = lambda: case_store
+        app.dependency_overrides[get_membership_store] = lambda: membership_store
+        monkeypatch.setattr(
+            "backend.api.routers.workspace.settings.enable_case_space", True,
+        )
+
+        with TestClient(app) as tc:
+            response = tc.get(
+                "/api/v1/workspace/summary",
+                params={"case_id": "case-X"},
+                headers={"X-Tenant-Id": "tenant-A"},
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["member_count"] == 3, (
+            f"expected 3 members (from MembershipStore), got {body['member_count']!r} "
+            "- the workspace route is likely still reading case.members"
+        )

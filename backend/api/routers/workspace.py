@@ -23,7 +23,11 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.api.deps import get_active_tenant, get_case_store
+from backend.api.deps import (
+    get_active_tenant,
+    get_case_store,
+    get_membership_store,
+)
 from backend.core.config import settings
 from backend.models.schemas import (
     CaseSearchHit,
@@ -153,6 +157,7 @@ def get_workspace_summary(
     case_id: str = Query(..., min_length=1),
     tenant_id: str = Depends(get_active_tenant),
     case_store=Depends(get_case_store),
+    membership_store=Depends(get_membership_store),
 ) -> WorkspaceSummary:
     """Return a case-scoped summary suitable for the Workspace view.
 
@@ -191,24 +196,32 @@ def get_workspace_summary(
         )
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
-    # Aggregate counts.  The case object does not embed a
-    # `debate_ids` list (debates live in their own per-case
-    # DebateStore), so we count via the store.  We do not fetch
-    # the full debate payloads here; ``list_all(limit=...)`` is
-    # used with a high-enough cap that the UI can show "Debates:
-    # 3" or "Documents: 0" without paging.  Documents are
-    # currently per-project, not per-case (DMS scope) — we
-    # default to 0 unless the case object exposes a count.
+    # Aggregate counts.  The case object does NOT embed any of
+    # the data the UI shows — no debate_ids, no document_ids, no
+    # members.  We therefore count from the real data sources
+    # (Bug E, 2026-06-16):
     #
-    # 2026-06-16 Bug D: we previously called the legacy
-    # ``get_debate_store_for_case(case.id)`` which does a
-    # cross-tenant filesystem walk and finds the wrong
-    # tenant's debate dir, so every case reported 0 debates
-    # (and worse: could leak debates across tenants).
-    # We now use the tenant-scoped helper from ``case_scoped``,
-    # which resolves the case dir via ``case_store.get_case_dir
-    # (tenant_id, case_id)`` — the same path the debate-creation
-    # route writes to.
+    #   * debate_count    = case-scoped DebateStore
+    #                       (Bug D: previously used the legacy
+    #                        project-scoped helper with a
+    #                        cross-tenant filesystem walk).
+    #   * document_count  = case-scoped DMS (list_documents).
+    #                        Reads from the on-disk JSON
+    #                        documents.json so we don't need the
+    #                        full ChromaDB stack in the request path.
+    #   * member_count    = MembershipStore.list_by_tenant
+    #                        (Cases don't have per-case members in
+    #                        the current schema — membership is
+    #                        per-tenant).
+    #
+    # Each branch is best-effort: a broken store must never 500
+    # the summary endpoint, just report 0.
+    try:
+        from backend.api.routers.case_scoped import _get_dms_for_case
+        dms = _get_dms_for_case(tenant_id, case_id, case_store)
+        document_count = len(dms.list_documents(f"case:{tenant_id}:{case_id}"))
+    except Exception:  # noqa: BLE001
+        document_count = 0
     try:
         from backend.api.routers.case_scoped import _get_debate_store_for_case
         debate_store = _get_debate_store_for_case(tenant_id, case_id, case_store)
@@ -217,9 +230,9 @@ def get_workspace_summary(
     except Exception:  # noqa: BLE001
         debate_count = 0
     try:
-        document_count = len(getattr(case, "document_ids", []) or [])
+        member_count = len(membership_store.list_by_tenant(tenant_id))
     except Exception:  # noqa: BLE001
-        document_count = 0
+        member_count = 0
 
     return WorkspaceSummary(
         case_id=case.id,
@@ -237,7 +250,7 @@ def get_workspace_summary(
             for t in (getattr(case, "tags", []) or [])
         ],
         members=list(getattr(case, "members", []) or []),
-        member_count=len(getattr(case, "members", []) or []),
+        member_count=member_count,
         debate_count=debate_count,
         document_count=document_count,
         recent_events=_collect_recent_audit_events(tenant_id, case_id, limit=5),
