@@ -633,8 +633,9 @@ class TestWorkspaceSummaryDebateCountUnion:
         tmp_path,
         monkeypatch,
     ):
-        from fastapi import FastAPI, Header
+        from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
         from backend.persistence.case_store import CaseStore
@@ -690,8 +691,9 @@ class TestWorkspaceSummaryDebateCountUnion:
         tmp_path,
         monkeypatch,
     ):
-        from fastapi import FastAPI, Header
+        from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
         from backend.api.deps import get_active_tenant, get_case_store
         from backend.api.routers.workspace import router as workspace_router
         from backend.persistence.case_store import CaseStore

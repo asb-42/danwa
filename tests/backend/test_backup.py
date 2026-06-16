@@ -565,7 +565,7 @@ class TestBackupDefaultIncludePaths:
         )
 
     def test_default_excludes_memory_dms(self):
-        from backend.persistence.backup import INCLUDE_PATHS, EXCLUDE_PATTERNS
+        from backend.persistence.backup import EXCLUDE_PATTERNS
         assert "memory/" in EXCLUDE_PATTERNS, (
             "memory/ is the legacy global DMS path; the case-scoped "
             "DMS is the system of record, so memory/ is excluded."
