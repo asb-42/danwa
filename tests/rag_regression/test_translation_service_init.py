@@ -35,9 +35,6 @@ This test guards the fix by:
 
 from __future__ import annotations
 
-import sqlite3
-import tempfile
-from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -80,8 +77,7 @@ def test_init_creates_session_id_and_context_attributes(translation_service):
         "called (e.g. inside translate_module)."
     )
     assert hasattr(translation_service, "_context"), (
-        "TranslationService.__init__ does not initialise _context.  "
-        "Same failure mode as _session_id above."
+        "TranslationService.__init__ does not initialise _context.  Same failure mode as _session_id above."
     )
     # And they should be empty strings by default.
     assert translation_service._session_id == ""
@@ -104,9 +100,7 @@ def test_get_llm_service_does_not_attribute_error(translation_service):
     assert llm is not None
 
 
-def test_translate_module_does_not_attribute_error(
-    translation_service, tmp_path
-):
+def test_translate_module_does_not_attribute_error(translation_service, tmp_path):
     """Full public-API call: ``translate_module`` must succeed
     (or fail for a documented reason such as missing modules),
     but never with ``AttributeError: '_session_id'``.
