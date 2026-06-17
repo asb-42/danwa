@@ -4,6 +4,7 @@ The full backend conftest pulls in LangGraph + many heavy deps that
 aren't needed for these focused unit tests.  This slimmed-down version
 keeps the path setup and skips the heavyweight app fixtures.
 """
+
 import sys
 from pathlib import Path
 

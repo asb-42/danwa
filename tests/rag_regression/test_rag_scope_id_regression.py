@@ -28,9 +28,6 @@ import sys
 import types
 from unittest import mock
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Lightweight in-memory DMS stub (no real chromadb required for the
 # namespace assertions in this test).
@@ -63,11 +60,7 @@ class _StubVectorStore:
             )
 
     def search(self, query: str, project_id=None, k: int = 5) -> list[dict]:
-        return [
-            d
-            for d in self._docs
-            if project_id is None or d["metadata"].get("project_id") == project_id
-        ][:k]
+        return [d for d in self._docs if project_id is None or d["metadata"].get("project_id") == project_id][:k]
 
     def collection(self):  # pragma: no cover - not used in these tests
         return mock.MagicMock()
@@ -82,12 +75,7 @@ class _StubMetadataIndex:
         self._vs = _StubVectorStore()
 
     def get_chunks_by_document(self, document_id: str) -> list[dict]:
-        return [
-            d
-            for d in self._vs._docs
-            if d["metadata"].get("document_id") == document_id
-            and d["metadata"].get("project_id") == self._project_id
-        ]
+        return [d for d in self._vs._docs if d["metadata"].get("document_id") == document_id and d["metadata"].get("project_id") == self._project_id]
 
 
 def _build_dms(project_id: str) -> types.SimpleNamespace:
@@ -96,9 +84,7 @@ def _build_dms(project_id: str) -> types.SimpleNamespace:
     mi = _StubMetadataIndex(project_id=project_id)
 
     def _format(chunks, max_chars=None):
-        out = "".join(
-            f"[Document {i+1}]: {c['text']}\n\n" for i, c in enumerate(chunks)
-        )
+        out = "".join(f"[Document {i + 1}]: {c['text']}\n\n" for i, c in enumerate(chunks))
         if max_chars and len(out) > max_chars:
             out = out[: max_chars - 3] + "..."
         return out
@@ -176,7 +162,7 @@ def test_case_scoped_dms_project_id_is_bare_case_id(monkeypatch, tmp_path):
         fake_dms_ctor,
     )
 
-    dms = case_scoped._get_dms_for_case(tenant_id, case_id, fake_case_store)
+    case_scoped._get_dms_for_case(tenant_id, case_id, fake_case_store)
 
     assert captured["project_id"] == case_id, (
         f"_get_dms_for_case bound project_id={captured['project_id']!r} "
@@ -231,10 +217,7 @@ def test_resolve_rag_context_finds_chunks_under_bare_case_id(monkeypatch, tmp_pa
         document_ids=[doc_id],
     )
 
-    assert "VERIFICATION TEXT" in rag_context, (
-        f"RAG context was empty — the case_id was not used to look up "
-        f"chunks.  Got: {rag_context!r}"
-    )
+    assert "VERIFICATION TEXT" in rag_context, f"RAG context was empty — the case_id was not used to look up chunks.  Got: {rag_context!r}"
     assert doc_count == 1
 
 
@@ -372,7 +355,9 @@ def test_v024_migration_ignores_already_migrated_chunks(monkeypatch, tmp_path):
     documents: dict[str, list[dict]] = {"doc-1": [{"chunk_index": 0, "project_id": case_id}]}
 
     class _FakeCollection:
-        def __init__(self, name): self.name = name
+        def __init__(self, name):
+            self.name = name
+
         def get(self, include=None):
             ids, metas = [], []
             for doc_id, rows in documents.items():
@@ -380,17 +365,21 @@ def test_v024_migration_ignores_already_migrated_chunks(monkeypatch, tmp_path):
                     ids.append(f"{doc_id}_chunk_{r['chunk_index']}")
                     metas.append(r)
             return {"ids": ids, "metadatas": metas}
+
         def update(self, ids, metadatas):  # pragma: no cover
             pass
 
     class _FakeClient:
-        def __init__(self, path): self.path = path
-        def list_collections(self): return [_FakeCollection("x")]
-        def get_collection(self, name): return _FakeCollection(name)
+        def __init__(self, path):
+            self.path = path
 
-    monkeypatch.setitem(
-        sys.modules, "chromadb", types.SimpleNamespace(PersistentClient=_FakeClient)
-    )
+        def list_collections(self):
+            return [_FakeCollection("x")]
+
+        def get_collection(self, name):
+            return _FakeCollection(name)
+
+    monkeypatch.setitem(sys.modules, "chromadb", types.SimpleNamespace(PersistentClient=_FakeClient))
     if "backend.migrations.v024_rag_project_id_dedup" in sys.modules:
         del sys.modules["backend.migrations.v024_rag_project_id_dedup"]
     migration = importlib.import_module("backend.migrations.v024_rag_project_id_dedup")
@@ -413,7 +402,6 @@ def test_get_dms_for_project_falls_back_to_case_scoped_dms(monkeypatch, tmp_path
     working when projects are created via the case-scoped flow.
     """
     from backend.services.dms import service as dms_service
-    from backend.persistence.case_store import CaseStore
 
     case_id = "case-fallback"
     tenant_id = "_default"

@@ -20,6 +20,7 @@ without a re-index.
 Safe to re-run: each chunk is updated only if its current ``project_id``
 matches the synthetic scope pattern.
 """
+
 from __future__ import annotations
 
 import logging

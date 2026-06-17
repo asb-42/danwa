@@ -8,9 +8,10 @@ Checks:
 3. ChromaDB has chunks with project_id == case_id (after migration v024)
 4. get_chunks_by_document returns chunks
 """
-import asyncio
+
 import sys
 from pathlib import Path
+
 
 def verify(case_id: str) -> int:
     print(f"=== Verifying RAG for case {case_id} ===")
@@ -26,23 +27,24 @@ def verify(case_id: str) -> int:
     if not case_dir:
         print(f"  [FAIL] case {case_id} not found under {tenants_base}")
         return 1
-    
+
     # 2. Resolve DMS
     try:
         from backend.services.dms.service import get_dms_for_project
+
         dms = get_dms_for_project(case_id)
         print(f"  [OK] dms.project_id = {dms._project_id}")
     except Exception as e:
         print(f"  [FAIL] get_dms_for_project: {e}")
         return 1
-    
+
     # 3-4. Check chunks
     try:
         coll = dms.vector_store.collection
         count = coll.count()
         print(f"  [INFO] collection has {count} total chunks")
         if count == 0:
-            print(f"  [WARN] no chunks — was a document ever uploaded?")
+            print("  [WARN] no chunks — was a document ever uploaded?")
             return 0
         # Inspect metadatas
         all_rows = coll.get(include=["metadatas"])
@@ -53,11 +55,11 @@ def verify(case_id: str) -> int:
             print(f"  [FAIL] case_id={case_id} not in project_ids — migration v024 needed")
             return 1
         if f"case:_default:{case_id}" in unique_pids:
-            print(f"  [WARN] old scope_id present — run migration v024 to rewrite")
+            print("  [WARN] old scope_id present — run migration v024 to rewrite")
     except Exception as e:
         print(f"  [FAIL] chroma inspection: {e}")
         return 1
-    
+
     print(f"  [OK] RAG should work for case {case_id}")
     return 0
 

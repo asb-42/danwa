@@ -530,8 +530,8 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
             # — this is the namespace under which documents are actually
             # indexed by the case-scoped upload flow.
             try:
-                from backend.api.routers.case_scoped import _get_dms_for_case
                 from backend.api.deps import get_case_store
+                from backend.api.routers.case_scoped import _get_dms_for_case
                 from backend.persistence.case_store import _DEFAULT_BASE_DIR as CASE_BASE_DIR
 
                 case_store = get_case_store()

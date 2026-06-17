@@ -71,7 +71,7 @@ def test_header_svelte_renders_llm_activity_div():
     """The .llm-activity div must still be present in Header.svelte."""
     src = _read("components/Header.svelte")
     assert 'class="llm-activity"' in src, (
-        'Header.svelte no longer contains the .llm-activity div. '
+        "Header.svelte no longer contains the .llm-activity div. "
         "The LLM-Monitor has been removed -- agents will appear "
         "silent to the user during long operations."
     )
@@ -100,12 +100,9 @@ def test_header_svelte_llm_activity_is_not_disabled():
         r"\{#if\s+isActive\s*\|\|\s*totalTokens\s*>\s*0\s*\}",
         src,
     )
-    assert guard, (
-        "Could not find the {#if isActive || totalTokens > 0} "
-        "guard that gates the LLM-Monitor.  Did the guard disappear?"
-    )
+    assert guard, "Could not find the {#if isActive || totalTokens > 0} guard that gates the LLM-Monitor.  Did the guard disappear?"
 
-    after = src[guard.end():]
+    after = src[guard.end() :]
     closing = after.find("{/if}")
     assert closing != -1, "LLM-Monitor {#if} block is not closed."
     block = after[:closing]
@@ -118,27 +115,16 @@ def test_header_svelte_llm_activity_is_not_disabled():
 
     deactivated_window = after[: after.find('class="llm-activity"')]
     assert "DEACTIVATED" not in deactivated_window, (
-        "The .llm-activity div is preceded by a DEACTIVATED comment, "
-        "which means someone re-wrapped the monitor in a kill switch.  "
-        "Restore it."
+        "The .llm-activity div is preceded by a DEACTIVATED comment, which means someone re-wrapped the monitor in a kill switch.  Restore it."
     )
 
 
 def test_header_svelte_polls_llm_activity():
     """The 4-second polling loop against getLLMActivity() must remain."""
     src = _read("components/Header.svelte")
-    assert "getLLMActivity" in src, (
-        "Header.svelte no longer imports or calls getLLMActivity().  "
-        "The LLM-Monitor has no data source."
-    )
-    assert "setInterval" in src, (
-        "Header.svelte no longer uses setInterval.  The polling loop "
-        "was removed and the monitor will not update."
-    )
-    assert "4000" in src, (
-        "Header.svelte polling interval was changed away from 4000ms.  "
-        "If intentional, update the test."
-    )
+    assert "getLLMActivity" in src, "Header.svelte no longer imports or calls getLLMActivity().  The LLM-Monitor has no data source."
+    assert "setInterval" in src, "Header.svelte no longer uses setInterval.  The polling loop was removed and the monitor will not update."
+    assert "4000" in src, "Header.svelte polling interval was changed away from 4000ms.  If intentional, update the test."
 
 
 # ---------------------------------------------------------------------------
@@ -214,22 +200,16 @@ def test_duplicate_llm_monitor_remains_disabled(path, expected_inactive_marker):
         ),
     ],
 )
-def test_debug_markers_present_in_visual_components(
-    path, component_id, label_text
-):
+def test_debug_markers_present_in_visual_components(path, component_id, label_text):
     """Each visually-rendered LLM-monitor-like component should keep
     its pink ``DBG:`` debug marker so the user can correlate the
     on-screen element with its source file during visual debugging.
     """
     src = _read(path)
     assert f'data-debug-component="{component_id}"' in src, (
-        f"{path} is missing the data-debug-component={component_id!r} "
-        "marker.  The visual regression detector is broken."
+        f"{path} is missing the data-debug-component={component_id!r} marker.  The visual regression detector is broken."
     )
-    assert label_text in src, (
-        f"{path} is missing the human-readable debug label "
-        f"{label_text!r}.  Visual debugging is harder without it."
-    )
+    assert label_text in src, f"{path} is missing the human-readable debug label {label_text!r}.  Visual debugging is harder without it."
 
 
 # ---------------------------------------------------------------------------
