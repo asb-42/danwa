@@ -221,7 +221,12 @@ def get_workspace_summary(
         from backend.api.routers.case_scoped import _get_dms_for_case
 
         dms = _get_dms_for_case(tenant_id, case_id, case_store)
-        document_count = len(dms.list_documents(f"case:{tenant_id}:{case_id}"))
+        # The case-scoped DMS now binds project_id to the bare
+        # ``case_id`` (see _get_dms_for_case).  Passing the
+        # synthetic ``f"case:{tenant_id}:{case_id}"`` scope here
+        # used to work when the DMS was double-keyed; after the
+        # 2026-06-17 RAG-scope unification it returns 0.
+        document_count = len(dms.list_documents(case_id))
     except Exception:  # noqa: BLE001
         document_count = 0
     # Union-Count (2026-06-16): debates can live in two stores

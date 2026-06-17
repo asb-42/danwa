@@ -108,18 +108,48 @@ def test_search_returns_404_when_feature_disabled(client: TestClient, disabled: 
 # ---------------------------------------------------------------------------
 
 
-def test_summary_returns_payload_when_enabled(client: TestClient, enabled: None, fake_case_store) -> None:
-    app.dependency_overrides = {}
-    # Wire the fake store into the dependency injection
+def test_summary_returns_payload_when_enabled(client: TestClient, enabled: None, tmp_path, monkeypatch) -> None:
+    """Workspace summary must return 200 with the case's actual
+    metadata.  Counts come from the real DebateStore and DMS, not
+    from the Case object (Bug E, 2026-06-16).
+    """
     from backend.api.deps import get_case_store
-    from backend.api.routers.workspace import get_workspace_summary  # noqa: F401
+    from backend.persistence.case_store import CaseStore
 
-    app.dependency_overrides[get_case_store] = lambda: fake_case_store
+    # Real CaseStore on tmp_path so the workspace code can read
+    # the case directory, debate files, and DMS database.
+    case_store = CaseStore(base_dir=tmp_path / "cs")
+    case_store.create("t1", "AI Ethics Research", case_id="c1")
+    # Add 2 debates and 1 document so the count assertions hold.
+    from datetime import UTC, datetime
+
+    from backend.api.routers.case_scoped import _get_debate_store_for_case
+    from backend.persistence.debate_store import DebateStatus
+
+    for did in ("d1", "d2"):
+        ds = _get_debate_store_for_case("t1", "c1", case_store)
+        ds.put(did, {"debate_id": did, "status": DebateStatus.COMPLETED.value, "created_at": datetime.now(UTC).isoformat()})
+    dms = case_store.get_dms_for_case("t1", "c1")  # type: ignore[attr-defined]
+    # Inject a real document so document_count is 1.
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as f:
+        f.write("test content")
+        f_name = f.name
+    dms.add_document(f_name, filename="doc1.txt")
+
+    # The workspace router reads the case via the case store.  Add
+    # a few attributes that the router inspects (tags, members,
+    # description, status) so the response assertions hold.
+    case_store.update(
+        "t1",
+        "c1",
+        description="desc",
+        tags=["ethics", "research"],
+    )
+
+    app.dependency_overrides[get_case_store] = lambda: case_store
     try:
-        # X-Tenant-Id header is honoured by get_active_tenant; the
-        # fake stub's get() returns tenant_id="t1" for any caller,
-        # so the response body["tenant_id"] == "t1" assertion
-        # requires us to send the matching header.
         response = client.get(
             "/api/v1/workspace/summary",
             params={"case_id": "c1"},
@@ -128,11 +158,11 @@ def test_summary_returns_payload_when_enabled(client: TestClient, enabled: None,
     finally:
         app.dependency_overrides = {}
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     body = response.json()
     assert body["case_id"] == "c1"
     assert body["tenant_id"] == "t1"
-    assert body["title"] == "Case c1"
+    assert body["title"] == "AI Ethics Research"
     assert body["debate_count"] == 2
     assert body["document_count"] == 1
     assert "ethics" in body["tags"]
@@ -173,11 +203,18 @@ def test_summary_emits_suggested_steps_for_empty_case(client: TestClient, enable
 
     app.dependency_overrides[get_case_store] = lambda: empty_store
     try:
-        response = client.get("/api/v1/workspace/summary", params={"case_id": "c-empty"})
+        # X-Tenant-Id header must match the case's tenant_id, else
+        # the workspace router returns 404 (cross-tenant defence
+        # in depth, plans/2026-06-16_last-workspace-cross-tenant-bug.md).
+        response = client.get(
+            "/api/v1/workspace/summary",
+            params={"case_id": "c-empty"},
+            headers={"X-Tenant-Id": "t1"},
+        )
     finally:
         app.dependency_overrides = {}
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     kinds = {s["kind"] for s in response.json()["suggested_next_steps"]}
     assert "no_documents" in kinds
     assert "no_debates" in kinds
