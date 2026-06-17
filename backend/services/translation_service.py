@@ -186,6 +186,14 @@ Respond with ONLY a valid JSON object:
         self._profile_service = profile_service or ProfileService()
         self._llm_profile_id = llm_profile_id
         self._llm_service: LLMService | None = None
+        # LLM-activity metadata for the header monitor.  Mirrors
+        # LLMService's own ``_context`` / ``_session_id`` attributes
+        # (set via set_context / set_session_id) so that
+        # ``_get_llm_service`` can attach them to the LLMService
+        # instance it lazily creates.  Defaults to empty for
+        # backward compatibility.
+        self._context = ""
+        self._session_id = ""
 
     def _get_llm_service(self) -> LLMService:
         """Get or create the LLM service for translation calls."""
