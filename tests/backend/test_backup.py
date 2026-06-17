@@ -475,15 +475,14 @@ class TestBackupIncludesWorkflowSnapshots:
 
     def test_workflow_snapshots_are_backed_up(self, tmp_path, data_dir, config_dir, backup_dir):
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
             # Seed a workflow snapshot
             wf_dir = tmp_path / "data" / "workflows" / "wf-abc123"
             wf_dir.mkdir(parents=True)
-            (wf_dir / "snapshot.json").write_text(
-                '{"session_id": "wf-abc123", "rounds": []}'
-            )
+            (wf_dir / "snapshot.json").write_text('{"session_id": "wf-abc123", "rounds": []}')
 
             settings = Settings(app_version="2.0.0", backup_dir=str(backup_dir))
             service = BackupService(
@@ -499,9 +498,7 @@ class TestBackupIncludesWorkflowSnapshots:
             service.BACKUP_DIR = backup_dir
             result = service.create_backup(trigger="manual")
             files = service.get_backup_file_list(result.backup_id)
-            assert any("data/workflows/wf-abc123/snapshot.json" in f for f in files), (
-                f"workflow snapshot not in backup; files: {files[:10]}"
-            )
+            assert any("data/workflows/wf-abc123/snapshot.json" in f for f in files), f"workflow snapshot not in backup; files: {files[:10]}"
         finally:
             os.chdir(original_cwd)
 
@@ -514,6 +511,7 @@ class TestBackupExcludesLegacyMemoryDms:
 
     def test_memory_dms_is_not_backed_up(self, tmp_path, data_dir, config_dir, backup_dir):
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -535,9 +533,7 @@ class TestBackupExcludesLegacyMemoryDms:
             service.BACKUP_DIR = backup_dir
             result = service.create_backup(trigger="manual")
             files = service.get_backup_file_list(result.backup_id)
-            assert not any("memory/dms.db" in f for f in files), (
-                f"legacy memory/dms.db should NOT be in backup; files: {files[:10]}"
-            )
+            assert not any("memory/dms.db" in f for f in files), f"legacy memory/dms.db should NOT be in backup; files: {files[:10]}"
         finally:
             os.chdir(original_cwd)
 
@@ -550,6 +546,7 @@ class TestBackupDefaultIncludePaths:
 
     def test_default_include_paths_covers_workflow_snapshots(self):
         from backend.persistence.backup import INCLUDE_PATHS
+
         assert "data/workflows" in INCLUDE_PATHS, (
             "data/workflows is the storage path for MVP-Debatte and "
             "Case-Space-Workflow snapshots.  Without this entry, all "
@@ -558,15 +555,14 @@ class TestBackupDefaultIncludePaths:
 
     def test_default_include_paths_covers_case_tenants(self):
         from backend.persistence.backup import INCLUDE_PATHS
+
         assert "data/tenants" in INCLUDE_PATHS, (
-            "data/tenants is the tenant-cased structure (cases, tags, "
-            "debates, DMS).  Without this entry, Case-Space data is "
-            "missing from backups."
+            "data/tenants is the tenant-cased structure (cases, tags, debates, DMS).  Without this entry, Case-Space data is missing from backups."
         )
 
     def test_default_excludes_memory_dms(self):
         from backend.persistence.backup import EXCLUDE_PATTERNS
+
         assert "memory/" in EXCLUDE_PATTERNS, (
-            "memory/ is the legacy global DMS path; the case-scoped "
-            "DMS is the system of record, so memory/ is excluded."
+            "memory/ is the legacy global DMS path; the case-scoped DMS is the system of record, so memory/ is excluded."
         )
