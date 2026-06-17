@@ -1,3 +1,4 @@
+<!-- DEBUG 2026-06-17: ActivityLogPanel — file is wrapped in {#if false} and not rendered. -->
 {#if false}
 <!--
   DEACTIVATED 2026-06-15: this component is no longer rendered in

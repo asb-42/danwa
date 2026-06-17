@@ -25,11 +25,18 @@ def dispatch_debate_task(
     audit: Any,
     store: Any,
     project_store: Any = None,
+    dms_project_id: str | None = None,
 ) -> str:
     """Dispatch a debate workflow task.
 
     The ``project_store`` parameter is kept for backward compatibility but
     is no longer required.
+
+    The ``dms_project_id`` parameter (optional) is forwarded to the
+    workflow so case-scoped routers can resolve the DMS instance under
+    the synthetic ``case:{tenant_id}:{case_id}`` scope where their
+    documents are actually indexed.  When None, the workflow falls back
+    to ``project_id`` (legacy behaviour).
 
     Returns:
         "celery" if dispatched to Celery, "background" if using BackgroundTasks.
@@ -41,7 +48,7 @@ def dispatch_debate_task(
         try:
             from backend.tasks.debate import run_debate_task
 
-            run_debate_task.delay(debate_id, project_id)
+            run_debate_task.delay(debate_id, project_id, dms_project_id)
             logger.info("Debate %s dispatched to Celery", debate_id)
             return "celery"
         except Exception as e:
@@ -50,7 +57,7 @@ def dispatch_debate_task(
     # Fallback: FastAPI BackgroundTasks
     from backend.services.debate_workflow import run_debate_workflow
 
-    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store)
+    background_tasks.add_task(run_debate_workflow, debate_id, project_id, audit, store, None, dms_project_id)
     logger.info("Debate %s dispatched to BackgroundTasks", debate_id)
     return "background"
 

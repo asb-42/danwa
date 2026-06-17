@@ -138,6 +138,8 @@
     </h1>
 
     <!-- LLM Activity Indicator -->
+    <!-- DEBUG 2026-06-17: visual marker to identify this component on screen -->
+    <div data-debug-component="Header-LLMActivity" class="px-2 py-0.5 mb-1 inline-block rounded bg-pink-600 text-white text-[10px] font-mono font-bold tracking-wider">DBG: Header.svelte (LLM Activity)</div>
     {#if isActive || totalTokens > 0}
       <div class="llm-activity" class:active={isActive} class:warn={tokenLevel === 'warn'} class:danger={tokenLevel === 'danger'} class:critical={tokenLevel === 'critical'}>
         {#if isActive}

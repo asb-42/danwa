@@ -68,6 +68,8 @@
 
 {#if currentDebate?.status === 'running'}
   <div class="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+    <!-- DEBUG 2026-06-17: visual marker to identify this component on screen -->
+    <div data-debug-component="DebateActivityStrip" class="px-2 py-0.5 mb-2 inline-block rounded bg-pink-600 text-white text-[10px] font-mono font-bold tracking-wider">DBG: DebateActivityStrip.svelte</div>
     <!-- Row 1: Progress dots + role verb -->
     <div class="flex items-center gap-3 mb-2">
       <!-- Progress dots -->

@@ -12,6 +12,8 @@
 </script>
 
 {#if isVisible}
+  <!-- DEBUG 2026-06-17: visual marker to identify this component on screen -->
+  <div data-debug-component="DebateActivityLog" class="px-2 py-0.5 mb-1 inline-block rounded bg-pink-600 text-white text-[10px] font-mono font-bold tracking-wider">DBG: DebateActivityLog.svelte</div>
   <div class="activity-log">
     {#if activityText}
       <div class="activity-current">

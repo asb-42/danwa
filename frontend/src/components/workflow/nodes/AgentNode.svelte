@@ -51,6 +51,8 @@
     {/if}
     {#if data.activity}
       <span class="node-activity">
+        <!-- DEBUG 2026-06-17: visual marker to identify this component on screen -->
+        <div data-debug-component="AgentNode" class="px-1 py-0.5 mb-1 inline-block rounded bg-pink-600 text-white text-[9px] font-mono font-bold tracking-wider">DBG: AgentNode.svelte</div>
         {#if data.activity === 'searching'}🔍 {data.activityDetail || 'Searching...'}
         {:else if data.activity === 'llm_calling'}
           <span class="spinner"></span> LLM calling…

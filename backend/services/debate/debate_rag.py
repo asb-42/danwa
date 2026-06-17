@@ -64,6 +64,7 @@ def resolve_rag_context(
     project_store: Any | None = None,
     store: DebateStore | None = None,
     include_document_analysis: bool = False,
+    dms_project_id: str | None = None,
 ) -> tuple[str, int]:
     """Resolve RAG context for a debate.
 
@@ -71,6 +72,15 @@ def resolve_rag_context(
 
     The ``project_store`` parameter is kept for backward compatibility but
     is no longer required.
+
+    The ``dms_project_id`` parameter overrides the project_id used to
+    resolve the DMS instance and scope its RAG queries.  This is needed
+    by the case-scoped routers which bind their DMS to a synthetic
+    ``case:{tenant_id}:{case_id}`` scope (see _get_dms_for_case) while
+    the debate workflow itself still receives the raw ``case_id`` as
+    ``project_id`` (because ``get_case_dir(case_id)`` and the
+    DebateStore lookup depend on it).  When ``dms_project_id`` is None,
+    it falls back to ``project_id`` (legacy behaviour).
     """
     from backend.api.deps import get_case_dir
 
@@ -78,12 +88,14 @@ def resolve_rag_context(
     from backend.services.debate_workflow import _build_transcript_for_followup, _generate_rag_friendly_summary
     from backend.services.dms.service import get_dms_for_project
 
+    effective_dms_id = dms_project_id or project_id
+
     analysis_text = _load_analysis_text(project_id, project_store) if include_document_analysis else ""
 
     try:
-        dms = get_dms_for_project(project_id)
+        dms = get_dms_for_project(effective_dms_id)
     except Exception as exc:
-        logger.warning("Could not initialize DMS for project %s: %s", project_id, exc)
+        logger.warning("Could not initialize DMS for project %s: %s", effective_dms_id, exc)
         if analysis_text:
             return analysis_text, 0
         return "", 0
@@ -110,7 +122,7 @@ def resolve_rag_context(
         # Never blends with explicit document selection to prevent spillover
         # from unrelated project documents.
         try:
-            auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=project_id, k=10)
+            auto_chunks = dms.auto_retrieve_for_topic(case_text, project_id=effective_dms_id, k=10)
             logger.info(
                 "Auto-retrieve returned %d chunks for project %s",
                 len(auto_chunks),

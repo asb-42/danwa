@@ -326,14 +326,24 @@ async def start_mvp_debate(
             "mode": agent.mode,
             "system_prompt": agent.system_prompt,
         }
-        # Compose system_prompt from selected components (if any provided)
+        # Compose system_prompt from selected components (if any provided).
+        # Pass ``search_mode`` and ``language`` so the composer appends the
+        # web-search capability section when the user has selected
+        # ``optional`` or ``required`` mode (the MVP start used to override
+        # the resolved prompt with a composed one that was silent about
+        # web search, which made the agents never emit [SEARCH: ...]
+        # markers in optional mode).
         composition = Composition(
             agent_core_id=body.agent_core_ids.get(role, ""),
             argumentation_pattern_id=body.argumentation_pattern_ids.get(role, ""),
             tone_profile_id=body.tone_profile_ids.get(role, ""),
             prompt_modifier_id=body.prompt_modifier_ids.get(role, ""),
         )
-        composed = composer.compose(composition)
+        composed = composer.compose(
+            composition,
+            search_mode=body.search_mode.value,
+            language=body.language,
+        )
         if composed:
             cfg["system_prompt"] = composed
             logger.info(

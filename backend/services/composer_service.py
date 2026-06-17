@@ -47,11 +47,24 @@ class ComposerService:
     # Public API
     # ------------------------------------------------------------------
 
-    def compose(self, composition: Composition) -> str:
+    def compose(
+        self,
+        composition: Composition,
+        search_mode: str = "off",
+        language: str = "de",
+    ) -> str:
         """Assemble a system prompt from the given composition.
 
         Args:
             composition: The four component IDs.
+            search_mode: Web search mode (``off`` / ``optional`` / ``required``).
+                When not ``off``, a web-search capability section is appended
+                so the agent knows how to use ``[SEARCH: ...]`` markers in
+                optional mode.  In required mode the search is performed by
+                the backend before the LLM call, so the appended section is
+                effectively a no-op for the agent (but documents the
+                behaviour for the audit log / debugging).
+            language: Locale used for the search-instructions text.
 
         Returns:
             Fully assembled system prompt string.
@@ -78,7 +91,22 @@ class ComposerService:
         if modifier_text:
             parts.append(modifier_text)
 
-        return "\n\n".join(parts).strip()
+        prompt = "\n\n".join(parts).strip()
+
+        # 5. Append web-search instructions when search_mode != off.
+        #    Without this, the composed system prompt (which the MVP
+        #    workflow uses as the agent's system_prompt) would be
+        #    silent about web search and the agent would never emit
+        #    [SEARCH: ...] markers in optional mode.
+        if search_mode and search_mode != "off":
+            try:
+                from backend.workflow.node_functions import _append_search_instruction
+
+                prompt = _append_search_instruction(prompt, search_mode, language)
+            except Exception as exc:
+                logger.warning("Could not append search instruction in composer: %s", exc)
+
+        return prompt
 
     # ------------------------------------------------------------------
     # Component loaders

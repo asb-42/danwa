@@ -30,15 +30,25 @@ def _create_task():
             soft_time_limit=1800,
             time_limit=3600,
         )
-        def run_debate_task(self, debate_id: str, project_id: str):
+        def run_debate_task(self, debate_id: str, project_id: str, dms_project_id: str | None = None):
             """Execute a debate workflow in a Celery worker.
 
             This runs the LangGraph workflow in a dedicated event loop
             inside the Celery worker process.
-            """
-            logger.info("Celery worker executing debate %s for project %s", debate_id, project_id)
 
-            asyncio.run(_run_debate_async(debate_id, project_id))
+            ``dms_project_id`` (optional) is the synthetic scope id used
+            by case-scoped routers (``case:{tenant_id}:{case_id}``) to
+            resolve the DMS instance.  When None, the workflow falls back
+            to ``project_id`` (legacy behaviour).
+            """
+            logger.info(
+                "Celery worker executing debate %s for project %s (dms_scope=%s)",
+                debate_id,
+                project_id,
+                dms_project_id,
+            )
+
+            asyncio.run(_run_debate_async(debate_id, project_id, dms_project_id))
 
         return run_debate_task
     except Exception as e:
@@ -46,7 +56,7 @@ def _create_task():
         return None
 
 
-async def _run_debate_async(debate_id: str, project_id: str):
+async def _run_debate_async(debate_id: str, project_id: str, dms_project_id: str | None = None):
     """Async debate execution — called inside the Celery worker's event loop."""
     from backend.api.deps import get_case_dir
     from backend.persistence.audit import AuditService
@@ -57,7 +67,7 @@ async def _run_debate_async(debate_id: str, project_id: str):
     store = DebateStore(data_dir=project_dir / "debates")
     audit = AuditService()
 
-    await run_debate_workflow(debate_id, project_id, audit, store)
+    await run_debate_workflow(debate_id, project_id, audit, store, None, dms_project_id)
 
 
 # Module-level reference — None if Celery is not available

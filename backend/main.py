@@ -190,6 +190,21 @@ async def lifespan(app: FastAPI):
 
     migrate_graph_edge_cache()
 
+    # Run v024 RAG project_id dedup (idempotent) — rewrites
+    # case-scoped DMS chunks from ``case:{tid}:{cid}`` to bare
+    # ``{cid}`` so the legacy debate workflow (which always passes
+    # the bare case_id) can see them.  Required because the
+    # case-scoped factory was simplified to use the bare case_id as
+    # project_id.
+    try:
+        from backend.migrations.v024_rag_project_id_dedup import migrate as _migrate_v024
+
+        rewritten = _migrate_v024()
+        if rewritten:
+            logger.info("v024 RAG project_id dedup: %d chunks rewritten", rewritten)
+    except Exception:
+        logger.debug("v024 RAG dedup skipped", exc_info=True)
+
     # Seed system workflow templates (idempotent)
     from scripts.seed_templates import seed_system_templates
 

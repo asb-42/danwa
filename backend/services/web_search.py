@@ -62,12 +62,24 @@ class WebSearchTool:
         """Execute a search query and return structured results.
 
         Tries SearXNG first; falls back to DuckDuckGo if SearXNG is
-        unavailable.
+        unavailable or returns no results.
         """
         results = await self._search_searxng(query)
         if not results:
-            logger.info("SearXNG returned no results for '%s', trying DuckDuckGo", query)
+            logger.info(
+                "SearXNG returned 0 results for '%s' (url=%s); trying DuckDuckGo fallback",
+                query,
+                self.url,
+            )
             results = await self._search_ddg(query)
+            if not results:
+                logger.warning(
+                    "Web search for '%s' returned 0 results from BOTH SearXNG and DuckDuckGo. "
+                    "Check (1) is SearXNG running at %s?  (2) is the 'ddgs' package installed?  "
+                    "(3) is outbound HTTP traffic allowed to both services?",
+                    query,
+                    self.url,
+                )
         return results
 
     async def is_available(self) -> bool:

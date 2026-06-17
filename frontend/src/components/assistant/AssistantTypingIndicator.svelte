@@ -1,6 +1,8 @@
 <script>
 </script>
 
+<!-- DEBUG 2026-06-17: visual marker to identify this component on screen -->
+<div data-debug-component="AssistantTypingIndicator" class="px-1 py-0.5 mb-1 inline-block rounded bg-pink-600 text-white text-[9px] font-mono font-bold tracking-wider">DBG: AssistantTypingIndicator.svelte</div>
 <div class="message assistant">
   <div class="message-content">
     <div class="typing-indicator">

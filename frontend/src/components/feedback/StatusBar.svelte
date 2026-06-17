@@ -1,3 +1,26 @@
+<!--
+  ============================================================================
+  DEAD CODE 2026-06-17 — review and delete in next cleanup pass.
+
+  StatusBar.svelte rendered a thin top-of-viewport strip showing the
+  global feedbackStore.statusMessage (e.g. "LLM calling GPT-4o…", "Layout
+  engine computing…").  It duplicated information already shown by the
+  global Header LLM-Activity indicator and the in-debate DebateActivityLog.
+
+  To deactivate it, the import and <StatusBar /> usage were removed from
+  App.svelte (the component is no longer mounted).  The file is preserved
+  on disk ONLY for this single iteration so the team can confirm the
+  removal in the next code-review pass.  Once approved, delete this file
+  AND remove the now-unused `statusMessage`, `setStatus`, `clearStatus`,
+  `setLlmState`/`setLayoutState` plumbing from feedback.svelte.js (callers
+  in workflow/layout.js, MvpDebateView.svelte, DebateView.svelte should
+  drop the corresponding feedbackStore calls too).
+
+  To revive the strip, re-add `import StatusBar from './components/feedback/StatusBar.svelte';`
+  in App.svelte and place `<StatusBar />` in the layout (see git history).
+  ============================================================================
+-->
+
 <script>
   /**
    * StatusBar — Thin persistent status bar at the top of the viewport.
@@ -76,7 +99,7 @@
 </script>
 
 {#if isVisible}
-  <div
+<div
     class="flex items-center gap-2 px-3 py-1 border-b text-xs font-mono {statusColor} transition-all duration-200"
     role="status"
     aria-live="polite"

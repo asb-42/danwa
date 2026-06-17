@@ -713,31 +713,42 @@ def _get_dms_for_case(tenant_id: str, case_id: str, case_store: CaseStore):
         except Exception:
             dms_config = {}
 
-        # Bind the DMS to a synthetic project_id that encodes both
-        # the tenant and the case. This way ``MetadataIndex`` (which
-        # tags every ChromaDB document with ``project_id``) and the
-        # ``rag_context`` table never see a cross-tenant collision even
-        # if two cases happen to share a numeric id.
-        scope_id = f"case:{tenant_id}:{case_id}"
+        # Bind the DMS to the case_id (not a synthetic ``case:{tid}:{cid}``
+        # scope) so that legacy and case-scoped paths can share a single
+        # ``get_dms_for_project(case_id)`` lookup.
+        #
+        # Tenant isolation is already guaranteed by the per-case directory
+        # layout (each case has its own ``dms/`` directory, its own
+        # ``dms.db`` and its own ``chroma_db/``).  Case IDs are UUIDs
+        # so cross-tenant project_id collisions are practically
+        # impossible.
+        #
+        # Historically we used ``f"case:{tenant_id}:{case_id}"`` here as
+        # belt-and-braces defence-in-depth, but that broke the RAG
+        # pipeline because the legacy debate workflow passes
+        # ``case_id`` (not the synthetic scope) to ``resolve_rag_context``,
+        # causing ChromaDB queries to return zero chunks.
 
         dms = DMS(
             db_path=str(dms_dir / "dms.db"),
             chroma_path=str(dms_dir / "chroma_db"),
             config=dms_config,
-            project_id=scope_id,
+            project_id=case_id,
         )
         _dms_cache[cache_key] = dms
         return dms
 
 
 def _case_scope_id(tenant_id: str, case_id: str) -> str:
-    """Return the synthetic DMS project_id for a (tenant, case) pair.
+    """Return the DMS project_id for a (tenant, case) pair.
 
-    Must stay in sync with ``_get_dms_for_case`` (which constructs
-    the DMS with this exact value as ``project_id``).  Centralised
-    here so the read-paths cannot drift from the write-path.
+    Kept as an alias of ``case_id`` for backward compatibility with
+    callers that historically expected the synthetic
+    ``case:{tenant_id}:{case_id}`` scope.  Now returns just the
+    ``case_id`` because the DMS is bound to the bare id (see
+    ``_get_dms_for_case`` for the rationale).
     """
-    return f"case:{tenant_id}:{case_id}"
+    return case_id
 
 
 @router.get("/tenants/{tenant_id}/cases/{case_id}/dms/documents")

@@ -54,12 +54,17 @@ def extract_rag_info(req: object | dict) -> tuple[list[str], bool]:
     return [], False
 
 
-def build_rag_preview(project_id: str, document_ids: list[str], project_store=None) -> str:
-    """Build a short preview of RAG context for the response."""
+def build_rag_preview(project_id: str, document_ids: list[str], project_store=None, dms_project_id: str | None = None) -> str:
+    """Build a short preview of RAG context for the response.
+
+    ``dms_project_id`` overrides the project_id used to resolve the DMS
+    (see ``resolve_rag_context`` for the rationale).
+    """
     if not document_ids:
         return ""
+    effective_dms_id = dms_project_id or project_id
     try:
-        dms = get_dms_for_project(project_id)
+        dms = get_dms_for_project(effective_dms_id)
 
         chunks = []
         for doc_id in document_ids:
@@ -268,18 +273,25 @@ async def run_debate_workflow(
     audit: AuditService,
     store: DebateStore,
     project_store=None,
+    dms_project_id: str | None = None,
 ) -> None:
     """Run the LangGraph workflow for a debate (called as background task).
 
     The ``project_store`` parameter is kept for backward compatibility but
     is no longer required.
+
+    The ``dms_project_id`` parameter (optional) overrides the project_id
+    used to resolve the DMS instance for RAG retrieval.  It is required
+    by case-scoped routers whose DMS is bound to a synthetic
+    ``case:{tenant_id}:{case_id}`` scope.  When None, ``project_id`` is
+    used (legacy behaviour).
     """
     debate = store.get(debate_id)
     if not debate:
         return
 
     try:
-        await _run_debate_workflow_inner(debate_id, project_id, audit, store, debate)
+        await _run_debate_workflow_inner(debate_id, project_id, audit, store, debate, dms_project_id=dms_project_id)
     except Exception as exc:
         logger.error("Debate %s failed with unhandled exception: %s", debate_id, exc, exc_info=True)
         store.update(debate_id, status=DebateStatus.FAILED, updated_at=datetime.now(UTC))
@@ -292,6 +304,7 @@ async def _run_debate_workflow_inner(
     audit: AuditService,
     store: DebateStore,
     debate: dict,
+    dms_project_id: str | None = None,
 ) -> None:
     """Inner workflow body — separated so the outer wrapper can catch all exceptions."""
 
@@ -336,6 +349,7 @@ async def _run_debate_workflow_inner(
         include_debate_results=fields.get("include_debate_results", False),
         include_document_analysis=fields.get("include_document_analysis", False),
         store=store,
+        dms_project_id=dms_project_id,
     )
     if rag_context:
         logger.info(
