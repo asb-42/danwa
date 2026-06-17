@@ -519,6 +519,19 @@ class _FakeLLM:
         self.content = content
         self.calls: list[dict] = []
 
+    # set_context / set_session_id are no-ops here because the stub
+    # does not feed the LLM-activity monitor; the LLM-Monitor is
+    # exercised in its own dedicated tests.  The methods MUST exist
+    # because the production code path in
+    # ``backend.services.ui_translation_service`` (and the parallel
+    # TranslationService) calls them right after the LLMService is
+    # constructed.
+    def set_context(self, context: str) -> None:
+        pass
+
+    def set_session_id(self, session_id: str) -> None:
+        pass
+
     def generate_sync(self, **kwargs) -> _FakeLLMResult:
         self.calls.append(kwargs)
         return _FakeLLMResult(self.content)
@@ -708,6 +721,15 @@ class TestBulkTranslateAsync:
     def test_async_job_handles_rate_limit(self, service: UITranslationService, monkeypatch):
         class _LimitedLLM:
             def __init__(self, **kw) -> None:
+                pass
+
+            # See the note on _FakeLLM above: these are no-ops for
+            # the stub but must exist for the production code path
+            # in ``ui_translation_service.bulk_translate_async``.
+            def set_context(self, context: str) -> None:
+                pass
+
+            def set_session_id(self, session_id: str) -> None:
                 pass
 
             def generate_sync(self, **kwargs):
