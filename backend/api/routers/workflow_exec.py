@@ -282,6 +282,14 @@ async def start_mvp_debate(
         try:
             from backend.services.debate_workflow import resolve_rag_context
 
+            # The case-scoped DMS uses the bare case_id as its
+            # ``project_id`` (see _get_dms_for_case).  Passing
+            # ``dms_project_id=effective_project_id`` is therefore
+            # the correct way to make resolve_rag_context find
+            # the documents that were indexed by the case-scoped
+            # upload flow.  Without it, the DMS lookup raises
+            # ``Project not found`` and the agent sees an empty
+            # RAG context.
             rag_context, _ = resolve_rag_context(
                 project_id=effective_project_id,
                 case_text=body.context,
@@ -290,6 +298,7 @@ async def start_mvp_debate(
                 include_debate_results=body.include_debate_results,
                 debate_result_ids=body.debate_result_ids or None,
                 include_document_analysis=body.include_document_analysis,
+                dms_project_id=effective_project_id,
             )
         except Exception:
             logger.warning("Failed to resolve RAG context for MVP debate", exc_info=True)
