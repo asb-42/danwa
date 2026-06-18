@@ -15,6 +15,22 @@ export default defineConfig(({ mode }) => ({
         : undefined,
     ),
   ],
+  // Pre-bundle heavy client-only deps at server startup so that
+  // the first navigation to a page that uses them does not
+  // trigger Vite's lazy dep optimisation.  Without this, the
+  // first hit on /blueprint (which imports @xyflow/svelte)
+  // causes Vite to log "✨ new dependencies optimized" and
+  // reload the page — and on reload the optimised chunk file
+  // is not yet on disk, producing a White-Screen-Of-Death
+  // ("The file does not exist at .vite/deps/chunk-*.js").
+  // The fix is to declare the deps explicitly here.
+  optimizeDeps: {
+    include: [
+      '@xyflow/svelte',
+      'cytoscape',
+      'elkjs/lib/elk.bundled.js',
+    ],
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
