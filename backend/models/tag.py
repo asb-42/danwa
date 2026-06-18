@@ -40,9 +40,18 @@ class TagUpdateRequest(BaseModel):
 
 
 class TagResponse(BaseModel):
-    """Tag response model."""
+    """Tag response model.
 
-    id: str
+    The field name is ``tag_id`` (not ``id``) because the entire
+    frontend reads ``tag.tag_id`` -- consistent with the path
+    parameter ``/tags/{tag_id}`` and the body field
+    ``InboxBulkTagBody.tag_ids: list[str]``.  Issue (2026-06-18):
+    the field used to be named ``id``, which silently broke the
+    new-tag-creation flow in the Inbox Tag modal because the
+    frontend stored ``undefined`` and sent that to the backend.
+    """
+
+    tag_id: str
     tenant_id: str
     name: str
     color: str

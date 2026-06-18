@@ -52,7 +52,7 @@ def create_tag(
         parent_id=body.parent_id,
     )
     return TagResponse(
-        id=tag.id,
+        tag_id=tag.id,
         tenant_id=tag.tenant_id,
         name=tag.name,
         color=tag.color,
@@ -72,7 +72,7 @@ def get_tag(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     return TagResponse(
-        id=tag.id,
+        tag_id=tag.id,
         tenant_id=tag.tenant_id,
         name=tag.name,
         color=tag.color,
@@ -98,7 +98,7 @@ def update_tag(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     return TagResponse(
-        id=tag.id,
+        tag_id=tag.id,
         tenant_id=tag.tenant_id,
         name=tag.name,
         color=tag.color,

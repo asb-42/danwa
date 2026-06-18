@@ -653,6 +653,9 @@
     padding: 0.6rem 1rem;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    /* z-index above .modal-overlay (1001) so toasts stay visible
+       while a modal is open -- issue 2026-06-18. */
+    z-index: 1100;
   }
 
   /* .modal-overlay / .modal-card are used by the Tag and Move modals
