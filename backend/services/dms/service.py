@@ -522,30 +522,11 @@ def get_dms_for_project(project_id: str, project_store: Any = None) -> DMS:
 
         project = get_project_store().get(project_id)
         if not project:
-            # Fall back: the caller passed a multi-tenant case_id (e.g. from
-            # the X-Case-Id header) which the legacy ProjectStore does not
-            # know about.  Try to resolve the case via the CaseStore; if
-            # found, delegate to the case-scoped DMS factory which binds
-            # the DMS to the synthetic ``case:{tenant_id}:{case_id}`` scope
-            # — this is the namespace under which documents are actually
-            # indexed by the case-scoped upload flow.
-            try:
-                from backend.api.deps import get_case_store
-                from backend.api.routers.case_scoped import _get_dms_for_case
-                from backend.persistence.case_store import _DEFAULT_BASE_DIR as CASE_BASE_DIR
-
-                case_store = get_case_store()
-                # Scan the on-disk tenant directories to find which one
-                # owns the case (case_ids are UUIDs so this scan is safe
-                # and very fast for realistic tenant counts).
-                if CASE_BASE_DIR.is_dir():
-                    for tenant_dir in sorted(CASE_BASE_DIR.iterdir()):
-                        if not tenant_dir.is_dir():
-                            continue
-                        if (tenant_dir / "cases" / project_id / "case.json").is_file():
-                            return _get_dms_for_case(tenant_dir.name, project_id, case_store)
-            except Exception as exc:
-                logger.debug("get_dms_for_project: case-scoped fallback failed for %s: %s", project_id, exc)
+            # No fallback: callers must pass a known legacy project_id
+            # or use the case-scoped ``_get_dms_for_case`` factory
+            # directly.  The case-scoped factory is the single source of
+            # truth for the case_id → DMS binding, and a runtime
+            # filesystem scan here would be racy and slow.
             raise ValueError(f"Project not found: {project_id}")
 
         project_dir = get_case_dir(project_id)

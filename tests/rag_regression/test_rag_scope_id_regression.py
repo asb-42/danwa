@@ -391,65 +391,6 @@ def test_v024_migration_ignores_already_migrated_chunks(monkeypatch, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 4. get_dms_for_project case-scoped fallback (defence in depth)
-# ---------------------------------------------------------------------------
-
-
-def test_get_dms_for_project_falls_back_to_case_scoped_dms(monkeypatch, tmp_path):
-    """When the case_id is unknown to the legacy ProjectStore,
-    ``get_dms_for_project`` should fall back to the case-scoped DMS
-    factory.  This is the safety hatch that keeps MVP/legacy debates
-    working when projects are created via the case-scoped flow.
-    """
-    from backend.services.dms import service as dms_service
-
-    case_id = "case-fallback"
-    tenant_id = "_default"
-
-    # Lay down a fake case on disk.
-    cases_root = tmp_path / "data" / "tenants" / tenant_id / "cases" / case_id
-    (cases_root / "dms").mkdir(parents=True)
-    (cases_root / "case.json").write_text("{}", encoding="utf-8")
-
-    # Mock the legacy ProjectStore to return None (case unknown).
-    fake_project_store = mock.MagicMock()
-    fake_project_store.get.return_value = None
-
-    # ``get_project_store`` is imported lazily inside
-    # ``get_dms_for_project`` from ``backend.api.deps``; patch it at
-    # its source so the legacy lookup returns None and the
-    # case-scoped fallback fires.
-    monkeypatch.setattr(
-        "backend.api.deps.get_project_store",
-        lambda: fake_project_store,
-    )
-    # The case-scoped fallback scans ``_DEFAULT_BASE_DIR`` from the
-    # case_store module — override it to point at our tmp tree.
-    monkeypatch.setattr(
-        "backend.persistence.case_store._DEFAULT_BASE_DIR",
-        tmp_path / "data" / "tenants",
-    )
-
-    # Build a stub DMS that the case-scoped factory will return.
-    stub_dms = _build_dms(project_id=case_id)
-    captured: dict = {}
-
-    def fake_get_dms_for_case(tenant, cid, case_store):
-        captured["tenant"] = tenant
-        captured["cid"] = cid
-        return stub_dms
-
-    monkeypatch.setattr(
-        "backend.api.routers.case_scoped._get_dms_for_case",
-        fake_get_dms_for_case,
-    )
-
-    result = dms_service.get_dms_for_project(case_id)
-    assert result is stub_dms
-    assert captured == {"tenant": tenant_id, "cid": case_id}
-
-
-# ---------------------------------------------------------------------------
 # 5. Dispatch / workflow signature changes (round-trip the new arg)
 # ---------------------------------------------------------------------------
 
