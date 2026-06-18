@@ -60,9 +60,7 @@ def _make_profile_mock() -> mock.MagicMock:
     return profile
 
 
-def _build_llm_service(
-    monkeypatch, exc_to_raise: BaseException | None
-) -> tuple:
+def _build_llm_service(monkeypatch, exc_to_raise: BaseException | None) -> tuple:
     """Build an ``LLMService`` whose ``_generate_litellm`` raises
     ``exc_to_raise`` (or returns a successful result if None).
 
@@ -79,6 +77,7 @@ def _build_llm_service(
     svc.set_session_id("regression-cancel-test")
 
     if exc_to_raise is not None:
+
         async def _boom(*args, **kwargs):
             raise exc_to_raise
 
@@ -109,9 +108,7 @@ def test_generate_calls_end_call_after_cancelled_error(monkeypatch):
     ``LLMService.generate`` must still record the call end so the
     LLM-Monitor doesn't show a stuck entry forever.
     """
-    svc, llm_activity = _build_llm_service(
-        monkeypatch, asyncio.CancelledError()
-    )
+    svc, llm_activity = _build_llm_service(monkeypatch, asyncio.CancelledError())
 
     async def _run():
         await _reset_tracker(llm_activity)
@@ -131,13 +128,8 @@ def test_generate_calls_end_call_after_cancelled_error(monkeypatch):
                 "generate call (see backend/services/llm_service.py)."
             )
             recent = llm_activity._recent
-            assert len(recent) == 1, (
-                f"expected exactly 1 entry in _recent, got {len(recent)}"
-            )
-            assert recent[0].status == "failed", (
-                f"cancelled call should be recorded as 'failed', got "
-                f"{recent[0].status!r}"
-            )
+            assert len(recent) == 1, f"expected exactly 1 entry in _recent, got {len(recent)}"
+            assert recent[0].status == "failed", f"cancelled call should be recorded as 'failed', got {recent[0].status!r}"
 
     asyncio.run(_assert())
 
@@ -227,21 +219,14 @@ def test_get_status_auto_evicts_stuck_call(monkeypatch):
             tracker._active[call.call_id] = call
 
         status = await tracker.get_status()
-        assert status["active_count"] == 0, (
-            f"expected stuck call to be evicted from _active, got "
-            f"active_count={status['active_count']}"
-        )
+        assert status["active_count"] == 0, f"expected stuck call to be evicted from _active, got active_count={status['active_count']}"
         assert len(status["active"]) == 0
 
         async with tracker._lock:
             assert len(tracker._recent) == 1
-            assert tracker._recent[0].status == "stuck", (
-                f"evicted entry should have status='stuck', got "
-                f"{tracker._recent[0].status!r}"
-            )
+            assert tracker._recent[0].status == "stuck", f"evicted entry should have status='stuck', got {tracker._recent[0].status!r}"
             assert "Auto-evicted" in tracker._recent[0].error, (
-                f"evicted entry should record the auto-eviction reason, "
-                f"got error={tracker._recent[0].error!r}"
+                f"evicted entry should record the auto-eviction reason, got error={tracker._recent[0].error!r}"
             )
 
     asyncio.run(_run())
@@ -275,10 +260,7 @@ def test_get_status_marks_active_entry_stale_below_eviction(monkeypatch):
         assert status["active_count"] == 1
         assert len(status["active"]) == 1
         entry = status["active"][0]
-        assert entry["stale"] is False, (
-            f"a fresh call should not be marked stale, got "
-            f"stale={entry['stale']!r}"
-        )
+        assert entry["stale"] is False, f"a fresh call should not be marked stale, got stale={entry['stale']!r}"
         assert entry["elapsed_s"] == pytest.approx(2.0, abs=0.5)
 
         async with tracker._lock:

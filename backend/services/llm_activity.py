@@ -146,16 +146,12 @@ class LLMActivityTracker:
                 call.finished_at = now
                 call.duration_ms = int((call.finished_at - call.started_at) * 1000)
                 call.status = "stuck"
-                call.error = (
-                    f"Auto-evicted by get_status after {STUCK_AFTER_S:.0f}s "
-                    f"(presumed end_call leak)"
-                )
+                call.error = f"Auto-evicted by get_status after {STUCK_AFTER_S:.0f}s (presumed end_call leak)"
                 self._recent.append(call)
                 if len(self._recent) > self._max_recent:
                     self._recent = self._recent[-self._max_recent :]
                 logger.warning(
-                    "Evicted stuck LLM call %s (model=%s context=%s) "
-                    "after %.0fs in _active; this indicates an end_call leak.",
+                    "Evicted stuck LLM call %s (model=%s context=%s) after %.0fs in _active; this indicates an end_call leak.",
                     cid,
                     call.model,
                     call.context,

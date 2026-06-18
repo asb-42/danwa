@@ -51,9 +51,7 @@ from pathlib import Path
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_WORKFLOW_EXEC_PATH = (
-    _PROJECT_ROOT / "backend" / "api" / "routers" / "workflow_exec.py"
-)
+_WORKFLOW_EXEC_PATH = _PROJECT_ROOT / "backend" / "api" / "routers" / "workflow_exec.py"
 
 
 def _extract_start_mvp_debate_source() -> str:
@@ -63,8 +61,7 @@ def _extract_start_mvp_debate_source() -> str:
     the module, which would transitively pull in ``sse_starlette``.
     """
     assert _WORKFLOW_EXEC_PATH.is_file(), (
-        f"workflow_exec.py not found at {_WORKFLOW_EXEC_PATH} - did the "
-        f"file move?  Update the test to point at the new location."
+        f"workflow_exec.py not found at {_WORKFLOW_EXEC_PATH} - did the file move?  Update the test to point at the new location."
     )
 
     source = _WORKFLOW_EXEC_PATH.read_text(encoding="utf-8")
@@ -106,8 +103,7 @@ def test_start_mvp_debate_passes_dms_project_id_to_resolve_rag_context():
     src = _extract_start_mvp_debate_source()
 
     assert "resolve_rag_context(" in src, (
-        "start_mvp_debate no longer calls resolve_rag_context - "
-        "did the function get refactored to a different RAG lookup?"
+        "start_mvp_debate no longer calls resolve_rag_context - did the function get refactored to a different RAG lookup?"
     )
 
     assert "dms_project_id" in src, (
@@ -124,10 +120,7 @@ def test_start_mvp_debate_passes_dms_project_id_to_resolve_rag_context():
     # We don't enforce a specific value, but the parameter must
     # reference the case id (e.g. effective_project_id or a
     # derived value).
-    assert (
-        "dms_project_id=effective_project_id" in src
-        or "dms_project_id=project_id" in src
-    ), (
+    assert "dms_project_id=effective_project_id" in src or "dms_project_id=project_id" in src, (
         "start_mvp_debate calls resolve_rag_context with "
         "dms_project_id, but the value is not derived from the "
         "case_id.  The case-scoped DMS uses the bare case_id as "
@@ -158,7 +151,4 @@ def test_resolve_rag_context_signature_includes_dms_project_id():
     # The parameter must accept a default of None (so legacy
     # callers don't have to pass it).
     default = sig.parameters["dms_project_id"].default
-    assert default is None, (
-        f"dms_project_id default should be None (backward "
-        f"compatible), got {default!r}"
-    )
+    assert default is None, f"dms_project_id default should be None (backward compatible), got {default!r}"

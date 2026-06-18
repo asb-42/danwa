@@ -1,0 +1,9 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.14
+    hooks:
+      # Lint (matches GitHub CI: ``uv run ruff check .``).
+      - id: ruff
+        args: [--fix]
+      # Format check (matches GitHub CI: ``uv run ruff format --check .``).
+      - id: ruff-format
