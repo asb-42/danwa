@@ -585,6 +585,11 @@ class InboxDebateItem(BaseModel):
     kind: str
     tenant_id: str
     case_id: str
+    # Human-readable case title.  Issue (2026-06-18): the Inbox row
+    # used to display the raw case_id UUID because the model
+    # didn't carry the title.  Frontend now renders
+    # ``Case: {case_title} (ID: {case_id})``.
+    case_title: str = ""
     title: str
     status: str
     tags: list[str] = Field(default_factory=list)

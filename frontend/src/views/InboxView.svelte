@@ -96,7 +96,14 @@
     if (!target || !moveModalItem) return;
     singleInFlight = true;
     try {
-      await moveItem(moveModalItem.id, target);
+      const res = await moveItem(moveModalItem.id, target);
+      // Issue (2026-06-18): the modal closed silently before --
+      // the user had no way to know whether the move succeeded.
+      // Use the same toast helper the bulk path uses, so single-
+      // item and bulk flows look identical from the user's POV.
+      if (res) showToast(formatResult('Move', res));
+    } catch (err) {
+      showToast(`Move failed: ${err?.message ?? err}`);
     } finally {
       singleInFlight = false;
       closeMoveModal();
@@ -113,20 +120,21 @@
   }
   async function confirmTagModal() {
     if (!tagModalItem) return;
-    // Filter out IDs that are already on the item (idempotent union
-    // is the backend contract, so this is an optimisation, not a
-    // correctness requirement).
     const existing = tagModalItem.id && inboxStore.summary?.items
       ? (inboxStore.summary.items.find((it) => it.id === tagModalItem.id)?.tags || [])
       : [];
     const newOnes = pendingTagIds.filter((t) => !existing.includes(t));
     if (newOnes.length === 0) {
       closeTagModal();
+      showToast('No new tags to add (all already on the item).');
       return;
     }
     singleInFlight = true;
     try {
-      await tagItem(tagModalItem.id, newOnes);
+      const res = await tagItem(tagModalItem.id, newOnes);
+      if (res) showToast(formatResult('Tag', res));
+    } catch (err) {
+      showToast(`Tag failed: ${err?.message ?? err}`);
     } finally {
       singleInFlight = false;
       closeTagModal();
@@ -143,7 +151,10 @@
     if (!archiveConfirmItem) return;
     singleInFlight = true;
     try {
-      await deleteItem(archiveConfirmItem.id);
+      const res = await deleteItem(archiveConfirmItem.id);
+      if (res) showToast(formatResult('Delete', res));
+    } catch (err) {
+      showToast(`Delete failed: ${err?.message ?? err}`);
     } finally {
       singleInFlight = false;
       closeArchiveConfirm();

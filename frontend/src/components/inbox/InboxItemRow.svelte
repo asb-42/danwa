@@ -90,7 +90,14 @@
       </p>
     {/if}
     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 flex gap-1.5 flex-wrap">
-      <span>Case: {item.case_id}</span>
+      <span>
+        Case: {item.case_title || item.case_id}
+        {#if item.case_title}
+          <span class="text-gray-400 dark:text-gray-500">
+            (ID: {item.case_id})
+          </span>
+        {/if}
+      </span>
       {#if item.tags?.length}
         <span aria-hidden="true">·</span>
         <span>Tags: {item.tags.join(', ')}</span>

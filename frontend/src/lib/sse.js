@@ -27,7 +27,16 @@ export function createSSE(debateId, handlers = {}) {
   const params = new URLSearchParams();
   if (caseId) params.set('project_id', caseId);  // backend still reads 'project_id' param
   const qs = params.toString();
-  const url = `${API_BASE}/api/v1/debate/${debateId}/stream${qs ? '?' + qs : ''}`;
+  // Issue (2026-06-18): the inbox / debate view can pass either a
+  // workflow session id (wf-*) or a legacy debate id (UUID).
+  // They live on different streams: workflow-exec/{id}/stream vs
+  // debate/{id}/stream.  Pick the right one based on the id
+  // prefix so a 'SSE error: undefined' in the console is not
+  // produced by hitting the wrong path.
+  const streamPath = typeof debateId === 'string' && debateId.startsWith('wf-')
+    ? `/api/v1/workflow-exec/${debateId}/stream`
+    : `/api/v1/debate/${debateId}/stream`;
+  const url = `${API_BASE}${streamPath}${qs ? '?' + qs : ''}`;
   let eventSource = null;
   let reconnectTimer = null;
   let reconnectDelay = 1000;

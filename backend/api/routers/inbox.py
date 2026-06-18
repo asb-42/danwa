@@ -88,7 +88,11 @@ def _parse_dt(value) -> datetime | None:
     return None
 
 
-def _build_debate_items_for_case(case_id: str, case_tenant_id: str) -> list[InboxDebateItem]:
+def _build_debate_items_for_case(
+    case_id: str,
+    case_tenant_id: str,
+    case_title: str = "",
+) -> list[InboxDebateItem]:
     """Return all Inbox items belonging to a single case.
 
     Performs three queries against the case-scoped debate store:
@@ -117,6 +121,7 @@ def _build_debate_items_for_case(case_id: str, case_tenant_id: str) -> list[Inbo
                     kind="recently_completed",
                     tenant_id=case_tenant_id,
                     case_id=case_id,
+                    case_title=case_title,
                     title=d.get("topic") or d.get("title") or "(untitled)",
                     status="completed",
                     tags=list(d.get("tags") or []),
@@ -136,6 +141,7 @@ def _build_debate_items_for_case(case_id: str, case_tenant_id: str) -> list[Inbo
                     kind="untagged",
                     tenant_id=case_tenant_id,
                     case_id=case_id,
+                    case_title=case_title,
                     title=d.get("topic") or d.get("title") or "(untitled)",
                     status=d.get("status", "unknown"),
                     tags=[],
@@ -155,6 +161,7 @@ def _build_debate_items_for_case(case_id: str, case_tenant_id: str) -> list[Inbo
                     kind="stale_running",
                     tenant_id=case_tenant_id,
                     case_id=case_id,
+                    case_title=case_title,
                     title=d.get("topic") or d.get("title") or "(untitled)",
                     status="running",
                     tags=list(d.get("tags") or []),
@@ -188,7 +195,7 @@ def get_inbox(
     cases = case_store.list_by_tenant(tenant_id)
     all_items: list[InboxDebateItem] = []
     for c in cases:
-        all_items.extend(_build_debate_items_for_case(c.id, c.tenant_id))
+        all_items.extend(_build_debate_items_for_case(c.id, c.tenant_id, case_title=c.title))
 
     # Counts per kind
     counts: dict[str, int] = {}

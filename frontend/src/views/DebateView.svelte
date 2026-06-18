@@ -450,6 +450,20 @@
       const status = await getHITLStatus($currentDebate.debate_id);
       hitlStatus.set(status);
     } catch (e) { if (import.meta.env.DEV) console.warn('[DebateView] HITL status refresh failed:', e); }
+    // Workflow-state poll: only meaningful for workflow-driven
+    // debates (session ids start with 'wf-').  Legacy debates
+    // live in the project-scoped debate store, not the workflow
+    // state backend, so polling them just produces a 404 in the
+    // console (issue 2026-06-18).
+    const id = $currentDebate.debate_id;
+    if (typeof id === 'string' && id.startsWith('wf-')) {
+      try {
+        const { getWorkflowState } = await import('../lib/workflowExec.js');
+        const state = await getWorkflowState(id);
+        // local poll result is consumed by HITL-pause UI;
+        // no global store needed for the poll result itself.
+      } catch (e) { if (import.meta.env.DEV) console.warn('[DebateView] workflow state refresh failed:', e); }
+    }
   }
 
   async function refreshHITLInteractions() {
