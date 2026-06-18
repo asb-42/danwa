@@ -899,15 +899,6 @@
         />
       {/if}
 
-      {#if status === 'running' || status === 'paused'}
-        <DebateActivityLog
-          activityText={currentActivity ? t('mvpDebate.activity.agentCalling', { agent: AGENTS.find(a => a.role === currentActivity.role)?.label || currentActivity.role, llm: getProfileName(currentActivity.llm_profile_id), round: currentActivity.round }) : ''}
-          {consumedInterjections}
-          {isConnected}
-          isVisible={status === 'running' || status === 'paused'}
-        />
-      {/if}
-
       <div class="metrics-grid">
         <div class="metric">
           <span class="metric-label">{t('mvpDebate.metrics.round')}</span>
@@ -937,6 +928,14 @@
               </span>
             {/each}
           </div>
+          {#if status === 'running' || status === 'paused'}
+            <DebateActivityLog
+              activityText={currentActivity ? t('mvpDebate.activity.agentCalling', { agent: AGENTS.find(a => a.role === currentActivity.role)?.label || currentActivity.role, llm: getProfileName(currentActivity.llm_profile_id), round: currentActivity.round }) : ''}
+              {consumedInterjections}
+              {isConnected}
+              isVisible={status === 'running' || status === 'paused'}
+            />
+          {/if}
         </div>
       {/if}
 

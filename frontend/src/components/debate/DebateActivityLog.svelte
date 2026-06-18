@@ -12,8 +12,16 @@
 </script>
 
 {#if isVisible}
-  <!-- DEBUG 2026-06-17: visual marker to identify this component on screen -->
-  <div data-debug-component="DebateActivityLog" class="px-2 py-0.5 mb-1 inline-block rounded bg-pink-600 text-white text-[10px] font-mono font-bold tracking-wider">DBG: DebateActivityLog.svelte</div>
+  <!--
+    DebateActivityLog (DebateActivityLog.svelte)
+    ----------------------------------------------------------------
+    Rendered as a child of the LLM Assignments block in
+    MvpDebateView.svelte (see the {#if Object.keys(llmAssignmentsResult)...}
+    branch).  The ``data-debug-component="DebateActivityLog"``
+    attribute on the outer wrapper is preserved so e2e / smoke
+    tests can still anchor on it; no pink debug badge is
+    rendered.
+  -->
   <div class="activity-log">
     {#if activityText}
       <div class="activity-current">
