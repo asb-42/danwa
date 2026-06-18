@@ -14,8 +14,10 @@ nicht im RAG abfuefbar"`` in the MVP and legacy debate views.
 
 The case-scoped factory was simplified to bind the DMS to the bare
 ``case_id`` (see ``_get_dms_for_case``).  This migration rewrites the
-existing chunks' ``project_id`` metadata so old data is visible again
-without a re-index.
+existing chunks' ``project_id`` metadata AND the ``documents`` table
+in the case DMS SQLite database so old data is visible again to both
+the ChromaDB-backed RAG pipeline AND the ``dms.list_documents()``
+call that powers the Documents UI.
 
 Safe to re-run: each chunk is updated only if its current ``project_id``
 matches the synthetic scope pattern.
@@ -25,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -34,6 +37,48 @@ _SCOPE_RE = re.compile(r"^case:([^:]+):(.+)$")
 
 # Per-tenant directory where case directories live.
 _TENANTS_BASE = Path("data") / "tenants"
+
+
+def _rewrite_sqlite_documents(case_dir: Path, dry_run: bool) -> int:
+    """Rewrite the ``documents.project_id`` column in the case DMS
+    SQLite database from the legacy ``case:{tid}:{cid}`` scope to
+    the bare ``{cid}``.
+
+    ChromaDB chunks are rewritten by the main migrate() loop
+    above; this companion function does the same for the SQL
+    ``documents`` table so that ``dms.list_documents(case_id)``
+    returns the previously-indexed documents.
+
+    Safe to re-run: only rows whose current ``project_id`` matches
+    the synthetic scope pattern are touched.
+    """
+    db_path = case_dir / "dms" / "dms.db"
+    if not db_path.is_file():
+        return 0
+    try:
+        conn = sqlite3.connect(str(db_path))
+    except sqlite3.Error as exc:
+        logger.warning("v024: could not open SQLite DB %s: %s", db_path, exc)
+        return 0
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, project_id FROM documents")
+        rows = cur.fetchall()
+        updates = []
+        for doc_id, current_pid in rows:
+            m = _SCOPE_RE.match(str(current_pid or ""))
+            if not m:
+                continue
+            bare = m.group(2)
+            updates.append((bare, doc_id))
+        if not updates:
+            return 0
+        if not dry_run:
+            cur.executemany("UPDATE documents SET project_id = ? WHERE id = ?", updates)
+            conn.commit()
+        return len(updates)
+    finally:
+        conn.close()
 
 
 def migrate(case_id: str | None = None, dry_run: bool = False) -> int:
@@ -73,6 +118,21 @@ def migrate(case_id: str | None = None, dry_run: bool = False) -> int:
         chroma_dir = case_dir / "dms" / "chroma_db"
         if not chroma_dir.is_dir():
             continue
+        # Also rewrite the SQL ``documents`` table in dms.db so
+        # ``dms.list_documents(case_id)`` (which queries SQLite) returns
+        # the previously-indexed documents.  Without this, the
+        # ChromaDB chunks are visible to RAG but the documents are
+        # not visible in the Documents UI.
+        sql_rewritten = _rewrite_sqlite_documents(case_dir, dry_run)
+        if sql_rewritten:
+            logger.info(
+                "v024: %s — rewrote %d document rows (case_dir=%s, dry_run=%s)",
+                case_dir.name,
+                sql_rewritten,
+                case_dir,
+                dry_run,
+            )
+            total += sql_rewritten
         # Locate the "document_chunks" collection directory.  ChromaDB
         # stores one sub-dir per collection under <chroma_dir>/<uuid>/.
         # We don't have the collection name baked in here, so we
