@@ -129,10 +129,17 @@ def test_summary_returns_payload_when_enabled(client: TestClient, enabled: None,
     for did in ("d1", "d2"):
         ds = _get_debate_store_for_case("t1", "c1", case_store)
         ds.put(did, {"debate_id": did, "status": DebateStatus.COMPLETED.value, "created_at": datetime.now(UTC).isoformat()})
-    dms = case_store.get_dms_for_case("t1", "c1")  # type: ignore[attr-defined]
-    # Inject a real document so document_count is 1.
+    # Use the production case-scoped DMS factory (the same one
+    # the workspace router uses internally) to seed a real
+    # document on disk.  CaseStore itself does not have a
+    # ``get_dms_for_case`` method — that lives in
+    # ``backend.api.routers.case_scoped`` as a module-level
+    # function.
     import tempfile
 
+    from backend.api.routers.case_scoped import _get_dms_for_case
+
+    dms = _get_dms_for_case("t1", "c1", case_store)
     with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as f:
         f.write("test content")
         f_name = f.name
