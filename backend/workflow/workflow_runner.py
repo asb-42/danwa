@@ -42,6 +42,7 @@ from backend.models.artifact import (
     Turn,
 )
 from backend.services.artifact_store import ArtifactStore
+from backend.services.llm_activity import llm_activity
 from backend.state.workflow_state import get_workflow_state
 from backend.workflow.audit_logger import get_audit_logger
 from backend.workflow.immutability import lock_session
@@ -295,6 +296,13 @@ async def run_workflow_background(
             },
         )
 
+        # Reset per-session token tracking in the LLM-Monitor so the
+        # next debate starts with a clean counter.
+        try:
+            await llm_activity.clear_session(session_id)
+        except Exception:
+            logger.debug("llm_activity.clear_session failed on completion", exc_info=True)
+
         set_session_status(session_id, "completed")
 
         debate_id = initial_state.get("debate_id")
@@ -359,6 +367,15 @@ async def run_workflow_background(
             },
         )
 
+        # Reset per-session token tracking in the LLM-Monitor.  This
+        # also helps because any in-flight LLM call that was leaked by
+        # ``CancelledError`` (fixed in llm_service.py) would have been
+        # end_call'd in the finally block of ``LLMService.generate``.
+        try:
+            await llm_activity.clear_session(session_id)
+        except Exception:
+            logger.debug("llm_activity.clear_session failed on cancel", exc_info=True)
+
         set_session_status(session_id, "cancelled")
 
         debate_id = initial_state.get("debate_id")
@@ -397,6 +414,13 @@ async def run_workflow_background(
                 "duration_ms": duration_ms,
             },
         )
+
+        # Reset per-session token tracking in the LLM-Monitor so the
+        # next debate starts with a clean counter even after a failure.
+        try:
+            await llm_activity.clear_session(session_id)
+        except Exception:
+            logger.debug("llm_activity.clear_session failed on failure", exc_info=True)
 
         set_session_status(session_id, "failed")
 

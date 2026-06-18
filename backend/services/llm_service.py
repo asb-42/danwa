@@ -326,6 +326,18 @@ class LLMService:
             session_id=self._session_id,
         )
 
+        # Track the LLM call lifecycle so the LLM-Monitor (Header.svelte)
+        # always sees the call end, even on cancellation.  CancelledError
+        # inherits from BaseException in Python 3.8+ and bypasses
+        # ``except Exception`` blocks, which is why the previous
+        # try/except-Exception version leaked entries into ``_active``
+        # forever (and made the monitor show "34m59s" indefinitely).
+        # Using try/finally + an explicit ``success`` flag ensures
+        # end_call runs on success, exception, AND cancellation.
+        success = False
+        tokens_in = 0
+        tokens_out = 0
+        error_message = ""
         try:
             # Route by protocol (Phase 8)
             protocol = getattr(self._profile, "protocol", "litellm")
@@ -338,24 +350,25 @@ class LLMService:
                 result = await self._generate_cloudflare(messages, temp, tokens, extra_kwargs=extra_kwargs)
             else:
                 result = await self._generate_litellm(messages, temp, tokens, tools=tools, extra_kwargs=extra_kwargs)
-
-            await llm_activity.end_call(
-                call_id,
-                tokens_in=result.tokens_in,
-                tokens_out=result.tokens_out,
-                session_id=self._session_id,
-                status="completed",
-            )
+            success = True
+            tokens_in = result.tokens_in
+            tokens_out = result.tokens_out
             return result
-
         except Exception as exc:
+            # ``CancelledError`` is a BaseException in 3.8+ and skips
+            # this block; the finally below still runs and records the
+            # call as failed with the cancellation reason.
+            error_message = str(exc)
+            raise
+        finally:
             await llm_activity.end_call(
                 call_id,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
                 session_id=self._session_id,
-                status="failed",
-                error=str(exc),
+                status="completed" if success else "failed",
+                error=error_message,
             )
-            raise
 
     async def generate_with_fallback(
         self,

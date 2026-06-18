@@ -15,6 +15,15 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# After this many seconds, an "active" call is presumed leaked (a
+# regression that bypassed ``end_call``).  ``get_status`` moves it to
+# the recent list with status="stuck" and the LLM-Monitor stops
+# showing it as a live spinner.  Default 30 minutes: comfortably
+# above any legitimate LLM call (typically <120s) but short enough
+# that a stuck call is fixed within a single working session.
+STUCK_AFTER_S: float = 30 * 60
+
+
 @dataclass
 class LLMCall:
     """A single LLM call record."""
@@ -112,25 +121,71 @@ class LLMActivityTracker:
                 self._recent = self._recent[-self._max_recent :]
 
     async def get_status(self) -> dict[str, Any]:
-        """Get current activity status for the frontend header."""
+        """Get current activity status for the frontend header.
+
+        Defensive: any active call older than ``STUCK_AFTER_S`` is
+        presumed leaked (a regression that bypassed ``end_call``,
+        e.g. the 2026-06-18 ``asyncio.CancelledError`` leak in
+        ``llm_service.LLMService.generate``).  We move the entry to
+        the recent list with ``status="stuck"`` so the LLM-Monitor
+        stops showing it as a live spinner, while still keeping an
+        audit trail of what happened.  This is a belt-and-braces
+        safety net: the primary fix is the try/finally in the call
+        sites themselves.
+        """
         async with self._lock:
+            now = time.monotonic()
+            # Identify and evict stuck calls.  Iterate over a copy of
+            # the keys so we can mutate ``_active`` safely.
+            stuck_ids: list[str] = []
+            for cid, call in list(self._active.items()):
+                if (now - call.started_at) >= STUCK_AFTER_S:
+                    stuck_ids.append(cid)
+            for cid in stuck_ids:
+                call = self._active.pop(cid)
+                call.finished_at = now
+                call.duration_ms = int((call.finished_at - call.started_at) * 1000)
+                call.status = "stuck"
+                call.error = (
+                    f"Auto-evicted by get_status after {STUCK_AFTER_S:.0f}s "
+                    f"(presumed end_call leak)"
+                )
+                self._recent.append(call)
+                if len(self._recent) > self._max_recent:
+                    self._recent = self._recent[-self._max_recent :]
+                logger.warning(
+                    "Evicted stuck LLM call %s (model=%s context=%s) "
+                    "after %.0fs in _active; this indicates an end_call leak.",
+                    cid,
+                    call.model,
+                    call.context,
+                    now - call.started_at,
+                )
+
             active_calls = list(self._active.values())
             recent_calls = self._recent[-10:]  # Last 10 completed
 
             # Calculate totals
             total_tokens_all = sum(t for t in self._session_totals.values())
 
-            # Build active call summaries
+            # Build active call summaries.  Cap the displayed elapsed
+            # value at STUCK_AFTER_S so a leaked entry that escaped
+            # the eviction above (e.g. between two polls) cannot grow
+            # unbounded in the UI.
             active_summaries = []
             for call in active_calls:
-                elapsed_s = time.monotonic() - call.started_at
+                raw_elapsed = now - call.started_at
+                displayed_elapsed = min(raw_elapsed, STUCK_AFTER_S)
                 active_summaries.append(
                     {
                         "call_id": call.call_id,
                         "model": call.model,
                         "provider": call.provider,
                         "context": call.context,
-                        "elapsed_s": round(elapsed_s, 1),
+                        "elapsed_s": round(displayed_elapsed, 1),
+                        # ``stale`` signals to the frontend that this
+                        # entry is overdue and will be evicted shortly.
+                        "stale": raw_elapsed >= STUCK_AFTER_S,
                     }
                 )
 

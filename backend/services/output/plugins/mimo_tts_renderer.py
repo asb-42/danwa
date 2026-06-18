@@ -227,6 +227,17 @@ class MiMoTTSRenderer:
             context="TTS",
         )
 
+        # Track the LLM call lifecycle.  Mirrors the fix in
+        # ``backend.services.llm_service.LLMService.generate``: the
+        # previous try/except-Exception version leaked entries when
+        # ``asyncio.CancelledError`` (a BaseException in 3.8+) was
+        # raised during a TTS render that overlapped with a debate
+        # cancel.  try/finally + ``success`` flag guarantees that
+        # ``end_call`` runs in every case.
+        success = False
+        tokens_in = 0
+        tokens_out = 0
+        error_message = ""
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
                 response = await client.post(url, json=payload, headers=headers)
@@ -248,13 +259,6 @@ class MiMoTTSRenderer:
             tokens_in = usage.get("prompt_tokens", 0)
             tokens_out = usage.get("completion_tokens", 0)
 
-            await llm_activity.end_call(
-                call_id,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                status="completed",
-            )
-
             # Decode and write WAV file
             await decode_base64_audio(audio_data, output_path)
 
@@ -263,14 +267,18 @@ class MiMoTTSRenderer:
                 text[:50],
                 output_path,
             )
-
+            success = True
         except Exception as exc:
+            error_message = str(exc)
+            raise
+        finally:
             await llm_activity.end_call(
                 call_id,
-                status="failed",
-                error=str(exc),
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                status="completed" if success else "failed",
+                error=error_message,
             )
-            raise
 
 
 # ---------------------------------------------------------------------------
