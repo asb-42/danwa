@@ -108,7 +108,7 @@
     {:else if $route === 'archive'}
       {#await import('./views/ArchiveView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'audit'}
-      {#await import('./views/AuditView.svelte') then Mod}<Mod.default />{/await}
+      {#await import('./views/AuditView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} />{/await}
     {:else if $route === 'config'}
       {#await import('./views/ConfigView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'manage'}

@@ -9,6 +9,15 @@
 
   let t = $derived($tStore);
 
+  // Accept a debate id from the router (App.svelte reads the first
+  // route param) so deep links like ``#/audit/<debate_id>`` load
+  // the right audit trail.  Falls back to currentDebate / manual
+  // input for backward compat.  See issue (2026-06-18): the
+  // Workspace's 'Show full audit' link used to pass a debateId
+  // through navigate()'s second arg, which the hash-based router
+  // silently dropped -- the AuditView then showed the empty form.
+  let { debateId = null } = $props();
+
   let debateIdInput = $state('');
   let resolvedTitle = $state('');
 
@@ -52,10 +61,23 @@
     }
   }
 
-  // Auto-load if current debate exists
+  // Auto-load on mount: prefer the prop (set by App.svelte from
+  // the first route param), fall back to the current debate, fall
+  // back to the manual input field.  This is the single point
+  // that consumes the route param.
   onMount(() => {
-    if ($currentDebate?.debate_id) {
-      debateIdInput = $currentDebate.debate_id;
+    const initial = debateId || $currentDebate?.debate_id;
+    if (initial) {
+      debateIdInput = initial;
+      loadAuditEvents();
+    }
+  });
+
+  // React to subsequent prop changes (e.g. user navigates from
+  // one audit URL to another via the Workspace).
+  $effect(() => {
+    if (debateId && debateId !== debateIdInput) {
+      debateIdInput = debateId;
       loadAuditEvents();
     }
   });

@@ -571,6 +571,60 @@
                 {summary.debate_count}
               </dd>
             </div>
+            {#if summary.recent_debates?.length}
+              <div class="col-span-3 mt-2">
+                <h3 class="text-sm font-semibold mb-2
+                           text-gray-700 dark:text-gray-200">
+                  {t?.caseSpace?.workspace?.recentDebates ?? 'Debates in this case'}
+                </h3>
+                <ul class="divide-y divide-gray-200 dark:divide-gray-700
+                           border border-gray-200 dark:border-gray-700
+                           rounded-md list-none p-0"
+                    data-testid="recent-debates">
+                  {#each summary.recent_debates as d (d.debate_id)}
+                    <li class="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                      <button
+                        type="button"
+                        class="text-left flex-1 min-w-0 truncate
+                               text-blue-600 dark:text-blue-400
+                               hover:underline focus:outline-none
+                               focus:ring-2 focus:ring-blue-500"
+                        data-testid="recent-debate-link"
+                        data-debate-id={d.debate_id}
+                        title={d.title || d.debate_id}
+                        onclick={() => {
+                          // Prefer the audit trail (the link the
+                          // user originally asked about) so the
+                          // row click matches the Workspace's
+                          // 'Show full audit' semantics.  Fall
+                          // back to /debate/<id> for power users.
+                          if (typeof navigate === 'function') {
+                            navigate('audit/' + encodeURIComponent(d.debate_id));
+                          } else if (typeof window !== 'undefined') {
+                            window.location.hash =
+                              '#/audit/' + encodeURIComponent(d.debate_id);
+                          }
+                        }}
+                      >
+                        {d.title || d.debate_id}
+                      </button>
+                      <span class="text-xs px-1.5 py-0.5 rounded
+                                   bg-gray-100 dark:bg-gray-700
+                                   text-gray-700 dark:text-gray-200 shrink-0"
+                        data-status={d.status}>
+                        {d.status}
+                      </span>
+                      {#if d.max_rounds > 0}
+                        <span class="text-xs font-mono
+                                     text-gray-500 dark:text-gray-400 shrink-0">
+                          R{d.current_round}/{d.max_rounds}
+                        </span>
+                      {/if}
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
             <div>
               <dt class="text-xs uppercase tracking-wide
                          text-gray-500 dark:text-gray-400">
@@ -738,10 +792,25 @@
               onclick={(e) => {
                 e.preventDefault();
                 const lastDebate = summary.recent_events.find((x) => x.debate_id);
-                if (typeof navigate === 'function') {
-                  navigate('audit', lastDebate?.debate_id ? { debateId: lastDebate.debate_id } : undefined);
-                } else if (typeof window !== 'undefined') {
-                  window.location.hash = '#/audit';
+                // Bug (2026-06-18): previously called
+                //   navigate('audit', { debateId: lastDebate.debate_id })
+                // The hash-based router in App.svelte only reads
+                // the first route param ($routeParams[0]); the
+                // second navigate() argument is silently dropped.
+                // Encode the debateId into the URL itself so it
+                // actually reaches AuditView via the prop.
+                if (lastDebate?.debate_id) {
+                  if (typeof navigate === 'function') {
+                    navigate('audit/' + encodeURIComponent(lastDebate.debate_id));
+                  } else if (typeof window !== 'undefined') {
+                    window.location.hash = '#/audit/' + encodeURIComponent(lastDebate.debate_id);
+                  }
+                } else {
+                  if (typeof navigate === 'function') {
+                    navigate('audit');
+                  } else if (typeof window !== 'undefined') {
+                    window.location.hash = '#/audit';
+                  }
                 }
               }}
               role="button"
@@ -820,7 +889,24 @@
         <button
           class="text-blue-600 dark:text-blue-400 hover:underline
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onclick={() => reset()}
+          data-testid="switch-case"
+          onclick={() => {
+            // Bug (2026-06-18): previously called reset() directly,
+            // which only blanks the active case in the store -- the
+            // page then re-renders the "no active case" empty state
+            // and the user perceives that as "just a reload".
+            // The intent of "Switch case" is to take the user to the
+            // case picker so they can choose a different case.
+            // Call reset() *after* the navigation kicks in so the
+            // summary cache is cleared, but the navigate() call is
+            // what actually moves the user.
+            if (typeof navigate === 'function') {
+              navigate('cases');
+            } else if (typeof window !== 'undefined') {
+              window.location.hash = '#/cases';
+            }
+            reset();
+          }}
         >
           {t?.caseSpace?.workspace?.clearActive ?? 'Switch case'}
         </button>
