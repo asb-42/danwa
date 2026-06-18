@@ -106,8 +106,19 @@ export function createSSE(debateId, handlers = {}) {
       eventSource.close();
       handlers.onError?.();
 
-      // Don't reconnect if debate already completed/failed
+      // Don't reconnect if debate already completed/failed.
       if (settled) return;
+
+      // Cap reconnect attempts at 5 so a permanently-broken stream
+      // (e.g. legacy debate id, server already torn down) does not
+      // spam the console with 'SSE error: undefined' forever.
+      // The exponential-backoff delay would otherwise reach 30s
+      // and keep retrying indefinitely.
+      reconnectAttempts = (reconnectAttempts ?? 0) + 1;
+      if (reconnectAttempts > 5) {
+        if (import.meta.env.DEV) console.warn('[sse] giving up after', reconnectAttempts, 'attempts');
+        return;
+      }
 
       // Reconnect with exponential backoff
       reconnectTimer = setTimeout(() => {

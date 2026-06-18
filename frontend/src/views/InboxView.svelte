@@ -654,4 +654,46 @@
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
+
+  /* .modal-overlay / .modal-card are used by the Tag and Move modals
+     below.  The class names mirror the convention used by
+     TemplateInstantiateModal.svelte and AgentQueryModal.svelte, but
+     those CSS rules are scoped to their own components and therefore
+     do not apply here.  Define them via :global() so the Tag / Move
+     modals are actually visible.
+
+     Issue (2026-06-18): user reported that the Tag and Move buttons
+     had 'no function' -- root cause was that the modal divs were
+     rendered with no styling (transparent, not centred), so the
+     user saw no UI change after clicking the buttons.  Open and
+     Delete worked because Open navigates away and Delete uses
+     ConfirmDialog (its own scoped styles).  */
+  :global(.modal-overlay) {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    padding: 20px;
+  }
+  :global(.modal-card) {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  :global(.dark .modal-card) {
+    background: #1e1e2e;
+    color: #e2e8f0;
+    border-color: #313244;
+  }
 </style>

@@ -141,9 +141,14 @@ export function useLastCompletedDebatePipeline() {
       const sessionId = debate.session_id;
       const workflowId = debate.workflow_id;
 
-      // Load state + definition in parallel
+      // Load state + definition in parallel.
+      // The workflow-state endpoint only knows about wf-* session
+      // ids; legacy debates store their node_outputs in the
+      // project-scoped debate store instead, and the call below
+      // would produce a 404 in the browser console for those.
+      const isWorkflowSession = typeof sessionId === 'string' && sessionId.startsWith('wf-');
       const [state, definition] = await Promise.all([
-        sessionId
+        isWorkflowSession
           ? getWorkflowState(sessionId).catch(() => null)
           : Promise.resolve(null),
         fetchWorkflowDefinition(workflowId),
@@ -208,7 +213,13 @@ export function useLiveWorkflowPipeline(debateId) {
     result.error = null;
 
     try {
-      const state = await getWorkflowState(debateId).catch(() => null);
+      // Skip the workflow-state call for legacy debate ids so we
+      // don't log a 404 to the console for them.  Live pipeline
+      // visualisation only makes sense for workflow-driven debates.
+      const isWorkflowSession = typeof debateId === 'string' && debateId.startsWith('wf-');
+      const state = isWorkflowSession
+        ? await getWorkflowState(debateId).catch(() => null)
+        : null;
       const definition = await fetchWorkflowDefinition(state?.workflow_id);
 
       const nodeOutputs = state?.node_outputs || [];
