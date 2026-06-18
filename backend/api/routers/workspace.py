@@ -31,6 +31,7 @@ from backend.api.deps import (
 from backend.core.config import settings
 from backend.models.schemas import (
     CaseSearchHit,
+    WorkspaceRecentDebate,
     WorkspaceRecentEvent,
     WorkspaceSuggestedNextStep,
     WorkspaceSummary,
@@ -268,6 +269,36 @@ def get_workspace_summary(
     except Exception:  # noqa: BLE001
         member_count = 0
 
+    # Issue (2026-06-18): the Workspace view showed 'Debates: 10'
+    # but no list of those 10 debates.  Build a lightweight list
+    # of the 10 most recent debates in the active case so the
+    # frontend can render clickable rows.  Sort key is
+    # updated_at (if present) else created_at, both as strings
+    # -- DebateStore stores ISO timestamps, so lexicographic
+    # order == chronological order.
+    sorted_debates = sorted(
+        unioned,
+        key=lambda d: d.get("updated_at") or d.get("created_at") or "",
+        reverse=True,
+    )
+    recent_debates: list[WorkspaceRecentDebate] = []
+    for d in sorted_debates[:10]:
+        # DebateListItem schema is richer than what we need here;
+        # we just pick the fields the Workspace view actually shows.
+        created_at = d.get("created_at")
+        updated_at = d.get("updated_at")
+        recent_debates.append(
+            WorkspaceRecentDebate(
+                debate_id=d.get("debate_id") or "",
+                title=d.get("title") or d.get("request", {}).get("title", "") or "",
+                status=d.get("status") or "unknown",
+                current_round=int(d.get("current_round") or 0),
+                max_rounds=int(d.get("max_rounds") or d.get("config", {}).get("max_rounds") or 0),
+                created_at=created_at,
+                updated_at=updated_at,
+            )
+        )
+
     return WorkspaceSummary(
         case_id=case.id,
         tenant_id=case.tenant_id,
@@ -285,6 +316,7 @@ def get_workspace_summary(
         debate_count=debate_count,
         document_count=document_count,
         recent_events=_collect_recent_audit_events(tenant_id, case_id, limit=5),
+        recent_debates=recent_debates,
         suggested_next_steps=_build_suggested_next_steps(
             case_id=case.id,
             debate_count=debate_count,

@@ -527,9 +527,33 @@ class WorkspaceSummary(BaseModel):
     document_count: int = 0
 
     recent_events: list[WorkspaceRecentEvent] = Field(default_factory=list)
+    # Lightweight list of the most recent debates in this case
+    # (capped at 10, newest first).  Used by the Workspace view
+    # to render a clickable list next to the 'Debates: N' stat
+    # so the user can see WHICH debates the count refers to,
+    # not just the number.  See issue (2026-06-18).
+    recent_debates: list[WorkspaceRecentDebate] = Field(default_factory=list)
     suggested_next_steps: list[WorkspaceSuggestedNextStep] = Field(default_factory=list)
 
     generated_at: datetime
+
+
+class WorkspaceRecentDebate(BaseModel):
+    """Lightweight debate descriptor embedded in WorkspaceSummary.
+
+    Intentionally narrower than DebateListItem: the Workspace
+    only needs enough to render a one-line clickable row.  Full
+    debate payloads (rounds, agents, output) remain available via
+    the case-scoped debates endpoint.
+    """
+
+    debate_id: str
+    title: str = ""
+    status: str = "unknown"
+    current_round: int = 0
+    max_rounds: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class CaseSearchHit(BaseModel):
