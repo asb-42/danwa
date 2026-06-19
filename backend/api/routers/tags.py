@@ -27,7 +27,7 @@ def list_tags(
     tags = store.list_by_tenant(tenant_id)
     return [
         TagResponse(
-            id=t.id,
+            tag_id=t.id,
             tenant_id=t.tenant_id,
             name=t.name,
             color=t.color,
