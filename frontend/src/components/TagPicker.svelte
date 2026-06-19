@@ -9,7 +9,13 @@
   import { addToast } from '../lib/stores.js';
   import { getTags, createTag } from '../lib/api/tag.js';
 
-  let { value = [], onchange, caseId = null } = $props();
+  // onchange default is a no-op wrapper so a parent that forgets
+  // to wire it produces a visible runtime error in dev builds
+  // (TypeError: onchange is not a function) instead of silently
+  // doing nothing.  See InboxView line ~471 (must use lowercase
+  // 'onchange' to match this prop name -- Svelte 5 is
+  // case-sensitive for $props() destructuring).
+  let { value = [], onchange = () => { throw new TypeError('TagPicker: parent did not bind onchange'); }, caseId = null } = $props();
 
   let t = $derived($tStore);
 

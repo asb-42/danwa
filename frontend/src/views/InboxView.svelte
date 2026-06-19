@@ -383,7 +383,7 @@
         aria-modal="true"
         aria-labelledby="inbox-move-title"
         data-testid="inbox-move-modal"
-        onclick={(e) => { if (e.target === e.currentTarget) closeMoveModal(); }}
+        onclick={(e) => e.stopPropagation()}
       >
         <div
           class="modal-card"
@@ -453,7 +453,7 @@
         aria-modal="true"
         aria-labelledby="inbox-tag-title"
         data-testid="inbox-tag-modal"
-        onclick={(e) => { if (e.target === e.currentTarget) closeTagModal(); }}
+        onclick={(e) => e.stopPropagation()}
       >
         <div
           class="modal-card"
@@ -468,7 +468,7 @@
           </p>
           <TagPicker
             value={pendingTagIds}
-            onChange={(v) => (pendingTagIds = v)}
+            onchange={(v) => (pendingTagIds = v)}
           />
           <div class="mt-4 flex justify-end gap-2">
             <button
