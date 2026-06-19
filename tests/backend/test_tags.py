@@ -230,7 +230,7 @@ class TestTagsAPICreate:
         data = response.json()
         assert data["name"] == "Urgent"
         assert data["color"] == "#ff0000"
-        assert "id" in data
+        assert "tag_id" in data
 
     def test_create_default_color(self, client):
         response = client.post(f"/api/v1/tenants/{_TENANT}/tags", json={"name": "Default"})
@@ -240,9 +240,9 @@ class TestTagsAPICreate:
         parent = client.post(f"/api/v1/tenants/{_TENANT}/tags", json={"name": "Parent"}).json()
         child = client.post(
             f"/api/v1/tenants/{_TENANT}/tags",
-            json={"name": "Child", "parent_id": parent["id"]},
+            json={"name": "Child", "parent_id": parent["tag_id"]},
         ).json()
-        assert child["parent_id"] == parent["id"]
+        assert child["parent_id"] == parent["tag_id"]
 
     def test_create_empty_name_rejected(self, client):
         response = client.post(f"/api/v1/tenants/{_TENANT}/tags", json={"name": ""})
@@ -256,7 +256,7 @@ class TestTagsAPICreate:
 class TestTagsAPIGet:
     def test_get_existing_tag(self, client):
         create_resp = client.post(f"/api/v1/tenants/{_TENANT}/tags", json={"name": "Get Me"})
-        tag_id = create_resp.json()["id"]
+        tag_id = create_resp.json()["tag_id"]
         response = client.get(f"/api/v1/tenants/{_TENANT}/tags/{tag_id}")
         assert response.status_code == 200
         assert response.json()["name"] == "Get Me"
@@ -270,7 +270,7 @@ class TestTagsAPIUpdate:
     def test_update_name(self, client):
         tag = client.post(f"/api/v1/tenants/{_TENANT}/tags", json={"name": "Old"}).json()
         response = client.put(
-            f"/api/v1/tenants/{_TENANT}/tags/{tag['id']}",
+            f"/api/v1/tenants/{_TENANT}/tags/{tag['tag_id']}",
             json={"name": "New", "color": "#00ff00"},
         )
         assert response.status_code == 200
@@ -285,11 +285,11 @@ class TestTagsAPIUpdate:
 class TestTagsAPIDelete:
     def test_delete_tag(self, client):
         tag = client.post(f"/api/v1/tenants/{_TENANT}/tags", json={"name": "Delete"}).json()
-        response = client.delete(f"/api/v1/tenants/{_TENANT}/tags/{tag['id']}")
+        response = client.delete(f"/api/v1/tenants/{_TENANT}/tags/{tag['tag_id']}")
         assert response.status_code == 200
-        assert response.json()["deleted"] == tag["id"]
+        assert response.json()["deleted"] == tag["tag_id"]
 
-        get_resp = client.get(f"/api/v1/tenants/{_TENANT}/tags/{tag['id']}")
+        get_resp = client.get(f"/api/v1/tenants/{_TENANT}/tags/{tag['tag_id']}")
         assert get_resp.status_code == 404
 
     def test_delete_nonexistent_returns_404(self, client):
