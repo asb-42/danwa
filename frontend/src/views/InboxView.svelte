@@ -690,9 +690,21 @@
     width: 100%;
     max-width: 560px;
     max-height: 80vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     padding: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  /* The TagPicker's root div is the only direct child besides the
+     sticky action bar; make it the flex-grow scrolling area so
+     the action bar (sticky bottom-0) is always visible regardless
+     of how many tags the picker contains.  Issue (2026-06-19):
+     user reported the Cancel/'Add tags' buttons were not visible
+     because the dropdown pushed them below the card's visible area. */
+  :global(.modal-card > .tag-picker) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: visible;
   }
   :global(.dark .modal-card) {
     background: #1e1e2e;

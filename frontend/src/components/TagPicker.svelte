@@ -119,6 +119,7 @@
       onchange?.([...value, newTag.tag_id]);
       search = '';
       isOpen = false;
+      addToast({ type: 'success', message: t('tags.created', { name: newTag.name }) });
     } catch (err) {
       addToast({ type: 'error', message: t('tags.createFailed', { error: err.message }) });
     } finally {
