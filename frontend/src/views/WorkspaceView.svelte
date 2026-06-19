@@ -259,6 +259,24 @@
     }
   });
 
+  // Tenant-switch defence (issue 2026-06-19): when the user changes
+  // the active tenant while the Workspace is open with a case
+  // already selected, the active case id is still pointing at
+  // Tenant A's case, and the summary below still shows Tenant A's
+  // data -- a real cross-tenant spillover.  Reset the workspace
+  // store on tenant change so the user has to re-pick a case from
+  // the new tenant before any data is shown.  The reset() call is
+  // idempotent and cheap; the case selector re-renders empty,
+  // which is the safe state.
+  let lastTenantId = $state(null);
+  $effect(() => {
+    const tid = $currentTenant?.id;
+    if (tid && lastTenantId && tid !== lastTenantId) {
+      reset();
+    }
+    lastTenantId = tid;
+  });
+
   // Re-fetch when the active case id changes (e.g. user typed in
   // the CaseSelector).  setActiveCase nulls the summary, so this
   // effect fires whenever the id transitions.
