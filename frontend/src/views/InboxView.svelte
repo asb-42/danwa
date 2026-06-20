@@ -470,33 +470,42 @@
             value={pendingTagIds}
             onchange={(v) => (pendingTagIds = v)}
           />
-          <div class="modal-actions sticky bottom-0 -mx-5 -mb-5 mt-4 px-5 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
-            <button
-              type="button"
-              class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600
-                     bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                     hover:bg-gray-100 dark:hover:bg-gray-600
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onclick={closeTagModal}
-              disabled={singleInFlight}
-              data-testid="inbox-tag-cancel"
-            >
-              {t?.common?.cancel ?? 'Cancel'}
-            </button>
-            <button
-              type="button"
-              class="px-3 py-1.5 rounded
-                     bg-blue-600 text-white
-                     hover:bg-blue-700
-                     focus:outline-none focus:ring-2 focus:ring-blue-500
-                     disabled:opacity-50"
-              onclick={confirmTagModal}
-              disabled={singleInFlight}
-              data-testid="inbox-tag-confirm"
-            >
-              {t?.caseSpace?.inbox?.tag ?? 'Tag'}
-            </button>
-          </div>
+        </div>
+        <!-- Action bar is a SIBLING of .modal-card, not a child, so
+             the picker's content can never push it off-screen.  It
+             sits at the bottom of the overlay, centered above the
+             card, and stays fixed while the card scrolls. -->
+        <div
+          class="modal-actions absolute left-1/2 -translate-x-1/2
+                 bottom-6 z-[1002] flex gap-2"
+          data-testid="inbox-tag-actions"
+        >
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+                   bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
+                   hover:bg-gray-100 dark:hover:bg-gray-600
+                   focus:outline-none focus:ring-2 focus:ring-blue-500
+                   shadow-lg"
+            onclick={closeTagModal}
+            disabled={singleInFlight}
+            data-testid="inbox-tag-cancel"
+          >
+            {t?.common?.cancel ?? 'Cancel'}
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg
+                   bg-blue-600 text-white
+                   hover:bg-blue-700
+                   focus:outline-none focus:ring-2 focus:ring-blue-500
+                   disabled:opacity-50 shadow-lg"
+            onclick={confirmTagModal}
+            disabled={singleInFlight}
+            data-testid="inbox-tag-confirm"
+          >
+            {t?.caseSpace?.inbox?.tag ?? 'Tag'}
+          </button>
         </div>
       </div>
     {/if}
