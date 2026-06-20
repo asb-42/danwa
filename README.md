@@ -2,6 +2,12 @@
 
 Auditable multi-agent debate platform that uses AI agents to analyze, critique, and optimize arguments through structured deliberation. Now with **DMS (Document Management System)** featuring **PaddleOCR** integration, **RAG (Retrieval-Augmented Generation)** pipeline, **project isolation**, **A2A (Agent-to-Agent) Protocol** integration, and **real-time SSE updates**.
 
+> **Architecture (post-Phase-2, 2026-06-20):** This repository (`danwa`) is the **end-user frontend only**. It contains the Svelte 5 app used to run debates, browse documents, view audit trails and manage personal settings. Admin/developer features (Blueprint Canvas, Module Manager, Translation Dashboard, User Management, Server Health, Workflow-Exec standalone view, etc.) live in the separate **`danwa-studio`** repository. The shared FastAPI backend lives in **`danwa-core`** and the re-usable module assets (agents, prompts, roles, tones, LLM profiles, i18n, workflow templates) in **`danwa-modules`**.
+>
+> **Sidebar sections (danwa):** `START` (workspace, case-list, tags) · `WORK` (active debate, MVP debate, documents, archive) · `RESULTS` (audit) · `ACCOUNT` (profile, my-keys, inbox, browse).
+>
+> **Coming next:** Shared `@danwa/*` npm packages, admin→`/studio` redirect, full deployment topology. See `plans/2026-06-15_danwa-studio.md` and `plans/2026-06-20_danwa-user-facing-migration.md`.
+
 ## Quick Start
 
 ```bash
