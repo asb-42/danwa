@@ -102,8 +102,13 @@
         navigate('workspace');
         return;
       case 'debate':
-        // Debate ids are 'debate:<id>' per the GraphPayload contract.
-        navigate('debate', { debateId: String(node.id).split(':').slice(1).join(':') });
+        // The hash router in App.svelte reads 'route/param1/...'
+        // from the URL; the second-arg object on navigate() is
+        // dropped, so we have to inline the id.  We also route to
+        // mvp-debate (not the legacy 'debate' view) because the
+        // global graph doesn't distinguish legacy vs MVP debates
+        // and the user prefers the MVP view.
+        navigate(`mvp-debate/${String(node.id).split(':').slice(1).join(':')}`);
         return;
       case 'document':
         navigate('documents');
