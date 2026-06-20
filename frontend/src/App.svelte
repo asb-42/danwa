@@ -119,10 +119,6 @@
       {#await import('./views/ReplayView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'diff'}
       {#await import('./views/DiffView.svelte') then Mod}<Mod.default />{/await}
-     {:else if $route === 'translation'}
-      {#await import('./views/TranslationDashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
-    {:else if $route === 'modules'}
-      {#await import('./views/ModulesView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'proposals'}
       {#await import('./views/ProposalsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'mvp-debate'}
