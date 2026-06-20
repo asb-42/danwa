@@ -471,42 +471,37 @@
             onchange={(v) => (pendingTagIds = v)}
           />
         </div>
-        <!-- Action bar is a SIBLING of .modal-card, not a child, so
-             the picker's content can never push it off-screen.  It
-             sits at the bottom of the overlay, centered above the
-             card, and stays fixed while the card scrolls. -->
-        <div
-          class="modal-actions absolute left-1/2 -translate-x-1/2
-                 bottom-6 z-[1002] flex gap-2"
-          data-testid="inbox-tag-actions"
-        >
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                   bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                   hover:bg-gray-100 dark:hover:bg-gray-600
-                   focus:outline-none focus:ring-2 focus:ring-blue-500
-                   shadow-lg"
-            onclick={closeTagModal}
-            disabled={singleInFlight}
-            data-testid="inbox-tag-cancel"
-          >
-            {t?.common?.cancel ?? 'Cancel'}
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg
-                   bg-blue-600 text-white
-                   hover:bg-blue-700
-                   focus:outline-none focus:ring-2 focus:ring-blue-500
-                   disabled:opacity-50 shadow-lg"
-            onclick={confirmTagModal}
-            disabled={singleInFlight}
-            data-testid="inbox-tag-confirm"
-          >
-            {t?.caseSpace?.inbox?.tag ?? 'Tag'}
-          </button>
-        </div>
+          <!-- Action bar at the bottom of the card, just below
+               the picker.  With the card's overflow-y: auto and
+               flex column, the picker scrolls internally if needed
+               and the action bar always stays right below it. -->
+          <div class="modal-actions mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600
+                     bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-600
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onclick={closeTagModal}
+              disabled={singleInFlight}
+              data-testid="inbox-tag-cancel"
+            >
+              {t?.common?.cancel ?? 'Cancel'}
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded
+                     bg-blue-600 text-white
+                     hover:bg-blue-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     disabled:opacity-50"
+              onclick={confirmTagModal}
+              disabled={singleInFlight}
+              data-testid="inbox-tag-confirm"
+            >
+              {t?.caseSpace?.inbox?.tag ?? 'Tag'}
+            </button>
+          </div>
       </div>
     {/if}
 
@@ -697,15 +692,18 @@
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     width: 100%;
-    max-width: 560px;
-    max-height: 80vh;
+    /* Wider than the previous 560px so the TagPicker and its dropdown
+       have room to breathe.  Capped at 800px so the card doesn't
+       stretch absurdly on 4K displays. */
+    max-width: min(720px, calc(100vw - 64px));
+    max-height: min(90vh, calc(100vh - 96px));
     display: flex;
     flex-direction: column;
-    /* overflow-y on the card gives position:sticky a scroll container
-       to attach to.  Without it, the action bar's sticky bottom-0
-       has no scrollable parent and effectively becomes 'bottom of
-       the content's natural height' -- which is exactly what
-       produced the invisible-button bug on 2026-06-19. */
+    /* overflow-y on the card makes the picker content scrollable when
+       there are many tags.  The action bar at the bottom stays
+       visible because the flex column puts it as the last child
+       below the flex-grow TagPicker -- it can't be pushed off
+       screen because the card itself has a hard max-height. */
     overflow-y: auto;
     padding: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
