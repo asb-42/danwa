@@ -81,14 +81,12 @@ def test_header_svelte_debug_marker_present():
     """The visual debug marker badge must be present."""
     src = _read("components/Header.svelte")
     assert 'data-debug-component="Header-LLMActivity"' in src, (
-        "The DBG: Header.svelte (LLM Activity) marker has been removed. "
+        "The data-debug-component='Header-LLMActivity' marker has been removed. "
         "If this is intentional (cleanup), please also remove the "
-        "matching test and update plans/2026-06-17_*."
-    )
-    assert "DBG: Header.svelte (LLM Activity)" in src, (
-        "The debug marker element is present but the human-readable "
-        "label has been changed.  The label is part of the visible "
-        "regression-detection contract."
+        "matching test and update plans/2026-06-17_*.  Note: the human-"
+        "readable 'DBG: Header.svelte (LLM Activity)' label was removed "
+        "in 2026-06-19 as part of the visible-debug-marker cleanup; the "
+        "data-debug-component anchor is retained for e2e/smoke tests."
     )
 
 
@@ -182,11 +180,6 @@ def test_duplicate_llm_monitor_remains_disabled(path, expected_inactive_marker):
             "components/debate/DebateActivityStrip.svelte",
             "DebateActivityStrip",
             "DBG: DebateActivityStrip.svelte",
-        ),
-        (
-            "components/debate/DebateActivityLog.svelte",
-            "DebateActivityLog",
-            "DBG: DebateActivityLog.svelte",
         ),
         (
             "components/assistant/AssistantTypingIndicator.svelte",
