@@ -82,6 +82,14 @@
     // type opens a real page so the user can act on the entity;
     // the passive info modal is reserved for types without a
     // dedicated page (e.g. 'other').
+    //
+    // The backend sends capitalized types (Case/Debate/Tag/...).
+    // nodesByType already lowercases for the bucket key, but
+    // openEntity was reading the raw value -- fix: lowercase
+    // here too, otherwise the switch falls through to the
+    // default 'info modal' for every entity.
+    const type = String(node.type || 'other').toLowerCase();
+
     if (typeof navigate !== 'function') {
       // No router available -- fall back to the info modal so we
       // at least show *something* useful.
@@ -89,7 +97,7 @@
       return;
     }
 
-    switch (node.type) {
+    switch (type) {
       case 'case':
         navigate('workspace');
         return;
