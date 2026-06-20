@@ -63,6 +63,7 @@ def _resolve_tag_names(tenant_id: str, tag_ids: list[str]) -> list[str]:
         return []
     try:
         from backend.api.deps import get_tag_store
+
         store = get_tag_store()
     except Exception:  # noqa: BLE001
         return list(tag_ids)
@@ -77,6 +78,7 @@ def _resolve_tag_names(tenant_id: str, tag_ids: list[str]) -> list[str]:
         else:
             names.append(tid)
     return names
+
 
 logger = logging.getLogger(__name__)
 
