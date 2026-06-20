@@ -415,7 +415,7 @@
               <option value={hit.case_id}>{hit.title}</option>
             {/each}
           </datalist>
-          <div class="modal-actions sticky bottom-0 -mx-5 -mb-5 mt-4 px-5 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+          <div class="modal-actions mt-4 flex justify-end gap-2">
             <button
               type="button"
               class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600
@@ -710,10 +710,14 @@
   }
   /* The TagPicker's root div is the only direct child besides the
      sticky action bar; make it the flex-grow scrolling area so
-     the action bar (sticky bottom-0) is always visible regardless
-     of how many tags the picker contains.  Issue (2026-06-19):
-     user reported the Cancel/'Add tags' buttons were not visible
-     because the dropdown pushed them below the card's visible area. */
+     The flex-grow child of .modal-card is the only scrolling
+     area; the action bar below it always stays visible.  Issue
+     (2026-06-19): user reported the Cancel/'Add tags' buttons were
+     not visible because the dropdown pushed them below the card's
+     visible area -- the issue was the .modal-card was too small
+     (560px wide, 80vh tall).  Fixed in 5837e62 by making the card
+     larger (720px / 90vh) so the picker has room to scroll
+     internally without pushing the action bar off-screen. */
   :global(.modal-card > .tag-picker) {
     flex: 1 1 auto;
     min-height: 0;
