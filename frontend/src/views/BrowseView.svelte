@@ -77,15 +77,41 @@
 
   function openEntity(node) {
     if (!node) return;
-    selectedNode = node;
-    // The Cytoscape view is the eventual canonical drill-in;
-    // for now we just hand the user off to the case workspace.
-    if (node.type === 'case' && typeof navigate === 'function') {
-      navigate('workspace');
-    } else if (node.type === 'debate' && node.id && typeof navigate === 'function') {
-      // Debate ids are ``debate:<id>`` per the GraphPayload contract.
-      const debateId = String(node.id).split(':').slice(1).join(':');
-      navigate('debate', { debateId });
+
+    // Route to the right management view per entity type.  Each
+    // type opens a real page so the user can act on the entity;
+    // the passive info modal is reserved for types without a
+    // dedicated page (e.g. 'other').
+    if (typeof navigate !== 'function') {
+      // No router available -- fall back to the info modal so we
+      // at least show *something* useful.
+      selectedNode = node;
+      return;
+    }
+
+    switch (node.type) {
+      case 'case':
+        navigate('workspace');
+        return;
+      case 'debate':
+        // Debate ids are 'debate:<id>' per the GraphPayload contract.
+        navigate('debate', { debateId: String(node.id).split(':').slice(1).join(':') });
+        return;
+      case 'document':
+        navigate('documents');
+        return;
+      case 'tag':
+        navigate('tags');
+        return;
+      case 'user':
+        navigate('users');
+        return;
+      case 'audit':
+        navigate('audit');
+        return;
+      default:
+        // 'other' or anything unrecognised: keep the info modal.
+        selectedNode = node;
     }
   }
 
@@ -172,7 +198,7 @@
       {t?.caseSpace?.browse?.empty ?? 'Nothing to display yet.'}
     </p>
   {:else}
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
       {#each Object.entries(nodesByType) as [type, list] (type)}
         {#if list.length > 0}
           <section
