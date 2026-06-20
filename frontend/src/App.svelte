@@ -111,16 +111,10 @@
       {#await import('./views/AuditView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} />{/await}
     {:else if $route === 'mvp-debate'}
       {#await import('./views/MvpDebateView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} {navigate} />{/await}
-    {:else if $route === 'users'}
-      {#await import('./views/UserManagement.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'profile'}
       {#await import('./views/ProfileView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'tenant-settings'}
-      {#await import('./views/TenantSettingsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'my-keys'}
       {#await import('./views/BYOKManager.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'server-health'}
-      {#await import('./views/ServerHealthView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'case-list'}
       {#await import('./views/CasesView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'workspace'}
