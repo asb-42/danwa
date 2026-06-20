@@ -143,7 +143,7 @@ def _build_debate_items_for_case(
     # deleted a debate, reloaded, and it was still in the Inbox
     # because the 'untagged' loop iterates list_all() with no
     # status filter.
-    HIDDEN_STATUSES = frozenset({"deleted", "archived"})
+    hidden_statuses = frozenset({"deleted", "archived"})
 
     try:
         store = get_debate_store_for_case(case_id)
@@ -153,7 +153,7 @@ def _build_debate_items_for_case(
 
     # 1) Recently completed
     for d in store.list_by_status("completed"):
-        if d.get("status") in HIDDEN_STATUSES:
+        if d.get("status") in hidden_statuses:
             continue
         completed_at = _parse_dt(d.get("completed_at")) or _parse_dt(d.get("updated_at"))
         if completed_at and completed_at >= cutoff_completed:
@@ -175,7 +175,7 @@ def _build_debate_items_for_case(
 
     # 2) Untagged (any non-hidden status)
     for d in store.list_all(limit=200):
-        if d.get("status") in HIDDEN_STATUSES:
+        if d.get("status") in hidden_statuses:
             continue
         tags = list(d.get("tags") or [])
         if not tags:
