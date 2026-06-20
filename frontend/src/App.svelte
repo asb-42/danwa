@@ -115,18 +115,12 @@
       {#await import('./views/ManageView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'execution'}
       {#await import('./views/WorkflowExecutionView.svelte') then Mod}<Mod.default sessionId={$routeParams[0] || null} {navigate} />{/await}
-    {:else if $route === 'blueprint'}
-      {#await import('./views/BlueprintCanvasView.svelte') then Mod}<Mod.default layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />{/await}
     {:else if $route === 'bundle-composer'}
       {#await import('./views/BundleComposerView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'replay'}
       {#await import('./views/ReplayView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'diff'}
       {#await import('./views/DiffView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'output'}
-      {#await import('./views/OutputComposerView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'input'}
-      {#await import('./views/InputComposerView.svelte') then Mod}<Mod.default {navigate} />{/await}
      {:else if $route === 'translation'}
       {#await import('./views/TranslationDashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'modules'}
