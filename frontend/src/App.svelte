@@ -115,8 +115,6 @@
       {#await import('./views/ManageView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'execution'}
       {#await import('./views/WorkflowExecutionView.svelte') then Mod}<Mod.default sessionId={$routeParams[0] || null} {navigate} />{/await}
-    {:else if $route === 'bundle-composer'}
-      {#await import('./views/BundleComposerView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'replay'}
       {#await import('./views/ReplayView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'diff'}
