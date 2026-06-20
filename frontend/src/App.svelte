@@ -109,18 +109,12 @@
       {#await import('./views/ArchiveView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'audit'}
       {#await import('./views/AuditView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} />{/await}
-    {:else if $route === 'config'}
-      {#await import('./views/ConfigView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'manage'}
-      {#await import('./views/ManageView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'execution'}
       {#await import('./views/WorkflowExecutionView.svelte') then Mod}<Mod.default sessionId={$routeParams[0] || null} {navigate} />{/await}
     {:else if $route === 'replay'}
       {#await import('./views/ReplayView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'diff'}
       {#await import('./views/DiffView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'proposals'}
-      {#await import('./views/ProposalsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'mvp-debate'}
       {#await import('./views/MvpDebateView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} {navigate} />{/await}
     {:else if $route === 'users'}
