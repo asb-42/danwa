@@ -263,6 +263,30 @@ def _build_global_subgraph(case_store, tenant_id: str, limit: int) -> GraphPaylo
         except Exception as exc:  # noqa: BLE001
             logger.warning("graph/global: debate store for case %s unavailable: %s", c.id, exc)
 
+    # Issue (2026-06-20): the user reported that the Browse view
+    # never showed the Tags column even though they had 13 tags in
+    # the tenant.  Root cause: the loop above only added Tag nodes
+    # for tags attached to a case (c.tags).  Orphan tags -- tags that
+    # exist in the TagStore but have not been assigned to any case
+    # yet -- were silently dropped.  Fix: enumerate all tenant tags
+    # via TagStore and add any that are not yet in the graph.
+    try:
+        from backend.api.deps import get_tag_store
+        tag_store = get_tag_store()
+        for tag in tag_store.list_by_tenant(tenant_id):
+            tag_id = f"tag:{tag.id}"
+            if not any(n.id == tag_id for n in nodes):
+                nodes.append(
+                    GraphNode(
+                        id=tag_id,
+                        type="Tag",
+                        label=tag.name,
+                        meta={"tag_id": tag.id, "tenant_id": tenant_id, "orphan": True},
+                    )
+                )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("graph/global: tag store for tenant %s unavailable: %s", tenant_id, exc)
+
     if total_cases > limit:
         truncated = True
 
