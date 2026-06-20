@@ -49,6 +49,35 @@ from backend.models.schemas import (
     InboxSummary,
 )
 
+
+def _resolve_tag_names(tenant_id: str, tag_ids: list[str]) -> list[str]:
+    """Resolve tag ids to display names parallel to tag_ids.
+
+    Issue (2026-06-20): the Inbox row used to show raw UUIDs
+    because the model only carried ids.  This helper looks up
+    each id via the TagStore and returns the human-readable
+    name; missing tags fall back to the bare id so the UI
+    never crashes.
+    """
+    if not tag_ids:
+        return []
+    try:
+        from backend.api.deps import get_tag_store
+        store = get_tag_store()
+    except Exception:  # noqa: BLE001
+        return list(tag_ids)
+    names: list[str] = []
+    for tid in tag_ids:
+        try:
+            tag = store.get(tenant_id, tid)
+        except Exception:  # noqa: BLE001
+            tag = None
+        if tag is not None and getattr(tag, "name", None):
+            names.append(str(tag.name))
+        else:
+            names.append(tid)
+    return names
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -105,6 +134,15 @@ def _build_debate_items_for_case(
     cutoff_completed = now - timedelta(days=RECENTLY_COMPLETED_DAYS)
     cutoff_stale = now - timedelta(hours=STALE_RUNNING_HOURS)
 
+    # Hidden statuses: debates that have been soft-deleted (via
+    # /inbox/bulk-delete) or archived.  These are still in the
+    # case's debate store (so audit and restore still work) but
+    # must NOT show up in the Inbox.  Issue (2026-06-20): user
+    # deleted a debate, reloaded, and it was still in the Inbox
+    # because the 'untagged' loop iterates list_all() with no
+    # status filter.
+    HIDDEN_STATUSES = frozenset({"deleted", "archived"})
+
     try:
         store = get_debate_store_for_case(case_id)
     except Exception as exc:  # noqa: BLE001
@@ -113,6 +151,8 @@ def _build_debate_items_for_case(
 
     # 1) Recently completed
     for d in store.list_by_status("completed"):
+        if d.get("status") in HIDDEN_STATUSES:
+            continue
         completed_at = _parse_dt(d.get("completed_at")) or _parse_dt(d.get("updated_at"))
         if completed_at and completed_at >= cutoff_completed:
             items.append(
@@ -125,13 +165,16 @@ def _build_debate_items_for_case(
                     title=d.get("topic") or d.get("title") or "(untitled)",
                     status="completed",
                     tags=list(d.get("tags") or []),
+                    tag_names=_resolve_tag_names(case_tenant_id, list(d.get("tags") or [])),
                     completed_at=completed_at,
                     message="Completed in the last 7 days — review or archive?",
                 )
             )
 
-    # 2) Untagged (any status)
+    # 2) Untagged (any non-hidden status)
     for d in store.list_all(limit=200):
+        if d.get("status") in HIDDEN_STATUSES:
+            continue
         tags = list(d.get("tags") or [])
         if not tags:
             updated_at = _parse_dt(d.get("updated_at"))
@@ -165,6 +208,7 @@ def _build_debate_items_for_case(
                     title=d.get("topic") or d.get("title") or "(untitled)",
                     status="running",
                     tags=list(d.get("tags") or []),
+                    tag_names=_resolve_tag_names(case_tenant_id, list(d.get("tags") or [])),
                     updated_at=updated_at,
                     age_hours=round(age_h, 1),
                     message=f"Running for {age_h:.0f} h — consider opening or cancelling.",

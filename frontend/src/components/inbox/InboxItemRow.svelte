@@ -100,7 +100,11 @@
       </span>
       {#if item.tags?.length}
         <span aria-hidden="true">·</span>
-        <span>Tags: {item.tags.join(', ')}</span>
+        <span>
+          Tags: {(item.tag_names?.length === item.tags.length && item.tag_names.length > 0
+            ? item.tag_names.join(', ')
+            : item.tags.join(', '))}
+        </span>
       {/if}
       {#if item.age_hours != null}
         <span aria-hidden="true">·</span>

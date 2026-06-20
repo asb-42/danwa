@@ -593,6 +593,16 @@ class InboxDebateItem(BaseModel):
     title: str
     status: str
     tags: list[str] = Field(default_factory=list)
+    # Human-readable tag names parallel to tags (tag ids).
+    # Issue (2026-06-20): the Inbox row used to show raw tag UUIDs
+    # because the model only carried ids.  Backend now resolves
+    # ids to names via the TagStore at response time.  The list
+    # is parallel-indexed to tags -- tag_names[i] is the
+    # display name for tags[i].  If a tag id cannot be
+    # resolved (deleted, cross-tenant), the corresponding
+    # tag_names[i] is the bare id so the UI can still render
+    # something useful.
+    tag_names: list[str] = Field(default_factory=list)
     updated_at: datetime | None = None
     completed_at: datetime | None = None
     age_hours: float | None = None
