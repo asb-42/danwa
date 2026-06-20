@@ -470,7 +470,7 @@
             value={pendingTagIds}
             onchange={(v) => (pendingTagIds = v)}
           />
-          <div class="mt-4 flex justify-end gap-2">
+          <div class="modal-actions sticky bottom-0 -mx-5 -mb-5 mt-4 px-5 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
             <button
               type="button"
               class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600
