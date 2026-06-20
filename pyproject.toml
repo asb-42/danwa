@@ -1,6 +1,6 @@
 [project]
 name = "debate-agent"
-version = "1.1.0"
+version = "0.3.0"
 description = "Auditierbarer Multi-Agenten-Debatten-Workflow"
 requires-python = ">=3.11"
 dependencies = [
