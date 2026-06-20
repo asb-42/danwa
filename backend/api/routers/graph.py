@@ -272,6 +272,7 @@ def _build_global_subgraph(case_store, tenant_id: str, limit: int) -> GraphPaylo
     # via TagStore and add any that are not yet in the graph.
     try:
         from backend.api.deps import get_tag_store
+
         tag_store = get_tag_store()
         for tag in tag_store.list_by_tenant(tenant_id):
             tag_id = f"tag:{tag.id}"
