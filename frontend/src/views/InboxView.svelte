@@ -692,6 +692,12 @@
     max-height: 80vh;
     display: flex;
     flex-direction: column;
+    /* overflow-y on the card gives position:sticky a scroll container
+       to attach to.  Without it, the action bar's sticky bottom-0
+       has no scrollable parent and effectively becomes 'bottom of
+       the content's natural height' -- which is exactly what
+       produced the invisible-button bug on 2026-06-19. */
+    overflow-y: auto;
     padding: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   }
