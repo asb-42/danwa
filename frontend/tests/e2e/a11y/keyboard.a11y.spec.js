@@ -57,30 +57,14 @@ test.describe('Keyboard Navigation', () => {
     await expect(page.locator('h2:has-text("Debate")')).toBeVisible();
 
     // Tab through remaining sidebar items and header language switcher
+    // (Config button removed in Phase 2 Commit 6/9.)
     await page.keyboard.press('Tab'); // Audit button
-    await page.keyboard.press('Tab'); // Config button
     await page.keyboard.press('Tab'); // DE button (LanguageSwitcher)
     await page.keyboard.press('Tab'); // EN button (LanguageSwitcher)
     await page.keyboard.press('Tab'); // case-text textarea
 
     const focused = await page.evaluate(() => document.activeElement?.id);
     expect(focused).toBe('case-text');
-  });
-
-  test('config form submit with Enter key', async ({ page }) => {
-    await waitForAppLoad(page);
-
-    // Navigate to config
-    await page.click('nav[aria-label="Main navigation"] button:has-text("Config")');
-    await page.waitForTimeout(300);
-
-    // Focus the save button and press Enter
-    const saveButton = page.locator('button:has-text("Save Configuration")');
-    await saveButton.focus();
-    await page.keyboard.press('Enter');
-
-    // Verify save confirmation appears
-    await expect(page.locator('text=Configuration saved')).toBeVisible({ timeout: 3000 });
   });
 
   test('skip-to-content link is first tab stop', async ({ page }) => {
