@@ -50,9 +50,6 @@ test.describe('Navigation & Hash Router', () => {
 
     await page.click('button:has-text("Audit Trail")');
     expect(page.url()).toContain('#/audit');
-
-    await page.click('button:has-text("Config")');
-    expect(page.url()).toContain('#/config');
   });
 
   test('direct hash URL navigates to correct view', async ({ page }) => {

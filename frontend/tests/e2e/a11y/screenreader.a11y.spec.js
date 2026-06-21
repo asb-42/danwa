@@ -55,16 +55,4 @@ test.describe('Screen Reader Announcements', () => {
     expect(liveCount).toBeGreaterThan(0);
   });
 
-  test('config save confirmation is announced', async ({ page }) => {
-    await waitForAppLoad(page);
-    await page.click('nav[aria-label="Main navigation"] button:has-text("Config")');
-    await page.waitForTimeout(300);
-
-    await page.click('button:has-text("Save Configuration")');
-
-    // The success message should have role="status"
-    const statusMessage = page.locator('[role="status"]');
-    await expect(statusMessage).toBeVisible({ timeout: 3000 });
-    await expect(statusMessage).toContainText('Configuration saved');
-  });
 });

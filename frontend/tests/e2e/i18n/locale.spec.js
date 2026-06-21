@@ -72,20 +72,6 @@ test.describe('Translation Completeness — German (de)', () => {
     await assertNoRawKeys(page);
   });
 
-  test('config page labels are translated to German', async ({ page }) => {
-    await gotoRoute(page, 'config');
-    await page.waitForTimeout(500);
-    await expect(page.getByRole('heading', { name: 'Konfiguration' })).toBeVisible();
-    await expect(page.getByText('Debatten-Standardwerte')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Konfiguration speichern' })).toBeVisible();
-  });
-
-  test('no raw translation keys visible on config page', async ({ page }) => {
-    await gotoRoute(page, 'config');
-    await page.waitForTimeout(500);
-    await assertNoRawKeys(page);
-  });
-
   test('audit page labels are translated to German', async ({ page }) => {
     await gotoRoute(page, 'audit');
     await page.waitForTimeout(500);
@@ -139,20 +125,6 @@ test.describe('Translation Completeness — English (en)', () => {
 
   test('no raw translation keys visible on debate page', async ({ page }) => {
     await gotoRoute(page, 'debate');
-    await page.waitForTimeout(500);
-    await assertNoRawKeys(page);
-  });
-
-  test('config page labels are translated to English', async ({ page }) => {
-    await gotoRoute(page, 'config');
-    await page.waitForTimeout(500);
-    await expect(page.getByRole('heading', { name: 'Configuration' })).toBeVisible();
-    await expect(page.getByText('Debate Defaults')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save Configuration' })).toBeVisible();
-  });
-
-  test('no raw translation keys visible on config page', async ({ page }) => {
-    await gotoRoute(page, 'config');
     await page.waitForTimeout(500);
     await assertNoRawKeys(page);
   });

@@ -22,7 +22,7 @@
   import DebateTranscript from '../components/debate/DebateTranscript.svelte';
   import DebateInterjection from '../components/debate/DebateInterjection.svelte';
   import DebateActivityLog from '../components/debate/DebateActivityLog.svelte';
-  import ExecutionPanel from '../components/blueprint/ExecutionPanel.svelte';
+  import ExecutionPanel from '../components/debate/ExecutionPanel.svelte';
   import PhaseSnapshotsWidget from '../components/workflow/PhaseSnapshotsWidget.svelte';
 
   let { debateId: externalDebateId = null, navigate = () => {} } = $props();

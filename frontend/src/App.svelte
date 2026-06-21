@@ -109,42 +109,12 @@
       {#await import('./views/ArchiveView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'audit'}
       {#await import('./views/AuditView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} />{/await}
-    {:else if $route === 'config'}
-      {#await import('./views/ConfigView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'manage'}
-      {#await import('./views/ManageView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'execution'}
-      {#await import('./views/WorkflowExecutionView.svelte') then Mod}<Mod.default sessionId={$routeParams[0] || null} {navigate} />{/await}
-    {:else if $route === 'blueprint'}
-      {#await import('./views/BlueprintCanvasView.svelte') then Mod}<Mod.default layoutId={$routeParams[0] || null} routeParams={$routeParams} {navigate} />{/await}
-    {:else if $route === 'bundle-composer'}
-      {#await import('./views/BundleComposerView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'replay'}
-      {#await import('./views/ReplayView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'diff'}
-      {#await import('./views/DiffView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'output'}
-      {#await import('./views/OutputComposerView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'input'}
-      {#await import('./views/InputComposerView.svelte') then Mod}<Mod.default {navigate} />{/await}
-     {:else if $route === 'translation'}
-      {#await import('./views/TranslationDashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
-    {:else if $route === 'modules'}
-      {#await import('./views/ModulesView.svelte') then Mod}<Mod.default {navigate} />{/await}
-    {:else if $route === 'proposals'}
-      {#await import('./views/ProposalsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'mvp-debate'}
       {#await import('./views/MvpDebateView.svelte') then Mod}<Mod.default debateId={$routeParams[0] || null} {navigate} />{/await}
-    {:else if $route === 'users'}
-      {#await import('./views/UserManagement.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'profile'}
       {#await import('./views/ProfileView.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'tenant-settings'}
-      {#await import('./views/TenantSettingsView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'my-keys'}
       {#await import('./views/BYOKManager.svelte') then Mod}<Mod.default />{/await}
-    {:else if $route === 'server-health'}
-      {#await import('./views/ServerHealthView.svelte') then Mod}<Mod.default />{/await}
     {:else if $route === 'case-list'}
       {#await import('./views/CasesView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'workspace'}

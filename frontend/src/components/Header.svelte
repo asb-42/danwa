@@ -112,11 +112,6 @@
     window.location.hash = '#/login';
   }
 
-  function goToUserManagement() {
-    userDropdownOpen = false;
-    window.location.hash = '#/users';
-  }
-
   // Close dropdown on click outside
   $effect(() => {
     if (!userDropdownOpen) return;
@@ -240,11 +235,6 @@
                 {t('auth.role', { role: t('auth.role_' + $currentUser.role) || $currentUser.role })}
               </p>
             </div>
-            {#if $currentUser.role === 'admin'}
-              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={goToUserManagement}>
-                👥 {t('users.title')}
-              </button>
-            {/if}
             <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick={() => { userDropdownOpen = false; window.location.hash = '#/profile'; }}>
               👤 {t('nav.profile')}
             </button>

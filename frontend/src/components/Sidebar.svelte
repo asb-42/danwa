@@ -59,80 +59,44 @@
     return routes.some((r) => isActive(r));
   }
 
+  // Phase 2 user-facing: 4 sections (start, work, results, account).
+  // Studio features (canvas, manage, modules, translations, admin)
+  // live in danwa-studio now.
   let navSections = $derived([
     {
-      id: 'inhabit',
-      label: t('nav.section.inhabit'),
+      id: 'start',
+      label: t('nav.section.start') || 'Start',
       items: [
         { id: 'workspace', label: t('nav.workspace') || 'Workspace', icon: '🏠', route: 'workspace' },
-        { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox', badge: inboxCount, badgeHidden: inboxDisabled || inboxCount === 0 },
-        { id: 'browse', label: t('nav.browse') || 'Browse', icon: '🔎', route: 'browse' },
-        { id: 'tenant-settings', label: t('nav.tenantSettings'), icon: '🏢', route: 'tenant-settings' },
         { id: 'case-list', label: t('nav.cases'), icon: '📁', route: 'case-list' },
         { id: 'tags', label: t('nav.tags'), icon: '🏷️', route: 'tags' },
-        { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
-        { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
       ],
     },
     {
-      id: 'run',
-      label: t('nav.section.run'),
+      id: 'work',
+      label: t('nav.section.work') || 'Work',
       items: [
         ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬', route: activeDebateRoute }] : []),
-        ...(hasActiveExecution ? [{ id: 'execution', label: t('nav.activeExecution') || 'Live Execution', icon: '⚡', route: `execution/${activeWorkflowSession.sessionId}` }] : []),
         { id: 'mvp-debate', label: 'MVP Debate', icon: '🏛️', route: 'mvp-debate' },
-        { id: 'input', label: t('nav.input'), icon: '💬', route: 'input' },
-        { id: 'output', label: t('nav.output'), icon: '🖨️', route: 'output' },
         { id: 'documents', label: t('nav.documents'), icon: '📄', route: 'documents' },
         { id: 'archive', label: t('nav.archive'), icon: '📚', route: 'archive' },
       ],
     },
     {
-      id: 'build',
-      label: t('nav.section.build'),
-      items: [
-        {
-          id: 'canvas',
-          label: t('nav.canvas'),
-          icon: '🧩',
-          route: 'blueprint',
-          children: [
-            { id: 'blueprints', label: t('nav.blueprints'), route: 'blueprint' },
-            { id: 'workflows', label: t('nav.workflows'), route: 'blueprint' },
-          ],
-        },
-        {
-          id: 'manage',
-          label: t('nav.section.manage') || 'Manage',
-          icon: '🔧',
-          route: 'manage',
-        },
-        { id: 'modules', label: t('nav.modules'), icon: '🧩', route: 'modules' },
-        { id: 'bundle-composer', label: t('nav.bundleComposer'), icon: '🧩', route: 'bundle-composer' },
-        { id: 'translation', label: t('nav.translation'), icon: '🌐', route: 'translation' },
-      ],
-    },
-    {
-      id: 'config',
-      label: t('nav.section.config'),
+      id: 'results',
+      label: t('nav.section.results') || 'Results',
       items: [
         { id: 'audit', label: t('nav.audit'), icon: '📋', route: 'audit' },
-        { id: 'configure', label: t('nav.section.configure') || 'Configure', icon: '⚙️', route: 'config' },
       ],
     },
-    ...($currentUser?.role === 'admin' ? [{
-      id: 'administration',
-      label: t('nav.section.administration'),
-      items: [
-        { id: 'users', label: t('users.title'), icon: '👥', route: 'users' },
-        { id: 'server-health', label: t('nav.serverHealth'), icon: '🖥️', route: 'server-health' },
-      ],
-    }] : []),
     {
-      id: 'evolve',
-      label: t('nav.section.evolve'),
+      id: 'account',
+      label: t('nav.section.account') || 'Account',
       items: [
-        { id: 'proposals', label: t('nav.proposals'), icon: '🔍', route: 'proposals' },
+        { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
+        { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
+        { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox', badge: inboxCount, badgeHidden: inboxDisabled || inboxCount === 0 },
+        { id: 'browse', label: t('nav.browse') || 'Browse', icon: '🔎', route: 'browse' },
       ],
     },
   ]);

@@ -12,7 +12,6 @@ export * from './api/profile.js';
 export * from './api/project.js';
 export * from './api/document.js';
 export * from './api/settings.js';
-export * from './api/backup.js';
 export * from './api/i18n.js';
 export * from './api/module.js';
 export * from './api/session.js';
