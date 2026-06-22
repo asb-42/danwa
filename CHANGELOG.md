@@ -28,6 +28,21 @@ release are listed in chronological order under each version heading.
     - `GET /api/v1/workflow-exec/sessions/{id}/report/stream` for SSE progress
   See [`plans/2026-06-22_danwa-legacy-sessions-router-cleanup.md`](plans/2026-06-22_danwa-legacy-sessions-router-cleanup.md).
 
+### Repo orchestration (Phase 1 of plan)
+- **`libdanwa.sh v1.0.0` introduced** as shared bash library for the
+  `danwa` / `danwa-core` / `danwa-studio` repo family. Currently lives
+  in `danwa/scripts/libdanwa.sh` and will be mirrored to
+  `danwa-modules/scripts/libdanwa.sh` for downstream consumption.
+  Provides reusable primitives: `log_info/ok/warn/error/step/header`,
+  `pid_running`, `kill_pid`, `wait_for_url`, `wait_for_port`,
+  `require_cmd/var`, `ensure_dir`, `compose_url`, version checks,
+  `load_repo_config`, `discover_siblings`.
+- **bats test suite added** at `tests/scripts/libdanwa.bats` with
+  33 tests (100 % coverage of the library). Runs via
+  `bats tests/scripts/libdanwa.bats`.
+- **Setup helper added** at `tests/scripts/helpers/mocks.bash` for
+  reusable mock-uvicorn / mock-HTTP-server fixtures.
+
 ## [0.3.0] - 2026-06-20 -- Pre-architecture-refactor baseline
 
 The last standing point before the planned architecture refactor.
