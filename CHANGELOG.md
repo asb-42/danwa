@@ -55,6 +55,16 @@ release are listed in chronological order under each version heading.
 - **`danwa-studio` setup.sh + manage.sh mirror templates** at `repo-templates/danwa-studio/`. Simpler than danwa-core's templates: Node-only, no orchestration, single component (Vite).
 - **Mirror strategy:** same as Phase 2 — this repo is the Single Source of Truth; downstream fetches via `curl -L https://raw.githubusercontent.com/asb-42/danwa/main/repo-templates/danwa-studio/{setup,manage}.sh`.
 - **bats test suite added** at `tests/scripts/{setup,manage}_studio.bats` with 20 tests (9 setup + 11 manage). All green.
+### Repo orchestration (Phase 4 of plan — Backend API: system_control)
+- **`system_control.py` mirror template** at `repo-templates/danwa-core/backend/api/routers/system_control.py`. Enables `danwa-studio` (and other admin clients) to restart/stop the backend via HTTP.
+- **Endpoints:**
+  - `POST /api/v1/system/restart-backend` — graceful restart, requires admin, returns 202 + job_id
+  - `POST /api/v1/system/stop-backend` — graceful stop, requires admin, returns 202 + job_id
+  - `GET /api/v1/system/status` — health + pids + uptime, no auth (monitoring endpoint)
+- **Mirror strategy:** `curl -L https://raw.githubusercontent.com/asb-42/danwa/main/repo-templates/danwa-core/backend/api/routers/system_control.py -o backend/api/routers/system_control.py`. Register in `backend/api/__init__.py` with `prefix="/api/v1/system"`.
+- **pytest test suite** at `tests/backend/test_system_control.py` with 9 tests (2 contract + 7 runtime). All green.
+
+
 ## [0.3.0] - 2026-06-20 -- Pre-architecture-refactor baseline
 
 The last standing point before the planned architecture refactor.
