@@ -65,6 +65,13 @@ release are listed in chronological order under each version heading.
 - **pytest test suite** at `tests/backend/test_system_control.py` with 9 tests (2 contract + 7 runtime). All green.
 
 
+### Repo orchestration (Phase 5 of plan — danwa-core watcher loop + extended JSON)
+- **`danwa-core/manage.sh` extended with watcher loop** at `repo-templates/danwa-core/manage.sh`. The watcher (`BACKEND_WATCHER_ENABLED=1`) auto-respawns the backend process if it crashes unexpectedly. After a `restart-backend` call from danwa-studio's SystemManagementView, the watcher respawns; after `stop-backend`, the watcher exits cleanly.
+- **JSON status extended** with new fields: `version`, `watcher_enabled`, `last_restart_at`, per-component `alive`/`pid`/`port`. The format is now the same shape as `system_control.py`'s `/system/status` endpoint (Phase 4), so the studio SystemManagementView can poll either source.
+- **Mirror strategy:** same as before — fetch the template via `curl -L https://raw.githubusercontent.com/asb-42/danwa/main/repo-templates/danwa-core/manage.sh -o manage.sh`.
+- **bats test suite added** at `tests/scripts/manage_watcher.bats` with 5 tests (JSON contract). Full respawn behavior is covered by the danwa-studio SystemManagementView integration test in Phase 7.
+
+
 ## [0.3.0] - 2026-06-20 -- Pre-architecture-refactor baseline
 
 The last standing point before the planned architecture refactor.
