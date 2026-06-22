@@ -50,6 +50,11 @@ release are listed in chronological order under each version heading.
 - **bats test suite added** at `tests/scripts/{setup,manage_orchestrator}.bats` with 20 tests (8 setup + 12 manage). All green.
   Run: `bats tests/scripts/`
 
+
+### Repo orchestration (Phase 3 of plan — danwa-studio setup+manage)
+- **`danwa-studio` setup.sh + manage.sh mirror templates** at `repo-templates/danwa-studio/`. Simpler than danwa-core's templates: Node-only, no orchestration, single component (Vite).
+- **Mirror strategy:** same as Phase 2 — this repo is the Single Source of Truth; downstream fetches via `curl -L https://raw.githubusercontent.com/asb-42/danwa/main/repo-templates/danwa-studio/{setup,manage}.sh`.
+- **bats test suite added** at `tests/scripts/{setup,manage}_studio.bats` with 20 tests (9 setup + 11 manage). All green.
 ## [0.3.0] - 2026-06-20 -- Pre-architecture-refactor baseline
 
 The last standing point before the planned architecture refactor.
