@@ -1,0 +1,85 @@
+# .github/workflows/test-scripts.yml
+#
+# CI for the bash setup/manage scripts (Phase 11 of
+# plans/2026-06-22_repo-setup-orchestration.md).
+#
+# Runs the bats suite that pins the libdanwa.sh + setup.sh + manage.sh
+# contract. Companion workflow to ci.yml (which covers Python/pytest).
+#
+# Triggers:
+#   - push to main
+#   - pull_request to main
+#
+# Skipped on docs-only / formatting-only PRs via the paths filter to
+# save CI minutes.
+
+name: Test setup/manage scripts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/libdanwa.sh"
+      - "manage.sh"
+      - "setup.sh"
+      - "repo-templates/**"
+      - ".danwa-config"
+      - "tests/scripts/**"
+      - ".github/workflows/test-scripts.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/libdanwa.sh"
+      - "manage.sh"
+      - "setup.sh"
+      - "repo-templates/**"
+      - ".danwa-config"
+      - "tests/scripts/**"
+      - ".github/workflows/test-scripts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bats:
+    name: bats — bash contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install bats-core
+        # Pin to a known-good tag (1.13.0 at time of writing). The plan's
+        # spec (§3.4.5) clones main; we use the tag for reproducibility
+        # and a tiny install footprint.
+        run: |
+          git clone --depth 1 --branch v1.13.0 \
+            https://github.com/bats-core/bats-core.git /tmp/bats-core
+          /tmp/bats-core/install.sh /opt/bats
+
+      - name: Install Node.js 22 (for check_node_version in setup.sh)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run bats suite (parallel, 4 jobs)
+        run: /opt/bats/bin/bats --jobs 4 --tap tests/scripts/ | tee tests/scripts/results.tap
+
+      - name: Upload TAP results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bats-results
+          path: tests/scripts/results.tap
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail if any test failed
+        # bats --tap exits non-zero if any test fails; this step surfaces
+        # the failure clearly in the GitHub Actions UI.
+        if: failure()
+        run: |
+          echo "::error::bats suite reported failures — see the TAP artifact above."
+          exit 1

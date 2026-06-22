@@ -14,6 +14,30 @@ release are listed in chronological order under each version heading.
 
 ## [Unreleased]
 
+### CI / Tooling
+- **[`.github/workflows/test-scripts.yml`](.github/workflows/test-scripts.yml) added**
+  as the bats-CI companion to the existing Python-focused `ci.yml`
+  (Phase 11 of [`plans/2026-06-22_repo-setup-orchestration.md`](plans/2026-06-22_repo-setup-orchestration.md)
+  §3.4.5). Runs on every push/PR to `main` that touches bash-script
+  paths (`scripts/libdanwa.sh`, `manage.sh`, `setup.sh`,
+  `repo-templates/**`, `.danwa-config`, `tests/scripts/**`,
+  `.github/workflows/test-scripts.yml`). Installs `bats-core v1.13.0`,
+  installs Node 22, runs `bats --jobs 4 --tap tests/scripts/`, and
+  uploads the TAP results as a 14-day-retained artifact.
+- **8 bats contract tests** in
+  [`tests/scripts/ci_workflow.bats`](tests/scripts/ci_workflow.bats)
+  pin the workflow shape: file exists, valid YAML
+  (`yaml.safe_load`), `push` + `pull_request` triggers,
+  `ubuntu-latest`, `actions/checkout@v4`, bats-core install,
+  `bats --jobs tests/scripts`, `upload-artifact` step.
+- **Scope note:** Phase 11 covers 4 repos; this commit adds the
+  workflow to `danwa` only. Parallel work in
+  `danwa-core`, `danwa-studio`, `danwa-modules` is outside this
+  checkout.
+- Full `tests/scripts/` suite: **126/127 pass** (gained 8 new tests,
+  same pre-existing Phase-6 failure in `setup_studio.bats:115`
+  remains, unrelated to this commit).
+
 ### Documentation
 - **[`INSTALL.md`](INSTALL.md) added** as the canonical install /
   quickstart guide for the `danwa` user-app (Phase 9 of
