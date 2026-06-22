@@ -1,10 +1,37 @@
 # Plan: `danwa-core` Backend-Test-Migration
 
 **Datum:** 2026-06-21
-**Status:** Entwurf (zur Abstimmung)
+**Status:** ✅ **Abgeschlossen** (2026-06-21)
 **Vorgänger:** [`2026-06-20_danwa-user-facing-migration.md`](2026-06-20_danwa-user-facing-migration.md) §1b.5, Commit `44c8310` (Phase 0a.1), Commits `8ad35d0`/`2f6876e`/`d2b7cc8` (Test-Cleanup)
 **Repos:** `danwa` (dieses), `danwa-core` (extern)
 **Scope:** Source-Modul-Migration + Test-Migration für 26 Backend-Tests
+
+---
+
+## 0. Abschluss-Status
+
+Der Plan wurde am 2026-06-21 vollständig umgesetzt und auf `main` gemerged:
+
+| Phase | Commit in `danwa-core` | Commit in `danwa` | Ergebnis |
+|-------|-----------------------|-------------------|----------|
+| Phase 1 (Source-Module portieren) | `2cd40cd` (Branch `feat/src-core-dms-tools-migration-2026-06`) | — | Source-Module in `danwa-core` |
+| Phase 2 (Tests portieren) | `2cd40cd` (gleicher Commit) | — | **183 passed / 52 skipped / 0 failed** in `danwa-core` |
+| Phase 3 (Cleanup `danwa`) | — | `c5c6091` `test(backend): remove 26 backend tests now living in danwa-core` (-3411 Zeilen) | 26 Duplikate entfernt |
+| Phase 4 (PR + Merge) | — | `e4ca5de` `merge: Phase 1.4 Backend Test Cleanup` | Auf `main` gemerged |
+
+**Verifikationskriterien — alle erfüllt:**
+
+- ✅ Alle 26 migrierten Tests grün in `danwa-core` (183 passed / 52 skipped / 0 failed)
+- ✅ Bestehende Tests in `danwa-core` weiterhin grün
+- ✅ `danwa` Frontend-Build weiterhin grün (Vitest 220/220, Playwright 154)
+- ✅ `danwa/tests/` von 171 auf 144 Dateien reduziert
+- ✅ Beide Repos haben klaren Push-Stand (`danwa`: `c5c6091`/`e4ca5de` auf `main`; `danwa-core`: Branch `feat/src-core-dms-tools-migration-2026-06` Commit `2cd40cd`)
+- ✅ Working-Tree in `danwa` clean (`git status`: "nichts zu committen, Arbeitsverzeichnis unverändert")
+
+**Folge-Themen (nicht in diesem Plan, separat zu prüfen):**
+
+- Die Source-Module unter `danwa/src/{core,dms,tools}/` sind weiterhin im `danwa`-Repo vorhanden und werden teilweise noch genutzt (u.a. `backend/api/routers/sessions.py` importiert `src.core.debate_engine`, `src.core.session_db`, `src.core.trace_logger`, `src.tools.report_generator`). Diese Legacy-Pfade sind **nicht** Teil dieses Plans, sollten aber in einem separaten Aufräum-Plan migriert werden, sobald `danwa-core` die letzte `src.*`-Referenz sauber übernehmen kann.
+
 
 ---
 
