@@ -12,6 +12,22 @@ release are listed in chronological order under each version heading.
 
 ---
 
+## [Unreleased]
+
+### Architecture cleanup
+- **Legacy `/api/v1/sessions` router retired.** The 5 endpoints
+  (`GET ""`, `GET /{session_id}`, `DELETE /{session_id}`,
+  `GET /{session_id}/trace`, `GET /{session_id}/report/{fmt}`)
+  now return `HTTP 410 Gone` with a successor-pointer payload.
+  This removes the last active cross-dependency on the legacy
+  `src/{core,dms,tools}/` source tree in `danwa/backend/`. Clients
+  should migrate to:
+    - `GET /api/v1/tenants/{tid}/cases/{cid}/sessions/` (assistant router) for session CRUD
+    - `GET /api/v1/workflow-exec/sessions` for session lists
+    - `POST /api/v1/workflow-exec/sessions/{id}/report` for report generation
+    - `GET /api/v1/workflow-exec/sessions/{id}/report/stream` for SSE progress
+  See [`plans/2026-06-22_danwa-legacy-sessions-router-cleanup.md`](plans/2026-06-22_danwa-legacy-sessions-router-cleanup.md).
+
 ## [0.3.0] - 2026-06-20 -- Pre-architecture-refactor baseline
 
 The last standing point before the planned architecture refactor.
