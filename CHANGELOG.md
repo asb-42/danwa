@@ -43,6 +43,13 @@ release are listed in chronological order under each version heading.
 - **Setup helper added** at `tests/scripts/helpers/mocks.bash` for
   reusable mock-uvicorn / mock-HTTP-server fixtures.
 
+
+### Repo orchestration (Phase 2 of plan — danwa-core setup+manage)
+- **`danwa-core` setup.sh + manage.sh mirror templates** at `repo-templates/danwa-core/`. These are the canonical reference for the orchestrator pattern (danwa-core manages backend + sibling frontends). To use: copy `setup.sh` and `manage.sh` into a danwa-core clone, then run `bash setup.sh` and `bash manage.sh start`.
+- **Mirror strategy:** this repo (`danwa`) provides the Single Source of Truth (`repo-templates/danwa-core/`). The downstream `danwa-core` repo should fetch these templates via `curl -L https://raw.githubusercontent.com/asb-42/danwa/main/repo-templates/danwa-core/{setup,manage}.sh -o ./{setup,manage}.sh`.
+- **bats test suite added** at `tests/scripts/{setup,manage_orchestrator}.bats` with 20 tests (8 setup + 12 manage). All green.
+  Run: `bats tests/scripts/`
+
 ## [0.3.0] - 2026-06-20 -- Pre-architecture-refactor baseline
 
 The last standing point before the planned architecture refactor.
