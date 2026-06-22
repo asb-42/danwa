@@ -1,0 +1,16 @@
+# danwa/.danwa-config
+#
+# Repo-Konfiguration für danwa (User-App).
+# Wird von manage.sh und setup.sh gesourced. Siehe plans/2026-06-22
+# Repo-Setup-Orchestration §2.3.
+#
+REPO_NAME="danwa"
+REPO_ROLE="user-app"
+BACKEND_PORT=7860
+FRONTEND_PORT=5173
+STUDIO_PORT=5174
+SIBLINGS=("danwa-core")
+TOOLCHAIN_NODE=22
+TOOLCHAIN_NPM=required
+TOOLCHAIN_UV=optional
+DOCS_URL="https://github.com/asb-42/danwa"

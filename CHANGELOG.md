@@ -14,6 +14,33 @@ release are listed in chronological order under each version heading.
 
 ## [Unreleased]
 
+### Repo setup & manage orchestration (Phase 8)
+- **danwa `manage.sh` refactored** into the same template+shim
+  pattern already used by `danwa-core` (Phase 3) and `danwa-studio`
+  (Phase 6). The 799-line monolith at [`manage.sh`](manage.sh) is
+  replaced by a 25-line shim that delegates to the canonical template
+  [`repo-templates/danwa/manage.sh`](repo-templates/danwa/manage.sh).
+- **Canonical templates added:** [`repo-templates/danwa/manage.sh`](repo-templates/danwa/manage.sh)
+  (~520 lines, full legacy command surface) and
+  [`repo-templates/danwa/setup.sh`](repo-templates/danwa/setup.sh)
+  (~135 lines). Both source the shared `libdanwa.sh` v1.0.0 from
+  [`scripts/libdanwa.sh`](scripts/libdanwa.sh).
+- **No functional regression.** All 23 legacy commands preserved 1:1:
+  `start [be|fe|studio|all]`, `stop`, `restart`, `status [--json]`,
+  `logs [be|fe|st|all]`, `clean`, `dashboard`, `doc*`, `adr-new`,
+  `adr-check`, plus `help` and `test`. The new `status --json` flag
+  is parity with `danwa-core` (Phase 5).
+- **Test coverage added:** 26 bats tests in
+  [`tests/scripts/manage_danwa.bats`](tests/scripts/manage_danwa.bats)
+  + 7 bats tests in
+  [`tests/scripts/setup_danwa.bats`](tests/scripts/setup_danwa.bats).
+  Full `tests/scripts/` suite: 110/111 pass (one pre-existing
+  Phase-6 failure unrelated to this refactor).
+- **`.danwa-config`** added at the repo root matching the
+  §2.3 example of [`plans/2026-06-22_repo-setup-orchestration.md`](plans/2026-06-22_repo-setup-orchestration.md).
+- **ADR-044** [`docs/adr/044-danwa-manage.sh-Refactoring.md`](docs/adr/044-danwa-manage.sh-Refactoring.md)
+  records the decision. See also [`plans/2026-06-22_repo-setup-orchestration.md`](plans/2026-06-22_repo-setup-orchestration.md) §3.2 step 8.
+
 ### Architecture cleanup
 - **Legacy `/api/v1/sessions` router retired.** The 5 endpoints
   (`GET ""`, `GET /{session_id}`, `DELETE /{session_id}`,
