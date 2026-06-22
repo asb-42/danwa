@@ -14,6 +14,28 @@ release are listed in chronological order under each version heading.
 
 ## [Unreleased]
 
+### Documentation
+- **[`INSTALL.md`](INSTALL.md) added** as the canonical install /
+  quickstart guide for the `danwa` user-app (Phase 9 of
+  [`plans/2026-06-22_repo-setup-orchestration.md`](plans/2026-06-22_repo-setup-orchestration.md)).
+  Sections: Prerequisites, Quickstart (3 commands), Sibling-Setup for
+  the full-stack (`danwa-core` + `danwa` + `danwa-studio`), shared
+  `libdanwa.sh` v1.0.0 reference, Studio → Backend Restart hint for
+  `system_control.py`, Troubleshooting (8 common issues + fixes), and
+  file map.
+- **[`README.md`](README.md) Quick Start** now links to `INSTALL.md`
+  with a one-paragraph pointer so users coming from the legacy
+  `scripts/start.sh` workflow find the new orchestration.
+- **8 bats contract tests** in
+  [`tests/scripts/install_doc.bats`](tests/scripts/install_doc.bats)
+  pin the INSTALL.md sections so future doc edits don't drop required
+  content (quickstart, sibling-setup, libdanwa v1.x reference,
+  studio-restart mention, troubleshooting).
+- **Scope note:** Phase 9 of the orchestration plan covers 4 repos
+  (`danwa`, `danwa-core`, `danwa-studio`, `danwa-modules`). This
+  commit adds `INSTALL.md` only to `danwa`; the other three repos
+  need parallel work in their own checkouts.
+
 ### Repo setup & manage orchestration (Phase 8)
 - **danwa `manage.sh` refactored** into the same template+shim
   pattern already used by `danwa-core` (Phase 3) and `danwa-studio`

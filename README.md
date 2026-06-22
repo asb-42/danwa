@@ -29,6 +29,13 @@ bash scripts/stop.sh
 
 Open `http://localhost:8000` in your browser.
 
+> **Looking for the new orchestration workflow?** The end-user frontend
+> (`danwa`) now ships with [`setup.sh`](INSTALL.md) and
+> [`manage.sh`](INSTALL.md) shims that delegate to the canonical
+> templates under `repo-templates/`. See **[`INSTALL.md`](INSTALL.md)**
+> for the full sibling-repository quickstart, Studio backend-restart
+> hints, and troubleshooting.
+
 No systemd required - runs on-demand via simple scripts.
 
 ### Docker Deployment (Production)
