@@ -17,6 +17,57 @@ export const DEFAULT_HEADERS = {
 };
 
 /**
+ * Reachability reasons for isBackendReachable().
+ * Kept as a small set so the UI can render a specific action hint
+ * ("start the backend", "check the proxy config", "wait & retry").
+ */
+export const REACHABILITY = Object.freeze({
+  REACHABLE: 'reachable',
+  CONNECTION_REFUSED: 'connection_refused',
+  TIMEOUT: 'timeout',
+  NETWORK_ERROR: 'network_error',
+  UNHEALTHY: 'unhealthy',
+});
+
+/**
+ * Probe the backend's /health endpoint with a short timeout.
+ * Use this BEFORE expensive calls (registration, login) so the
+ * user sees a specific "backend not running" error instead of the
+ * generic "Login/Registration failed" mask.
+ *
+ * @param {{ timeoutMs?: number }} [opts]
+ * @returns {Promise<{ok: true} | {ok: false, reason: string, status?: number}>}
+ */
+export async function isBackendReachable(opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? 2500;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${API_BASE}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    if (response.ok) {
+      return { ok: true };
+    }
+    // Backend responded but reported itself unhealthy (e.g. 503
+    // because a downstream dep is down).
+    return { ok: false, reason: REACHABILITY.UNHEALTHY, status: response.status };
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      return { ok: false, reason: REACHABILITY.TIMEOUT };
+    }
+    // fetch() throws TypeError on network failure (DNS, refused,
+    // offline, CORS preflight abort, etc.). We can't reliably
+    // distinguish them in the browser, so collapse to
+    // 'connection_refused' (the most common case during dev).
+    return { ok: false, reason: REACHABILITY.CONNECTION_REFUSED };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Map of backend error messages to i18n keys.
  */
 export const ERROR_MAP = {
@@ -100,23 +151,39 @@ export async function request(endpoint, options = {}) {
     ...options.headers,
   };
 
-  let response = await fetch(url, {
-    headers,
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      headers,
+      ...options,
+    });
+  } catch (networkErr) {
+    // fetch() throws TypeError on connection failure (no response at
+    // all). Surface this as the localized 'Backend connection lost'
+    // error so the UI can render a specific action hint instead of
+    // a generic 'Login failed' / 'Registration failed'.
+    if (networkErr && (networkErr.name === 'AbortError' || /aborted/i.test(String(networkErr.message)))) {
+      throw new Error(translateBackendError('Backend connection lost'));
+    }
+    throw new Error(translateBackendError('Backend connection lost'));
+  }
 
   // On 401: attempt token refresh and retry once
   if (response.status === 401 && token) {
     const refreshed = await attemptTokenRefresh();
     if (refreshed) {
       const newToken = get(accessToken);
-      response = await fetch(url, {
-        headers: {
-          ...headers,
-          Authorization: `Bearer ${newToken}`,
-        },
+      try {
+        response = await fetch(url, {
+          headers: {
+            ...headers,
+            Authorization: `Bearer ${newToken}`,
+          },
         ...options,
       });
+      } catch (networkErr) {
+        throw new Error(translateBackendError('Backend connection lost'));
+      }
     } else {
       // Refresh failed — redirect to login
       if (typeof window !== 'undefined') {

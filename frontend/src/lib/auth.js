@@ -8,6 +8,7 @@
 import { get } from 'svelte/store';
 import { accessToken, setAuth, clearAuth } from './stores/auth.svelte.js';
 import { i18n } from './i18n/index.js';
+import { request, isBackendReachable } from './api/core.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -37,9 +38,24 @@ export async function login(email, password) {
  * @returns {Promise<object>} The created user object
  */
 export async function register(email, displayName, password, role = 'viewer') {
-  const response = await fetch(`${API_BASE}/api/v1/auth/register`, {
+  // Pre-flight: if the backend is unreachable, fail fast with a
+  // specific diagnostic instead of masking it as
+  // 'Registration failed'. This addresses the user-reported
+  // bug where the only feedback was a generic error and no hint
+  // that the backend wasn't running.
+  const reach = await isBackendReachable({ timeoutMs: 2500 });
+  if (!reach.ok) {
+    // Reuse the same i18n key as request()'s network-failure
+    // branch so the UI can render a single, well-tested error
+    // path.
+    throw new Error(i18n.t('error.backendDisconnected'));
+  }
+
+  // Use request() so 4xx/5xx responses are translated and any
+  // remaining network failure is caught and re-thrown as the
+  // localized 'Backend connection lost' error.
+  return request('/api/v1/auth/register', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email,
       display_name: displayName,
@@ -47,13 +63,6 @@ export async function register(email, displayName, password, role = 'viewer') {
       role,
     }),
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: i18n.t('auth.errors.registrationFailed') }));
-    throw new Error(error.detail || i18n.t('auth.errors.registrationFailed'));
-  }
-
-  return response.json();
 }
 
 /**
