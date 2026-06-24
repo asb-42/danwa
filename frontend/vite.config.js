@@ -36,19 +36,19 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:7860',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:7860',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/a2a': {
-        target: 'http://localhost:7860',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/.well-known': {
-        target: 'http://localhost:7860',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },

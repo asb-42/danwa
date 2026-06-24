@@ -5,6 +5,31 @@
 
 /* Custom base styles */
 @layer base {
+  :root {
+    --color-bg: #ffffff;
+    --color-bg-elevated: #ffffff;
+    --color-bg-hover: #f3f4f6;
+    --color-text: #111827;
+    --color-text-muted: #6b7280;
+    --color-text-secondary: #6b7280;
+    --color-border: #e5e7eb;
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-error: #dc2626;
+  }
+  .dark {
+    --color-bg: #111827;
+    --color-bg-elevated: #1f2937;
+    --color-bg-hover: #374151;
+    --color-text: #f9fafb;
+    --color-text-muted: #9ca3af;
+    --color-text-secondary: #9ca3af;
+    --color-border: #374151;
+    --color-primary: #60a5fa;
+    --color-primary-hover: #93bbfd;
+    --color-error: #f87171;
+  }
+
   body {
     @apply antialiased;
   }

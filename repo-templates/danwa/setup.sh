@@ -95,10 +95,10 @@ log_ok "REPO_NAME matches (danwa)"
 # Step 2: Check toolchain
 # ───────────────────────────────────────────────────────────────────────
 log_step "2/5: Checking toolchain"
-if ! check_node_version 22; then
+if ! check_node_version 18; then
     exit 1
 fi
-log_ok "Node.js $(node --version) >= 22"
+log_ok "Node.js $(node --version) >= 18"
 
 if ! require_cmd npm; then
     exit 1
