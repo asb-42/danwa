@@ -710,6 +710,37 @@ clean_caches() {
 }
 
 # ───────────────────────────────────────────────────────────────────────
+# Sibling discovery & delegation
+# ───────────────────────────────────────────────────────────────────────
+find_sibling_manage() {
+    local name="$1"
+    discover_siblings "$name" 2>/dev/null || true
+    local var="DANWA_SIBLING_${name//-/_}"
+    local dir="${!var:-}"
+    if [[ -z "$dir" ]]; then
+        dir="$PROJECT_DIR/../$name"
+    fi
+    if [[ -d "$dir" ]] && [[ -f "$dir/manage.sh" ]]; then
+        echo "$dir/manage.sh"
+        return 0
+    fi
+    return 1
+}
+
+delegate_to() {
+    local name="$1"; shift
+    local script
+    if script="$(find_sibling_manage "$name")"; then
+        log_step "Delegating to $name: $*"
+        export DANWA_LIBDANWA_PATH="${DANWA_LIBDANWA_PATH:-$LIBDANWA_RESOLVED}"
+        bash "$script" "$@"
+    else
+        log_warn "Sibling '$name' not found — skipping"
+        return 1
+    fi
+}
+
+# ───────────────────────────────────────────────────────────────────────
 # Command dispatch
 # ───────────────────────────────────────────────────────────────────────
 cmd="${1:-}"
@@ -792,6 +823,14 @@ case "$cmd" in
         export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
         export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
         uv run pytest tests/backend/test_dms_ocr.py tests/backend/test_dms_api.py tests/test_paddleocr_integration.py tests/test_dms_document_processor.py -v 2>&1
+        ;;
+    # Cross-repo shortcuts
+    backend|be)   delegate_to danwa-core "${1:-status}" ;;
+    studio|st)    delegate_to danwa-studio "${1:-status}" ;;
+    all)
+        sub="${1:-status}"
+        delegate_to danwa-core "$sub" || true
+        delegate_to danwa-studio "$sub" || true
         ;;
     help|--help|-h)
         echo "Danwa Manager (refactored — Phase 8, repo-templates/danwa/manage.sh)"
