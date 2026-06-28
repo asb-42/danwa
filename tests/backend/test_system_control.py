@@ -22,6 +22,7 @@ a stub admin-user dep (matching the contract documented in the module).
 - /system/stop-backend returns 202 with job_id
 - /system/stop-backend requires admin (403 without)
 """
+
 from __future__ import annotations
 
 import os
@@ -91,6 +92,7 @@ def client():
         role = request.headers.get("X-Test-Role", "")
         if role != "admin":
             from fastapi import HTTPException
+
             raise HTTPException(status_code=403, detail="Admin role required")
 
     # Override by clearing dependencies on the routes
@@ -335,5 +337,4 @@ def test_restart_schedules_sigterm_with_delay(tmp_path):
     time.sleep(0.4)
 
     # We should have captured a SIGTERM call
-    assert any(s == signal.SIGTERM for _, s in captured_signals), \
-        f"Expected SIGTERM in captured signals: {captured_signals}"
+    assert any(s == signal.SIGTERM for _, s in captured_signals), f"Expected SIGTERM in captured signals: {captured_signals}"

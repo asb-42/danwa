@@ -51,6 +51,7 @@ Tests:
 See tests/backend/test_system_control.py in the danwa repo
 (mirror of the canonical test file). 8 pytest tests, all green.
 """
+
 from __future__ import annotations
 
 import logging

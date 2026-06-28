@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _SUCCESSOR_HINT = (
-    "Use /api/v1/tenants/{tid}/cases/{cid}/sessions/ (assistant router) or "
-    "/api/v1/workflow-exec/sessions (workflow-exec router) instead."
+    "Use /api/v1/tenants/{tid}/cases/{cid}/sessions/ (assistant router) or /api/v1/workflow-exec/sessions (workflow-exec router) instead."
 )
 
 
