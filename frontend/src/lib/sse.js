@@ -41,6 +41,7 @@ export function createSSE(debateId, handlers = {}) {
   let reconnectTimer = null;
   let reconnectDelay = 1000;
   let settled = false; // true once debate completed/failed — no more reconnects
+  let reconnectAttempts = 0;
 
   function connect() {
     eventSource = new EventSource(url);
