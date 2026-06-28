@@ -26,14 +26,12 @@ from __future__ import annotations
 
 import os
 import signal
-import threading
 import time
 from pathlib import Path
 from unittest import mock
 
 import pytest
 from fastapi import Request as FastAPIRequest
-
 
 # ════════════════════════════════════════════════════════════════════════
 # Contract tests (file structure + module surface)
@@ -69,7 +67,8 @@ def client():
     # FastAPI app (which has danwa-specific deps not available here).
     import importlib.util
     import sys
-    from fastapi import FastAPI, Depends
+
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     template_path = Path(__file__).parent.parent.parent / "repo-templates" / "danwa-core" / "backend" / "api" / "routers" / "system_control.py"
@@ -118,7 +117,7 @@ def test_status_returns_health_pids_uptime_no_auth_required(client, tmp_path, mo
     # Reload the module to pick up new env vars
     # (Easiest: re-import via importlib)
     import importlib.util
-    import sys
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -156,7 +155,7 @@ def test_status_works_without_any_pids(client, tmp_path, monkeypatch):
     empty_log_dir.mkdir()
 
     import importlib.util
-    import sys
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -183,6 +182,7 @@ def test_status_works_without_any_pids(client, tmp_path, monkeypatch):
 def test_restart_backend_requires_admin(tmp_path):
     """POST /system/restart-backend without admin returns 403."""
     import importlib.util
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -203,7 +203,8 @@ def test_restart_backend_requires_admin(tmp_path):
 def test_restart_backend_with_admin_returns_202(tmp_path):
     """POST /system/restart-backend with admin role returns 202 + job_id."""
     import importlib.util
-    from fastapi import FastAPI, Depends, HTTPException
+
+    from fastapi import FastAPI, HTTPException
     from fastapi.testclient import TestClient
 
     template_path = Path(__file__).parent.parent.parent / "repo-templates" / "danwa-core" / "backend" / "api" / "routers" / "system_control.py"
@@ -237,6 +238,7 @@ def test_restart_backend_with_admin_returns_202(tmp_path):
 def test_stop_backend_requires_admin(tmp_path):
     """POST /system/stop-backend without admin returns 403."""
     import importlib.util
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -256,7 +258,8 @@ def test_stop_backend_requires_admin(tmp_path):
 def test_stop_backend_with_admin_returns_202(tmp_path):
     """POST /system/stop-backend with admin role returns 202 + job_id."""
     import importlib.util
-    from fastapi import FastAPI, Depends, HTTPException
+
+    from fastapi import FastAPI, HTTPException
     from fastapi.testclient import TestClient
 
     template_path = Path(__file__).parent.parent.parent / "repo-templates" / "danwa-core" / "backend" / "api" / "routers" / "system_control.py"
@@ -290,7 +293,8 @@ def test_restart_schedules_sigterm_with_delay(tmp_path):
     We monkeypatch signal.SIGTERM handling to capture the call.
     """
     import importlib.util
-    from fastapi import FastAPI, Depends, HTTPException
+
+    from fastapi import FastAPI, HTTPException
     from fastapi.testclient import TestClient
 
     template_path = Path(__file__).parent.parent.parent / "repo-templates" / "danwa-core" / "backend" / "api" / "routers" / "system_control.py"
@@ -300,7 +304,6 @@ def test_restart_schedules_sigterm_with_delay(tmp_path):
 
     # Capture signal-related calls
     captured_signals = []
-    original_kill = os.kill
 
     def mock_kill(pid, sig):
         captured_signals.append((pid, sig))
