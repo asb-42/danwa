@@ -117,56 +117,26 @@ frontend_running() { pid_running "$FE_PID_FILE"; }
 studio_running()   { pid_running "$STUDIO_PID_FILE"; }
 
 # ───────────────────────────────────────────────────────────────────────
-# Backend lifecycle
+# Backend lifecycle — DEPRECATED
+#
+# This legacy backend has been superseded by danwa-core.
+# Start the replacement with:
+#   cd ../danwa-core && ./manage.sh start be
 # ───────────────────────────────────────────────────────────────────────
 start_backend() {
-    ensure_dirs
-    if backend_running > /dev/null 2>&1; then
-        log_warn "Backend läuft bereits (PID: $(backend_running))"
-        return 0
-    fi
-    log_step "Backend starten …"
-    if [[ "$DANWA_USE_MOCK" == "1" ]]; then
-        write_mock_script "$MOCK_BACKEND_SCRIPT"
-        nohup "$MOCK_BACKEND_SCRIPT" > "$BACKEND_LOG" 2>&1 &
-    else
-        cd "$PROJECT_DIR"
-        export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-        export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
-        export PATH="$HOME/.local/bin:$PATH"
-        nohup uv run uvicorn backend.main:app \
-            --host 0.0.0.0 \
-            --port "$BACKEND_PORT" \
-            --log-level info \
-            > "$BACKEND_LOG" 2>&1 &
-    fi
-    local pid=$!
-    echo "$pid" > "$BACKEND_PID_FILE"
-    if [[ "$DANWA_USE_MOCK" != "1" ]] && wait_for_url "http://localhost:$BACKEND_PORT/docs" 120; then
-        log_ok "Backend gestartet (PID: $pid) → http://localhost:$BACKEND_PORT"
-    elif [[ "$DANWA_USE_MOCK" == "1" ]]; then
-        log_ok "Backend started (MOCK, PID: $pid, log: $BACKEND_LOG)"
-    else
-        log_warn "Backend-Start dauert länger als erwartet — prüfe Logs mit: ./manage.sh logs be"
-    fi
+    log_error "DEPRECATED: This legacy backend is disabled."
+    log_error "Use danwa-core instead:"
+    log_error "  cd $(dirname "$PROJECT_DIR")/danwa-core && ./manage.sh start be"
+    return 1
 }
 
 stop_backend() {
-    log_step "Backend stoppen …"
-    local pid
-    pid="$(backend_running 2>/dev/null)" || true
-    if [[ -n "$pid" ]]; then
-        kill "$pid" 2>/dev/null && sleep 1
-        if kill -0 "$pid" 2>/dev/null; then
-            kill -9 "$pid" 2>/dev/null
-        fi
-        rm -f "$BACKEND_PID_FILE"
-        log_ok "Backend (PID: $pid) gestoppt"
-    else
-        log_warn "Backend läuft nicht"
-    fi
-    pkill -f "uvicorn backend.main" 2>/dev/null || true
+    log_warn "DEPRECATED: Legacy backend is disabled. danwa-core is the active backend."
 }
+
+# ───────────────────────────────────────────────────────────────────────
+# Frontend lifecycle
+# ───────────────────────────────────────────────────────────────────────
 
 # ───────────────────────────────────────────────────────────────────────
 # Frontend lifecycle
@@ -352,16 +322,9 @@ show_status() {
     log_header "Danwa — Systemstatus"
 
     echo ""
-    echo -e "  ${BOLD}Backend:${RESET}"
-    if backend_running > /dev/null 2>&1; then
-        local bp
-        bp="$(backend_running)"
-        echo -e "    Status:  ${GREEN}aktiv${RESET} (PID: $bp)"
-        echo -e "    Port:    $BACKEND_PORT"
-        echo -e "    Log:     $BACKEND_LOG"
-    else
-        echo -e "    Status:  ${RED}gestoppt${RESET}"
-    fi
+    echo -e "  ${BOLD}Backend (legacy):${RESET}"
+    echo -e "    Status:  ${YELLOW}DEAKTIVIERT${RESET} — danwa-core wird verwendet"
+    echo -e "    Hinweis: cd ../danwa-core && ./manage.sh status"
 
     echo ""
     echo -e "  ${BOLD}Frontend:${RESET}"

@@ -1,7 +1,16 @@
 """FastAPI application entry point for Danwa Debate Engine.
 
-Version and application metadata are loaded dynamically from
-the ``/version`` file via ``settings.app_version``.
+.. deprecated::
+    This legacy backend has been superseded by danwa-core.
+    Start the replacement with::
+
+        cd danwa-core && ./manage.sh start be
+        # or directly:
+        cd danwa-core && uv run uvicorn backend.main:app --port 8000
+
+    All code below is retained for reference only and will be removed
+    in a future cleanup pass.  Do NOT start this backend — it shares
+    the same port (8000) as danwa-core and will conflict.
 """
 
 from __future__ import annotations
@@ -409,236 +418,248 @@ def _reset_stale_running_debates() -> None:
     logger.info("Startup cleanup: reset %d stale running debate(s) to 'failed'", len(stale))
 
 
-def create_app() -> FastAPI:
-    """Application factory."""
-    settings = get_settings()
+# ============================================================
+# DEPRECATED: Application factory — DO NOT START THIS BACKEND.
+#
+# This legacy backend has been superseded by danwa-core.
+# Use instead:
+#   cd danwa-core && ./manage.sh start be
+#   cd danwa-core && uv run uvicorn backend.main:app --port 8000
+#
+# The code below is retained for reference only.  It shares port
+# 8000 with danwa-core and WILL conflict if started.
+# ============================================================
 
-    app = FastAPI(
-        title=settings.app_name,
-        version=settings.app_version,
-        description=(
-            "Danwa — Auditierbarer Multi-Agenten-Debatten-Workflow.\n\n"
-            "KI-gestützte Debattenplattform mit Multi-Tenant-Authentifizierung, "
-            "RAG-Dokumentenanalyse, paralleler Workflow-Ausführung und "
-            "strukturierter Berichterstellung.\n\n"
-            "**Authentifizierung:** JWT Bearer Token via `/api/v1/auth/login`.\n\n"
-            "**Dokumentation:** [Swagger UI](/docs) · [ReDoc](/redoc) · [OpenAPI JSON](/openapi.json)"
-        ),
-        lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
-    )
+# def create_app() -> FastAPI:
+#     """Application factory."""
+#     settings = get_settings()
+#
+#     app = FastAPI(
+#         title=settings.app_name,
+#         version=settings.app_version,
+#         description=(
+#             "Danwa — Auditierbarer Multi-Agenten-Debatten-Workflow.\n\n"
+#             "KI-gestützte Debattenplattform mit Multi-Tenant-Authentifizierung, "
+#             "RAG-Dokumentenanalyse, paralleler Workflow-Ausführung und "
+#             "strukturierter Berichterstellung.\n\n"
+#             "**Authentifizierung:** JWT Bearer Token via `/api/v1/auth/login`.\n\n"
+#             "**Dokumentation:** [Swagger UI](/docs) · [ReDoc](/redoc) · [OpenAPI JSON](/openapi.json)"
+#         ),
+#         lifespan=lifespan,
+#         docs_url="/docs",
+#         redoc_url="/redoc",
+#     )
+#
+#     # --- CORS ---
+#     app.add_middleware(
+#         CORSMiddleware,
+#         allow_origins=settings.cors_origins,
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=["*"],
+#     )
+#
+#     # --- Rate Limiting (slowapi) ---
+#     if settings.rate_limit_enabled:
+#         from slowapi import Limiter
+#         from slowapi.errors import RateLimitExceeded
+#         from slowapi.util import get_remote_address
+#
+#         from backend.api.errors import _rate_limit_handler
+#
+#         storage_uri = settings.redis_url if settings.redis_url else "memory://"
+#         limiter = Limiter(
+#             key_func=get_remote_address,
+#             storage_uri=storage_uri,
+#             default_limits=[settings.rate_limit_default],
+#         )
+#         app.state.limiter = limiter
+#         app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+#
+#     # --- Request-ID Middleware ---
+#     @app.middleware("http")
+#     async def add_request_context(request, call_next):
+#         """Add request context the instance."""
+#         import uuid as _uuid
+#
+#         from backend.core.logging import bind_request_context
+#
+#         request_id = request.headers.get("X-Request-ID", str(_uuid.uuid4()))
+#         bind_request_context(request_id=request_id)
+#         response = await call_next(request)
+#         response.headers["X-Request-ID"] = request_id
+#         return response
+#
+#     # --- Deprecation Headers for Legacy Routes ---
+#     legacy_route_deprecation = {
+#         "/api/v1/debate": "Use /api/v1/tenants/{tid}/cases/{cid}/debates/ instead.",
+#         "/api/v1/dms": "Use /api/v1/tenants/{tid}/cases/{cid}/dms/ instead.",
+#         "/api/v1/audit": "Use /api/v1/tenants/{tid}/cases/{cid}/audit/ instead.",
+#         "/api/v1/projects": "Projects are deprecated. Use tenants/cases instead.",
+#         "/api/v1/input": "Use /api/v1/tenants/{tid}/cases/{cid}/input/ instead.",
+#         "/api/v1/sessions": "Use /api/v1/tenants/{tid}/cases/{cid}/sessions/ instead.",
+#     }
+#
+#     @app.middleware("http")
+#     async def add_deprecation_headers(request, call_next):
+#         """Add X-Deprecation header to responses from legacy (pre-tenant) routes."""
+#         response = await call_next(request)
+#         path = request.url.path.rstrip("/")
+#         for prefix, notice in legacy_route_deprecation.items():
+#             if path == prefix or path.startswith(prefix + "/"):
+#                 response.headers["X-Deprecation"] = notice
+#                 break
+#         return response
+#
+#     # --- Prometheus Metrics ---
+#     if settings.prometheus_enabled:
+#         from prometheus_fastapi_instrumentator import Instrumentator
+#
+#         Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+#
+#     # --- Routers ---
+#     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+#     app.include_router(user_keys.router, prefix="/api/v1/user-keys", tags=["user-keys"])
+#     app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
+#     app.include_router(cases.router, prefix="/api/v1", tags=["cases"])
+#     app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
+#     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
+#     app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
+#     app.include_router(debate_stream.router, prefix="/api/v1/debate", tags=["debate"])
+#     app.include_router(hitl_router, prefix="/api/v1/debate", tags=["hitl"])
+#     app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
+#     app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
+#     app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
+#     app.include_router(case_scoped_router, prefix="/api/v1", tags=["cases"])
+#
+#     # --- Case-Space Workspace (Phase 1 of plans/2026-06-14_case-space-workspace.md) ---
+#     app.include_router(workspace.router, prefix="/api/v1", tags=["case-space"])
+#     app.include_router(inbox.router, prefix="/api/v1", tags=["case-space"])
+#     app.include_router(onboarding.router, prefix="/api/v1", tags=["case-space"])
+#     app.include_router(graph.router, prefix="/api/v1", tags=["case-space"])
+#
+#     app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
+#     app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
+#
+#     # --- Module System ---
+#     app.include_router(modules.router, prefix="/api/v1/modules", tags=["modules"])
+#
+#     # --- Translation ---
+#     app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
+#     app.include_router(ui_i18n_router, prefix="/api/v1/i18n", tags=["i18n"])
+#
+#     app.include_router(health.router, prefix="/health", tags=["health"])
+#     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+#
+#     # --- LLM Activity Monitor ---
+#     app.include_router(monitor.router, prefix="/api/v1/monitor", tags=["monitor"])
+#
+#     # --- Blueprint Canvas ---
+#     app.include_router(blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"])
+#     app.include_router(llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"])
+#     app.include_router(argumentation_patterns.router, prefix="/api/v1/blueprints", tags=["blueprints"])
+#     app.include_router(workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"])
+#     app.include_router(canvas.router, prefix="/api/v1/canvas", tags=["canvas"])
+#     app.include_router(
+#         blueprint_events.router,
+#         prefix="/api/v1/blueprint-events",
+#         tags=["blueprint-events"],
+#     )
+#
+#     # --- Workflow Execution ---
+#     app.include_router(
+#         workflow_exec.router,
+#         prefix="/api/v1/workflow-exec",
+#         tags=["workflow-exec"],
+#     )
+#
+#     # --- Workflow Reports ---
+#     app.include_router(
+#         workflow_reports.router,
+#         prefix="/api/v1",
+#         tags=["reports"],
+#     )
+#
+#     # --- Workflow Templates ---
+#     app.include_router(
+#         workflow_templates.router,
+#         prefix="/api/v1/workflow-templates",
+#         tags=["workflow-templates"],
+#     )
+#
+#     # --- Bundle Composer ---
+#     app.include_router(
+#         bundle_composer.router,
+#         prefix="/api/v1/bundle-composer",
+#         tags=["bundle-composer"],
+#     )
+#
+#     # --- Tone Profiles ---
+#     app.include_router(
+#         tone_profiles.router,
+#         prefix="/api/v1/tone-profiles",
+#         tags=["tone-profiles"],
+#     )
+#
+#     # --- A2A Discovery ---
+#     app.include_router(
+#         a2a_discovery.router,
+#         prefix="/api/v1/a2a",
+#         tags=["a2a-discovery"],
+#     )
+#
+#     # --- Output Composer ---
+#     app.include_router(
+#         output_composer.router,
+#         prefix="/api/v1",
+#         tags=["output-composer"],
+#     )
+#
+#     # --- Optimization Proposals (Reflection) ---
+#     app.include_router(
+#         optimization_proposals.router,
+#         prefix="/api/v1",
+#         tags=["optimization-proposals"],
+#     )
+#
+#     # --- Input Composer ---
+#     app.include_router(
+#         input_composer.router,
+#         prefix="/api/v1",
+#         tags=["input-composer"],
+#     )
+#
+#     # --- Danwa Assistant ---
+#     app.include_router(assistant.router)
+#
+#     # --- Error handlers (Blueprint Canvas) ---
+#     from backend.api.errors import register_error_handlers
+#
+#     register_error_handlers(app)
+#
+#     # --- A2A Protocol (Agent-to-Agent) ---
+#     # Mounted at root so /.well-known/agent.json discovery works per A2A spec
+#     app.include_router(a2a_router, tags=["a2a"])
+#
+#     # --- Static file serving (production mode) ---
+#     # Mount static assets first (more specific), then SPA fallback last
+#     if _FRONTEND_DIST.is_dir():
+#         # Serve built assets (JS, CSS, images)
+#         app.mount(
+#             "/assets",
+#             StaticFiles(directory=_FRONTEND_DIST / "assets"),
+#             name="static-assets",
+#         )
+#
+#         # Serve favicon and other root-level static files
+#         app.mount(
+#             "/",
+#             StaticFiles(directory=_FRONTEND_DIST, html=True),
+#             name="frontend",
+#         )
+#
+#     return app
 
-    # --- CORS ---
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
-    # --- Rate Limiting (slowapi) ---
-    if settings.rate_limit_enabled:
-        from slowapi import Limiter
-        from slowapi.errors import RateLimitExceeded
-        from slowapi.util import get_remote_address
-
-        from backend.api.errors import _rate_limit_handler
-
-        storage_uri = settings.redis_url if settings.redis_url else "memory://"
-        limiter = Limiter(
-            key_func=get_remote_address,
-            storage_uri=storage_uri,
-            default_limits=[settings.rate_limit_default],
-        )
-        app.state.limiter = limiter
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
-
-    # --- Request-ID Middleware ---
-    @app.middleware("http")
-    async def add_request_context(request, call_next):
-        """Add request context the instance."""
-        import uuid as _uuid
-
-        from backend.core.logging import bind_request_context
-
-        request_id = request.headers.get("X-Request-ID", str(_uuid.uuid4()))
-        bind_request_context(request_id=request_id)
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        return response
-
-    # --- Deprecation Headers for Legacy Routes ---
-    legacy_route_deprecation = {
-        "/api/v1/debate": "Use /api/v1/tenants/{tid}/cases/{cid}/debates/ instead.",
-        "/api/v1/dms": "Use /api/v1/tenants/{tid}/cases/{cid}/dms/ instead.",
-        "/api/v1/audit": "Use /api/v1/tenants/{tid}/cases/{cid}/audit/ instead.",
-        "/api/v1/projects": "Projects are deprecated. Use tenants/cases instead.",
-        "/api/v1/input": "Use /api/v1/tenants/{tid}/cases/{cid}/input/ instead.",
-        "/api/v1/sessions": "Use /api/v1/tenants/{tid}/cases/{cid}/sessions/ instead.",
-    }
-
-    @app.middleware("http")
-    async def add_deprecation_headers(request, call_next):
-        """Add X-Deprecation header to responses from legacy (pre-tenant) routes."""
-        response = await call_next(request)
-        path = request.url.path.rstrip("/")
-        for prefix, notice in legacy_route_deprecation.items():
-            if path == prefix or path.startswith(prefix + "/"):
-                response.headers["X-Deprecation"] = notice
-                break
-        return response
-
-    # --- Prometheus Metrics ---
-    if settings.prometheus_enabled:
-        from prometheus_fastapi_instrumentator import Instrumentator
-
-        Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-
-    # --- Routers ---
-    app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-    app.include_router(user_keys.router, prefix="/api/v1/user-keys", tags=["user-keys"])
-    app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
-    app.include_router(cases.router, prefix="/api/v1", tags=["cases"])
-    app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
-    app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
-    app.include_router(debate.router, prefix="/api/v1/debate", tags=["debate"])
-    app.include_router(debate_stream.router, prefix="/api/v1/debate", tags=["debate"])
-    app.include_router(hitl_router, prefix="/api/v1/debate", tags=["hitl"])
-    app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
-    app.include_router(config.router, prefix="/api/v1/config", tags=["config"])
-    app.include_router(dms.router, prefix="/api/v1/dms", tags=["dms"])
-    app.include_router(case_scoped_router, prefix="/api/v1", tags=["cases"])
-
-    # --- Case-Space Workspace (Phase 1 of plans/2026-06-14_case-space-workspace.md) ---
-    app.include_router(workspace.router, prefix="/api/v1", tags=["case-space"])
-    app.include_router(inbox.router, prefix="/api/v1", tags=["case-space"])
-    app.include_router(onboarding.router, prefix="/api/v1", tags=["case-space"])
-    app.include_router(graph.router, prefix="/api/v1", tags=["case-space"])
-
-    app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
-    app.include_router(profiles.router, prefix="/api/v1/profiles", tags=["profiles"])
-
-    # --- Module System ---
-    app.include_router(modules.router, prefix="/api/v1/modules", tags=["modules"])
-
-    # --- Translation ---
-    app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
-    app.include_router(ui_i18n_router, prefix="/api/v1/i18n", tags=["i18n"])
-
-    app.include_router(health.router, prefix="/health", tags=["health"])
-    app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
-
-    # --- LLM Activity Monitor ---
-    app.include_router(monitor.router, prefix="/api/v1/monitor", tags=["monitor"])
-
-    # --- Blueprint Canvas ---
-    app.include_router(blueprints.router, prefix="/api/v1/blueprints", tags=["blueprints"])
-    app.include_router(llm_profiles.router, prefix="/api/v1/blueprints/llm-profiles", tags=["blueprints"])
-    app.include_router(argumentation_patterns.router, prefix="/api/v1/blueprints", tags=["blueprints"])
-    app.include_router(workflow_definitions.router, prefix="/api/v1/blueprints/workflows", tags=["blueprints"])
-    app.include_router(canvas.router, prefix="/api/v1/canvas", tags=["canvas"])
-    app.include_router(
-        blueprint_events.router,
-        prefix="/api/v1/blueprint-events",
-        tags=["blueprint-events"],
-    )
-
-    # --- Workflow Execution ---
-    app.include_router(
-        workflow_exec.router,
-        prefix="/api/v1/workflow-exec",
-        tags=["workflow-exec"],
-    )
-
-    # --- Workflow Reports ---
-    app.include_router(
-        workflow_reports.router,
-        prefix="/api/v1",
-        tags=["reports"],
-    )
-
-    # --- Workflow Templates ---
-    app.include_router(
-        workflow_templates.router,
-        prefix="/api/v1/workflow-templates",
-        tags=["workflow-templates"],
-    )
-
-    # --- Bundle Composer ---
-    app.include_router(
-        bundle_composer.router,
-        prefix="/api/v1/bundle-composer",
-        tags=["bundle-composer"],
-    )
-
-    # --- Tone Profiles ---
-    app.include_router(
-        tone_profiles.router,
-        prefix="/api/v1/tone-profiles",
-        tags=["tone-profiles"],
-    )
-
-    # --- A2A Discovery ---
-    app.include_router(
-        a2a_discovery.router,
-        prefix="/api/v1/a2a",
-        tags=["a2a-discovery"],
-    )
-
-    # --- Output Composer ---
-    app.include_router(
-        output_composer.router,
-        prefix="/api/v1",
-        tags=["output-composer"],
-    )
-
-    # --- Optimization Proposals (Reflection) ---
-    app.include_router(
-        optimization_proposals.router,
-        prefix="/api/v1",
-        tags=["optimization-proposals"],
-    )
-
-    # --- Input Composer ---
-    app.include_router(
-        input_composer.router,
-        prefix="/api/v1",
-        tags=["input-composer"],
-    )
-
-    # --- Danwa Assistant ---
-    app.include_router(assistant.router)
-
-    # --- Error handlers (Blueprint Canvas) ---
-    from backend.api.errors import register_error_handlers
-
-    register_error_handlers(app)
-
-    # --- A2A Protocol (Agent-to-Agent) ---
-    # Mounted at root so /.well-known/agent.json discovery works per A2A spec
-    app.include_router(a2a_router, tags=["a2a"])
-
-    # --- Static file serving (production mode) ---
-    # Mount static assets first (more specific), then SPA fallback last
-    if _FRONTEND_DIST.is_dir():
-        # Serve built assets (JS, CSS, images)
-        app.mount(
-            "/assets",
-            StaticFiles(directory=_FRONTEND_DIST / "assets"),
-            name="static-assets",
-        )
-
-        # Serve favicon and other root-level static files
-        app.mount(
-            "/",
-            StaticFiles(directory=_FRONTEND_DIST, html=True),
-            name="frontend",
-        )
-
-    return app
-
-
-# Uvicorn entry point
-app = create_app()
+# Uvicorn entry point — DEPRECATED, do not start
+# app = create_app()
