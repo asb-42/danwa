@@ -16,6 +16,9 @@
     cancelWorkflow,
     submitInterjection,
     getWorkflowState,
+    startRenderJob,
+    getRenderJobStatus,
+    getRenderDownloadUrl,
   } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
   import { patchActiveWorkflowSession } from '../../lib/workflowSession.js';
@@ -80,6 +83,14 @@
     if (sessionId) selectedTab = 'log';
   });
 
+  // Export state
+  let exportFormat = $state('pdf');
+  let exportLanguage = $state('en');
+  let exportLoading = $state(false);
+  let exportJobId = $state(null);
+  let exportError = $state('');
+  let exportPolling = $state(null);
+
   // Elapsed time timer
   let startTime = $state(null);
   let timerInterval = $state(null);
@@ -97,8 +108,6 @@
       timerInterval = null;
     }
   }
-
-  onDestroy(stopTimer);
 
   function formatDuration(ms) {
     const seconds = Math.floor(ms / 1000);
@@ -246,6 +255,57 @@
     }
   }
 
+  // Export / Render
+  async function handleExport() {
+    if (!sessionId) return;
+    exportLoading = true;
+    exportError = '';
+    exportJobId = null;
+    try {
+      const result = await startRenderJob(sessionId, {
+        primary_format: exportFormat,
+        language: exportLanguage,
+      });
+      exportJobId = result.job_id;
+      exportPolling = setInterval(async () => {
+        try {
+          const st = await getRenderJobStatus(exportJobId);
+          if (st.status === 'completed') {
+            clearInterval(exportPolling);
+            exportPolling = null;
+            exportLoading = false;
+            const url = getRenderDownloadUrl(exportJobId);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else if (st.status === 'failed') {
+            clearInterval(exportPolling);
+            exportPolling = null;
+            exportLoading = false;
+            exportError = st.error_message || 'Export failed';
+          }
+        } catch (err) {
+          clearInterval(exportPolling);
+          exportPolling = null;
+          exportLoading = false;
+          exportError = err.message || 'Failed to check export status';
+        }
+      }, 1000);
+    } catch (err) {
+      exportLoading = false;
+      exportError = err.message || 'Failed to start export';
+    }
+  }
+
+  // Cleanup
+  onDestroy(() => {
+    if (timerInterval) clearInterval(timerInterval);
+    if (exportPolling) clearInterval(exportPolling);
+  });
+
   // Submit interjection
   async function handleInterject() {
     if (!sessionId || !interjectionText.trim()) return;
@@ -343,6 +403,34 @@
         </button>
       {/if}
     </div>
+
+    <!-- Export section (completed debates only) -->
+    {#if status === 'completed' && sessionId}
+      <div class="export-section">
+        <div class="export-header">
+          <span class="export-icon">📄</span>
+          <span class="export-label">Export Debate</span>
+        </div>
+        <div class="export-controls">
+          <select class="export-select" bind:value={exportFormat}>
+            <option value="pdf">PDF</option>
+            <option value="md">Markdown</option>
+            <option value="odt">ODT</option>
+            <option value="docx">DOCX</option>
+          </select>
+          <select class="export-select" bind:value={exportLanguage}>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+          </select>
+          <button class="btn btn-primary btn-export" onclick={handleExport} disabled={exportLoading}>
+            {exportLoading ? '⏳ Generating…' : '⬇ Download'}
+          </button>
+        </div>
+        {#if exportError}
+          <div class="export-error">{exportError}</div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Error display -->
     {#if error}
@@ -688,6 +776,59 @@
     color: white;
     border-color: #3b82f6;
   }
+
+  .export-section {
+    padding: 10px 16px;
+    border-top: 1px solid #e5e7eb;
+    background: #f0fdf4;
+  }
+  :global(.dark) .export-section {
+    border-color: #374151;
+    background: #052e16;
+  }
+  .export-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .export-icon { font-size: 14px; }
+  .export-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #166534;
+  }
+  :global(.dark) .export-label { color: #86efac; }
+  .export-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .export-select {
+    padding: 5px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+  }
+  :global(.dark) .export-select {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+  .btn-export {
+    padding: 5px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .export-error {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #dc2626;
+  }
+  :global(.dark) .export-error { color: #fca5a5; }
 
   .error-box {
     display: flex;

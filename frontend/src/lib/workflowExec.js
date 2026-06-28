@@ -221,3 +221,57 @@ export async function getPhaseSnapshotDetail(sessionId, nodeId) {
     throw err;
   }
 }
+
+// ─── Export / Render (Output Composer) ──────────────────────────────
+
+/**
+ * Start a render job for a completed session.
+ * @param {string} sessionId
+ * @param {{ template_name?: string, primary_format?: string, include_audit_trail?: boolean, include_minority_votes?: boolean, include_toc?: boolean, page_size?: string, language?: string }} [config]
+ * @returns {Promise<{ job_id: string, session_id: string, plugin_key: string, status: string }>}
+ */
+export function startRenderJob(sessionId, config = {}) {
+  return request(`/api/v1/sessions/${encodeURIComponent(sessionId)}/render`, {
+    method: 'POST',
+    body: JSON.stringify({
+      plugin_key: 'print',
+      config: {
+        template_name: config.template_name || 'academic_debate',
+        primary_format: config.primary_format || 'pdf',
+        include_audit_trail: config.include_audit_trail ?? true,
+        include_minority_votes: config.include_minority_votes ?? true,
+        include_toc: config.include_toc ?? true,
+        page_size: config.page_size || 'a4',
+        language: config.language || 'en',
+      },
+    }),
+  });
+}
+
+/**
+ * Poll render job status.
+ * @param {string} jobId
+ * @returns {Promise<{ job_id: string, status: string, output_files: string[], error_message?: string }>}
+ */
+export function getRenderJobStatus(jobId) {
+  return request(`/api/v1/render-jobs/${encodeURIComponent(jobId)}`);
+}
+
+/**
+ * Get the download URL for a render job.
+ * @param {string} jobId
+ * @param {number} [fileIndex=0]
+ * @returns {string} Download URL (use with <a> tag or fetch)
+ */
+export function getRenderDownloadUrl(jobId, fileIndex = 0) {
+  return `/api/v1/render-jobs/${encodeURIComponent(jobId)}/download?file_index=${fileIndex}`;
+}
+
+/**
+ * Delete a render job and its output files.
+ * @param {string} jobId
+ * @returns {Promise<void>}
+ */
+export function deleteRenderJob(jobId) {
+  return request(`/api/v1/render-jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+}
