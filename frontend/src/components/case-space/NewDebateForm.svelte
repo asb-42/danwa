@@ -125,7 +125,7 @@
       // component does not depend on the TagPicker internals.
       const { getTags } = await import('../../lib/api/tag.js');
       const all = await getTags(tenant.id);
-      const map = new Map(all.map((tag) => [tag.tag_id, tag]));
+      const map = new Map(all.map((tag) => [tag.id, tag]));
       suggestedTags = tagIds
         .map((id) => map.get(id))
         .filter(Boolean)
@@ -138,8 +138,8 @@
   }
 
   function applySuggestion(tag) {
-    if (!tag || newCaseTags.includes(tag.tag_id)) return;
-    newCaseTags = [...newCaseTags, tag.tag_id];
+    if (!tag || newCaseTags.includes(tag.id)) return;
+    newCaseTags = [...newCaseTags, tag.id];
   }
 
   // Hide suggestions the moment the user picks tags via the picker
@@ -426,7 +426,7 @@
             `Suggested tags from the active case (${activeCaseId})`}
         </span>
         <div class="flex flex-wrap gap-1.5" data-testid="suggested-tags">
-          {#each suggestedTags as tag (tag.tag_id)}
+          {#each suggestedTags as tag (tag.id)}
             <button
               type="button"
               data-testid="suggested-tag"

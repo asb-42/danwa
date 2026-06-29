@@ -40,7 +40,7 @@ export function pickTopTagIds(caseObj, allTags, limit = 3) {
   if (!caseObj) return [];
   const ids = caseObj.tag_ids || caseObj.tags || [];
   if (!Array.isArray(ids) || !Array.isArray(allTags)) return [];
-  const map = new Map(allTags.map((t) => [t.tag_id, t]));
+  const map = new Map(allTags.map((t) => [t.id, t]));
   return ids
     .map((id) => map.get(id))
     .filter(Boolean)
@@ -74,8 +74,8 @@ export function shouldShowTagSuggestions({
  */
 export function applySuggestion(currentTagIds, tag) {
   if (!tag) return currentTagIds;
-  if (currentTagIds.includes(tag.tag_id)) return currentTagIds;
-  return [...currentTagIds, tag.tag_id];
+  if (currentTagIds.includes(tag.id)) return currentTagIds;
+  return [...currentTagIds, tag.id];
 }
 
 /**

@@ -65,7 +65,7 @@
       const ids = (c?.tag_ids || c?.tags || []).slice(0, 3);
       // Resolve to full tag objects from the already-loaded list.
       caseTags = ids
-        .map((id) => tags.find((t) => t.tag_id === id) || { tag_id: id, name: id })
+        .map((id) => tags.find((t) => t.id === id) || { id, name: id })
         .filter(Boolean);
     } catch (err) {
       if (import.meta.env.DEV) console.warn('Failed to load case tags:', err);
@@ -93,13 +93,13 @@
   );
 
   function isSelected(tag) {
-    return value.some((v) => (typeof v === 'string' ? v === tag.tag_id : v === tag.tag_id));
+    return value.some((v) => (typeof v === 'string' ? v === tag.id : v === tag.id));
   }
 
   function toggleTag(tag) {
     const selected = isSelected(tag)
-      ? value.filter((v) => (typeof v === 'string' ? v !== tag.tag_id : v !== tag.tag_id))
-      : [...value, tag.tag_id];
+      ? value.filter((v) => (typeof v === 'string' ? v !== tag.id : v !== tag.id))
+      : [...value, tag.id];
     // Once the user manually picks any tag, hide the suggestions
     // strip (they have expressed intent).
     if (selected.length > 0) suggestionsDismissed = true;
@@ -116,7 +116,7 @@
     try {
       const newTag = await createTag($currentTenant.id, { name: search.trim() });
       tags = [...tags, newTag];
-      onchange?.([...value, newTag.tag_id]);
+      onchange?.([...value, newTag.id]);
       search = '';
       isOpen = false;
       addToast({ type: 'success', message: t('tags.created', { name: newTag.name }) });
@@ -147,7 +147,7 @@
                    text-gray-500 dark:text-gray-400">
         {t?.caseSpace?.newDebate?.suggestedTags ?? 'Suggested from this case'}:
       </span>
-      {#each caseTags as tag (tag.tag_id)}
+      {#each caseTags as tag (tag.id)}
         <button
           type="button"
           data-testid="tag-picker-suggested-tag"
@@ -183,7 +183,7 @@
     onclick={() => isOpen = true}
   >
     {#each value as tagId}
-      {@const tag = tags.find((t) => t.tag_id === tagId)}
+      {@const tag = tags.find((t) => t.id === tagId)}
       {#if tag}
         <span
           class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"

@@ -71,7 +71,7 @@
     isSaving = true;
     try {
       if (editingTag) {
-        await updateTag($currentTenant.id, editingTag.tag_id, {
+        await updateTag($currentTenant.id, editingTag.id, {
           name: newName.trim(),
           color: newColor,
           parent_id: newParentId || null,
@@ -99,7 +99,7 @@
     isDeleting = true;
     const target = confirmDelete ?? tag;
     try {
-      await deleteTag($currentTenant.id, target.tag_id);
+      await deleteTag($currentTenant.id, target.id);
       addToast({ type: 'success', message: t('tags.deleted') });
       confirmDelete = null;
       await loadTags();
@@ -112,7 +112,7 @@
 
   let parentOptions = $derived(
     editingTag
-      ? tags.filter((t) => t.tag_id !== editingTag.tag_id)
+      ? tags.filter((t) => t.id !== editingTag.id)
       : tags
   );
 </script>
@@ -166,7 +166,7 @@
           >
             <option value="">—</option>
             {#each parentOptions as tag}
-              <option value={tag.tag_id}>{tag.name}</option>
+              <option value={tag.id}>{tag.name}</option>
             {/each}
           </select>
         </div>
@@ -206,7 +206,7 @@
             <span class="font-medium text-gray-800 dark:text-white">{tag.name}</span>
           </div>
           {#if tag.parent_id}
-            {@const parent = tags.find((t) => t.tag_id === tag.parent_id)}
+            {@const parent = tags.find((t) => t.id === tag.parent_id)}
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
               ← {parent ? parent.name : tag.parent_id}
             </p>
