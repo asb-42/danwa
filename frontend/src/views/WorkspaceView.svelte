@@ -919,9 +919,9 @@
             // summary cache is cleared, but the navigate() call is
             // what actually moves the user.
             if (typeof navigate === 'function') {
-              navigate('cases');
+              navigate('case-list');
             } else if (typeof window !== 'undefined') {
-              window.location.hash = '#/cases';
+              window.location.hash = '#/case-list';
             }
             reset();
           }}
