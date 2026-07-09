@@ -77,6 +77,7 @@
       label: t('nav.section.work') || 'Work',
       items: [
         ...(hasActiveDebate ? [{ id: 'debate', label: t('nav.debate'), icon: '💬', route: activeDebateRoute }] : []),
+        { id: 'interactive', label: 'Interactive', icon: '🌳', route: 'interactive' },
         { id: 'mvp-debate', label: 'MVP Debate', icon: '🏛️', route: 'mvp-debate' },
         { id: 'documents', label: t('nav.documents'), icon: '📄', route: 'documents' },
         { id: 'archive', label: t('nav.archive'), icon: '📚', route: 'archive' },

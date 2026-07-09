@@ -125,6 +125,8 @@
       {#await import('./views/BrowseView.svelte') then Mod}<Mod.default {navigate} />{/await}
     {:else if $route === 'tags'}
       {#await import('./views/TagManagerView.svelte') then Mod}<Mod.default />{/await}
+    {:else if $route === 'interactive'}
+      {#await import('./views/InteractiveDebateView.svelte') then Mod}<Mod.default />{/await}
     {:else}
       {#await import('./views/Dashboard.svelte') then Mod}<Mod.default {navigate} />{/await}
     {/if}
