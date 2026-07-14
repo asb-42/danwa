@@ -9,7 +9,6 @@
   import {
     spaceStore,
     eventStore,
-    eventsArray,
   } from '../lib/interactive/stores';
   import { tStore } from '../lib/i18n/index.js';
 
@@ -120,45 +119,6 @@
       <div class="flex-1">
         <DebateGraph {spaceId} />
       </div>
-
-      <!-- Event list sidebar -->
-      <aside class="w-80 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-auto">
-        <div class="p-4">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t('interactive.eventLog')}</h3>
-          {#if $eventsArray.length === 0}
-            <div class="text-sm text-gray-400 dark:text-gray-500">{t('interactive.noEvents')}</div>
-          {:else}
-            <div class="space-y-2">
-              {#each $eventsArray as event (event.event_id)}
-                <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-700 text-sm">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs">
-                      {event.actor_type === 'user'
-                        ? '👤'
-                        : event.actor_type === 'agent'
-                          ? '🤖'
-                          : event.actor_type === 'a2a'
-                            ? '🔗'
-                            : '⚙️'}
-                    </span>
-                    <span class="font-medium text-gray-700 dark:text-gray-300">
-                      {event.actor_id}
-                    </span>
-                    <span class="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
-                      {new Date(event.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div class="text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                    {typeof event.content === 'string'
-                      ? event.content.slice(0, 100)
-                      : '...'}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      </aside>
     {/if}
   </div>
 </div>
