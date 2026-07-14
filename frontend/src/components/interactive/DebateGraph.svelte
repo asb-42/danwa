@@ -105,8 +105,7 @@
     forkModalStore.open(event);
   }
 
-  function handleNodeClick(event) {
-    const node = event.detail?.node;
+  function handleNodeClick({ node }) {
     if (node?.data?.event_id) {
       eventStore.setSelectedEvent(node.data.event_id);
     }
