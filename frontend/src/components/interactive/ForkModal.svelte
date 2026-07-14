@@ -3,7 +3,7 @@
    * ForkModal — modal for choosing what action to take when forking.
    *
    * Shows options: Agent (LLM), A2A (external agent), HITL (human input).
-   * Loads available agent bundles from danwa-modules.
+   * Supports drag-by-header and resize via bottom-right handle.
    */
   import { eventStore, spaceStore } from '../../lib/interactive/stores';
   import { tStore } from '../../lib/i18n/index.js';
@@ -19,6 +19,24 @@
   let loading = $state(false);
   let error = $state(null);
 
+  // Drag state
+  let dragging = $state(false);
+  let dragOffsetX = $state(0);
+  let dragOffsetY = $state(0);
+  let modalX = $state(0);
+  let modalY = $state(0);
+  let modalWidth = $state(500);
+  let modalHeight = $state(0);
+  let modalEl = $state(null);
+  let initialized = $state(false);
+
+  // Resize state
+  let resizing = $state(false);
+  let resizeStartX = $state(0);
+  let resizeStartY = $state(0);
+  let resizeStartW = $state(0);
+  let resizeStartH = $state(0);
+
   // Computed value for textarea binding
   let messageValue = $derived(selectedType === 'hitl' ? hitlQuery : agentMessage);
 
@@ -30,6 +48,18 @@
     }
   }
 
+  // Center modal on first render
+  $effect(() => {
+    if (modalEl && !initialized) {
+      const rect = modalEl.getBoundingClientRect();
+      modalX = Math.max(0, (window.innerWidth - rect.width) / 2);
+      modalY = Math.max(0, (window.innerHeight - rect.height) / 3);
+      modalWidth = rect.width;
+      modalHeight = rect.height;
+      initialized = true;
+    }
+  });
+
   // Pre-fill message based on context
   $effect(() => {
     if (targetEvent) {
@@ -40,6 +70,51 @@
       agentMessage = `Regarding: "${content.slice(0, 100)}..."`;
     }
   });
+
+  // --- Drag ---
+  function handleDragStart(e) {
+    // Don't drag if clicking on a button or input
+    if (e.target.closest('button, input, select, textarea')) return;
+    dragging = true;
+    dragOffsetX = e.clientX - modalX;
+    dragOffsetY = e.clientY - modalY;
+    e.preventDefault();
+  }
+
+  function handleDragMove(e) {
+    if (!dragging) return;
+    const maxX = window.innerWidth - 100;
+    const maxY = window.innerHeight - 40;
+    modalX = Math.max(0, Math.min(maxX, e.clientX - dragOffsetX));
+    modalY = Math.max(0, Math.min(maxY, e.clientY - dragOffsetY));
+  }
+
+  function handleDragEnd() {
+    dragging = false;
+  }
+
+  // --- Resize ---
+  function handleResizeStart(e) {
+    resizing = true;
+    resizeStartX = e.clientX;
+    resizeStartY = e.clientY;
+    resizeStartW = modalWidth;
+    resizeStartH = modalHeight || modalEl?.getBoundingClientRect().height || 400;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleResizeMove(e) {
+    if (!resizing) return;
+    const dx = e.clientX - resizeStartX;
+    const dy = e.clientY - resizeStartY;
+    modalWidth = Math.max(400, Math.min(window.innerWidth - 40, resizeStartW + dx));
+    modalHeight = Math.max(300, Math.min(window.innerHeight - 40, resizeStartH + dy));
+  }
+
+  function handleResizeEnd() {
+    resizing = false;
+  }
 
   async function handleSubmit() {
     if (!spaceId || !targetEvent) return;
@@ -83,26 +158,43 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window
+  on:keydown={handleKeydown}
+  on:mousemove={(e) => { handleDragMove(e); handleResizeMove(e); }}
+  on:mouseup={() => { handleDragEnd(); handleResizeEnd(); }}
+/>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-  onclick={(e) => {
-    if (e.target === e.currentTarget) onclose?.();
-  }}
+  class="modal-overlay fixed inset-0 z-50"
+  onmousemove={(e) => { handleDragMove(e); handleResizeMove(e); }}
+  onmouseup={() => { handleDragEnd(); handleResizeEnd(); }}
 >
-  <div class="modal bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-    <!-- Header -->
-    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-      <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('fork.title')}</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        {t('fork.forkFrom', { actor: targetEvent?.actor_id || t('fork.unknown') })}
-      </p>
+  <div
+    bind:this={modalEl}
+    class="modal bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
+    style="position: absolute; left: {modalX}px; top: {modalY}px; width: {modalWidth}px; {modalHeight ? `height: ${modalHeight}px;` : ''}"
+    role="dialog"
+    aria-modal="true"
+  >
+    <!-- Header (draggable) -->
+    <div
+      class="modal-header px-6 py-4 border-b border-gray-100 dark:border-gray-700 cursor-grab active:cursor-grabbing select-none"
+      onmousedown={handleDragStart}
+    >
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('fork.title')}</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {t('fork.forkFrom', { actor: targetEvent?.actor_id || t('fork.unknown') })}
+          </p>
+        </div>
+        <div class="text-gray-400 dark:text-gray-500 text-xs">⠿ drag</div>
+      </div>
     </div>
 
-    <!-- Body -->
-    <div class="px-6 py-4">
+    <!-- Body (scrollable) -->
+    <div class="modal-body px-6 py-4 overflow-auto" style="{modalHeight ? `max-height: ${modalHeight - 160}px;` : ''}">
       <!-- Action type selector -->
       <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -185,8 +277,8 @@
           id="message-input"
           value={messageValue}
           oninput={(e) => setMessageValue(e.target.value)}
-          rows="3"
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 resize-none"
+          rows="8"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 resize-y min-h-[12rem]"
           placeholder={selectedType === 'hitl'
             ? t('fork.placeholderHuman')
             : t('fork.placeholderAgent')}
@@ -216,15 +308,33 @@
         {loading ? t('fork.sending') : t('fork.start')}
       </button>
     </div>
+
+    <!-- Resize handle (bottom-right corner) -->
+    <div
+      class="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-40 hover:opacity-100 transition-opacity"
+      onmousedown={handleResizeStart}
+    >
+      <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M15.5 15.5L20 20H15.5V15.5ZM11 15.5H7V20H11V15.5ZM15.5 11V7H20V11H15.5Z" opacity="0.3"/>
+        <path d="M20 20L14 20L20 14L20 20ZM20 11L20 17L14 17L14 11L20 11ZM11 20L17 20L17 14L11 14L11 20ZM11 11L17 11L17 17L11 17L11 11Z" opacity="0.6"/>
+      </svg>
+    </div>
   </div>
 </div>
 
 <style>
   .modal-overlay {
+    background: rgba(0, 0, 0, 0.3);
     animation: fadeIn 0.15s ease-out;
   }
   .modal {
     animation: slideUp 0.2s ease-out;
+  }
+  .modal-header {
+    user-select: none;
+  }
+  .resize-handle {
+    touch-action: none;
   }
   @keyframes fadeIn {
     from { opacity: 0; }
