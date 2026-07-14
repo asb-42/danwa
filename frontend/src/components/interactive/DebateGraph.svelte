@@ -107,11 +107,12 @@
   }
 
   let hasSelection = $derived($eventStore.selectedEventId !== null);
+  let graphRight = $derived(hasSelection ? '400px' : '0');
 </script>
 
-<div class="debate-graph-wrapper h-full w-full flex">
+<div class="debate-graph-wrapper h-full w-full relative">
   <!-- Main graph area -->
-  <div class="debate-graph-container h-full flex-1 min-w-0">
+  <div class="debate-graph-container absolute inset-0 transition-[right]" style="right: {graphRight};">
     {#if $spaceStore.loading || $eventStore.loading}
     <div class="flex items-center justify-center h-full">
       <div class="text-gray-500 dark:text-gray-400">Loading debate tree...</div>
@@ -147,7 +148,9 @@
 
   <!-- Side panel (shown when an event is selected) -->
   {#if hasSelection}
-    <EventDetailPanel {spaceId} />
+    <div class="absolute top-0 right-0 bottom-0">
+      <EventDetailPanel {spaceId} />
+    </div>
   {/if}
 </div>
 
@@ -163,6 +166,12 @@
 <style>
   .debate-graph-wrapper {
     position: relative;
+    overflow: hidden;
+  }
+
+  .debate-graph-container {
+    position: relative;
+    overflow: hidden;
   }
 
   .debate-graph-container :global(.debate-flow) {
