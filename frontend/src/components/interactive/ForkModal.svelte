@@ -6,6 +6,7 @@
    * Supports drag-by-header and resize via bottom-right handle.
    */
   import { eventStore, spaceStore } from '../../lib/interactive/stores';
+  import { getLLMProfiles } from '../../lib/api/profile.js';
   import { tStore } from '../../lib/i18n/index.js';
 
   let t = $derived($tStore);
@@ -18,6 +19,8 @@
   let hitlQuery = $state('');
   let loading = $state(false);
   let error = $state(null);
+  let llmProfiles = $state([]);
+  let selectedLlmProfile = $state('');
 
   // Drag state
   let dragging = $state(false);
@@ -69,6 +72,20 @@
           : JSON.stringify(targetEvent.content);
       agentMessage = `Regarding: "${content.slice(0, 100)}..."`;
     }
+  });
+
+  // Fetch available LLM profiles
+  $effect(() => {
+    getLLMProfiles()
+      .then((profiles) => {
+        llmProfiles = profiles || [];
+        if (llmProfiles.length > 0 && !selectedLlmProfile) {
+          selectedLlmProfile = llmProfiles[0].id;
+        }
+      })
+      .catch(() => {
+        llmProfiles = [];
+      });
   });
 
   // --- Drag ---
@@ -128,6 +145,7 @@
           await eventStore.triggerAgent(spaceId, {
             parent_event_id: targetEvent.event_id,
             role: agentRole,
+            llm_profile_id: selectedLlmProfile || undefined,
             message: agentMessage,
           });
           break;
@@ -248,6 +266,25 @@
             <option value="devil">Devil's Advocate</option>
             <option value="mediator">Mediator</option>
             <option value="creative">Creative Thinker</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label for="llm-profile" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('fork.llmProfile')}
+          </label>
+          <select
+            id="llm-profile"
+            bind:value={selectedLlmProfile}
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 focus:border-purple-500"
+          >
+            {#if llmProfiles.length === 0}
+              <option value="">{t('fork.defaultProfile')}</option>
+            {:else}
+              {#each llmProfiles as profile}
+                <option value={profile.id}>{profile.name || profile.id}</option>
+              {/each}
+            {/if}
           </select>
         </div>
       {/if}

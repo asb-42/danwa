@@ -1483,6 +1483,8 @@ export default {
   'fork.messageInstruction': 'Message / Instruction',
   'fork.placeholderHuman': 'What should the user decide?',
   'fork.placeholderAgent': 'What should the agent analyze or do?',
+  'fork.llmProfile': 'LLM Profile',
+  'fork.defaultProfile': 'Default',
   'fork.sending': 'Sending...',
   'fork.start': 'Start',
 
