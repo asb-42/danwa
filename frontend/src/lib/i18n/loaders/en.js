@@ -1188,6 +1188,7 @@ export default {
   'nav.section.account': 'Account',
   'nav.profile': 'My Profile',
   'nav.myKeys': 'My API Keys',
+  'nav.manage': 'Manage',
   'nav.tenantSettings': 'Tenant Settings',
   'nav.serverHealth': 'Server Health',
 

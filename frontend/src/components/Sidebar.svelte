@@ -4,13 +4,9 @@
   import { appVersion } from '../lib/stores.js';
   import { currentUser } from '../lib/stores/auth.svelte.js';
   import { getActiveWorkflowSession } from '../lib/workflowSession.js';
-  import CaseSelector from './CaseSelector.svelte';
-  import CaseNavigator from './CaseNavigator.svelte';
   import { inboxStore } from '../lib/stores/inboxStore.svelte.js';
 
   let { navigate, currentRoute } = $props();
-
-  let caseSelector;
 
   let t = $derived($tStore);
 
@@ -90,16 +86,17 @@
         { id: 'audit', label: t('nav.audit'), icon: '📋', route: 'audit' },
       ],
     },
-    {
-      id: 'account',
-      label: t('nav.section.account') || 'Account',
-      items: [
-        { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
-        { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
-        { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox', badge: inboxCount, badgeHidden: inboxDisabled || inboxCount === 0 },
-        { id: 'browse', label: t('nav.browse') || 'Browse', icon: '🔎', route: 'browse' },
-      ],
-    },
+      {
+        id: 'account',
+        label: t('nav.section.account') || 'Account',
+        items: [
+          { id: 'profile', label: t('nav.profile'), icon: '👤', route: 'profile' },
+          { id: 'my-keys', label: t('nav.myKeys'), icon: '🔑', route: 'my-keys' },
+          { id: 'manage', label: t('nav.manage') || 'Manage', icon: '⚙️', route: 'manage' },
+          { id: 'inbox', label: t('nav.inbox') || 'Inbox', icon: '📥', route: 'inbox', badge: inboxCount, badgeHidden: inboxDisabled || inboxCount === 0 },
+          { id: 'browse', label: t('nav.browse') || 'Browse', icon: '🔎', route: 'browse' },
+        ],
+      },
   ]);
 </script>
 
@@ -108,16 +105,6 @@
   <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
     <span class="text-xl font-bold text-gray-800 dark:text-white">Danwa</span>
     <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">v{$appVersion || '…'}</span>
-  </div>
-
-  <!-- Case Selector -->
-  <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-    <CaseSelector bind:this={caseSelector} />
-  </div>
-
-  <!-- Case Navigator -->
-  <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-    <CaseNavigator {navigate} />
   </div>
 
   <!-- Navigation -->
