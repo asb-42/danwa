@@ -32,6 +32,7 @@
 
   let nodes = $state([]);
   let edges = $state([]);
+  let selectedEventId = $state(null);
 
   // Subscribe to stores
   $effect(() => {
@@ -48,9 +49,14 @@
       edges = eds;
     });
 
+    const unsub3 = eventStore.subscribe((state) => {
+      selectedEventId = state.selectedEventId;
+    });
+
     return () => {
       unsub1();
       unsub2();
+      unsub3();
     };
   });
 
@@ -106,7 +112,7 @@
     }
   }
 
-  let hasSelection = $derived($eventStore.selectedEventId !== null);
+  let hasSelection = $derived(selectedEventId !== null);
 </script>
 
 <div class="debate-graph-wrapper h-full w-full flex">

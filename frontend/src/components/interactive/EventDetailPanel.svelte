@@ -5,6 +5,7 @@
    * Displays complete content (no truncation), actor info, metadata,
    * and action buttons when a node is selected in the debate tree.
    */
+  import { onMount, onDestroy } from 'svelte';
   import { tStore } from '../../lib/i18n/index.js';
   import { eventStore, forkModalStore } from '../../lib/interactive/stores';
 
@@ -16,11 +17,18 @@
   let resizing = $state(false);
   let resizeStartX = $state(0);
   let resizeStartW = $state(0);
+  let selectedEvent = $state(null);
 
-  let selectedEvent = $derived.by(() => {
-    const state = $eventStore;
-    if (!state.selectedEventId) return null;
-    return state.events.get(state.selectedEventId) || null;
+  // Subscribe to store instead of using $derived($eventStore)
+  $effect(() => {
+    const unsub = eventStore.subscribe((state) => {
+      if (!state.selectedEventId) {
+        selectedEvent = null;
+      } else {
+        selectedEvent = state.events.get(state.selectedEventId) || null;
+      }
+    });
+    return unsub;
   });
 
   function handleResizeStart(e) {
