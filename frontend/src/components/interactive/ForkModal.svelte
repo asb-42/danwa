@@ -6,7 +6,9 @@
    * Loads available agent bundles from danwa-modules.
    */
   import { eventStore, spaceStore } from '../../lib/interactive/stores';
+  import { tStore } from '../../lib/i18n/index.js';
 
+  let t = $derived($tStore);
   let { targetEvent = null, spaceId = null, onclose = null } = $props();
 
   let selectedType = $state('agent');
@@ -35,7 +37,7 @@
         typeof targetEvent.content === 'string'
           ? targetEvent.content
           : JSON.stringify(targetEvent.content);
-      agentMessage = `Bezüglich: "${content.slice(0, 100)}..."`;
+      agentMessage = `Regarding: "${content.slice(0, 100)}..."`;
     }
   });
 
@@ -90,12 +92,12 @@
     if (e.target === e.currentTarget) onclose?.();
   }}
 >
-  <div class="modal bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+  <div class="modal bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
     <!-- Header -->
-    <div class="px-6 py-4 border-b border-gray-100">
-      <h2 class="text-lg font-semibold text-gray-800">Neue Aktion starten</h2>
-      <p class="text-sm text-gray-500 mt-1">
-        Fork von: {targetEvent?.actor_id || 'Unbekannt'}
+    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+      <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('fork.title')}</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        {t('fork.forkFrom', { actor: targetEvent?.actor_id || t('fork.unknown') })}
       </p>
     </div>
 
@@ -103,15 +105,15 @@
     <div class="px-6 py-4">
       <!-- Action type selector -->
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">
-          Aktionsart
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t('fork.actionType')}
         </label>
         <div class="flex gap-2">
           <button
             class="flex-1 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors
               {selectedType === 'agent'
-              ? 'border-purple-500 bg-purple-50 text-purple-700'
-              : 'border-gray-200 hover:border-gray-300'}"
+              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+              : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'}"
             onclick={() => (selectedType = 'agent')}
           >
             🤖 Agent (LLM)
@@ -119,8 +121,8 @@
           <button
             class="flex-1 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors
               {selectedType === 'a2a'
-              ? 'border-orange-500 bg-orange-50 text-orange-700'
-              : 'border-gray-200 hover:border-gray-300'}"
+              ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+              : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'}"
             onclick={() => (selectedType = 'a2a')}
           >
             🔗 A2A Agent
@@ -128,11 +130,11 @@
           <button
             class="flex-1 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors
               {selectedType === 'hitl'
-              ? 'border-green-500 bg-green-50 text-green-700'
-              : 'border-gray-200 hover:border-gray-300'}"
+              ? 'border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'}"
             onclick={() => (selectedType = 'hitl')}
           >
-            👤 Mensch
+            👤 {t('fork.human')}
           </button>
         </div>
       </div>
@@ -140,13 +142,13 @@
       <!-- Agent options -->
       {#if selectedType === 'agent'}
         <div class="mb-4">
-          <label for="agent-role" class="block text-sm font-medium text-gray-700 mb-1">
-            Rolle
+          <label for="agent-role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('fork.role')}
           </label>
           <select
             id="agent-role"
             bind:value={agentRole}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 focus:border-purple-500"
           >
             <option value="strategist">Strategist</option>
             <option value="critic">Critic</option>
@@ -161,57 +163,57 @@
       <!-- A2A options -->
       {#if selectedType === 'a2a'}
         <div class="mb-4">
-          <label for="a2a-url" class="block text-sm font-medium text-gray-700 mb-1">
-            Agent URL
+          <label for="a2a-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('fork.agentUrl')}
           </label>
           <input
             id="a2a-url"
             type="url"
             bind:value={a2aUrl}
             placeholder="https://example.com/a2a"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 focus:border-orange-500"
           />
         </div>
       {/if}
 
       <!-- Message / Query input -->
       <div class="mb-4">
-        <label for="message-input" class="block text-sm font-medium text-gray-700 mb-1">
-          {selectedType === 'hitl' ? 'Frage an den Nutzer' : 'Nachricht / Anweisung'}
+        <label for="message-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {selectedType === 'hitl' ? t('fork.questionForUser') : t('fork.messageInstruction')}
         </label>
         <textarea
           id="message-input"
           value={messageValue}
           oninput={(e) => setMessageValue(e.target.value)}
           rows="3"
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 resize-none"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 resize-none"
           placeholder={selectedType === 'hitl'
-            ? 'Was soll der Nutzer entscheiden?'
-            : 'Was soll der Agent analysieren oder tun?'}
+            ? t('fork.placeholderHuman')
+            : t('fork.placeholderAgent')}
         ></textarea>
       </div>
 
       {#if error}
-        <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
           {error}
         </div>
       {/if}
     </div>
 
     <!-- Footer -->
-    <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+    <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
       <button
-        class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
         onclick={onclose}
       >
-        Abbrechen
+        {t('common.cancel')}
       </button>
       <button
         class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         onclick={handleSubmit}
         disabled={loading}
       >
-        {loading ? 'Wird gesendet...' : 'Starten'}
+        {loading ? t('fork.sending') : t('fork.start')}
       </button>
     </div>
   </div>

@@ -1471,4 +1471,19 @@ export default {
   'interactive.events': 'Events',
   'interactive.forks': 'Forks',
 
+  // Fork modal
+  'fork.title': 'Start new action',
+  'fork.forkFrom': 'Fork from: {actor}',
+  'fork.unknown': 'Unknown',
+  'fork.actionType': 'Action type',
+  'fork.human': 'Human',
+  'fork.role': 'Role',
+  'fork.agentUrl': 'Agent URL',
+  'fork.questionForUser': 'Question for the user',
+  'fork.messageInstruction': 'Message / Instruction',
+  'fork.placeholderHuman': 'What should the user decide?',
+  'fork.placeholderAgent': 'What should the agent analyze or do?',
+  'fork.sending': 'Sending...',
+  'fork.start': 'Start',
+
 };
