@@ -8,6 +8,7 @@
 import { writable, derived } from 'svelte/store';
 import {
   createSpace,
+  listSpaces,
   listEvents,
   appendEvent,
   getFullTree,

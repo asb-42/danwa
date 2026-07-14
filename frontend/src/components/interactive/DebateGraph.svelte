@@ -109,13 +109,13 @@
 <div class="debate-graph-container h-full w-full">
   {#if $spaceStore.loading || $eventStore.loading}
     <div class="flex items-center justify-center h-full">
-      <div class="text-gray-500">Lade Debattenbaum...</div>
+      <div class="text-gray-500 dark:text-gray-400">Loading debate tree...</div>
     </div>
   {:else if nodes.length === 0}
-    <div class="flex flex-col items-center justify-center h-full text-gray-500">
+    <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
       <div class="text-4xl mb-4">🌳</div>
-      <div class="text-lg font-medium mb-2">Noch keine Events</div>
-      <div class="text-sm">Klicke auf [+] um die Debatte zu starten.</div>
+      <div class="text-lg font-medium mb-2">No events yet</div>
+      <div class="text-sm">Click [+] on a node to start the debate.</div>
     </div>
   {:else}
     <SvelteFlow
@@ -152,5 +152,12 @@
 <style>
   .debate-graph-container :global(.debate-flow) {
     background: #f8fafc;
+  }
+  .debate-graph-container :global(.dark .debate-flow) {
+    background: #1f2937;
+  }
+  /* Ensure fork button is not clipped by SvelteFlow containers */
+  .debate-graph-container :global(.react-flow__node) {
+    overflow: visible !important;
   }
 </style>
