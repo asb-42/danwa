@@ -17,6 +17,7 @@
 
   import DebateEventNode from './DebateEventNode.svelte';
   import ForkModal from './ForkModal.svelte';
+  import EventDetailPanel from './EventDetailPanel.svelte';
   import {
     eventStore,
     eventsArray,
@@ -104,10 +105,14 @@
       eventStore.setSelectedEvent(node.data.event_id);
     }
   }
+
+  let hasSelection = $derived($eventStore.selectedEventId !== null);
 </script>
 
-<div class="debate-graph-container h-full w-full">
-  {#if $spaceStore.loading || $eventStore.loading}
+<div class="debate-graph-wrapper h-full w-full flex">
+  <!-- Main graph area -->
+  <div class="debate-graph-container h-full flex-1 min-w-0">
+    {#if $spaceStore.loading || $eventStore.loading}
     <div class="flex items-center justify-center h-full">
       <div class="text-gray-500 dark:text-gray-400">Loading debate tree...</div>
     </div>
@@ -138,6 +143,12 @@
       />
     </SvelteFlow>
   {/if}
+  </div>
+
+  <!-- Side panel (shown when an event is selected) -->
+  {#if hasSelection}
+    <EventDetailPanel {spaceId} />
+  {/if}
 </div>
 
 <!-- Fork Modal -->
@@ -150,6 +161,10 @@
 {/if}
 
 <style>
+  .debate-graph-wrapper {
+    position: relative;
+  }
+
   .debate-graph-container :global(.debate-flow) {
     background: #f8fafc;
   }

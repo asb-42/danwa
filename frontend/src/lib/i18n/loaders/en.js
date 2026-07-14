@@ -1489,4 +1489,16 @@ export default {
   'fork.sending': 'Sending...',
   'fork.start': 'Start',
 
+  // Event detail panel
+  'eventPanel.title': 'Event Details',
+  'eventPanel.close': 'Close',
+  'eventPanel.noSelection': 'Click a node to view details',
+  'eventPanel.actor': 'Actor',
+  'eventPanel.role': 'Role',
+  'eventPanel.type': 'Type',
+  'eventPanel.time': 'Time',
+  'eventPanel.tokens': 'Tokens',
+  'eventPanel.model': 'Model',
+  'eventPanel.fullContent': 'Full Content',
+
 };
