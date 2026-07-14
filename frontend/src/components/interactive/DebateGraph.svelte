@@ -99,7 +99,10 @@
   }
 
   function handleNodeClick(event) {
-    // Node selection logic (if needed)
+    const node = event.detail?.node;
+    if (node?.data?.event_id) {
+      eventStore.setSelectedEvent(node.data.event_id);
+    }
   }
 </script>
 

@@ -81,6 +81,7 @@ function createEventStore() {
     loading: false,
     error: /** @type {string | null} */ (null),
     lastEventId: /** @type {string | null} */ (null),
+    selectedEventId: /** @type {string | null} */ (null),
   });
 
   /** @type {EventSource | null} */
@@ -213,7 +214,15 @@ function createEventStore() {
         loading: false,
         error: null,
         lastEventId: null,
+        selectedEventId: null,
       });
+    },
+
+    /**
+     * Set the selected event (for detail panel)
+     */
+    setSelectedEvent(eventId) {
+      update((s) => ({ ...s, selectedEventId: eventId }));
     },
 
     // --- Internal helpers ---

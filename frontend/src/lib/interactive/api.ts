@@ -45,14 +45,14 @@ export interface DebateEvent {
 }
 
 export type EventType =
-  | 'user_message'
-  | 'agent_speech'
-  | 'tool_call_requested'
-  | 'tool_result'
-  | 'a2a_request'
-  | 'a2a_response'
-  | 'hitl_input'
-  | 'synthesis';
+  | 'UserActed'
+  | 'AgentActed'
+  | 'A2AActed'
+  | 'A2AResponse'
+  | 'ContextSynthesized'
+  | 'ToolRequested'
+  | 'ToolExecuted'
+  | 'SpaceCreated';
 
 export type ActorType = 'user' | 'agent' | 'system' | 'a2a';
 
@@ -301,8 +301,11 @@ export function createEventStream(
     }
   });
 
-  source.onerror = (err) => {
-    console.error('SSE error:', err);
+  source.onerror = () => {
+    source.close();
+    setTimeout(() => {
+      createEventStream(spaceId, onEvent, lastEventId);
+    }, 3000);
   };
 
   return source;
