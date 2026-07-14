@@ -6,7 +6,7 @@
    * and action buttons when a node is selected in the debate tree.
    */
   import { tStore } from '../../lib/i18n/index.js';
-  import { eventStore, forkModalStore } from '../../lib/interactive/stores.js';
+  import { eventStore, forkModalStore } from '../../lib/interactive/stores';
 
   let t = $derived($tStore);
 
