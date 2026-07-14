@@ -297,6 +297,7 @@ export default {
   'common.no': 'No',
   'common.dismiss': 'Dismiss',
   'common.confirm': 'Confirm',
+  'common.create': 'Create',
   'app.viewCrashed': 'View crashed: {error}',
   'app.viewCrashedTitle': 'Something went wrong',
   'app.viewCrashedMessage': 'This view could not be rendered. The error was: {error}',
@@ -1453,5 +1454,21 @@ export default {
   'caseSpace.graph.edgeTitle': 'Edge details',
   'caseSpace.graph.stubNote': 'Detailed edge evidence is not available in this build yet.',
   'caseSpace.graph.refresh': 'Refresh',
+
+  // Navigation — section labels
+  'nav.section.start': 'Start',
+  'nav.section.work': 'Work',
+  'nav.section.results': 'Results',
+
+  // Interactive debate
+  'interactive.title': 'Interactive Debate',
+  'interactive.newRoom': '+ New Debate Space',
+  'interactive.backToRooms': '← Spaces',
+  'interactive.noSpaces': 'No debate spaces yet',
+  'interactive.createFirst': 'Create first space',
+  'interactive.eventLog': 'Event Log',
+  'interactive.noEvents': 'No events yet',
+  'interactive.events': 'Events',
+  'interactive.forks': 'Forks',
 
 };

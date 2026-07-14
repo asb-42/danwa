@@ -11,7 +11,9 @@
     eventStore,
     eventsArray,
   } from '../lib/interactive/stores';
+  import { tStore } from '../lib/i18n/index.js';
 
+  let t = $derived($tStore);
   let spaceId = $state(null);
   let spaceTitle = $state('');
   let showCreateModal = $state(false);
@@ -36,15 +38,15 @@
 
 <div class="interactive-view h-full flex flex-col">
   <!-- Header -->
-  <header class="px-4 py-3 border-b border-gray-200 bg-white flex items-center gap-4">
-    <h1 class="text-lg font-semibold text-gray-800">Interactive Debate</h1>
+  <header class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-4">
+    <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('interactive.title')}</h1>
 
     {#if $spaceStore.current}
-      <span class="text-sm text-gray-500">
+      <span class="text-sm text-gray-500 dark:text-gray-400">
         | {$spaceStore.current.title}
       </span>
-      <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-        {$spaceStore.current.event_count} Events
+      <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+        {$spaceStore.current.event_count} {t('interactive.events')}
       </span>
     {/if}
 
@@ -55,18 +57,18 @@
         class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
         onclick={() => (showCreateModal = true)}
       >
-        + Neuer Debattenraum
+        {t('interactive.newRoom')}
       </button>
     {:else}
       <button
-        class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-800"
+        class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
         onclick={() => {
           spaceStore.setCurrent(null);
           spaceId = null;
           eventStore.clear();
         }}
       >
-        ← Räume
+        {t('interactive.backToRooms')}
       </button>
     {/if}
   </header>
@@ -77,35 +79,35 @@
       <!-- Space list -->
       <div class="flex-1 p-6 overflow-auto">
         {#if $spaceStore.spaces.length === 0}
-          <div class="text-center py-12 text-gray-500">
+          <div class="text-center py-12 text-gray-500 dark:text-gray-400">
             <div class="text-4xl mb-4">💬</div>
-            <div class="text-lg mb-2">Keine Debattenräume vorhanden</div>
+            <div class="text-lg mb-2">{t('interactive.noSpaces')}</div>
             <button
               class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               onclick={() => (showCreateModal = true)}
             >
-              Ersten Raum erstellen
+              {t('interactive.createFirst')}
             </button>
           </div>
         {:else}
           <div class="grid gap-4 max-w-2xl">
             {#each $spaceStore.spaces as space}
               <button
-                class="text-left p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
+                class="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
                 onclick={() => selectSpace(space)}
               >
                 <div class="flex items-center justify-between">
                   <div>
-                    <div class="font-medium text-gray-800">{space.title}</div>
+                    <div class="font-medium text-gray-800 dark:text-gray-100">{space.title}</div>
                     {#if space.description}
-                      <div class="text-sm text-gray-500 mt-1">
+                      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {space.description}
                       </div>
                     {/if}
                   </div>
-                  <div class="text-right text-sm text-gray-400">
-                    <div>{space.event_count} Events</div>
-                    <div>{space.fork_count} Forks</div>
+                  <div class="text-right text-sm text-gray-400 dark:text-gray-500">
+                    <div>{space.event_count} {t('interactive.events')}</div>
+                    <div>{space.fork_count} {t('interactive.forks')}</div>
                   </div>
                 </div>
               </button>
@@ -120,15 +122,15 @@
       </div>
 
       <!-- Event list sidebar -->
-      <aside class="w-80 border-l border-gray-200 bg-white overflow-auto">
+      <aside class="w-80 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-auto">
         <div class="p-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Event-Verlauf</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t('interactive.eventLog')}</h3>
           {#if $eventsArray.length === 0}
-            <div class="text-sm text-gray-400">Noch keine Events</div>
+            <div class="text-sm text-gray-400 dark:text-gray-500">{t('interactive.noEvents')}</div>
           {:else}
             <div class="space-y-2">
               {#each $eventsArray as event (event.event_id)}
-                <div class="p-2 rounded-lg bg-gray-50 text-sm">
+                <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-700 text-sm">
                   <div class="flex items-center gap-2">
                     <span class="text-xs">
                       {event.actor_type === 'user'
@@ -139,14 +141,14 @@
                             ? '🔗'
                             : '⚙️'}
                     </span>
-                    <span class="font-medium text-gray-700">
+                    <span class="font-medium text-gray-700 dark:text-gray-300">
                       {event.actor_id}
                     </span>
-                    <span class="text-[10px] text-gray-400 ml-auto">
+                    <span class="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
                       {new Date(event.created_at).toLocaleTimeString()}
                     </span>
                   </div>
-                  <div class="text-gray-600 mt-1 line-clamp-2">
+                  <div class="text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                     {typeof event.content === 'string'
                       ? event.content.slice(0, 100)
                       : '...'}
@@ -170,30 +172,30 @@
       if (e.target === e.currentTarget) showCreateModal = false;
     }}
   >
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-      <h2 class="text-lg font-semibold mb-4">Neuer Debattenraum</h2>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+      <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">{t('interactive.newRoom')}</h2>
       <input
         type="text"
         bind:value={spaceTitle}
-        placeholder="Raumtitel..."
-        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-4"
+        placeholder={t('interactive.newRoom')}
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm mb-4 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
         onkeydown={(e) => {
           if (e.key === 'Enter') handleCreateSpace();
         }}
       />
       <div class="flex justify-end gap-3">
         <button
-          class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+          class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
           onclick={() => (showCreateModal = false)}
         >
-          Abbrechen
+          {t('common.cancel')}
         </button>
         <button
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
           onclick={handleCreateSpace}
           disabled={!spaceTitle.trim()}
         >
-          Erstellen
+          {t('common.create')}
         </button>
       </div>
     </div>
