@@ -8,6 +8,7 @@
 import { writable, derived } from 'svelte/store';
 import {
   createSpace,
+  listSpaces,
   listEvents,
   appendEvent,
   getFullTree,
@@ -22,6 +23,11 @@ import {
  * @typedef {import('./api').DebateSpace} DebateSpace
  * @typedef {import('./api').DebateEvent} DebateEvent
  */
+
+// Module-level variable for the last received event ID.
+// Updated in _addEvent() and read by _getLastEventId() to avoid the
+// synchronous subscribe() anti-pattern.
+let _lastEventId = null;
 
 // ---------------------------------------------------------------------------
 // Space Store
@@ -207,6 +213,7 @@ function createEventStore() {
      */
     clear() {
       this.stopStreaming();
+      _lastEventId = null;
       set({
         events: new Map(),
         rootIds: [],
@@ -220,6 +227,7 @@ function createEventStore() {
 
     /** @param {DebateEvent} event */
     _addEvent(event) {
+      _lastEventId = event.event_id;
       update((s) => {
         const newEvents = new Map(s.events);
         newEvents.set(event.event_id, event);
@@ -239,11 +247,7 @@ function createEventStore() {
     },
 
     _getLastEventId() {
-      let lastId = null;
-      subscribe((s) => {
-        lastId = s.lastEventId;
-      })();
-      return lastId;
+      return _lastEventId;
     },
   };
 }
