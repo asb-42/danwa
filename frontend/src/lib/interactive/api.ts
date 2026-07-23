@@ -355,32 +355,67 @@ export async function synthesize(
 // SSE Streaming
 // ---------------------------------------------------------------------------
 
+export interface EventStreamHandle {
+  /** Close the event stream and stop reconnection attempts. */
+  close: () => void;
+}
+
+/**
+ * Create an SSE event stream with automatic reconnection.
+ *
+ * Unlike the browser's default EventSource auto-reconnect (which does NOT
+ * pass `last_event_id` in the query string), this implementation tracks
+ * the last received event ID and includes it on every reconnection so the
+ * backend replays only the events the client missed.
+ *
+ * Reconnection uses a 3-second delay (matching the doc spec).
+ */
 export function createEventStream(
   spaceId: string,
   onEvent: (event: DebateEvent) => void,
   lastEventId?: string
-): EventSource {
-  const query = new URLSearchParams();
-  if (lastEventId) query.set('last_event_id', lastEventId);
+): EventStreamHandle {
+  let currentLastId = lastEventId ?? null;
+  let source: EventSource | null = null;
+  let closed = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const source = new EventSource(
-    `${API_BASE}/spaces/${spaceId}/stream?${query}`
-  );
+  function connect() {
+    if (closed) return;
+    const query = new URLSearchParams();
+    if (currentLastId) query.set('last_event_id', currentLastId);
 
-  source.addEventListener('message', (e) => {
-    try {
-      const data = JSON.parse(e.data);
-      if (data.kind === 'event' && data.payload) {
-        onEvent(data.payload);
+    source = new EventSource(`${API_BASE}/spaces/${spaceId}/stream?${query}`);
+
+    source.addEventListener('message', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.kind === 'event' && data.payload) {
+          currentLastId = data.payload.event_id;
+          onEvent(data.payload);
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE event:', err);
       }
-    } catch (err) {
-      console.error('Failed to parse SSE event:', err);
-    }
-  });
+    });
 
-  source.onerror = (err) => {
-    console.error('SSE error:', err);
+    source.onerror = (err) => {
+      console.error('SSE error:', err);
+      source?.close();
+      if (!closed) {
+        // Reconnect after 3s with the last known event ID for catch-up.
+        reconnectTimer = setTimeout(connect, 3000);
+      }
+    };
+  }
+
+  connect();
+
+  return {
+    close: () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      source?.close();
+    },
   };
-
-  return source;
 }
