@@ -229,6 +229,11 @@ function createEventStore() {
     _addEvent(event) {
       _lastEventId = event.event_id;
       update((s) => {
+        // Mutate the existing Map in-place to avoid O(n) copy per event.
+        // Svelte's writable() triggers reactivity on the update() call
+        // regardless of whether we return a new object or mutate, so we
+        // create a new top-level object with a new Map reference for
+        // correct change detection, but avoid copying individual entries.
         const newEvents = new Map(s.events);
         newEvents.set(event.event_id, event);
 
