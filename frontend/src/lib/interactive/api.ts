@@ -44,15 +44,38 @@ export interface DebateEvent {
   created_at: string;
 }
 
+/**
+ * Thin Event Taxonomy (ADR-001).
+ *
+ * All event types share the same envelope; the rich payload lives in
+ * `metadata_json`. This mirrors `backend/models/debate_event.py` exactly.
+ *
+ * Domains:
+ *   A. Space Lifecycle   — SpaceCreated, SpaceArchived
+ *   B. Actor Interactions — UserActed, AgentActed, A2AActed  (~90% of events)
+ *   C. System & Infra     — ToolRequested, ToolExecuted, ContextSynthesized, BranchForked
+ *   D. Milestones        — MilestoneReached
+ *
+ * Legacy names (user_message, agent_speech, a2a_request, a2a_response,
+ * hitl_input, tool_call_requested, tool_result, synthesis) are normalized
+ * to this taxonomy on write by `normalize_event_type()` in the backend, but
+ * new frontend code should use these canonical names directly.
+ */
 export type EventType =
-  | 'user_message'
-  | 'agent_speech'
-  | 'tool_call_requested'
-  | 'tool_result'
-  | 'a2a_request'
-  | 'a2a_response'
-  | 'hitl_input'
-  | 'synthesis';
+  // A. Space Lifecycle
+  | 'SpaceCreated'
+  | 'SpaceArchived'
+  // B. Actor Interactions (core debate)
+  | 'UserActed'
+  | 'AgentActed'
+  | 'A2AActed'
+  // C. System & Infrastructure
+  | 'ToolRequested'
+  | 'ToolExecuted'
+  | 'ContextSynthesized'
+  | 'BranchForked'
+  // D. Milestones
+  | 'MilestoneReached';
 
 export type ActorType = 'user' | 'agent' | 'system' | 'a2a';
 
@@ -271,6 +294,60 @@ export async function triggerHITL(
     { method: 'POST' }
   );
   if (!resp.ok) throw new Error(`Failed to trigger HITL: ${resp.statusText}`);
+  return resp.json();
+}
+
+// ---------------------------------------------------------------------------
+// Output Synthesis
+// ---------------------------------------------------------------------------
+
+export type SynthesisFormat = 'markdown' | 'latex' | 'pdf' | 'json';
+
+export interface SynthesisResult {
+  space_id: string;
+  format: SynthesisFormat;
+  content: string;
+  event_count: number;
+  tokens_input: number;
+  tokens_output: number;
+  model: string;
+  source_event_ids: string[];
+  report_id: string | null;
+  generated_at: string;
+}
+
+export async function synthesize(
+  spaceId: string,
+  params: {
+    format?: SynthesisFormat;
+    max_depth?: number | null;
+    include_side_branches?: boolean;
+    llm_profile_id?: string;
+    use_llm?: boolean;
+  } = {}
+): Promise<SynthesisResult> {
+  const query = new URLSearchParams();
+  const format = params.format ?? 'markdown';
+  const body = {
+    format,
+    max_depth: params.max_depth ?? null,
+    include_side_branches: params.include_side_branches ?? true,
+  };
+  if (params.llm_profile_id)
+    query.set('llm_profile_id', params.llm_profile_id);
+  if (params.use_llm !== undefined)
+    query.set('use_llm', String(params.use_llm));
+
+  const resp = await fetch(
+    `${API_BASE}/spaces/${spaceId}/synthesize?${query}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!resp.ok)
+    throw new Error(`Failed to synthesise: ${resp.statusText}`);
   return resp.json();
 }
 
