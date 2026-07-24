@@ -44,15 +44,38 @@ export interface DebateEvent {
   created_at: string;
 }
 
+/**
+ * Thin Event Taxonomy (ADR-001).
+ *
+ * All event types share the same envelope; the rich payload lives in
+ * `metadata_json`. This mirrors `backend/models/debate_event.py` exactly.
+ *
+ * Domains:
+ *   A. Space Lifecycle   — SpaceCreated, SpaceArchived
+ *   B. Actor Interactions — UserActed, AgentActed, A2AActed  (~90% of events)
+ *   C. System & Infra     — ToolRequested, ToolExecuted, ContextSynthesized, BranchForked
+ *   D. Milestones        — MilestoneReached
+ *
+ * Legacy names (user_message, agent_speech, a2a_request, a2a_response,
+ * hitl_input, tool_call_requested, tool_result, synthesis) are normalized
+ * to this taxonomy on write by `normalize_event_type()` in the backend, but
+ * new frontend code should use these canonical names directly.
+ */
 export type EventType =
+  // A. Space Lifecycle
+  | 'SpaceCreated'
+  | 'SpaceArchived'
+  // B. Actor Interactions (core debate)
   | 'UserActed'
   | 'AgentActed'
   | 'A2AActed'
-  | 'A2AResponse'
-  | 'ContextSynthesized'
+  // C. System & Infrastructure
   | 'ToolRequested'
   | 'ToolExecuted'
-  | 'SpaceCreated';
+  | 'ContextSynthesized'
+  | 'BranchForked'
+  // D. Milestones
+  | 'MilestoneReached';
 
 export type ActorType = 'user' | 'agent' | 'system' | 'a2a';
 
@@ -275,38 +298,124 @@ export async function triggerHITL(
 }
 
 // ---------------------------------------------------------------------------
+// Output Synthesis
+// ---------------------------------------------------------------------------
+
+export type SynthesisFormat = 'markdown' | 'latex' | 'pdf' | 'json';
+
+export interface SynthesisResult {
+  space_id: string;
+  format: SynthesisFormat;
+  content: string;
+  event_count: number;
+  tokens_input: number;
+  tokens_output: number;
+  model: string;
+  source_event_ids: string[];
+  report_id: string | null;
+  generated_at: string;
+}
+
+export async function synthesize(
+  spaceId: string,
+  params: {
+    format?: SynthesisFormat;
+    max_depth?: number | null;
+    include_side_branches?: boolean;
+    llm_profile_id?: string;
+    use_llm?: boolean;
+  } = {}
+): Promise<SynthesisResult> {
+  const query = new URLSearchParams();
+  const format = params.format ?? 'markdown';
+  const body = {
+    format,
+    max_depth: params.max_depth ?? null,
+    include_side_branches: params.include_side_branches ?? true,
+  };
+  if (params.llm_profile_id)
+    query.set('llm_profile_id', params.llm_profile_id);
+  if (params.use_llm !== undefined)
+    query.set('use_llm', String(params.use_llm));
+
+  const resp = await fetch(
+    `${API_BASE}/spaces/${spaceId}/synthesize?${query}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!resp.ok)
+    throw new Error(`Failed to synthesise: ${resp.statusText}`);
+  return resp.json();
+}
+
+// ---------------------------------------------------------------------------
 // SSE Streaming
 // ---------------------------------------------------------------------------
 
+export interface EventStreamHandle {
+  /** Close the event stream and stop reconnection attempts. */
+  close: () => void;
+}
+
+/**
+ * Create an SSE event stream with automatic reconnection.
+ *
+ * Unlike the browser's default EventSource auto-reconnect (which does NOT
+ * pass `last_event_id` in the query string), this implementation tracks
+ * the last received event ID and includes it on every reconnection so the
+ * backend replays only the events the client missed.
+ *
+ * Reconnection uses a 3-second delay (matching the doc spec).
+ */
 export function createEventStream(
   spaceId: string,
   onEvent: (event: DebateEvent) => void,
   lastEventId?: string
-): EventSource {
-  const query = new URLSearchParams();
-  if (lastEventId) query.set('last_event_id', lastEventId);
+): EventStreamHandle {
+  let currentLastId = lastEventId ?? null;
+  let source: EventSource | null = null;
+  let closed = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const source = new EventSource(
-    `${API_BASE}/spaces/${spaceId}/stream?${query}`
-  );
+  function connect() {
+    if (closed) return;
+    const query = new URLSearchParams();
+    if (currentLastId) query.set('last_event_id', currentLastId);
 
-  source.addEventListener('message', (e) => {
-    try {
-      const data = JSON.parse(e.data);
-      if (data.kind === 'event' && data.payload) {
-        onEvent(data.payload);
+    source = new EventSource(`${API_BASE}/spaces/${spaceId}/stream?${query}`);
+
+    source.addEventListener('message', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.kind === 'event' && data.payload) {
+          currentLastId = data.payload.event_id;
+          onEvent(data.payload);
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE event:', err);
       }
-    } catch (err) {
-      console.error('Failed to parse SSE event:', err);
-    }
-  });
+    });
 
-  source.onerror = () => {
-    source.close();
-    setTimeout(() => {
-      createEventStream(spaceId, onEvent, lastEventId);
-    }, 3000);
+    source.onerror = (err) => {
+      console.error('SSE error:', err);
+      source?.close();
+      if (!closed) {
+        // Reconnect after 3s with the last known event ID for catch-up.
+        reconnectTimer = setTimeout(connect, 3000);
+      }
+    };
+  }
+
+  connect();
+
+  return {
+    close: () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      source?.close();
+    },
   };
-
-  return source;
 }

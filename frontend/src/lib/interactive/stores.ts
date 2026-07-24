@@ -24,6 +24,11 @@ import {
  * @typedef {import('./api').DebateEvent} DebateEvent
  */
 
+// Module-level variable for the last received event ID.
+// Updated in _addEvent() and read by _getLastEventId() to avoid the
+// synchronous subscribe() anti-pattern.
+let _lastEventId = null;
+
 // ---------------------------------------------------------------------------
 // Space Store
 // ---------------------------------------------------------------------------
@@ -209,6 +214,7 @@ function createEventStore() {
      */
     clear() {
       this.stopStreaming();
+      _lastEventId = null;
       set({
         events: new Map(),
         rootIds: [],
@@ -230,7 +236,13 @@ function createEventStore() {
 
     /** @param {DebateEvent} event */
     _addEvent(event) {
+      _lastEventId = event.event_id;
       update((s) => {
+        // Mutate the existing Map in-place to avoid O(n) copy per event.
+        // Svelte's writable() triggers reactivity on the update() call
+        // regardless of whether we return a new object or mutate, so we
+        // create a new top-level object with a new Map reference for
+        // correct change detection, but avoid copying individual entries.
         const newEvents = new Map(s.events);
         newEvents.set(event.event_id, event);
 
@@ -249,11 +261,7 @@ function createEventStore() {
     },
 
     _getLastEventId() {
-      let lastId = null;
-      subscribe((s) => {
-        lastId = s.lastEventId;
-      })();
-      return lastId;
+      return _lastEventId;
     },
   };
 }
