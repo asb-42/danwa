@@ -117,21 +117,35 @@ frontend_running() { pid_running "$FE_PID_FILE"; }
 studio_running()   { pid_running "$STUDIO_PID_FILE"; }
 
 # ───────────────────────────────────────────────────────────────────────
-# Backend lifecycle — DEPRECATED
+# Backend lifecycle — delegates to danwa-core
 #
-# This legacy backend has been superseded by danwa-core.
-# Start the replacement with:
-#   cd ../danwa-core && ./manage.sh start be
+# The legacy backend in this repo is disabled. The backend now lives in
+# danwa-core. These functions delegate to the danwa-core manage.sh so the
+# user can start/stop the backend without leaving this directory.
 # ───────────────────────────────────────────────────────────────────────
 start_backend() {
-    log_error "DEPRECATED: This legacy backend is disabled."
-    log_error "Use danwa-core instead:"
-    log_error "  cd $(dirname "$PROJECT_DIR")/danwa-core && ./manage.sh start be"
-    return 1
+    local core_script
+    core_script="$PROJECT_DIR/../danwa-core/manage.sh"
+    if [[ ! -f "$core_script" ]]; then
+        log_error "danwa-core manage.sh not found at: $core_script"
+        log_error "Ensure danwa-core is cloned as a sibling directory."
+        return 1
+    fi
+    log_step "Starting backend via danwa-core..."
+    export DANWA_LIBDANWA_PATH="${DANWA_LIBDANWA_PATH:-$LIBDANWA_RESOLVED}"
+    bash "$core_script" start be
 }
 
 stop_backend() {
-    log_warn "DEPRECATED: Legacy backend is disabled. danwa-core is the active backend."
+    local core_script
+    core_script="$PROJECT_DIR/../danwa-core/manage.sh"
+    if [[ ! -f "$core_script" ]]; then
+        log_warn "danwa-core manage.sh not found — cannot stop backend"
+        return 1
+    fi
+    log_step "Stopping backend via danwa-core..."
+    export DANWA_LIBDANWA_PATH="${DANWA_LIBDANWA_PATH:-$LIBDANWA_RESOLVED}"
+    bash "$core_script" stop be
 }
 
 # ───────────────────────────────────────────────────────────────────────
@@ -322,9 +336,14 @@ show_status() {
     log_header "Danwa — Systemstatus"
 
     echo ""
-    echo -e "  ${BOLD}Backend (legacy):${RESET}"
-    echo -e "    Status:  ${YELLOW}DEAKTIVIERT${RESET} — danwa-core wird verwendet"
-    echo -e "    Hinweis: cd ../danwa-core && ./manage.sh status"
+    echo -e "  ${BOLD}Backend (via danwa-core):${RESET}"
+    # Check if the danwa-core backend is running
+    if curl -s "http://localhost:$BACKEND_PORT/health" 2>/dev/null | grep -q "ok\|healthy\|status"; then
+        echo -e "    Status:  ${GREEN}aktiv${RESET} (port $BACKEND_PORT)"
+    else
+        echo -e "    Status:  ${RED}gestoppt${RESET}  (start with: ./manage.sh start be)"
+    fi
+    echo -e "    Hinweis: Backend läuft in danwa-core"
 
     echo ""
     echo -e "  ${BOLD}Frontend:${RESET}"
@@ -711,30 +730,28 @@ shift || true
 
 case "$cmd" in
     start)
-        what="${1:-all}"
+        what="${1:-fe}"
         case "$what" in
             be|backend) start_backend ;;
-            fe|frontend) start_frontend ;;
+            fe|frontend|"") start_frontend ;;
             st|studio) start_studio ;;
-            all|"") start_backend && start_frontend ;;
+            all) start_backend && start_frontend ;;
         esac
         ;;
     stop)
-        what="${1:-all}"
+        what="${1:-fe}"
         case "$what" in
             be|backend) stop_backend ;;
-            fe|frontend) stop_frontend ;;
+            fe|frontend|"") stop_frontend ;;
             st|studio) stop_studio ;;
-            all|"") stop_backend && stop_frontend ;;
+            all) stop_backend && stop_frontend ;;
         esac
         ;;
     restart|reload)
-        stop_backend
         stop_frontend
         sleep 1
         find "$PROJECT_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
         find "$PROJECT_DIR" -name "*.pyc" -delete 2>/dev/null || true
-        start_backend
         start_frontend
         # Studio wird bewusst NICHT mit-restartet — Admin-Tool, unabhängiger Lifecycle.
         ;;
@@ -799,13 +816,15 @@ case "$cmd" in
         echo "Danwa Manager (refactored — Phase 8, repo-templates/danwa/manage.sh)"
         echo ""
         echo "  ./manage.sh                  interaktives Dashboard"
-        echo "  ./manage.sh start            Backend + Frontend starten"
-        echo "  ./manage.sh start be         nur Backend starten"
+        echo "  ./manage.sh start            Frontend starten (end-user UI)"
+        echo "  ./manage.sh start be         Backend starten (via danwa-core)"
         echo "  ./manage.sh start fe         nur Frontend starten"
         echo "  ./manage.sh start studio     nur Danwa Studio starten (admin / dev)"
-        echo "  ./manage.sh stop             alles stoppen (Backend + Frontend)"
+        echo "  ./manage.sh start all        Backend + Frontend starten"
+        echo "  ./manage.sh stop             Frontend stoppen"
+        echo "  ./manage.sh stop be          Backend stoppen (via danwa-core)"
         echo "  ./manage.sh stop studio      nur Studio stoppen"
-        echo "  ./manage.sh restart          Backend + Frontend neu starten (Studio bleibt)"
+        echo "  ./manage.sh restart          Frontend neu starten"
         echo "  ./manage.sh status           Status anzeigen (Backend + Frontend + Studio)"
         echo "  ./manage.sh status --json    JSON-Status (für Studio SystemManagementView)"
         echo "  ./manage.sh logs             Live-Logs (alle drei)"
