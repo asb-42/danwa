@@ -158,21 +158,21 @@ stop_backend() {
 start_frontend() {
     ensure_dirs
     if frontend_running > /dev/null 2>&1; then
-        log_warn "Frontend läuft bereits (PID: $(frontend_running))"
+        log_warn "Frontend already running (PID: $(frontend_running))"
         return 0
     fi
     if [[ ! -d "$FE_DIR" ]]; then
-        log_error "Frontend-Verzeichnis nicht gefunden: $FE_DIR"
+        log_error "Frontend directory not found: $FE_DIR"
         return 1
     fi
     if [[ ! -d "$FE_DIR/node_modules" ]] && [[ "$DANWA_USE_MOCK" != "1" ]]; then
-        log_warn "node_modules fehlt in $FE_DIR — führe 'npm install' aus …"
+        log_warn "node_modules missing in $FE_DIR — running 'npm install' …"
         (cd "$FE_DIR" && npm install) >> "$FE_LOG" 2>&1 || {
-            log_error "npm install fehlgeschlagen — prüfe $FE_LOG"
+            log_error "npm install failed — check $FE_LOG"
             return 1
         }
     fi
-    log_step "Frontend starten …"
+    log_step "Frontend starting …"
     if [[ "$DANWA_USE_MOCK" == "1" ]]; then
         write_mock_script "$MOCK_FRONTEND_SCRIPT"
         nohup "$MOCK_FRONTEND_SCRIPT" > "$FE_LOG" 2>&1 &
@@ -184,16 +184,16 @@ start_frontend() {
     local pid=$!
     echo "$pid" > "$FE_PID_FILE"
     if [[ "$DANWA_USE_MOCK" != "1" ]] && wait_for_url "http://localhost:$FRONTEND_PORT" 60; then
-        log_ok "Frontend gestartet (PID: $pid) → http://localhost:$FRONTEND_PORT"
+        log_ok "Frontend started (PID: $pid) → http://localhost:$FRONTEND_PORT"
     elif [[ "$DANWA_USE_MOCK" == "1" ]]; then
         log_ok "Frontend started (MOCK, PID: $pid, log: $FE_LOG)"
     else
-        log_warn "Frontend-Start dauert länger als erwartet — prüfe Logs mit: ./manage.sh logs fe"
+        log_warn "Frontend startup taking longer than expected — check logs with: ./manage.sh logs fe"
     fi
 }
 
 stop_frontend() {
-    log_step "Frontend stoppen …"
+    log_step "Stopping frontend …"
     local pid
     pid="$(frontend_running 2>/dev/null)" || true
     if [[ -n "$pid" ]]; then
@@ -204,9 +204,9 @@ stop_frontend() {
             sleep 1
         fi
         rm -f "$FE_PID_FILE"
-        log_ok "Frontend (PID: $pid) gestoppt"
+        log_ok "Frontend (PID: $pid) stopped"
     else
-        log_warn "Frontend läuft nicht"
+        log_warn "Frontend is not running"
     fi
     pkill -f "vite" 2>/dev/null || true
 }
@@ -217,25 +217,25 @@ stop_frontend() {
 start_studio() {
     ensure_dirs
     if studio_running > /dev/null 2>&1; then
-        log_warn "Danwa Studio läuft bereits (PID: $(studio_running))"
+        log_warn "Danwa Studio already running (PID: $(studio_running))"
         return 0
     fi
 
     if [[ ! -d "$STUDIO_DIR" ]]; then
-        log_error "Studio-Verzeichnis nicht gefunden: $STUDIO_DIR"
+        log_error "Studio directory not found: $STUDIO_DIR"
         log_info "Setze STUDIO_DIR oder klone danwa-studio neben danwa."
         return 1
     fi
 
     if [[ ! -d "$STUDIO_DIR/node_modules" ]] && [[ "$DANWA_USE_MOCK" != "1" ]]; then
-        log_warn "node_modules fehlt in $STUDIO_DIR — führe 'npm install' aus …"
+        log_warn "node_modules missing in $STUDIO_DIR — running 'npm install' …"
         (cd "$STUDIO_DIR" && npm install) >> "$STUDIO_LOG" 2>&1 || {
-            log_error "npm install fehlgeschlagen — prüfe $STUDIO_LOG"
+            log_error "npm install failed — check $STUDIO_LOG"
             return 1
         }
     fi
 
-    log_step "Danwa Studio starten …"
+    log_step "Starting Danwa Studio …"
     if [[ "$DANWA_USE_MOCK" == "1" ]]; then
         write_mock_script "$MOCK_STUDIO_SCRIPT"
         nohup "$MOCK_STUDIO_SCRIPT" > "$STUDIO_LOG" 2>&1 &
@@ -247,16 +247,16 @@ start_studio() {
     local pid=$!
     echo "$pid" > "$STUDIO_PID_FILE"
     if [[ "$DANWA_USE_MOCK" != "1" ]] && wait_for_url "http://localhost:$STUDIO_PORT" 90; then
-        log_ok "Danwa Studio gestartet (PID: $pid) → http://localhost:$STUDIO_PORT"
+        log_ok "Danwa Studio started (PID: $pid) → http://localhost:$STUDIO_PORT"
     elif [[ "$DANWA_USE_MOCK" == "1" ]]; then
         log_ok "Studio started (MOCK, PID: $pid, log: $STUDIO_LOG)"
     else
-        log_warn "Studio-Start dauert länger als erwartet — prüfe Logs mit: ./manage.sh logs studio"
+        log_warn "Studio startup taking longer than expected — check logs with: ./manage.sh logs studio"
     fi
 }
 
 stop_studio() {
-    log_step "Danwa Studio stoppen …"
+    log_step "Stopping Danwa Studio …"
     local pid
     pid="$(studio_running 2>/dev/null)" || true
     if [[ -n "$pid" ]]; then
@@ -267,9 +267,9 @@ stop_studio() {
             sleep 1
         fi
         rm -f "$STUDIO_PID_FILE"
-        log_ok "Danwa Studio (PID: $pid) gestoppt"
+        log_ok "Danwa Studio (PID: $pid) stopped"
     else
-        log_warn "Danwa Studio läuft nicht"
+        log_warn "Danwa Studio is not running"
     fi
     pkill -f "vite" 2>/dev/null || true
 }
@@ -281,19 +281,19 @@ show_logs() {
     local target="${1:-all}"
     case "$target" in
         be|backend)
-            log_header "Backend-Logs (tail -f) — Ctrl+C zum Beenden"
+            log_header "Backend logs (tail -f) — Ctrl+C to exit"
             tail -f "$BACKEND_LOG"
             ;;
         fe|frontend)
-            log_header "Frontend-Logs (tail -f) — Ctrl+C zum Beenden"
+            log_header "Frontend logs (tail -f) — Ctrl+C to exit"
             tail -f "$FE_LOG"
             ;;
         st|studio)
-            log_header "Danwa-Studio-Logs (tail -f) — Ctrl+C zum Beenden"
+            log_header "Danwa Studio logs (tail -f) — Ctrl+C to exit"
             tail -f "$STUDIO_LOG"
             ;;
         all|*)
-            log_header "Live-Logs: Backend + Frontend + Studio (Ctrl+C zum Beenden)"
+            log_header "Live logs: Backend + Frontend + Studio (Ctrl+C to exit)"
             tail -f "$BACKEND_LOG" "$FE_LOG" "$STUDIO_LOG" || true
             ;;
     esac
@@ -339,22 +339,22 @@ show_status() {
     echo -e "  ${BOLD}Backend (via danwa-core):${RESET}"
     # Check if the danwa-core backend is running
     if curl -s "http://localhost:$BACKEND_PORT/health" 2>/dev/null | grep -q "ok\|healthy\|status"; then
-        echo -e "    Status:  ${GREEN}aktiv${RESET} (port $BACKEND_PORT)"
+        echo -e "    Status:  ${GREEN}running${RESET} (port $BACKEND_PORT)"
     else
-        echo -e "    Status:  ${RED}gestoppt${RESET}  (start with: ./manage.sh start be)"
+        echo -e "    Status:  ${RED}stopped${RESET}  (start with: ./manage.sh start be)"
     fi
-    echo -e "    Hinweis: Backend läuft in danwa-core"
+    echo -e "    Note: Backend runs in danwa-core"
 
     echo ""
     echo -e "  ${BOLD}Frontend:${RESET}"
     if frontend_running > /dev/null 2>&1; then
         local fp
         fp="$(frontend_running)"
-        echo -e "    Status:  ${GREEN}aktiv${RESET} (PID: $fp)"
+        echo -e "    Status:  ${GREEN}running${RESET} (PID: $fp)"
         echo -e "    Port:    $FRONTEND_PORT"
         echo -e "    Log:     $FE_LOG"
     else
-        echo -e "    Status:  ${RED}gestoppt${RESET}"
+        echo -e "    Status:  ${RED}stopped${RESET}"
     fi
 
     echo ""
@@ -362,25 +362,25 @@ show_status() {
     if studio_running > /dev/null 2>&1; then
         local sp
         sp="$(studio_running)"
-        echo -e "    Status:  ${GREEN}aktiv${RESET} (PID: $sp)"
+        echo -e "    Status:  ${GREEN}running${RESET} (PID: $sp)"
         echo -e "    Port:    $STUDIO_PORT"
         echo -e "    Log:     $STUDIO_LOG"
-        echo -e "    Verz.:   $STUDIO_DIR"
+        echo -e "    Dir.:   $STUDIO_DIR"
     else
-        echo -e "    Status:  ${RED}gestoppt${RESET}  (Port $STUDIO_PORT, Verz. $STUDIO_DIR)"
+        echo -e "    Status:  ${RED}stopped${RESET}  (Port $STUDIO_PORT, Dir. $STUDIO_DIR)"
     fi
 
     echo ""
     echo -e "  ${BOLD}DMS OCR:${RESET}"
     if curl -s "http://localhost:$BACKEND_PORT/api/v1/dms/ocr-status" 2>/dev/null | grep -q '"available":true'; then
-        echo -e "    Status:  ${GREEN}verfügbar${RESET}"
+        echo -e "    Status:  ${GREEN}available${RESET}"
     else
-        echo -e "    Status:  ${YELLOW}nicht verfügbar (OCR deaktiviert oder nicht installiert)${RESET}"
+        echo -e "    Status:  ${YELLOW}nicht available (OCR derunningiert oder nicht installiert)${RESET}"
     fi
 
     echo ""
-    echo -e "  ${BOLD}Projektordner:${RESET} $PROJECT_DIR"
-    echo -e "  ${BOLD}Log-Verzeichnis:${RESET} $LOG_DIR"
+    echo -e "  ${BOLD}Project directory:${RESET} $PROJECT_DIR"
+    echo -e "  ${BOLD}Log directory:${RESET} $LOG_DIR"
     echo ""
 }
 
@@ -394,22 +394,22 @@ dashboard_menu() {
     echo -e "  ${CYAN}║     D A N W A   M A N A G E R     ║${RESET}"
     echo -e "  ${CYAN}╚════════════════════════════════════╝${RESET}"
     echo ""
-    echo -e "  ${BOLD}1${RESET}) Backend   ${GREEN}starten${RESET}"
-    echo -e "  ${BOLD}2${RESET}) Backend   ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}3${RESET}) Frontend  ${GREEN}starten${RESET}"
-    echo -e "  ${BOLD}4${RESET}) Frontend  ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}5${RESET}) Studio    ${GREEN}starten${RESET}  (admin / dev)"
-    echo -e "  ${BOLD}6${RESET}) Studio    ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}7${RESET}) Beides    ${GREEN}starten${RESET}   (Backend + Frontend)"
-    echo -e "  ${BOLD}8${RESET}) Beides    ${YELLOW}stoppen${RESET}"
-    echo -e "  ${BOLD}9${RESET}) Status anzeigen"
-    echo -e "  ${BOLD}b${RESET}) Backend-Logs live verfolgen"
-    echo -e "  ${BOLD}f${RESET}) Frontend-Logs live verfolgen"
-    echo -e "  ${BOLD}s${RESET}) Studio-Logs live verfolgen"
-    echo -e "  ${BOLD}0${RESET}) Neustart (beides)"
-    echo -e "  ${BOLD}q${RESET}) Beenden"
+    echo -e "  ${BOLD}1${RESET}) Backend   ${GREEN}start${RESET}"
+    echo -e "  ${BOLD}2${RESET}) Backend   ${YELLOW}stop${RESET}"
+    echo -e "  ${BOLD}3${RESET}) Frontend  ${GREEN}start${RESET}"
+    echo -e "  ${BOLD}4${RESET}) Frontend  ${YELLOW}stop${RESET}"
+    echo -e "  ${BOLD}5${RESET}) Studio    ${GREEN}start${RESET}  (admin / dev)"
+    echo -e "  ${BOLD}6${RESET}) Studio    ${YELLOW}stop${RESET}"
+    echo -e "  ${BOLD}7${RESET}) Both    ${GREEN}start${RESET}   (Backend + Frontend)"
+    echo -e "  ${BOLD}8${RESET}) Both    ${YELLOW}stop${RESET}"
+    echo -e "  ${BOLD}9${RESET}) Show status"
+    echo -e "  ${BOLD}b${RESET}) Follow backend logs live"
+    echo -e "  ${BOLD}f${RESET}) Follow frontend logs live"
+    echo -e "  ${BOLD}s${RESET}) Follow studio logs live"
+    echo -e "  ${BOLD}0${RESET}) Restart (both)"
+    echo -e "  ${BOLD}q${RESET}) Quit"
     echo ""
-    echo -n "  Auswahl: "
+    echo -n "  Choice: "
 }
 
 dashboard_loop() {
@@ -435,10 +435,10 @@ dashboard_loop() {
                 start_backend && start_frontend
                 ;;
             q|Q|quit|exit) log_info "Bye!"; exit 0 ;;
-            *) log_warn "Ungültige Auswahl: $choice" ;;
+            *) log_warn "Invalid choice: $choice" ;;
         esac
         echo ""
-        echo -n "  Enter drücken …"
+        echo -n "  Press Enter …"
         read -r
         clear
     done
@@ -453,12 +453,12 @@ doc_api() {
     export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
     if [[ -f "$PROJECT_DIR/scripts/export_openapi.py" ]]; then
         uv run python scripts/export_openapi.py --both 2>&1 && \
-            log_ok "API-Referenz generiert: $DOCS_DIR/api-reference.md" || {
-                log_error "API-Referenz fehlgeschlagen"
+            log_ok "API reference generated: $DOCS_DIR/api-reference.md" || {
+                log_error "API reference generation failed"
                 return 1
             }
     else
-        log_warn "scripts/export_openapi.py nicht gefunden — überspringe doc-api"
+        log_warn "scripts/export_openapi.py not found — skipping doc-api"
     fi
 }
 
@@ -475,8 +475,8 @@ doc_pdoc() {
     local output_dir="$DOCS_DIR/api"
     mkdir -p "$output_dir"
     uv run pdoc backend/ -o "$output_dir" --docformat google 2>&1 && \
-        log_ok "pdoc generiert: $output_dir/index.html" || {
-            log_error "pdoc fehlgeschlagen"
+        log_ok "pdoc generated: $output_dir/index.html" || {
+            log_error "pdoc failed"
             return 1
         }
 }
@@ -502,18 +502,18 @@ doc_architecture() {
         npx gitnexus wiki -f 2>&1 && {
             if [[ -d ".gitnexus/wiki" ]]; then
                 cp -r .gitnexus/wiki/* "$output_dir/" 2>/dev/null || true
-                log_ok "GitNexus Wiki generiert: $output_dir/"
+                log_ok "GitNexus Wiki generated: $output_dir/"
             else
-                log_warn "Wiki-Verzeichnis nicht gefunden"
+                log_warn "Wiki directory not found"
                 return 1
             fi
         } || {
-            log_error "GitNexus Wiki fehlgeschlagen — LLM API Key erforderlich"
+            log_error "GitNexus Wiki failed — LLM API key required"
             log_info "Setup: npx gitnexus wiki --provider <provider> --api-key <key>"
             return 1
         }
     else
-        log_error "npx nicht verfügbar — bitte Node.js installieren"
+        log_error "npx nicht available — bitte Node.js installieren"
         return 1
     fi
 }
@@ -522,13 +522,13 @@ doc_update() {
     local mode="${1:-all}"
     local dry_run="${2:-false}"
 
-    log_step "Dokumentation aktualisieren (LLM-basiert) …"
+    log_step "Updating documentation (LLM-based) ..."
 
     cd "$PROJECT_DIR"
     export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 
     if [[ ! -f "$PROJECT_DIR/scripts/doc_update.py" ]]; then
-        log_warn "scripts/doc_update.py nicht gefunden — überspringe doc-update"
+        log_warn "scripts/doc_update.py not found — skipping doc-update"
         return 0
     fi
 
@@ -544,24 +544,24 @@ doc_update() {
     fi
 
     uv run python scripts/doc_update.py $args 2>&1 && \
-        log_ok "Dokumentation aktualisiert" || {
-            log_error "Dokumentation-Update fehlgeschlagen"
+        log_ok "Documentation updated" || {
+            log_error "Documentation update failed"
             return 1
         }
 }
 
 doc_all() {
-    log_header "Alle Dokumentation generieren"
+    log_header "Generate all documentation"
     doc_api
     doc_pdoc
     doc_architecture
-    log_ok "Alle Dokumentation generiert"
+    log_ok "All documentation generated"
 }
 
 doc_help() {
-    log_header "Dokumentation Commands"
+    log_header "Documentation commands"
     echo ""
-    echo "  ./manage.sh doc              Übersicht aller Doc-Commands"
+    echo "  ./manage.sh doc              Overview of all doc commands"
     echo "  ./manage.sh doc-api          OpenAPI → docs/api-reference.md"
     echo "  ./manage.sh doc-pdoc         Python Docstrings → docs/api/"
     echo "  ./manage.sh doc-architecture GitNexus Wiki → docs/architecture/"
@@ -570,8 +570,8 @@ doc_help() {
     echo "  ./manage.sh doc-update user  Nur User Manual"
     echo "  ./manage.sh doc-update --dry-run Vorschau ohne Änderungen"
     echo "  ./manage.sh doc-all          Alle Doc-Generierungen"
-    echo "  ./manage.sh adr-new \"Titel\"  Neue ADR erstellen"
-    echo "  ./manage.sh adr-check        Prüfen ob ADRs fehlen"
+    echo "  ./manage.sh adr-new \"Title\"  Create new ADR"
+    echo "  ./manage.sh adr-check        Check for missing ADRs"
     echo ""
 }
 
@@ -581,7 +581,7 @@ doc_help() {
 adr_new() {
     local title="${1:-}"
     if [[ -z "$title" ]]; then
-        log_error "Titel erforderlich: ./manage.sh adr-new \"Titel\""
+        log_error "Title required: ./manage.sh adr-new \"Title\""
         return 1
     fi
 
@@ -632,14 +632,14 @@ adr_new() {
 
 **Alternatives Considered:**
 
-<!-- Welche Alternativen wurden geprüft und warum verworfen? -->
+<!-- Which alternatives were considered and why rejected?? -->
 EOF
 
     log_ok "ADR erstellt: $filename"
 }
 
 adr_check() {
-    log_step "Prüfe fehlende ADRs …"
+    log_step "Checking for missing ADRs …"
 
     local core_dirs=(
         "backend/api/routers"
@@ -662,7 +662,7 @@ adr_check() {
         changed="$(git diff "$since" --name-only -- "${dir}/*.py" 2>/dev/null)" || true
         if [[ -n "$changed" ]]; then
             changes_found=true
-            log_warn "Architektur-Änderungen in: $dir"
+            log_warn "Architecture changes in: $dir"
             echo "$changed" | while read -r f; do
                 echo "  - $f"
             done
@@ -670,10 +670,10 @@ adr_check() {
     done
 
     if [[ "$changes_found" == "false" ]]; then
-        log_ok "Keine Architektur-Änderungen seit letztem Check"
+        log_ok "No architecture changes since last check"
     else
-        log_warn "Prüfe ob neue ADRs für diese Änderungen erforderlich sind …"
-        log_info "Erstelle bei Bedarf eine neue ADR: ./manage.sh adr-new \"Titel\""
+        log_warn "Checking if new ADRs are required for these changes ..."
+        log_info "Create if needed eine neue ADR: ./manage.sh adr-new \"Title\""
     fi
 
     date -Iseconds > "$last_adr_check"
@@ -683,12 +683,12 @@ adr_check() {
 # Clean
 # ───────────────────────────────────────────────────────────────────────
 clean_caches() {
-    log_step "Caches aufräumen …"
+    log_step "Cleaning caches …"
     find "$PROJECT_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
     find "$PROJECT_DIR" -name "*.pyc" -delete 2>/dev/null || true
     find "$FE_DIR/node_modules/.cache" -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
     find "$PROJECT_DIR" -type d -name "*.pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-    log_ok "Caches gelöscht"
+    log_ok "Caches cleaned"
 }
 
 # ───────────────────────────────────────────────────────────────────────
@@ -753,7 +753,7 @@ case "$cmd" in
         find "$PROJECT_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
         find "$PROJECT_DIR" -name "*.pyc" -delete 2>/dev/null || true
         start_frontend
-        # Studio wird bewusst NICHT mit-restartet — Admin-Tool, unabhängiger Lifecycle.
+        # Studio is intentionally NOT restarted — admin tool, independent lifecycle.
         ;;
     status|st)
         show_status "${1:-human}"
@@ -798,7 +798,7 @@ case "$cmd" in
         adr_check
         ;;
     test)
-        log_step "Tests ausführen …"
+        log_step "Running tests …"
         cd "$PROJECT_DIR"
         export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
         export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
@@ -815,31 +815,31 @@ case "$cmd" in
     help|--help|-h)
         echo "Danwa Manager (refactored — Phase 8, repo-templates/danwa/manage.sh)"
         echo ""
-        echo "  ./manage.sh                  interaktives Dashboard"
-        echo "  ./manage.sh start            Frontend starten (end-user UI)"
-        echo "  ./manage.sh start be         Backend starten (via danwa-core)"
-        echo "  ./manage.sh start fe         nur Frontend starten"
-        echo "  ./manage.sh start studio     nur Danwa Studio starten (admin / dev)"
-        echo "  ./manage.sh start all        Backend + Frontend starten"
-        echo "  ./manage.sh stop             Frontend stoppen"
-        echo "  ./manage.sh stop be          Backend stoppen (via danwa-core)"
-        echo "  ./manage.sh stop studio      nur Studio stoppen"
-        echo "  ./manage.sh restart          Frontend neu starten"
-        echo "  ./manage.sh status           Status anzeigen (Backend + Frontend + Studio)"
-        echo "  ./manage.sh status --json    JSON-Status (für Studio SystemManagementView)"
+        echo "  ./manage.sh                  interrunninges Dashboard"
+        echo "  ./manage.sh start            Frontend starting (end-user UI)"
+        echo "  ./manage.sh start be         Backend start (via danwa-core)"
+        echo "  ./manage.sh start fe         nur Frontend starting"
+        echo "  ./manage.sh start studio     nur Starting Danwa Studio (admin / dev)"
+        echo "  ./manage.sh start all        Backend + Frontend starting"
+        echo "  ./manage.sh stop             Stopping frontend"
+        echo "  ./manage.sh stop be          Backend stop (via danwa-core)"
+        echo "  ./manage.sh stop studio      nur Studio stop"
+        echo "  ./manage.sh restart          Frontend neu start"
+        echo "  ./manage.sh status           Show status (Backend + Frontend + Studio)"
+        echo "  ./manage.sh status --json    JSON status (for Studio SystemManagementView)"
         echo "  ./manage.sh logs             Live-Logs (alle drei)"
         echo "  ./manage.sh logs be          Backend-Logs"
         echo "  ./manage.sh logs fe          Frontend-Logs"
         echo "  ./manage.sh logs st          Studio-Logs"
-        echo "  ./manage.sh clean            Caches aufräumen"
-        echo "  ./manage.sh test             Tests ausführen"
-        echo "  ./manage.sh doc              Dokumentation Commands"
+        echo "  ./manage.sh clean            Cleaning caches"
+        echo "  ./manage.sh test             Running tests"
+        echo "  ./manage.sh doc              Documentation commands"
         echo "  ./manage.sh doc-api          OpenAPI → Markdown"
         echo "  ./manage.sh doc-pdoc         Docstrings → HTML"
         echo "  ./manage.sh doc-architecture GitNexus Wiki"
         echo "  ./manage.sh doc-update       LLM-basierte Updates"
         echo "  ./manage.sh doc-all          Alle Docs generieren"
-        echo "  ./manage.sh adr-new          Neue ADR erstellen"
+        echo "  ./manage.sh adr-new          Create new ADR"
         echo "  ./manage.sh adr-check        ADR-Check"
         ;;
     *)
