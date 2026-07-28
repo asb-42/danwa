@@ -33,6 +33,8 @@
 #     DANWA_LIBDANWA_PATH=/path/to/lib
 #     BACKEND_PORT=7860  FRONTEND_PORT=5173  STUDIO_PORT=5174
 #     STUDIO_DIR=/path/to/danwa-studio
+#     DANWA_MODULES_PUBLISH_ENABLED=1        # enable module publishing
+#     DANWA_MODULES_PUBLISH_DIR=/path        # git clone of danwa-modules repo
 
 set -uo pipefail
 
@@ -64,6 +66,17 @@ STUDIO_PORT="${STUDIO_PORT:-5174}"
 
 DANWA_USE_MOCK="${DANWA_USE_MOCK:-0}"
 DANWA_VERSION="${DANWA_VERSION:-1.0.0}"
+
+# Module publishing defaults: auto-detect sibling danwa-modules repo
+if [[ -z "${DANWA_MODULES_PUBLISH_DIR:-}" ]]; then
+    _sibling="$PROJECT_DIR/../danwa-modules"
+    if [[ -d "$_sibling/.git" ]]; then
+        DANWA_MODULES_PUBLISH_DIR="$_sibling"
+        DANWA_MODULES_PUBLISH_ENABLED="${DANWA_MODULES_PUBLISH_ENABLED:-1}"
+    fi
+fi
+export DANWA_MODULES_PUBLISH_ENABLED="${DANWA_MODULES_PUBLISH_ENABLED:-0}"
+export DANWA_MODULES_PUBLISH_DIR="${DANWA_MODULES_PUBLISH_DIR:-}"
 
 # Mock scripts (test-only — written into LOG_DIR so tests can stub uvicorn/npm)
 MOCK_BACKEND_SCRIPT="$LOG_DIR/.mock-backend.sh"
