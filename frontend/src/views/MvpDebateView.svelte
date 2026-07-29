@@ -22,6 +22,7 @@
   import DebateTranscript from '../components/debate/DebateTranscript.svelte';
   import DebateInterjection from '../components/debate/DebateInterjection.svelte';
   import DebateActivityLog from '../components/debate/DebateActivityLog.svelte';
+  import DebateReportPanel from '../components/debate/DebateReportPanel.svelte';
   import ExecutionPanel from '../components/debate/ExecutionPanel.svelte';
   import PhaseSnapshotsWidget from '../components/workflow/PhaseSnapshotsWidget.svelte';
 
@@ -1021,6 +1022,10 @@
             ></div>
           </div>
         </div>
+
+        {#if debateId && sessionId}
+          <DebateReportPanel debateId={debateId} sessionId={sessionId} />
+        {/if}
       {/if}
     </div>
   {/if}
