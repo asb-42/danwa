@@ -5,7 +5,7 @@
    * Shown at the bottom of the final consensus section.
    */
   import { tStore } from '../../lib/i18n/index.js';
-  import { generateReport, getReportStatus, downloadReport } from '../../lib/api.js';
+  import { generateReport, getReportStatus, downloadReport } from '../../lib/api/session.js';
 
   let { debateId = null } = $props();
 
