@@ -7,7 +7,7 @@
   import { tStore } from '../../lib/i18n/index.js';
   import { generateReport, getReportStatus, downloadReport } from '../../lib/api/session.js';
 
-  let { debateId = null } = $props();
+  let { debateId = null, sessionId = null } = $props();
 
   let t = $derived($tStore);
 
@@ -23,12 +23,13 @@
   });
 
   async function handleGenerateReport() {
-    if (!debateId) return;
+    const id = sessionId || debateId;
+    if (!id) return;
     reportGenerating = true;
     reportError = null;
     reportJobId = null;
     try {
-      const result = await generateReport(debateId, reportFormat);
+      const result = await generateReport(id, reportFormat);
       reportJobId = result.job_id;
       reportPollTimer = setInterval(async () => {
         try {

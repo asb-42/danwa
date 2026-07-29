@@ -1194,7 +1194,7 @@
                 </p>
 
                 <!-- Report Generation -->
-                <DebateReportPanel debateId={$currentDebate.debate_id} />
+                <DebateReportPanel debateId={$currentDebate.debate_id} sessionId={$currentDebate.session_id} />
               </div>
             </div>
           {/if}
