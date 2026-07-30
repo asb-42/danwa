@@ -4,6 +4,7 @@
   import { currentTenant } from '../lib/stores/auth.svelte.js';
   import { getTenantDebates, deleteDebate, softDeleteSession, restoreSession, getTrace, moveDebate } from '../lib/api.js';
   import { formatDate, tStore } from '../lib/i18n/index.js';
+  import AudioExportPanel from '../components/debate/AudioExportPanel.svelte';
 
   let { navigate = () => {} } = $props();
 
@@ -36,6 +37,9 @@
   // Trace state
   let traceData = $state(null);
   let traceSessionId = $state(null);
+
+  // Audio export panel state (which debate's panel is open)
+  let openAudioExportId = $state(null);
   
   // Fork state
   let forksByDebate = $state({});
@@ -467,6 +471,24 @@
                 {/if}
               {/if}
 
+              <!-- Audio export button (completed & not archived) -->
+              {#if debate.status === 'completed' && !debate.archived}
+                <button
+                  class="p-1.5 rounded text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400
+                         hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    openAudioExportId = openAudioExportId === debate.debate_id ? null : debate.debate_id;
+                  }}
+                  aria-label="Audio export"
+                  title="Audio export (TTS)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494c0 .512-.37.928-.829.928-.214 0-.42-.08-.575-.233L6.518 14.63H4c-.552 0-1-.448-1-1V10.37c0-.552.448-1 1-1h2.518l4.078-3.812c.155-.153.361-.233.575-.233.459 0 .829.416.829.928z" />
+                  </svg>
+                </button>
+              {/if}
+
               <!-- Trace button -->
               <button
                 class="p-1.5 rounded text-purple-400 hover:text-purple-600 dark:hover:text-purple-400
@@ -564,6 +586,14 @@
               {/if}
             </div>
           </div>
+
+          <!-- Inline audio export panel -->
+          {#if openAudioExportId === debate.debate_id && debate.status === 'completed'}
+            <div class="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 px-4 py-3" role="dialog" aria-label="Audio export" tabindex="-1" onclick={(e) => e.stopPropagation()}
+              onkeydown={(e) => { if (e.key === 'Escape') openAudioExportId = null; }}>
+              <AudioExportPanel sessionId={debate.session_id || debate.debate_id} initiallyOpen={true} />
+            </div>
+          {/if}
         {/each}
       </div>
     {/if}

@@ -19,6 +19,10 @@
     startRenderJob,
     getRenderJobStatus,
     getRenderDownloadUrl,
+    startTtsRenderJob,
+    getTtsEngines,
+    getTtsVoices,
+    getSessionAgents,
   } from '../../lib/workflowExec.js';
   import { createWorkflowSSE } from '../../lib/workflowSSE.js';
   import { patchActiveWorkflowSession } from '../../lib/workflowSession.js';
@@ -90,6 +94,144 @@
   let exportJobId = $state(null);
   let exportError = $state('');
   let exportPolling = $state(null);
+
+  // ─── Audio (TTS) export state ───────────────────────────────────
+  let audioEngine = $state('');
+  let audioEngines = $state([]);
+  let audioVoices = $state([]);
+  let audioAgents = $state([]);
+  /** Per-agent voice overrides keyed by agent_name (empty string = plugin default). */
+  let audioVoiceMap = $state({});
+  let audioDefaultVoice = $state('');
+  let audioFormat = $state('mp3');
+  let audioLanguage = $state('de');
+  let audioLoading = $state(false);
+  let audioJobId = $state(null);
+  let audioError = $state('');
+  let audioPolling = $state(null);
+  let audioDataLoaded = $state(false);
+  let enginesLoading = $state(false);
+  let voicesLoading = $state(false);
+
+  const AUDIO_FORMATS = ['mp3', 'wav'];
+  const AUDIO_LANGUAGES = ['de', 'en'];
+
+  /**
+   * Lazily load TTS engines + session agents once a session is completed.
+   * Triggered by the template when the export section becomes visible.
+   */
+  async function loadAudioExportData() {
+    if (audioDataLoaded || !sessionId) return;
+    audioDataLoaded = true;
+    audioError = '';
+    enginesLoading = true;
+    try {
+      const engines = await getTtsEngines();
+      audioEngines = Array.isArray(engines) ? engines : [];
+      if (!audioEngine && audioEngines.length > 0) {
+        const firstAvailable = audioEngines.find((e) => e.available);
+        audioEngine = (firstAvailable || audioEngines[0]).engine_id;
+      }
+    } catch (err) {
+      audioError = err?.message || 'Failed to load TTS engines';
+    } finally {
+      enginesLoading = false;
+    }
+    try {
+      const agents = await getSessionAgents(sessionId);
+      audioAgents = Array.isArray(agents) ? agents : [];
+      const map = {};
+      for (const a of audioAgents) map[a.agent_name] = '';
+      audioVoiceMap = map;
+    } catch {
+      // Voice mapping pre-fill is best-effort; ignore failures.
+    }
+  }
+
+  // Reload voices whenever the selected engine changes.
+  $effect(() => {
+    if (!audioEngine) {
+      audioVoices = [];
+      return;
+    }
+    let cancelled = false;
+    voicesLoading = true;
+    getTtsVoices(audioEngine, {})
+      .then((voices) => {
+        if (cancelled) return;
+        audioVoices = Array.isArray(voices) ? voices : [];
+        if (!audioDefaultVoice && audioVoices.length > 0) {
+          audioDefaultVoice =
+            audioVoices.find((v) => v.language && v.language.startsWith(audioLanguage))?.voice_id ||
+            audioVoices[0].voice_id;
+        }
+      })
+      .catch(() => {
+        if (!cancelled) audioVoices = [];
+      })
+      .finally(() => {
+        if (!cancelled) voicesLoading = false;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  /** License metadata of the currently selected engine (if provided by the API). */
+  let selectedAudioEngine = $derived(
+    audioEngines.find((e) => e.engine_id === audioEngine) || null,
+  );
+
+  async function handleAudioExport() {
+    if (!sessionId || audioLoading) return;
+    audioLoading = true;
+    audioError = '';
+    audioJobId = null;
+    try {
+      const voiceMapping = {};
+      for (const [agentName, voiceId] of Object.entries(audioVoiceMap)) {
+        if (voiceId) voiceMapping[agentName] = voiceId;
+      }
+      const result = await startTtsRenderJob(sessionId, {
+        engine: audioEngine,
+        output_format: audioFormat,
+        language: audioLanguage,
+        default_voice: audioDefaultVoice,
+        voice_mapping: voiceMapping,
+      });
+      audioJobId = result.job_id;
+      audioPolling = setInterval(async () => {
+        try {
+          const st = await getRenderJobStatus(audioJobId);
+          if (st.status === 'completed') {
+            clearInterval(audioPolling);
+            audioPolling = null;
+            audioLoading = false;
+            const url = getRenderDownloadUrl(audioJobId);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          } else if (st.status === 'failed') {
+            clearInterval(audioPolling);
+            audioPolling = null;
+            audioLoading = false;
+            audioError = st.error_message || 'Audio export failed';
+          }
+        } catch (err) {
+          clearInterval(audioPolling);
+          audioPolling = null;
+          audioLoading = false;
+          audioError = err?.message || 'Failed to check audio export status';
+        }
+      }, 2000);
+    } catch (err) {
+      audioLoading = false;
+      audioError = err?.message || 'Failed to start audio export';
+    }
+  }
 
   // Elapsed time timer
   let startTime = $state(null);
@@ -304,6 +446,7 @@
   onDestroy(() => {
     if (timerInterval) clearInterval(timerInterval);
     if (exportPolling) clearInterval(exportPolling);
+    if (audioPolling) clearInterval(audioPolling);
   });
 
   // Submit interjection
@@ -330,6 +473,13 @@
       isLoadingState = false;
     }
   }
+
+  // Load audio-export data (engines + agents) once the export UI becomes
+  // available — i.e. as soon as the workflow has completed and a sessionId
+  // is known.  `loadAudioExportData()` itself is guarded by `audioDataLoaded`.
+  $effect(() => {
+    if (status === 'completed' && sessionId) loadAudioExportData();
+  });
 
   // Cleanup on unmount
   $effect(() => {
@@ -428,6 +578,117 @@
         </div>
         {#if exportError}
           <div class="export-error">{exportError}</div>
+        {/if}
+      </div>
+
+      <!-- Audio export (TTS) section -->
+      <div class="export-section audio-export">
+        <div class="export-header">
+          <span class="export-icon">🔊</span>
+          <span class="export-label">Audio Export (TTS)</span>
+        </div>
+
+        {#if enginesLoading}
+          <div class="audio-loading">⏳ Loading TTS engines…</div>
+        {:else if audioEngines.length === 0}
+          <div class="export-error">No TTS engines available.</div>
+        {:else}
+          <div class="export-controls">
+            <select class="export-select" bind:value={audioEngine} disabled={audioLoading}>
+              {#each audioEngines as eng (eng.engine_id)}
+                <option value={eng.engine_id} disabled={eng.available === false}>
+                  {eng.display_name}{eng.available === false ? ' (unavailable)' : ''}
+                </option>
+              {/each}
+            </select>
+            <select class="export-select" bind:value={audioFormat} disabled={audioLoading}>
+              {#each AUDIO_FORMATS as f (f)}
+                <option value={f}>{f.toUpperCase()}</option>
+              {/each}
+            </select>
+            <select class="export-select" bind:value={audioLanguage} disabled={audioLoading}>
+              {#each AUDIO_LANGUAGES as l (l)}
+                <option value={l}>{l === 'de' ? 'Deutsch' : 'English'}</option>
+              {/each}
+            </select>
+          </div>
+
+          <!-- License notice (e.g. Fish Audio Research License) -->
+          {#if selectedAudioEngine?.license?.name}
+            <div class="audio-license">
+              ⚖️ <strong>{selectedAudioEngine.license.name}</strong>
+              {#if selectedAudioEngine.license.type === 'non-commercial'}
+                — Non-commercial use only{#if selectedAudioEngine.license.url}.
+                  <a href={selectedAudioEngine.license.url} target="_blank" rel="noopener noreferrer">
+                    License ↗
+                  </a>{/if}
+              {/if}
+            </div>
+          {/if}
+          <!-- Required attribution (e.g. "Built with Fish Audio") -->
+          {#if selectedAudioEngine?.license?.attribution}
+            <div class="audio-attribution">{selectedAudioEngine.license.attribution}</div>
+          {/if}
+
+          <!-- Default voice -->
+          <div class="audio-field">
+            <label class="audio-label" for="audio-default-voice">Default voice</label>
+            {#if voicesLoading}
+              <span class="audio-loading">⏳ Loading voices…</span>
+            {:else if audioVoices.length > 0}
+              <select id="audio-default-voice" class="export-select" bind:value={audioDefaultVoice} disabled={audioLoading}>
+                {#each audioVoices as v (v.voice_id)}
+                  <option value={v.voice_id}>{v.name || v.voice_id}{v.language ? ` (${v.language})` : ''}</option>
+                {/each}
+              </select>
+            {:else}
+              <input
+                id="audio-default-voice"
+                class="export-select"
+                type="text"
+                bind:value={audioDefaultVoice}
+                placeholder="Voice ID (e.g. de-DE-KatjaNeural)"
+                disabled={audioLoading}
+              />
+            {/if}
+          </div>
+
+          <!-- Per-agent voice mapping -->
+          {#if audioAgents.length > 0 && audioVoices.length > 0}
+            <div class="audio-voices">
+              <div class="audio-voices-title">Voice per agent (optional)</div>
+              {#each audioAgents as agent (agent.agent_name)}
+                {@const agentName = agent.agent_name}
+                <div class="audio-voice-row">
+                  <span class="audio-agent-name" title={agent.role_type}>{agentName}</span>
+                  <select
+                    class="export-select"
+                    value={audioVoiceMap[agentName] ?? ''}
+                    onchange={(e) => { audioVoiceMap = { ...audioVoiceMap, [agentName]: e.currentTarget.value }; }}
+                    disabled={audioLoading}
+                  >
+                    <option value="">— default —</option>
+                    {#each audioVoices as v (v.voice_id)}
+                      <option value={v.voice_id}>{v.name || v.voice_id}</option>
+                    {/each}
+                  </select>
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <div class="export-controls">
+            <button
+              class="btn btn-primary btn-export"
+              onclick={handleAudioExport}
+              disabled={audioLoading || !audioEngine || (selectedAudioEngine?.available === false)}
+            >
+              {audioLoading ? '⏳ Generating…' : '⬇ Generate Audio'}
+            </button>
+          </div>
+        {/if}
+        {#if audioError}
+          <div class="export-error">{audioError}</div>
         {/if}
       </div>
     {/if}
@@ -829,6 +1090,80 @@
     color: #dc2626;
   }
   :global(.dark) .export-error { color: #fca5a5; }
+
+  /* ─── Audio (TTS) export ─────────────────────────────────────── */
+  .audio-export {
+    margin-top: 8px;
+    border-top: 1px dashed #cbd5e1;
+  }
+  :global(.dark) .audio-export { border-color: #374151; }
+  .audio-loading {
+    padding: 6px 0;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  :global(.dark) .audio-loading { color: #9ca3af; }
+  .audio-field {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .audio-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+  :global(.dark) .audio-label { color: #9ca3af; }
+  .audio-license {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    font-size: 11px;
+    color: #92400e;
+  }
+  :global(.dark) .audio-license {
+    background: rgba(120, 53, 15, 0.25);
+    border-color: #78350f;
+    color: #fbbf24;
+  }
+  .audio-license a { color: inherit; text-decoration: underline; }
+  .audio-attribution {
+    margin-top: 4px;
+    font-size: 11px;
+    font-style: italic;
+    color: #6b7280;
+  }
+  :global(.dark) .audio-attribution { color: #9ca3af; }
+  .audio-voices {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .audio-voices-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+  :global(.dark) .audio-voices-title { color: #9ca3af; }
+  .audio-voice-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .audio-agent-name {
+    flex: 0 0 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #374151;
+  }
+  :global(.dark) .audio-agent-name { color: #d1d5db; }
+  .audio-voice-row .export-select { flex: 1; }
 
   .error-box {
     display: flex;

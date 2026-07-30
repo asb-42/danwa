@@ -249,6 +249,62 @@ export function startRenderJob(sessionId, config = {}) {
 }
 
 /**
+ * Start a TTS (audio) render job for a completed session.
+ * Uses the output plugin "tts".
+ * @param {string} sessionId
+ * @param {{ engine?: string, output_format?: string, language?: string, default_voice?: string, voice_mapping?: Record<string, string>, default_style_hint?: string }} [config]
+ * @returns {Promise<{ job_id: string, session_id: string, plugin_key: string, status: string }>}
+ */
+export function startTtsRenderJob(sessionId, config = {}) {
+  return request(`/api/v1/sessions/${encodeURIComponent(sessionId)}/render`, {
+    method: 'POST',
+    body: JSON.stringify({
+      plugin_key: 'tts',
+      config: {
+        engine: config.engine || 'edge_tts',
+        output_format: config.output_format || 'mp3',
+        language: config.language || 'en',
+        default_voice: config.default_voice || '',
+        voice_mapping: config.voice_mapping || {},
+        default_style_hint: config.default_style_hint || '',
+      },
+    }),
+  });
+}
+
+/**
+ * List registered TTS engines with availability and license info.
+ * @returns {Promise<Array<{ engine_id: string, display_name: string, available: boolean, license?: object }>>}
+ */
+export function getTtsEngines() {
+  return request('/api/v1/tts-engines');
+}
+
+/**
+ * List voices for a given TTS engine.
+ * @param {string} engine - Engine ID (e.g. "edge_tts", "mimo_tts", "fishspeech")
+ * @param {{ language?: string, gender?: string }} [filters]
+ * @returns {Promise<Array<{ voice_id: string, name?: string, language?: string, gender?: string }>>}
+ */
+export function getTtsVoices(engine, filters = {}) {
+  const params = new URLSearchParams();
+  if (engine) params.set('engine', engine);
+  if (filters.language) params.set('language', filters.language);
+  if (filters.gender) params.set('gender', filters.gender);
+  const qs = params.toString();
+  return request(`/api/v1/tts-voices${qs ? `?${qs}` : ''}`);
+}
+
+/**
+ * Return unique agent roles of a completed session (for voice mapping pre-fill).
+ * @param {string} sessionId
+ * @returns {Promise<Array<{ role_type: string, agent_name: string }>>}
+ */
+export function getSessionAgents(sessionId) {
+  return request(`/api/v1/render-sessions/${encodeURIComponent(sessionId)}/agents`);
+}
+
+/**
  * Poll render job status.
  * @param {string} jobId
  * @returns {Promise<{ job_id: string, status: string, output_files: string[], error_message?: string }>}
