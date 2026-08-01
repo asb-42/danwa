@@ -3,7 +3,7 @@
   import { tStore, tn, i18n } from '../lib/i18n/index.js';
   import { activeCase } from '../lib/stores.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
-  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, analyzeDocuments, getAnalysis, exportAnalysis } from '../lib/api.js';
+  import { getDocuments, getDocument, uploadDocument, deleteDocument, updateDocumentText, moveDocument, addDocumentToRAG, removeDocumentFromRAG, searchRAG, getOcrStatus, analyzeDocuments, getAnalysis, exportAnalysis, getRagPreview } from '../lib/api.js';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let { navigate } = $props();
@@ -304,6 +304,52 @@
   let exportLoading = $state(false);
   let exportError = $state('');
 
+  // ─── Analysis pipeline progress ──────────────────────────────────
+  const ANALYSIS_PIPELINE = [
+    { id: 'collect',   label: 'Collecting documents',          icon: '📂' },
+    { id: 'extract',   label: 'Extracting text (OCR if needed)', icon: '🔍' },
+    { id: 'chunk',     label: 'Splitting into chunks',          icon: '✂️'  },
+    { id: 'embed',     label: 'Storing in RAG (embeddings)',    icon: '💾' },
+    { id: 'prompt',    label: 'Building analysis prompt',       icon: '✍️'  },
+    { id: 'llm',       label: 'Waiting for LLM response',       icon: '🤖' },
+  ];
+  let pipelineState = $state({});  // { step_id: 'pending'|'running'|'done'|'failed' }
+  let pipelineLog = $state('');    // Developer log lines (frontend-only)
+
+  function resetPipeline() {
+    pipelineState = Object.fromEntries(ANALYSIS_PIPELINE.map((s) => [s.id, 'pending']));
+    pipelineLog = '';
+  }
+  function pipelineStep(id, status, logLine = null) {
+    pipelineState = { ...pipelineState, [id]: status };
+    if (logLine) pipelineLog += `[${new Date().toLocaleTimeString()}] ${logLine}\n`;
+  }
+
+  // ─── RAG Preview (transparency) ──────────────────────────────────
+  let ragPreviewOpen = $state(false);
+  let ragPreviewData = $state(null);
+  let ragPreviewLoading = $state(false);
+  let ragPreviewError = $state('');
+
+  async function loadRagPreview(query = '') {
+    ragPreviewLoading = true;
+    ragPreviewError = '';
+    ragPreviewData = null;
+    try {
+      const selectedIds = documents.filter((d) => d.in_rag).map((d) => d.id);
+      const res = await getRagPreview({
+        query,
+        documentIds: selectedIds.length > 0 ? selectedIds.join(',') : undefined,
+        includeAnalysis: !!analysis,
+      });
+      ragPreviewData = res;
+    } catch (e) {
+      ragPreviewError = e.message || 'Failed to fetch RAG preview';
+    } finally {
+      ragPreviewLoading = false;
+    }
+  }
+
   async function loadAnalysis() {
     analysisLoading = true;
     analysisError = '';
@@ -336,12 +382,21 @@
     analysisError = '';
     analysis = null;
     analysisProgressIdx = 0;
+    resetPipeline();
+    pipelineStep('collect', 'running', `Collecting ${documents.length} document(s)`);
     try {
       const lang = i18n.getLocale() || 'de';
+      pipelineStep('prompt', 'running', 'Building analysis prompt');
       const res = await analyzeDocuments({ language: lang, mode });
       analysis = res.analysis;
+      pipelineStep('collect', 'done', `Collected ${documents.length} document(s)`);
+      pipelineStep('extract', 'done', 'Text extracted');
+      pipelineStep('chunk', 'done', 'Chunks stored in RAG');
+      pipelineStep('llm', 'done', 'LLM response received');
     } catch (e) {
       analysisError = e.message;
+      const current = Object.entries(pipelineState).find(([, s]) => s === 'running');
+      if (current) pipelineStep(current[0], 'failed', `Failed: ${e.message}`);
     } finally {
       analysisLoading = false;
       analysisProgressIdx = 0;
@@ -710,14 +765,103 @@
           onclick={() => runAnalysis('full')}
           disabled={analysisLoading}
         >🚀 Analyze documents</button>
+
+        <!-- RAG Preview (transparency) -->
+        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-left">
+          <button
+            class="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:hover:no-underline"
+            onclick={() => { ragPreviewOpen = !ragPreviewOpen; if (ragPreviewOpen && !ragPreviewData) loadRagPreview(); }}
+            disabled={ragPreviewLoading}
+          >
+            {#if ragPreviewLoading}
+              ⏳ Loading RAG preview…
+            {:else if ragPreviewOpen}
+              ▼ Hide RAG preview (what agents will see)
+            {:else}
+              ▶ Show RAG preview (what agents will see)
+            {/if}
+          </button>
+
+          {#if ragPreviewOpen && ragPreviewData}
+            <div class="mt-3 space-y-3 text-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                <div class="flex gap-4 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  <span>📄 {ragPreviewData.stats?.chunk_count || 0} chunks</span>
+                  <span>📁 {ragPreviewData.stats?.files_included?.length || 0} files</span>
+                  <span>🔤 ~{ragPreviewData.stats?.rag_tokens_approx || 0} RAG tokens</span>
+                  {#if ragPreviewData.stats?.analysis_tokens_approx > 0}
+                    <span>🧠 ~{ragPreviewData.stats?.analysis_tokens_approx || 0} analysis tokens</span>
+                  {/if}
+                </div>
+                <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Prompt preview:</p>
+                <pre class="text-xs bg-white dark:bg-gray-800 p-2 rounded overflow-x-auto max-h-48 overflow-y-auto font-mono text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ragPreviewData.rag_context?.substring(0, 1500) || 'Empty'}{ragPreviewData.rag_context?.length > 1500 ? '\n… (truncated)' : ''}</pre>
+              </div>
+
+              {#each (ragPreviewData.chunks || []) as chunk}
+                <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 font-mono">
+                      {chunk.file_name} <span class="text-gray-400">#{chunk.chunk_index}</span>
+                    </span>
+                    {#if chunk.score !== undefined && chunk.score !== null}
+                      <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        score: {chunk.score.toFixed(3)}
+                      </span>
+                    {/if}
+                  </div>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{chunk.text_preview}</p>
+                </div>
+              {/each}
+            </div>
+          {:else if ragPreviewOpen && ragPreviewError}
+            <p class="mt-2 text-sm text-red-600 dark:text-red-400">{ragPreviewError}</p>
+          {/if}
+        </div>
       </div>
     {/if}
 
     {#if analysisLoading && !analysis}
-      <div class="text-center py-12 text-gray-500 dark:text-gray-400">
-        <span class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block mb-3"></span>
-        <p>{analysisSteps[analysisProgressIdx]}</p>
-        <p class="text-sm mt-1 text-gray-400 dark:text-gray-500">This may take a moment depending on document volume.</p>
+      <div class="py-8 text-gray-700 dark:text-gray-300">
+        <h4 class="text-sm font-semibold mb-3 text-gray-600 dark:text-gray-400">Analysis pipeline</h4>
+        <div class="space-y-2">
+          {#each ANALYSIS_PIPELINE as step}
+            <div class="flex items-center gap-2 text-sm">
+              {#if pipelineState[step.id] === 'done'}
+                <span class="text-green-500">✅</span>
+              {:else if pipelineState[step.id] === 'running'}
+                <span class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></span>
+              {:else if pipelineState[step.id] === 'failed'}
+                <span class="text-red-500">❌</span>
+              {:else}
+                <span class="text-gray-300 dark:text-gray-600">⬜</span>
+              {/if}
+              <span class={pipelineState[step.id] === 'running' ? 'font-medium text-blue-600 dark:text-blue-400' : ''}>
+                {step.icon} {step.label}
+              </span>
+            </div>
+          {/each}
+        </div>
+
+        <div class="mt-4">
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div
+              class="bg-blue-600 h-2 rounded-full transition-all duration-500"
+              style="width: {(Object.values(pipelineState).filter((s) => s === 'done').length / ANALYSIS_PIPELINE.length) * 100}%"
+            ></div>
+          </div>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            {Object.values(pipelineState).filter((s) => s === 'done').length} of {ANALYSIS_PIPELINE.length} steps complete
+          </p>
+        </div>
+
+        {#if pipelineLog}
+          <details class="mt-3 text-left">
+            <summary class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer">Developer log</summary>
+            <pre class="mt-1 text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{pipelineLog}</pre>
+          </details>
+        {/if}
+
+        <p class="text-xs mt-3 text-gray-400 dark:text-gray-500">{analysisSteps[analysisProgressIdx]}</p>
       </div>
     {/if}
 

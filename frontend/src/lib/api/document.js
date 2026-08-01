@@ -142,6 +142,19 @@ export function analyzeDocuments({ language = 'de', mode = 'full' } = {}) {
   return request(`/api/v1/dms/analyze?language=${language}&mode=${mode}`, { method: 'POST' });
 }
 
+export function getRagPreview({ query = '', documentIds = '', includeAnalysis = true } = {}) {
+  const { tenantId, caseId } = _ctx();
+  const params = new URLSearchParams();
+  if (query) params.set('query', query);
+  if (documentIds) params.set('document_ids', documentIds);
+  if (!includeAnalysis) params.set('include_analysis', 'false');
+  const qs = params.toString();
+  if (tenantId && caseId) {
+    return request(`/api/v1/tenants/${tenantId}/cases/${caseId}/dms/rag/preview${qs ? `?${qs}` : ''}`);
+  }
+  return request(`/api/v1/dms/rag/preview${qs ? `?${qs}` : ''}`);
+}
+
 export function getAnalysis() {
   const { tenantId, caseId } = _ctx();
   if (tenantId && caseId) {
