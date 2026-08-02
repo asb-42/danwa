@@ -892,6 +892,103 @@ def search_case_rag(
     return {"results": dms.get_rag_context(query, project_id=_case_scope_id(tenant_id, case_id), k=limit)}
 
 
+@router.get("/tenants/{tenant_id}/cases/{case_id}/dms/rag/preview")
+def rag_preview(
+    tenant_id: str,
+    case_id: str,
+    query: str = Query(default="", description="Query for auto-retrieve preview"),
+    document_ids: str | None = Query(default=None, description="Comma-separated document IDs for explicit selection"),
+    include_analysis: bool = Query(default=True, description="Include document analysis in preview"),
+    case_store: CaseStore = Depends(get_case_store),
+):
+    """Preview the exact RAG context that agents will receive.
+
+    Returns the formatted context string, chunk metadata, and pipeline
+    diagnostics.  This makes the RAG pipeline transparent to the user:
+    - Which documents contribute (file names, chunk counts)
+    - What score each chunk got (when auto-retrieved)
+    - How much of the prompt budget is taken by analysis vs. documents
+    """
+    from backend.services.debate_workflow import resolve_rag_context
+
+    dms = _get_dms_for_case(tenant_id, case_id, case_store)
+    scope_id = _case_scope_id(tenant_id, case_id)
+
+    # Build document list
+    doc_ids = [d.strip() for d in document_ids.split(",")] if document_ids else None
+
+    # Resolve RAG context (real call, same as debate workflow)
+    rag_context, doc_count = resolve_rag_context(
+        project_id=case_id,
+        case_text=query or "",
+        document_ids=doc_ids,
+        rag_auto_retrieve=bool(query),
+        project_store=None,
+        store=None,
+        include_document_analysis=include_analysis,
+        dms_project_id=scope_id,
+    )
+
+    # Fetch per-chunk metadata for transparency
+    chunks_detail: list[dict] = []
+    if doc_ids:
+        for did in doc_ids:
+            chunks = dms.metadata_index.get_chunks_by_document(did, project_id=scope_id)
+            for c in chunks:
+                chunks_detail.append({
+                    "document_id": did,
+                    "file_name": c.get("metadata", {}).get("file_name", "unknown"),
+                    "chunk_index": c.get("metadata", {}).get("chunk_index", -1),
+                    "text_preview": (c.get("text", "")[:200] + "...") if c.get("text") else "",
+                    "text_length": len(c.get("text", "")),
+                })
+    elif query:
+        raw_results = dms.get_rag_context(query, project_id=scope_id, k=10)
+        for r in raw_results:
+            meta = r.get("metadata", {})
+            chunks_detail.append({
+                "file_name": meta.get("file_name", "unknown"),
+                "chunk_index": meta.get("chunk_index", -1),
+                "text_preview": (r.get("text", "")[:200] + "...") if r.get("text") else "",
+                "text_length": len(r.get("text", "")),
+                "score": r.get("score"),
+                "source": r.get("source", "hybrid"),
+            })
+
+    # Count tokens (approximate)
+    rag_tokens = len(rag_context) // 4
+    analysis_text = _load_analysis_text(case_id) if include_analysis else ""
+    analysis_tokens = len(analysis_text) // 4
+
+    return {
+        "rag_context": rag_context,
+        "document_count": doc_count,
+        "chunks": chunks_detail,
+        "stats": {
+            "total_chars": len(rag_context),
+            "rag_tokens_approx": rag_tokens,
+            "analysis_tokens_approx": analysis_tokens,
+            "chunk_count": len(chunks_detail),
+            "files_included": list({c["file_name"] for c in chunks_detail}),
+        },
+    }
+
+
+def _load_analysis_text(project_id: str) -> str:
+    """Load the formatted analysis text (same as debate workflow)."""
+    from backend.api.deps import get_case_dir
+    from backend.services.debate.debate_rag import _format_analysis_for_rag
+    from backend.services.dms.document_analyzer import load_analysis
+    try:
+        project_dir = get_case_dir(project_id)
+        analysis = load_analysis(project_dir)
+        if analysis and "error" not in analysis:
+            return _format_analysis_for_rag(analysis)
+    except Exception:
+        pass
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # DMS Analysis
 # ---------------------------------------------------------------------------

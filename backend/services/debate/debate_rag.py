@@ -17,11 +17,13 @@ def _format_analysis_for_rag(analysis: dict) -> str:
     ``resolve_rag_context_with_debate_results``.
     """
     parts = [
-        "=== DOCUMENT ANALYSIS ===",
-        "The following is a structured case analysis of the uploaded documents. "
-        "Use it as your PRIMARY source of case context — it summarizes the key facts, "
-        "parties, timeline, and issues. The raw document excerpts below are for "
-        "fact-checking and finding exact quotes.",
+        "=== DOCUMENT ANALYSIS (machine-generated summary) ===",
+        "The following is a machine-generated summary of uploaded documents. "
+        "Use it for orientation and quick overview only — it may contain omissions, "
+        "misinterpretations, or nuances lost in summarization. "
+        "**ALWAYS cross-check any claim, quote, or citation against the original "
+        "documents below (with file names and chunk indices) before relying on it.** "
+        "When referencing facts, cite the exact source: [file_name, chunk_index].",
         "",
         f"Case Summary: {analysis.get('case_summary', '')}",
     ]

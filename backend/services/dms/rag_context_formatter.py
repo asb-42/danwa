@@ -36,7 +36,10 @@ class RAGContextFormatter:
             text = chunk.get("text", "")
             metadata = chunk.get("metadata", {})
             file_name = metadata.get("file_name", "Unknown")
-            formatted = f"[Document {idx} from {file_name}]: {text}\n\n"
+            chunk_index = metadata.get("chunk_index", -1)
+            score = chunk.get("score")
+            score_str = f" | relevance_score={score:.3f}" if score is not None else ""
+            formatted = f"[Source {idx}: {file_name} (chunk {chunk_index}){score_str}]: {text}\n\n"
             formatted_parts.append(formatted)
 
         full_context = "".join(formatted_parts)
