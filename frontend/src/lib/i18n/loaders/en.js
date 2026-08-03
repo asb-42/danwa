@@ -1504,6 +1504,10 @@ export default {
   'fork.defaultProfile': 'Default',
   'fork.sending': 'Sending...',
   'fork.start': 'Start',
+  'fork.searchMode': 'Web Search',
+  'fork.searchOff': 'Off',
+  'fork.searchRequired': 'Required',
+  'fork.searchOptional': 'Optional',
 
   // Event detail panel
   'eventPanel.title': 'Event Details',

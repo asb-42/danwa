@@ -7,6 +7,7 @@
    */
   import { eventStore, spaceStore } from '../../lib/interactive/stores';
   import { getLLMProfiles } from '../../lib/api/profile.js';
+  import { getInteractiveRoles } from '../../lib/interactive/api.ts';
   import { tStore } from '../../lib/i18n/index.js';
 
   let t = $derived($tStore);
@@ -21,6 +22,9 @@
   let error = $state(null);
   let llmProfiles = $state([]);
   let selectedLlmProfile = $state('');
+  let searchMode = $state('off');
+  let roles = $state([]);
+  let selectedComposition = $state(null);
 
   // Drag state
   let dragging = $state(false);
@@ -74,7 +78,7 @@
     }
   });
 
-  // Fetch available LLM profiles
+  // Fetch available LLM profiles and roles
   $effect(() => {
     getLLMProfiles()
       .then((profiles) => {
@@ -85,6 +89,14 @@
       })
       .catch(() => {
         llmProfiles = [];
+      });
+
+    getInteractiveRoles()
+      .then((fetchedRoles) => {
+        roles = fetchedRoles || [];
+      })
+      .catch(() => {
+        roles = [];
       });
   });
 
@@ -133,6 +145,17 @@
     resizing = false;
   }
 
+  function handleRoleChange(e) {
+    const roleId = e.target.value;
+    const role = roles.find((r) => r.id === roleId);
+    if (role) {
+      selectedComposition = role.composition;
+      agentRole = role.role || roleId;
+    } else {
+      selectedComposition = null;
+    }
+  }
+
   async function handleSubmit() {
     if (!spaceId || !targetEvent) return;
 
@@ -147,6 +170,8 @@
             role: agentRole,
             llm_profile_id: selectedLlmProfile || undefined,
             message: agentMessage,
+            search_mode: searchMode,
+            composition: selectedComposition || undefined,
           });
           break;
         case 'a2a':
@@ -257,15 +282,22 @@
           </label>
           <select
             id="agent-role"
-            bind:value={agentRole}
+            value={selectedComposition?.agent_core_id || agentRole}
+            onchange={handleRoleChange}
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 focus:border-purple-500"
           >
-            <option value="strategist">Strategist</option>
-            <option value="critic">Critic</option>
-            <option value="optimist">Optimist</option>
-            <option value="devil">Devil's Advocate</option>
-            <option value="mediator">Mediator</option>
-            <option value="creative">Creative Thinker</option>
+            {#if roles.length === 0}
+              <option value="strategist">Strategist</option>
+              <option value="critic">Critic</option>
+              <option value="optimist">Optimist</option>
+              <option value="devil">Devil's Advocate</option>
+              <option value="mediator">Mediator</option>
+              <option value="creative">Creative Thinker</option>
+            {:else}
+              {#each roles as role}
+                <option value={role.id}>{role.name || role.role || role.id}</option>
+              {/each}
+            {/if}
           </select>
         </div>
 
@@ -285,6 +317,21 @@
                 <option value={profile.id}>{profile.name || profile.id}</option>
               {/each}
             {/if}
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label for="search-mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            🔍 {t('fork.searchMode')}
+          </label>
+          <select
+            id="search-mode"
+            bind:value={searchMode}
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 focus:border-purple-500"
+          >
+            <option value="off">{t('fork.searchOff')}</option>
+            <option value="required">{t('fork.searchRequired')}</option>
+            <option value="optional">{t('fork.searchOptional')}</option>
           </select>
         </div>
       {/if}

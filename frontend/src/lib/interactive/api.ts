@@ -265,6 +265,37 @@ export async function synthesizeContext(
 // Worker Triggers
 // ---------------------------------------------------------------------------
 
+export async function getInteractiveRoles(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    role: string;
+    description: string;
+    composition: {
+      agent_core_id: string;
+      argumentation_pattern_id: string;
+      tone_profile_id: string;
+      prompt_modifier_id: string;
+    };
+  }>
+> {
+  const resp = await fetch(`${API_BASE}/interactive/roles`);
+  if (!resp.ok) throw new Error(`Failed to fetch roles: ${resp.statusText}`);
+  return resp.json();
+}
+
+export async function getInteractiveCompositions(): Promise<{
+  agent_cores: Array<{ id: string; name: string }>;
+  argumentation_patterns: Array<{ id: string; name: string }>;
+  tone_profiles: Array<{ id: string; name: string }>;
+  prompt_modifiers: Array<{ id: string; name: string }>;
+}> {
+  const resp = await fetch(`${API_BASE}/interactive/compositions`);
+  if (!resp.ok)
+    throw new Error(`Failed to fetch compositions: ${resp.statusText}`);
+  return resp.json();
+}
+
 export async function triggerAgent(
   spaceId: string,
   params: {
@@ -272,6 +303,13 @@ export async function triggerAgent(
     role?: string;
     llm_profile_id?: string;
     message: string;
+    search_mode?: 'off' | 'required' | 'optional';
+    composition?: {
+      agent_core_id: string;
+      argumentation_pattern_id: string;
+      tone_profile_id: string;
+      prompt_modifier_id: string;
+    };
   }
 ): Promise<DebateEvent> {
   const query = new URLSearchParams();
@@ -280,10 +318,21 @@ export async function triggerAgent(
   if (params.llm_profile_id)
     query.set('llm_profile_id', params.llm_profile_id);
   query.set('message', params.message);
+  if (params.search_mode) query.set('search_mode', params.search_mode);
+
+  // Build body with composition
+  const body: Record<string, unknown> = {};
+  if (params.composition) {
+    body.composition = params.composition;
+  }
 
   const resp = await fetch(
     `${API_BASE}/spaces/${spaceId}/trigger/agent?${query}`,
-    { method: 'POST' }
+    {
+      method: 'POST',
+      headers: Object.keys(body).length > 0 ? { 'Content-Type': 'application/json' } : undefined,
+      body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
+    }
   );
   if (!resp.ok) throw new Error(`Failed to trigger agent: ${resp.statusText}`);
   return resp.json();
