@@ -50,7 +50,7 @@ class DocumentParser:
                 from odf.opendocument import load
 
                 doc = load(str(path))
-                text = teletype.extractText(doc)
+                text = teletype.extractText(doc.body)
 
             elif ext == ".docx":
                 from docx import Document
