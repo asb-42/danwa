@@ -1472,6 +1472,17 @@ export default {
   'interactive.events': 'Events',
   'interactive.forks': 'Forks',
 
+  // Interactive - DMS/RAG integration
+  'interactive.filterByCase': 'Show only current case',
+  'interactive.showingForCase': 'Showing spaces for case',
+  'interactive.linkedToCase': 'Linked to case',
+  'interactive.caseDocumentsHint': 'Agents will search and reference documents from this case',
+  'interactive.roomTitle': 'Title',
+  'interactive.roomTitlePlaceholder': 'e.g., Legal analysis, Research review...',
+  'interactive.description': 'Description',
+  'interactive.descriptionPlaceholder': 'What is this debate about?',
+  'interactive.linkToCurrentCase': 'Link to current case (enables document search)',
+
   // Fork modal
   'fork.title': 'Start new action',
   'fork.forkFrom': 'Fork from: {actor}',
