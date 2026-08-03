@@ -164,7 +164,7 @@
 
   <!-- Side panel (shown when an event is selected) -->
   {#if hasSelection}
-    <div class="h-full" style="width: 400px; flex-shrink: 0;">
+    <div class="h-full flex-shrink-0">
       <EventDetailPanel {spaceId} />
     </div>
   {/if}
