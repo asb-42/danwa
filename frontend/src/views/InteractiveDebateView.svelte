@@ -12,6 +12,7 @@
     spaceStore,
     eventStore,
   } from '../lib/interactive/stores';
+  import { exportSpace } from '../lib/interactive/api';
   import { tStore } from '../lib/i18n/index.js';
   import { workspaceStore } from '../lib/stores/workspaceStore.svelte.js';
   import { currentTenant } from '../lib/stores/auth.svelte.js';
@@ -26,6 +27,8 @@
   let editDescription = $state('');
   let editCaseLinked = $state(false);
   let filterByCase = $state(true);
+  let showExportMenu = $state(false);
+  let exporting = $state(false);
 
   onMount(async () => {
     await spaceStore.loadSpaces();
@@ -73,6 +76,28 @@
       case_id: caseId,
     });
     showEditModal = false;
+  }
+
+  async function handleExport(format) {
+    if (!spaceId || exporting) return;
+    exporting = true;
+    showExportMenu = false;
+    try {
+      const blob = await exportSpace(spaceId, format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `interactive_${$spaceStore.current?.title || spaceId.slice(0, 8)}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      exporting = false;
+    }
   }
 
   function getCaseLabel(space) {
@@ -129,6 +154,36 @@
       >
         ⚙️ {t('interactive.settings')}
       </button>
+      <div class="relative">
+        <button
+          class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          onclick={() => showExportMenu = !showExportMenu}
+        >
+          📥 {t('interactive.export')}
+        </button>
+        {#if showExportMenu}
+          <div class="absolute right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 min-w-[120px]">
+            <button
+              class="w-full px-3 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onclick={() => handleExport('md')}
+            >
+              📝 Markdown
+            </button>
+            <button
+              class="w-full px-3 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onclick={() => handleExport('pdf')}
+            >
+              📄 PDF
+            </button>
+            <button
+              class="w-full px-3 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onclick={() => handleExport('odf')}
+            >
+              📃 ODF
+            </button>
+          </div>
+        {/if}
+      </div>
       <button
         class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
         onclick={() => {

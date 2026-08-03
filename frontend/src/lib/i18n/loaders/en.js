@@ -1486,6 +1486,7 @@ export default {
   'interactive.settings': 'Settings',
   'interactive.editSpaceSettings': 'Edit space settings',
   'interactive.selectCaseFirst': 'Select a case in the header first',
+  'interactive.export': 'Export',
 
   // Fork modal
   'fork.title': 'Start new action',

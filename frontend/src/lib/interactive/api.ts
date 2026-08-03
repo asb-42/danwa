@@ -149,6 +149,21 @@ export async function updateSpace(
 }
 
 // ---------------------------------------------------------------------------
+// Export API
+// ---------------------------------------------------------------------------
+
+export type ExportFormat = 'md' | 'pdf' | 'odf';
+
+export async function exportSpace(
+  spaceId: string,
+  format: ExportFormat = 'md'
+): Promise<Blob> {
+  const resp = await fetch(`${API_BASE}/spaces/${spaceId}/export?fmt=${format}`);
+  if (!resp.ok) throw new Error(`Failed to export: ${resp.statusText}`);
+  return resp.blob();
+}
+
+// ---------------------------------------------------------------------------
 // Event API
 // ---------------------------------------------------------------------------
 
