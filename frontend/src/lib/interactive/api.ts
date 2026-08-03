@@ -19,7 +19,7 @@ export interface DebateSpace {
   space_id: string;
   title: string;
   description: string | null;
-  project_id: string | null;
+  case_id: string | null;
   tenant_id: string | null;
   created_by: string | null;
   status: string;
@@ -96,7 +96,7 @@ export interface ContextSynthesis {
 export async function createSpace(params: {
   title: string;
   description?: string;
-  project_id?: string;
+  case_id?: string;
   tenant_id?: string;
 }): Promise<DebateSpace> {
   const resp = await fetch(`${API_BASE}/spaces`, {
@@ -110,13 +110,13 @@ export async function createSpace(params: {
 
 export async function listSpaces(params?: {
   tenant_id?: string;
-  project_id?: string;
+  case_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<DebateSpace[]> {
   const query = new URLSearchParams();
   if (params?.tenant_id) query.set('tenant_id', params.tenant_id);
-  if (params?.project_id) query.set('project_id', params.project_id);
+  if (params?.case_id) query.set('case_id', params.case_id);
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.offset) query.set('offset', String(params.offset));
 

@@ -5,12 +5,15 @@
    * Combines the debate graph, event list, and controls.
    */
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import DebateGraph from '../components/interactive/DebateGraph.svelte';
   import {
     spaceStore,
     eventStore,
   } from '../lib/interactive/stores';
   import { tStore } from '../lib/i18n/index.js';
+  import { workspaceStore } from '../lib/stores/workspaceStore.svelte.js';
+  import { currentTenant } from '../lib/stores/auth.svelte.js';
 
   let t = $derived($tStore);
   let spaceId = $state(null);
@@ -29,7 +32,10 @@
 
   async function handleCreateSpace() {
     if (!spaceTitle.trim()) return;
-    const space = await spaceStore.create(spaceTitle.trim());
+    const caseId = workspaceStore.activeCaseId;
+    const tenant = get(currentTenant);
+    const tenantId = tenant?.id;
+    const space = await spaceStore.create(spaceTitle.trim(), undefined, caseId, tenantId);
     spaceId = space.space_id;
     showCreateModal = false;
   }

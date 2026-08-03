@@ -44,10 +44,10 @@ function createSpaceStore() {
   return {
     subscribe,
 
-    async create(title, description) {
+    async create(title, description, caseId, tenantId) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
-        const space = await createSpace({ title, description });
+        const space = await createSpace({ title, description, case_id: caseId, tenant_id: tenantId });
         update((s) => ({
           current: space,
           spaces: [space, ...s.spaces],
