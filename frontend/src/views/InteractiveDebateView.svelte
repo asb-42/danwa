@@ -21,6 +21,10 @@
   let spaceTitle = $state('');
   let spaceDescription = $state('');
   let showCreateModal = $state(false);
+  let showEditModal = $state(false);
+  let editTitle = $state('');
+  let editDescription = $state('');
+  let editCaseLinked = $state(false);
   let filterByCase = $state(true);
 
   onMount(async () => {
@@ -50,6 +54,27 @@
     spaceDescription = '';
   }
 
+  function openEditModal(space) {
+    editTitle = space.title;
+    editDescription = space.description || '';
+    editCaseLinked = !!space.case_id;
+    showEditModal = true;
+  }
+
+  async function handleUpdateSpace() {
+    if (!editTitle.trim()) return;
+    const currentSpace = $spaceStore.current;
+    if (!currentSpace) return;
+
+    const caseId = editCaseLinked ? workspaceStore.activeCaseId : '';
+    await spaceStore.update(currentSpace.space_id, {
+      title: editTitle.trim(),
+      description: editDescription.trim() || undefined,
+      case_id: caseId,
+    });
+    showEditModal = false;
+  }
+
   function getCaseLabel(space) {
     if (space.case_id) {
       return space.case_id.slice(0, 8) + '…';
@@ -75,9 +100,13 @@
         | {$spaceStore.current.title}
       </span>
       {#if $spaceStore.current.case_id}
-        <span class="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300" title="Linked to case {$spaceStore.current.case_id}">
+        <button
+          class="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors cursor-pointer"
+          title={t('interactive.editSpaceSettings')}
+          onclick={() => openEditModal($spaceStore.current)}
+        >
           📄 {getCaseLabel($spaceStore.current)}
-        </span>
+        </button>
       {/if}
       <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
         {$spaceStore.current.event_count} {t('interactive.events')}
@@ -94,6 +123,12 @@
         {t('interactive.newRoom')}
       </button>
     {:else}
+      <button
+        class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+        onclick={() => openEditModal($spaceStore.current)}
+      >
+        ⚙️ {t('interactive.settings')}
+      </button>
       <button
         class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
         onclick={() => {
@@ -261,6 +296,87 @@
           disabled={!spaceTitle.trim()}
         >
           {t('common.create')}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Edit Space Modal -->
+{#if showEditModal && $spaceStore.current}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) showEditModal = false;
+    }}
+  >
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">{t('interactive.editSpace')}</h2>
+
+      <!-- Title input -->
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {t('interactive.roomTitle')}
+      </label>
+      <input
+        type="text"
+        bind:value={editTitle}
+        placeholder={t('interactive.roomTitlePlaceholder')}
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm mb-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+        onkeydown={(e) => {
+          if (e.key === 'Enter') handleUpdateSpace();
+        }}
+      />
+
+      <!-- Description input -->
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {t('interactive.description')} <span class="text-gray-400">({t('common.optional')})</span>
+      </label>
+      <textarea
+        bind:value={editDescription}
+        placeholder={t('interactive.descriptionPlaceholder')}
+        rows="2"
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm mb-4 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 resize-none"
+      ></textarea>
+
+      <!-- Link to case section -->
+      <div class="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700 mb-4">
+        <label class="flex items-center gap-2 text-sm text-purple-700 dark:text-purple-300">
+          <input
+            type="checkbox"
+            bind:checked={editCaseLinked}
+            disabled={!activeCaseId}
+            class="rounded border-purple-300 dark:border-purple-600"
+          />
+          {t('interactive.linkToCurrentCase')}
+        </label>
+        {#if editCaseLinked && activeCaseId}
+          <div class="text-xs text-purple-600 dark:text-purple-400 mt-2 font-mono">
+            {activeCaseId}
+          </div>
+          <div class="text-xs text-purple-500 dark:text-purple-400 mt-1">
+            {t('interactive.caseDocumentsHint')}
+          </div>
+        {:else if !activeCaseId}
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            {t('interactive.selectCaseFirst')}
+          </div>
+        {/if}
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button
+          class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          onclick={() => (showEditModal = false)}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          onclick={handleUpdateSpace}
+          disabled={!editTitle.trim()}
+        >
+          {t('common.save')}
         </button>
       </div>
     </div>

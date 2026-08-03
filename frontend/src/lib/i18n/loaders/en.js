@@ -1482,6 +1482,10 @@ export default {
   'interactive.description': 'Description',
   'interactive.descriptionPlaceholder': 'What is this debate about?',
   'interactive.linkToCurrentCase': 'Link to current case (enables document search)',
+  'interactive.editSpace': 'Edit Space Settings',
+  'interactive.settings': 'Settings',
+  'interactive.editSpaceSettings': 'Edit space settings',
+  'interactive.selectCaseFirst': 'Select a case in the header first',
 
   // Fork modal
   'fork.title': 'Start new action',

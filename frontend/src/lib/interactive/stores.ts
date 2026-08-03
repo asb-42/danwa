@@ -17,6 +17,7 @@ import {
   triggerAgent,
   triggerA2A,
   triggerHITL,
+  updateSpace,
 } from './api';
 
 /**
@@ -72,6 +73,22 @@ function createSpaceStore() {
 
     setCurrent(space) {
       update((s) => ({ ...s, current: space }));
+    },
+
+    async update(spaceId, params) {
+      update((s) => ({ ...s, loading: true, error: null }));
+      try {
+        const updated = await updateSpace(spaceId, params);
+        update((s) => ({
+          current: s.current?.space_id === spaceId ? updated : s.current,
+          spaces: s.spaces.map((sp) => (sp.space_id === spaceId ? updated : sp)),
+          loading: false,
+        }));
+        return updated;
+      } catch (err) {
+        update((s) => ({ ...s, loading: false, error: err.message }));
+        throw err;
+      }
     },
   };
 }

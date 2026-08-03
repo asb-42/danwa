@@ -131,6 +131,23 @@ export async function getSpace(spaceId: string): Promise<DebateSpace> {
   return resp.json();
 }
 
+export async function updateSpace(
+  spaceId: string,
+  params: {
+    title?: string;
+    description?: string;
+    case_id?: string | null;
+  }
+): Promise<DebateSpace> {
+  const resp = await fetch(`${API_BASE}/spaces/${spaceId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error(`Failed to update space: ${resp.statusText}`);
+  return resp.json();
+}
+
 // ---------------------------------------------------------------------------
 // Event API
 // ---------------------------------------------------------------------------
