@@ -37,12 +37,53 @@
   // Subscribe to stores
   $effect(() => {
     const unsub1 = eventsArray.subscribe((events) => {
-      nodes = events.map((evt, idx) => ({
-        id: evt.event_id,
-        type: 'debateEvent',
-        position: calculatePosition(evt, idx),
-        data: evt,
-      }));
+      // Build position map from existing events first
+      const posMap = new Map();
+      for (const evt of events) {
+        if (!evt.parent_id) {
+          posMap.set(evt.event_id, { x: 250, y: 50 });
+        }
+      }
+      // Second pass: position children relative to parents
+      const newNodes = events.map((evt, idx) => {
+        if (!evt.parent_id) {
+          return {
+            id: evt.event_id,
+            type: 'debateEvent',
+            position: posMap.get(evt.event_id),
+            data: evt,
+          };
+        }
+        const parentPos = posMap.get(evt.parent_id);
+        if (parentPos) {
+          // Count siblings placed so far
+          let siblingCount = 0;
+          for (const [id, pos] of posMap) {
+            if (pos.y === parentPos.y + 150 && pos.x >= parentPos.x) {
+              siblingCount++;
+            }
+          }
+          const pos = {
+            x: parentPos.x + siblingCount * 200,
+            y: parentPos.y + 150,
+          };
+          posMap.set(evt.event_id, pos);
+          return {
+            id: evt.event_id,
+            type: 'debateEvent',
+            position: pos,
+            data: evt,
+          };
+        }
+        // Fallback: stack vertically
+        return {
+          id: evt.event_id,
+          type: 'debateEvent',
+          position: { x: 250, y: 50 + idx * 150 },
+          data: evt,
+        };
+      });
+      nodes = newNodes;
     });
 
     const unsub2 = debateEdges.subscribe((eds) => {
@@ -71,35 +112,6 @@
       eventStore.stopStreaming();
     };
   });
-
-  /**
-   * Calculate node position based on parent relationships.
-   * Uses a simple tree layout algorithm.
-   */
-  function calculatePosition(event, index) {
-    if (!event.parent_id) {
-      return { x: 250, y: 50 };
-    }
-
-    // Find parent node
-    const parentIdx = nodes.findIndex((n) => n.id === event.parent_id);
-    if (parentIdx >= 0) {
-      const parent = nodes[parentIdx];
-      // Count siblings (events with same parent)
-      const siblings = nodes.filter(
-        (n) => n.data?.parent_id === event.parent_id
-      );
-      const siblingIndex = siblings.length;
-
-      return {
-        x: parent.position.x + (siblingIndex - 1) * 200,
-        y: parent.position.y + 150,
-      };
-    }
-
-    // Fallback: stack vertically
-    return { x: 250, y: 50 + index * 150 };
-  }
 
   function handleFork(event) {
     forkModalStore.open(event);
