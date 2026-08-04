@@ -935,25 +935,29 @@ def rag_preview(
         for did in doc_ids:
             chunks = dms.metadata_index.get_chunks_by_document(did, project_id=scope_id)
             for c in chunks:
-                chunks_detail.append({
-                    "document_id": did,
-                    "file_name": c.get("metadata", {}).get("file_name", "unknown"),
-                    "chunk_index": c.get("metadata", {}).get("chunk_index", -1),
-                    "text_preview": (c.get("text", "")[:200] + "...") if c.get("text") else "",
-                    "text_length": len(c.get("text", "")),
-                })
+                chunks_detail.append(
+                    {
+                        "document_id": did,
+                        "file_name": c.get("metadata", {}).get("file_name", "unknown"),
+                        "chunk_index": c.get("metadata", {}).get("chunk_index", -1),
+                        "text_preview": (c.get("text", "")[:200] + "...") if c.get("text") else "",
+                        "text_length": len(c.get("text", "")),
+                    }
+                )
     elif query:
         raw_results = dms.get_rag_context(query, project_id=scope_id, k=10)
         for r in raw_results:
             meta = r.get("metadata", {})
-            chunks_detail.append({
-                "file_name": meta.get("file_name", "unknown"),
-                "chunk_index": meta.get("chunk_index", -1),
-                "text_preview": (r.get("text", "")[:200] + "...") if r.get("text") else "",
-                "text_length": len(r.get("text", "")),
-                "score": r.get("score"),
-                "source": r.get("source", "hybrid"),
-            })
+            chunks_detail.append(
+                {
+                    "file_name": meta.get("file_name", "unknown"),
+                    "chunk_index": meta.get("chunk_index", -1),
+                    "text_preview": (r.get("text", "")[:200] + "...") if r.get("text") else "",
+                    "text_length": len(r.get("text", "")),
+                    "score": r.get("score"),
+                    "source": r.get("source", "hybrid"),
+                }
+            )
 
     # Count tokens (approximate)
     rag_tokens = len(rag_context) // 4
@@ -979,6 +983,7 @@ def _load_analysis_text(project_id: str) -> str:
     from backend.api.deps import get_case_dir
     from backend.services.debate.debate_rag import _format_analysis_for_rag
     from backend.services.dms.document_analyzer import load_analysis
+
     try:
         project_dir = get_case_dir(project_id)
         analysis = load_analysis(project_dir)
