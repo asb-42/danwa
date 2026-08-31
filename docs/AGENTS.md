@@ -10,6 +10,7 @@ Project documentation: architecture decision records (ADRs), API reference, arch
 - **Architecture**: `docs/architecture/` — 20 architecture documentation files
 - **API Reference**: `docs/api-reference.md`, `docs/api/` — OpenAPI-generated docs
 - **Guides**: `docs/` root — user manual, technical docs, development guides
+- **Reviews**: `docs/reviews/` — dated deep-dive code and architecture reviews
 
 ## Local Contracts
 
@@ -35,3 +36,4 @@ Project documentation: architecture decision records (ADRs), API reference, arch
 | `docs/adr/` | Architecture Decision Records |
 | `docs/architecture/` | Architecture documentation (20 files) |
 | `docs/api/` | Generated API reference |
+| `docs/reviews/` | Dated deep-dive reviews (e.g., `YYYY-MM-DD_<topic>-code-review.md`) |
