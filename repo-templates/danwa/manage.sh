@@ -5,7 +5,7 @@
 #
 # This file is the single source of truth for the danwa manage
 # procedure, including:
-#   - Local backend lifecycle (uvicorn via uv)
+#   - Backend lifecycle — delegated to danwa-core sibling (mock in tests)
 #   - Local frontend lifecycle (Vite user-app)
 #   - Danwa Studio (admin/dev) lifecycle (sibling-dir lookup)
 #   - Logs / status (human + --json) / clean / dashboard
@@ -117,55 +117,62 @@ frontend_running() { pid_running "$FE_PID_FILE"; }
 studio_running()   { pid_running "$STUDIO_PID_FILE"; }
 
 # ───────────────────────────────────────────────────────────────────────
-# Backend lifecycle
+# Backend lifecycle — delegated to the danwa-core sibling repo.
+# MOCK mode (DANWA_USE_MOCK=1) stays local: tests pin that a mock
+# process writes backend.pid in THIS repo's PID_DIR (no sibling
+# repo exists in test sandboxes) — review §3.1, 2026-08-31.
 # ───────────────────────────────────────────────────────────────────────
+CORE_MANAGE_SCRIPT="${DANWA_CORE_MANAGE_SCRIPT:-$PROJECT_DIR/../danwa-core/manage.sh}"
+
 start_backend() {
     ensure_dirs
     if backend_running > /dev/null 2>&1; then
         log_warn "Backend läuft bereits (PID: $(backend_running))"
         return 0
     fi
-    log_step "Backend starten …"
     if [[ "$DANWA_USE_MOCK" == "1" ]]; then
+        log_step "Backend starten (MOCK) …"
         write_mock_script "$MOCK_BACKEND_SCRIPT"
         nohup "$MOCK_BACKEND_SCRIPT" > "$BACKEND_LOG" 2>&1 &
-    else
-        cd "$PROJECT_DIR"
-        export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-        export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
-        export PATH="$HOME/.local/bin:$PATH"
-        nohup uv run uvicorn backend.main:app \
-            --host 0.0.0.0 \
-            --port "$BACKEND_PORT" \
-            --log-level info \
-            > "$BACKEND_LOG" 2>&1 &
-    fi
-    local pid=$!
-    echo "$pid" > "$BACKEND_PID_FILE"
-    if [[ "$DANWA_USE_MOCK" != "1" ]] && wait_for_url "http://localhost:$BACKEND_PORT/docs" 120; then
-        log_ok "Backend gestartet (PID: $pid) → http://localhost:$BACKEND_PORT"
-    elif [[ "$DANWA_USE_MOCK" == "1" ]]; then
+        local pid=$!
+        echo "$pid" > "$BACKEND_PID_FILE"
         log_ok "Backend started (MOCK, PID: $pid, log: $BACKEND_LOG)"
-    else
-        log_warn "Backend-Start dauert länger als erwartet — prüfe Logs mit: ./manage.sh logs be"
+        return 0
     fi
+    if [[ ! -f "$CORE_MANAGE_SCRIPT" ]]; then
+        log_error "danwa-core manage.sh nicht gefunden: $CORE_MANAGE_SCRIPT"
+        log_error "danwa-core muss als Sibling-Repo geklont sein (SIBLINGS=("danwa-core"))."
+        return 1
+    fi
+    log_step "Backend starten via danwa-core …"
+    export DANWA_LIBDANWA_PATH="${DANWA_LIBDANWA_PATH:-$LIBDANWA_RESOLVED}"
+    bash "$CORE_MANAGE_SCRIPT" start be
 }
 
 stop_backend() {
-    log_step "Backend stoppen …"
-    local pid
-    pid="$(backend_running 2>/dev/null)" || true
-    if [[ -n "$pid" ]]; then
-        kill "$pid" 2>/dev/null && sleep 1
-        if kill -0 "$pid" 2>/dev/null; then
-            kill -9 "$pid" 2>/dev/null
+    if [[ "$DANWA_USE_MOCK" == "1" ]]; then
+        log_step "Backend stoppen (MOCK) …"
+        local pid
+        pid="$(backend_running 2>/dev/null)" || true
+        if [[ -n "$pid" ]]; then
+            kill "$pid" 2>/dev/null && sleep 1
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid" 2>/dev/null
+            fi
+            rm -f "$BACKEND_PID_FILE"
+            log_ok "Backend (PID: $pid) gestoppt"
+        else
+            log_warn "Backend läuft nicht"
         fi
-        rm -f "$BACKEND_PID_FILE"
-        log_ok "Backend (PID: $pid) gestoppt"
-    else
-        log_warn "Backend läuft nicht"
+        return 0
     fi
-    pkill -f "uvicorn backend.main" 2>/dev/null || true
+    if [[ ! -f "$CORE_MANAGE_SCRIPT" ]]; then
+        log_warn "danwa-core manage.sh nicht gefunden — kann Backend nicht stoppen"
+        return 1
+    fi
+    log_step "Backend stoppen via danwa-core …"
+    export DANWA_LIBDANWA_PATH="${DANWA_LIBDANWA_PATH:-$LIBDANWA_RESOLVED}"
+    bash "$CORE_MANAGE_SCRIPT" stop be
 }
 
 # ───────────────────────────────────────────────────────────────────────
@@ -352,16 +359,13 @@ show_status() {
     log_header "Danwa — Systemstatus"
 
     echo ""
-    echo -e "  ${BOLD}Backend:${RESET}"
-    if backend_running > /dev/null 2>&1; then
-        local bp
-        bp="$(backend_running)"
-        echo -e "    Status:  ${GREEN}aktiv${RESET} (PID: $bp)"
-        echo -e "    Port:    $BACKEND_PORT"
-        echo -e "    Log:     $BACKEND_LOG"
+    echo -e "  ${BOLD}Backend (via danwa-core):${RESET}"
+    if curl -s "http://localhost:$BACKEND_PORT/health" 2>/dev/null | grep -q "ok\|healthy\|status"; then
+        echo -e "    Status:  ${GREEN}running${RESET} (port $BACKEND_PORT)"
     else
-        echo -e "    Status:  ${RED}gestoppt${RESET}"
+        echo -e "    Status:  ${RED}stopped${RESET}"
     fi
+    echo -e "    Note: Backend runs in danwa-core"
 
     echo ""
     echo -e "  ${BOLD}Frontend:${RESET}"
@@ -467,33 +471,29 @@ dashboard_loop() {
 # ───────────────────────────────────────────────────────────────────────
 doc_api() {
     log_step "API-Referenz generieren (OpenAPI → Markdown) …"
-    cd "$PROJECT_DIR"
-    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-    if [[ -f "$PROJECT_DIR/scripts/export_openapi.py" ]]; then
-        uv run python scripts/export_openapi.py --both 2>&1 && \
-            log_ok "API-Referenz generiert: $DOCS_DIR/api-reference.md" || {
-                log_error "API-Referenz fehlgeschlagen"
-                return 1
-            }
-    else
-        log_warn "scripts/export_openapi.py nicht gefunden — überspringe doc-api"
+    # Backend/OpenAPI lives in danwa-core — delegate there (review §3.1).
+    local core_dir="$PROJECT_DIR/../danwa-core"
+    if [[ ! -f "$core_dir/scripts/export_openapi.py" ]]; then
+        log_warn "danwa-core sibling nicht gefunden — überspringe doc-api"
+        return 1
     fi
+    (cd "$core_dir" && uv run python scripts/export_openapi.py --both 2>&1) && \
+        log_ok "API-Referenz in danwa-core generiert" || {
+            log_error "API-Referenz fehlgeschlagen"
+            return 1
+        }
 }
 
 doc_pdoc() {
     log_step "Python API-Doku generieren (pdoc) …"
-    cd "$PROJECT_DIR"
-    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-
-    if ! uv run python -c "import pdoc" 2>/dev/null; then
-        log_warn "pdoc nicht installiert — installiere …"
-        uv add --dev pdoc 2>&1
+    # Backend API-Doku lives in danwa-core — delegate there (review §3.1).
+    local core_dir="$PROJECT_DIR/../danwa-core"
+    if [[ ! -f "$core_dir/manage.sh" ]]; then
+        log_warn "danwa-core sibling nicht gefunden — überspringe doc-pdoc"
+        return 1
     fi
-
-    local output_dir="$DOCS_DIR/api"
-    mkdir -p "$output_dir"
-    uv run pdoc backend/ -o "$output_dir" --docformat google 2>&1 && \
-        log_ok "pdoc generiert: $output_dir/index.html" || {
+    (cd "$core_dir" && bash manage.sh doc-pdoc) 2>&1 && \
+        log_ok "pdoc in danwa-core/docs/api generiert" || {
             log_error "pdoc fehlgeschlagen"
             return 1
         }
@@ -542,11 +542,9 @@ doc_update() {
 
     log_step "Dokumentation aktualisieren (LLM-basiert) …"
 
-    cd "$PROJECT_DIR"
-    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-
-    if [[ ! -f "$PROJECT_DIR/scripts/doc_update.py" ]]; then
-        log_warn "scripts/doc_update.py nicht gefunden — überspringe doc-update"
+    local core_dir="$PROJECT_DIR/../danwa-core"
+    if [[ ! -f "$core_dir/scripts/doc_update.py" ]]; then
+        log_warn "danwa-core sibling nicht gefunden — überspringe doc-update"
         return 0
     fi
 
@@ -561,7 +559,7 @@ doc_update() {
         args="$args --dry-run"
     fi
 
-    uv run python scripts/doc_update.py $args 2>&1 && \
+    (cd "$core_dir" && uv run python scripts/doc_update.py $args 2>&1) && \
         log_ok "Dokumentation aktualisiert" || {
             log_error "Dokumentation-Update fehlgeschlagen"
             return 1
@@ -659,13 +657,12 @@ EOF
 adr_check() {
     log_step "Prüfe fehlende ADRs …"
 
+    # Backend architecture dirs live in danwa-core; in this frontend
+    # repo only frontend changes can require ADRs (review §3.1).
     local core_dirs=(
-        "backend/api/routers"
-        "backend/services"
-        "backend/blueprints"
-        "backend/modules"
-        "backend/models"
-        "backend/config"
+        "frontend/src/lib"
+        "frontend/src/views"
+        "frontend/src/components"
     )
 
     local last_adr_check="$DOCS_DIR/.last-adr-check"
@@ -822,7 +819,8 @@ case "$cmd" in
         cd "$PROJECT_DIR"
         export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
         export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
-        uv run pytest tests/backend/test_dms_ocr.py tests/backend/test_dms_api.py tests/test_paddleocr_integration.py tests/test_dms_document_processor.py -v 2>&1
+        # Backend tests live in danwa-core (frontend-only repo — review §3.1).
+        uv run pytest "${@:-tests}" -v 2>&1
         ;;
     # Cross-repo shortcuts
     backend|be)   delegate_to danwa-core "${1:-status}" ;;

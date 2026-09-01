@@ -157,7 +157,7 @@ exposes a **graceful backend-restart button** in the
 POST http://localhost:8000/api/v1/system/restart-backend
 ```
 
-The endpoint (`backend/api/routers/system_control.py`) does **not**
+The endpoint (danwa-core `backend/api/routers/system_control.py`) does **not**
 restart itself — it sends `SIGTERM` to the running uvicorn process after
 a 200 ms delay. The `danwa-core/manage.sh` watcher loop (enabled via
 `BACKEND_WATCHER_ENABLED=1`) detects the death and respawns the backend.

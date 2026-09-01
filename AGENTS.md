@@ -126,16 +126,16 @@ When the user requests a durable behavior change, record it here or in the relev
 
 | Child | Purpose |
 |-------|---------|
-| `backend/` | Python FastAPI backend — API, services, persistence, workflow engine, A2A protocol |
 | `frontend/` | Svelte 5 SPA — views, components, API clients, stores, i18n |
-| `src/` | Shared Python core (legacy) — debate engine, DMS, LLM router, tools |
-| `tests/` | Test suites — backend (pytest), scripts (BATS), RAG regression |
+| `tests/` | Test suites — frontend (pytest), scripts (BATS) |
 | `modules/` | UUID-addressed modular packages — agents, LLM profiles, workflows |
-| `scripts/` | Management and migration scripts — shell and Python |
-| `docs/` | Documentation — ADRs, architecture guides, API reference |
+| `scripts/` | Shared shell library (libdanwa.sh) for manage.sh |
+| `docs/` | Documentation — ADRs, architecture guides, reviews |
 | `config/` | Application configuration — settings, prompts |
 | `profiles/` | User-facing profile configurations — agents, LLM, workflows |
 | `templates/` | Workflow templates — debate formats, print layouts |
 | `schemas/` | JSON schemas — module manifest validation |
 | `deploy/` | Deployment configuration — Nginx, Prometheus |
 | `.github/` | CI/CD workflows — GitHub Actions pipelines |
+
+> Backend (`backend/`, `src/`, `tests/backend/`, `tests/rag_regression/`, `docs/api/`, `Dockerfile.backend`) was removed 2026-08-31 — the FastAPI backend lives in the **danwa-core** sibling repo (code review §3.1).

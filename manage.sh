@@ -164,10 +164,6 @@ stop_backend() {
 # ───────────────────────────────────────────────────────────────────────
 # Frontend lifecycle
 # ───────────────────────────────────────────────────────────────────────
-
-# ───────────────────────────────────────────────────────────────────────
-# Frontend lifecycle
-# ───────────────────────────────────────────────────────────────────────
 start_frontend() {
     ensure_dirs
     if frontend_running > /dev/null 2>&1; then
@@ -462,33 +458,29 @@ dashboard_loop() {
 # ───────────────────────────────────────────────────────────────────────
 doc_api() {
     log_step "API-Referenz generieren (OpenAPI → Markdown) …"
-    cd "$PROJECT_DIR"
-    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-    if [[ -f "$PROJECT_DIR/scripts/export_openapi.py" ]]; then
-        uv run python scripts/export_openapi.py --both 2>&1 && \
-            log_ok "API reference generated: $DOCS_DIR/api-reference.md" || {
-                log_error "API reference generation failed"
-                return 1
-            }
-    else
-        log_warn "scripts/export_openapi.py not found — skipping doc-api"
+    # The OpenAPI app lives in danwa-core — delegate there (review §3.1).
+    local core_dir="$PROJECT_DIR/../danwa-core"
+    if [[ ! -f "$core_dir/scripts/export_openapi.py" ]]; then
+        log_warn "danwa-core sibling not found at $core_dir — skipping doc-api"
+        return 1
     fi
+    (cd "$core_dir" && uv run python scripts/export_openapi.py --both 2>&1) && \
+        log_ok "API reference generated in danwa-core" || {
+            log_error "API reference generation failed"
+            return 1
+        }
 }
 
 doc_pdoc() {
     log_step "Python API-Doku generieren (pdoc) …"
-    cd "$PROJECT_DIR"
-    export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-
-    if ! uv run python -c "import pdoc" 2>/dev/null; then
-        log_warn "pdoc nicht installiert — installiere …"
-        uv add --dev pdoc 2>&1
+    # The backend lives in danwa-core — delegate there (review §3.1).
+    local core_dir="$PROJECT_DIR/../danwa-core"
+    if [[ ! -f "$core_dir/manage.sh" ]]; then
+        log_warn "danwa-core sibling not found at $core_dir — skipping doc-pdoc"
+        return 1
     fi
-
-    local output_dir="$DOCS_DIR/api"
-    mkdir -p "$output_dir"
-    uv run pdoc backend/ -o "$output_dir" --docformat google 2>&1 && \
-        log_ok "pdoc generated: $output_dir/index.html" || {
+    (cd "$core_dir" && bash manage.sh doc-pdoc) 2>&1 && \
+        log_ok "pdoc generated in danwa-core/docs/api" || {
             log_error "pdoc failed"
             return 1
         }
@@ -540,8 +532,8 @@ doc_update() {
     cd "$PROJECT_DIR"
     export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 
-    if [[ ! -f "$PROJECT_DIR/scripts/doc_update.py" ]]; then
-        log_warn "scripts/doc_update.py not found — skipping doc-update"
+    if [[ ! -f "$PROJECT_DIR/../danwa-core/scripts/doc_update.py" ]]; then
+        log_warn "danwa-core sibling not found — skipping doc-update"
         return 0
     fi
 
@@ -556,7 +548,7 @@ doc_update() {
         args="$args --dry-run"
     fi
 
-    uv run python scripts/doc_update.py $args 2>&1 && \
+    (cd "$PROJECT_DIR/../danwa-core" && uv run python scripts/doc_update.py $args 2>&1) && \
         log_ok "Documentation updated" || {
             log_error "Documentation update failed"
             return 1
@@ -654,13 +646,12 @@ EOF
 adr_check() {
     log_step "Checking for missing ADRs …"
 
+    # Backend architecture dirs live in danwa-core; in this frontend
+    # repo only docs/frontend changes can require ADRs (review §3.1).
     local core_dirs=(
-        "backend/api/routers"
-        "backend/services"
-        "backend/blueprints"
-        "backend/modules"
-        "backend/models"
-        "backend/config"
+        "frontend/src/lib"
+        "frontend/src/views"
+        "frontend/src/components"
     )
 
     local last_adr_check="$DOCS_DIR/.last-adr-check"
@@ -811,11 +802,13 @@ case "$cmd" in
         adr_check
         ;;
     test)
-        log_step "Running tests …"
+        log_step "Running frontend/script tests …"
         cd "$PROJECT_DIR"
         export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
         export UV_PYTHONPATH="${PROJECT_DIR}:${UV_PYTHONPATH:-}"
-        uv run pytest tests/backend/test_dms_ocr.py tests/backend/test_dms_api.py tests/test_paddleocr_integration.py tests/test_dms_document_processor.py -v 2>&1
+        # Backend tests live in danwa-core (frontend-only repo — review §3.1).
+        # Forward extra args straight to pytest.
+        uv run pytest "${@:-tests}" -v 2>&1
         ;;
     # Cross-repo shortcuts
     backend|be)   delegate_to danwa-core "${1:-status}" ;;

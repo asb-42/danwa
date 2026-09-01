@@ -2,39 +2,35 @@
 
 ## Purpose
 
-Test suites for Danwa: backend unit/integration tests (pytest), frontend tests (Vitest/Playwright), shell script tests (BATS), and RAG regression tests.
+Test suites for the danwa frontend-only repo: frontend regression tests (pytest structural checks), shell script tests (BATS).
 
 ## Ownership
 
-- **Backend Tests**: `tests/backend/` — 140+ pytest test files
-- **Frontend Tests**: `tests/frontend/` — regression tests
-- **Script Tests**: `tests/scripts/` — BATS shell script tests
-- **RAG Regression**: `tests/rag_regression/` — RAG pipeline regression tests
-- **Manager Tests**: `tests/manager/` — manager module tests
+- **Frontend Tests**: `tests/frontend/` — structural regression tests (pytest; Svelte source invariants, version consistency)
+- **Script Tests**: `tests/scripts/` — BATS shell contract tests pinning manage.sh / setup.sh / repo templates
+- **Backend + RAG tests**: live in **danwa-core/tests**
 
 ## Local Contracts
 
-- Backend tests use fixtures from `tests/backend/conftest.py`
-- Script tests use BATS framework with helpers in `tests/scripts/helpers/`
-- RAG regression tests use mock LLM contracts
+- Frontend tests read `frontend/src` as text (no Svelte compilation needed) — plain pytest, no server required
+- Script tests use the BATS framework with helpers in `tests/scripts/helpers/`; they run the **repo-templates** manage.sh, not the root one
+- `tests/frontend/test_version_consistency.py` pins `/version` ↔ `frontend/package.json` parity (ported from the removed backend suite)
 
 ## Work Guidance
 
 - Add tests for new features and bug fixes
 - Follow existing test patterns (naming, fixtures, assertions)
 - Keep tests independent and idempotent
-- Use fixtures for shared setup, not module-level state
+- Frontend unit/E2E tests (Vitest/Playwright) live in `frontend/` and run via `npm run test:unit` / `test:e2e`
 
 ## Verification
 
-- Backend: `pytest tests/backend/ -v`
-- Scripts: `bats tests/scripts/`
-- All tests must pass before merge
+- Frontend + manager: `uv run pytest tests/ -v`
+- Scripts: `bats tests/scripts/` (known env-dependent failure: setup_studio "node not available" when node is installed at a non-standard path)
 
 ## Child DOX Index
 
 | Child | Purpose |
 |-------|---------|
-| `tests/backend/` | Backend unit/integration tests (140+ files) |
+| `tests/frontend/` | Frontend structural regression tests (pytest) |
 | `tests/scripts/` | Shell script tests (BATS framework) |
-| `tests/rag_regression/` | RAG pipeline regression tests |

@@ -30,7 +30,8 @@ jobs:
       - name: Lint
         run: uv run ruff check . && uv run ruff format --check .
       - name: Test
-        run: uv run pytest tests/backend/ -v --tb=short
+        # Backend tests live in danwa-core (frontend-only repo — review §3.1).
+        run: uv run pytest tests/ -v --tb=short
 
   build:
     name: Build Docker Images
@@ -40,16 +41,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.backend
-          push: false
-          tags: danwa-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Build frontend image
+        # Backend image builds from danwa-core (Dockerfile.backend there).
         uses: docker/build-push-action@v6
         with:
           context: .

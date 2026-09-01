@@ -85,18 +85,16 @@ This starts the backend and auto-detects sibling frontends.
 
 ```
 danwa/
-├── backend/          # FastAPI application (routers, services, models)
 ├── frontend/         # Svelte 5 end-user frontend
 │   └── src/
 │       ├── views/    # 16 page-level views
 │       ├── components/  # UI components (debate, interactive, inbox, etc.)
 │       └── lib/      # API clients, stores, i18n, SSE, workflow logic
-├── src/              # Shared Python core (legacy) — debate engine, DMS, LLM router
 ├── modules/          # Local module definitions
-├── scripts/          # Shell management scripts (libdanwa.sh) and utilities
+├── scripts/          # libdanwa.sh (shared shell library)
 ├── config/           # Application configuration and prompts
 ├── data/             # Database, DMS storage
-├── tests/            # Backend (pytest) and script (BATS) tests
+├── tests/            # Frontend (pytest) and script (BATS) tests
 ├── deploy/           # Docker Compose, deployment configs
 ├── docs/             # ADRs, architecture documentation
 ├── plans/            # Architecture plans and roadmaps
@@ -110,11 +108,12 @@ danwa/
 └── pyproject.toml    # Python dependencies (uv)
 ```
 
+The FastAPI backend lives in the **danwa-core** sibling repo (`../danwa-core/backend/`) — this repo ships the frontend only.
+
 ## Docker Deployment
 
 ```bash
-docker compose up -d                     # full stack
-docker compose --profile celery up -d    # with Celery worker
+docker compose up -d                     # frontend + redis (backend from danwa-core)
 docker compose up redis -d               # Redis only (local dev)
 ```
 
@@ -135,8 +134,11 @@ Settings are loaded from environment variables (prefix `DANWA_*`), the `.env` fi
 ## Testing
 
 ```bash
-# Backend
+# Frontend + script tests (this repo)
 uv run pytest tests/
+
+# Backend tests
+cd ../danwa-core && .venv/bin/python -m pytest tests/backend/
 
 # Frontend (unit)
 cd frontend && npm run test:unit
@@ -145,8 +147,8 @@ cd frontend && npm run test:unit
 cd frontend && npm run test:e2e
 
 # Linting
-uv run ruff check backend/
-uv run ruff format backend/
+uv run ruff check .
+uv run ruff format .
 ```
 
 ## Useful Commands

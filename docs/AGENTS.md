@@ -2,21 +2,21 @@
 
 ## Purpose
 
-Project documentation: architecture decision records (ADRs), API reference, architecture guides, and standalone documentation.
+Project documentation: architecture decision records (ADRs), architecture guides, reviews, and standalone documentation.
 
 ## Ownership
 
 - **ADRs**: `docs/adr/` — architecture decision records
 - **Architecture**: `docs/architecture/` — 20 architecture documentation files
-- **API Reference**: `docs/api-reference.md`, `docs/api/` — OpenAPI-generated docs
+- **API Reference**: lives in danwa-core (`docs/api-reference.md`, `docs/api/`) — generated there from the OpenAPI spec; this repo's `docs/api/` was removed with the legacy backend (review §3.1, 2026-08-31)
 - **Guides**: `docs/` root — user manual, technical docs, development guides
 - **Reviews**: `docs/reviews/` — dated deep-dive code and architecture reviews
 
 ## Local Contracts
 
 - ADRs follow the template in `docs/adr/TEMPLATE.md`
-- Architecture docs cover backend, frontend, and integration layers
-- API reference is generated from OpenAPI spec
+- Architecture docs cover frontend and cross-repo integration layers
+- API reference generation is delegated: `./manage.sh doc-api` / `doc-pdoc` run in danwa-core
 
 ## Work Guidance
 
@@ -35,5 +35,4 @@ Project documentation: architecture decision records (ADRs), API reference, arch
 |-------|---------|
 | `docs/adr/` | Architecture Decision Records |
 | `docs/architecture/` | Architecture documentation (20 files) |
-| `docs/api/` | Generated API reference |
 | `docs/reviews/` | Dated deep-dive reviews (e.g., `YYYY-MM-DD_<topic>-code-review.md`) |

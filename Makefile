@@ -1,4 +1,4 @@
-.PHONY: install test lint format check docker-build docker-up docker-down docker-logs
+.PHONY: install test lint format check docker-build docker-up docker-down docker-logs docker-restart docker-clean
 
 install:
 	uv pip install -e ".[test]"
@@ -29,9 +29,6 @@ docker-down:
 
 docker-logs:
 	docker compose logs -f
-
-docker-up-celery:
-	docker compose --profile celery up -d
 
 docker-restart: docker-down docker-up
 

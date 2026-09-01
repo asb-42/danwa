@@ -379,6 +379,29 @@ class DMSDB:
 
 ### 3.1 Delete the duplicated legacy backend from the `danwa` repo
 
+> **Remediation status (2026-09-02, danwa `main`):** **Done.** Deleted from the
+> danwa repo: `backend/` (237 files), `src/` (36), `tests/backend/` (139 — all
+> already skip-guarded), `tests/rag_regression/` (byte-identical twins of
+> danwa-core's), `docs/api/` (146 pdoc files) + `docs/api-reference.{md,json}`
+> (dead-backend OpenAPI output), `Dockerfile.backend`, the backend+celery
+> services from `docker-compose.yml`, and all backend-oriented scripts from
+> `scripts/` (migrations, seeds, doc/export twins — kept only `libdanwa.sh`,
+> a runtime dependency of `manage.sh`). Follow-ups in the same pass:
+> `repo-templates/danwa/manage.sh` no longer runs `uvicorn backend.main:app`
+> — backend lifecycle delegates to the danwa-core sibling (mock mode stays
+> local so BATS `start be` keeps writing `backend.pid` in test sandboxes);
+> `doc-api`/`doc-pdoc`/`doc-update`/`test` delegate or point at danwa-core;
+> `adr-check` watches `frontend/src` instead of `backend/` dirs; CI/deploy
+> workflows, `Makefile`, `pyproject.toml` (deps trimmed to the pytest/ruff
+> tooling stack, `testpaths` → `tests/frontend, tests/scripts`), README,
+> INSTALL, and the DOX chain were updated. `tests/frontend/test_version_consistency.py`
+> was ported from the removed backend suite (keeps the `/version` ↔
+> `frontend/package.json` pin; backend-side checks live in danwa-core).
+> Verified: `uv run pytest tests/` green (same pre-existing AgentNode layout
+> failure as before), full BATS suite green except the pre-existing
+> `setup_studio` "node not available" env failure (fails on pristine HEAD
+> too), ruff clean. The `.env` → danwa-core symlink was deliberately left
+> (§3.7, not approved this session).
 `danwa/backend/` is a full copy of the danwa-core backend (**91 files differ** from `danwa-core/backend`), plus a duplicated `src/` core. `danwa/backend/main.py` itself says it is deprecated, "superseded by danwa-core … Do NOT start — shares port 8000", and `danwa/manage.sh` delegates backend lifecycle to `../danwa-core/manage.sh`. Yet the dead tree ships with every frontend commit: it confuses greps (every symbol appears twice), doubles review surface, and invites accidental edits to the wrong copy (this session had to check danwa-core equivalents for every prior-session finding). **Recommendation:** delete `danwa/backend/` and `danwa/src/` (or move to a `legacy/` branch/tag for archaeology), keep only `frontend/`, `docs/`, `plans/`, scripts that genuinely belong to the app repo. This is the single highest-value hygiene change across the four repos.
 
 ### 3.2 Un-vendor danwa-modules; treat it as a build input, not a fork
@@ -387,6 +410,18 @@ class DMSDB:
 
 ### 3.3 Remove the broken second `DMS` class and `DMSMemory`
 
+> **Remediation status (2026-09-02, danwa-core `main`):** **Done.** Deleted
+> `backend/services/dms/dms.py` and `backend/services/dms/dms_memory.py`, plus
+> their dead-suite companions `tests/backend/test_dms_memory.py` and the
+> 100%-skip-marked `tests/backend/test_dms_core.py`; pruned the dead-class
+> test groups from `test_dms_core_comprehensive.py` (kept `TestProjectManager`,
+> which tests live code). The real `DMS` in `service.py` is the only `DMS`
+> import path (`backend.services.dms` package `__init__` already exported it;
+> the `backend/api/routers/dms.py` router is a different, live file). GitNexus
+> impact analysis before the deletion: dead class = LOW risk (importers were
+> only `dms_memory.py` + 3 test files), `DMSMemory` = zero production callers.
+> DMS suite after: 166 passed / 24 skipped / 2 xfailed, with only the known
+> pre-existing order-dependent `test_list_manual_rag_empty` failure.
 `backend/services/dms/dms.py` defines a second `DMS` (constructor incompatible with the real one: `DMSVectorStore(vs_config)` passes a **dict where a `Path` is required** → instant `TypeError`; `DMSDB()` with no path → `memory/dms.db` in CWD; `asyncio.run()` inside `upload_document` — crashes in any async context). It is imported only by `dms_memory.py`, which is imported by nothing in danwa-core (only tests). This is dead code that will detonate the moment someone "helpfully" wires it up — and its mere existence makes `from backend.services.dms.dms import DMS` a plausible-looking, wrong import. **Recommendation:** delete both files and port any `DMSMemory` consumers (the danwa legacy `src/dms/` tree already duplicates them) to `DMS` + `RAGContextFormatter` from `service.py`. If a memory facade is genuinely wanted, implement it as a thin adapter over the real `DMS`.
 
 ### 3.4 One cache, one key type
