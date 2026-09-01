@@ -345,6 +345,34 @@ class DMSDB:
 
 …and wrap `process_document`'s chunk-insert loop in a single transaction (one `commit()` at the end) so a delete can't interleave mid-ingestion. Alternatively replace the hand-rolled `DMSDB` with SQLModel/SQLAlchemy pool — but the lock + single-transaction fixes are 30 lines and remove the hazard class.
 
+> **Remediation status (2026-09-01, danwa-core `6f7d67a`):** §2.3–§2.8 are
+> implemented. **§2.3** — `doc_parser.MAX_CONTEXT_CHARS` raised to 2M chars
+> (ingestion-side sanity ceiling; prompts stay bounded at chunking/retrieval),
+> and `RAGPipeline.process_file` now persists `word_count`/`char_count`/
+> `page_count`/`ocr_used` plus `metadata_json={"truncated": …}` via the
+> extended `update_document_metadata`; upload responses surface `truncated`.
+> **§2.4** — empty-text PDFs are rasterized page-by-page (pdfplumber,
+> `ocr_pdf_resolution`, capped by `ocr_pdf_max_pages`) and OCRed per page;
+> PaddleOCR lang codes map from `ocr_lang` (`deu→german`, `eng→en`,
+> `ocr_paddle_lang` override); a no-engine image/PDF raises `ValueError` → 422
+> instead of the binary-as-text fallback, and per-engine handlers propagate
+> failures. **§2.5** — case-scoped `GET …/dms/rag/preview` and legacy
+> `GET /dms/rag/preview` added, matching `getRagPreview` exactly. **§2.6** —
+> `get_case_document` returns `get_document_content` (text + chunk metadata),
+> with case-scoped `PUT …/text` and `POST …/move` twins; the frontend prefers
+> the tenant-scoped routes. **§2.7** — every DMS route (legacy + case-scoped)
+> requires `get_current_user`; tenant-scoped routes enforce membership via
+> `_check_tenant_access` (admin bypass, fail-closed 403). **§2.8** — `DMSDB`
+> statements serialized through RLock wrappers (`execute`/`executemany`/
+> `commit`/`rollback`/`close`), all callers migrated, chunk ingestion batched via
+> `add_chunk(commit=False)` + one commit, and `_get_dms_for_case` now caches
+> under both the tuple and bare `case_id` keys so `get_dms_for_project` and
+> the agent worker reuse the same instance — one case, one DMS, one connection.
+> Verified against a pristine HEAD worktree: identical failure sets across all
+> affected suites (DMS, OCR, workspace, interactive, auth, multi-tenant,
+> migrations); new routes smoke-tested live (401 with auth on, contract-shaped
+> 200 with auth off).
+
 ---
 
 ## 3. Architectural & Design Improvements
