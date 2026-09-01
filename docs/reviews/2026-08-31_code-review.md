@@ -434,6 +434,48 @@ For balance: the per-case physical isolation (own `dms.db` + own `chroma_db` dir
 7. **Stale-instance resilience.** `_reset_stale_running_debates()` at startup is a nice touch; consider the same for DMS: at startup, per case, if `documents.word_count == 0` and chunks are missing (ingestion interrupted by the 300 s timeout or a crash), re-queue ingestion. Today a timed-out upload leaves a permanent zombie document row — invisible to RAG, listed in the UI, which is *another* face of the "file unreadable" complaint.
 8. **`ProfileService`/`UserKeyStore` construction per request.** Prior-session findings in the danwa legacy tree (fresh SQLite connection + DDL per request in `UserKeyStore.__init__`, `ProfileService()` re-reading the DB each call) — verify the danwa-core equivalents and hoist to app-lifetime singletons via `@lru_cache` deps; the pattern is already established in `deps.py` for stores.
 
+> **Remediation status (2026-09-02, danwa-core `2e54b6d`):** §4.1–§4.8 are
+> implemented (§4.6 had already been fixed by the §2.2 upload rewrite —
+> `finally: os.unlink(tmp_path)` on the legacy route — and needed no change).
+> **§4.1** — `DMSVectorStore.__init__` performs zero Chroma I/O; first use
+> goes through `_ensure_initialized()` (RLock, double-checked) which assigns
+> the client only after the collection is usable, so a failed init retries
+> on the next call; every operation goes via the `collection` property.
+> **§4.2** — the cross-encoder is a module-level shared lazy singleton
+> (`_get_cross_encoder()` with a failed-load flag); `HybridRetriever` is now
+> cheap to construct, and the per-instance `cross_encoder` property remains
+> settable as a test seam. **§4.3** — removed (not wired): `embedding_model`
+> from `DEFAULT_DMS_CONFIG`; collections keep Chroma's default ONNX MiniLM EF
+> — switching EFs on existing collections would silently corrupt retrieval.
+> **§4.4** — instead of a background thread, the BM25 build is single-flight
+> under `_corpus_cache_lock`: first caller builds, concurrent callers wait
+> and reuse; TTL semantics and the 10k corpus cap are unchanged, and the
+> cap bounds the locked build to well under a second (the report itself
+> downgraded urgency once capped). **§4.5** — both upload routes stream to
+> disk in 1 MiB chunks with a running total and abort with 413 the moment
+> `max_file_size_mb` is exceeded; the case-scoped route (previously with **no
+> size check at all**) now enforces the same cap and 413 detail format; temp
+> files are unlinked on every exit path. **§4.7** — the zombie signal is
+> **zero chunks** (`NOT EXISTS(document_chunks)`; pre-fix rows legitimately
+> have `word_count=0` *with* chunks), not `word_count==0` as originally
+> suggested; `main._requeue_zombie_documents()` runs at startup, re-ingests
+> rows whose `file_path` still exists via the new
+> `service.reingest_document(doc_id)`, and marks
+> `metadata_json.failed_ingest` on the rest (UI-visible reason, rows never
+> deleted). **§4.8** — one global `ProfileService` via
+> `profile_service.get_shared_profile_service()`, shared by `deps`, both
+> profile routers, `node_functions`/`legacy_nodes`, and as the default for
+> `LLMService`/`TranslationService`/`AssistantService` (explicit
+> `profile_service=`/`db_path=` params keep tests isolated); per-case
+> services go through `deps.get_profile_service_for_case_cached` and are
+> invalidated by `ProjectStore.update` so config writes are seen on the next
+> request; `UserKeyStore` is a `deps.get_user_key_store()` singleton (lazy
+> import so class-level test patches stay effective) and the BYOK router
+> uses it. Verified by parity runs against the pre-change baseline
+> (identical pre-existing failure sets; GitNexus flagged the expected
+> CRITICAL change breadth — 68 symbols, 123 processes — with no behavioral
+> regressions).
+
 ---
 
 ## 5. Clarifying Questions
