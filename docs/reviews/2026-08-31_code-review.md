@@ -65,6 +65,17 @@ A get_chunks_by_document(doc):           1
 
 **Impact.** For any case created through the tenant/case flow, agents (debates, workflows, interactive agent worker) receive **zero document context** even though the documents are listed, analyzed, and "in RAG" in the UI. This is the root cause of the recurring complaint. The bug is silent because every layer swallows errors and returns empty lists (§3.6), and no test covers the router→debate seam: `test_dms_multitenant_isolation.py` writes and reads through the *same* binding, and `test_get_dms_for_project_uses_string_key` even blesses the mixed-type cache (§3.4).
 
+> **Post-review correction (2026-09-01):** A regression suite pinning this exact
+> contract does exist — `tests/rag_regression/` (including
+> `test_rag_scope_id_regression.py` and migration `v024_rag_project_id_dedup`)
+> — but it is **not in pyproject `testpaths`** (`["tests/backend"]`), so it never
+> runs in the default suite, and v024 was not wired into `main.py`. The fix
+> (danwa-core `ed314a9`) completes that intended contract: bare `case_id`
+> binding everywhere, factory case-dir fallback for CaseStore cases, v024
+> wired into lifespan (+ `rag_context.session_id` rewrite), and the pinned
+> source-contract tests in `test_workspace_list_documents.py` /
+> `test_mvp_debate_passes_dms_project_id.py` now pass.
+
 The same seam corrupts **manual RAG state**: `add_to_rag_context` reached via the legacy route (`POST /api/v1/dms/documents/{id}/rag` with `X-Case-Id` → raw UUID instance) persists `rag_context(session_id=raw_uuid, …)`, while the case-scoped instance loads selections for `session_id="case:{t}:{c}"` — so documents toggled via one route don't appear in the other, and debate RAG resolution never sees either binding's data consistently.
 
 **Fix.** Two directions; choose one and enforce it at a single chokepoint:
