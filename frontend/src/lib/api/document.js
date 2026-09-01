@@ -107,7 +107,13 @@ export function deleteDocument(documentId) {
 }
 
 export function updateDocumentText(documentId, text) {
-  // No tenant-scoped equivalent yet — legacy endpoint
+  const { tenantId, caseId } = _ctx();
+  if (tenantId && caseId) {
+    return request(`/api/v1/tenants/${tenantId}/cases/${caseId}/dms/documents/${documentId}/text`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    });
+  }
   return request(`/api/v1/dms/documents/${documentId}/text`, {
     method: 'PUT',
     body: JSON.stringify({ text }),
@@ -115,7 +121,13 @@ export function updateDocumentText(documentId, text) {
 }
 
 export function moveDocument(documentId, targetProjectId) {
-  // No tenant-scoped equivalent yet — legacy endpoint
+  const { tenantId, caseId } = _ctx();
+  if (tenantId && caseId) {
+    return request(`/api/v1/tenants/${tenantId}/cases/${caseId}/dms/documents/${documentId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ target_project_id: targetProjectId }),
+    });
+  }
   return request(`/api/v1/dms/documents/${documentId}/move`, {
     method: 'POST',
     body: JSON.stringify({ target_project_id: targetProjectId }),
